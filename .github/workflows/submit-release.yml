@@ -1,0 +1,266 @@
+name: Submit Release
+
+# Manually-triggered workflow that promotes an already-uploaded mobile build
+# from staging (TestFlight / Play Store internal) to beta or production.
+#
+# DOES NOT rebuild — every job runs on ubuntu-latest because submission is
+# pure HTTPS API work against App Store Connect and Google Play.
+#
+# Required prerequisite: the build must have been uploaded by
+# release-all-platforms.yml, which pushes a single annotated tag
+# `build-<N>` we use to map a build number → commit.
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: "Target track"
+        type: choice
+        required: true
+        default: production
+        options:
+          - production
+          - beta
+      platforms:
+        description: "Platforms to submit"
+        type: choice
+        required: true
+        default: both
+        options:
+          - both
+          - ios
+          - android
+      build_number:
+        description: "Build number to submit (must match an existing build-<N> tag)"
+        type: string
+        required: true
+
+run-name: "submit · ${{ inputs.track }} · ${{ inputs.platforms }} · build ${{ inputs.build_number }}"
+
+concurrency:
+  # Serialize submissions of the same track to avoid two operators racing
+  # the same App Store / Play Store review queue.
+  group: submit-release-${{ inputs.track }}
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    name: Resolve build → commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      build_number: ${{ steps.pick.outputs.build_number }}
+      commit_sha:   ${{ steps.pick.outputs.commit_sha }}
+      version:      ${{ steps.pick.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Fetch tags
+        run: git fetch --tags --force
+
+      - id: pick
+        env:
+          N: ${{ inputs.build_number }}
+        run: |
+          set -euo pipefail
+          # 1) Validate build number.
+          if ! [[ "$N" =~ ^[0-9]+$ ]]; then
+            echo "::error::build_number must be a positive integer (got: $N)"
+            exit 1
+          fi
+
+          # 2) Resolve the originating commit from the build-<N> tag pushed by
+          # release-all-platforms.yml.
+          SHA=$(git rev-list -n1 "build-${N}" 2>/dev/null || true)
+          if [[ -z "$SHA" ]]; then
+            echo "::error::No tag build-${N} found. Build ${N} was either never created by release-all-platforms.yml or its tag was deleted."
+            exit 1
+          fi
+
+          # 3) Read marketing version from pubspec.yaml on the resolved commit
+          # (NOT current main) so the submit tag matches the binary's version.
+          VERSION=$(git show "${SHA}:mobile/app/pubspec.yaml" \
+            | awk '/^version:/{split($2,a,"+"); print a[1]; exit}')
+          if [[ -z "$VERSION" ]]; then
+            echo "::error::Could not parse version from pubspec.yaml at ${SHA}"
+            exit 1
+          fi
+
+          echo "build_number=${N}"  >> "$GITHUB_OUTPUT"
+          echo "commit_sha=${SHA}"  >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Resolved"
+            echo "- **Build number**: \`${N}\`"
+            echo "- **Commit**: \`${SHA}\`"
+            echo "- **Version**: \`${VERSION}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  submit-ios:
+    name: Submit iOS to ${{ inputs.track }}
+    if: ${{ inputs.platforms == 'both' || inputs.platforms == 'ios' }}
+    needs: resolve
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # `store-production` environment requires reviewer approval before this job
+    # starts; `store-beta` has no protection rules. Both must exist as repo
+    # environments (Settings → Environments).
+    environment: ${{ inputs.track == 'production' && 'store-production' || 'store-beta' }}
+    defaults:
+      run:
+        working-directory: mobile/app/ios
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.resolve.outputs.commit_sha }}
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+          working-directory: mobile/app/ios
+
+      - name: Submit iOS to ${{ inputs.track }}
+        env:
+          APP_STORE_CONNECT_API_KEY_ID:      ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_ISSUER_ID:   ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+          APPLE_TEAM_ID:                     ${{ secrets.APPLE_TEAM_ID }}
+          ITC_TEAM_ID:                       ${{ secrets.ITC_TEAM_ID }}
+          BUILD_NUMBER:                      ${{ needs.resolve.outputs.build_number }}
+          TRACK:                             ${{ inputs.track }}
+        run: bundle exec fastlane submit_ios
+
+      - name: Summary
+        if: success()
+        run: |
+          {
+            echo "## iOS submission"
+            echo "- **Track**: ${{ inputs.track }}"
+            echo "- **Build**: ${{ needs.resolve.outputs.build_number }}"
+            echo "- **Version**: v${{ needs.resolve.outputs.version }}"
+            echo "- **Commit**: \`${{ needs.resolve.outputs.commit_sha }}\`"
+            if [[ "${{ inputs.track }}" == "production" ]]; then
+              echo "- **Next**: App Store review queue. Approve release in App Store Connect after Apple approves."
+            else
+              echo "- **Next**: Apple beta review for external TestFlight groups."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  submit-android:
+    name: Submit Android to ${{ inputs.track }}
+    if: ${{ inputs.platforms == 'both' || inputs.platforms == 'android' }}
+    needs: resolve
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: ${{ inputs.track == 'production' && 'store-production' || 'store-beta' }}
+    defaults:
+      run:
+        working-directory: mobile/app/android
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.resolve.outputs.commit_sha }}
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+          working-directory: mobile/app/android
+
+      - name: Submit Android to ${{ inputs.track }}
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          VERSION_CODE:                     ${{ needs.resolve.outputs.build_number }}
+          TRACK:                            ${{ inputs.track }}
+        run: bundle exec fastlane submit_android
+
+      - name: Cleanup credentials
+        if: always()
+        # Path is relative to the job's working-directory (mobile/app/android).
+        run: rm -f fastlane/service-account.json
+
+      - name: Summary
+        if: success()
+        run: |
+          {
+            echo "## Android submission"
+            echo "- **Track**: ${{ inputs.track }}"
+            echo "- **Version code**: ${{ needs.resolve.outputs.build_number }}"
+            echo "- **Version**: v${{ needs.resolve.outputs.version }}"
+            echo "- **Commit**: \`${{ needs.resolve.outputs.commit_sha }}\`"
+            if [[ "${{ inputs.track }}" == "production" ]]; then
+              echo "- **Next**: Google Play production review (100% rollout)."
+            else
+              echo "- **Next**: Google Play beta track (open testing)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  tag:
+    name: Tag commit and create release
+    needs: [resolve, submit-ios, submit-android]
+    # Run only if every REQUESTED platform succeeded. A skipped platform
+    # (because the operator picked one-platform-only) counts as OK.
+    if: |
+      always() && needs.resolve.result == 'success' &&
+      (needs.submit-ios.result    == 'success' || needs.submit-ios.result    == 'skipped') &&
+      (needs.submit-android.result == 'success' || needs.submit-android.result == 'skipped') &&
+      !(needs.submit-ios.result == 'skipped' && needs.submit-android.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.resolve.outputs.commit_sha }}
+          fetch-depth: 0
+
+      - name: Create and push tag
+        id: tag
+        env:
+          TRACK:   ${{ inputs.track }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+          BUILD:   ${{ needs.resolve.outputs.build_number }}
+          SHA:     ${{ needs.resolve.outputs.commit_sha }}
+        run: |
+          set -euo pipefail
+          TAG="v${VERSION}"
+          git fetch --tags --force
+          # Idempotent: if the version tag already exists on the SAME commit
+          # (e.g. a beta submission tagged it earlier, now promoting to prod),
+          # there's nothing to do. A clash on a DIFFERENT commit means the
+          # version wasn't bumped — fail loudly.
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            existing=$(git rev-list -n1 "refs/tags/${TAG}")
+            if [[ "$existing" == "$SHA" ]]; then
+              echo "Tag ${TAG} already points at ${SHA} — nothing to do"
+              echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+              echo "## Tagged" >> "$GITHUB_STEP_SUMMARY"
+              echo "- **Tag**: \`${TAG}\` → \`${SHA}\` (already present)" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "::error::Tag ${TAG} already exists on a different commit (${existing}). Bump the version in mobile/app/pubspec.yaml before submitting a different build."
+            exit 1
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Submitted ${TRACK} build ${BUILD} (v${VERSION})"
+          git push origin "refs/tags/${TAG}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "## Tagged" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Tag**: \`${TAG}\` → \`${SHA}\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create GitHub Release (production only)
+        if: ${{ inputs.track == 'production' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          target_commitish: ${{ needs.resolve.outputs.commit_sha }}
+          name: "v${{ needs.resolve.outputs.version }} (build ${{ needs.resolve.outputs.build_number }})"
+          generate_release_notes: true
+          make_latest: "true"
