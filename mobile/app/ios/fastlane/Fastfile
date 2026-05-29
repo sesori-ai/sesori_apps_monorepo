@@ -51,6 +51,16 @@ platform :ios do
     version_match ? version_match[1] : "1.0.0"
   end
 
+  # Reads the static, user-facing release notes shared across both platforms.
+  # Single source of truth lives at mobile/app/store_release_notes.txt so the
+  # TestFlight / App Store copy never drifts from the Play Store copy. Anchored
+  # to __dir__ (the fastlane folder) so the path is correct regardless of cwd.
+  private_lane :_static_release_notes do
+    notes_path = File.expand_path("../../store_release_notes.txt", __dir__)
+    UI.user_error!("Release notes file not found at #{notes_path}") unless File.exist?(notes_path)
+    File.read(notes_path).strip
+  end
+
   desc "Print the next TestFlight build number without building or uploading"
   lane :next_build_number do
     api_key = app_store_connect_api_key(
@@ -142,16 +152,15 @@ platform :ios do
       output_name: "Runner.ipa"
     )
 
-    # Upload to TestFlight. Embed the short commit SHA in the TestFlight
-    # "What to Test" notes so it survives even if the matching `build-<N>`
-    # git tag is ever lost — operators can recover the originating commit by
-    # opening the build in App Store Connect.
-    short_sha = ENV.fetch("GITHUB_SHA", `git rev-parse HEAD`.strip)[0, 7]
+    # Upload to TestFlight. Testers see the static, user-facing release notes
+    # shared with the App Store and Play Store (store_release_notes.txt). Build
+    # number → commit stays recoverable from the `build-<N>` git tag pushed by
+    # release-all-platforms.yml and the submit workflow's CI step summary.
     upload_to_testflight(
       api_key: api_key,
       skip_waiting_for_build_processing: true,
       wait_for_uploaded_build: false,
-      changelog: "Build #{new_build_number} (v#{version}) commit=#{short_sha}"
+      changelog: _static_release_notes
     )
 
     # Write build info for CI summary
@@ -215,7 +224,7 @@ platform :ios do
         skip_waiting_for_build_processing: true,
         distribute_external: true,
         groups: ENV.fetch("TESTFLIGHT_EXTERNAL_GROUPS", "External Beta").split(",").map(&:strip).reject(&:empty?),
-        changelog: "Promoted build #{build_number} (v#{version}) to external beta"
+        changelog: _static_release_notes
       )
     end
 
