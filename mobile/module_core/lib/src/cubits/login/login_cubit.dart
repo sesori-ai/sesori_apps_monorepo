@@ -133,8 +133,8 @@ class LoginCubit extends Cubit<LoginState> {
   }
 
   /// Clears the [LoginFailed] state and returns to idle. Used when the user
-  /// dismisses the inline error notification on the login screen.
-  void resetError() {
+  /// dismisses the login failure error notification on the login screen.
+  void onDismissedLoginFailureError() {
     if (state is LoginFailed) {
       emit(const LoginState.idle());
     }

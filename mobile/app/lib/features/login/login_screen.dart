@@ -393,7 +393,8 @@ class _LoginErrorBannerState extends State<_LoginErrorBanner> {
                   : ZyraAlertsNotification(
                       title: loc.loginAuthenticationFailedTitle,
                       message: _getErrorMessage(loc: loc, reason: reason),
-                      onClose: () => context.read<LoginCubit>().resetError(),
+                      onClose: () =>
+                          context.read<LoginCubit>().onDismissedLoginFailureError(),
                     ),
             ),
           ),
