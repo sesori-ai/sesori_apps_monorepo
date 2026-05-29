@@ -35,6 +35,10 @@ const _connectedStatus = ConnectionStatus.connected(
   config: _connectionConfig,
   health: _connectionHealth,
 );
+const _bridgeOfflineStatus = ConnectionStatus.bridgeOffline(
+  config: _connectionConfig,
+  health: _connectionHealth,
+);
 
 void main() {
   setUpAll(registerAllFallbackValues);
@@ -132,6 +136,9 @@ void main() {
         final captured = verify(() => mockConnectionService.connectWithFreshAuthToken());
         captured.called(1);
 
+        // A successful connect brings the bridge online, so the initial load
+        // proceeds to fetch projects (rather than the onboarding state).
+        statusController.add(_connectedStatus);
         initialConnectCompleter.complete(true);
         await Future<void>.delayed(Duration.zero);
       },
@@ -182,6 +189,172 @@ void main() {
         isA<ProjectListFailed>(),
       ],
     );
+
+    // -------------------------------------------------------------------------
+    // Bridge-disconnected onboarding
+    // -------------------------------------------------------------------------
+
+    group("bridge disconnected onboarding", () {
+      blocTest<ProjectListCubit, ProjectListState>(
+        "initial load while disconnected emits bridgeDisconnected without fetching",
+        build: () {
+          statusController.add(const ConnectionStatus.disconnected());
+          // Connect attempt resolves but the bridge stays unreachable.
+          when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => false);
+          return buildCubit();
+        },
+        expect: () => [isA<ProjectListBridgeDisconnected>()],
+        verify: (_) {
+          verifyNever(() => mockProjectService.listProjects());
+        },
+      );
+
+      blocTest<ProjectListCubit, ProjectListState>(
+        "bridge going offline replaces the loaded list with onboarding",
+        build: () {
+          when(() => mockProjectService.listProjects()).thenAnswer(
+            (_) async => ApiResponse.success(Projects(data: [testProject()])),
+          );
+          return buildCubit();
+        },
+        act: (cubit) async {
+          await Future<void>.delayed(Duration.zero);
+          statusController.add(_bridgeOfflineStatus);
+          await Future<void>.delayed(Duration.zero);
+        },
+        skip: 1, // constructor's ProjectListLoaded
+        expect: () => [isA<ProjectListBridgeDisconnected>()],
+      );
+
+      blocTest<ProjectListCubit, ProjectListState>(
+        "bridge coming online loads projects from the onboarding state",
+        build: () {
+          statusController.add(const ConnectionStatus.disconnected());
+          when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => false);
+          when(() => mockProjectService.listProjects()).thenAnswer(
+            (_) async => ApiResponse.success(Projects(data: [testProject()])),
+          );
+          return buildCubit();
+        },
+        act: (cubit) async {
+          await Future<void>.delayed(Duration.zero);
+          statusController.add(_connectedStatus);
+          await Future<void>.delayed(Duration.zero);
+        },
+        skip: 1, // initial ProjectListBridgeDisconnected
+        expect: () => [
+          isA<ProjectListLoading>(),
+          isA<ProjectListLoaded>().having((s) => s.projects.length, "projects count after connect", 1),
+        ],
+      );
+
+      blocTest<ProjectListCubit, ProjectListState>(
+        "fetch error while the bridge is unavailable emits bridgeDisconnected, not failed",
+        build: () {
+          when(() => mockProjectService.listProjects()).thenAnswer(
+            (_) async => ApiResponse.success(Projects(data: [testProject()])),
+          );
+          return buildCubit();
+        },
+        act: (cubit) async {
+          await Future<void>.delayed(Duration.zero);
+          // Bridge becomes unavailable; drive loadProjects() directly (no status
+          // event) so the fetch-error branch is exercised, not the listener.
+          when(() => mockConnectionService.currentStatus).thenReturn(_bridgeOfflineStatus);
+          when(() => mockProjectService.listProjects()).thenAnswer(
+            (_) async => ApiResponse.error(ApiError.generic()),
+          );
+          await cubit.loadProjects();
+        },
+        skip: 1, // constructor's ProjectListLoaded
+        expect: () => [
+          isA<ProjectListLoading>(),
+          isA<ProjectListBridgeDisconnected>(),
+        ],
+      );
+
+      blocTest<ProjectListCubit, ProjectListState>(
+        "live ConnectionDisconnected while loaded surfaces the onboarding",
+        build: () {
+          when(
+            () => mockProjectService.listProjects(),
+          ).thenAnswer((_) async => ApiResponse.success(Projects(data: [testProject()])));
+          return buildCubit();
+        },
+        act: (cubit) async {
+          await Future<void>.delayed(Duration.zero);
+          statusController.add(const ConnectionStatus.disconnected());
+          await Future<void>.delayed(Duration.zero);
+        },
+        skip: 1, // constructor's ProjectListLoaded
+        expect: () => [isA<ProjectListBridgeDisconnected>()],
+      );
+
+      blocTest<ProjectListCubit, ProjectListState>(
+        "transient connection states do not disturb the onboarding",
+        build: () {
+          statusController.add(const ConnectionStatus.disconnected());
+          when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => false);
+          return buildCubit();
+        },
+        act: (cubit) async {
+          await Future<void>.delayed(Duration.zero);
+          // ConnectionReconnecting / ConnectionLost must NOT replace the
+          // onboarding (the cubit's transient-state no-op) — keeps it stable.
+          statusController.add(const ConnectionStatus.reconnecting(config: _connectionConfig));
+          statusController.add(const ConnectionStatus.connectionLost(config: _connectionConfig));
+          await Future<void>.delayed(Duration.zero);
+        },
+        skip: 1, // initial ProjectListBridgeDisconnected
+        expect: () => <ProjectListState>[],
+      );
+
+      blocTest<ProjectListCubit, ProjectListState>(
+        "reconnectBridge: establishes a fresh connection and loads projects",
+        build: () {
+          statusController.add(const ConnectionStatus.disconnected());
+          when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => false);
+          return buildCubit();
+        },
+        act: (cubit) async {
+          await Future<void>.delayed(Duration.zero); // initial -> bridgeDisconnected
+          when(
+            () => mockProjectService.listProjects(),
+          ).thenAnswer((_) async => ApiResponse.success(Projects(data: [testProject()])));
+          // A subsequent connect attempt succeeds. Mutate currentStatus directly
+          // (no stream event) so we isolate reconnectBridge's own fetch path.
+          when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async {
+            when(() => mockConnectionService.currentStatus).thenReturn(_connectedStatus);
+            return true;
+          });
+          await cubit.reconnectBridge();
+        },
+        skip: 1, // initial ProjectListBridgeDisconnected
+        expect: () => [
+          isA<ProjectListLoaded>().having((s) => s.projects.length, "projects after reconnect", 1),
+        ],
+      );
+
+      blocTest<ProjectListCubit, ProjectListState>(
+        "reconnectBridge: stays on onboarding (no fetch) when the bridge is still unreachable",
+        build: () {
+          statusController.add(const ConnectionStatus.disconnected());
+          when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => false);
+          return buildCubit();
+        },
+        act: (cubit) async {
+          await Future<void>.delayed(Duration.zero);
+          await cubit.reconnectBridge();
+        },
+        skip: 1, // initial ProjectListBridgeDisconnected
+        expect: () => <ProjectListState>[],
+        verify: (_) {
+          // Constructor + reconnectBridge each attempt a fresh connection.
+          verify(() => mockConnectionService.connectWithFreshAuthToken()).called(2);
+          verifyNever(() => mockProjectService.listProjects());
+        },
+      );
+    });
 
     // -------------------------------------------------------------------------
     // Test 4a: hideProject

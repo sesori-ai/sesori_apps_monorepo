@@ -73,6 +73,50 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get projectsOnboardingTitle => 'Let’s connect your computer';
+
+  @override
+  String get projectsOnboardingStep1Action => 'Install & Run';
+
+  @override
+  String get projectsOnboardingBridgeName => 'Sesori Bridge';
+
+  @override
+  String get projectsOnboardingTabUnix => 'Linux/Mac';
+
+  @override
+  String get projectsOnboardingTabWindows => 'Windows';
+
+  @override
+  String get projectsOnboardingCommandCopied => 'Command copied to clipboard';
+
+  @override
+  String get projectsOnboardingCopyCommand => 'Copy command';
+
+  @override
+  String get projectsOnboardingStep2Action => 'Sign in';
+
+  @override
+  String get projectsOnboardingStep2Accent => 'on your computer';
+
+  @override
+  String get projectsOnboardingAccountPrefix => 'Use ';
+
+  @override
+  String projectsOnboardingAccountSuffix(String provider) {
+    return ' with $provider';
+  }
+
+  @override
+  String get projectsOnboardingAccountFallback => 'Sign in with the same account you used here.';
+
+  @override
+  String get projectsOnboardingStep3Title => 'Create or open a project';
+
+  @override
+  String get projectsOnboardingStep3Detail => 'Once your computer is connected, your projects will appear here.';
+
+  @override
   String get connectionLostTitle => 'Connection Lost';
 
   @override
