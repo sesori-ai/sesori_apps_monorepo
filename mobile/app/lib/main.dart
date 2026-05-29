@@ -9,7 +9,6 @@ import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_zyra/module_zyra.dart";
-import "package:vector_graphics/vector_graphics.dart";
 
 import "core/di/injection.dart";
 import "core/extensions/build_context_x.dart";
@@ -33,16 +32,6 @@ void main() async {
     SystemUiMode.edgeToEdge,
     overlays: SystemUiOverlay.values,
   );
-  // Warm the vector_graphics cache so the precompiled app icon is decoded and
-  // ready before the splash screen's first frame, avoiding a blank flash.
-  try {
-    await vg.loadPicture(
-      const AssetBytesLoader("assets/images/sesori_icon_with_shadow.svg.vec"),
-      null,
-    );
-  } catch (error, stackTrace) {
-    loge("Error precaching app icon", error, stackTrace);
-  }
   if (_shouldInitializeFirebase) {
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
