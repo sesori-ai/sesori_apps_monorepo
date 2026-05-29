@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_zyra/components/buttons/zyra_buttons_solid.dart";
+import "package:theme_zyra/icons/vespr_icons.g.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 
@@ -25,122 +26,53 @@ class LoginProviderButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
     final loc = context.loc;
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: FilledButton.icon(
-            onPressed: isLoading ? null : onGithubSelected,
-            icon: isLoading
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(Icons.code_rounded, size: 20),
-            label: Text(loc.loginWithGithub),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF24292F),
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: const Color(0xFF24292F).withAlpha(153),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
+        ZyraButtonsSolid(
+          label: loc.loginWithGithub,
+          hierarchy: ZyraButtonsSolidHierarchy.primaryAlt,
+          size: ZyraButtonsSolidSize.xl,
+          leadingIcon: VESPRSolid.github,
+          isLoading: isLoading,
+          fullWidth: true,
+          onPressed: isLoading ? null : onGithubSelected,
         ),
-        const SizedBox(height: 16),
         if (showApple) ...[
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: FilledButton.icon(
-              onPressed: isLoading ? null : onAppleSelected,
-              icon: isLoading
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.apple, size: 20),
-              label: Text(loc.loginWithApple),
-              style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.white
-                    : Colors.black,
-                foregroundColor: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.black
-                    : Colors.white,
-                disabledBackgroundColor:
-                    (Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white
-                            : Colors.black)
-                        .withAlpha(153),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
+          const SizedBox(height: 12),
+          ZyraButtonsSolid(
+            label: loc.loginWithApple,
+            hierarchy: ZyraButtonsSolidHierarchy.primaryAlt,
+            size: ZyraButtonsSolidSize.xl,
+            leadingIcon: VESPRSolid.apple,
+            isLoading: isLoading,
+            fullWidth: true,
+            onPressed: isLoading ? null : onAppleSelected,
           ),
-          const SizedBox(height: 16),
         ],
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: OutlinedButton.icon(
-            onPressed: isLoading ? null : onGoogleSelected,
-            icon: isLoading
-                ? SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: zyra.colors.bgBrandSolid,
-                    ),
-                  )
-                : Text(
-                    "G",
-                    style: zyra.textTheme.textMd.bold.copyWith(
-                      fontSize: 20,
-                      color: zyra.colors.textPrimary,
-                    ),
-                  ),
-            label: Text(loc.loginWithGoogle),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: zyra.colors.textPrimary,
-              side: BorderSide(color: zyra.colors.borderPrimary),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
+        const SizedBox(height: 12),
+        ZyraButtonsSolid(
+          label: loc.loginWithGoogle,
+          hierarchy: ZyraButtonsSolidHierarchy.primaryAlt,
+          size: ZyraButtonsSolidSize.xl,
+          leadingIcon: VESPRSolid.google,
+          isLoading: isLoading,
+          fullWidth: true,
+          onPressed: isLoading ? null : onGoogleSelected,
         ),
-        const SizedBox(height: 16),
-        if (!showEmailForm)
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: TextButton(
-              onPressed: isLoading ? null : onShowEmailForm,
-              style: TextButton.styleFrom(
-                foregroundColor: zyra.colors.bgBrandSolid,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text(loc.continueWithEmail),
-            ),
+        if (!showEmailForm) ...[
+          const SizedBox(height: 12),
+          ZyraButtonsSolid(
+            label: loc.signInWithEmail,
+            hierarchy: ZyraButtonsSolidHierarchy.tertiary,
+            size: ZyraButtonsSolidSize.xl,
+            isLoading: isLoading,
+            fullWidth: true,
+            onPressed: isLoading ? null : onShowEmailForm,
           ),
+        ],
       ],
     );
   }

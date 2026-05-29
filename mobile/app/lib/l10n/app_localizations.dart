@@ -712,14 +712,20 @@ abstract class AppLocalizations {
   /// No description provided for @loginTitle.
   ///
   /// In en, this message translates to:
-  /// **'Sign In'**
+  /// **'Welcome to'**
   String get loginTitle;
 
   /// No description provided for @loginSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Sign in to connect to your server'**
+  /// **'Sesori'**
   String get loginSubtitle;
+
+  /// No description provided for @loginAgreementText.
+  ///
+  /// In en, this message translates to:
+  /// **'By signing in, you accept our [Terms of Use](https://sesori.com/terms) and [Privacy Policy](https://sesori.com/privacy).'**
+  String get loginAgreementText;
 
   /// No description provided for @loginWithGithub.
   ///
@@ -745,11 +751,11 @@ abstract class AppLocalizations {
   /// **'Sign in with Google'**
   String get loginWithGoogle;
 
-  /// No description provided for @continueWithEmail.
+  /// No description provided for @signInWithEmail.
   ///
   /// In en, this message translates to:
-  /// **'Continue with Email'**
-  String get continueWithEmail;
+  /// **'Sign in with Email'**
+  String get signInWithEmail;
 
   /// No description provided for @emailLabel.
   ///
@@ -798,6 +804,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Back to login'**
   String get backToLogin;
+
+  /// No description provided for @loginAuthenticationFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication failed'**
+  String get loginAuthenticationFailedTitle;
 
   /// No description provided for @loginError.
   ///
@@ -1398,12 +1410,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Retry'**
   String get diffRetry;
-
-  /// No description provided for @splashWelcomeTo.
-  ///
-  /// In en, this message translates to:
-  /// **'Welcome to'**
-  String get splashWelcomeTo;
 
   /// No description provided for @splashTitle.
   ///

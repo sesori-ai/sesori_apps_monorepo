@@ -132,6 +132,14 @@ class LoginCubit extends Cubit<LoginState> {
     emit(const LoginState.failed(reason: LoginFailedReason.unknown));
   }
 
+  /// Clears the [LoginFailed] state and returns to idle. Used when the user
+  /// dismisses the login failure error notification on the login screen.
+  void onDismissedLoginFailureError() {
+    if (state is LoginFailed) {
+      emit(const LoginState.idle());
+    }
+  }
+
   void onMissingAppleIdToken() {
     emit(const LoginState.failed(reason: LoginFailedReason.appleIdTokenMissing));
   }

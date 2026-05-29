@@ -5,13 +5,11 @@
 ///
 /// Usage:
 ///   dart run scripts/generate_icon_font_dart.dart \
-///     --font-dir assets/fonts/FontAwesome6Pro \
-///     --output lib/core/ui/icons/fa6_pro_icons.g.dart \
+///     --font-dir assets/fonts/TablerIcons \
+///     --output lib/icons/tabler_icons.g.dart \
 ///     --font-package theme_zyra \
-///     --family-map "FA6Pro-Thin-100.otf:FA6Thin:FA6Thin" \
-///     --family-map "FA6Pro-Light-300.otf:FA6Light:FA6Light" \
-///     --family-map "FA6Pro-Regular-400.otf:FA6Regular:FA6Regular" \
-///     --family-map "FA6Pro-Solid-900.otf:FA6Solid:FA6Solid"
+///     --family-map "tabler-icons.ttf:TablerOutline:TablerOutline" \
+///     --family-map "tabler-icons-filled.ttf:TablerFilled:TablerFilled"
 library;
 
 import 'dart:io';

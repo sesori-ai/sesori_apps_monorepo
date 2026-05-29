@@ -1,6 +1,6 @@
 import "package:flutter/material.dart";
 
-import "../../icons/fa6_pro_icons.g.dart";
+import "../../icons/tabler_icons.g.dart";
 import "../../interactions/zyra_tappable.dart";
 import "../../theme/zyra_theme.dart";
 
@@ -86,8 +86,8 @@ class ZyraPrice extends StatelessWidget {
                 alignment: PlaceholderAlignment.middle,
                 child: Icon(
                   switch (direction) {
-                    ZyraPriceDirection.up => FA6Solid.caret_up,
-                    ZyraPriceDirection.down => FA6Solid.caret_down,
+                    ZyraPriceDirection.up => TablerOutline.caret_up,
+                    ZyraPriceDirection.down => TablerOutline.caret_down,
                   },
                   size: 14,
                   color: caretColor,
@@ -145,7 +145,7 @@ class _EyeToggleButton extends StatelessWidget {
       ),
       child: Center(
         child: Icon(
-          isBalanceHidden ? FA6Solid.eye_slash : FA6Solid.eye,
+          isBalanceHidden ? TablerOutline.eye_off : TablerOutline.eye,
           size: _iconSize,
           color: iconColor,
         ),
