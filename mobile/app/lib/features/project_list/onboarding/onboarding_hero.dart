@@ -45,11 +45,13 @@ class _EllipseFit extends GradientTransform {
 }
 
 /// The hero illustration: an aurora night scene behind a laptop with a
-/// "cloud-slash" badge, framed by blurred signal arcs and firefly dots.
+/// "cloud-slash" badge, framed by glowing signal arcs and scattered firefly
+/// dots.
 ///
-/// Layout positions mirror the Figma frame (294×284, illustration occupying
-/// the top ~208px). The two SVGs carry Gaussian-blur filters that `flutter_svg`
-/// cannot render, so the soft glow is reproduced with [ImageFiltered].
+/// Laid out as a fixed 200px-tall [Stack] aligned to the bottom (adapted from
+/// the Figma frame). The signal arcs' SVG carries a Gaussian-blur filter that
+/// `flutter_svg` cannot render, so its soft glow is reproduced with
+/// [ImageFiltered].
 class _OnboardingHero extends StatelessWidget {
   const _OnboardingHero();
 
