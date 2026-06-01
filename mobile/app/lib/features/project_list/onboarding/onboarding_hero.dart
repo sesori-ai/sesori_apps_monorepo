@@ -20,72 +20,63 @@ class _OnboardingHero extends StatelessWidget {
     final auroraEdge = context.zyra.colors.bgPrimaryAlt;
 
     return SizedBox(
-      width: 294,
-      height: 208,
+      width: double.infinity,
+      height: 200,
       child: Stack(
+        alignment: Alignment.bottomCenter,
         clipBehavior: Clip.none,
         children: [
           // Aurora landscape, faded into the background at the edges.
-          Positioned(
-            left: 1,
-            top: 90,
-            child: SizedBox(
-              width: 292,
-              height: 117,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.asset(_kAuroraAsset, fit: BoxFit.cover),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: RadialGradient(
-                        radius: 0.9,
-                        colors: [
-                          Colors.transparent,
-                          Colors.transparent,
-                          auroraEdge.withValues(alpha: 0.5),
-                          auroraEdge,
-                        ],
-                        stops: const [0.0, 0.42, 0.72, 1.0],
-                      ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.asset(_kAuroraAsset, fit: BoxFit.cover),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      radius: 0.9,
+                      colors: [
+                        Colors.transparent,
+                        Colors.transparent,
+                        auroraEdge.withValues(alpha: 0.5),
+                        auroraEdge,
+                      ],
+                      stops: const [0.0, 0.42, 0.72, 1.0],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
           // Glowing signal arcs above the laptop.
-          Positioned(
-            left: 57,
-            top: 0,
+          Positioned.fill(
             child: ImageFiltered(
               imageFilter: ui.ImageFilter.blur(sigmaX: 2.2, sigmaY: 2.2),
               child: SvgPicture.asset(_kSignalArcsAsset, width: 180, height: 180),
             ),
           ),
+          // Laptop.
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SvgPicture.asset(_kLaptopAsset),
+                Positioned(
+                  top: 22,
+                  child: ZyraButtonsIconGlass(
+                    icon: TablerOutline.cloud_off,
+                    onPressed: () {},
+                  ),
+                ),
+              ],
+            ),
+          ),
           // Scattered firefly dots.
           Positioned(
-            left: 78,
-            top: 81,
-            child: ImageFiltered(
-              imageFilter: ui.ImageFilter.blur(sigmaX: 1.0, sigmaY: 1.0),
-              child: SvgPicture.asset(_kFireflyDotsAsset, width: 170, height: 97),
-            ),
-          ),
-          // Laptop.
-          Positioned(
-            left: 76,
-            top: 97,
-            child: SvgPicture.asset(_kLaptopAsset),
-          ),
-          // Cloud-slash badge centred on the laptop screen.
-          Positioned(
-            left: 123,
-            top: 120,
-            child: ZyraButtonsIconGlass(
-              icon: TablerOutline.cloud_off,
-              onPressed: () {},
-            ),
+            child: SvgPicture.asset(_kFireflyDotsAsset),
           ),
         ],
       ),
