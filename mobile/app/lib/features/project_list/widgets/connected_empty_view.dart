@@ -1,7 +1,6 @@
 part of "../project_list_screen.dart";
 
 /// Shown when the bridge is connected but the project list is empty.
-/// Intentionally lightweight pending a later redesign.
 class _ConnectedEmptyView extends StatelessWidget {
   final VoidCallback onAddProject;
 
@@ -20,11 +19,7 @@ class _ConnectedEmptyView extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.folder_off_outlined,
-                  size: 48,
-                  color: zyra.colors.borderPrimary,
-                ),
+                const ExcludeSemantics(child: _OnboardingHero.cli()),
                 const SizedBox(height: 16),
                 Text(loc.noProjects, style: zyra.textTheme.textMd.bold.copyWith(color: zyra.colors.textPrimary)),
                 const SizedBox(height: 8),

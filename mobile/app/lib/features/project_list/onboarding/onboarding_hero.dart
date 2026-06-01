@@ -5,6 +5,7 @@ const _kAuroraAsset = "assets/images/projects_onboarding/aurora_bg.png";
 const _kSignalArcsAsset = "assets/images/projects_onboarding/signal_arcs.svg";
 const _kFireflyDotsAsset = "assets/images/projects_onboarding/firefly_dots.svg";
 const _kLaptopAsset = "assets/images/projects_onboarding/laptop.svg";
+const _kCliAsset = "assets/images/projects_onboarding/cli.svg";
 
 /// Stretches a [RadialGradient]'s circle into an ellipse that matches the
 /// box's aspect ratio, so the fade reaches all four edges instead of only the
@@ -44,20 +45,41 @@ class _EllipseFit extends GradientTransform {
   }
 }
 
-/// The hero illustration: an aurora night scene behind a laptop with a
-/// "cloud-slash" badge, framed by glowing signal arcs and scattered firefly
-/// dots.
+/// Which onboarding state the hero illustration depicts.
+enum _OnboardingHeroVariant {
+  /// Bridge not connected yet: a cloud-slash badge and no signal arcs —
+  /// nothing is reaching the computer.
+  offline,
+
+  /// Bridge connected but no projects yet: a terminal-window badge framed by
+  /// glowing signal arcs that read as a live connection.
+  cli,
+}
+
+/// The hero illustration: an aurora night scene behind a laptop, with a badge
+/// on the laptop and scattered firefly dots.
+///
+/// Comes in two [variant]s, one per empty onboarding state:
+/// * [_OnboardingHeroVariant.offline] — bridge not connected yet: a
+///   "cloud-slash" badge, no signal arcs.
+/// * [_OnboardingHeroVariant.cli] — bridge connected but no projects yet: a
+///   terminal-window badge framed by glowing signal arcs above the laptop.
 ///
 /// Laid out as a fixed 200px-tall [Stack] aligned to the bottom (adapted from
 /// the Figma frame). The signal arcs' SVG carries a Gaussian-blur filter that
 /// `flutter_svg` cannot render, so its soft glow is reproduced with
 /// [ImageFiltered].
 class _OnboardingHero extends StatelessWidget {
-  const _OnboardingHero();
+  const _OnboardingHero.offline() : variant = _OnboardingHeroVariant.offline;
+
+  const _OnboardingHero.cli() : variant = _OnboardingHeroVariant.cli;
+
+  final _OnboardingHeroVariant variant;
 
   @override
   Widget build(BuildContext context) {
     final auroraEdge = context.zyra.colors.bgPrimaryAlt;
+    final showSignalArcs = variant == _OnboardingHeroVariant.cli;
 
     return SizedBox(
       width: double.infinity,
@@ -100,27 +122,23 @@ class _OnboardingHero extends StatelessWidget {
               ),
             ),
           ),
-          // Glowing signal arcs above the laptop.
-          Positioned.fill(
-            child: ImageFiltered(
-              imageFilter: ui.ImageFilter.blur(sigmaX: 2.2, sigmaY: 2.2),
-              child: SvgPicture.asset(_kSignalArcsAsset, width: 180, height: 180),
+          // Glowing signal arcs above the laptop — CLI variant only, where
+          // they read as a live signal.
+          if (showSignalArcs)
+            Positioned.fill(
+              child: ImageFiltered(
+                imageFilter: ui.ImageFilter.blur(sigmaX: 2.2, sigmaY: 2.2),
+                child: SvgPicture.asset(_kSignalArcsAsset, width: 180, height: 180),
+              ),
             ),
-          ),
-          // Laptop.
+          // Laptop with its variant-specific badge.
           Align(
             alignment: Alignment.bottomCenter,
             child: Stack(
               alignment: Alignment.center,
               children: [
                 SvgPicture.asset(_kLaptopAsset),
-                Positioned(
-                  top: 22,
-                  child: ZyraButtonsIconGlass(
-                    icon: TablerOutline.cloud_off,
-                    onPressed: () {},
-                  ),
-                ),
+                Positioned(top: 22, child: _badge()),
               ],
             ),
           ),
@@ -131,5 +149,17 @@ class _OnboardingHero extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// The element sitting on the laptop: a cloud-slash glass badge when offline,
+  /// or the terminal-window illustration in the CLI variant.
+  Widget _badge() {
+    return switch (variant) {
+      _OnboardingHeroVariant.offline => ZyraButtonsIconGlass(
+        icon: TablerOutline.cloud_off,
+        onPressed: () {},
+      ),
+      _OnboardingHeroVariant.cli => SvgPicture.asset(_kCliAsset),
+    };
   }
 }

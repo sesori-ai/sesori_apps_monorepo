@@ -48,7 +48,7 @@ class _BridgeOnboardingViewState extends State<_BridgeOnboardingView> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: ZyraSpacing.md),
-              const Center(child: ExcludeSemantics(child: _OnboardingHero())),
+              const Center(child: ExcludeSemantics(child: _OnboardingHero.offline())),
               const SizedBox(height: ZyraSpacing.lg),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: ZyraSpacing.xl),
@@ -88,9 +88,27 @@ class _BridgeOnboardingViewState extends State<_BridgeOnboardingView> {
                     _OnboardingStep(
                       number: 3,
                       titleAction: loc.projectsOnboardingStep3Title,
-                      child: Text(
-                        loc.projectsOnboardingStep3Detail,
-                        style: zyra.textTheme.textSm.regular.copyWith(color: zyra.colors.textSecondary),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              loc.projectsOnboardingStep3Detail,
+                              style: zyra.textTheme.textSm.regular.copyWith(color: zyra.colors.textSecondary),
+                            ),
+                          ),
+                          const SizedBox(width: ZyraSpacing.lg),
+                          // Disabled affordance: this onboarding only renders
+                          // while the bridge is disconnected, so adding a
+                          // project isn't possible yet. The dimmed button
+                          // previews the action that unlocks once connected.
+                          const ZyraButtonsIconGlass(
+                            icon: TablerOutline.folder_plus,
+                            size: ZyraButtonsIconGlassSize.lg,
+                            iconSize: 22,
+                            onPressed: null,
+                          ),
+                        ],
                       ),
                     ),
                   ],
