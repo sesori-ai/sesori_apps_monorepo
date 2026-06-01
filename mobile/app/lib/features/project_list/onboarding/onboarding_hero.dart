@@ -4,6 +4,7 @@ part of "../project_list_screen.dart";
 const _kAuroraAsset = "assets/images/projects_onboarding/aurora_bg.png";
 const _kSignalArcsAsset = "assets/images/projects_onboarding/signal_arcs.svg";
 const _kFireflyDotsAsset = "assets/images/projects_onboarding/firefly_dots.svg";
+const _kLaptopAsset = "assets/images/projects_onboarding/laptop.svg";
 
 /// The hero illustration: an aurora night scene behind a laptop with a
 /// "cloud-slash" badge, framed by blurred signal arcs and firefly dots.
@@ -72,84 +73,21 @@ class _OnboardingHero extends StatelessWidget {
             ),
           ),
           // Laptop.
-          const Positioned(left: 76, top: 97, child: _LaptopGlyph()),
+          Positioned(
+            left: 76,
+            top: 97,
+            child: SvgPicture.asset(_kLaptopAsset),
+          ),
           // Cloud-slash badge centred on the laptop screen.
-          const Positioned(left: 123, top: 120, child: _CloudSlashBadge()),
-        ],
-      ),
-    );
-  }
-}
-
-/// A simple laptop drawn with two rounded rectangles (screen + base), matching
-/// the design's vector laptop. Uses fixed illustration colours.
-class _LaptopGlyph extends StatelessWidget {
-  const _LaptopGlyph();
-
-  static const _bezel = Color(0xFFAEAEAE);
-  static const _screen = Color(0xFF18191B);
-  static const _base = Color(0xFF4D5156);
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 141,
-      height: 101,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
           Positioned(
-            left: 5,
-            top: 0,
-            child: Container(
-              width: 131,
-              height: 90,
-              decoration: const BoxDecoration(
-                color: _screen,
-                border: Border.fromBorderSide(BorderSide(color: _bezel, width: 4)),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(10.76)),
-              ),
-            ),
-          ),
-          Positioned(
-            left: 0,
-            top: 89,
-            child: Container(
-              width: 141,
-              height: 11.5,
-              decoration: const BoxDecoration(
-                color: _base,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(0.9),
-                  topRight: Radius.circular(0.9),
-                  bottomLeft: Radius.circular(8.96),
-                  bottomRight: Radius.circular(5.98),
-                ),
-              ),
+            left: 123,
+            top: 120,
+            child: ZyraButtonsIconGlass(
+              icon: TablerOutline.cloud_off,
+              onPressed: () {},
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Translucent glass circle holding the cloud-slash icon on the laptop screen.
-/// Fixed colours — it sits on the dark laptop art, not the themed chrome.
-class _CloudSlashBadge extends StatelessWidget {
-  const _CloudSlashBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: const BoxDecoration(
-        color: Color(0x0AFFFFFF),
-        shape: BoxShape.circle,
-      ),
-      child: const Center(
-        child: Icon(TablerOutline.cloud_x, size: 18, color: Color(0xFFF2F2F2)),
       ),
     );
   }
