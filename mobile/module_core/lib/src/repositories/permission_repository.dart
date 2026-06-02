@@ -8,7 +8,7 @@ import "../api/permission_api.dart";
 class PermissionRepository {
   final PermissionApi _api;
 
-  PermissionRepository({required PermissionApi api}) : _api = api;
+  PermissionRepository({required this._api});
 
   Future<ApiResponse<void>> replyToPermission({
     required String requestId,

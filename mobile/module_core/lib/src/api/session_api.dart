@@ -15,7 +15,7 @@ class SessionCleanupRejectedException implements Exception {
 class SessionApi {
   final RelayHttpApiClient _client;
 
-  SessionApi({required RelayHttpApiClient client}) : _client = client;
+  SessionApi({required this._client});
 
   Future<ApiResponse<Agents>> listAgents() {
     return _client.get(

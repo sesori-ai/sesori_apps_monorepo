@@ -22,12 +22,10 @@ class NotificationRegistrationService {
   bool _disposed = false;
 
   NotificationRegistrationService({
-    required NotificationRepository repository,
-    required AuthSession authSession,
-    required PushMessagingSource pushMessagingSource,
-  }) : _repository = repository,
-       _authSession = authSession,
-       _pushMessagingSource = pushMessagingSource;
+    required this._repository,
+    required this._authSession,
+    required this._pushMessagingSource,
+  });
 
   Future<void> start() async {
     if (_disposed) {

@@ -6,7 +6,7 @@ import "settings_state.dart";
 class SettingsCubit extends Cubit<SettingsState> {
   final AuthSession _authSession;
 
-  SettingsCubit({required AuthSession authSession}) : _authSession = authSession, super(const SettingsState.initial());
+  SettingsCubit({required this._authSession}) : super(const SettingsState.initial());
 
   Future<void> logout() async {
     if (state is SettingsLoggingOut) return;

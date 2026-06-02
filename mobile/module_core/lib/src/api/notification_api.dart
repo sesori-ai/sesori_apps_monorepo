@@ -7,7 +7,7 @@ import "../capabilities/notifications/register_token_request.dart";
 class NotificationApi {
   final AuthenticatedHttpApiClient _client;
 
-  NotificationApi({required AuthenticatedHttpApiClient client}) : _client = client;
+  NotificationApi({required this._client});
 
   Future<void> registerToken({required RegisterTokenRequest request}) async {
     final response = await _client.post(

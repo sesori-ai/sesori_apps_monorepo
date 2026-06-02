@@ -8,7 +8,7 @@ import "../capabilities/notifications/register_token_request.dart";
 class NotificationRepository {
   final NotificationApi _api;
 
-  NotificationRepository({required NotificationApi api}) : _api = api;
+  NotificationRepository({required this._api});
 
   Future<void> registerToken({required String token, required DevicePlatform platform}) {
     return _api.registerToken(

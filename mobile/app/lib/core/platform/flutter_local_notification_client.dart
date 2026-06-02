@@ -35,7 +35,7 @@ class FlutterLocalNotificationClient implements LocalNotificationClient {
   bool _initialNotificationOpenConsumed = false;
   bool _initialized = false;
 
-  FlutterLocalNotificationClient({required FlutterLocalNotificationsPlugin plugin}) : _plugin = plugin;
+  FlutterLocalNotificationClient({required this._plugin});
 
   @override
   Stream<NotificationOpenRequest> get notificationOpenedStream => _notificationOpenedController.stream;

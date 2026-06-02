@@ -38,9 +38,8 @@ enum ScrollFollowEdge { min, max }
 class ScrollFollowTracker extends ChangeNotifier {
   ScrollFollowTracker({
     required this.edge,
-    double edgeTolerance = 20.0,
-  }) : _edgeTolerance = edgeTolerance,
-       scrollController = ScrollController();
+    this._edgeTolerance = 20.0,
+  }) : scrollController = ScrollController();
 
   final ScrollFollowEdge edge;
   final double _edgeTolerance;

@@ -21,12 +21,10 @@ class GoRouterRouteDispatcher implements RouteDispatcher {
 
   @visibleForTesting
   GoRouterRouteDispatcher.test({
-    required void Function(String route) goRoute,
-    required Future<void> Function(String route) pushRoute,
+    required this._goRoute,
+    required this._pushRoute,
     Future<void>? routerReady,
-  }) : _goRoute = goRoute,
-       _pushRoute = pushRoute,
-       _routerReady = routerReady ?? Future<void>.value();
+  }) : _routerReady = routerReady ?? Future<void>.value();
 
   @override
   void replaceStack({required RouteStack stack}) {

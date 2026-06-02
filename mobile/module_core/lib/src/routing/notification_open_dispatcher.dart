@@ -25,14 +25,11 @@ class NotificationOpenDispatcher {
   bool _disposed = false;
 
   NotificationOpenDispatcher({
-    required AuthSession authSession,
-    required PushMessagingSource pushMessagingSource,
-    required LocalNotificationClient localNotificationClient,
-    required RouteDispatcher routeDispatcher,
-  }) : _authSession = authSession,
-       _pushMessagingSource = pushMessagingSource,
-       _localNotificationClient = localNotificationClient,
-       _routeDispatcher = routeDispatcher;
+    required this._authSession,
+    required this._pushMessagingSource,
+    required this._localNotificationClient,
+    required this._routeDispatcher,
+  });
 
   Future<void> start() async {
     if (_disposed) {

@@ -8,7 +8,7 @@ import "../../repositories/session_repository.dart";
 class SessionService {
   final SessionRepository _repository;
 
-  SessionService({required SessionRepository repository}) : _repository = repository;
+  SessionService({required this._repository});
 
   Future<ApiResponse<Session>> archiveSession({
     required String sessionId,

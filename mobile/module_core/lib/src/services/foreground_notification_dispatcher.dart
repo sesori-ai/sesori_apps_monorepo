@@ -21,11 +21,9 @@ class ForegroundNotificationDispatcher {
 
   ForegroundNotificationDispatcher({
     required NotificationPreferencesRepository notificationPreferencesRepository,
-    required LocalNotificationClient localNotificationClient,
-    required PushMessagingSource pushMessagingSource,
-  }) : _preferencesRepository = notificationPreferencesRepository,
-       _localNotificationClient = localNotificationClient,
-       _pushMessagingSource = pushMessagingSource;
+    required this._localNotificationClient,
+    required this._pushMessagingSource,
+  }) : _preferencesRepository = notificationPreferencesRepository;
 
   Future<void> start() async {
     if (_disposed) {

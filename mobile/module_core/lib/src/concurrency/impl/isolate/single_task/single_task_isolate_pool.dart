@@ -19,14 +19,13 @@ class SingleTaskIsolatePoolImpl<IN, OUT> implements SingleTaskIsolate<IN, OUT> {
   Future<OUT> run(IN arg) => _pool.run(_task, arg);
 
   SingleTaskIsolatePoolImpl({
-    required IsolateTask<IN, OUT> task,
+    required this._task,
     required int minPoolSize,
     required int maxPoolSize,
     required Duration timeout,
     required int minTasksPerActiveIsolateToSpinTransientIsolate,
     String? debugName,
-  }) : _task = task,
-       _pool = MultiTaskIsolatePoolImpl(
+  }) : _pool = MultiTaskIsolatePoolImpl(
          minPoolSize: minPoolSize,
          maxPoolSize: maxPoolSize,
          timeout: timeout,

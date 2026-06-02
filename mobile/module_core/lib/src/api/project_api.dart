@@ -8,7 +8,7 @@ import "client/relay_http_client.dart";
 class ProjectApi {
   final RelayHttpApiClient _client;
 
-  ProjectApi({required RelayHttpApiClient client}) : _client = client;
+  ProjectApi({required this._client});
 
   Future<ApiResponse<Projects>> listProjects() {
     return _client.get("/projects", fromJson: Projects.fromJson);

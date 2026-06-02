@@ -62,21 +62,15 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   SessionDetailCubit(
     ConnectionService connectionService, {
-    required SessionDetailLoadService loadService,
+    required this._loadService,
     required SessionRepository promptDispatcher,
-    required PermissionRepository permissionRepository,
-    required String sessionId,
-    required String projectId,
-    required NotificationCanceller notificationCanceller,
-    required FailureReporter failureReporter,
-  }) : _loadService = loadService,
-       _sessionRepository = promptDispatcher,
+    required this._permissionRepository,
+    required this._sessionId,
+    required this._projectId,
+    required this._notificationCanceller,
+    required this._failureReporter,
+  }) : _sessionRepository = promptDispatcher,
        _connectionService = connectionService,
-       _permissionRepository = permissionRepository,
-       _sessionId = sessionId,
-       _projectId = projectId,
-       _notificationCanceller = notificationCanceller,
-       _failureReporter = failureReporter,
        super(const SessionDetailState.loading()) {
     _streamingBuffer = StreamingTextBuffer(onFlush: _emitStreamingSnapshot);
     _eventSubscription = _connectionService.sessionEvents(_sessionId).listen(_handleEvent);

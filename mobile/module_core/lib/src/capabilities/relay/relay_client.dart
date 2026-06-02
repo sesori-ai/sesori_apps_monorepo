@@ -42,11 +42,10 @@ class RelayClient {
 
   RelayClient({
     required this.relayHost,
-    required RelayCryptoService cryptoService,
-    required RoomKeyStorage roomKeyStorage,
+    required this._cryptoService,
+    required this._roomKeyStorage,
     this.authToken,
-  }) : _cryptoService = cryptoService,
-       _roomKeyStorage = roomKeyStorage;
+  });
 
   RelayClientConnectionState get connectionState => _connectionState;
   bool get isConnected => _connectionState == RelayClientConnectionState.connected;

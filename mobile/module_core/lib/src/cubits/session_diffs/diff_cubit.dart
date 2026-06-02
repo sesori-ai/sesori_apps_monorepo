@@ -8,9 +8,8 @@ class DiffCubit extends Cubit<DiffState> {
   final SessionRepository _sessionRepository;
   final String sessionId;
 
-  DiffCubit({required SessionRepository sessionRepository, required this.sessionId})
-    : _sessionRepository = sessionRepository,
-      super(const DiffState.loading()) {
+  DiffCubit({required this._sessionRepository, required this.sessionId})
+    : super(const DiffState.loading()) {
     _init();
   }
 

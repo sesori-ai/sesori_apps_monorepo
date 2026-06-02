@@ -8,7 +8,7 @@ import "client/relay_http_client.dart";
 class PermissionApi {
   final RelayHttpApiClient _client;
 
-  PermissionApi({required RelayHttpApiClient client}) : _client = client;
+  PermissionApi({required this._client});
 
   Future<ApiResponse<void>> replyToPermission({
     required String requestId,

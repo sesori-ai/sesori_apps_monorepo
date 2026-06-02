@@ -39,21 +39,14 @@ class SessionListCubit extends Cubit<SessionListState> {
   String? _baseBranch;
 
   SessionListCubit({
-    required SessionService sessionService,
-    required ProjectService projectService,
-    required ConnectionService connectionService,
-    required SseEventRepository sseEventRepository,
-    required RouteSource routeSource,
-    required String projectId,
-    required FailureReporter failureReporter,
-  }) : _sessionService = sessionService,
-       _projectService = projectService,
-       _connectionService = connectionService,
-       _sseEventRepository = sseEventRepository,
-       _routeSource = routeSource,
-       _projectId = projectId,
-       _failureReporter = failureReporter,
-       super(const SessionListState.loading()) {
+    required this._sessionService,
+    required this._projectService,
+    required this._connectionService,
+    required this._sseEventRepository,
+    required this._routeSource,
+    required this._projectId,
+    required this._failureReporter,
+  }) : super(const SessionListState.loading()) {
     loadSessions();
     _subscriptions.add(_connectionService.events.listen(_handleEvent));
     // 1. Navigate-back refresh: one immediate fetch when the user returns to

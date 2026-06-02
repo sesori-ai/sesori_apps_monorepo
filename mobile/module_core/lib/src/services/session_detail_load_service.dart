@@ -15,12 +15,10 @@ class SessionDetailLoadService {
   final ConnectionService _connectionService;
 
   SessionDetailLoadService({
-    required SessionRepository repository,
-    required ProjectRepository projectRepository,
-    required ConnectionService connectionService,
-  }) : _repository = repository,
-       _projectRepository = projectRepository,
-       _connectionService = connectionService;
+    required this._repository,
+    required this._projectRepository,
+    required this._connectionService,
+  });
 
   Future<SessionDetailLoadResult> load({required String sessionId, required String projectId}) {
     return _loadSnapshot(sessionId: sessionId, projectId: projectId);

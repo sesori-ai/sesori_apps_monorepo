@@ -10,8 +10,8 @@ class SessionRepository {
   final _providerCache = <String, ProviderListResponse>{};
 
   SessionRepository({
-    required SessionApi api,
-  }) : _api = api;
+    required this._api,
+  });
 
   Future<ApiResponse<Session>> archiveSession({
     required String sessionId,

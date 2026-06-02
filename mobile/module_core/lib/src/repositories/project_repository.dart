@@ -9,7 +9,7 @@ import "../api/project_api.dart";
 class ProjectRepository {
   final ProjectApi _api;
 
-  ProjectRepository({required ProjectApi api}) : _api = api;
+  ProjectRepository({required this._api});
 
   Future<ApiResponse<Projects>> listProjects() {
     return _api.listProjects();

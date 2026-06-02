@@ -6,7 +6,7 @@ import "package:sesori_shared/sesori_shared.dart";
 class NotificationPreferencesApi {
   final SecureStorage _storage;
 
-  NotificationPreferencesApi({required SecureStorage storage}) : _storage = storage;
+  NotificationPreferencesApi({required this._storage});
 
   Future<bool?> readValue({required NotificationCategory category}) {
     return _storage.read(key: category.storageKey).then((value) => value != "false");

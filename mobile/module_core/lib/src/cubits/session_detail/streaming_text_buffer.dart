@@ -13,10 +13,9 @@ class StreamingTextBuffer {
   Timer? _timer;
 
   StreamingTextBuffer({
-    required void Function() onFlush,
-    Duration throttle = const Duration(milliseconds: 50),
-  }) : _onFlush = onFlush,
-       _throttle = throttle;
+    required this._onFlush,
+    this._throttle = const Duration(milliseconds: 50),
+  });
 
   /// Append a text delta for [partId], scheduling a throttled flush.
   void appendDelta({required String partId, required String delta}) {

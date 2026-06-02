@@ -29,13 +29,11 @@ class MultiTaskTransientIsolate implements MultiTaskIsolate {
   int get activeTaskCount => _isolate?.activeTaskCount ?? 0;
 
   MultiTaskTransientIsolate({
-    required Duration timeout,
+    required this._timeout,
     required bool eagerStart,
-    required String debugName,
+    required this._debugName,
     int debugIndex = 0,
-  }) : _timeout = timeout,
-       _debugName = debugName,
-       _debugIndex = debugIndex {
+  }) : _debugIndex = debugIndex {
     if (eagerStart) {
       _isolate = _setupNewIsolate(debugName: _debugName, index: debugIndex);
     }

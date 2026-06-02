@@ -11,11 +11,9 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   final String _projectId;
 
   NewSessionCubit({
-    required SessionService sessionService,
-    required String projectId,
-  }) : _sessionService = sessionService,
-       _projectId = projectId,
-       super(
+    required this._sessionService,
+    required this._projectId,
+  }) : super(
          const NewSessionState.idle(
            availableAgents: [],
            availableProviders: [],

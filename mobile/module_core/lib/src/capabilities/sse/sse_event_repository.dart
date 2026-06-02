@@ -25,9 +25,8 @@ class SseEventRepository with Disposable {
 
   SseEventRepository(
     ConnectionService connectionService, {
-    required FailureReporter failureReporter,
-  }) : _connectionService = connectionService,
-       _failureReporter = failureReporter {
+    required this._failureReporter,
+  }) : _connectionService = connectionService {
     _subscription = _connectionService.events.listen(_handleEvent);
   }
 

@@ -7,7 +7,7 @@ import "../api/notification_preferences_api.dart";
 class NotificationPreferencesRepository {
   final NotificationPreferencesApi _api;
 
-  NotificationPreferencesRepository({required NotificationPreferencesApi api}) : _api = api;
+  NotificationPreferencesRepository({required this._api});
 
   Future<bool> isEnabled({required NotificationCategory category}) async {
     final enabled = await _api.readValue(category: category);

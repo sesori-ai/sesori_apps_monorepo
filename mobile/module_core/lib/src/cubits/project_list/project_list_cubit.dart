@@ -36,11 +36,10 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     ConnectionService connectionService,
     SseEventRepository sseEventRepository,
     RouteSource routeSource, {
-    required FailureReporter failureReporter,
+    required this._failureReporter,
   }) : _projectService = projectService,
        _connectionService = connectionService,
        _sseEventRepository = sseEventRepository,
-       _failureReporter = failureReporter,
        super(const ProjectListState.loading()) {
     unawaited(_loadInitialProjects());
 

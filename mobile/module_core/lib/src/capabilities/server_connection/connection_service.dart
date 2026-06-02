@@ -87,16 +87,14 @@ class ConnectionService {
     AuthSession authSession,
     LifecycleSource lifecycleSource,
     FailureReporter failureReporter, {
-    @visibleForTesting ClockProvider clock = const ClockProvider(),
-    @visibleForTesting RelayClientFactory relayClientFactory = const RelayClientFactory(),
+    @visibleForTesting this._clock = const ClockProvider(),
+    @visibleForTesting this._relayClientFactory = const RelayClientFactory(),
   }) : _cryptoService = cryptoService,
        _roomKeyStorage = roomKeyStorage,
        _authTokenProvider = authTokenProvider,
        _authSession = authSession,
        _lifecycleSource = lifecycleSource,
-       _failureReporter = failureReporter,
-       _clock = clock,
-       _relayClientFactory = relayClientFactory {
+       _failureReporter = failureReporter {
     _compositeSubscription.add(
       _lifecycleSource.lifecycleStateStream.listen((state) {
         switch (state) {

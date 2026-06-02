@@ -31,11 +31,10 @@ class FirebasePushMessagingSource implements PushMessagingSource {
 
   @visibleForTesting
   FirebasePushMessagingSource.test({
-    required FirebaseMessaging messaging,
+    required this._messaging,
     bool Function()? isApplePlatform,
     Future<void> Function(Duration)? delay,
-  }) : _messaging = messaging,
-       _isApplePlatform = isApplePlatform ?? _defaultIsApplePlatform,
+  }) : _isApplePlatform = isApplePlatform ?? _defaultIsApplePlatform,
        _delay = delay ?? Future<void>.delayed;
 
   static bool _defaultIsApplePlatform() => Platform.isIOS || Platform.isMacOS;
