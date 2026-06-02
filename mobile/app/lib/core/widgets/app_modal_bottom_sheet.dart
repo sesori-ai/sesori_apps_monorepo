@@ -9,18 +9,26 @@ import "package:flutter/material.dart";
 ///
 /// Callers do **not** need to wrap their content in [SafeArea] or manually pad
 /// for the keyboard.
+///
+/// Set [handleBottomSafeArea] to `false` for sheets whose content scrolls to the
+/// bottom edge (e.g. a full-height list). The keyboard inset is still applied,
+/// but the home-indicator inset is left for the content to consume as scroll
+/// padding, so the list can scroll underneath the indicator instead of being
+/// clipped above it.
 // ignore: no_slop_linter/prefer_required_named_parameters, backgroundColor is intentionally optional for sheet defaults
 Future<T?> showAppModalBottomSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
   bool isScrollControlled = false,
   Color? backgroundColor,
+  bool handleBottomSafeArea = true,
 }) {
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: isScrollControlled,
     backgroundColor: backgroundColor,
     builder: (sheetContext) => _ModalSafeArea(
+      handleBottomSafeArea: handleBottomSafeArea,
       child: builder(sheetContext),
     ),
   );
@@ -33,8 +41,9 @@ Future<T?> showAppModalBottomSheet<T>({
 /// accessors so that the widget only rebuilds when the relevant values change.
 class _ModalSafeArea extends StatelessWidget {
   final Widget child;
+  final bool handleBottomSafeArea;
 
-  const _ModalSafeArea({required this.child});
+  const _ModalSafeArea({required this.child, this.handleBottomSafeArea = true});
 
   @override
   Widget build(BuildContext context) {
@@ -43,8 +52,12 @@ class _ModalSafeArea extends StatelessWidget {
 
     // When the keyboard is up its height already covers the home-indicator
     // region, so we only need the keyboard inset. When the keyboard is hidden
-    // we fall back to the safe-area bottom padding.
-    final bottomPadding = viewInsets.bottom > 0 ? viewInsets.bottom : viewPadding.bottom;
+    // we fall back to the safe-area bottom padding — unless the sheet content
+    // manages the bottom inset itself (handleBottomSafeArea: false), in which
+    // case we leave that region for the content to fill.
+    final bottomPadding = viewInsets.bottom > 0
+        ? viewInsets.bottom
+        : (handleBottomSafeArea ? viewPadding.bottom : 0.0);
 
     return Padding(
       padding: EdgeInsetsDirectional.only(bottom: bottomPadding),

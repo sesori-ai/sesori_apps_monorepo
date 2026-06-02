@@ -33,6 +33,10 @@ class ModelPickerSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      // The model list scrolls to the bottom edge, so it consumes the
+      // home-indicator inset as scroll padding (see the ListView below) rather
+      // than having the whole sheet lifted above the indicator.
+      handleBottomSafeArea: false,
       builder: (sheetContext) {
         final height = MediaQuery.sizeOf(sheetContext).height * 0.7;
         final zyra = sheetContext.zyra;
@@ -158,7 +162,10 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
         const SizedBox(height: 4),
         Expanded(
           child: ListView(
-            padding: .zero,
+            // Extend the scrollable area underneath the home indicator: the
+            // bottom inset is added as scroll padding so the last model can
+            // scroll clear of the indicator instead of being clipped above it.
+            padding: EdgeInsetsDirectional.only(bottom: MediaQuery.paddingOf(context).bottom),
             children: [
               for (final provider in _sortedProviders) ..._buildProviderSection(provider: provider, context: context),
             ],
