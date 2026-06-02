@@ -19,7 +19,7 @@ resolution: workspace
 # of the product and file versions while build-number is used as the build suffix.
 version: 1.0.7+1
 environment:
-  sdk: ^3.11.5
+  sdk: ^3.12.1
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
