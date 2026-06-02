@@ -73,7 +73,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get projectsOnboardingTitle => 'Let’s connect your computer';
+  String get projectsOnboardingTitle => 'Set up Sesori Bridge';
 
   @override
   String get projectsOnboardingStep1Action => 'Install & Run';
@@ -94,6 +94,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsOnboardingCopyCommand => 'Copy command';
 
   @override
+  String get projectsOnboardingStepCompleted => 'Completed';
+
+  @override
   String get projectsOnboardingStep2Action => 'Sign in';
 
   @override
@@ -111,10 +114,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsOnboardingAccountFallback => 'Sign in with the same account you used here.';
 
   @override
-  String get projectsOnboardingStep3Title => 'Create or open a project';
+  String get projectsOnboardingStep3Title => 'Create or open a folder';
 
   @override
-  String get projectsOnboardingStep3Detail => 'Once your computer is connected, your projects will appear here.';
+  String get projectsOnboardingStep3Detail => 'Once connected, your projects will appear here.';
+
+  @override
+  String get projectsConnectedTitle => 'Your bridge is connected';
+
+  @override
+  String get projectsConnectedStep2Action => 'Signed in';
+
+  @override
+  String get projectsConnectedStep3Detail => 'Choose a folder to start your first session.';
+
+  @override
+  String get projectsConnectedAccountFallback => 'Signed in with the account you used here.';
+
+  @override
+  String get projectsOnboardingOpenFolder => 'Open a folder';
 
   @override
   String get connectionLostTitle => 'Connection Lost';

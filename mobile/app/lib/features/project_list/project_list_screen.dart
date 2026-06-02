@@ -146,9 +146,11 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
         ],
       ),
 
-      // The FAB only makes sense once the bridge is connected (a project list
-      // is showing). It is intentionally absent from the onboarding state.
-      floatingActionButton: state is ProjectListLoaded
+      // The FAB only makes sense once the bridge is connected with a non-empty
+      // project list. It is absent from the not-connected onboarding and from
+      // the connected-but-empty state, where the inline Step 3 folder button is
+      // the add-project affordance.
+      floatingActionButton: state is ProjectListLoaded && state.projects.isNotEmpty
           ? ZyraButtonsIconGlass(
               icon: TablerOutline.folder_plus,
               size: ZyraButtonsIconGlassSize.lg,

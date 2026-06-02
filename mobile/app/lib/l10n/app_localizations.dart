@@ -190,7 +190,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectsOnboardingTitle.
   ///
   /// In en, this message translates to:
-  /// **'Let’s connect your computer'**
+  /// **'Set up Sesori Bridge'**
   String get projectsOnboardingTitle;
 
   /// No description provided for @projectsOnboardingStep1Action.
@@ -229,6 +229,12 @@ abstract class AppLocalizations {
   /// **'Copy command'**
   String get projectsOnboardingCopyCommand;
 
+  /// No description provided for @projectsOnboardingStepCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get projectsOnboardingStepCompleted;
+
   /// No description provided for @projectsOnboardingStep2Action.
   ///
   /// In en, this message translates to:
@@ -262,14 +268,44 @@ abstract class AppLocalizations {
   /// No description provided for @projectsOnboardingStep3Title.
   ///
   /// In en, this message translates to:
-  /// **'Create or open a project'**
+  /// **'Create or open a folder'**
   String get projectsOnboardingStep3Title;
 
   /// No description provided for @projectsOnboardingStep3Detail.
   ///
   /// In en, this message translates to:
-  /// **'Once your computer is connected, your projects will appear here.'**
+  /// **'Once connected, your projects will appear here.'**
   String get projectsOnboardingStep3Detail;
+
+  /// No description provided for @projectsConnectedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your bridge is connected'**
+  String get projectsConnectedTitle;
+
+  /// No description provided for @projectsConnectedStep2Action.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in'**
+  String get projectsConnectedStep2Action;
+
+  /// No description provided for @projectsConnectedStep3Detail.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a folder to start your first session.'**
+  String get projectsConnectedStep3Detail;
+
+  /// No description provided for @projectsConnectedAccountFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in with the account you used here.'**
+  String get projectsConnectedAccountFallback;
+
+  /// No description provided for @projectsOnboardingOpenFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a folder'**
+  String get projectsOnboardingOpenFolder;
 
   /// No description provided for @connectionLostTitle.
   ///
