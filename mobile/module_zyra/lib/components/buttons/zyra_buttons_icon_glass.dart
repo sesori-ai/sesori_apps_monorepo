@@ -1,4 +1,6 @@
 import "package:flutter/material.dart";
+import "package:liquid_glass_plus/liquid_glass_plus.dart";
+import "package:universal_platform/universal_platform.dart";
 
 import "../../interactions/zyra_tappable.dart";
 import "../../theme/zyra_theme.dart";
@@ -12,13 +14,38 @@ enum ZyraButtonsIconGlassSize {
   lg,
 }
 
-/// A circular translucent "glass" icon button matching the Figma
-/// `zyraButtonsIconGlass` component.
+// -- Glass effect tuning ------------------------------------------------------
+
+/// Glass thickness: higher = more pronounced edge refraction.
+const double _kGlassThickness = 55.0;
+
+/// Frost intensity: higher = more backdrop blur (frosted appearance).
+const double _kGlassFrostIntensity = 5.5;
+
+/// Light reflection intensity along the glass edge.
+const double _kGlassLightIntensity = 0.5;
+
+/// Alpha applied to the glass colour overlay tint.
+const double _kGlassColorAlpha = 0.3;
+
+/// Saturation boost applied to whatever is refracted behind the glass.
+const double _kGlassSaturation = 1.8;
+
+/// Fake-glass (Skia / non-Impeller) refraction edge offset in px.
+const double _kGlassFakeRefraction = 8.0;
+
+/// A circular "glass" icon button matching the Figma `zyraButtonsIconGlass`
+/// component.
 ///
-/// The surface is a fully-rounded fill using `buttonGlassPrimaryBackground`
-/// (a low-alpha token that adapts to light & dark mode), with a
-/// `buttonGlassPrimaryHover` overlay applied on hover/press via [ZyraTappable].
-/// There is no border or shadow — only the translucent fill, matching Figma.
+/// On **iOS** the surface is a real frosted-glass effect rendered with the
+/// `liquid_glass_plus` shader (refraction + backdrop blur), tuned to match the
+/// Figma component. On **non-iOS** platforms (Android, web,
+/// macOS, …) it falls back to a fully-rounded translucent fill using
+/// `buttonGlassPrimaryBackground` — the same iOS-only-glass / flat-fallback
+/// split used by `ZyraGlassBackground`.
+///
+/// In both cases a `buttonGlassPrimaryHover` overlay is applied on hover/press
+/// via [ZyraTappable]. There is no border or shadow — only the glass/fill.
 ///
 /// Pass `onPressed: null` to render a disabled, non-interactive button: the
 /// whole control is dimmed to 70% opacity and the icon falls back to
@@ -94,6 +121,26 @@ class ZyraButtonsIconGlass extends StatelessWidget {
         return null;
       }),
       containerBuilder: ({required Widget child, required Set<WidgetState> state}) {
+        // iOS: real frosted glass via the liquid_glass_plus shader. The icon
+        // (`child`) renders on top of the glass (glassContainsChild: false) so
+        // it stays crisp. `.withOwnLayer` makes the button self-contained — no
+        // ancestor LiquidGlassLayer is required at the call site.
+        if (UniversalPlatform.isIOS) {
+          return LiquidGlass.withOwnLayer(
+            shape: const LiquidOval(),
+            settings: LiquidGlassSettings(
+              thickness: _kGlassThickness,
+              frostIntensity: _kGlassFrostIntensity,
+              lightIntensity: _kGlassLightIntensity,
+              glassColor: colors.bgDisabled.withValues(alpha: _kGlassColorAlpha),
+              saturation: _kGlassSaturation,
+              fakeGlassConfigs: const FakeGlassConfigs(refraction: _kGlassFakeRefraction),
+            ),
+            child: child,
+          );
+        }
+
+        // Non-iOS: translucent fill fallback (the original v1 surface).
         return DecoratedBox(
           decoration: BoxDecoration(
             color: colors.buttonGlassPrimaryBackground,
