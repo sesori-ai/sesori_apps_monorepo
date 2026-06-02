@@ -39,7 +39,7 @@ dependencies:
   cupertino_icons: ^1.0.9
   http: ^1.6.0
   freezed_annotation: ^3.1.0
-  json_annotation: ^4.11.0
+  json_annotation: ^4.12.0
   collection: ^1.19.1
   rxdart: ^0.28.0
   flutter_bloc: ^9.1.1
@@ -85,7 +85,7 @@ dev_dependencies:
   no_slop_linter:
     path: "../../shared/no_slop_linter"
   freezed: ^3.2.5
-  json_serializable: ^6.13.1
+  json_serializable: ^6.14.0
   injectable_generator: ^3.0.2
   bloc_test: ^10.0.0
   build_runner: any
