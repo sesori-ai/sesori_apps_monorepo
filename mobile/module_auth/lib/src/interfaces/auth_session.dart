@@ -37,6 +37,15 @@ abstract interface class AuthSession {
   /// Otherwise the state remains unchanged and returns `false`.
   Future<bool> restoreSession();
 
+  /// Restores a previous session from local storage only, without calling the
+  /// auth server.
+  ///
+  /// If a locally valid session and a stored user exist, emits
+  /// [AuthState.authenticated] and returns `true`. Otherwise the state remains
+  /// unchanged and returns `false`. Use on startup to repopulate the in-memory
+  /// session (e.g. the signed-in account) without a network round-trip.
+  Future<bool> restoreLocalSession();
+
   /// Authenticates using email and password.
   /// Throws [Exception] on authentication failure (including 401).
   Future<AuthUser> loginWithEmail({required String email, required String password});

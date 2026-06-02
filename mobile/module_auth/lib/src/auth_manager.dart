@@ -179,6 +179,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       accessToken: accessToken,
       refreshToken: refreshToken,
     );
+    await _tokenStorage.saveUser(user);
 
     await Future.wait([
       _oAuthStorage.clearPkceVerifier(),
@@ -285,8 +286,31 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     final user = await getCurrentUser();
     if (user == null) return false;
 
+    // Persist the user for sessions that were authenticated before it was
+    // stored locally; /auth/me is the authoritative source for the value.
+    await _tokenStorage.saveUser(user);
     _authState.add(AuthState.authenticated(user: user));
     return true;
+  }
+
+  @override
+  Future<bool> restoreLocalSession() async {
+    try {
+      if (!await _tokenStorage.hasLocallyValidSession()) return false;
+      final user = await _tokenStorage.getUser();
+      if (user == null) return false;
+
+      _authState.add(AuthState.authenticated(user: user));
+      return true;
+    } catch (error, stackTrace) {
+      developer.log(
+        "Failed to restore local session",
+        error: error,
+        stackTrace: stackTrace,
+        name: "sesori_auth",
+      );
+      return false;
+    }
   }
 
   @override
@@ -314,6 +338,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       accessToken: authResponse.accessToken,
       refreshToken: authResponse.refreshToken,
     );
+    await _tokenStorage.saveUser(authResponse.user);
 
     // Clear any stale OAuth temp state so a later deep-link callback
     // cannot unexpectedly exchange using stale PKCE data.
@@ -349,6 +374,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       accessToken: authResponse.accessToken,
       refreshToken: authResponse.refreshToken,
     );
+    await _tokenStorage.saveUser(authResponse.user);
 
     // Clear any stale OAuth temp state so a later deep-link callback
     // cannot unexpectedly exchange using stale PKCE data.

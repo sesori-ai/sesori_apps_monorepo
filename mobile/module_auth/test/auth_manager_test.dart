@@ -21,6 +21,7 @@ void main() {
   setUpAll(() {
     registerFallbackValue(Uri.parse("https://example.com"));
     registerFallbackValue(AuthProvider.github);
+    registerFallbackValue(const AuthUser(id: "", provider: "", providerUserId: "", providerUsername: null));
   });
 
   late MockHttpClient mockHttpClient;
@@ -50,6 +51,7 @@ void main() {
       (_) async => (sessionToken: null, expiresAt: null),
     );
     when(() => mockOAuthStorage.clearOAuthSession()).thenAnswer((_) async {});
+    when(() => mockTokenStorage.saveUser(any())).thenAnswer((_) async {});
   });
 
   group("getFreshAccessToken", () {
@@ -382,6 +384,7 @@ void main() {
           refreshToken: "oauth-refresh-token",
         ),
       ).called(1);
+      verify(() => mockTokenStorage.saveUser(user)).called(1);
       verify(mockOAuthStorage.clearPkceVerifier).called(1);
       verify(mockOAuthStorage.clearAuthProvider).called(1);
       verify(mockOAuthStorage.clearOAuthSession).called(1);
@@ -734,6 +737,8 @@ void main() {
           refreshToken: "apple-refresh-token",
         ),
       ).called(1);
+      final savedAppleUser = verify(() => mockTokenStorage.saveUser(captureAny())).captured.single as AuthUser;
+      expect(savedAppleUser.providerUsername, "testuser");
       verify(mockOAuthStorage.clearOAuthSession).called(1);
     });
 
@@ -750,6 +755,149 @@ void main() {
         () => authManager.loginWithApple(idToken: "token", nonce: "nonce"),
         throwsA(isA<StateError>()),
       );
+    });
+  });
+
+  group("loginWithEmail", () {
+    test("posts to /auth/email and stores tokens and username on success", () async {
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/email"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "accessToken": "email-access-token",
+            "refreshToken": "email-refresh-token",
+            "user": {
+              "id": user.id,
+              "provider": "email",
+              "providerUserId": user.providerUserId,
+              "providerUsername": user.providerUsername,
+            },
+          }),
+          200,
+        ),
+      );
+      when(
+        () => mockTokenStorage.saveTokens(
+          accessToken: "email-access-token",
+          refreshToken: "email-refresh-token",
+        ),
+      ).thenAnswer((_) async {});
+      when(mockOAuthStorage.clearPkceVerifier).thenAnswer((_) async {});
+      when(mockOAuthStorage.clearAuthProvider).thenAnswer((_) async {});
+      when(mockOAuthStorage.clearOAuthSession).thenAnswer((_) async {});
+
+      final result = await authManager.loginWithEmail(
+        email: "test@example.com",
+        password: "correct-password",
+      );
+
+      expect(result, isA<AuthUser>());
+      expect(authManager.currentState, isA<AuthAuthenticated>());
+      verify(
+        () => mockTokenStorage.saveTokens(
+          accessToken: "email-access-token",
+          refreshToken: "email-refresh-token",
+        ),
+      ).called(1);
+      final savedEmailUser = verify(() => mockTokenStorage.saveUser(captureAny())).captured.single as AuthUser;
+      expect(savedEmailUser.providerUsername, "testuser");
+    });
+
+    test("throws on 401 invalid credentials", () async {
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/email"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => http.Response("{}", 401));
+
+      await expectLater(
+        () => authManager.loginWithEmail(email: "bad@example.com", password: "wrong"),
+        throwsA(isA<Exception>()),
+      );
+    });
+  });
+
+  group("restoreSession", () {
+    test("persists the username after restoring from /auth/me", () async {
+      when(() => mockTokenStorage.getAccessToken()).thenAnswer(
+        (_) async => (token: "valid-access-token", validityLeft: const Duration(minutes: 5)),
+      );
+      when(
+        () => mockHttpClient.get(
+          Uri.parse("$authBaseUrl/auth/me"),
+          headers: any(named: "headers"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "user": {
+              "id": user.id,
+              "provider": user.provider,
+              "providerUserId": user.providerUserId,
+              "providerUsername": user.providerUsername,
+            },
+          }),
+          200,
+        ),
+      );
+
+      final result = await authManager.restoreSession();
+
+      expect(result, isTrue);
+      expect(authManager.currentState, isA<AuthAuthenticated>());
+      verify(() => mockTokenStorage.saveUser(user)).called(1);
+    });
+
+    test("returns false and does not persist username when no valid session", () async {
+      when(() => mockTokenStorage.getAccessToken()).thenAnswer((_) async => null);
+      when(() => mockTokenStorage.getRefreshToken()).thenAnswer((_) async => null);
+
+      final result = await authManager.restoreSession();
+
+      expect(result, isFalse);
+      verifyNever(() => mockTokenStorage.saveUser(any()));
+    });
+  });
+
+  group("restoreLocalSession", () {
+    test("emits authenticated from the stored user without any network call", () async {
+      when(() => mockTokenStorage.hasLocallyValidSession()).thenAnswer((_) async => true);
+      when(() => mockTokenStorage.getUser()).thenAnswer((_) async => user);
+
+      final restored = await authManager.restoreLocalSession();
+
+      expect(restored, isTrue);
+      expect(authManager.currentState, const AuthState.authenticated(user: user));
+      verifyNever(
+        () => mockHttpClient.get(any(), headers: any(named: "headers")),
+      );
+    });
+
+    test("returns false and leaves state untouched when no local session", () async {
+      when(() => mockTokenStorage.hasLocallyValidSession()).thenAnswer((_) async => false);
+
+      final restored = await authManager.restoreLocalSession();
+
+      expect(restored, isFalse);
+      expect(authManager.currentState, isA<AuthInitial>());
+      verifyNever(() => mockTokenStorage.getUser());
+    });
+
+    test("returns false when a session is valid but no user is stored", () async {
+      when(() => mockTokenStorage.hasLocallyValidSession()).thenAnswer((_) async => true);
+      when(() => mockTokenStorage.getUser()).thenAnswer((_) async => null);
+
+      final restored = await authManager.restoreLocalSession();
+
+      expect(restored, isFalse);
+      expect(authManager.currentState, isA<AuthInitial>());
     });
   });
 }
