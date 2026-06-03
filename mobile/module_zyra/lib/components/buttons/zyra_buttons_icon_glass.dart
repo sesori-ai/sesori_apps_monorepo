@@ -142,7 +142,8 @@ class ZyraButtonsIconGlass extends StatelessWidget {
         if (states.contains(WidgetState.pressed) || states.contains(WidgetState.hovered)) {
           return colors.buttonGlassPrimaryHover;
         }
-        return null;
+
+        return colors.buttonGlassPrimaryBackground;
       }),
       containerBuilder: ({required Widget child, required Set<WidgetState> state}) {
         // iOS: real frosted glass via the liquid_glass_plus shader. The icon
@@ -156,7 +157,7 @@ class ZyraButtonsIconGlass extends StatelessWidget {
               thickness: isDisabled ? _kGlassDisabledThickness : _kGlassThickness,
               frostIntensity: isDisabled ? _kGlassDisabledFrostIntensity : _kGlassFrostIntensity,
               lightIntensity: isDisabled ? _kGlassDisabledLightIntensity : _kGlassLightIntensity,
-              glassColor: colors.bgDisabled.withValues(alpha: _kGlassColorAlpha),
+              glassColor: colors.buttonGlassPrimaryBackground,
               saturation: _kGlassSaturation,
               fakeGlassConfigs: const FakeGlassConfigs(refraction: _kGlassFakeRefraction),
             ),
