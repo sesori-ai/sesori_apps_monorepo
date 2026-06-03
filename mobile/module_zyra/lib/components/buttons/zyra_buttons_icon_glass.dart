@@ -34,6 +34,23 @@ const double _kGlassSaturation = 1.8;
 /// Fake-glass (Skia / non-Impeller) refraction edge offset in px.
 const double _kGlassFakeRefraction = 8.0;
 
+// -- Disabled-state glass tuning ----------------------------------------------
+// The disabled button is dimmed by muting the glass itself rather than wrapping
+// it in `Opacity`. The iOS surface is a `BackdropFilter` that samples the
+// content behind the button; an `Opacity` < 1 isolates it in a new layer with
+// an empty backdrop, so the glass vanishes entirely. Lowering thickness + light
+// flattens the edge refraction/specular so the control reads as inactive, while
+// the icon falls back to `text-disabled`.
+
+/// Glass thickness in the disabled state — flatter edge refraction.
+const double _kGlassDisabledThickness = 18.0;
+
+/// Light reflection intensity in the disabled state — dimmer specular edge.
+const double _kGlassDisabledLightIntensity = 0.15;
+
+/// Frost intensity in the disabled state — slightly softened backdrop blur.
+const double _kGlassDisabledFrostIntensity = 4.0;
+
 /// A circular "glass" icon button matching the Figma `zyraButtonsIconGlass`
 /// component.
 ///
@@ -48,9 +65,16 @@ const double _kGlassFakeRefraction = 8.0;
 /// via [ZyraTappable]. There is no border or shadow — only the glass/fill.
 ///
 /// Pass `onPressed: null` to render a disabled, non-interactive button: the
-/// whole control is dimmed to 70% opacity and the icon falls back to
-/// `text-disabled` (matching the disabled Figma state — e.g. the Step 3
-/// folder-plus affordance shown before the bridge is connected).
+/// glass surface is muted (reduced thickness / light / frost so it reads as
+/// inactive) and the icon falls back to `text-disabled` (matching the disabled
+/// Figma state — e.g. the Step 3 folder-plus affordance shown before the bridge
+/// is connected).
+///
+/// The disabled state deliberately does **not** wrap the button in `Opacity`.
+/// The iOS glass is rendered by a `BackdropFilter`, which samples the content
+/// behind the button; an `Opacity` < 1 isolates it in a new layer with an empty
+/// backdrop and the glass disappears entirely. Dimming is therefore done via the
+/// glass settings + icon colour instead.
 ///
 /// Usage:
 /// ```dart
@@ -129,9 +153,9 @@ class ZyraButtonsIconGlass extends StatelessWidget {
           return LiquidGlass.withOwnLayer(
             shape: const LiquidOval(),
             settings: LiquidGlassSettings(
-              thickness: _kGlassThickness,
-              frostIntensity: _kGlassFrostIntensity,
-              lightIntensity: _kGlassLightIntensity,
+              thickness: isDisabled ? _kGlassDisabledThickness : _kGlassThickness,
+              frostIntensity: isDisabled ? _kGlassDisabledFrostIntensity : _kGlassFrostIntensity,
+              lightIntensity: isDisabled ? _kGlassDisabledLightIntensity : _kGlassLightIntensity,
               glassColor: colors.bgDisabled.withValues(alpha: _kGlassColorAlpha),
               saturation: _kGlassSaturation,
               fakeGlassConfigs: const FakeGlassConfigs(refraction: _kGlassFakeRefraction),
@@ -164,6 +188,6 @@ class ZyraButtonsIconGlass extends StatelessWidget {
       },
     );
 
-    return isDisabled ? Opacity(opacity: 0.7, child: button) : button;
+    return button;
   }
 }
