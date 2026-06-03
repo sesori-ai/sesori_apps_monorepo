@@ -1,10 +1,14 @@
 part of "../project_list_screen.dart";
 
 // Asset paths for the "connect your computer" onboarding illustration.
-const _kAuroraAsset = "assets/images/projects_onboarding/aurora_bg.png";
+// The aurora backdrop and laptop each ship light/dark variants, picked by the
+// active Zyra brightness in build(); the remaining assets are theme-agnostic.
+const _kAuroraDarkAsset = "assets/images/projects_onboarding/aurora_bg-dark.png";
+const _kAuroraLightAsset = "assets/images/projects_onboarding/aurora_bg-light.png";
 const _kSignalArcsAsset = "assets/images/projects_onboarding/signal_arcs.svg";
 const _kFireflyDotsAsset = "assets/images/projects_onboarding/firefly_dots.svg";
-const _kLaptopAsset = "assets/images/projects_onboarding/laptop.svg";
+const _kLaptopDarkAsset = "assets/images/projects_onboarding/laptop-dark.svg";
+const _kLaptopLightAsset = "assets/images/projects_onboarding/laptop-light.svg";
 const _kCliAsset = "assets/images/projects_onboarding/cli.svg";
 
 /// Stretches a [RadialGradient]'s circle into an ellipse that matches the
@@ -56,8 +60,9 @@ enum _OnboardingHeroVariant {
   cli,
 }
 
-/// The hero illustration: an aurora night scene behind a laptop, with a badge
-/// on the laptop and scattered firefly dots.
+/// The hero illustration: an aurora landscape behind a laptop, with a badge
+/// on the laptop and scattered firefly dots. The aurora backdrop and laptop
+/// swap between light/dark artwork to match the active Zyra brightness.
 ///
 /// Comes in two [variant]s, one per empty onboarding state:
 /// * [_OnboardingHeroVariant.offline] — bridge not connected yet: a
@@ -78,7 +83,13 @@ class _OnboardingHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final auroraEdge = context.zyra.colors.bgPrimaryAlt;
+    // Read brightness off the same ZyraColors instance that supplies the
+    // vignette edge below, so the artwork and the fade colour can't disagree.
+    final colors = context.zyra.colors;
+    final auroraEdge = colors.bgPrimaryAlt;
+    final isDark = colors.brightness == Brightness.dark;
+    final auroraAsset = isDark ? _kAuroraDarkAsset : _kAuroraLightAsset;
+    final laptopAsset = isDark ? _kLaptopDarkAsset : _kLaptopLightAsset;
     final showSignalArcs = variant == _OnboardingHeroVariant.cli;
 
     return SizedBox(
@@ -99,9 +110,9 @@ class _OnboardingHero extends StatelessWidget {
             widthFactor: 0.7,
             alignment: Alignment.bottomCenter,
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 image: DecorationImage(
-                  image: AssetImage(_kAuroraAsset),
+                  image: AssetImage(auroraAsset),
                   fit: BoxFit.cover,
                 ),
               ),
@@ -137,7 +148,7 @@ class _OnboardingHero extends StatelessWidget {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                SvgPicture.asset(_kLaptopAsset),
+                SvgPicture.asset(laptopAsset),
                 Positioned(top: 22, child: _badge()),
               ],
             ),
