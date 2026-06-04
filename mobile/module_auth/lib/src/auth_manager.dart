@@ -179,7 +179,9 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       accessToken: accessToken,
       refreshToken: refreshToken,
     );
-    await _tokenStorage.saveUser(user);
+    // Best-effort: the tokens above already make this a valid session, so a
+    // local user-cache write failure must not abort a completed login.
+    await _saveUserBestEffort(user);
 
     await Future.wait([
       _oAuthStorage.clearPkceVerifier(),
@@ -188,6 +190,25 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     ]);
 
     _authState.add(AuthState.authenticated(user: user));
+  }
+
+  /// Persists [user] to local storage, swallowing (and logging) any failure.
+  ///
+  /// User caching only accelerates the offline restore path
+  /// ([restoreLocalSession]); it is never authoritative. A write failure must
+  /// not abort a flow whose tokens are already saved and whose in-memory
+  /// session is valid, so callers stay authenticated even if this fails.
+  Future<void> _saveUserBestEffort(AuthUser user) async {
+    try {
+      await _tokenStorage.saveUser(user);
+    } catch (error, stackTrace) {
+      developer.log(
+        "Failed to persist user; continuing with the in-memory session",
+        error: error,
+        stackTrace: stackTrace,
+        name: "sesori_auth",
+      );
+    }
   }
 
   AuthSessionStatusResponse _parseSessionStatus(http.Response response) {
@@ -288,7 +309,9 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
 
     // Persist the user for sessions that were authenticated before it was
     // stored locally; /auth/me is the authoritative source for the value.
-    await _tokenStorage.saveUser(user);
+    // Best-effort: a local persistence failure must not block restoring a
+    // session that /auth/me just confirmed.
+    await _saveUserBestEffort(user);
     _authState.add(AuthState.authenticated(user: user));
     return true;
   }

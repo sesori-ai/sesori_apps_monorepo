@@ -397,6 +397,75 @@ void main() {
       await expectLater(authManager.pollForResult(), throwsA(isA<StateError>()));
     });
 
+    test("pollForResult completes login (clears state, emits authenticated) when saving the user fails", () async {
+      authManager = AuthManager(
+        mockHttpClient,
+        mockTokenStorage,
+        mockOAuthStorage,
+        pollInterval: Duration.zero,
+        delay: (_) async {},
+      );
+
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/google/init"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
+            "state": "state-savefail",
+            "userCode": "AA11",
+            "expiresIn": 300,
+          }),
+          200,
+        ),
+      );
+      when(
+        () => mockHttpClient.get(
+          Uri.parse("$authBaseUrl/auth/session/status"),
+          headers: any(named: "headers"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "status": "complete",
+            "accessToken": "oauth-access-token",
+            "refreshToken": "oauth-refresh-token",
+            "user": {
+              "id": user.id,
+              "provider": user.provider,
+              "providerUserId": user.providerUserId,
+              "providerUsername": user.providerUsername,
+            },
+          }),
+          200,
+        ),
+      );
+      when(
+        () => mockTokenStorage.saveTokens(
+          accessToken: "oauth-access-token",
+          refreshToken: "oauth-refresh-token",
+        ),
+      ).thenAnswer((_) async {});
+      // Tokens are already persisted above, so a user-cache write failure must
+      // not abort the login: the OAuth temp state is still cleared and the
+      // session still goes authenticated.
+      when(() => mockTokenStorage.saveUser(any())).thenThrow(Exception("disk full"));
+      when(mockOAuthStorage.clearPkceVerifier).thenAnswer((_) async {});
+      when(mockOAuthStorage.clearAuthProvider).thenAnswer((_) async {});
+      when(mockOAuthStorage.clearOAuthSession).thenAnswer((_) async {});
+
+      await authManager.startOAuthFlow(provider: AuthProvider.google);
+      final exchangedUser = await authManager.pollForResult();
+
+      expect(exchangedUser, user);
+      expect(authManager.currentState, const AuthState.authenticated(user: user));
+      verify(mockOAuthStorage.clearOAuthSession).called(1);
+    });
+
     test("pollForResult sends the same session token only in status headers", () async {
       when(
         () => mockHttpClient.post(
@@ -853,6 +922,38 @@ void main() {
       expect(result, isTrue);
       expect(authManager.currentState, isA<AuthAuthenticated>());
       verify(() => mockTokenStorage.saveUser(user)).called(1);
+    });
+
+    test("still authenticates when persisting the restored user fails", () async {
+      when(() => mockTokenStorage.getAccessToken()).thenAnswer(
+        (_) async => (token: "valid-access-token", validityLeft: const Duration(minutes: 5)),
+      );
+      when(
+        () => mockHttpClient.get(
+          Uri.parse("$authBaseUrl/auth/me"),
+          headers: any(named: "headers"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "user": {
+              "id": user.id,
+              "provider": user.provider,
+              "providerUserId": user.providerUserId,
+              "providerUsername": user.providerUsername,
+            },
+          }),
+          200,
+        ),
+      );
+      // A transient secure-storage write failure must not block restoring a
+      // session that /auth/me just confirmed.
+      when(() => mockTokenStorage.saveUser(any())).thenThrow(Exception("disk full"));
+
+      final result = await authManager.restoreSession();
+
+      expect(result, isTrue);
+      expect(authManager.currentState, isA<AuthAuthenticated>());
     });
 
     test("returns false and does not persist username when no valid session", () async {
