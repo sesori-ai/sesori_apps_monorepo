@@ -21,26 +21,24 @@ source of truth for the store listing.
 Both paths use the same tools (`deliver` for iOS, `supply` for Android) and the
 same private repo; they differ only in *when* and *what*:
 
-1. **With a release — `submit-release.yml`** (tick `upload_metadata`). Pushes the
-   full listing **alongside** a production binary submit/promote. Best for iOS,
-   where new-version copy and screenshots must ride with the version under review,
-   and for the per-release "What's new" changelog.
-2. **Standalone — `sync-store-metadata.yml`** (manual dispatch). Pushes the
-   listing **without** building or submitting a binary. Use it to edit copy, add
-   a language, or refresh screenshots between releases.
-   - **Android**: updates the full listing (text + images + screenshots, every
-     language) immediately. Changelogs are release-scoped, so they're **not**
-     synced here — those go out via path 1.
-   - **iOS**: edits the version currently editable in App Store Connect
-     ("Prepare for Submission") — text + screenshots. Pass `ios_edit_live: true`
-     to edit the **live** listing's text instead (Apple disables screenshot
-     upload in that mode). If no editable version exists and `ios_edit_live` is
-     off, `deliver` errors — expected, since Apple ties screenshots/new-version
-     copy to a version.
+1. **With a release — `submit-release.yml`** in THIS repo (tick `upload_metadata`).
+   Pushes the full listing **alongside** a production binary submit/promote. This
+   is the only way to ship the per-release "What's new" changelog and the
+   new-version iOS screenshots/copy that must ride with the version under review.
+   Documented below.
+2. **Standalone — `Sync Store Metadata` lives in the private metadata repo**
+   (`app-stores-metadata`), not here. It pushes the listing (all languages +
+   assets) **without** building or submitting a binary, runs on its own checkout
+   with its own store secrets, and is manually dispatched. Use it to edit copy,
+   add a language, or refresh screenshots between releases. See that repo's
+   `README.md`. (Android updates the full listing immediately; iOS edits the
+   editable version's text + screenshots, or the live listing's text with
+   `ios_edit_live`.)
 
 **Adding a language** = add its locale folder to the private repo (e.g.
-`ios/metadata/de-DE/` + `ios/screenshots/de-DE/`, or `android/de-DE/`) and run a
-sync. `deliver`/`supply` create the localization from the folders present.
+`ios/metadata/de-DE/` + `ios/screenshots/de-DE/`, or `android/de-DE/`) and run the
+private repo's sync. `deliver`/`supply` create the localization from the folders
+present.
 
 ## How it works
 
