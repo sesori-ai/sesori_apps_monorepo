@@ -273,4 +273,41 @@ platform :android do
       _cleanup_secret_files
     end
   end
+
+  desc "Sync Play Store listing metadata (all languages + images/screenshots) " \
+       "from the private metadata repo WITHOUT uploading an AAB or promoting a " \
+       "release. For managing store copy / languages / assets between releases. " \
+       "Changelogs are release-scoped, so they are NOT synced here — those go " \
+       "out with submit_android."
+  lane :sync_play_metadata do
+    _materialize_secret_files
+
+    begin
+      metadata_dir = metadata_dir_from_env("ANDROID_METADATA_PATH")
+      UI.user_error!(
+        "Nothing to sync: set ANDROID_METADATA_PATH to a non-empty directory " \
+        "(the cloned metadata repo)."
+      ) if metadata_dir.nil?
+
+      UI.message("Syncing Play Store listing from #{metadata_dir}")
+
+      # No track_promote_to / version_code: this only edits the store listing
+      # (title/descriptions, images, screenshots) for every locale present.
+      # skip_upload_changelogs because changelogs attach to a release/version
+      # code, which a standalone listing sync has none of.
+      upload_to_play_store(
+        skip_upload_apk: true,
+        skip_upload_aab: true,
+        metadata_path: metadata_dir,
+        skip_upload_metadata: false,
+        skip_upload_images: false,
+        skip_upload_screenshots: false,
+        skip_upload_changelogs: true
+      )
+
+      UI.success("Synced Play Store listing from #{metadata_dir}")
+    ensure
+      _cleanup_secret_files
+    end
+  end
 end

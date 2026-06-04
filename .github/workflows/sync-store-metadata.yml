@@ -1,0 +1,144 @@
+name: Sync Store Metadata
+
+# Manually-triggered: push App Store / Play **listing metadata** (all languages
+# + assets) from the private metadata repo (vars.STORE_METADATA_REPO) to the
+# stores WITHOUT building or submitting a binary. Use it to edit store copy, add
+# a new language, or refresh screenshots BETWEEN app releases.
+#
+# - Android (supply): updates the full listing — text + images + screenshots —
+#   immediately. Changelogs are release-scoped and are NOT synced here.
+# - iOS (deliver): edits the version currently editable in App Store Connect
+#   ("Prepare for Submission") — text + screenshots. Set `ios_edit_live` to edit
+#   the LIVE listing's text instead (Apple disables screenshot upload in that
+#   mode). New-version copy + screenshots otherwise ride with `Submit Release`.
+#
+# Requires the same config as submit-release.yml: variable STORE_METADATA_REPO
+# and the `store-production` environment secret METADATA_REPO_TOKEN.
+
+on:
+  workflow_dispatch:
+    inputs:
+      platforms:
+        description: "Platforms to sync"
+        type: choice
+        required: true
+        default: both
+        options:
+          - both
+          - ios
+          - android
+      ios_edit_live:
+        description: "iOS: edit the LIVE listing's text instead of the editable version (no screenshots in this mode)"
+        type: boolean
+        required: false
+        default: false
+
+run-name: "sync-metadata · ${{ inputs.platforms }}"
+
+concurrency:
+  # Serialize listing edits so two runs don't race the same App Store / Play edit.
+  group: sync-store-metadata
+  cancel-in-progress: false
+
+jobs:
+  sync-ios:
+    name: Sync App Store metadata
+    if: ${{ inputs.platforms == 'both' || inputs.platforms == 'ios' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Reuses the production approval gate + holds METADATA_REPO_TOKEN.
+    environment: store-production
+    defaults:
+      run:
+        working-directory: mobile/app/ios
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Checkout store metadata
+        if: ${{ vars.STORE_METADATA_REPO != '' }}
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ vars.STORE_METADATA_REPO }}
+          ref: ${{ vars.STORE_METADATA_REF || 'main' }}
+          path: store-metadata
+          persist-credentials: false
+          token: ${{ secrets.METADATA_REPO_TOKEN }}
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+          working-directory: mobile/app/ios
+
+      - name: Sync App Store metadata
+        env:
+          APP_STORE_CONNECT_API_KEY_ID:      ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_ISSUER_ID:   ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+          APPLE_TEAM_ID:                     ${{ secrets.APPLE_TEAM_ID }}
+          ITC_TEAM_ID:                       ${{ secrets.ITC_TEAM_ID }}
+          # Absolute paths: fastlane runs from mobile/app/ios but the clone is
+          # at the workspace root.
+          IOS_METADATA_PATH:                 ${{ github.workspace }}/store-metadata/ios/metadata
+          IOS_SCREENSHOTS_PATH:              ${{ github.workspace }}/store-metadata/ios/screenshots
+          IOS_EDIT_LIVE:                     ${{ inputs.ios_edit_live }}
+        run: bundle exec fastlane sync_appstore_metadata
+
+      - name: Summary
+        if: success()
+        run: |
+          {
+            echo "## App Store metadata synced"
+            echo "- **Source**: \`${{ vars.STORE_METADATA_REPO }}@${{ vars.STORE_METADATA_REF || 'main' }}\`"
+            echo "- **Mode**: ${{ inputs.ios_edit_live && 'live listing text (no screenshots)' || 'editable version (text + screenshots)' }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  sync-android:
+    name: Sync Play Store metadata
+    if: ${{ inputs.platforms == 'both' || inputs.platforms == 'android' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: store-production
+    defaults:
+      run:
+        working-directory: mobile/app/android
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Checkout store metadata
+        if: ${{ vars.STORE_METADATA_REPO != '' }}
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ vars.STORE_METADATA_REPO }}
+          ref: ${{ vars.STORE_METADATA_REF || 'main' }}
+          path: store-metadata
+          persist-credentials: false
+          token: ${{ secrets.METADATA_REPO_TOKEN }}
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+          working-directory: mobile/app/android
+
+      - name: Sync Play Store metadata
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          ANDROID_METADATA_PATH:            ${{ github.workspace }}/store-metadata/android
+        run: bundle exec fastlane sync_play_metadata
+
+      - name: Cleanup credentials
+        if: always()
+        # Path is relative to the job's working-directory (mobile/app/android).
+        run: rm -f fastlane/service-account.json
+
+      - name: Summary
+        if: success()
+        run: |
+          {
+            echo "## Play Store listing synced"
+            echo "- **Source**: \`${{ vars.STORE_METADATA_REPO }}@${{ vars.STORE_METADATA_REF || 'main' }}\`"
+            echo "- **Note**: listing text + images + screenshots (changelogs go out with Submit Release)."
+          } >> "$GITHUB_STEP_SUMMARY"

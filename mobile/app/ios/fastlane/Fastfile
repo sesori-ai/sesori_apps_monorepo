@@ -283,6 +283,57 @@ platform :ios do
     UI.success("Submitted iOS build #{build_number} (v#{version}) to #{track}")
   end
 
+  desc "Sync App Store listing metadata (all languages + screenshots) from the " \
+       "private metadata repo WITHOUT uploading a binary or submitting for " \
+       "review. For managing store copy / languages / screenshots between " \
+       "releases. Runs on Linux."
+  lane :sync_appstore_metadata do
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_API_ISSUER_ID"],
+      key_content: ENV["APP_STORE_CONNECT_API_KEY_CONTENT"],
+      is_key_content_base64: false
+    )
+
+    metadata_dir = metadata_dir_from_env("IOS_METADATA_PATH")
+    screenshots_dir = metadata_dir_from_env("IOS_SCREENSHOTS_PATH")
+    UI.user_error!(
+      "Nothing to sync: set IOS_METADATA_PATH and/or IOS_SCREENSHOTS_PATH to a " \
+      "non-empty directory (the cloned metadata repo)."
+    ) if metadata_dir.nil? && screenshots_dir.nil?
+
+    # `edit_live: true` edits the CURRENT live listing's text — Apple disables
+    # screenshot upload in this mode (fastlane: "this option disables ipa upload
+    # and screenshot upload"). Default (edit_live false) edits the version that
+    # is currently editable in App Store Connect ("Prepare for Submission") and
+    # can also push screenshots; it errors if no editable version exists, which
+    # is expected — Apple ties screenshots/new-version copy to a version.
+    edit_live = ENV["IOS_EDIT_LIVE"].to_s.strip == "true"
+    upload_screenshots = !edit_live && !screenshots_dir.nil?
+
+    UI.message("Syncing App Store metadata (edit_live=#{edit_live}, " \
+               "screenshots=#{upload_screenshots})")
+
+    opts = {
+      api_key: api_key,
+      skip_binary_upload: true,
+      submit_for_review: false,
+      run_precheck_before_submit: false,
+      force: true,
+      edit_live: edit_live,
+      skip_metadata: metadata_dir.nil?,
+      skip_screenshots: !upload_screenshots
+    }
+    opts[:metadata_path] = metadata_dir if metadata_dir
+    if upload_screenshots
+      opts[:screenshots_path] = screenshots_dir
+      opts[:overwrite_screenshots] = true
+    end
+    deliver(opts)
+
+    UI.success("Synced App Store listing metadata (edit_live=#{edit_live})")
+  end
+
   desc "Build without uploading (for testing CI setup)"
   lane :build_only do
     setup_ci if ENV["CI"]

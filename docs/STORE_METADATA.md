@@ -16,6 +16,32 @@ When activated, **everything in the cloned repo is uploaded** — listing text,
 "What's new" changelogs, screenshots, and images — so the repo is the single
 source of truth for the store listing.
 
+## Two ways metadata reaches the stores
+
+Both paths use the same tools (`deliver` for iOS, `supply` for Android) and the
+same private repo; they differ only in *when* and *what*:
+
+1. **With a release — `submit-release.yml`** (tick `upload_metadata`). Pushes the
+   full listing **alongside** a production binary submit/promote. Best for iOS,
+   where new-version copy and screenshots must ride with the version under review,
+   and for the per-release "What's new" changelog.
+2. **Standalone — `sync-store-metadata.yml`** (manual dispatch). Pushes the
+   listing **without** building or submitting a binary. Use it to edit copy, add
+   a language, or refresh screenshots between releases.
+   - **Android**: updates the full listing (text + images + screenshots, every
+     language) immediately. Changelogs are release-scoped, so they're **not**
+     synced here — those go out via path 1.
+   - **iOS**: edits the version currently editable in App Store Connect
+     ("Prepare for Submission") — text + screenshots. Pass `ios_edit_live: true`
+     to edit the **live** listing's text instead (Apple disables screenshot
+     upload in that mode). If no editable version exists and `ios_edit_live` is
+     off, `deliver` errors — expected, since Apple ties screenshots/new-version
+     copy to a version.
+
+**Adding a language** = add its locale folder to the private repo (e.g.
+`ios/metadata/de-DE/` + `ios/screenshots/de-DE/`, or `android/de-DE/`) and run a
+sync. `deliver`/`supply` create the localization from the folders present.
+
 ## How it works
 
 1. `submit-release.yml` runs on `ubuntu-latest` (no rebuild — submission is pure
