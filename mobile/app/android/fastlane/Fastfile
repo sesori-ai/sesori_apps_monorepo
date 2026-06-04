@@ -3,6 +3,24 @@
 require "base64"
 require "fileutils"
 
+# Resolves an optional store-metadata directory passed via the named env var.
+# In CI this points at the private metadata repo that submit-release.yml clones
+# into the workspace (see .github/workflows/submit-release.yml). Returns an
+# ABSOLUTE path only when the directory exists and is non-empty; otherwise nil,
+# so submit_android cleanly falls back to "promotion only" and behaves exactly
+# as it did before this feature existed. Absolute because fastlane runs from
+# mobile/app/android while the clone lives at the workspace root.
+def metadata_dir_from_env(var)
+  raw = ENV[var].to_s.strip
+  return nil if raw.empty?
+
+  path = File.expand_path(raw)
+  return nil unless File.directory?(path)
+  return nil if Dir.children(path).reject { |e| e.start_with?(".") }.empty?
+
+  path
+end
+
 default_platform(:android)
 
 platform :android do
@@ -212,21 +230,42 @@ platform :android do
       UI.message("Promoting Android version code #{version_code} (v#{version_name}) " \
                  "from internal → #{target_track}")
 
+      # Optional Play Store listing metadata, cloned from the private metadata
+      # repo by CI only when the submission was dispatched with
+      # upload_metadata=true. Unlike iOS, supply runs the promotion and the
+      # metadata upload inside a SINGLE Play Edit, so a metadata error aborts
+      # the whole edit and the promotion does not half-land — no two-pass split
+      # needed. nil when the repo wasn't cloned, making this a pure promotion
+      # (pre-feature behavior).
+      metadata_dir = metadata_dir_from_env("ANDROID_METADATA_PATH")
+      have_meta = !metadata_dir.nil?
+      UI.message(
+        have_meta ? "Uploading Play listing from #{metadata_dir}" : "No metadata path — promotion only"
+      )
+
       # package_name comes from Appfile (matches deploy_internal).
       # `release_status: "completed"` implies 100% rollout — no `rollout:` needed.
-      upload_to_play_store(
+      # When a metadata dir is present we upload everything in it (listing text,
+      # changelogs, images, screenshots); supply no-ops on categories that have
+      # no files, so a text-only repo just uploads text. Release notes come from
+      # <metadata_dir>/<locale>/changelogs/<versionCode>.txt with a default.txt
+      # fallback — keep a default.txt in the repo so a promotion never ships
+      # blank "What's new" (supply does so silently).
+      play_opts = {
         track: "internal",
         track_promote_to: target_track,
         track_promote_release_status: "completed",
         version_code: version_code.to_i,
         skip_upload_apk: true,
         skip_upload_aab: true,
-        skip_upload_metadata: true,
-        skip_upload_changelogs: true,
-        skip_upload_images: true,
-        skip_upload_screenshots: true,
+        skip_upload_metadata: !have_meta,
+        skip_upload_changelogs: !have_meta,
+        skip_upload_images: !have_meta,
+        skip_upload_screenshots: !have_meta,
         release_status: "completed"
-      )
+      }
+      play_opts[:metadata_path] = metadata_dir if metadata_dir
+      upload_to_play_store(play_opts)
 
       UI.success("Promoted Android version code #{version_code} (v#{version_name}) " \
                  "to #{target_track}")

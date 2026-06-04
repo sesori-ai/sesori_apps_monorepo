@@ -40,6 +40,24 @@ def highest_build_number_across_all_versions(api_key:)
   highest
 end
 
+# Resolves an optional store-metadata directory passed via the named env var.
+# In CI this points at the private metadata repo that submit-release.yml clones
+# into the workspace (see .github/workflows/submit-release.yml). Returns an
+# ABSOLUTE path only when the directory exists and is non-empty; otherwise nil,
+# so the submit lanes cleanly fall back to "no metadata" and behave exactly as
+# they did before this feature existed. Absolute because fastlane runs from
+# mobile/app/ios while the clone lives at the workspace root.
+def metadata_dir_from_env(var)
+  raw = ENV[var].to_s.strip
+  return nil if raw.empty?
+
+  path = File.expand_path(raw)
+  return nil unless File.directory?(path)
+  return nil if Dir.children(path).reject { |e| e.start_with?(".") }.empty?
+
+  path
+end
+
 platform :ios do
   # Reads the marketing version (e.g. "1.0.6") from pubspec.yaml two dirs up.
   # The build-number suffix after `+` is intentionally ignored — store APIs
@@ -182,11 +200,54 @@ platform :ios do
     UI.message("Submitting iOS build #{build_number} (v#{version}) to #{track}")
 
     if track == "production"
-      # Submit the already-uploaded TestFlight build for App Store review.
-      # `skip_binary_upload: true` + `build_number:` tells deliver to pick
-      # the existing build instead of expecting a local IPA.
-      # `automatic_release: false` so the human approves the actual release
-      # to the App Store after Apple's review completes.
+      # Optional App Store listing metadata, cloned from the private metadata
+      # repo by CI only when the submission was dispatched with
+      # upload_metadata=true. Everything present in the cloned tree is uploaded:
+      # text from IOS_METADATA_PATH, plus screenshots from IOS_SCREENSHOTS_PATH
+      # when that tree exists. Both resolve to nil when the repo wasn't cloned,
+      # making the upload a no-op (preserving pre-feature behavior). NOTE:
+      # uploading screenshots can hard-fail on a screen size deliver doesn't yet
+      # recognize — but that happens in pass 1 below, before submission, so the
+      # already-uploaded build is never affected.
+      metadata_dir = metadata_dir_from_env("IOS_METADATA_PATH")
+      screenshots_dir = metadata_dir_from_env("IOS_SCREENSHOTS_PATH")
+
+      # Pass 1 — metadata only, NO submission. deliver uploads metadata and
+      # submits for review in two separate API calls, so we separate them too:
+      # a metadata error here fails BEFORE the build is attached/submitted and
+      # therefore can never orphan a half-submitted version. The already-
+      # uploaded TestFlight binary is never touched (skip_binary_upload).
+      if metadata_dir || screenshots_dir
+        UI.message(
+          "Uploading App Store metadata" \
+          "#{metadata_dir ? " from #{metadata_dir}" : ''}" \
+          "#{screenshots_dir ? " (+ screenshots from #{screenshots_dir})" : ''}"
+        )
+        meta_opts = {
+          api_key: api_key,
+          app_version: version,
+          skip_binary_upload: true,
+          submit_for_review: false,
+          force: true,
+          run_precheck_before_submit: false, # precheck runs in the submit pass
+          skip_metadata: metadata_dir.nil?,
+          skip_screenshots: screenshots_dir.nil?
+        }
+        meta_opts[:metadata_path] = metadata_dir if metadata_dir
+        if screenshots_dir
+          meta_opts[:screenshots_path] = screenshots_dir
+          meta_opts[:overwrite_screenshots] = true # deterministic set in the targeted locales
+        end
+        deliver(meta_opts)
+      end
+
+      # Pass 2 — attach the already-uploaded build and submit for review.
+      # `skip_binary_upload: true` + `build_number:` picks the existing build
+      # instead of expecting a local IPA. `skip_metadata`/`skip_screenshots:
+      # true` because any metadata was already uploaded in pass 1 (or there is
+      # none to upload when no metadata repo is configured). `automatic_release:
+      # false` so a human approves the actual App Store release after Apple's
+      # review completes.
       deliver(
         api_key: api_key,
         build_number: build_number,
