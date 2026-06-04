@@ -25,7 +25,7 @@ Addresses unresolved inline PR review comments by assessing their validity, impl
 Use the `pr-inline-comments` skill to fetch unresolved comments:
 
 ```bash
-./scripts/fetch.sh <pr-number> --unresolved [--repo OWNER/REPO]
+../pr-inline-comments/scripts/fetch.sh <pr-number> --unresolved [--repo OWNER/REPO]
 ```
 
 If the user specifies a time window (e.g., "since yesterday"), also pass `--since <ISO_8601>`.
@@ -87,9 +87,32 @@ Fix guidelines:
 - If a comment requests a specific approach and you disagree, use your judgment but explain in the reply
 - Do not suppress type errors with `as any`, `@ts-ignore`, or `@ts-expect-error`
 
-### Step 4: Leave Replies
+### Step 4: Commit and Push Changes
 
-After acting on each comment (whether you fixed it or not), post a reply to the comment thread.
+After all fixes have been implemented, commit all changes in a single commit:
+
+```bash
+git add -A
+git commit -m "fix: address PR review comments"
+```
+
+Or use a more specific message if the changes are purely stylistic or architectural:
+
+```bash
+git commit -m "refactor: address PR review feedback"
+```
+
+Then push the commit so the fixes are visible on the remote branch:
+
+```bash
+git push origin <branch-name>
+```
+
+**Important:** Always commit and push BEFORE posting replies. If you post "Addressed" before pushing, the fixes won't be visible to reviewers, making the replies misleading.
+
+### Step 5: Leave Replies
+
+After the commit has been successfully pushed, post a reply to each comment thread explaining what was done.
 
 **Reply format:**
 ```
@@ -97,7 +120,7 @@ After acting on each comment (whether you fixed it or not), post a reply to the 
 ```
 
 Where `<status>` is one of:
-- `Addressed` — The fix has been implemented
+- `Addressed` — The fix has been implemented and pushed
 - `Not addressed` — The comment was assessed as invalid or not applicable
 - `Partially addressed` — Part of the request was implemented, part was not
 - `Question` — The comment is unclear and needs clarification from the reviewer
@@ -129,9 +152,19 @@ Question:
 [Sesori reply] Question: Could you clarify what you mean by "optimize this"? Are you looking for time complexity improvements or reduced memory usage?
 ```
 
-**Posting replies via GitHub API:**
+**Posting replies via helper script:**
 
-Use the REST API to reply to a comment thread:
+Use the included `reply.sh` helper script:
+
+```bash
+./scripts/reply.sh <pr-number> <thread_id> "Addressed: Fixed the null check."
+```
+
+The script automatically prefixes the body with `[Sesori reply]` if not already present.
+
+**Posting replies via GitHub API directly:**
+
+If you need to post a reply directly via the REST API:
 
 ```bash
 gh api repos/<owner>/<repo>/pulls/<pr-number>/comments/<thread_id>/replies \
@@ -150,10 +183,6 @@ an explicit null check before dereferencing the variable.
 EOF
 )"
 ```
-
-### Step 5: Commit Changes
-
-After all comments have been addressed and replies posted, commit all changes in a single commit:
 
 ```bash
 git add -A

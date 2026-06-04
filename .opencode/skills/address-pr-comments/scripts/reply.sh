@@ -28,7 +28,7 @@ REPO=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --repo)       REPO="${2:?--repo requires a value}";   shift 2 ;;
+    --repo) [[ $# -lt 2 ]] && { echo "Error: --repo requires a value" >&2; exit 2; }; REPO="$2"; shift 2 ;;
     -h|--help)    usage; exit 0 ;;
     -*)           echo "Unknown flag: $1" >&2; usage; exit 2 ;;
     *)
