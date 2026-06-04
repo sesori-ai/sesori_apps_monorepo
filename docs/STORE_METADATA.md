@@ -120,22 +120,27 @@ Notes:
 
 ### 1. Create + seed the private repo
 
-Run locally with store credentials (App Store Connect API `.p8`/JSON and the
-Play service-account JSON):
+Run locally with store credentials. iOS needs a **fastlane App Store Connect
+API Key JSON** (`asc_api_key.json`) — NOT the raw `AuthKey_XXXX.p8`. Build it
+from the values you already hold as monorepo secrets
+([format](https://docs.fastlane.tools/app-store-connect-api/#using-fastlane-api-key-json-file)):
+`{"key_id": "<APP_STORE_CONNECT_API_KEY_ID>", "issuer_id":
+"<APP_STORE_CONNECT_API_ISSUER_ID>", "key": "<APP_STORE_CONNECT_API_KEY_CONTENT,
+PEM with \n-escaped newlines>"}`. Android uses the
+`GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` content written to a file.
 
 ```bash
 git init store-metadata && cd store-metadata
 mkdir -p ios android
 
-# iOS — download live text metadata (no screenshots)
+# iOS — download live text metadata (download_metadata does NOT fetch screenshots)
 fastlane deliver download_metadata \
-  --api_key_path "/abs/path/AuthKey.json" \
+  --api_key_path "/abs/path/asc_api_key.json" \
   --app_identifier "com.sesori.app" \
   --metadata_path "./ios/metadata" \
-  --use_live_version true \
-  --force true
+  --use_live_version true
 
-# Android — download live listing + changelogs
+# Android — download live listing + changelogs (track defaults to production)
 fastlane run download_from_play_store \
   package_name:"com.sesori.app" \
   json_key:"/abs/path/play-service-account.json" \
@@ -152,7 +157,7 @@ fastlane run download_from_play_store \
 # Only needed if you want screenshots managed here (uploaded when you run a
 # production submit with upload_metadata=true).
 # fastlane deliver download_screenshots \
-#   --api_key_path "/abs/path/AuthKey.json" \
+#   --api_key_path "/abs/path/asc_api_key.json" \
 #   --app_identifier "com.sesori.app" \
 #   --screenshots_path "./ios/screenshots"
 
