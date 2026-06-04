@@ -140,6 +140,12 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     if (isClosed) return;
     switch (status) {
       case ConnectionConnected():
+        // A reconnect driven by reconnectBridge (the onboarding pull-to-
+        // refresh) already owns the reload. Connecting emits this very
+        // ConnectionConnected transition synchronously, so without this guard
+        // we'd fire a second, non-coalesced fetch and flash a full-screen
+        // loading state over the onboarding. Defer to reconnectBridge.
+        if (_reconnectBridgeInFlight) break;
         switch (state) {
           case ProjectListLoaded():
             unawaited(refreshProjects());
@@ -271,6 +277,11 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     }
   }
 
+  /// True while [reconnectBridge] is re-establishing the connection. The
+  /// connection-status listener ([_onConnectionStatusChanged]) defers its own
+  /// reload to reconnectBridge during this window — see the guard there.
+  bool _reconnectBridgeInFlight = false;
+
   /// Re-attempts to reach the bridge from the onboarding state (driven by the
   /// onboarding's pull-to-refresh). Recovery from [ProjectListBridgeDisconnected]
   /// is otherwise passive — it waits for a [ConnectionConnected] transition that,
@@ -279,22 +290,32 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   ///
   /// Does not emit a loading state: the caller (a [RefreshIndicator]) shows its
   /// own progress, so the onboarding stays visible until a result is known.
+  ///
+  /// [_reconnectBridgeInFlight] is held for the whole method so the
+  /// ConnectionConnected transition emitted while connecting doesn't also drive
+  /// [_onConnectionStatusChanged] into a duplicate (loading-flashing) reload —
+  /// reconnectBridge owns the single, silent fetch below.
   Future<void> reconnectBridge() async {
-    if (_connectionService.currentStatus is ConnectionDisconnected) {
-      // No active config yet — establish a fresh connection from scratch.
-      await _connectionService.connectWithFreshAuthToken();
-    } else {
-      // An existing config dropped (e.g. bridge offline) — reconnect it.
-      await _reconnectIfNeeded();
-    }
-    if (isClosed) return;
-    if (_isBridgeUnavailable) {
-      if (state is! ProjectListBridgeDisconnected) {
-        emit(const ProjectListState.bridgeDisconnected());
+    _reconnectBridgeInFlight = true;
+    try {
+      if (_connectionService.currentStatus is ConnectionDisconnected) {
+        // No active config yet — establish a fresh connection from scratch.
+        await _connectionService.connectWithFreshAuthToken();
+      } else {
+        // An existing config dropped (e.g. bridge offline) — reconnect it.
+        await _reconnectIfNeeded();
       }
-      return;
+      if (isClosed) return;
+      if (_isBridgeUnavailable) {
+        if (state is! ProjectListBridgeDisconnected) {
+          emit(const ProjectListState.bridgeDisconnected());
+        }
+        return;
+      }
+      await _fetchProjects();
+    } finally {
+      _reconnectBridgeInFlight = false;
     }
-    await _fetchProjects();
   }
 
   /// In-flight silent refresh, used for coalescing.

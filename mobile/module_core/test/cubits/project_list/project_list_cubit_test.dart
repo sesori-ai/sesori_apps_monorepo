@@ -335,6 +335,47 @@ void main() {
         ],
       );
 
+      // Regression: a real ConnectionConnected stream event fires *during*
+      // reconnectBridge's connect (the BehaviorSubject delivers it as the
+      // production ConnectionService does). Before the _reconnectBridgeInFlight
+      // guard this drove _onConnectionStatusChanged into its own loadProjects()
+      // — a second, non-coalesced fetch plus a full-screen loading() flash over
+      // the onboarding. The guard makes reconnectBridge the sole, silent fetch.
+      blocTest<ProjectListCubit, ProjectListState>(
+        "reconnectBridge: a ConnectionConnected event during connect neither double-fetches nor flashes loading",
+        build: () {
+          statusController.add(const ConnectionStatus.disconnected());
+          // Initial connect fails -> bridgeDisconnected onboarding.
+          when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => false);
+          return buildCubit();
+        },
+        act: (cubit) async {
+          await Future<void>.delayed(Duration.zero); // initial -> bridgeDisconnected
+          when(
+            () => mockProjectService.listProjects(),
+          ).thenAnswer((_) async => ApiResponse.success(Projects(data: [testProject()])));
+          // The reconnect succeeds and, like the real service, publishes the
+          // ConnectionConnected transition on the status stream — which the
+          // cubit also listens to via _onConnectionStatusChanged.
+          when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async {
+            statusController.add(_connectedStatus);
+            return true;
+          });
+          await cubit.reconnectBridge();
+          await Future<void>.delayed(Duration.zero); // flush any deferred listener microtasks
+        },
+        skip: 1, // initial ProjectListBridgeDisconnected
+        expect: () => [
+          // A single terminal Loaded — no ProjectListLoading flash from a
+          // duplicate loadProjects() driven by the status listener.
+          isA<ProjectListLoaded>().having((s) => s.projects.length, "projects after reconnect", 1),
+        ],
+        verify: (_) {
+          // Only reconnectBridge fetched; the listener's reload was suppressed.
+          verify(() => mockProjectService.listProjects()).called(1);
+        },
+      );
+
       blocTest<ProjectListCubit, ProjectListState>(
         "reconnectBridge: stays on onboarding (no fetch) when the bridge is still unreachable",
         build: () {
