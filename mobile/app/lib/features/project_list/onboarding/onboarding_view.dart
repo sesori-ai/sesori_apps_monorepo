@@ -144,14 +144,17 @@ class _OnboardingChecklistState extends State<_OnboardingChecklist> {
                     const SizedBox(width: ZyraSpacing.lg),
                     // Folder button: disabled (dimmed) while disconnected, since
                     // adding a project isn't possible yet; live and wired to
-                    // [onOpenFolder] once the bridge is connected. When live it
-                    // is the sole add-project CTA (the FAB is hidden in this
-                    // state), so it carries a screen-reader label.
+                    // [onOpenFolder] once the bridge is connected. It always
+                    // carries a screen-reader label so the icon's purpose is
+                    // announced in both states — when disabled it reads as a
+                    // plain label (no tap handler, so it isn't announced as an
+                    // actionable button); when live it is also the sole add-
+                    // project CTA, as the FAB is hidden here.
                     ZyraButtonsIconGlass(
                       icon: TablerOutline.folder_plus,
                       size: ZyraButtonsIconGlassSize.lg,
                       iconSize: 30,
-                      semanticLabel: connected ? loc.projectsOnboardingOpenFolder : null,
+                      semanticLabel: loc.projectsOnboardingOpenFolder,
                       onPressed: widget.onOpenFolder,
                     ),
                   ],
@@ -265,31 +268,43 @@ class _AccountLine extends StatelessWidget {
     final loc = context.loc;
     final baseStyle = zyra.textTheme.textSm.regular.copyWith(color: colors.textSecondary);
 
-    final authState = getIt<AuthSession>().currentState;
-    final (String? account, String? provider) = switch (authState) {
-      AuthAuthenticated(:final user) => (user.providerUsername, user.provider),
-      AuthInitial() || AuthUnauthenticated() || AuthAuthenticating() || AuthFailed() => (null, null),
-    };
+    // Subscribe to auth state rather than reading a one-shot snapshot: the
+    // session is restored asynchronously on launch (see AuthManager), so the
+    // account may resolve after this line first builds. A StreamBuilder keeps
+    // the line in sync; initialData renders the current value on the first
+    // frame without a flash.
+    final authSession = getIt<AuthSession>();
+    return StreamBuilder<AuthState>(
+      stream: authSession.authStateStream,
+      initialData: authSession.currentState,
+      builder: (context, snapshot) {
+        final authState = snapshot.data ?? authSession.currentState;
+        final (String? account, String? provider) = switch (authState) {
+          AuthAuthenticated(:final user) => (user.providerUsername, user.provider),
+          AuthInitial() || AuthUnauthenticated() || AuthAuthenticating() || AuthFailed() => (null, null),
+        };
 
-    if (account != null && account.isNotEmpty && provider != null && provider.isNotEmpty) {
-      return Text.rich(
-        TextSpan(
-          style: baseStyle,
-          children: [
-            if (!connected) TextSpan(text: loc.projectsOnboardingAccountPrefix),
+        if (account != null && account.isNotEmpty && provider != null && provider.isNotEmpty) {
+          return Text.rich(
             TextSpan(
-              text: account,
-              style: baseStyle.copyWith(color: colors.textPrimary),
+              style: baseStyle,
+              children: [
+                if (!connected) TextSpan(text: loc.projectsOnboardingAccountPrefix),
+                TextSpan(
+                  text: account,
+                  style: baseStyle.copyWith(color: colors.textPrimary),
+                ),
+                TextSpan(text: loc.projectsOnboardingAccountSuffix(_providerDisplayName(provider))),
+              ],
             ),
-            TextSpan(text: loc.projectsOnboardingAccountSuffix(_providerDisplayName(provider))),
-          ],
-        ),
-      );
-    }
+          );
+        }
 
-    return Text(
-      connected ? loc.projectsConnectedAccountFallback : loc.projectsOnboardingAccountFallback,
-      style: baseStyle,
+        return Text(
+          connected ? loc.projectsConnectedAccountFallback : loc.projectsOnboardingAccountFallback,
+          style: baseStyle,
+        );
+      },
     );
   }
 
