@@ -5,6 +5,7 @@ import 'package:opencode_plugin/opencode_plugin.dart';
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
 import 'package:sesori_bridge/src/api/default_editor_api.dart';
 import 'package:sesori_bridge/src/api/wake_lock_client.dart';
+import 'package:sesori_bridge/src/auth/token.dart';
 import 'package:sesori_bridge/src/bridge/foundation/device_type_detector.dart';
 import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart';
@@ -31,6 +32,12 @@ Future<void> main(List<String> args) async {
   if (!(Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
     Log.e("Unsupported platform ${Platform.operatingSystem}");
     exit(1);
+  }
+
+  if (args.isNotEmpty && args[0] == 'logout') {
+    await clearTokens();
+    stdout.writeln('Authentication cleared. You will be asked to log in on next start.');
+    exit(0);
   }
 
   if (args.isNotEmpty && args[0] == 'config') {
@@ -78,11 +85,7 @@ Future<void> main(List<String> args) async {
       help: 'Path to opencode binary',
     )
     ..addOption('auth-backend', defaultsTo: '', help: 'Auth backend URL')
-    ..addFlag(
-      'login',
-      defaultsTo: false,
-      help: 'Force re-login and clear stored tokens',
-    )
+
     ..addFlag(
       'help',
       abbr: 'h',

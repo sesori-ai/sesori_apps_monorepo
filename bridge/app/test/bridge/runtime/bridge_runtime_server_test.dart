@@ -227,7 +227,6 @@ BridgeCliOptions _options({
     password: password,
     opencodeBin: "opencode",
     authBackendUrl: "https://api.sesori.com",
-    forceLogin: false,
     debugPort: null,
     logLevelName: "info",
   );

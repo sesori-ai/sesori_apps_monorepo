@@ -8,7 +8,6 @@ class BridgeCliOptions {
   final String password;
   final String opencodeBin;
   final String authBackendUrl;
-  final bool forceLogin;
   final int? debugPort;
   final String logLevelName;
 
@@ -20,7 +19,6 @@ class BridgeCliOptions {
     required this.password,
     required this.opencodeBin,
     required this.authBackendUrl,
-    required this.forceLogin,
     required this.debugPort,
     required this.logLevelName,
   });
@@ -55,7 +53,6 @@ class BridgeCliOptions {
       password: results["password"] as String,
       opencodeBin: results["opencode-bin"] as String,
       authBackendUrl: authBackendUrl,
-      forceLogin: results["login"] as bool,
       debugPort: debugPortRaw.isNotEmpty ? int.tryParse(debugPortRaw) : null,
       logLevelName: results["log-level"] as String,
     );
