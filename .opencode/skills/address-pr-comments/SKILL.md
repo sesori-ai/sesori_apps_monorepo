@@ -32,8 +32,9 @@ Use the `pr-inline-comments` skill to fetch ONLY unresolved comments:
 **Important:** The output can be large and may be truncated by the shell. To avoid missing comments, redirect the output to a uniquely-named file:
 
 ```bash
+PR_NUMBER="<pr-number>"
 OUTFILE="/tmp/pr_${PR_NUMBER}_comments_$(date +%Y%m%d_%H%M%S).json"
-../pr-inline-comments/scripts/fetch.sh <pr-number> --unresolved > "$OUTFILE"
+../pr-inline-comments/scripts/fetch.sh "$PR_NUMBER" --unresolved > "$OUTFILE"
 ```
 
 Then read `"$OUTFILE"` to parse the results. The timestamp ensures no stale file from a previous run or another PR is accidentally read.
