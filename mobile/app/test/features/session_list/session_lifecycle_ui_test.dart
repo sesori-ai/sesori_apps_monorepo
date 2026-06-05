@@ -6,6 +6,7 @@ import "package:get_it/get_it.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/features/session_list/session_list_panel.dart";
 import "package:sesori_mobile/features/session_list/session_list_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -548,6 +549,40 @@ void main() {
       expect(find.text("3 files changed"), findsOneWidget);
       expect(find.text("PR #42"), findsOneWidget);
       expect(find.text("Open"), findsOneWidget);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Session list panel
+  // ---------------------------------------------------------------------------
+
+  group("Session list panel", () {
+    testWidgets("renders without an internal Scaffold", (tester) async {
+      final session = testSession(title: "Panel Session");
+      when(() => mockCubit.state).thenReturn(
+        SessionListState.loaded(sessions: [session], baseBranch: null),
+      );
+
+      await tester.pumpWidget(
+        _buildScreenApp(
+          child: Material(
+            child: BlocProvider<SessionListCubit>.value(
+              value: mockCubit,
+              child: SessionListPanel(
+                projectName: "Project One",
+                onNewSession: () {},
+                onSessionTap: (_) {},
+                onSessionLongPress: (_) {},
+                onSessionSwipe: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(Scaffold), findsNothing);
+      expect(find.text("Panel Session"), findsOneWidget);
+      expect(find.byIcon(Icons.add), findsOneWidget);
     });
   });
 
