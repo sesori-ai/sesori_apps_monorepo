@@ -29,16 +29,6 @@ Use the `pr-inline-comments` skill to fetch ONLY unresolved comments:
 ../pr-inline-comments/scripts/fetch.sh <pr-number> --unresolved [--repo OWNER/REPO]
 ```
 
-**Important:** The output can be large and may be truncated by the shell. To avoid missing comments, redirect the output to a uniquely-named file:
-
-```bash
-PR_NUMBER="<pr-number>"
-OUTFILE="/tmp/pr_${PR_NUMBER}_comments_$(date +%Y%m%d_%H%M%S).json"
-../pr-inline-comments/scripts/fetch.sh "$PR_NUMBER" --unresolved > "$OUTFILE"
-```
-
-Then read `"$OUTFILE"` to parse the results. The timestamp ensures no stale file from a previous run or another PR is accidentally read.
-
 If the user specifies a time window (e.g., "since yesterday"), also pass `--since <ISO_8601>`.
 
 Parse the JSON output. You will receive an array of thread objects. Each thread contains:
@@ -103,12 +93,27 @@ Fix guidelines:
 
 ### Step 4: Commit and Push Changes
 
-After all fixes have been implemented, commit all changes in a single **new** commit. **NEVER amend** an existing commit.
+After all fixes have been implemented, check the worktree status first. If there are pre-existing modifications or untracked files unrelated to the PR comments, warn the user and ask whether to proceed before committing.
+
+```bash
+git status
+```
+
+If the worktree is clean except for the files you modified for the PR comments, stage and commit only those files:
+
+```bash
+git add <file1> <file2> ...
+git commit -m "fix: address PR review comments"
+```
+
+If you are certain no unrelated files are present, you may use:
 
 ```bash
 git add -A
 git commit -m "fix: address PR review comments"
 ```
+
+**Never** stage unrelated work in a PR feedback commit.
 
 Or use a more specific message if the changes are purely stylistic or architectural:
 
@@ -249,6 +254,6 @@ User: "Address the comments on PR 42"
 4. Implement fixes for threads 1 and 3.
 5. Make a single commit and push
 6. Post replies:
-   - Thread 1: `[Sesori reply] Addressed (in commit a1b2c3d)\n\nFixed the off-by-one error in src/utils.ts line 42. Changed the loop boundary from i <= n to i < n to prevent accessing the array at index n (which is out of bounds). Also added a unit test covering the edge case where n equals the array length.]`
-   - Thread 2: `[Sesori reply] Not addressed\n\nThe current imperative approach is intentional and more readable for this use case. A functional approach would introduce unnecessary complexity.]`
-   - Thread 3: `[Sesori reply] Addressed (in commit a1b2c3d)\n\nAdded explicit null check in src/services/user_service.dart line 87. The nullable user parameter is now validated before accessing user.email, preventing a NullPointerException when the user record is missing.]`
+   - Thread 1: `[Sesori reply] Addressed (in commit a1b2c3d)\n\nFixed the off-by-one error in src/utils.ts line 42. Changed the loop boundary from i <= n to i < n to prevent accessing the array at index n (which is out of bounds). Also added a unit test covering the edge case where n equals the array length.`
+   - Thread 2: `[Sesori reply] Not addressed\n\nThe current imperative approach is intentional and more readable for this use case. A functional approach would introduce unnecessary complexity.`
+   - Thread 3: `[Sesori reply] Addressed (in commit a1b2c3d)\n\nAdded explicit null check in src/services/user_service.dart line 87. The nullable user parameter is now validated before accessing user.email, preventing a NullPointerException when the user record is missing.`
