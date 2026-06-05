@@ -139,7 +139,7 @@ After the commit has been successfully pushed, post a reply to each comment thre
 
 The explanation must describe **what** was changed and **why**, not just restate the status. A reply that only says "Addressed" or "Fixed" is insufficient.
 
-**Be concise.** Most replies should be 1-2 short sentences. Only write a longer explanation when the change is complex, crosses multiple files, or requires architectural justification. Do not add pointless fluff.
+**Be concise.** Say only what is meaningful. If you did exactly what was requested with no side effects or additional context needed, a single sentence like "Renamed `foo` to `bar` as requested" is enough. Only add more detail when there is genuinely something worth communicating — e.g., the fix caused a related change elsewhere, you rejected part of the suggestion for a specific reason, or the change has implications the reviewer should know about. Do not add pointless fluff.
 
 **Reply format for Not addressed and Question:**
 ```
