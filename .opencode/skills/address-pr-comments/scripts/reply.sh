@@ -28,8 +28,9 @@ REPO=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --repo) [[ $# -lt 2 ]] && { echo "Error: --repo requires a value" >&2; exit 2; }; REPO="$2"; shift 2 ;;
+    --repo) [[ $# -lt 2 ]] && { echo "Error: --repo requires a value" >&2; usage; exit 2; }; REPO="$2"; shift 2 ;;
     -h|--help)    usage; exit 0 ;;
+    --)           shift; break ;;
     -*)           echo "Unknown flag: $1" >&2; usage; exit 2 ;;
     *)
       if [[ -z "$PR_NUMBER" ]]; then
@@ -47,23 +48,46 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Collect any remaining arguments after -- as part of the body
+if [[ $# -gt 0 ]]; then
+  if [[ -z "$BODY" ]]; then
+    BODY="$*"
+  else
+    BODY="$BODY $*"
+  fi
+fi
+
 if [[ -z "$PR_NUMBER" || -z "$COMMENT_ID" || -z "$BODY" ]]; then
   echo "Error: Missing required arguments" >&2
   usage; exit 2
+fi
+
+if [[ "$PR_NUMBER" =~ ^[0-9]+$ ]]; then
+  :
+else
+  echo "Error: PR number must be a positive integer, got: $PR_NUMBER" >&2
+  exit 2
+fi
+
+if [[ "$COMMENT_ID" =~ ^[0-9]+$ ]]; then
+  :
+else
+  echo "Error: Comment ID must be a positive integer, got: $COMMENT_ID" >&2
+  exit 2
 fi
 
 if [[ -z "$REPO" ]]; then
   REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
 fi
 
-OWNER="${REPO%%/*}"
-REPO_NAME="${REPO##*/}"
-
 if [[ "$BODY" != "[Sesori reply]"* ]]; then
   BODY="[Sesori reply] $BODY"
 fi
 
-gh api "repos/${OWNER}/${REPO_NAME}/pulls/${PR_NUMBER}/comments/${COMMENT_ID}/replies" \
-  -f body="$BODY" > /dev/null
+if ! gh api "repos/${REPO}/pulls/${PR_NUMBER}/comments/${COMMENT_ID}/replies" \
+  -f body="$BODY" > /dev/null; then
+  echo "Error: failed to post reply to comment ${COMMENT_ID} on PR #${PR_NUMBER} in ${REPO}" >&2
+  exit 1
+fi
 
 echo "Reply posted to comment ${COMMENT_ID} on PR #${PR_NUMBER}"

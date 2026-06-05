@@ -207,7 +207,9 @@ If multiple threads reference the same line, address each independently. They ma
 
 ### Comments requesting architectural changes
 
-If a comment requests a significant architectural change that would require refactoring multiple files, assess whether it is in scope. If it is a reasonable request, implement it. If it is too large, reply explaining that the change is out of scope for this PR and suggest creating a follow-up issue.
+If a human reviewer requests a significant architectural change, implement it without complaining — even if it requires refactoring multiple files. Do not push back or suggest creating a follow-up issue unless you have a strong technical reason to believe the change is wrong.
+
+For AI/bot comments requesting large architectural changes, apply normal validity assessment. If the suggestion is genuinely reasonable, implement it. If it is misguided, reply explaining why it is not viable.
 
 ### Comments with no clear action
 
@@ -227,7 +229,7 @@ If the user explicitly asks you to look at resolved comments, omit the `--unreso
 
 User: "Address the comments on PR 42"
 
-1. Fetch unresolved comments: `./scripts/fetch.sh 42 --unresolved`
+1. Fetch unresolved comments using the `pr-inline-comments` skill
 2. Receive 3 threads:
    - Thread 1 (human): "This loop has an off-by-one error"
    - Thread 2 (bot): "Consider using a more functional approach"
@@ -237,8 +239,8 @@ User: "Address the comments on PR 42"
    - Thread 2: AI suggestion. Current imperative approach is clearer here. Do not implement.
    - Thread 3: Valid. Add null check.
 4. Implement fixes for threads 1 and 3.
-5. Post replies:
+5. Make a single commit and push
+6. Post replies:
    - Thread 1: `[Sesori reply] Addressed: Fixed the loop boundary.`
    - Thread 2: `[Sesori reply] Not addressed: The current approach is intentional and more readable for this use case. A functional approach would introduce unnecessary complexity.`
    - Thread 3: `[Sesori reply] Addressed: Added explicit null check.`
-6. Commit: `git commit -m "fix: address PR review comments"`
