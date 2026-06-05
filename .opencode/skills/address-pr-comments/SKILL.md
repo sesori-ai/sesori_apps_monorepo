@@ -29,13 +29,14 @@ Use the `pr-inline-comments` skill to fetch ONLY unresolved comments:
 ../pr-inline-comments/scripts/fetch.sh <pr-number> --unresolved [--repo OWNER/REPO]
 ```
 
-**Important:** The output can be large and may be truncated by the shell. To avoid missing comments, redirect the output to a file:
+**Important:** The output can be large and may be truncated by the shell. To avoid missing comments, redirect the output to a uniquely-named file:
 
 ```bash
-../pr-inline-comments/scripts/fetch.sh <pr-number> --unresolved > /tmp/pr_comments.json
+OUTFILE="/tmp/pr_${PR_NUMBER}_comments_$(date +%Y%m%d_%H%M%S).json"
+../pr-inline-comments/scripts/fetch.sh <pr-number> --unresolved > "$OUTFILE"
 ```
 
-Then read `/tmp/pr_comments.json` to parse the results.
+Then read `"$OUTFILE"` to parse the results. The timestamp ensures no stale file from a previous run or another PR is accidentally read.
 
 If the user specifies a time window (e.g., "since yesterday"), also pass `--since <ISO_8601>`.
 
