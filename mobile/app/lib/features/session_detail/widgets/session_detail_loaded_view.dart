@@ -63,7 +63,7 @@ class SessionDetailLoadedView extends StatelessWidget {
         if (state.pendingPermissions.isNotEmpty)
           SessionDetailPendingBanner(
             icon: Icons.shield_outlined,
-            backgroundColor: context.zyra.colors.bgSuccessSecondary,
+            backgroundColor: context.zyra.colors.bgSuccessPrimary,
             foregroundColor: context.zyra.colors.textSuccessPrimary,
             label: state.pendingPermissions.length == 1
                 ? loc.permissionBannerSingle
