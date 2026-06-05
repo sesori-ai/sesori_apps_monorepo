@@ -106,14 +106,7 @@ git add <file1> <file2> ...
 git commit -m "fix: address PR review comments"
 ```
 
-If you are certain no unrelated files are present, you may use:
-
-```bash
-git add -A
-git commit -m "fix: address PR review comments"
-```
-
-**Never** stage unrelated work in a PR feedback commit.
+**Never** stage unrelated work in a PR feedback commit. Do not use `git add -A`.
 
 Or use a more specific message if the changes are purely stylistic or architectural:
 
