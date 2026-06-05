@@ -11,22 +11,31 @@ Addresses unresolved inline PR review comments by assessing their validity, impl
 
 1. **Unresolved comments only**: Unless explicitly told otherwise, only fetch and address comments where `is_resolved == false`. Use the `--unresolved` flag.
 2. **Every thread gets a reply**: After assessing and acting on a comment, you MUST post a reply to that comment thread. No thread should be left without a response.
-3. **Reply prefix**: Every reply must start with `[Sesori reply]` so it is clear the response comes from the agent, not the human user.
-4. **All comments are assessed**: Every comment must be evaluated for validity. Do not automatically assume any comment is correct.
-5. **Extra scrutiny for AI/bot comments**: Comments from AI reviewers or bots require more careful assessment. They are more likely to be incorrect, irrelevant, or based on stale context.
-6. **Human comments are trusted by default**: Comments from actual humans should be assumed valid unless you have a strong reason to believe they are wrong.
-7. **Single commit**: All fixes can be committed together in a single commit. The user squash-merges at the end.
-8. **Outdated comments**: If `is_outdated == true`, assess whether the comment is still relevant. If the issue still exists in the current code, address it. If not, reply explaining why it is no longer applicable.
+3. **Do not reply twice**: Before posting a reply, check the thread's `comments[]` for an existing body starting with `[Sesori reply]`. If the last comment in the thread is already a `[Sesori reply]`, skip the thread unless there is a new follow-up request from a reviewer. If the last comment is an acknowledgment like "Acknowledged" or similar that does not require action, skip it.
+4. **Reply prefix**: Every reply must start with `[Sesori reply]` so it is clear the response comes from the agent, not the human user.
+5. **All comments are assessed**: Every comment must be evaluated for validity. Do not automatically assume any comment is correct.
+6. **Extra scrutiny for AI/bot comments**: Comments from AI reviewers or bots require more careful assessment. They are more likely to be incorrect, irrelevant, or based on stale context.
+7. **Human comments are trusted by default**: Comments from actual humans should be assumed valid unless you have a strong reason to believe they are wrong, detrimental, or cause likely unintended side effects.
+8. **Single commit**: All fixes can be committed together in a single commit. The user squash-merges at the end.
+9. **Outdated comments**: If `is_outdated == true`, assess whether the comment is still relevant. If the issue still exists in the current code, address it. If not, reply explaining why it is no longer applicable.
 
 ## Workflow
 
 ### Step 1: Fetch Unresolved Comments
 
-Use the `pr-inline-comments` skill to fetch unresolved comments:
+Use the `pr-inline-comments` skill to fetch ONLY unresolved comments:
 
 ```bash
 ../pr-inline-comments/scripts/fetch.sh <pr-number> --unresolved [--repo OWNER/REPO]
 ```
+
+**Important:** The output can be large and may be truncated by the shell. To avoid missing comments, redirect the output to a file:
+
+```bash
+../pr-inline-comments/scripts/fetch.sh <pr-number> --unresolved > /tmp/pr_comments.json
+```
+
+Then read `/tmp/pr_comments.json` to parse the results.
 
 If the user specifies a time window (e.g., "since yesterday"), also pass `--since <ISO_8601>`.
 
@@ -52,13 +61,14 @@ A comment is **invalid** if:
 - It is based on a misunderstanding of the code
 - The suggestion would introduce a bug or worsen the code
 - It is stylistically opinionated without project convention backing
+- It suggests that the syntax is invalid but the analyzer accepts it
 - It is outdated and no longer applies
 - It is from an AI/bot and contains obvious hallucinations or generic advice
 
 #### AI/Bot Identification
 
 Apply extra scrutiny when the comment author (`user` field) matches any of these patterns:
-- Username contains: `bot`, `[bot]`, `github-actions`, `codex`, `gemini`, `copilot`, `claude`, `gpt`, `ai-`
+- Username indicates author is a bot — commonly name contains: `bot`, `[bot]`, `github-actions`, `codex`, `gemini`, `copilot`, `claude`, `gpt`, `ai-`
 - The comment uses very formal, mechanical, or templated language
 - The suggestion is generic and lacks specific context about this codebase
 
@@ -70,6 +80,7 @@ For AI/bot comments:
 For human comments:
 - Assume the comment is correct unless you have strong evidence otherwise
 - If you disagree, still explain your reasoning in the reply
+- If you disagreed with a given reason, but the human replied to still go ahead and do it, you must proceed with the requested task
 
 ### Step 3: Implement Fixes
 
@@ -85,11 +96,12 @@ Fix guidelines:
 - Fix minimally. Do not refactor unrelated code.
 - Follow existing codebase conventions (style, naming, patterns)
 - If a comment requests a specific approach and you disagree, use your judgment but explain in the reply
+- If you are changing logic or fixing logic bugs/edge case omissions/etc, use TDD (write a failing test first)
 - Do not suppress type errors with `as any`, `@ts-ignore`, or `@ts-expect-error`
 
 ### Step 4: Commit and Push Changes
 
-After all fixes have been implemented, commit all changes in a single commit:
+After all fixes have been implemented, commit all changes in a single **new** commit. **NEVER amend** an existing commit.
 
 ```bash
 git add -A
@@ -109,6 +121,10 @@ git push origin <branch-name>
 ```
 
 **Important:** Always commit and push BEFORE posting replies. If you post "Addressed" before pushing, the fixes won't be visible to reviewers, making the replies misleading.
+
+**Important:** DO NOT use force push without explicit per-instance consent. Do not assume that you can use force push again just because the user allowed it previously.
+
+**No changes to commit:** If all fetched comments were invalid, outdated, or questions requiring no code change, skip the commit and push steps. Proceed directly to posting replies.
 
 ### Step 5: Leave Replies
 
