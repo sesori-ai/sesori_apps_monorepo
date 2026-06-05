@@ -114,9 +114,18 @@ git push origin <branch-name>
 
 After the commit has been successfully pushed, post a reply to each comment thread explaining what was done.
 
-**Reply format:**
+**Reply format for Addressed and Partially addressed:**
 ```
-[Sesori reply] <status>: <explanation>
+[Sesori reply] <status> (in commit <commit_hash>)
+
+<explanation>
+```
+
+**Reply format for Not addressed and Question:**
+```
+[Sesori reply] <status>
+
+<explanation>
 ```
 
 Where `<status>` is one of:
@@ -129,27 +138,37 @@ Where `<status>` is one of:
 
 Addressed:
 ```
-[Sesori reply] Addressed: Fixed the off-by-one error in the loop boundary. Changed `i <= n` to `i < n`.
+[Sesori reply] Addressed (in commit a1b2c3d)
+
+Fixed the off-by-one error in the loop boundary. Changed `i <= n` to `i < n`.
 ```
 
 Not addressed (AI comment found invalid):
 ```
-[Sesori reply] Not addressed: This suggestion would introduce a race condition. The current implementation already handles synchronization correctly via the existing mutex.
+[Sesori reply] Not addressed
+
+This suggestion would introduce a race condition. The current implementation already handles synchronization correctly via the existing mutex.
 ```
 
 Not addressed (outdated):
 ```
-[Sesori reply] Not addressed: This comment refers to code that has been refactored in a subsequent commit. The variable in question no longer exists.
+[Sesori reply] Not addressed
+
+This comment refers to code that has been refactored in a subsequent commit. The variable in question no longer exists.
 ```
 
 Partially addressed:
 ```
-[Sesori reply] Partially addressed: Renamed the variable as requested. However, extracting the helper function is not viable here because it would require passing 5 parameters and reduce readability.
+[Sesori reply] Partially addressed (in commit a1b2c3d)
+
+Renamed the function as requested. However, calling this function directly without the platform interface abstraction is not viable because it would break the Windows support.
 ```
 
 Question:
 ```
-[Sesori reply] Question: Could you clarify what you mean by "optimize this"? Are you looking for time complexity improvements or reduced memory usage?
+[Sesori reply] Question
+
+Could you clarify what you mean by "optimize this"? Are you looking for time complexity improvements or reduced memory usage?
 ```
 
 **Posting replies via helper script:**
@@ -162,44 +181,11 @@ Use the included `reply.sh` helper script:
 
 The script automatically prefixes the body with `[Sesori reply]` if not already present.
 
-**Posting replies via GitHub API directly:**
-
-If you need to post a reply directly via the REST API:
-
-```bash
-gh api repos/<owner>/<repo>/pulls/<pr-number>/comments/<thread_id>/replies \
-  -f body="[Sesori reply] Addressed: ..."
-```
-
-Where `<thread_id>` is the `thread_id` field from the fetched comment data.
-
-If the reply is long, you can use a here-document:
-
-```bash
-gh api repos/<owner>/<repo>/pulls/<pr-number>/comments/<thread_id>/replies \
-  -f body="$(cat <<'EOF'
-[Sesori reply] Addressed: Fixed the null pointer exception by adding
-an explicit null check before dereferencing the variable.
-EOF
-)"
-```
-
-```bash
-git add -A
-git commit -m "fix: address PR review comments"
-```
-
-Or use a more specific message if the changes are purely stylistic or architectural:
-
-```bash
-git commit -m "refactor: address PR review feedback"
-```
-
 ## Edge Cases
 
 ### Comment on a file not in the working tree
 
-If the comment references a file that does not exist in your working tree (e.g., the PR added it and you are on a different branch), first check out the PR branch or the specific file.
+If the comment references a file that does not exist in your working tree (e.g., the PR added it and you are on a different branch), ask the user whether they want you to change the current branch or worktree before proceeding. There is a chance the user asked in the wrong session to review a PR.
 
 ### Multiple comments on the same line
 
@@ -241,6 +227,6 @@ User: "Address the comments on PR 42"
 4. Implement fixes for threads 1 and 3.
 5. Make a single commit and push
 6. Post replies:
-   - Thread 1: `[Sesori reply] Addressed: Fixed the loop boundary.`
-   - Thread 2: `[Sesori reply] Not addressed: The current approach is intentional and more readable for this use case. A functional approach would introduce unnecessary complexity.`
-   - Thread 3: `[Sesori reply] Addressed: Added explicit null check.`
+   - Thread 1: `[Sesori reply] Addressed (in commit a1b2c3d)\n\nFixed the loop boundary.`
+   - Thread 2: `[Sesori reply] Not addressed\n\nThe current approach is intentional and more readable for this use case. A functional approach would introduce unnecessary complexity.`
+   - Thread 3: `[Sesori reply] Addressed (in commit a1b2c3d)\n\nAdded explicit null check.`

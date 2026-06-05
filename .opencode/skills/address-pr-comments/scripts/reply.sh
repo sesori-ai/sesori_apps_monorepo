@@ -62,14 +62,14 @@ if [[ -z "$PR_NUMBER" || -z "$COMMENT_ID" || -z "$BODY" ]]; then
   usage; exit 2
 fi
 
-if [[ "$PR_NUMBER" =~ ^[0-9]+$ ]]; then
+if [[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
   :
 else
   echo "Error: PR number must be a positive integer, got: $PR_NUMBER" >&2
   exit 2
 fi
 
-if [[ "$COMMENT_ID" =~ ^[0-9]+$ ]]; then
+if [[ "$COMMENT_ID" =~ ^[1-9][0-9]*$ ]]; then
   :
 else
   echo "Error: Comment ID must be a positive integer, got: $COMMENT_ID" >&2
