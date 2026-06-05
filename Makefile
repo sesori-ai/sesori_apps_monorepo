@@ -27,5 +27,10 @@ endef
 bump-version-check:
 	$(call run_sync_versions,--dry-run)
 
+# Bump the version of the bridge and mobile apps
+#
+# Two options to use it 
+# a) make bump-version TYPE=patch|minor|major 
+# b) make bump-version VERSION=x.y.z
 bump-version:
 	$(call run_sync_versions,)

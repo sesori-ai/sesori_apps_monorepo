@@ -1,21 +1,21 @@
 {
   "name": "@sesori/bridge",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Bootstrap launcher for the managed Sesori Bridge runtime",
   "bin": {
     "sesori-bridge": "bin/bridge.js"
   },
   "optionalDependencies": {
-    "@sesori/bridge-darwin-arm64": "1.0.7",
-    "@sesori/bridge-darwin-x64": "1.0.7",
-    "@sesori/bridge-linux-x64": "1.0.7",
-    "@sesori/bridge-linux-arm64": "1.0.7",
-    "@sesori/bridge-win32-x64": "1.0.7"
+    "@sesori/bridge-darwin-arm64": "1.0.8",
+    "@sesori/bridge-darwin-x64": "1.0.8",
+    "@sesori/bridge-linux-x64": "1.0.8",
+    "@sesori/bridge-linux-arm64": "1.0.8",
+    "@sesori/bridge-win32-x64": "1.0.8"
   },
   "sesoriBridge": {
     "bootstrapOnly": true,
     "managedRuntimeOwner": false,
-    "releaseTag": "v1.0.7",
+    "releaseTag": "v1.0.8",
     "runtimeBundleSource": "github-release-assets"
   },
   "license": "SEE LICENSE IN LICENSE",
