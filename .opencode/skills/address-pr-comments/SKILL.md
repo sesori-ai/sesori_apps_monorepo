@@ -135,8 +135,10 @@ After the commit has been successfully pushed, post a reply to each comment thre
 ```
 [Sesori reply] <status> (in commit <commit_hash>)
 
-<explanation>
+<detailed explanation>
 ```
+
+The `<detailed explanation>` must describe **what** was changed and **why**, not just restate the status. Be specific about files modified, logic changed, or decisions made. A reply that only says "Addressed" or "Fixed" is insufficient.
 
 **Reply format for Not addressed and Question:**
 ```
@@ -157,7 +159,7 @@ Addressed:
 ```
 [Sesori reply] Addressed (in commit a1b2c3d)
 
-Fixed the off-by-one error in the loop boundary. Changed `i <= n` to `i < n`.
+Fixed the off-by-one error in `src/utils.ts` line 42. Changed the loop boundary from `i <= n` to `i < n` to prevent accessing the array at index `n` (which is out of bounds). Also added a unit test covering the edge case where `n` equals the array length.
 ```
 
 Not addressed (AI comment found invalid):
@@ -178,7 +180,9 @@ Partially addressed:
 ```
 [Sesori reply] Partially addressed (in commit a1b2c3d)
 
-Renamed the function as requested. However, calling this function directly without the platform interface abstraction is not viable because it would break the Windows support.
+Renamed `getPlatformPath()` to `resolvePlatformPath()` in `src/platform/path_resolver.dart` as requested. This better reflects that the function performs resolution logic, not just a simple getter.
+
+However, I did not remove the platform interface abstraction layer. Doing so would require adding OS-specific branching directly in the calling code (`src/services/file_service.dart`), which would break Windows support and duplicate platform detection logic that is already centralized in the abstraction. Keeping the abstraction is the correct architecture here.
 ```
 
 Question:
@@ -244,6 +248,6 @@ User: "Address the comments on PR 42"
 4. Implement fixes for threads 1 and 3.
 5. Make a single commit and push
 6. Post replies:
-   - Thread 1: `[Sesori reply] Addressed (in commit a1b2c3d)\n\nFixed the loop boundary.`
-   - Thread 2: `[Sesori reply] Not addressed\n\nThe current approach is intentional and more readable for this use case. A functional approach would introduce unnecessary complexity.`
-   - Thread 3: `[Sesori reply] Addressed (in commit a1b2c3d)\n\nAdded explicit null check.`
+   - Thread 1: `[Sesori reply] Addressed (in commit a1b2c3d)\n\nFixed the off-by-one error in src/utils.ts line 42. Changed the loop boundary from i <= n to i < n to prevent accessing the array at index n (which is out of bounds). Also added a unit test covering the edge case where n equals the array length.]`
+   - Thread 2: `[Sesori reply] Not addressed\n\nThe current imperative approach is intentional and more readable for this use case. A functional approach would introduce unnecessary complexity.]`
+   - Thread 3: `[Sesori reply] Addressed (in commit a1b2c3d)\n\nAdded explicit null check in src/services/user_service.dart line 87. The nullable user parameter is now validated before accessing user.email, preventing a NullPointerException when the user record is missing.]`
