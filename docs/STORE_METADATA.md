@@ -84,9 +84,25 @@ when a metadata dir is present.
   `<locale>/changelogs/<versionCode>.txt`, falling back to
   `<locale>/changelogs/default.txt`. **Keep a `default.txt`** — supply uploads
   blank release notes *silently* if neither file matches the promoted version
-  code. The monorepo's `deploy_internal` lane writes a per-build
-  `<versionCode>.txt` for the *internal* track; production "What's new" is the
-  human-curated `default.txt` in the private repo.
+  code. The monorepo's `deploy_internal` lane writes the build commit's message
+  into `<versionCode>.txt` for the *internal* track; production "What's new" is
+  the fixed `default.txt` in the private repo (see below).
+
+### Release notes / "What's new"
+
+Two distinct sources, by intent:
+
+- **Production (App Store + Play): one fixed copy, identical on both stores.**
+  iOS uploads `ios/metadata/<locale>/release_notes.txt`; Android falls back to
+  `android/<locale>/changelogs/default.txt` (a production promotion never has a
+  matching `<versionCode>.txt`). **Keep those two files identical** — that single
+  copy is the production "What's new" every release. It is intentionally NOT
+  per-release: there is nothing to edit at submit time.
+- **Test builds (TestFlight + Play internal): the build commit's message.**
+  `deploy_testflight` / `deploy_internal` set the changelog to the message of the
+  commit the build was made from, plus a `commit: <sha>` trailer, truncated to
+  each store's limit (4000 chars iOS, 500 Play). Generated at build time —
+  never read from the private repo.
 
 ### Screenshots & images
 
