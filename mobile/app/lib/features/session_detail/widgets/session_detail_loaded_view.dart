@@ -56,7 +56,7 @@ class SessionDetailLoadedView extends StatelessWidget {
           SessionDetailPendingBanner(
             icon: Icons.help_outline,
             backgroundColor: context.zyra.colors.bgBrandPrimary,
-            foregroundColor: context.zyra.colors.bgBrandPrimaryAlt,
+            foregroundColor: context.zyra.colors.textBrandPrimary,
             label: questionCount == 1 ? loc.questionBannerSingle : loc.questionBannerMultiple(questionCount),
             onTap: onShowPendingQuestions,
           ),
@@ -64,7 +64,7 @@ class SessionDetailLoadedView extends StatelessWidget {
           SessionDetailPendingBanner(
             icon: Icons.shield_outlined,
             backgroundColor: context.zyra.colors.bgSuccessSecondary,
-            foregroundColor: context.zyra.colors.fgSuccessPrimary,
+            foregroundColor: context.zyra.colors.textSuccessPrimary,
             label: state.pendingPermissions.length == 1
                 ? loc.permissionBannerSingle
                 : loc.permissionBannerMultiple(state.pendingPermissions.length),
