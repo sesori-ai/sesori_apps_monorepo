@@ -419,5 +419,7 @@
   },
   "sessionDetailModelFallback": "Model",
   "sessionDetailAgentFallback": "Agent",
-  "sessionDetailRetryLabel": "Retry"
+  "sessionDetailRetryLabel": "Retry",
+  "emptySessionDetailTitle": "Select a session",
+  "emptySessionDetailSubtitle": "Choose a session from the list to view details"
 }
