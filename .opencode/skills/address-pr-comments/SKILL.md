@@ -144,7 +144,9 @@ After the commit has been successfully pushed, post a reply to each comment thre
 <detailed explanation>
 ```
 
-The `<detailed explanation>` must describe **what** was changed and **why**, not just restate the status. Be specific about files modified, logic changed, or decisions made. A reply that only says "Addressed" or "Fixed" is insufficient.
+The explanation must describe **what** was changed and **why**, not just restate the status. A reply that only says "Addressed" or "Fixed" is insufficient.
+
+**Be concise.** Most replies should be 1-2 short sentences. Only write a longer explanation when the change is complex, crosses multiple files, or requires architectural justification. Do not add pointless fluff.
 
 **Reply format for Not addressed and Question:**
 ```
@@ -161,11 +163,18 @@ Where `<status>` is one of:
 
 **Examples:**
 
-Addressed:
+Addressed (simple fix):
 ```
 [Sesori reply] Addressed (in commit a1b2c3d)
 
-Fixed the off-by-one error in `src/utils.ts` line 42. Changed the loop boundary from `i <= n` to `i < n` to prevent accessing the array at index `n` (which is out of bounds). Also added a unit test covering the edge case where `n` equals the array length.
+Changed the loop boundary from `i <= n` to `i < n` in `src/utils.ts` to fix the off-by-one error.
+```
+
+Addressed (complex fix requiring more context):
+```
+[Sesori reply] Addressed (in commit a1b2c3d)
+
+Extracted the retry logic into a separate `RetryService` in `src/services/retry_service.dart`. This centralizes the backoff strategy and makes it reusable across the HTTP client and the WebSocket reconnect flow.
 ```
 
 Not addressed (AI comment found invalid):
@@ -186,9 +195,7 @@ Partially addressed:
 ```
 [Sesori reply] Partially addressed (in commit a1b2c3d)
 
-Renamed `getPlatformPath()` to `resolvePlatformPath()` in `src/platform/path_resolver.dart` as requested. This better reflects that the function performs resolution logic, not just a simple getter.
-
-However, I did not remove the platform interface abstraction layer. Doing so would require adding OS-specific branching directly in the calling code (`src/services/file_service.dart`), which would break Windows support and duplicate platform detection logic that is already centralized in the abstraction. Keeping the abstraction is the correct architecture here.
+Renamed the function as requested. Did not remove the platform abstraction because it would break Windows support and duplicate OS detection logic.
 ```
 
 Question:
@@ -254,6 +261,6 @@ User: "Address the comments on PR 42"
 4. Implement fixes for threads 1 and 3.
 5. Make a single commit and push
 6. Post replies:
-   - Thread 1: `[Sesori reply] Addressed (in commit a1b2c3d)\n\nFixed the off-by-one error in src/utils.ts line 42. Changed the loop boundary from i <= n to i < n to prevent accessing the array at index n (which is out of bounds). Also added a unit test covering the edge case where n equals the array length.`
-   - Thread 2: `[Sesori reply] Not addressed\n\nThe current imperative approach is intentional and more readable for this use case. A functional approach would introduce unnecessary complexity.`
-   - Thread 3: `[Sesori reply] Addressed (in commit a1b2c3d)\n\nAdded explicit null check in src/services/user_service.dart line 87. The nullable user parameter is now validated before accessing user.email, preventing a NullPointerException when the user record is missing.`
+   - Thread 1: `[Sesori reply] Addressed (in commit a1b2c3d)\n\nChanged the loop boundary from i <= n to i < n in src/utils.ts to fix the off-by-one error.]`
+   - Thread 2: `[Sesori reply] Not addressed\n\nThe current imperative approach is intentional and more readable here.]`
+   - Thread 3: `[Sesori reply] Addressed (in commit a1b2c3d)\n\nAdded null check in src/services/user_service.dart before accessing user.email.`
