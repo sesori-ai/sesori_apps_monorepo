@@ -11,6 +11,7 @@ class SessionDetailScreen extends StatelessWidget {
   final String sessionId;
   final String? sessionTitle;
   final bool readOnly;
+  final VoidCallback? onOpenDiffs;
 
   const SessionDetailScreen({
     super.key,
@@ -18,6 +19,7 @@ class SessionDetailScreen extends StatelessWidget {
     required this.sessionId,
     this.sessionTitle,
     this.readOnly = false,
+    this.onOpenDiffs,
   });
 
   @override
@@ -38,6 +40,7 @@ class SessionDetailScreen extends StatelessWidget {
         sessionId: sessionId,
         sessionTitle: sessionTitle,
         readOnly: readOnly,
+        onOpenDiffs: onOpenDiffs,
       ),
     );
   }

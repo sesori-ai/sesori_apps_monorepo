@@ -20,20 +20,25 @@ class MockSessionDetailCubit extends MockCubit<SessionDetailState> implements Se
 
 class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionService {}
 
-Widget _buildApp({required SessionDetailCubit cubit}) {
+Widget _buildApp({required SessionDetailCubit cubit, VoidCallback? onOpenDiffs}) {
   final router = GoRouter(
     routes: [
       GoRoute(
         path: "/",
         builder: (context, state) => BlocProvider<SessionDetailCubit>.value(
           value: cubit,
-          child: const SessionDetailBody(
+          child: SessionDetailBody(
             projectId: "project-1",
             sessionId: "session-1",
             sessionTitle: "Session",
             readOnly: false,
+            onOpenDiffs: onOpenDiffs,
           ),
         ),
+      ),
+      GoRoute(
+        path: "/projects/:projectId/sessions/:sessionId/diffs",
+        builder: (context, state) => const Scaffold(body: Text("Diffs")),
       ),
     ],
   );
@@ -176,5 +181,29 @@ void main() {
     // The UI should now show "Default".
     expect(find.widgetWithText(OutlinedButton, "Default"), findsOneWidget);
     expect(find.widgetWithText(OutlinedButton, "xhigh"), findsNothing);
+  });
+
+  testWidgets("diff button calls onOpenDiffs when provided", (tester) async {
+    var called = false;
+    await tester.pumpWidget(_buildApp(
+      cubit: cubit,
+      onOpenDiffs: () => called = true,
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.difference_outlined));
+    await tester.pumpAndSettle();
+
+    expect(called, isTrue);
+  });
+
+  testWidgets("diff button falls back to pushRoute when onOpenDiffs is null", (tester) async {
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.difference_outlined));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Diffs"), findsOneWidget);
   });
 }
