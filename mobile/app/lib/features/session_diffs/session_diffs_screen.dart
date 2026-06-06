@@ -50,6 +50,11 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
   int _computeToken = 0;
   Brightness? _lastBrightness;
 
+  /// Stable [GlobalKey]s attached to each file's header [SizedBox] so the
+  /// post-frame scroll adjustment can find the next file's header after a
+  /// collapse. Keys are created lazily as files are rendered.
+  final Map<int, GlobalKey> _headerKeys = <int, GlobalKey>{};
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -129,6 +134,7 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
                 viewModel: viewModels[i],
                 isExpanded: _expandedFileIndices.contains(i),
                 onToggle: () => _toggleFile(i),
+                headerKey: _headerKeys.putIfAbsent(i, GlobalKey.new),
               ),
             ),
             if (_expandedFileIndices.contains(i))
@@ -214,14 +220,39 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
   }
 
   void _toggleFile(int fileIndex) {
-    if (_viewModels == null) return;
+    final viewModels = _viewModels;
+    if (viewModels == null) return;
     final expanded = Set<int>.from(_expandedFileIndices);
-    if (expanded.contains(fileIndex)) {
+    final wasExpanded = expanded.contains(fileIndex);
+    if (wasExpanded) {
       expanded.remove(fileIndex);
     } else {
       expanded.add(fileIndex);
     }
     setState(() => _expandedFileIndices = expanded);
+    if (wasExpanded) {
+      // After the sliver rebuilds with file `fileIndex` collapsed (body
+      // shrunk to zero), jump the viewport so the next file's header sits
+      // at the top — otherwise the user lands several files down for large
+      // collapsed files.
+      _scheduleScrollToNext(collapsedIndex: fileIndex, totalFiles: viewModels.length);
+    }
+  }
+
+  /// Schedules a post-frame jump so the header at `collapsedIndex + 1` is
+  /// aligned to the top of the viewport. No-op if the collapsed file is the
+  /// last one (there is no "next file" to anchor to) or the key has not yet
+  /// been attached to a rendered widget.
+  void _scheduleScrollToNext({required int collapsedIndex, required int totalFiles}) {
+    if (collapsedIndex + 1 >= totalFiles) return;
+    final nextKey = _headerKeys[collapsedIndex + 1];
+    if (nextKey == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final context = nextKey.currentContext;
+      if (context == null) return;
+      Scrollable.ensureVisible(context, alignment: 0.0, duration: Duration.zero);
+    });
   }
 
   Widget _buildSkippedPlaceholder(FileDiffSkipReason reason) {
