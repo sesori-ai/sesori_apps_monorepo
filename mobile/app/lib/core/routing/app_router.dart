@@ -35,24 +35,11 @@ extension AppRouteToGoRoute on AppRouteDef {
           AppRouteLogin() => const LoginScreen(),
           AppRouteProjects() => const ProjectListScreen(),
           AppRouteSettings() => const SettingsScreen(),
-          AppRouteSessions(:final projectId, :final projectName) => SessionListScreen(
-            projectId: projectId,
-            projectName: projectName,
-          ),
-          AppRouteNewSession(:final projectId) => NewSessionScreen(
-            projectId: projectId,
-          ),
+          AppRouteSessions(:final projectId, :final projectName) => SessionListScreen(projectId: projectId, projectName: projectName),
+          AppRouteNewSession(:final projectId) => NewSessionScreen(projectId: projectId),
           AppRouteSessionDetail(:final projectId, :final sessionId, :final sessionTitle, :final readOnly) =>
-            SessionDetailScreen(
-              projectId: projectId,
-              sessionId: sessionId,
-              sessionTitle: sessionTitle,
-              readOnly: readOnly,
-            ),
-          AppRouteSessionDiffs(:final projectId, :final sessionId) => SessionDiffsScreen(
-            projectId: projectId,
-            sessionId: sessionId,
-          ),
+            SessionDetailScreen(projectId: projectId, sessionId: sessionId, sessionTitle: sessionTitle, readOnly: readOnly),
+          AppRouteSessionDiffs(:final projectId, :final sessionId) => SessionDiffsScreen(projectId: projectId, sessionId: sessionId),
         };
       },
     );
@@ -131,21 +118,22 @@ GoRoute _sessionSplitRoute({required AppRouteDef def, required SessionSplitRoute
 
 Widget _buildSessionSplitChild({required AppRoute route}) {
   return switch (route) {
-    AppRouteSessions(:final projectId, :final projectName) => SessionListScreen(
-      projectId: projectId,
-      projectName: projectName,
-    ),
-    AppRouteSessionDetail(:final projectId, :final sessionId, :final sessionTitle, :final readOnly) =>
-      SessionDetailScreen(
-        projectId: projectId,
-        sessionId: sessionId,
-        sessionTitle: sessionTitle,
-        readOnly: readOnly,
+    AppRouteSessions(:final projectId, :final projectName) => SessionListScreen(projectId: projectId, projectName: projectName),
+    AppRouteSessionDetail(:final projectId, :final sessionId, :final sessionTitle, :final readOnly) => Builder(
+        builder: (context) {
+          final splitScope = SessionSplitScope.maybeOf(context);
+          return SessionDetailScreen(
+            projectId: projectId,
+            sessionId: sessionId,
+            sessionTitle: sessionTitle,
+            readOnly: readOnly,
+            onOpenDiffs: splitScope != null && splitScope.isSplit
+                ? () => context.goRoute(AppRoute.sessionDiffs(projectId: projectId, sessionId: sessionId))
+                : null,
+          );
+        },
       ),
-    AppRouteSessionDiffs(:final projectId, :final sessionId) => SessionDiffsScreen(
-      projectId: projectId,
-      sessionId: sessionId,
-    ),
+    AppRouteSessionDiffs(:final projectId, :final sessionId) => SessionDiffsScreen(projectId: projectId, sessionId: sessionId),
     AppRouteSplash() ||
     AppRouteLogin() ||
     AppRouteProjects() ||
@@ -163,13 +151,9 @@ class _SessionSplitShellHost extends StatelessWidget {
   Widget build(BuildContext context) {
     final (projectId, projectName, selectedSessionId) = switch (routeChild.route) {
       AppRouteSessions(:final projectId, :final projectName) => (projectId, projectName, null),
-      AppRouteSessionDetail(:final projectId, :final sessionId) => (projectId, null, sessionId),
-      AppRouteSessionDiffs(:final projectId, :final sessionId) => (projectId, null, sessionId),
-      AppRouteSplash() ||
-      AppRouteLogin() ||
-      AppRouteProjects() ||
-      AppRouteSettings() ||
-      AppRouteNewSession() => throw StateError("Route ${routeChild.route.def.name} is not a session split child"),
+      AppRouteSessionDetail(:final projectId, :final sessionId) || AppRouteSessionDiffs(:final projectId, :final sessionId) => (projectId, null, sessionId),
+      AppRouteSplash() || AppRouteLogin() || AppRouteProjects() || AppRouteSettings() || AppRouteNewSession() =>
+        throw StateError("Route ${routeChild.route.def.name} is not a session split child"),
     };
 
     return SessionSplitShell(
@@ -219,7 +203,7 @@ class _SessionListPane extends StatelessWidget {
           selectedSessionId: selectedSessionId,
           onNewSession: () => context.pushRoute(AppRoute.newSession(projectId: projectId)),
           onSessionTap: (session) {
-            context.pushRoute(
+            context.goRoute(
               AppRoute.sessionDetail(
                 projectId: projectId,
                 sessionId: session.id,
@@ -239,10 +223,7 @@ final appRouter = GoRouter(
   initialLocation: AppRouteDef.splash.path,
   onException: (context, state, router) {
     final uri = state.uri;
-    if (uri.scheme == bundleId) {
-      logd("GoRouter ignoring deep link (handled by app_links): $uri");
-      return;
-    }
+    if (uri.scheme == bundleId) return logd("GoRouter ignoring deep link (handled by app_links): $uri");
     loge("GoRouter could not match route: ${uri.toString()}");
   },
   routes: buildAppRoutes(),

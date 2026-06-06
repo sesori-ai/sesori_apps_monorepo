@@ -1,4 +1,4 @@
-import "package:flutter/widgets.dart";
+import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -6,6 +6,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/platform/go_router_route_dispatcher.dart";
 import "package:sesori_mobile/core/routing/app_router.dart";
 import "package:sesori_mobile/core/widgets/session_split/session_split_route_child.dart";
+import "package:sesori_mobile/core/widgets/session_split/session_split_scope.dart";
 import "package:sesori_mobile/core/widgets/session_split/session_split_shell.dart";
 import "package:sesori_mobile/features/login/login_screen.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
@@ -288,10 +289,64 @@ void main() {
       final route = routeChild.route as AppRouteSessionDetail;
       expect(route.sessionTitle, "Debug session");
       expect(route.readOnly, isTrue);
-      expect(routeChild.child, isA<SessionDetailScreen>());
-      final screen = routeChild.child as SessionDetailScreen;
-      expect(screen.sessionTitle, "Debug session");
-      expect(screen.readOnly, isTrue);
+      expect(routeChild.child, isA<Builder>());
+    });
+
+    testWidgets("detail child provides onOpenDiffs in split scope", (tester) async {
+      final widget = _sessionShellChildRoute(AppRouteDef.sessionDetail).builder!(
+        _FakeBuildContext(),
+        _FakeGoRouterState(
+          pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"},
+          queryParameters: {"title": "Debug session", "readOnly": "false"},
+        ),
+      );
+      final routeChild = widget as SessionSplitRouteChild;
+
+      SessionDetailScreen? capturedScreen;
+      await tester.pumpWidget(
+        SessionSplitScope(
+          isSplit: true,
+          projectId: "proj-42",
+          selectedSessionId: "ses-99",
+          child: Builder(
+            builder: (context) {
+              final built = (routeChild.child as Builder).builder(context);
+              capturedScreen = built as SessionDetailScreen;
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+
+      expect(capturedScreen, isNotNull);
+      expect(capturedScreen!.onOpenDiffs, isNotNull);
+    });
+
+    testWidgets("detail child omits onOpenDiffs outside split scope", (tester) async {
+      final widget = _sessionShellChildRoute(AppRouteDef.sessionDetail).builder!(
+        _FakeBuildContext(),
+        _FakeGoRouterState(
+          pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"},
+          queryParameters: {"title": "Debug session", "readOnly": "false"},
+        ),
+      );
+      final routeChild = widget as SessionSplitRouteChild;
+
+      SessionDetailScreen? capturedScreen;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) {
+              final built = (routeChild.child as Builder).builder(context);
+              capturedScreen = built as SessionDetailScreen;
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+
+      expect(capturedScreen, isNotNull);
+      expect(capturedScreen!.onOpenDiffs, isNull);
     });
 
     test("diffs child wraps SessionDiffsScreen", () {
