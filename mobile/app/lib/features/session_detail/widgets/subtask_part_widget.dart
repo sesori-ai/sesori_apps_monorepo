@@ -1,9 +1,8 @@
 import "package:flutter/material.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_zyra/module_zyra.dart";
 import "../../../core/extensions/build_context_x.dart";
-import "../../../core/routing/app_router.dart";
+import "adaptive_session_detail_navigation.dart";
 
 class SubtaskPartWidget extends StatelessWidget {
   final String? projectId;
@@ -40,16 +39,13 @@ class SubtaskPartWidget extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
           onTap: childSession != null
-              ? () {
-                  context.pushRoute(
-                    AppRoute.sessionDetail(
-                      projectId: projectId ?? childSession.projectID,
-                      sessionId: childSession.id,
-                      readOnly: true,
-                      sessionTitle: childSession.title,
-                    ),
-                  );
-                }
+              ? () => openAdaptiveSessionDetail(
+                  context: context,
+                  projectId: projectId ?? childSession.projectID,
+                  sessionId: childSession.id,
+                  readOnly: true,
+                  sessionTitle: childSession.title,
+                )
               : null,
           child: Container(
             decoration: BoxDecoration(
