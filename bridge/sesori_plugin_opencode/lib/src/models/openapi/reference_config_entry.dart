@@ -5,7 +5,13 @@ abstract interface class ReferenceConfigEntry {
   const ReferenceConfigEntry();
 
   /// Serialize the underlying variant. Variants must override this.
-  Map<String, dynamic> toJson();
+  ///
+  /// The return type is `dynamic` (not `Map<String, dynamic>`)
+  /// because some unions are string-or-object and the string
+  /// variant encodes as the scalar itself, not a wrapped map.
+  /// Callers pass the result straight to `jsonEncode` or
+  /// another `toJson()`, both of which accept `dynamic`.
+  dynamic toJson();
 
   factory ReferenceConfigEntry.fromJson(dynamic json) {
     if (json is String) {
@@ -48,7 +54,7 @@ class referenceConfigEntry01Inline implements ReferenceConfigEntry {
   }
 
   @override
-  Map<String, dynamic> toJson() {
+  dynamic toJson() {
     return <String, dynamic>{
       "repository": repository,
       "branch": branch,
@@ -72,7 +78,7 @@ class referenceConfigEntry02Inline implements ReferenceConfigEntry {
   }
 
   @override
-  Map<String, dynamic> toJson() {
+  dynamic toJson() {
     return <String, dynamic>{
       "path": path,
     };

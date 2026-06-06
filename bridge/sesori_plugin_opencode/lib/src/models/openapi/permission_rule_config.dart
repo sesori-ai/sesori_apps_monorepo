@@ -7,7 +7,13 @@ abstract interface class PermissionRuleConfig {
   const PermissionRuleConfig();
 
   /// Serialize the underlying variant. Variants must override this.
-  Map<String, dynamic> toJson();
+  ///
+  /// The return type is `dynamic` (not `Map<String, dynamic>`)
+  /// because some unions are string-or-object and the string
+  /// variant encodes as the scalar itself, not a wrapped map.
+  /// Callers pass the result straight to `jsonEncode` or
+  /// another `toJson()`, both of which accept `dynamic`.
+  dynamic toJson();
 
   factory PermissionRuleConfig.fromJson(dynamic json) {
     if (json is String) {
@@ -26,8 +32,6 @@ class permissionRuleConfig00Inline implements PermissionRuleConfig {
     return permissionRuleConfig00Inline(value: PermissionActionConfig.fromJson(json));
   }
   @override
-  Map<String, dynamic> toJson() => <String, dynamic>{
-        'value': value.toJson(),
-      };
+  dynamic toJson() => value.toJson();
   final PermissionActionConfig value;
 }

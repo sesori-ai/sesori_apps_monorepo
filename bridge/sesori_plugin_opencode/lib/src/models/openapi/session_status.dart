@@ -5,7 +5,13 @@ abstract interface class SessionStatus {
   const SessionStatus();
 
   /// Serialize the underlying variant. Variants must override this.
-  Map<String, dynamic> toJson();
+  ///
+  /// The return type is `dynamic` (not `Map<String, dynamic>`)
+  /// because some unions are string-or-object and the string
+  /// variant encodes as the scalar itself, not a wrapped map.
+  /// Callers pass the result straight to `jsonEncode` or
+  /// another `toJson()`, both of which accept `dynamic`.
+  dynamic toJson();
 
   factory SessionStatus.fromJson(dynamic json) {
     final map = json as Map<String, dynamic>;
@@ -32,10 +38,8 @@ class sessionStatus00Inline implements SessionStatus {
   }
 
   @override
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      "type": "idle",
-    };
+  dynamic toJson() {
+    return <String, dynamic>{};
   }
 
 }
@@ -59,7 +63,7 @@ class sessionStatus01Inline implements SessionStatus {
   }
 
   @override
-  Map<String, dynamic> toJson() {
+  dynamic toJson() {
     return <String, dynamic>{
       "type": "retry",
       "attempt": attempt,
@@ -85,10 +89,8 @@ class sessionStatus02Inline implements SessionStatus {
   }
 
   @override
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      "type": "busy",
-    };
+  dynamic toJson() {
+    return <String, dynamic>{};
   }
 
 }

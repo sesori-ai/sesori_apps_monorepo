@@ -8,7 +8,13 @@ abstract interface class FilePartSource {
   const FilePartSource();
 
   /// Serialize the underlying variant. Variants must override this.
-  Map<String, dynamic> toJson();
+  ///
+  /// The return type is `dynamic` (not `Map<String, dynamic>`)
+  /// because some unions are string-or-object and the string
+  /// variant encodes as the scalar itself, not a wrapped map.
+  /// Callers pass the result straight to `jsonEncode` or
+  /// another `toJson()`, both of which accept `dynamic`.
+  dynamic toJson();
 
   factory FilePartSource.fromJson(dynamic json) {
     final map = json as Map<String, dynamic>;

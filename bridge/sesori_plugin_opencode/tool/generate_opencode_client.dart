@@ -1022,7 +1022,13 @@ class ModelWriter {
     b.writeln('  const $name();');
     b.writeln();
     b.writeln('  /// Serialize the underlying variant. Variants must override this.');
-    b.writeln('  Map<String, dynamic> toJson();');
+    b.writeln('  ///');
+    b.writeln('  /// The return type is `dynamic` (not `Map<String, dynamic>`)');
+    b.writeln('  /// because some unions are string-or-object and the string');
+    b.writeln('  /// variant encodes as the scalar itself, not a wrapped map.');
+    b.writeln('  /// Callers pass the result straight to `jsonEncode` or');
+    b.writeln('  /// another `toJson()`, both of which accept `dynamic`.');
+    b.writeln('  dynamic toJson();');
     b.writeln();
     b.writeln('  factory $name.fromJson(dynamic json) {');
     if (disc != null) {
@@ -1150,9 +1156,15 @@ class ModelWriter {
         b.writeln('    return $className(value: $refType.fromJson(json));');
         b.writeln('  }');
         b.writeln('  @override');
-        b.writeln('  Map<String, dynamic> toJson() => <String, dynamic>{');
-        b.writeln("        'value': value.toJson(),");
-        b.writeln('      };');
+        // The enum-wrapper exists only to give an abstract-method
+        // implementer a non-enum type (Dart enums cannot `implements`
+        // an interface with abstract members). The JSON shape of this
+        // variant in the union is the SCALAR string the enum encodes,
+        // not a wrapped map. Returning the scalar here keeps a
+        // read-modify-write round-trip identical to the original
+        // server payload (e.g. 'permission: "ask"' stays 'permission:
+        // "ask"', not 'permission: {"value": "ask"}').
+        b.writeln('  dynamic toJson() => value.toJson();');
         b.writeln('  final $refType value;');
         b.writeln('}');
         return b.toString();
@@ -1302,8 +1314,8 @@ class ModelWriter {
       b.writeln('  }');
       b.writeln();
       b.writeln('  @override');
-      b.writeln('  Map<String, dynamic> toJson() {');
-      if (props.isEmpty) {
+      b.writeln('  dynamic toJson() {');
+      if (realProps.isEmpty) {
         b.writeln('    return <String, dynamic>{};');
       } else {
         b.writeln('    return <String, dynamic>{');
@@ -1314,7 +1326,13 @@ class ModelWriter {
             b.writeln('      ${_safeKey(fieldName)}: ${jsonEncode(literal)},');
             continue;
           }
-          b.writeln('      ${_safeKey(fieldName)}: ${_safeIdentifier(fieldName)},');
+          final isRequired = required.contains(fieldName);
+          final propSch = entry.value as Map<String, dynamic>;
+          // Delegate to _encodeField so that typed model fields
+          // (e.g. `PermissionRuleConfig`) get their `.toJson()` called
+          // — emitting the raw field would leave Dart class instances
+          // in the map and crash `jsonEncode` on the consumer side.
+          b.writeln('      ${_encodeField(fieldName, propSch, isNullable: !isRequired)},');
         }
         b.writeln('    };');
       }

@@ -7,7 +7,13 @@ abstract interface class PermissionConfig {
   const PermissionConfig();
 
   /// Serialize the underlying variant. Variants must override this.
-  Map<String, dynamic> toJson();
+  ///
+  /// The return type is `dynamic` (not `Map<String, dynamic>`)
+  /// because some unions are string-or-object and the string
+  /// variant encodes as the scalar itself, not a wrapped map.
+  /// Callers pass the result straight to `jsonEncode` or
+  /// another `toJson()`, both of which accept `dynamic`.
+  dynamic toJson();
 
   factory PermissionConfig.fromJson(dynamic json) {
     if (json is String) {
@@ -26,9 +32,7 @@ class permissionConfig00Inline implements PermissionConfig {
     return permissionConfig00Inline(value: PermissionActionConfig.fromJson(json));
   }
   @override
-  Map<String, dynamic> toJson() => <String, dynamic>{
-        'value': value.toJson(),
-      };
+  dynamic toJson() => value.toJson();
   final PermissionActionConfig value;
 }
 
@@ -73,23 +77,23 @@ class permissionConfig01Inline implements PermissionConfig {
   }
 
   @override
-  Map<String, dynamic> toJson() {
+  dynamic toJson() {
     return <String, dynamic>{
-      "read": read,
-      "edit": edit,
-      "glob": glob,
-      "grep": grep,
-      "list": list,
-      "bash": bash,
-      "task": task,
-      "external_directory": externalDirectory,
-      "todowrite": todowrite,
-      "question": question,
-      "webfetch": webfetch,
-      "websearch": websearch,
-      "lsp": lsp,
-      "doom_loop": doomLoop,
-      "skill": skill,
+      "read": read?.toJson(),
+      "edit": edit?.toJson(),
+      "glob": glob?.toJson(),
+      "grep": grep?.toJson(),
+      "list": list?.toJson(),
+      "bash": bash?.toJson(),
+      "task": task?.toJson(),
+      "external_directory": externalDirectory?.toJson(),
+      "todowrite": todowrite?.toJson(),
+      "question": question?.toJson(),
+      "webfetch": webfetch?.toJson(),
+      "websearch": websearch?.toJson(),
+      "lsp": lsp?.toJson(),
+      "doom_loop": doomLoop?.toJson(),
+      "skill": skill?.toJson(),
     };
   }
 
