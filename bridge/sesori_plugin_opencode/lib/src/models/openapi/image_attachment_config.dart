@@ -18,6 +18,7 @@ class ImageAttachmentConfig {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "auto_resize": autoResize,

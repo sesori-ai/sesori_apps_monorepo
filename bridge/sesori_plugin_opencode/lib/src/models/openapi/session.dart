@@ -35,7 +35,7 @@ class Session {
       path: json["path"] as String?,
       parentID: json["parentID"] as String?,
       summary: json["summary"] as Map<String, dynamic>?,
-      cost: json["cost"] as double?,
+      cost: (json["cost"] as num?)?.toDouble(),
       tokens: json["tokens"] as Map<String, dynamic>?,
       share: json["share"] as Map<String, dynamic>?,
       title: json["title"] as String,
@@ -48,6 +48,7 @@ class Session {
       revert: json["revert"] as Map<String, dynamic>?,
     );
   }
+
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

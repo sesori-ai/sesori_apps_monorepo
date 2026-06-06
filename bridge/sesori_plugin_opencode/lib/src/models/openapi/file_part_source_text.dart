@@ -11,10 +11,11 @@ class FilePartSourceText {
   factory FilePartSourceText.fromJson(Map<String, dynamic> json) {
     return FilePartSourceText(
       value: json["value"] as String,
-      start: json["start"] as double,
-      end: json["end"] as double,
+      start: (json["start"] as num).toDouble(),
+      end: (json["end"] as num).toDouble(),
     );
   }
+
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

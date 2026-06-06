@@ -14,6 +14,7 @@ class VcsInfo {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "branch": branch,

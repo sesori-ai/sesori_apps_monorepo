@@ -9,13 +9,14 @@ abstract interface class OutputFormat {
   /// Serialize the underlying variant. Variants must override this.
   Map<String, dynamic> toJson();
 
-  factory OutputFormat.fromJson(Map<String, dynamic> json) {
-    final discriminator = json["type"];
+  factory OutputFormat.fromJson(dynamic json) {
+    final map = json as Map<String, dynamic>;
+    final discriminator = map["type"];
     switch (discriminator) {
       case "text":
-        return OutputFormatText.fromJson(json);
+        return OutputFormatText.fromJson(map);
       case "json_schema":
-        return OutputFormatJsonSchema.fromJson(json);
+        return OutputFormatJsonSchema.fromJson(map);
       default:
         throw FormatException('Unknown OutputFormat value: $discriminator');
     }

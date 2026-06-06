@@ -36,6 +36,7 @@ class ModelV2Info {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,

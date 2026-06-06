@@ -18,6 +18,7 @@ class FileSystemEntry {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "path": path,

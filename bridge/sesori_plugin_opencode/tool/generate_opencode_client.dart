@@ -119,7 +119,13 @@ class Codegen {
     }
 
     final apiPath = '$outDir/opencode_client.dart';
-    File(apiPath).writeAsStringSync(_emitApiClient());
+    // Trim trailing whitespace and ensure the file ends with exactly
+    // one newline. The dart analyzer flags `eol_at_end_of_file` if the
+    // last byte is not `\n`, and tooling occasionally complains about
+    // stray blank lines.
+    var apiBody = _emitApiClient().trimRight();
+    apiBody = '$apiBody\n';
+    File(apiPath).writeAsStringSync(apiBody);
     log('api client -> $apiPath');
   }
 
@@ -158,7 +164,14 @@ class Codegen {
       schemas: schemas,
       implementsClass: _unionParents[rawName],
     );
-    File('$outDir/$relPath').writeAsStringSync(writer.emit());
+    var body = writer.emit();
+    // Trim trailing whitespace and ensure the file ends with exactly
+    // one newline. The dart analyzer flags `eol_at_end_of_file` if the
+    // last byte is not `\n`, and tooling occasionally complains about
+    // stray blank lines.
+    body = body.trimRight();
+    body = '$body\n';
+    File('$outDir/$relPath').writeAsStringSync(body);
   }
 
   String _emitApiClient() {
@@ -751,6 +764,33 @@ class ModelWriter {
       }
       if (parentRaw != null) usedRefs.add(parentRaw);
     }
+    // Inline variants synthesized in `_emitUnion` reference refs of
+    // their own (e.g. `PermissionRuleConfig.fromJson`). The header
+    // import list must include them or the synthesized classes will
+    // reference undefined identifiers.
+    if (_isUnion(schema)) {
+      final variants =
+          ((schema['anyOf'] ?? schema['oneOf']) as List).cast<Map<String, dynamic>>();
+      for (final v in variants) {
+        final inlineRefs = _computeUsedRefs(v);
+        usedRefs.addAll(inlineRefs);
+      }
+      // Refs that flow through an enum wrapper also need to be
+      // imported.
+      final disc = _findDiscriminator(variants);
+      if (disc == null) {
+        for (final v in variants) {
+          final r = v[r'$ref'];
+          if (r is String) {
+            final vName = r.substring('#/components/schemas/'.length);
+            final sch = schemas[vName] as Map<String, dynamic>?;
+            if (sch != null && sch['type'] == 'string' && sch['enum'] is List) {
+              usedRefs.add(vName);
+            }
+          }
+        }
+      }
+    }
     final usesAnno = _isEnum(schema) || _inlineEnums.isNotEmpty;
     final header = _emitHeader(usedRefs, usesJsonAnnotation: usesAnno);
     if (_isEnum(schema)) return header + _emitEnum();
@@ -823,8 +863,9 @@ class ModelWriter {
     }
     // If this is itself a union (anyOf/oneOf at the top level), each
     // variant is referenced in the discriminator switch — but only if a
-    // discriminator value can be resolved. Otherwise the switch case is
-    // omitted and the variant import would be unused.
+    // discriminator value can be resolved. Otherwise (no discriminator
+    // found), we still need to import every $ref variant because the
+    // type-guard dispatch in `fromJson` calls each one by name.
     final variants = sch['anyOf'] ?? sch['oneOf'];
     if (variants is List) {
       final disc = _findDiscriminator(variants.cast<Map<String, dynamic>>());
@@ -833,7 +874,15 @@ class ModelWriter {
         final r = variant[r'$ref'];
         if (r is! String) continue;
         final vName = r.substring('#/components/schemas/'.length);
-        if (_discriminatorValue(vName, schemas, disc) != null) {
+        if (disc != null) {
+          if (_discriminatorValue(vName, schemas, disc) != null) {
+            addRef(r);
+          }
+        } else {
+          // No discriminator: dispatch is by JSON shape, but we still
+          // reference the variant type by name (e.g.
+          // `PermissionActionConfig.fromJson(json)`), so the import
+          // is needed.
           addRef(r);
         }
       }
@@ -967,7 +1016,7 @@ class ModelWriter {
         ((schema['anyOf'] ?? schema['oneOf']) as List).cast<Map<String, dynamic>>();
 
     final disc = _findDiscriminator(variants);
-    final variantNames = <String>[];
+    final inlineVariantClasses = <_InlineVariantClassEntry>[];
 
     b.writeln('abstract interface class $name {');
     b.writeln('  const $name();');
@@ -975,35 +1024,303 @@ class ModelWriter {
     b.writeln('  /// Serialize the underlying variant. Variants must override this.');
     b.writeln('  Map<String, dynamic> toJson();');
     b.writeln();
-    b.writeln('  factory $name.fromJson(Map<String, dynamic> json) {');
-    b.writeln('    final discriminator = json[${jsonEncode(disc ?? 'type')}];');
-    b.writeln('    switch (discriminator) {');
-    for (final v in variants) {
-      final r = v[r'$ref'];
-      if (r is String) {
-        final vName = r.substring('#/components/schemas/'.length);
-        variantNames.add(vName);
-        final d = _discriminatorValue(vName, schemas, disc);
-        if (d != null) {
-          b.writeln('      case ${jsonEncode(d)}:');
-          b.writeln('        return ${_pascalFromSnake(vName)}.fromJson(json);');
+    b.writeln('  factory $name.fromJson(dynamic json) {');
+    if (disc != null) {
+      // Discriminator-driven dispatch: every variant carries the same
+      // string-enum property with a unique value. Works for both
+      // $ref variants (decoded via the existing model's fromJson) and
+      // inline variants (synthesized into a sibling class below).
+      b.writeln('    final map = json as Map<String, dynamic>;');
+      b.writeln('    final discriminator = map[${jsonEncode(disc)}];');
+      b.writeln('    switch (discriminator) {');
+      var inlineIndex = 0;
+      for (final v in variants) {
+        final r = v[r'$ref'];
+        if (r is String) {
+          final vName = r.substring('#/components/schemas/'.length);
+          final d = _discriminatorValue(vName, schemas, disc);
+          if (d != null) {
+            b.writeln('      case ${jsonEncode(d)}:');
+            b.writeln('        return ${_pascalFromSnake(vName)}.fromJson(map);');
+          }
+        } else {
+          final d = _inlineDiscriminatorValue(v, disc);
+          if (d != null) {
+            final inlineName = '${_safeIdentifier(name)}${inlineIndex.toString().padLeft(2, '0')}Inline';
+            inlineIndex++;
+            inlineVariantClasses.add(_InlineVariantClassEntry(
+              className: inlineName,
+              schema: v,
+            ));
+            b.writeln('      case ${jsonEncode(d)}:');
+            b.writeln('        return $inlineName.fromJson(map);');
+          }
         }
-      } else {
-        // Inline variant — skip with a TODO.
-        b.writeln('      // inline variant skipped: $name');
       }
+      b.writeln('      default:');
+      b.writeln("        throw FormatException('Unknown $name value: \$discriminator');");
+      b.writeln('    }');
+    } else {
+      // No discoverable discriminator: dispatch on JSON shape. We try
+      // each variant in order, using a type guard (`json is String`,
+      // `json.containsKey('X')`, `json is Map`) followed by a
+      // best-effort decode. The first match wins; a final throw
+      // covers the truly unknown case.
+      var inlineIndex = 0;
+      for (final v in variants) {
+        final guard = _unionTypeGuard(v, inlineIndex);
+        final decode = _unionTypeDecode(v, inlineIndex);
+        if (guard == null || decode == null) continue;
+        b.writeln('    if ($guard) {');
+        b.writeln('      return $decode;');
+        b.writeln('    }');
+        // If the variant is an enum $ref, wrap it in a synthesized
+        // class so the union interface has a non-enum implementation
+        // (Dart enums cannot `implements` an interface that
+        // declares abstract members). Inline STRING/ARRAY/OBJECT
+        // variants get their own synthesized classes too.
+        final r = v[r'$ref'];
+        if (r is String) {
+          final vName = r.substring('#/components/schemas/'.length);
+          final sch = schemas[vName] as Map<String, dynamic>?;
+          if (sch != null && sch['type'] == 'string' && sch['enum'] is List) {
+            final inlineName = '${_safeIdentifier(name)}${inlineIndex.toString().padLeft(2, '0')}Inline';
+            inlineVariantClasses.add(_InlineVariantClassEntry(
+              className: inlineName,
+              schema: v,
+            ));
+          }
+        } else {
+          final inlineName = '${_safeIdentifier(name)}${inlineIndex.toString().padLeft(2, '0')}Inline';
+          inlineVariantClasses.add(_InlineVariantClassEntry(
+            className: inlineName,
+            schema: v,
+          ));
+        }
+        inlineIndex++;
+      }
+      b.writeln("    throw FormatException('Unknown $name value: \$json');");
     }
-    b.writeln('      default:');
-    b.writeln("        throw FormatException('Unknown $name value: \$discriminator');");
-    b.writeln('    }');
     b.writeln('  }');
     b.writeln('}');
+    b.writeln();
+
+    // Emit any synthesized inline variant classes that the union
+    // references. Each one implements the union interface and exposes
+    // a typed `toJson()`.
+    for (final entry in inlineVariantClasses) {
+      b.writeln(_emitInlineVariantClass(entry.className, entry.schema, name));
+      b.writeln();
+    }
     return b.toString();
   }
 
   // -------------------------------------------------------------------------
   // Object emission
   // -------------------------------------------------------------------------
+
+  /// Emit a synthesized class for an inline variant in a union. Inline
+  /// variants appear directly inside an anyOf/oneOf instead of via $ref;
+  /// to give them a name and a typed fromJson/toJson we materialize a
+  /// sibling class next to the union. The synthesized name is
+  /// `<Union>NNInline` where `NN` is the variant's index in the union
+  /// (zero-padded to two digits).
+  String _emitInlineVariantClass(
+    String className,
+    Map<String, dynamic> schema,
+    String unionName,
+  ) {
+    final b = StringBuffer();
+    // Wrapper case: a union variant that is a $ref to an enum (or
+    // any other type Dart cannot make implement an abstract
+    // interface with abstract members) is materialized as a
+    // synthesized wrapper class that holds the inner value. This
+    // keeps the union interface uniform (every implementer is a
+    // class) and lets the dispatch site return a typed object.
+    final ref = schema[r'$ref'];
+    if (ref is String) {
+      final refName = ref.substring('#/components/schemas/'.length);
+      final refType = _pascalFromSnake(refName);
+      final sch = schemas[refName] as Map<String, dynamic>?;
+      final isEnum = sch != null && sch['type'] == 'string' && sch['enum'] is List;
+      if (isEnum) {
+        b.writeln('class $className implements $unionName {');
+        b.writeln('  const $className({required this.value});');
+        b.writeln('  factory $className.fromJson(String json) {');
+        b.writeln('    return $className(value: $refType.fromJson(json));');
+        b.writeln('  }');
+        b.writeln('  @override');
+        b.writeln('  Map<String, dynamic> toJson() => <String, dynamic>{');
+        b.writeln("        'value': value.toJson(),");
+        b.writeln('      };');
+        b.writeln('  final $refType value;');
+        b.writeln('}');
+        return b.toString();
+      }
+      // For non-enum $ref variants in the no-discriminator path we
+      // wouldn't normally synthesize a class, but the dispatch may
+      // still need one. Fall through to the other branches.
+    }
+    final type = schema['type'];
+    if (type == 'string') {
+      // Inline string variant — render an enum if the schema has an
+      // `enum` list, otherwise a simple String wrapper.
+      final enumVals = (schema['enum'] as List?)?.cast<String>();
+      if (enumVals != null && enumVals.isNotEmpty) {
+        b.writeln('enum $className {');
+        for (final v in enumVals) {
+          b.writeln('  @JsonValue(${jsonEncode(v)})');
+          b.writeln('  ${_camelFromSnake(v)},');
+        }
+        b.writeln('  ;');
+        b.writeln();
+        b.writeln('  static $className fromJson(String value) {');
+        b.writeln('    switch (value) {');
+        for (final v in enumVals) {
+          b.writeln('      case ${jsonEncode(v)}:');
+          b.writeln('        return $className.${_camelFromSnake(v)};');
+        }
+        b.writeln('      default:');
+        b.writeln("        throw FormatException('Unknown $className value: \$value');");
+        b.writeln('    }');
+        b.writeln('  }');
+        b.writeln();
+        b.writeln('  String toJson() {');
+        b.writeln('    switch (this) {');
+        for (final v in enumVals) {
+          b.writeln('      case $className.${_camelFromSnake(v)}:');
+          b.writeln('        return ${jsonEncode(v)};');
+        }
+        b.writeln('    }');
+        b.writeln('  }');
+        b.writeln('}');
+      } else {
+        b.writeln('class $className implements $unionName {');
+        b.writeln('  const $className({required this.value});');
+        b.writeln('  factory $className.fromJson(String json) {');
+        b.writeln('    return $className(value: json);');
+        b.writeln('  }');
+        b.writeln('  @override');
+        b.writeln('  Map<String, dynamic> toJson() {');
+        b.writeln("    return <String, dynamic>{ 'value': value };");
+        b.writeln('  }');
+        b.writeln('  final String value;');
+        b.writeln('}');
+      }
+      return b.toString();
+    }
+    if (type == 'array') {
+      // Inline array variant — wrap it in a list class.
+      final items = schema['items'];
+      String innerDart;
+      if (items is Map<String, dynamic>) {
+        final ir = items[r'$ref'];
+        if (ir is String) {
+          innerDart = _pascalFromSnake(ir.substring('#/components/schemas/'.length));
+        } else {
+          innerDart = _dartTypeForInline(items);
+        }
+      } else {
+        innerDart = 'dynamic';
+      }
+      b.writeln('class $className implements $unionName {');
+      b.writeln('  const $className({required this.items});');
+      b.writeln('  factory $className.fromJson(List<dynamic> json) {');
+      b.writeln('    return $className(items: json.cast<$innerDart>());');
+      b.writeln('  }');
+      b.writeln('  @override');
+      b.writeln('  Map<String, dynamic> toJson() {');
+      b.writeln("    return <String, dynamic>{ 'items': items };");
+      b.writeln('  }');
+      b.writeln('  final List<$innerDart> items;');
+      b.writeln('}');
+      return b.toString();
+    }
+    if (type == 'object') {
+      // Inline object variant — render a typed class with the
+      // schema's properties. The class implements the union
+      // interface and exposes a typed `toJson()`.
+      final props = (schema['properties'] as Map<String, dynamic>?) ?? const {};
+      final required =
+          ((schema['required'] as List?) ?? const []).cast<String>();
+      b.writeln('class $className implements $unionName {');
+      if (props.isEmpty) {
+        b.writeln('  const $className();');
+      } else {
+        b.writeln('  const $className({');
+        for (final entry in props.entries) {
+          final fieldName = entry.key;
+          final safeName = _safeIdentifier(fieldName);
+          final isRequired = required.contains(fieldName);
+          final propSch = entry.value as Map<String, dynamic>;
+          final isNullable = _isNullableSchema(propSch);
+          if (isRequired && !isNullable) {
+            b.writeln('    required this.$safeName,');
+          } else {
+            b.writeln('    this.$safeName,');
+          }
+        }
+        b.writeln('  });');
+      }
+      b.writeln();
+      b.writeln('  factory $className.fromJson(Map<String, dynamic> json) {');
+      if (props.isEmpty) {
+        b.writeln('    return const $className();');
+      } else {
+        b.writeln('    return $className(');
+        for (final entry in props.entries) {
+          final fieldName = entry.key;
+          final isRequired = required.contains(fieldName);
+          final propSch = entry.value as Map<String, dynamic>;
+          b.writeln('      ${_decodeField(fieldName, propSch, isRequired)},');
+        }
+        b.writeln('    );');
+      }
+      b.writeln('  }');
+      b.writeln();
+      b.writeln('  @override');
+      b.writeln('  Map<String, dynamic> toJson() {');
+      if (props.isEmpty) {
+        b.writeln('    return <String, dynamic>{};');
+      } else {
+        b.writeln('    return <String, dynamic>{');
+        for (final entry in props.entries) {
+          final fieldName = entry.key;
+          b.writeln('      ${_safeKey(fieldName)}: ${_safeIdentifier(fieldName)},');
+        }
+        b.writeln('    };');
+      }
+      b.writeln('  }');
+      b.writeln();
+      for (final entry in props.entries) {
+        final fieldName = entry.key;
+        final safeName = _safeIdentifier(fieldName);
+        final propSch = entry.value as Map<String, dynamic>;
+        final isRequired = required.contains(fieldName);
+        final isNullable = _isNullableSchema(propSch);
+        final dartType = _dartTypeForInline(propSch);
+        // Optional fields need a `?` so callers can assign `null`
+        // to them — even when the underlying schema does not
+        // explicitly allow null. The required check below is
+        // consistent with the existing `_emitObject` rule.
+        final nullableMark = (isRequired && !isNullable) ? '' : '?';
+        b.writeln('  final $dartType$nullableMark $safeName;');
+      }
+      b.writeln('}');
+      return b.toString();
+    }
+    // Fallback: emit an opaque Map wrapper.
+    b.writeln('class $className implements $unionName {');
+    b.writeln('  const $className(this.json);');
+    b.writeln('  factory $className.fromJson(Map<String, dynamic> json) {');
+    b.writeln('    return $className(json);');
+    b.writeln('  }');
+    b.writeln('  @override');
+    b.writeln('  Map<String, dynamic> toJson() => json;');
+    b.writeln('  final Map<String, dynamic> json;');
+    b.writeln('}');
+    return b.toString();
+  }
 
   String _emitObject() {
     final b = StringBuffer();
@@ -1042,13 +1359,21 @@ class ModelWriter {
     b.writeln();
 
     // fromJson
-    b.writeln('  factory $name.fromJson(Map<String, dynamic> json) {');
     if (properties.isEmpty) {
-      // Empty object: use `const` to satisfy `prefer_const_constructors`,
-      // and assert on `json` to satisfy `avoid_unused_constructor_parameters`.
-      b.writeln('    assert(json.isEmpty);');
+      // Empty object: use `const` to satisfy `prefer_const_constructors`.
+      // The OpenAPI spec defines this schema as `{}` with no modeled
+      // fields, so the API may legitimately return additional
+      // properties we discard. Suppress the unused-parameter lint
+      // because the parameter exists only to satisfy the `fromJson`
+      // contract callers expect.
+      b.writeln(
+        '  // ignore: avoid_unused_constructor_parameters',
+      );
+      b.writeln('  factory $name.fromJson(Map<String, dynamic> json) {');
       b.writeln('    return const $name();');
+      b.writeln('  }');
     } else {
+      b.writeln('  factory $name.fromJson(Map<String, dynamic> json) {');
       b.writeln('    return $name(');
       for (final entry in properties.entries) {
         final fieldName = entry.key;
@@ -1059,8 +1384,9 @@ class ModelWriter {
         );
       }
       b.writeln('    );');
+      b.writeln('  }');
     }
-    b.writeln('  }');
+    b.writeln();
     b.writeln();
 
     // toJson
@@ -1273,8 +1599,10 @@ class ModelWriter {
       final ap = sch['additionalProperties'];
       if (ap is Map<String, dynamic>) {
         final valueDart = _dartTypeForInline(ap);
-        // If the value is a $ref to a top-level array schema, the element
-        // cast must be `as List<dynamic>` not `as $valueDart`. Detect that.
+        // If the value is a $ref to a top-level schema, the decoding shape
+        // depends on whether the ref points to an array wrapper (values
+        // decoded via `List.fromJson`) or an object class (values decoded
+        // via `Class.fromJson`). Inline schemas (no $ref) use a plain cast.
         if (ap[r'$ref'] is String) {
           final refName = (ap[r'$ref'] as String).substring('#/components/schemas/'.length);
           final refSchema = schemas[refName] as Map<String, dynamic>?;
@@ -1284,6 +1612,13 @@ class ModelWriter {
             }
             return "$safeName: (json[$keyExpr] as Map<String, dynamic>).map((k, v) => MapEntry(k, $valueDart.fromJson(v as List<dynamic>)))";
           }
+          // Object ref: use `RefType.fromJson(v)` so the JSON map is
+          // decoded through the model's factory instead of being
+          // mis-cast as a Dart class instance.
+          if (isNullable) {
+            return "$safeName: (json[$keyExpr] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, $valueDart.fromJson(v as Map<String, dynamic>)))";
+          }
+          return "$safeName: (json[$keyExpr] as Map<String, dynamic>).map((k, v) => MapEntry(k, $valueDart.fromJson(v as Map<String, dynamic>)))";
         }
         if (isNullable) {
           return "$safeName: (json[$keyExpr] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as $valueDart))";
@@ -1295,7 +1630,16 @@ class ModelWriter {
       }
       return "$safeName: json[$keyExpr] as Map<String, dynamic>";
     }
-    if (type == 'integer' || type == 'number' || type == 'boolean' || type == 'string') {
+    if (type == 'number') {
+      // OpenAPI `number` is JSON `num`. Servers may send either an int or
+      // a double for the same field, so accept both and normalize via
+      // `toDouble()` rather than crashing on `as double?`.
+      if (isNullable) {
+        return '$safeName: (json[$keyExpr] as num?)?.toDouble()';
+      }
+      return '$safeName: (json[$keyExpr] as num).toDouble()';
+    }
+    if (type == 'integer' || type == 'boolean' || type == 'string') {
       final dartType = _dartTypeForInline(sch);
       if (isNullable) {
         return '$safeName: json[$keyExpr] as $dartType?';
@@ -1327,32 +1671,49 @@ class ModelWriter {
   // -------------------------------------------------------------------------
 
   String? _findDiscriminator(List<Map<String, dynamic>> variants) {
-    final refVariants = <String, Map<String, dynamic>>{};
+    // Inspect every variant — both $ref and inline. A discriminator is
+    // a string property that (1) every variant declares as a single-
+    // value enum, and (2) every variant marks as required. We do not
+    // restrict ourselves to the conventional `type`/`role`/`kind`/
+    // `status` names: any common single-value enum works (e.g.
+    // `MCPStatus` uses `status`, `SessionStatus` uses `type`).
+    final resolved = <Map<String, dynamic>>[];
     for (final v in variants) {
       final r = v[r'$ref'];
       if (r is String) {
-        final name = r.substring('#/components/schemas/'.length);
-        refVariants[name] = schemas[name] as Map<String, dynamic>;
+        final s = schemas[r.substring('#/components/schemas/'.length)] as Map<String, dynamic>?;
+        if (s != null) resolved.add(s);
+      } else if (v['type'] == 'object') {
+        resolved.add(v);
       }
     }
-    if (refVariants.isEmpty) return null;
+    if (resolved.length < 2) return null;
 
-    for (final candidate in ['type', 'role', 'kind']) {
-      var allHave = true;
-      for (final schema in refVariants.values) {
-        final props = schema['properties'] as Map<String, dynamic>?;
-        if (props == null || !props.containsKey(candidate)) {
-          allHave = false;
-          break;
+    // Collect candidate property names that are present in every
+    // variant and are single-value enums. Then filter to those that
+    // are also marked as required everywhere.
+    final allProps = <String>{};
+    for (final sch in resolved) {
+      final props = sch['properties'] as Map<String, dynamic>?;
+      if (props == null) return null;
+      for (final key in props.keys) {
+        final p = props[key] as Map<String, dynamic>?;
+        final enumVals = p?['enum'] as List?;
+        if (enumVals != null && enumVals.length == 1) {
+          allProps.add(key);
         }
-        final propSchema = props[candidate] as Map<String, dynamic>;
-        final enumVals = propSchema['enum'] as List?;
-        if (enumVals == null || enumVals.length != 1) {
-          allHave = false;
+      }
+    }
+    for (final candidate in allProps) {
+      var allRequired = true;
+      for (final sch in resolved) {
+        final required = ((sch['required'] as List?) ?? const []).cast<String>();
+        if (!required.contains(candidate)) {
+          allRequired = false;
           break;
         }
       }
-      if (allHave) return candidate;
+      if (allRequired) return candidate;
     }
     return null;
   }
@@ -1370,6 +1731,102 @@ class ModelWriter {
     if (enumVals == null || enumVals.isEmpty) return null;
     return enumVals.first as String;
   }
+
+  /// Returns the discriminator value for an INLINE variant (one
+  /// declared directly in the union's anyOf/oneOf, not via $ref).
+  String? _inlineDiscriminatorValue(
+      Map<String, dynamic> variant, String discName) {
+    final props = variant['properties'] as Map<String, dynamic>?;
+    if (props == null) return null;
+    final p = props[discName] as Map<String, dynamic>?;
+    if (p == null) return null;
+    final enumVals = p['enum'] as List?;
+    if (enumVals == null || enumVals.isEmpty) return null;
+    return enumVals.first as String;
+  }
+
+  /// Build a runtime type guard for a union variant. Returns a string
+  /// expression suitable for use in `if (...)`. `inlineIndex` is the
+  /// variant's position in the union, used to construct synthesized
+  /// class names.
+  String? _unionTypeGuard(Map<String, dynamic> variant, int inlineIndex) {
+    final r = variant[r'$ref'];
+    if (r is String) {
+      final vName = r.substring('#/components/schemas/'.length);
+      final sch = schemas[vName] as Map<String, dynamic>?;
+      if (sch == null) return null;
+      final t = sch['type'];
+      if (t == 'string') return 'json is String';
+      if (t == 'array') return 'json is List';
+      return 'json is Map';
+    }
+    final t = variant['type'];
+    if (t == 'string') return 'json is String';
+    if (t == 'array') return 'json is List';
+    if (t == 'object') {
+      // Tighten the guard with a `containsKey` so Dart flow analysis
+      // narrows `json` to `Map<String, dynamic>` for the decode call
+      // below. Without the explicit `is Map<String, dynamic>`, the
+      // analyzer can't promote from a plain `is Map`.
+      final required = ((variant['required'] as List?) ?? const []).cast<String>();
+      if (required.isNotEmpty) {
+        return "json is Map<String, dynamic> && json.containsKey(${jsonEncode(required.first)})";
+      }
+      return 'json is Map<String, dynamic>';
+    }
+    return 'json is Map';
+  }
+
+  /// Build a decode expression for a union variant. Pairs with
+  /// [_unionTypeGuard]. Returns a string expression that returns the
+  /// decoded variant. The expression may reference a synthesized
+  /// class name (e.g. `Name00Inline`) for inline object variants.
+  String? _unionTypeDecode(Map<String, dynamic> variant, int inlineIndex) {
+    final r = variant[r'$ref'];
+    if (r is String) {
+      final vName = r.substring('#/components/schemas/'.length);
+      final refType = _pascalFromSnake(vName);
+      final sch = schemas[vName] as Map<String, dynamic>?;
+      if (sch == null) return null;
+      final t = sch['type'];
+      final inlineName = '${_safeIdentifier(name)}${inlineIndex.toString().padLeft(2, '0')}Inline';
+      if (t == 'string' && sch['enum'] is List) {
+        // Enum ref variant: dispatch into the synthesized wrapper
+        // class so the union interface has a non-enum
+        // implementation.
+        return '$inlineName.fromJson(json)';
+      }
+      if (t == 'array') return '$refType.fromJson(json as List<dynamic>)';
+      return '$refType.fromJson(json as Map<String, dynamic>)';
+    }
+    final t = variant['type'];
+    final inlineName = '${_safeIdentifier(name)}${inlineIndex.toString().padLeft(2, '0')}Inline';
+    if (t == 'string') {
+      return '$inlineName.fromJson(json)';
+    }
+    if (t == 'array') {
+      return '$inlineName.fromJson(json as List<dynamic>)';
+    }
+    if (t == 'object') {
+      // After `json is Map<String, dynamic> && json.containsKey(...)`
+      // json is already promoted to `Map<String, dynamic>`.
+      return '$inlineName.fromJson(json)';
+    }
+    return null;
+  }
+}
+
+/// A lightweight record for a union's synthesized inline variant
+/// class. The actual class body is emitted by
+/// [ModelWriter._emitInlineVariantClass] so it can reuse the
+/// schema-reading helpers.
+class _InlineVariantClassEntry {
+  _InlineVariantClassEntry({
+    required this.className,
+    required this.schema,
+  });
+  final String className;
+  final Map<String, dynamic> schema;
 }
 
 /// An enum class synthesized for an inline enum in a property.
@@ -1441,7 +1898,32 @@ String _pascalFromSnake(String name) {
           .join());
     }
   }
-  return out.toString();
+  final pascal = out.toString();
+  // When the raw name contained a dot, `_pascalFromSnake` collapses the
+  // two sides into the same identifier as a sibling that uses an
+  // underscore. Append a short stable hash of the raw name so both
+  // siblings stay distinct without leaking the original dots into
+  // identifiers (Dart identifiers may not contain `.`).
+  if (name.contains('.')) {
+    return '$pascal${_hashSuffix(name)}';
+  }
+  return pascal;
+}
+
+/// 4-character hash suffix derived from a string, base-36 encoded.
+/// Used purely for disambiguating PascalCase collisions caused by raw
+/// schema names whose separators (e.g. `.`) are stripped by
+/// `_pascalFromSnake`.
+String _hashSuffix(String input) {
+  // FNV-1a 32-bit; stable, no extra deps, good enough for collision
+  // avoidance across a few hundred names.
+  var h = 0x811c9dc5;
+  final bytes = utf8.encode(input);
+  for (final b in bytes) {
+    h ^= b;
+    h = (h * 0x01000193) & 0xFFFFFFFF;
+  }
+  return h.toRadixString(36).padLeft(7, '0');
 }
 
 bool _isAllUpper(String s) {

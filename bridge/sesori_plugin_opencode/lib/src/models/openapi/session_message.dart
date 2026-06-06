@@ -15,25 +15,26 @@ abstract interface class SessionMessage {
   /// Serialize the underlying variant. Variants must override this.
   Map<String, dynamic> toJson();
 
-  factory SessionMessage.fromJson(Map<String, dynamic> json) {
-    final discriminator = json["type"];
+  factory SessionMessage.fromJson(dynamic json) {
+    final map = json as Map<String, dynamic>;
+    final discriminator = map["type"];
     switch (discriminator) {
       case "agent-switched":
-        return SessionMessageAgentSwitched.fromJson(json);
+        return SessionMessageAgentSwitched.fromJson(map);
       case "model-switched":
-        return SessionMessageModelSwitched.fromJson(json);
+        return SessionMessageModelSwitched.fromJson(map);
       case "user":
-        return SessionMessageUser.fromJson(json);
+        return SessionMessageUser.fromJson(map);
       case "synthetic":
-        return SessionMessageSynthetic.fromJson(json);
+        return SessionMessageSynthetic.fromJson(map);
       case "system":
-        return SessionMessageSystem.fromJson(json);
+        return SessionMessageSystem.fromJson(map);
       case "shell":
-        return SessionMessageShell.fromJson(json);
+        return SessionMessageShell.fromJson(map);
       case "assistant":
-        return SessionMessageAssistant.fromJson(json);
+        return SessionMessageAssistant.fromJson(map);
       case "compaction":
-        return SessionMessageCompaction.fromJson(json);
+        return SessionMessageCompaction.fromJson(map);
       default:
         throw FormatException('Unknown SessionMessage value: $discriminator');
     }

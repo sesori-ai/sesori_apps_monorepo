@@ -37,13 +37,14 @@ class AssistantMessage implements Message {
       agent: json["agent"] as String,
       path: json["path"] as Map<String, dynamic>,
       summary: json["summary"] as bool?,
-      cost: json["cost"] as double,
+      cost: (json["cost"] as num).toDouble(),
       tokens: json["tokens"] as Map<String, dynamic>,
       structured: json["structured"],
       variant: json["variant"] as String?,
       finish: json["finish"] as String?,
     );
   }
+
 
   @override
   Map<String, dynamic> toJson() {

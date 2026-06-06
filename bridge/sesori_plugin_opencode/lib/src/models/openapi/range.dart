@@ -14,6 +14,7 @@ class Range {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "start": start,

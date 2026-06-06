@@ -9,13 +9,14 @@ abstract interface class Message {
   /// Serialize the underlying variant. Variants must override this.
   Map<String, dynamic> toJson();
 
-  factory Message.fromJson(Map<String, dynamic> json) {
-    final discriminator = json["role"];
+  factory Message.fromJson(dynamic json) {
+    final map = json as Map<String, dynamic>;
+    final discriminator = map["role"];
     switch (discriminator) {
       case "user":
-        return UserMessage.fromJson(json);
+        return UserMessage.fromJson(map);
       case "assistant":
-        return AssistantMessage.fromJson(json);
+        return AssistantMessage.fromJson(map);
       default:
         throw FormatException('Unknown Message value: $discriminator');
     }

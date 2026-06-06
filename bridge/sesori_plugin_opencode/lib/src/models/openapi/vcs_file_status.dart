@@ -12,11 +12,12 @@ class VcsFileStatus {
   factory VcsFileStatus.fromJson(Map<String, dynamic> json) {
     return VcsFileStatus(
       file: json["file"] as String,
-      additions: json["additions"] as double,
-      deletions: json["deletions"] as double,
+      additions: (json["additions"] as num).toDouble(),
+      deletions: (json["deletions"] as num).toDouble(),
       status: json["status"] as String,
     );
   }
+
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

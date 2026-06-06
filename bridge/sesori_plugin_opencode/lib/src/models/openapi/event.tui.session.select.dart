@@ -2,20 +2,21 @@
 
 import 'event.dart';
 
-class EventTuiSessionSelect implements Event {
-  const EventTuiSessionSelect({
+class EventTuiSessionSelect16fpc99 implements Event {
+  const EventTuiSessionSelect16fpc99({
     required this.id,
     required this.type,
     required this.properties,
   });
 
-  factory EventTuiSessionSelect.fromJson(Map<String, dynamic> json) {
-    return EventTuiSessionSelect(
+  factory EventTuiSessionSelect16fpc99.fromJson(Map<String, dynamic> json) {
+    return EventTuiSessionSelect16fpc99(
       id: json["id"] as String,
       type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
+
 
   @override
   Map<String, dynamic> toJson() {

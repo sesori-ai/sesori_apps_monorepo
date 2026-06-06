@@ -25,6 +25,7 @@ class SessionMessageToolStateCompleted {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "status": status,

@@ -16,6 +16,7 @@ class FormatterStatus {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "name": name,

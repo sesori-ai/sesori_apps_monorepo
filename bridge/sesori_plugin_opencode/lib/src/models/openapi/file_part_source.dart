@@ -10,15 +10,16 @@ abstract interface class FilePartSource {
   /// Serialize the underlying variant. Variants must override this.
   Map<String, dynamic> toJson();
 
-  factory FilePartSource.fromJson(Map<String, dynamic> json) {
-    final discriminator = json["type"];
+  factory FilePartSource.fromJson(dynamic json) {
+    final map = json as Map<String, dynamic>;
+    final discriminator = map["type"];
     switch (discriminator) {
       case "file":
-        return FileSource.fromJson(json);
+        return FileSource.fromJson(map);
       case "symbol":
-        return SymbolSource.fromJson(json);
+        return SymbolSource.fromJson(map);
       case "resource":
-        return ResourceSource.fromJson(json);
+        return ResourceSource.fromJson(map);
       default:
         throw FormatException('Unknown FilePartSource value: $discriminator');
     }

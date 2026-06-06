@@ -21,6 +21,7 @@ class PromptFileAttachment {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "uri": uri,

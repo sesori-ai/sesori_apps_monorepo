@@ -2,20 +2,21 @@
 
 import 'event.dart';
 
-class EventTuiToastShow implements Event {
-  const EventTuiToastShow({
+class EventTuiToastShow190ap9t implements Event {
+  const EventTuiToastShow190ap9t({
     required this.id,
     required this.type,
     required this.properties,
   });
 
-  factory EventTuiToastShow.fromJson(Map<String, dynamic> json) {
-    return EventTuiToastShow(
+  factory EventTuiToastShow190ap9t.fromJson(Map<String, dynamic> json) {
+    return EventTuiToastShow190ap9t(
       id: json["id"] as String,
       type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
+
 
   @override
   Map<String, dynamic> toJson() {

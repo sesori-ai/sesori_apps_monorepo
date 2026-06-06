@@ -5,10 +5,11 @@ import 'permission_rule_config.dart';
 class PermissionObjectConfig implements PermissionRuleConfig {
   const PermissionObjectConfig();
 
+  // ignore: avoid_unused_constructor_parameters
   factory PermissionObjectConfig.fromJson(Map<String, dynamic> json) {
-    assert(json.isEmpty);
     return const PermissionObjectConfig();
   }
+
 
   @override
   Map<String, dynamic> toJson() {

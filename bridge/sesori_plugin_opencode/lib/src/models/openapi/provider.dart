@@ -21,9 +21,10 @@ class Provider {
       env: (json["env"] as List<dynamic>).cast<String>(),
       key: json["key"] as String?,
       options: json["options"] as Map<String, dynamic>,
-      models: (json["models"] as Map<String, dynamic>).map((k, v) => MapEntry(k, v as Model)),
+      models: (json["models"] as Map<String, dynamic>).map((k, v) => MapEntry(k, Model.fromJson(v as Map<String, dynamic>))),
     );
   }
+
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

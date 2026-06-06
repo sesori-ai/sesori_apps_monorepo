@@ -22,6 +22,7 @@ class CommandV2Info {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "name": name,

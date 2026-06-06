@@ -19,33 +19,34 @@ abstract interface class Part {
   /// Serialize the underlying variant. Variants must override this.
   Map<String, dynamic> toJson();
 
-  factory Part.fromJson(Map<String, dynamic> json) {
-    final discriminator = json["type"];
+  factory Part.fromJson(dynamic json) {
+    final map = json as Map<String, dynamic>;
+    final discriminator = map["type"];
     switch (discriminator) {
       case "text":
-        return TextPart.fromJson(json);
+        return TextPart.fromJson(map);
       case "subtask":
-        return SubtaskPart.fromJson(json);
+        return SubtaskPart.fromJson(map);
       case "reasoning":
-        return ReasoningPart.fromJson(json);
+        return ReasoningPart.fromJson(map);
       case "file":
-        return FilePart.fromJson(json);
+        return FilePart.fromJson(map);
       case "tool":
-        return ToolPart.fromJson(json);
+        return ToolPart.fromJson(map);
       case "step-start":
-        return StepStartPart.fromJson(json);
+        return StepStartPart.fromJson(map);
       case "step-finish":
-        return StepFinishPart.fromJson(json);
+        return StepFinishPart.fromJson(map);
       case "snapshot":
-        return SnapshotPart.fromJson(json);
+        return SnapshotPart.fromJson(map);
       case "patch":
-        return PatchPart.fromJson(json);
+        return PatchPart.fromJson(map);
       case "agent":
-        return AgentPart.fromJson(json);
+        return AgentPart.fromJson(map);
       case "retry":
-        return RetryPart.fromJson(json);
+        return RetryPart.fromJson(map);
       case "compaction":
-        return CompactionPart.fromJson(json);
+        return CompactionPart.fromJson(map);
       default:
         throw FormatException('Unknown Part value: $discriminator');
     }

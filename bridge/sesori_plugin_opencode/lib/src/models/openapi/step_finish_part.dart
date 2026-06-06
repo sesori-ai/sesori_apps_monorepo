@@ -22,10 +22,11 @@ class StepFinishPart implements Part {
       type: json["type"] as String,
       reason: json["reason"] as String,
       snapshot: json["snapshot"] as String?,
-      cost: json["cost"] as double,
+      cost: (json["cost"] as num).toDouble(),
       tokens: json["tokens"] as Map<String, dynamic>,
     );
   }
+
 
   @override
   Map<String, dynamic> toJson() {

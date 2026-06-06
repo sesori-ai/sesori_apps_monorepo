@@ -24,7 +24,7 @@ class SessionV2Info {
       projectID: json["projectID"] as String,
       agent: json["agent"] as String?,
       model: json["model"] as Map<String, dynamic>?,
-      cost: json["cost"] as double,
+      cost: (json["cost"] as num).toDouble(),
       tokens: json["tokens"] as Map<String, dynamic>,
       time: json["time"] as Map<String, dynamic>,
       title: json["title"] as String,
@@ -32,6 +32,7 @@ class SessionV2Info {
       subpath: json["subpath"] as String?,
     );
   }
+
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

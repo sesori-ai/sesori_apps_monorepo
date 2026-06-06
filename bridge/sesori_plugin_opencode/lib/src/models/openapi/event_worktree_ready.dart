@@ -17,6 +17,7 @@ class EventWorktreeReady implements Event {
     );
   }
 
+
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

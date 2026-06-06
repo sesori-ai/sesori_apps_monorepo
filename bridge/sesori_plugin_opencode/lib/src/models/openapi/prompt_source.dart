@@ -10,11 +10,12 @@ class PromptSource {
 
   factory PromptSource.fromJson(Map<String, dynamic> json) {
     return PromptSource(
-      start: json["start"] as double,
-      end: json["end"] as double,
+      start: (json["start"] as num).toDouble(),
+      end: (json["end"] as num).toDouble(),
       text: json["text"] as String,
     );
   }
+
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

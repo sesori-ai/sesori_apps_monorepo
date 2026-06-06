@@ -16,6 +16,7 @@ class SyncEventSessionUpdated {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "type": type,

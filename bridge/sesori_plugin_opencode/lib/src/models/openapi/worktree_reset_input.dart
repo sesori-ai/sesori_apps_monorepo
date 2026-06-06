@@ -12,6 +12,7 @@ class WorktreeResetInput {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "directory": directory,

@@ -68,9 +68,9 @@ class Config {
       smallModel: json["small_model"] as String?,
       defaultAgent: json["default_agent"] as String?,
       username: json["username"] as String?,
-      mode: (json["mode"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as AgentConfig)),
-      agent: (json["agent"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as AgentConfig)),
-      provider: (json["provider"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as ProviderConfig)),
+      mode: (json["mode"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, AgentConfig.fromJson(v as Map<String, dynamic>))),
+      agent: (json["agent"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, AgentConfig.fromJson(v as Map<String, dynamic>))),
+      provider: (json["provider"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, ProviderConfig.fromJson(v as Map<String, dynamic>))),
       mcp: (json["mcp"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as dynamic)),
       formatter: json["formatter"],
       lsp: json["lsp"],
@@ -85,6 +85,7 @@ class Config {
       experimental: json["experimental"] as Map<String, dynamic>?,
     );
   }
+
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

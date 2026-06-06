@@ -23,6 +23,7 @@ class SessionMessageToolStateError {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "status": status,

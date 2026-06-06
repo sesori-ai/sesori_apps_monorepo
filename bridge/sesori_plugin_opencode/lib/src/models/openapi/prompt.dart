@@ -21,6 +21,7 @@ class Prompt {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "text": text,

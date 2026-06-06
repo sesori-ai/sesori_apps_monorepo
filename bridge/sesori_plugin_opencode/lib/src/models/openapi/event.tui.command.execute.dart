@@ -2,20 +2,21 @@
 
 import 'event.dart';
 
-class EventTuiCommandExecute implements Event {
-  const EventTuiCommandExecute({
+class EventTuiCommandExecute0vkghdx implements Event {
+  const EventTuiCommandExecute0vkghdx({
     required this.id,
     required this.type,
     required this.properties,
   });
 
-  factory EventTuiCommandExecute.fromJson(Map<String, dynamic> json) {
-    return EventTuiCommandExecute(
+  factory EventTuiCommandExecute0vkghdx.fromJson(Map<String, dynamic> json) {
+    return EventTuiCommandExecute0vkghdx(
       id: json["id"] as String,
       type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
+
 
   @override
   Map<String, dynamic> toJson() {

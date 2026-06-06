@@ -23,6 +23,7 @@ class PatchPart implements Part {
     );
   }
 
+
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

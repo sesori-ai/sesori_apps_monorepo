@@ -20,10 +20,11 @@ class SessionInputAdmitted {
       sessionID: json["sessionID"] as String,
       prompt: Prompt.fromJson(json["prompt"] as Map<String, dynamic>),
       delivery: json["delivery"] as String,
-      timeCreated: json["timeCreated"] as double,
+      timeCreated: (json["timeCreated"] as num).toDouble(),
       promotedSeq: json["promotedSeq"] as int?,
     );
   }
+
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

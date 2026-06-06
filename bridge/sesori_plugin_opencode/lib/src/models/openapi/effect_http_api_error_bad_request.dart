@@ -12,6 +12,7 @@ class HttpApiErrorBadRequest {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "_tag": tag,

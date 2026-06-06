@@ -13,6 +13,7 @@ class OutputFormatText implements OutputFormat {
     );
   }
 
+
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

@@ -16,6 +16,7 @@ class Worktree {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "name": name,

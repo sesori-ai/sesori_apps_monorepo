@@ -16,6 +16,7 @@ class ProviderAuthAuthorization {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "url": url,

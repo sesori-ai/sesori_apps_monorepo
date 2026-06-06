@@ -9,13 +9,14 @@ abstract interface class AuthCredential {
   /// Serialize the underlying variant. Variants must override this.
   Map<String, dynamic> toJson();
 
-  factory AuthCredential.fromJson(Map<String, dynamic> json) {
-    final discriminator = json["type"];
+  factory AuthCredential.fromJson(dynamic json) {
+    final map = json as Map<String, dynamic>;
+    final discriminator = map["type"];
     switch (discriminator) {
       case "oauth":
-        return AuthOAuthCredential.fromJson(json);
+        return AuthOAuthCredential.fromJson(map);
       case "api":
-        return AuthApiKeyCredential.fromJson(json);
+        return AuthApiKeyCredential.fromJson(map);
       default:
         throw FormatException('Unknown AuthCredential value: $discriminator');
     }

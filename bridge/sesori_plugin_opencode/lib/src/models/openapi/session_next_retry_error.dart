@@ -14,13 +14,14 @@ class SessionNextRetryError {
   factory SessionNextRetryError.fromJson(Map<String, dynamic> json) {
     return SessionNextRetryError(
       message: json["message"] as String,
-      statusCode: json["statusCode"] as double?,
+      statusCode: (json["statusCode"] as num?)?.toDouble(),
       isRetryable: json["isRetryable"] as bool,
       responseHeaders: (json["responseHeaders"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as String)),
       responseBody: json["responseBody"] as String?,
       metadata: (json["metadata"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as String)),
     );
   }
+
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

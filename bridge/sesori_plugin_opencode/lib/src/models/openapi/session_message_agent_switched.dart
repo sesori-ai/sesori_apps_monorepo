@@ -21,6 +21,7 @@ class SessionMessageAgentSwitched implements SessionMessage {
     );
   }
 
+
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

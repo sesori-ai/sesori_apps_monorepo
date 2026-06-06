@@ -19,6 +19,7 @@ class AuthInfo {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,

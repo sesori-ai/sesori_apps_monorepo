@@ -17,6 +17,7 @@ class PermissionV2Rule {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "action": action,

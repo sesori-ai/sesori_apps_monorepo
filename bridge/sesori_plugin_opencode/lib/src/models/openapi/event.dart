@@ -95,185 +95,186 @@ abstract interface class Event {
   /// Serialize the underlying variant. Variants must override this.
   Map<String, dynamic> toJson();
 
-  factory Event.fromJson(Map<String, dynamic> json) {
-    final discriminator = json["type"];
+  factory Event.fromJson(dynamic json) {
+    final map = json as Map<String, dynamic>;
+    final discriminator = map["type"];
     switch (discriminator) {
       case "models-dev.refreshed":
-        return EventModelsDevRefreshed.fromJson(json);
+        return EventModelsDevRefreshed.fromJson(map);
       case "plugin.added":
-        return EventPluginAdded.fromJson(json);
+        return EventPluginAdded.fromJson(map);
       case "catalog.model.updated":
-        return EventCatalogModelUpdated.fromJson(json);
+        return EventCatalogModelUpdated.fromJson(map);
       case "session.created":
-        return EventSessionCreated.fromJson(json);
+        return EventSessionCreated.fromJson(map);
       case "session.updated":
-        return EventSessionUpdated.fromJson(json);
+        return EventSessionUpdated.fromJson(map);
       case "session.deleted":
-        return EventSessionDeleted.fromJson(json);
+        return EventSessionDeleted.fromJson(map);
       case "message.updated":
-        return EventMessageUpdated.fromJson(json);
+        return EventMessageUpdated.fromJson(map);
       case "message.removed":
-        return EventMessageRemoved.fromJson(json);
+        return EventMessageRemoved.fromJson(map);
       case "message.part.updated":
-        return EventMessagePartUpdated.fromJson(json);
+        return EventMessagePartUpdated.fromJson(map);
       case "message.part.removed":
-        return EventMessagePartRemoved.fromJson(json);
+        return EventMessagePartRemoved.fromJson(map);
       case "session.next.agent.switched":
-        return EventSessionNextAgentSwitched.fromJson(json);
+        return EventSessionNextAgentSwitched.fromJson(map);
       case "session.next.model.switched":
-        return EventSessionNextModelSwitched.fromJson(json);
+        return EventSessionNextModelSwitched.fromJson(map);
       case "session.next.moved":
-        return EventSessionNextMoved.fromJson(json);
+        return EventSessionNextMoved.fromJson(map);
       case "session.next.prompted":
-        return EventSessionNextPrompted.fromJson(json);
+        return EventSessionNextPrompted.fromJson(map);
       case "session.next.prompt.admitted":
-        return EventSessionNextPromptAdmitted.fromJson(json);
+        return EventSessionNextPromptAdmitted.fromJson(map);
       case "session.next.prompt.promoted":
-        return EventSessionNextPromptPromoted.fromJson(json);
+        return EventSessionNextPromptPromoted.fromJson(map);
       case "session.next.interrupt.requested":
-        return EventSessionNextInterruptRequested.fromJson(json);
+        return EventSessionNextInterruptRequested.fromJson(map);
       case "session.next.context.updated":
-        return EventSessionNextContextUpdated.fromJson(json);
+        return EventSessionNextContextUpdated.fromJson(map);
       case "session.next.synthetic":
-        return EventSessionNextSynthetic.fromJson(json);
+        return EventSessionNextSynthetic.fromJson(map);
       case "session.next.shell.started":
-        return EventSessionNextShellStarted.fromJson(json);
+        return EventSessionNextShellStarted.fromJson(map);
       case "session.next.shell.ended":
-        return EventSessionNextShellEnded.fromJson(json);
+        return EventSessionNextShellEnded.fromJson(map);
       case "session.next.step.started":
-        return EventSessionNextStepStarted.fromJson(json);
+        return EventSessionNextStepStarted.fromJson(map);
       case "session.next.step.ended":
-        return EventSessionNextStepEnded.fromJson(json);
+        return EventSessionNextStepEnded.fromJson(map);
       case "session.next.step.failed":
-        return EventSessionNextStepFailed.fromJson(json);
+        return EventSessionNextStepFailed.fromJson(map);
       case "session.next.text.started":
-        return EventSessionNextTextStarted.fromJson(json);
+        return EventSessionNextTextStarted.fromJson(map);
       case "session.next.text.delta":
-        return EventSessionNextTextDelta.fromJson(json);
+        return EventSessionNextTextDelta.fromJson(map);
       case "session.next.text.ended":
-        return EventSessionNextTextEnded.fromJson(json);
+        return EventSessionNextTextEnded.fromJson(map);
       case "session.next.reasoning.started":
-        return EventSessionNextReasoningStarted.fromJson(json);
+        return EventSessionNextReasoningStarted.fromJson(map);
       case "session.next.reasoning.delta":
-        return EventSessionNextReasoningDelta.fromJson(json);
+        return EventSessionNextReasoningDelta.fromJson(map);
       case "session.next.reasoning.ended":
-        return EventSessionNextReasoningEnded.fromJson(json);
+        return EventSessionNextReasoningEnded.fromJson(map);
       case "session.next.tool.input.started":
-        return EventSessionNextToolInputStarted.fromJson(json);
+        return EventSessionNextToolInputStarted.fromJson(map);
       case "session.next.tool.input.delta":
-        return EventSessionNextToolInputDelta.fromJson(json);
+        return EventSessionNextToolInputDelta.fromJson(map);
       case "session.next.tool.input.ended":
-        return EventSessionNextToolInputEnded.fromJson(json);
+        return EventSessionNextToolInputEnded.fromJson(map);
       case "session.next.tool.called":
-        return EventSessionNextToolCalled.fromJson(json);
+        return EventSessionNextToolCalled.fromJson(map);
       case "session.next.tool.progress":
-        return EventSessionNextToolProgress.fromJson(json);
+        return EventSessionNextToolProgress.fromJson(map);
       case "session.next.tool.success":
-        return EventSessionNextToolSuccess.fromJson(json);
+        return EventSessionNextToolSuccess.fromJson(map);
       case "session.next.tool.failed":
-        return EventSessionNextToolFailed.fromJson(json);
+        return EventSessionNextToolFailed.fromJson(map);
       case "session.next.retried":
-        return EventSessionNextRetried.fromJson(json);
+        return EventSessionNextRetried.fromJson(map);
       case "session.next.compaction.started":
-        return EventSessionNextCompactionStarted.fromJson(json);
+        return EventSessionNextCompactionStarted.fromJson(map);
       case "session.next.compaction.delta":
-        return EventSessionNextCompactionDelta.fromJson(json);
+        return EventSessionNextCompactionDelta.fromJson(map);
       case "session.next.compaction.ended":
-        return EventSessionNextCompactionEnded.fromJson(json);
+        return EventSessionNextCompactionEnded.fromJson(map);
       case "message.part.delta":
-        return EventMessagePartDelta.fromJson(json);
+        return EventMessagePartDelta.fromJson(map);
       case "session.diff":
-        return EventSessionDiff.fromJson(json);
+        return EventSessionDiff.fromJson(map);
       case "session.error":
-        return EventSessionError.fromJson(json);
+        return EventSessionError.fromJson(map);
       case "installation.updated":
-        return EventInstallationUpdated.fromJson(json);
+        return EventInstallationUpdated.fromJson(map);
       case "installation.update-available":
-        return EventInstallationUpdateAvailable.fromJson(json);
+        return EventInstallationUpdateAvailable.fromJson(map);
       case "file.edited":
-        return EventFileEdited.fromJson(json);
+        return EventFileEdited.fromJson(map);
       case "account.added":
-        return EventAccountAdded.fromJson(json);
+        return EventAccountAdded.fromJson(map);
       case "account.removed":
-        return EventAccountRemoved.fromJson(json);
+        return EventAccountRemoved.fromJson(map);
       case "account.switched":
-        return EventAccountSwitched.fromJson(json);
+        return EventAccountSwitched.fromJson(map);
       case "permission.v2.asked":
-        return EventPermissionV2Asked.fromJson(json);
+        return EventPermissionV2Asked.fromJson(map);
       case "permission.v2.replied":
-        return EventPermissionV2Replied.fromJson(json);
+        return EventPermissionV2Replied.fromJson(map);
       case "file.watcher.updated":
-        return EventFileWatcherUpdated.fromJson(json);
+        return EventFileWatcherUpdated.fromJson(map);
       case "pty.created":
-        return EventPtyCreated.fromJson(json);
+        return EventPtyCreated.fromJson(map);
       case "pty.updated":
-        return EventPtyUpdated.fromJson(json);
+        return EventPtyUpdated.fromJson(map);
       case "pty.exited":
-        return EventPtyExited.fromJson(json);
+        return EventPtyExited.fromJson(map);
       case "pty.deleted":
-        return EventPtyDeleted.fromJson(json);
+        return EventPtyDeleted.fromJson(map);
       case "question.v2.asked":
-        return EventQuestionV2Asked.fromJson(json);
+        return EventQuestionV2Asked.fromJson(map);
       case "question.v2.replied":
-        return EventQuestionV2Replied.fromJson(json);
+        return EventQuestionV2Replied.fromJson(map);
       case "question.v2.rejected":
-        return EventQuestionV2Rejected.fromJson(json);
+        return EventQuestionV2Rejected.fromJson(map);
       case "todo.updated":
-        return EventTodoUpdated.fromJson(json);
+        return EventTodoUpdated.fromJson(map);
       case "lsp.updated":
-        return EventLspUpdated.fromJson(json);
+        return EventLspUpdated.fromJson(map);
       case "permission.asked":
-        return EventPermissionAsked.fromJson(json);
+        return EventPermissionAsked.fromJson(map);
       case "permission.replied":
-        return EventPermissionReplied.fromJson(json);
+        return EventPermissionReplied.fromJson(map);
       case "tui.prompt.append":
-        return EventTuiPromptAppend.fromJson(json);
+        return EventTuiPromptAppend1opz5ph.fromJson(map);
       case "tui.command.execute":
-        return EventTuiCommandExecute.fromJson(json);
+        return EventTuiCommandExecute0vkghdx.fromJson(map);
       case "tui.toast.show":
-        return EventTuiToastShow.fromJson(json);
+        return EventTuiToastShow190ap9t.fromJson(map);
       case "tui.session.select":
-        return EventTuiSessionSelect.fromJson(json);
+        return EventTuiSessionSelect16fpc99.fromJson(map);
       case "mcp.tools.changed":
-        return EventMcpToolsChanged.fromJson(json);
+        return EventMcpToolsChanged.fromJson(map);
       case "mcp.browser.open.failed":
-        return EventMcpBrowserOpenFailed.fromJson(json);
+        return EventMcpBrowserOpenFailed.fromJson(map);
       case "command.executed":
-        return EventCommandExecuted.fromJson(json);
+        return EventCommandExecuted.fromJson(map);
       case "project.directories.updated":
-        return EventProjectDirectoriesUpdated.fromJson(json);
+        return EventProjectDirectoriesUpdated.fromJson(map);
       case "project.updated":
-        return EventProjectUpdated.fromJson(json);
+        return EventProjectUpdated.fromJson(map);
       case "question.asked":
-        return EventQuestionAsked.fromJson(json);
+        return EventQuestionAsked.fromJson(map);
       case "question.replied":
-        return EventQuestionReplied.fromJson(json);
+        return EventQuestionReplied.fromJson(map);
       case "question.rejected":
-        return EventQuestionRejected.fromJson(json);
+        return EventQuestionRejected.fromJson(map);
       case "session.status":
-        return EventSessionStatus.fromJson(json);
+        return EventSessionStatus.fromJson(map);
       case "session.idle":
-        return EventSessionIdle.fromJson(json);
+        return EventSessionIdle.fromJson(map);
       case "session.compacted":
-        return EventSessionCompacted.fromJson(json);
+        return EventSessionCompacted.fromJson(map);
       case "vcs.branch.updated":
-        return EventVcsBranchUpdated.fromJson(json);
+        return EventVcsBranchUpdated.fromJson(map);
       case "worktree.ready":
-        return EventWorktreeReady.fromJson(json);
+        return EventWorktreeReady.fromJson(map);
       case "worktree.failed":
-        return EventWorktreeFailed.fromJson(json);
+        return EventWorktreeFailed.fromJson(map);
       case "workspace.ready":
-        return EventWorkspaceReady.fromJson(json);
+        return EventWorkspaceReady.fromJson(map);
       case "workspace.failed":
-        return EventWorkspaceFailed.fromJson(json);
+        return EventWorkspaceFailed.fromJson(map);
       case "workspace.status":
-        return EventWorkspaceStatus.fromJson(json);
+        return EventWorkspaceStatus.fromJson(map);
       case "server.connected":
-        return EventServerConnected.fromJson(json);
+        return EventServerConnected.fromJson(map);
       case "global.disposed":
-        return EventGlobalDisposed.fromJson(json);
+        return EventGlobalDisposed.fromJson(map);
       case "server.instance.disposed":
-        return EventServerInstanceDisposed.fromJson(json);
+        return EventServerInstanceDisposed.fromJson(map);
       default:
         throw FormatException('Unknown Event value: $discriminator');
     }

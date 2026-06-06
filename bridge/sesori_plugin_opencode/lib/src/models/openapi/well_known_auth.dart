@@ -17,6 +17,7 @@ class WellKnownAuth implements Auth {
     );
   }
 
+
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

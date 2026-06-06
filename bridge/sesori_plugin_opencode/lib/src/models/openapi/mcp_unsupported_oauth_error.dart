@@ -12,6 +12,7 @@ class McpUnsupportedOAuthError {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "error": error,

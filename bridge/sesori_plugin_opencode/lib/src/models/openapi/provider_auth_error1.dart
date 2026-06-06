@@ -14,6 +14,7 @@ class ProviderAuthError1 {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "name": name,

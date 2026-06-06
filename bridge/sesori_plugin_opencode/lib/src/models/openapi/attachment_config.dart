@@ -13,6 +13,7 @@ class AttachmentConfig {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "image": image?.toJson(),

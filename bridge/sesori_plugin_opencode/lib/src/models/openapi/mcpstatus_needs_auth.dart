@@ -13,6 +13,7 @@ class MCPStatusNeedsAuth implements MCPStatus {
     );
   }
 
+
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

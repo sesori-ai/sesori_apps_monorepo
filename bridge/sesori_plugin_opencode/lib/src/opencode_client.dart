@@ -80,7 +80,7 @@ class OpenCodeClient {
 /// Get a list of all available AI agents in the OpenCode system.
 ///
 /// `operationId`: `app.agents`
-Future<List<Agent>> appAgents({
+Future<List<Agent>> appAgents1w4t5xc({
     String? directory,
     String? workspace,
   }) async {
@@ -109,7 +109,7 @@ Future<List<Agent>> appAgents({
 /// Write a log entry to the server logs with specified level and metadata.
 ///
 /// `operationId`: `app.log`
-Future<bool> appLog({
+Future<bool> appLog1xnlo30({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
@@ -139,7 +139,7 @@ Future<bool> appLog({
 /// Get a list of all available skills in the OpenCode system.
 ///
 /// `operationId`: `app.skills`
-Future<List<dynamic>> appSkills({
+Future<List<dynamic>> appSkills08tc0dg({
     String? directory,
     String? workspace,
   }) async {
@@ -168,7 +168,7 @@ Future<List<dynamic>> appSkills({
 /// Remove authentication credentials
 ///
 /// `operationId`: `auth.remove`
-Future<bool> authRemove({
+Future<bool> authRemove035ixzz({
     required String providerID,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
@@ -195,7 +195,7 @@ Future<bool> authRemove({
 /// Set authentication credentials
 ///
 /// `operationId`: `auth.set`
-Future<bool> authSet({
+Future<bool> authSet04dq3o1({
     required String providerID,
     required Auth body,
   }) async {
@@ -224,7 +224,7 @@ Future<bool> authSet({
 /// Get a list of all available commands in the OpenCode system.
 ///
 /// `operationId`: `command.list`
-Future<List<Command>> commandList({
+Future<List<Command>> commandList1xa0c70({
     String? directory,
     String? workspace,
   }) async {
@@ -253,7 +253,7 @@ Future<List<Command>> commandList({
 /// Retrieve the current OpenCode configuration settings and preferences.
 ///
 /// `operationId`: `config.get`
-Future<Config> configGet({
+Future<Config> configGet1032yv9({
     String? directory,
     String? workspace,
   }) async {
@@ -282,7 +282,7 @@ Future<Config> configGet({
 /// Get a list of all configured AI providers and their default models.
 ///
 /// `operationId`: `config.providers`
-Future<dynamic> configProviders({
+Future<dynamic> configProviders1oc7hrf({
     String? directory,
     String? workspace,
   }) async {
@@ -310,7 +310,7 @@ Future<dynamic> configProviders({
 /// Update OpenCode configuration settings and preferences.
 ///
 /// `operationId`: `config.update`
-Future<Config> configUpdate({
+Future<Config> configUpdate1pfe7yi({
     required Config body,
     String? directory,
     String? workspace,
@@ -341,7 +341,7 @@ Future<Config> configUpdate({
 /// Get events
 ///
 /// `operationId`: `event.subscribe`
-Future<dynamic> eventSubscribe({
+Future<dynamic> eventSubscribe0ggbail({
     String? directory,
     String? workspace,
   }) async {
@@ -369,7 +369,7 @@ Future<dynamic> eventSubscribe({
 /// Get the active Console org name and the set of provider IDs managed by that Console org.
 ///
 /// `operationId`: `experimental.console.get`
-Future<ConsoleState> experimentalConsoleGet({
+Future<ConsoleState> experimentalConsoleGet1yb75vy({
     String? directory,
     String? workspace,
   }) async {
@@ -398,7 +398,7 @@ Future<ConsoleState> experimentalConsoleGet({
 /// Get the available Console orgs across logged-in accounts, including the current active org.
 ///
 /// `operationId`: `experimental.console.listOrgs`
-Future<dynamic> experimentalConsoleListOrgs({
+Future<dynamic> experimentalConsoleListOrgs08lc08d({
     String? directory,
     String? workspace,
   }) async {
@@ -426,7 +426,7 @@ Future<dynamic> experimentalConsoleListOrgs({
 /// Persist a new active Console account/org selection for the current local OpenCode state.
 ///
 /// `operationId`: `experimental.console.switchOrg`
-Future<bool> experimentalConsoleSwitchOrg({
+Future<bool> experimentalConsoleSwitchOrg1voyi40({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
@@ -456,7 +456,7 @@ Future<bool> experimentalConsoleSwitchOrg({
 /// Move a session to another project directory, optionally transferring local changes.
 ///
 /// `operationId`: `experimental.controlPlane.moveSession`
-Future<void> experimentalControlPlaneMoveSession({
+Future<void> experimentalControlPlaneMoveSession1jtwf5z({
     required Map<String, dynamic> body,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
@@ -484,7 +484,7 @@ Future<void> experimentalControlPlaneMoveSession({
 /// Create a local physical copy of a project using the selected strategy.
 ///
 /// `operationId`: `experimental.projectCopy.create`
-Future<ProjectCopyCopy> experimentalProjectCopyCreate({
+Future<ProjectCopyCopy> experimentalProjectCopyCreate01k04qh({
     required String projectID,
     required Map<String, dynamic> body,
     String? workspace,
@@ -515,7 +515,7 @@ Future<ProjectCopyCopy> experimentalProjectCopyCreate({
 /// Discover local project copies using one or all configured strategies.
 ///
 /// `operationId`: `experimental.projectCopy.refresh`
-Future<void> experimentalProjectCopyRefresh({
+Future<void> experimentalProjectCopyRefresh1bcq0rc({
     required String projectID,
     String? directory,
     String? workspace,
@@ -544,7 +544,7 @@ Future<void> experimentalProjectCopyRefresh({
 /// Remove a local physical copy of a project using the selected strategy.
 ///
 /// `operationId`: `experimental.projectCopy.remove`
-Future<void> experimentalProjectCopyRemove({
+Future<void> experimentalProjectCopyRemove08oftkp({
     required String projectID,
     required Map<String, dynamic> body,
     String? workspace,
@@ -574,7 +574,7 @@ Future<void> experimentalProjectCopyRemove({
 /// Get all available MCP resources from connected servers. Optionally filter by name.
 ///
 /// `operationId`: `experimental.resource.list`
-Future<dynamic> experimentalResourceList({
+Future<dynamic> experimentalResourceList0u28nzv({
     String? directory,
     String? workspace,
   }) async {
@@ -602,7 +602,7 @@ Future<dynamic> experimentalResourceList({
 /// Detach any synchronous subagents currently blocking the session and continue them in the background.
 ///
 /// `operationId`: `experimental.session.background`
-Future<bool> experimentalSessionBackground({
+Future<bool> experimentalSessionBackground15z5vah({
     required String sessionID,
     String? directory,
     String? workspace,
@@ -631,7 +631,7 @@ Future<bool> experimentalSessionBackground({
 /// Get a list of all OpenCode sessions across projects, sorted by most recently updated. Archived sessions are excluded by default.
 ///
 /// `operationId`: `experimental.session.list`
-Future<List<GlobalSession>> experimentalSessionList({
+Future<List<GlobalSession>> experimentalSessionList033ard1({
     String? directory,
     String? workspace,
     String? roots,
@@ -666,7 +666,7 @@ Future<List<GlobalSession>> experimentalSessionList({
 /// List all available workspace adapters for the current project.
 ///
 /// `operationId`: `experimental.workspace.adapter.list`
-Future<List<dynamic>> experimentalWorkspaceAdapterList({
+Future<List<dynamic>> experimentalWorkspaceAdapterList0q9fsrt({
     String? directory,
     String? workspace,
   }) async {
@@ -695,7 +695,7 @@ Future<List<dynamic>> experimentalWorkspaceAdapterList({
 /// Create a workspace for the current project.
 ///
 /// `operationId`: `experimental.workspace.create`
-Future<Workspace> experimentalWorkspaceCreate({
+Future<Workspace> experimentalWorkspaceCreate1judteu({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
@@ -726,7 +726,7 @@ Future<Workspace> experimentalWorkspaceCreate({
 /// List all workspaces.
 ///
 /// `operationId`: `experimental.workspace.list`
-Future<List<Workspace>> experimentalWorkspaceList({
+Future<List<Workspace>> experimentalWorkspaceList1ipa75a({
     String? directory,
     String? workspace,
   }) async {
@@ -755,7 +755,7 @@ Future<List<Workspace>> experimentalWorkspaceList({
 /// Remove an existing workspace.
 ///
 /// `operationId`: `experimental.workspace.remove`
-Future<Workspace> experimentalWorkspaceRemove({
+Future<Workspace> experimentalWorkspaceRemove1yjezh2({
     required String id,
     String? directory,
     String? workspace,
@@ -785,7 +785,7 @@ Future<Workspace> experimentalWorkspaceRemove({
 /// Get connection status for workspaces in the current project.
 ///
 /// `operationId`: `experimental.workspace.status`
-Future<List<dynamic>> experimentalWorkspaceStatus({
+Future<List<dynamic>> experimentalWorkspaceStatus03xz7p8({
     String? directory,
     String? workspace,
   }) async {
@@ -814,7 +814,7 @@ Future<List<dynamic>> experimentalWorkspaceStatus({
 /// Register missing workspaces returned by workspace adapters.
 ///
 /// `operationId`: `experimental.workspace.syncList`
-Future<void> experimentalWorkspaceSyncList({
+Future<void> experimentalWorkspaceSyncList1mkmdth({
     String? directory,
     String? workspace,
   }) async {
@@ -842,7 +842,7 @@ Future<void> experimentalWorkspaceSyncList({
 /// Move a session's sync history into the target workspace, or detach it to the local project.
 ///
 /// `operationId`: `experimental.workspace.warp`
-Future<void> experimentalWorkspaceWarp({
+Future<void> experimentalWorkspaceWarp1qxuxg8({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
@@ -872,7 +872,7 @@ Future<void> experimentalWorkspaceWarp({
 /// List files and directories in a specified path.
 ///
 /// `operationId`: `file.list`
-Future<List<FileNode>> fileList({
+Future<List<FileNode>> fileList0mfkv1b({
     String? directory,
     String? workspace,
     required String path,
@@ -902,7 +902,7 @@ Future<List<FileNode>> fileList({
 /// Read the content of a specified file.
 ///
 /// `operationId`: `file.read`
-Future<FileContent> fileRead({
+Future<FileContent> fileRead1qtg4u3({
     String? directory,
     String? workspace,
     required String path,
@@ -932,7 +932,7 @@ Future<FileContent> fileRead({
 /// Get the git status of all files in the project.
 ///
 /// `operationId`: `file.status`
-Future<List<File>> fileStatus({
+Future<List<File>> fileStatus1ksoc4h({
     String? directory,
     String? workspace,
   }) async {
@@ -961,7 +961,7 @@ Future<List<File>> fileStatus({
 /// Search for files or directories by name or pattern in the project directory.
 ///
 /// `operationId`: `find.files`
-Future<List<String>> findFiles({
+Future<List<String>> findFiles16bzypn({
     String? directory,
     String? workspace,
     required String query,
@@ -994,7 +994,7 @@ Future<List<String>> findFiles({
 /// Search for workspace symbols like functions, classes, and variables using LSP.
 ///
 /// `operationId`: `find.symbols`
-Future<List<Symbol>> findSymbols({
+Future<List<Symbol>> findSymbols1r7pfgx({
     String? directory,
     String? workspace,
     required String query,
@@ -1024,7 +1024,7 @@ Future<List<Symbol>> findSymbols({
 /// Search for text patterns across files in the project using ripgrep.
 ///
 /// `operationId`: `find.text`
-Future<List<dynamic>> findText({
+Future<List<dynamic>> findText0kfx8or({
     String? directory,
     String? workspace,
     required String pattern,
@@ -1052,7 +1052,7 @@ Future<List<dynamic>> findText({
 /// Get formatter status
 ///
 /// `operationId`: `formatter.status`
-Future<List<FormatterStatus>> formatterStatus({
+Future<List<FormatterStatus>> formatterStatus0t2bk6r({
     String? directory,
     String? workspace,
   }) async {
@@ -1081,7 +1081,7 @@ Future<List<FormatterStatus>> formatterStatus({
 /// Retrieve the current global OpenCode configuration settings and preferences.
 ///
 /// `operationId`: `global.config.get`
-Future<Config> globalConfigGet() async {
+Future<Config> globalConfigGet04xw6cc() async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/global/config',
       queryParameters: {},
@@ -1107,7 +1107,7 @@ Future<Config> globalConfigGet() async {
 /// Update global OpenCode configuration settings and preferences.
 ///
 /// `operationId`: `global.config.update`
-Future<Config> globalConfigUpdate({
+Future<Config> globalConfigUpdate0cs363l({
     required Config body,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
@@ -1136,7 +1136,7 @@ Future<Config> globalConfigUpdate({
 /// Clean up and dispose all OpenCode instances, releasing all resources.
 ///
 /// `operationId`: `global.dispose`
-Future<bool> globalDispose() async {
+Future<bool> globalDispose1p539kh() async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/global/dispose',
       queryParameters: {},
@@ -1161,7 +1161,7 @@ Future<bool> globalDispose() async {
 /// Subscribe to global events from the OpenCode system using server-sent events.
 ///
 /// `operationId`: `global.event`
-Future<dynamic> globalEvent() async {
+Future<dynamic> globalEvent0vipzew() async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/global/event',
       queryParameters: {},
@@ -1186,7 +1186,7 @@ Future<dynamic> globalEvent() async {
 /// Get health information about the OpenCode server.
 ///
 /// `operationId`: `global.health`
-Future<dynamic> globalHealth() async {
+Future<dynamic> globalHealth1gczf2e() async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/global/health',
       queryParameters: {},
@@ -1211,7 +1211,7 @@ Future<dynamic> globalHealth() async {
 /// Upgrade opencode to the specified version or latest if not specified.
 ///
 /// `operationId`: `global.upgrade`
-Future<dynamic> globalUpgrade({
+Future<dynamic> globalUpgrade09jf9d8({
     required Map<String, dynamic> body,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
@@ -1239,7 +1239,7 @@ Future<dynamic> globalUpgrade({
 /// Clean up and dispose the current OpenCode instance, releasing all resources.
 ///
 /// `operationId`: `instance.dispose`
-Future<bool> instanceDispose({
+Future<bool> instanceDispose1pv67h1({
     String? directory,
     String? workspace,
   }) async {
@@ -1267,7 +1267,7 @@ Future<bool> instanceDispose({
 /// Get LSP server status
 ///
 /// `operationId`: `lsp.status`
-Future<List<LSPStatus>> lspStatus({
+Future<List<LSPStatus>> lspStatus1oobkkc({
     String? directory,
     String? workspace,
   }) async {
@@ -1296,7 +1296,7 @@ Future<List<LSPStatus>> lspStatus({
 /// Dynamically add a new Model Context Protocol (MCP) server to the system.
 ///
 /// `operationId`: `mcp.add`
-Future<dynamic> mcpAdd({
+Future<dynamic> mcpAdd0l0265e({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
@@ -1326,7 +1326,7 @@ Future<dynamic> mcpAdd({
 /// Start OAuth flow and wait for callback (opens browser).
 ///
 /// `operationId`: `mcp.auth.authenticate`
-Future<MCPStatus> mcpAuthAuthenticate({
+Future<MCPStatus> mcpAuthAuthenticate0j2ie1g({
     required String name,
     String? directory,
     String? workspace,
@@ -1356,7 +1356,7 @@ Future<MCPStatus> mcpAuthAuthenticate({
 /// Complete OAuth authentication for a Model Context Protocol (MCP) server using the authorization code.
 ///
 /// `operationId`: `mcp.auth.callback`
-Future<MCPStatus> mcpAuthCallback({
+Future<MCPStatus> mcpAuthCallback0q96uku({
     required String name,
     required Map<String, dynamic> body,
     String? directory,
@@ -1388,7 +1388,7 @@ Future<MCPStatus> mcpAuthCallback({
 /// Remove OAuth credentials for an MCP server.
 ///
 /// `operationId`: `mcp.auth.remove`
-Future<dynamic> mcpAuthRemove({
+Future<dynamic> mcpAuthRemove01qxgz9({
     required String name,
     String? directory,
     String? workspace,
@@ -1417,7 +1417,7 @@ Future<dynamic> mcpAuthRemove({
 /// Start OAuth authentication flow for a Model Context Protocol (MCP) server.
 ///
 /// `operationId`: `mcp.auth.start`
-Future<dynamic> mcpAuthStart({
+Future<dynamic> mcpAuthStart0ma1q4n({
     required String name,
     String? directory,
     String? workspace,
@@ -1446,7 +1446,7 @@ Future<dynamic> mcpAuthStart({
 /// Connect an MCP server.
 ///
 /// `operationId`: `mcp.connect`
-Future<bool> mcpConnect({
+Future<bool> mcpConnect1nj937f({
     required String name,
     String? directory,
     String? workspace,
@@ -1475,7 +1475,7 @@ Future<bool> mcpConnect({
 /// Disconnect an MCP server.
 ///
 /// `operationId`: `mcp.disconnect`
-Future<bool> mcpDisconnect({
+Future<bool> mcpDisconnect0dxkxi5({
     required String name,
     String? directory,
     String? workspace,
@@ -1504,7 +1504,7 @@ Future<bool> mcpDisconnect({
 /// Get the status of all Model Context Protocol (MCP) servers.
 ///
 /// `operationId`: `mcp.status`
-Future<dynamic> mcpStatus({
+Future<dynamic> mcpStatus1f3kikh({
     String? directory,
     String? workspace,
   }) async {
@@ -1532,7 +1532,7 @@ Future<dynamic> mcpStatus({
 /// Delete a part from a message.
 ///
 /// `operationId`: `part.delete`
-Future<bool> partDelete({
+Future<bool> partDelete1ine2zd({
     required String sessionID,
     required String messageID,
     required String partID,
@@ -1563,7 +1563,7 @@ Future<bool> partDelete({
 /// Update a part in a message.
 ///
 /// `operationId`: `part.update`
-Future<Part> partUpdate({
+Future<Part> partUpdate1k6slrr({
     required String sessionID,
     required String messageID,
     required String partID,
@@ -1597,7 +1597,7 @@ Future<Part> partUpdate({
 /// Retrieve the current working directory and related path information for the OpenCode instance.
 ///
 /// `operationId`: `path.get`
-Future<Path> pathGet({
+Future<Path> pathGet1b1u2no({
     String? directory,
     String? workspace,
   }) async {
@@ -1626,7 +1626,7 @@ Future<Path> pathGet({
 /// Get all pending permission requests across all sessions.
 ///
 /// `operationId`: `permission.list`
-Future<List<PermissionRequest>> permissionList({
+Future<List<PermissionRequest>> permissionList0y9746k({
     String? directory,
     String? workspace,
   }) async {
@@ -1655,7 +1655,7 @@ Future<List<PermissionRequest>> permissionList({
 /// Approve or deny a permission request from the AI assistant.
 ///
 /// `operationId`: `permission.reply`
-Future<bool> permissionReply({
+Future<bool> permissionReply1hz42hs({
     required String requestID,
     required Map<String, dynamic> body,
     String? directory,
@@ -1686,7 +1686,7 @@ Future<bool> permissionReply({
 /// Approve or deny a permission request from the AI assistant.
 ///
 /// `operationId`: `permission.respond`
-Future<bool> permissionRespond({
+Future<bool> permissionRespond0bacmnl({
     required String sessionID,
     required String permissionID,
     required Map<String, dynamic> body,
@@ -1718,7 +1718,7 @@ Future<bool> permissionRespond({
 /// Retrieve the currently active project that OpenCode is working with.
 ///
 /// `operationId`: `project.current`
-Future<Project> projectCurrent({
+Future<Project> projectCurrent1gqqtmd({
     String? directory,
     String? workspace,
   }) async {
@@ -1747,7 +1747,7 @@ Future<Project> projectCurrent({
 /// List known local absolute directories for a project.
 ///
 /// `operationId`: `project.directories`
-Future<ProjectDirectories> projectDirectories({
+Future<ProjectDirectories> projectDirectories0yhgr5f({
     required String projectID,
     String? directory,
     String? workspace,
@@ -1777,7 +1777,7 @@ Future<ProjectDirectories> projectDirectories({
 /// Create a git repository for the current project and return the refreshed project info.
 ///
 /// `operationId`: `project.initGit`
-Future<Project> projectInitGit({
+Future<Project> projectInitGit0mlbvle({
     String? directory,
     String? workspace,
   }) async {
@@ -1806,7 +1806,7 @@ Future<Project> projectInitGit({
 /// Get a list of projects that have been opened with OpenCode.
 ///
 /// `operationId`: `project.list`
-Future<List<Project>> projectList({
+Future<List<Project>> projectList09typ88({
     String? directory,
     String? workspace,
   }) async {
@@ -1835,7 +1835,7 @@ Future<List<Project>> projectList({
 /// Update project properties such as name, icon, and commands.
 ///
 /// `operationId`: `project.update`
-Future<Project> projectUpdate({
+Future<Project> projectUpdate1vsx7n5({
     required String projectID,
     required Map<String, dynamic> body,
     String? directory,
@@ -1867,7 +1867,7 @@ Future<Project> projectUpdate({
 /// Retrieve available authentication methods for all AI providers.
 ///
 /// `operationId`: `provider.auth`
-Future<dynamic> providerAuth({
+Future<dynamic> providerAuth0gvddmk({
     String? directory,
     String? workspace,
   }) async {
@@ -1895,7 +1895,7 @@ Future<dynamic> providerAuth({
 /// Get a list of all available AI providers, including both available and connected ones.
 ///
 /// `operationId`: `provider.list`
-Future<dynamic> providerList({
+Future<dynamic> providerList1mmuhr6({
     String? directory,
     String? workspace,
   }) async {
@@ -1923,7 +1923,7 @@ Future<dynamic> providerList({
 /// Start the OAuth authorization flow for a provider.
 ///
 /// `operationId`: `provider.oauth.authorize`
-Future<ProviderAuthAuthorization> providerOauthAuthorize({
+Future<ProviderAuthAuthorization> providerOauthAuthorize1h4oaj8({
     required String providerID,
     required Map<String, dynamic> body,
     String? directory,
@@ -1955,7 +1955,7 @@ Future<ProviderAuthAuthorization> providerOauthAuthorize({
 /// Handle the OAuth callback from a provider after user authorization.
 ///
 /// `operationId`: `provider.oauth.callback`
-Future<bool> providerOauthCallback({
+Future<bool> providerOauthCallback0wlw36a({
     required String providerID,
     required Map<String, dynamic> body,
     String? directory,
@@ -1986,7 +1986,7 @@ Future<bool> providerOauthCallback({
 /// Establish a WebSocket connection to interact with a pseudo-terminal (PTY) session in real-time.
 ///
 /// `operationId`: `pty.connect`
-Future<bool> ptyConnect({
+Future<bool> ptyConnect08baauo({
     required String ptyID,
     String? directory,
     String? workspace,
@@ -2017,7 +2017,7 @@ Future<bool> ptyConnect({
 /// Create a short-lived ticket for opening a PTY WebSocket connection.
 ///
 /// `operationId`: `pty.connectToken`
-Future<dynamic> ptyConnectToken({
+Future<dynamic> ptyConnectToken0jvig2t({
     required String ptyID,
     String? directory,
     String? workspace,
@@ -2046,7 +2046,7 @@ Future<dynamic> ptyConnectToken({
 /// Create a new pseudo-terminal (PTY) session for running shell commands and processes.
 ///
 /// `operationId`: `pty.create`
-Future<Pty> ptyCreate({
+Future<Pty> ptyCreate113tf8m({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
@@ -2077,7 +2077,7 @@ Future<Pty> ptyCreate({
 /// Retrieve detailed information about a specific pseudo-terminal (PTY) session.
 ///
 /// `operationId`: `pty.get`
-Future<Pty> ptyGet({
+Future<Pty> ptyGet1l2ksm6({
     required String ptyID,
     String? directory,
     String? workspace,
@@ -2107,7 +2107,7 @@ Future<Pty> ptyGet({
 /// Get a list of all active pseudo-terminal (PTY) sessions managed by OpenCode.
 ///
 /// `operationId`: `pty.list`
-Future<List<Pty>> ptyList({
+Future<List<Pty>> ptyList1twsm3y({
     String? directory,
     String? workspace,
   }) async {
@@ -2136,7 +2136,7 @@ Future<List<Pty>> ptyList({
 /// Remove and terminate a specific pseudo-terminal (PTY) session.
 ///
 /// `operationId`: `pty.remove`
-Future<bool> ptyRemove({
+Future<bool> ptyRemove0an4ifq({
     required String ptyID,
     String? directory,
     String? workspace,
@@ -2165,7 +2165,7 @@ Future<bool> ptyRemove({
 /// Get a list of available shells on the system.
 ///
 /// `operationId`: `pty.shells`
-Future<List<dynamic>> ptyShells({
+Future<List<dynamic>> ptyShells1e4qy0l({
     String? directory,
     String? workspace,
   }) async {
@@ -2194,7 +2194,7 @@ Future<List<dynamic>> ptyShells({
 /// Update properties of an existing pseudo-terminal (PTY) session.
 ///
 /// `operationId`: `pty.update`
-Future<Pty> ptyUpdate({
+Future<Pty> ptyUpdate0dxxjfv({
     required String ptyID,
     required Map<String, dynamic> body,
     String? directory,
@@ -2226,7 +2226,7 @@ Future<Pty> ptyUpdate({
 /// Get all pending question requests across all sessions.
 ///
 /// `operationId`: `question.list`
-Future<List<QuestionRequest>> questionList({
+Future<List<QuestionRequest>> questionList0tm089p({
     String? directory,
     String? workspace,
   }) async {
@@ -2255,7 +2255,7 @@ Future<List<QuestionRequest>> questionList({
 /// Reject a question request from the AI assistant.
 ///
 /// `operationId`: `question.reject`
-Future<bool> questionReject({
+Future<bool> questionReject19zsy1m({
     required String requestID,
     String? directory,
     String? workspace,
@@ -2284,7 +2284,7 @@ Future<bool> questionReject({
 /// Provide answers to a question request from the AI assistant.
 ///
 /// `operationId`: `question.reply`
-Future<bool> questionReply({
+Future<bool> questionReply1kb6y7v({
     required String requestID,
     required Map<String, dynamic> body,
     String? directory,
@@ -2315,7 +2315,7 @@ Future<bool> questionReply({
 /// Abort an active session and stop any ongoing AI processing or command execution.
 ///
 /// `operationId`: `session.abort`
-Future<bool> sessionAbort({
+Future<bool> sessionAbort1lzcp4n({
     required String sessionID,
     String? directory,
     String? workspace,
@@ -2344,7 +2344,7 @@ Future<bool> sessionAbort({
 /// Retrieve all child sessions that were forked from the specified parent session.
 ///
 /// `operationId`: `session.children`
-Future<List<Session>> sessionChildren({
+Future<List<Session>> sessionChildren0vlr0f8({
     required String sessionID,
     String? directory,
     String? workspace,
@@ -2374,7 +2374,7 @@ Future<List<Session>> sessionChildren({
 /// Send a new command to a session for execution by the AI assistant.
 ///
 /// `operationId`: `session.command`
-Future<dynamic> sessionCommand({
+Future<dynamic> sessionCommand1srqry0({
     required String sessionID,
     required Map<String, dynamic> body,
     String? directory,
@@ -2405,7 +2405,7 @@ Future<dynamic> sessionCommand({
 /// Create a new OpenCode session for interacting with AI assistants and managing conversations.
 ///
 /// `operationId`: `session.create`
-Future<Session> sessionCreate({
+Future<Session> sessionCreate10ftnhn({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
@@ -2436,7 +2436,7 @@ Future<Session> sessionCreate({
 /// Delete a session and permanently remove all associated data, including messages and history.
 ///
 /// `operationId`: `session.delete`
-Future<bool> sessionDelete({
+Future<bool> sessionDelete05dcy94({
     required String sessionID,
     String? directory,
     String? workspace,
@@ -2465,7 +2465,7 @@ Future<bool> sessionDelete({
 /// Permanently delete a specific message and all of its parts from a session without reverting file changes.
 ///
 /// `operationId`: `session.deleteMessage`
-Future<bool> sessionDeleteMessage({
+Future<bool> sessionDeleteMessage08dlgvz({
     required String sessionID,
     required String messageID,
     String? directory,
@@ -2495,7 +2495,7 @@ Future<bool> sessionDeleteMessage({
 /// Get the file changes (diff) that resulted from a specific user message in the session.
 ///
 /// `operationId`: `session.diff`
-Future<List<SnapshotFileDiff>> sessionDiff({
+Future<List<SnapshotFileDiff>> sessionDiff128f2zs({
     required String sessionID,
     String? directory,
     String? workspace,
@@ -2526,7 +2526,7 @@ Future<List<SnapshotFileDiff>> sessionDiff({
 /// Create a new session by forking an existing session at a specific message point.
 ///
 /// `operationId`: `session.fork`
-Future<Session> sessionFork({
+Future<Session> sessionFork12yfemn({
     required String sessionID,
     required Map<String, dynamic> body,
     String? directory,
@@ -2558,7 +2558,7 @@ Future<Session> sessionFork({
 /// Retrieve detailed information about a specific OpenCode session.
 ///
 /// `operationId`: `session.get`
-Future<Session> sessionGet({
+Future<Session> sessionGet02u88yd({
     required String sessionID,
     String? directory,
     String? workspace,
@@ -2588,7 +2588,7 @@ Future<Session> sessionGet({
 /// Analyze the current application and create an AGENTS.md file with project-specific agent configurations.
 ///
 /// `operationId`: `session.init`
-Future<bool> sessionInit({
+Future<bool> sessionInit1ag7oud({
     required String sessionID,
     required Map<String, dynamic> body,
     String? directory,
@@ -2619,7 +2619,7 @@ Future<bool> sessionInit({
 /// Get a list of all OpenCode sessions, sorted by most recently updated.
 ///
 /// `operationId`: `session.list`
-Future<List<Session>> sessionList({
+Future<List<Session>> sessionList18c0yn7({
     String? directory,
     String? workspace,
     String? scope,
@@ -2654,7 +2654,7 @@ Future<List<Session>> sessionList({
 /// Retrieve a specific message from a session by its message ID.
 ///
 /// `operationId`: `session.message`
-Future<dynamic> sessionMessage({
+Future<dynamic> sessionMessage1r9z50i({
     required String sessionID,
     required String messageID,
     String? directory,
@@ -2684,7 +2684,7 @@ Future<dynamic> sessionMessage({
 /// Retrieve all messages in a session, including user prompts and AI responses.
 ///
 /// `operationId`: `session.messages`
-Future<List<dynamic>> sessionMessages({
+Future<List<dynamic>> sessionMessages0n20y2r({
     required String sessionID,
     String? directory,
     String? workspace,
@@ -2716,7 +2716,7 @@ Future<List<dynamic>> sessionMessages({
 /// Create and send a new message to a session, streaming the AI response.
 ///
 /// `operationId`: `session.prompt`
-Future<dynamic> sessionPrompt({
+Future<dynamic> sessionPrompt1hunqop({
     required String sessionID,
     required Map<String, dynamic> body,
     String? directory,
@@ -2747,7 +2747,7 @@ Future<dynamic> sessionPrompt({
 /// Create and send a new message to a session asynchronously, starting the session if needed and returning immediately.
 ///
 /// `operationId`: `session.prompt_async`
-Future<void> sessionPromptAsync({
+Future<void> sessionPromptAsync06mmj9i({
     required String sessionID,
     required Map<String, dynamic> body,
     String? directory,
@@ -2778,7 +2778,7 @@ Future<void> sessionPromptAsync({
 /// Revert a specific message in a session, undoing its effects and restoring the previous state.
 ///
 /// `operationId`: `session.revert`
-Future<Session> sessionRevert({
+Future<Session> sessionRevert0y3ggt1({
     required String sessionID,
     required Map<String, dynamic> body,
     String? directory,
@@ -2810,7 +2810,7 @@ Future<Session> sessionRevert({
 /// Create a shareable link for a session, allowing others to view the conversation.
 ///
 /// `operationId`: `session.share`
-Future<Session> sessionShare({
+Future<Session> sessionShare1ymticy({
     required String sessionID,
     String? directory,
     String? workspace,
@@ -2840,7 +2840,7 @@ Future<Session> sessionShare({
 /// Execute a shell command within the session context and return the AI's response.
 ///
 /// `operationId`: `session.shell`
-Future<dynamic> sessionShell({
+Future<dynamic> sessionShell1nz5n5b({
     required String sessionID,
     required Map<String, dynamic> body,
     String? directory,
@@ -2871,7 +2871,7 @@ Future<dynamic> sessionShell({
 /// Retrieve the current status of all sessions, including active, idle, and completed states.
 ///
 /// `operationId`: `session.status`
-Future<dynamic> sessionStatus({
+Future<dynamic> sessionStatus15y01m5({
     String? directory,
     String? workspace,
   }) async {
@@ -2899,7 +2899,7 @@ Future<dynamic> sessionStatus({
 /// Generate a concise summary of the session using AI compaction to preserve key information.
 ///
 /// `operationId`: `session.summarize`
-Future<bool> sessionSummarize({
+Future<bool> sessionSummarize1aggp6g({
     required String sessionID,
     required Map<String, dynamic> body,
     String? directory,
@@ -2930,7 +2930,7 @@ Future<bool> sessionSummarize({
 /// Retrieve the todo list associated with a specific session, showing tasks and action items.
 ///
 /// `operationId`: `session.todo`
-Future<List<Todo>> sessionTodo({
+Future<List<Todo>> sessionTodo0y2kdaz({
     required String sessionID,
     String? directory,
     String? workspace,
@@ -2960,7 +2960,7 @@ Future<List<Todo>> sessionTodo({
 /// Restore all previously reverted messages in a session.
 ///
 /// `operationId`: `session.unrevert`
-Future<Session> sessionUnrevert({
+Future<Session> sessionUnrevert0lg6g0a({
     required String sessionID,
     String? directory,
     String? workspace,
@@ -2990,7 +2990,7 @@ Future<Session> sessionUnrevert({
 /// Remove the shareable link for a session, making it private again.
 ///
 /// `operationId`: `session.unshare`
-Future<Session> sessionUnshare({
+Future<Session> sessionUnshare1qlnox3({
     required String sessionID,
     String? directory,
     String? workspace,
@@ -3020,7 +3020,7 @@ Future<Session> sessionUnshare({
 /// Update properties of an existing session, such as title or other metadata.
 ///
 /// `operationId`: `session.update`
-Future<Session> sessionUpdate({
+Future<Session> sessionUpdate03pn94q({
     required String sessionID,
     required Map<String, dynamic> body,
     String? directory,
@@ -3052,7 +3052,7 @@ Future<Session> sessionUpdate({
 /// List sync events for all aggregates. Keys are aggregate IDs the client already knows about, values are the last known sequence ID. Events with seq > value are returned for those aggregates. Aggregates not listed in the input get their full history.
 ///
 /// `operationId`: `sync.history.list`
-Future<List<dynamic>> syncHistoryList({
+Future<List<dynamic>> syncHistoryList1xy9idu({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
@@ -3083,7 +3083,7 @@ Future<List<dynamic>> syncHistoryList({
 /// Validate and replay a complete sync event history.
 ///
 /// `operationId`: `sync.replay`
-Future<dynamic> syncReplay({
+Future<dynamic> syncReplay1dpj7p7({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
@@ -3113,7 +3113,7 @@ Future<dynamic> syncReplay({
 /// Start sync loops for workspaces in the current project that have active sessions.
 ///
 /// `operationId`: `sync.start`
-Future<bool> syncStart({
+Future<bool> syncStart0y4kx0w({
     String? directory,
     String? workspace,
   }) async {
@@ -3141,7 +3141,7 @@ Future<bool> syncStart({
 /// Update a session to belong to the current workspace through the sync event system.
 ///
 /// `operationId`: `sync.steal`
-Future<dynamic> syncSteal({
+Future<dynamic> syncSteal0kd93hj({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
@@ -3171,7 +3171,7 @@ Future<dynamic> syncSteal({
 /// Get a list of all available tool IDs, including both built-in tools and dynamically registered tools.
 ///
 /// `operationId`: `tool.ids`
-Future<ToolIDs> toolIds({
+Future<ToolIDs> toolIds07vzujz({
     String? directory,
     String? workspace,
   }) async {
@@ -3200,7 +3200,7 @@ Future<ToolIDs> toolIds({
 /// Get a list of available tools with their JSON schema parameters for a specific provider and model combination.
 ///
 /// `operationId`: `tool.list`
-Future<ToolList> toolList({
+Future<ToolList> toolList0u0155f({
     String? directory,
     String? workspace,
     required String provider,
@@ -3231,7 +3231,7 @@ Future<ToolList> toolList({
 /// Append prompt to the TUI.
 ///
 /// `operationId`: `tui.appendPrompt`
-Future<bool> tuiAppendPrompt({
+Future<bool> tuiAppendPrompt0769qef({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
@@ -3261,7 +3261,7 @@ Future<bool> tuiAppendPrompt({
 /// Clear the prompt.
 ///
 /// `operationId`: `tui.clearPrompt`
-Future<bool> tuiClearPrompt({
+Future<bool> tuiClearPrompt18smi0o({
     String? directory,
     String? workspace,
   }) async {
@@ -3289,7 +3289,7 @@ Future<bool> tuiClearPrompt({
 /// Retrieve the next TUI request from the queue for processing.
 ///
 /// `operationId`: `tui.control.next`
-Future<dynamic> tuiControlNext({
+Future<dynamic> tuiControlNext0jnwdbt({
     String? directory,
     String? workspace,
   }) async {
@@ -3317,7 +3317,7 @@ Future<dynamic> tuiControlNext({
 /// Submit a response to the TUI request queue to complete a pending request.
 ///
 /// `operationId`: `tui.control.response`
-Future<bool> tuiControlResponse({
+Future<bool> tuiControlResponse0wkw7t3({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
@@ -3347,7 +3347,7 @@ Future<bool> tuiControlResponse({
 /// Execute a TUI command.
 ///
 /// `operationId`: `tui.executeCommand`
-Future<bool> tuiExecuteCommand({
+Future<bool> tuiExecuteCommand01ccfah({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
@@ -3377,7 +3377,7 @@ Future<bool> tuiExecuteCommand({
 /// Open the help dialog in the TUI to display user assistance information.
 ///
 /// `operationId`: `tui.openHelp`
-Future<bool> tuiOpenHelp({
+Future<bool> tuiOpenHelp1o51zme({
     String? directory,
     String? workspace,
   }) async {
@@ -3405,7 +3405,7 @@ Future<bool> tuiOpenHelp({
 /// Open the model dialog.
 ///
 /// `operationId`: `tui.openModels`
-Future<bool> tuiOpenModels({
+Future<bool> tuiOpenModels14hvwb3({
     String? directory,
     String? workspace,
   }) async {
@@ -3433,7 +3433,7 @@ Future<bool> tuiOpenModels({
 /// Open the session dialog.
 ///
 /// `operationId`: `tui.openSessions`
-Future<bool> tuiOpenSessions({
+Future<bool> tuiOpenSessions1o29xr4({
     String? directory,
     String? workspace,
   }) async {
@@ -3461,7 +3461,7 @@ Future<bool> tuiOpenSessions({
 /// Open the theme dialog.
 ///
 /// `operationId`: `tui.openThemes`
-Future<bool> tuiOpenThemes({
+Future<bool> tuiOpenThemes03lisen({
     String? directory,
     String? workspace,
   }) async {
@@ -3489,7 +3489,7 @@ Future<bool> tuiOpenThemes({
 /// Publish a TUI event.
 ///
 /// `operationId`: `tui.publish`
-Future<bool> tuiPublish({
+Future<bool> tuiPublish08xcqa8({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
@@ -3519,7 +3519,7 @@ Future<bool> tuiPublish({
 /// Navigate the TUI to display the specified session.
 ///
 /// `operationId`: `tui.selectSession`
-Future<bool> tuiSelectSession({
+Future<bool> tuiSelectSession1qw881j({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
@@ -3549,7 +3549,7 @@ Future<bool> tuiSelectSession({
 /// Show a toast notification in the TUI.
 ///
 /// `operationId`: `tui.showToast`
-Future<bool> tuiShowToast({
+Future<bool> tuiShowToast1dzfjo3({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
@@ -3579,7 +3579,7 @@ Future<bool> tuiShowToast({
 /// Submit the prompt.
 ///
 /// `operationId`: `tui.submitPrompt`
-Future<bool> tuiSubmitPrompt({
+Future<bool> tuiSubmitPrompt1f9mibn({
     String? directory,
     String? workspace,
   }) async {
@@ -3607,7 +3607,7 @@ Future<bool> tuiSubmitPrompt({
 /// Retrieve currently registered v2 agents.
 ///
 /// `operationId`: `v2.agent.list`
-Future<dynamic> v2AgentList({
+Future<dynamic> v2AgentList04wolh4({
     Map<String, dynamic>? location,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
@@ -3634,7 +3634,7 @@ Future<dynamic> v2AgentList({
 /// Retrieve currently registered v2 commands.
 ///
 /// `operationId`: `v2.command.list`
-Future<dynamic> v2CommandList({
+Future<dynamic> v2CommandList0s4856s({
     Map<String, dynamic>? location,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
@@ -3661,7 +3661,7 @@ Future<dynamic> v2CommandList({
 /// Subscribe to native EventV2 payloads for a location.
 ///
 /// `operationId`: `v2.event.subscribe`
-Future<dynamic> v2EventSubscribe({
+Future<dynamic> v2EventSubscribe1kzmned({
     Map<String, dynamic>? location,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
@@ -3688,7 +3688,7 @@ Future<dynamic> v2EventSubscribe({
 /// List direct children of one directory relative to the requested location.
 ///
 /// `operationId`: `v2.fs.list`
-Future<dynamic> v2FsList({
+Future<dynamic> v2FsList06obgvk({
     Map<String, dynamic>? location,
     String? path,
     String? reference,
@@ -3717,7 +3717,7 @@ Future<dynamic> v2FsList({
 /// Read one file relative to the requested location.
 ///
 /// `operationId`: `v2.fs.read`
-Future<dynamic> v2FsRead({
+Future<dynamic> v2FsRead19gekbg({
     Map<String, dynamic>? location,
     required String path,
     String? reference,
@@ -3746,7 +3746,7 @@ Future<dynamic> v2FsRead({
 /// Check whether the v2 API server is ready to accept requests.
 ///
 /// `operationId`: `v2.health.get`
-Future<dynamic> v2HealthGet() async {
+Future<dynamic> v2HealthGet0r7uj1x() async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/api/health',
       queryParameters: {},
@@ -3771,7 +3771,7 @@ Future<dynamic> v2HealthGet() async {
 /// Retrieve available v2 models ordered by release date.
 ///
 /// `operationId`: `v2.model.list`
-Future<dynamic> v2ModelList({
+Future<dynamic> v2ModelList023wqvw({
     Map<String, dynamic>? location,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
@@ -3798,7 +3798,7 @@ Future<dynamic> v2ModelList({
 /// Retrieve pending permission requests for a location.
 ///
 /// `operationId`: `v2.permission.request.list`
-Future<dynamic> v2PermissionRequestList({
+Future<dynamic> v2PermissionRequestList0aqcd9p({
     Map<String, dynamic>? location,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
@@ -3825,7 +3825,7 @@ Future<dynamic> v2PermissionRequestList({
 /// Retrieve saved permissions, optionally filtered by project.
 ///
 /// `operationId`: `v2.permission.saved.list`
-Future<dynamic> v2PermissionSavedList({
+Future<dynamic> v2PermissionSavedList1qwvlnn({
     String? projectID,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
@@ -3852,7 +3852,7 @@ Future<dynamic> v2PermissionSavedList({
 /// Remove a saved permission by ID.
 ///
 /// `operationId`: `v2.permission.saved.remove`
-Future<void> v2PermissionSavedRemove({
+Future<void> v2PermissionSavedRemove0fu1grr({
     required String id,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
@@ -3879,7 +3879,7 @@ Future<void> v2PermissionSavedRemove({
 /// Retrieve a single v2 AI provider so clients can inspect its availability and endpoint settings.
 ///
 /// `operationId`: `v2.provider.get`
-Future<dynamic> v2ProviderGet({
+Future<dynamic> v2ProviderGet0sn51oa({
     required String providerID,
     Map<String, dynamic>? location,
   }) async {
@@ -3907,7 +3907,7 @@ Future<dynamic> v2ProviderGet({
 /// Retrieve active v2 AI providers so clients can show provider availability and configuration.
 ///
 /// `operationId`: `v2.provider.list`
-Future<dynamic> v2ProviderList({
+Future<dynamic> v2ProviderList1iv3bdm({
     Map<String, dynamic>? location,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
@@ -3934,7 +3934,7 @@ Future<dynamic> v2ProviderList({
 /// Retrieve pending question requests for a location.
 ///
 /// `operationId`: `v2.question.request.list`
-Future<dynamic> v2QuestionRequestList({
+Future<dynamic> v2QuestionRequestList1m7rz6g({
     Map<String, dynamic>? location,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
@@ -3961,7 +3961,7 @@ Future<dynamic> v2QuestionRequestList({
 /// Compact a v2 session conversation.
 ///
 /// `operationId`: `v2.session.compact`
-Future<void> v2SessionCompact({
+Future<void> v2SessionCompact0bpgkv0({
     required String sessionID,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
@@ -3988,7 +3988,7 @@ Future<void> v2SessionCompact({
 /// Retrieve the active context messages for a v2 session (all messages after the last compaction).
 ///
 /// `operationId`: `v2.session.context`
-Future<dynamic> v2SessionContext({
+Future<dynamic> v2SessionContext12eb6ii({
     required String sessionID,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
@@ -4015,7 +4015,7 @@ Future<dynamic> v2SessionContext({
 /// Retrieve sessions in the requested order. Items keep that order across pages; use cursor.next or cursor.previous to move through the ordered list.
 ///
 /// `operationId`: `v2.session.list`
-Future<V2SessionsResponse> v2SessionList({
+Future<V2SessionsResponse> v2SessionList0lt02e3({
     String? workspace,
     double? limit,
     String? order,
@@ -4050,7 +4050,7 @@ Future<V2SessionsResponse> v2SessionList({
 /// Retrieve projected v2 messages for a session. Items keep the requested order across pages; use cursor.next or cursor.previous to move through the ordered timeline.
 ///
 /// `operationId`: `v2.session.messages`
-Future<V2SessionMessagesResponse> v2SessionMessages({
+Future<V2SessionMessagesResponse> v2SessionMessages10dlr63({
     required String sessionID,
     double? limit,
     String? order,
@@ -4081,7 +4081,7 @@ Future<V2SessionMessagesResponse> v2SessionMessages({
 /// Retrieve pending permission requests owned by a session.
 ///
 /// `operationId`: `v2.session.permission.list`
-Future<dynamic> v2SessionPermissionList({
+Future<dynamic> v2SessionPermissionList1rfro1m({
     required String sessionID,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
@@ -4108,7 +4108,7 @@ Future<dynamic> v2SessionPermissionList({
 /// Respond to a pending permission request owned by a session.
 ///
 /// `operationId`: `v2.session.permission.reply`
-Future<void> v2SessionPermissionReply({
+Future<void> v2SessionPermissionReply0wyople({
     required String sessionID,
     required String requestID,
     required Map<String, dynamic> body,
@@ -4138,7 +4138,7 @@ Future<void> v2SessionPermissionReply({
 /// Durably admit one v2 session input and schedule agent-loop execution unless resume is false.
 ///
 /// `operationId`: `v2.session.prompt`
-Future<dynamic> v2SessionPrompt({
+Future<dynamic> v2SessionPrompt1uri19t({
     required String sessionID,
     required Map<String, dynamic> body,
   }) async {
@@ -4167,7 +4167,7 @@ Future<dynamic> v2SessionPrompt({
 /// Reject a pending question request owned by a session.
 ///
 /// `operationId`: `v2.session.question.reject`
-Future<void> v2SessionQuestionReject({
+Future<void> v2SessionQuestionReject0tg0z0w({
     required String sessionID,
     required String requestID,
   }) async {
@@ -4195,7 +4195,7 @@ Future<void> v2SessionQuestionReject({
 /// Answer a pending question request owned by a session.
 ///
 /// `operationId`: `v2.session.question.reply`
-Future<void> v2SessionQuestionReply({
+Future<void> v2SessionQuestionReply17ib33x({
     required String sessionID,
     required String requestID,
     required QuestionV2Reply body,
@@ -4225,7 +4225,7 @@ Future<void> v2SessionQuestionReply({
 /// Wait for a v2 session agent loop to become idle.
 ///
 /// `operationId`: `v2.session.wait`
-Future<void> v2SessionWait({
+Future<void> v2SessionWait1u3afyi({
     required String sessionID,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
@@ -4252,7 +4252,7 @@ Future<void> v2SessionWait({
 /// Retrieve currently registered v2 skills.
 ///
 /// `operationId`: `v2.skill.list`
-Future<dynamic> v2SkillList({
+Future<dynamic> v2SkillList15ujty0({
     Map<String, dynamic>? location,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
@@ -4279,7 +4279,7 @@ Future<dynamic> v2SkillList({
 /// Apply a raw patch to the current working tree.
 ///
 /// `operationId`: `vcs.apply`
-Future<dynamic> vcsApply({
+Future<dynamic> vcsApply0d74x4t({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
@@ -4309,7 +4309,7 @@ Future<dynamic> vcsApply({
 /// Retrieve the current git diff for the working tree or against the default branch.
 ///
 /// `operationId`: `vcs.diff`
-Future<List<VcsFileDiff>> vcsDiff({
+Future<List<VcsFileDiff>> vcsDiff0beqeiw({
     String? directory,
     String? workspace,
     required String mode,
@@ -4340,7 +4340,7 @@ Future<List<VcsFileDiff>> vcsDiff({
 /// Retrieve a raw patch for current uncommitted changes.
 ///
 /// `operationId`: `vcs.diff.raw`
-Future<dynamic> vcsDiffRaw({
+Future<dynamic> vcsDiffRaw18sym3w({
     String? directory,
     String? workspace,
   }) async {
@@ -4368,7 +4368,7 @@ Future<dynamic> vcsDiffRaw({
 /// Retrieve version control system (VCS) information for the current project, such as git branch.
 ///
 /// `operationId`: `vcs.get`
-Future<VcsInfo> vcsGet({
+Future<VcsInfo> vcsGet16ws8ol({
     String? directory,
     String? workspace,
   }) async {
@@ -4397,7 +4397,7 @@ Future<VcsInfo> vcsGet({
 /// Retrieve changed files in the current working tree without patches.
 ///
 /// `operationId`: `vcs.status`
-Future<List<VcsFileStatus>> vcsStatus({
+Future<List<VcsFileStatus>> vcsStatus1dfz499({
     String? directory,
     String? workspace,
   }) async {
@@ -4426,7 +4426,7 @@ Future<List<VcsFileStatus>> vcsStatus({
 /// Create a new git worktree for the current project and run any configured startup scripts.
 ///
 /// `operationId`: `worktree.create`
-Future<Worktree> worktreeCreate({
+Future<Worktree> worktreeCreate16yygzq({
     required WorktreeCreateInput body,
     String? directory,
     String? workspace,
@@ -4457,7 +4457,7 @@ Future<Worktree> worktreeCreate({
 /// List all sandbox worktrees for the current project.
 ///
 /// `operationId`: `worktree.list`
-Future<List<String>> worktreeList({
+Future<List<String>> worktreeList0viov7y({
     String? directory,
     String? workspace,
   }) async {
@@ -4486,7 +4486,7 @@ Future<List<String>> worktreeList({
 /// Remove a git worktree and delete its branch.
 ///
 /// `operationId`: `worktree.remove`
-Future<bool> worktreeRemove({
+Future<bool> worktreeRemove0b92nau({
     required WorktreeRemoveInput body,
     String? directory,
     String? workspace,
@@ -4516,7 +4516,7 @@ Future<bool> worktreeRemove({
 /// Reset a worktree branch to the primary default branch.
 ///
 /// `operationId`: `worktree.reset`
-Future<bool> worktreeReset({
+Future<bool> worktreeReset0jwyzk5({
     required WorktreeResetInput body,
     String? directory,
     String? workspace,

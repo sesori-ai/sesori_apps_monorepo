@@ -2,20 +2,21 @@
 
 import 'event.dart';
 
-class EventTuiPromptAppend implements Event {
-  const EventTuiPromptAppend({
+class EventTuiPromptAppend1opz5ph implements Event {
+  const EventTuiPromptAppend1opz5ph({
     required this.id,
     required this.type,
     required this.properties,
   });
 
-  factory EventTuiPromptAppend.fromJson(Map<String, dynamic> json) {
-    return EventTuiPromptAppend(
+  factory EventTuiPromptAppend1opz5ph.fromJson(Map<String, dynamic> json) {
+    return EventTuiPromptAppend1opz5ph(
       id: json["id"] as String,
       type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
+
 
   @override
   Map<String, dynamic> toJson() {

@@ -17,6 +17,7 @@ class EventQuestionV2Rejected implements Event {
     );
   }
 
+
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

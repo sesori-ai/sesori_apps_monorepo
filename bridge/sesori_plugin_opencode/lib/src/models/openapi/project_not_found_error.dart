@@ -16,6 +16,7 @@ class ProjectNotFoundError {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "_tag": tag,

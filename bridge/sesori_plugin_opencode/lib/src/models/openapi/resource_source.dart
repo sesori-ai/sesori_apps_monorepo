@@ -20,6 +20,7 @@ class ResourceSource implements FilePartSource {
     );
   }
 
+
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

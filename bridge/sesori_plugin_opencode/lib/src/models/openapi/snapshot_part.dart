@@ -21,6 +21,7 @@ class SnapshotPart implements Part {
     );
   }
 
+
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

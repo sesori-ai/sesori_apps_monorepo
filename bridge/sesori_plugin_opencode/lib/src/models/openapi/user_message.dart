@@ -32,6 +32,7 @@ class UserMessage implements Message {
     );
   }
 
+
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

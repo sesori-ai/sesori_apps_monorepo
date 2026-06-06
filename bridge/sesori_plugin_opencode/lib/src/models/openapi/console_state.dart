@@ -16,6 +16,7 @@ class ConsoleState {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "consoleManagedProviders": consoleManagedProviders,

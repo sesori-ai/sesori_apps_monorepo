@@ -10,15 +10,16 @@ abstract interface class Auth {
   /// Serialize the underlying variant. Variants must override this.
   Map<String, dynamic> toJson();
 
-  factory Auth.fromJson(Map<String, dynamic> json) {
-    final discriminator = json["type"];
+  factory Auth.fromJson(dynamic json) {
+    final map = json as Map<String, dynamic>;
+    final discriminator = map["type"];
     switch (discriminator) {
       case "oauth":
-        return OAuth.fromJson(json);
+        return OAuth.fromJson(map);
       case "api":
-        return ApiAuth.fromJson(json);
+        return ApiAuth.fromJson(map);
       case "wellknown":
-        return WellKnownAuth.fromJson(json);
+        return WellKnownAuth.fromJson(map);
       default:
         throw FormatException('Unknown Auth value: $discriminator');
     }

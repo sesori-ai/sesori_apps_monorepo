@@ -25,8 +25,8 @@ class AgentConfig {
     return AgentConfig(
       model: json["model"] as String?,
       variant: json["variant"] as String?,
-      temperature: json["temperature"] as double?,
-      topP: json["top_p"] as double?,
+      temperature: (json["temperature"] as num?)?.toDouble(),
+      topP: (json["top_p"] as num?)?.toDouble(),
       prompt: json["prompt"] as String?,
       tools: (json["tools"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as bool)),
       disable: json["disable"] as bool?,
@@ -40,6 +40,7 @@ class AgentConfig {
       permission: json["permission"] == null ? null : PermissionConfig.fromJson(json["permission"] as Map<String, dynamic>),
     );
   }
+
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

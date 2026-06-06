@@ -16,6 +16,7 @@ class SyncEventSessionNextTextEnded {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "type": type,

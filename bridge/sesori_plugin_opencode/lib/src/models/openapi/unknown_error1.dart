@@ -16,6 +16,7 @@ class UnknownError1 {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "_tag": tag,

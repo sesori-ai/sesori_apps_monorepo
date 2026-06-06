@@ -30,11 +30,12 @@ class SessionMessageAssistant implements SessionMessage {
       content: (json["content"] as List<dynamic>).cast<dynamic>(),
       snapshot: json["snapshot"] as Map<String, dynamic>?,
       finish: json["finish"] as String?,
-      cost: json["cost"] as double?,
+      cost: (json["cost"] as num?)?.toDouble(),
       tokens: json["tokens"] as Map<String, dynamic>?,
       error: json["error"] == null ? null : SessionErrorUnknown.fromJson(json["error"] as Map<String, dynamic>),
     );
   }
+
 
   @override
   Map<String, dynamic> toJson() {

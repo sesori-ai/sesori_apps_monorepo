@@ -28,6 +28,7 @@ class ProviderConfig {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "api": api,

@@ -17,6 +17,7 @@ class PermissionRule {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "permission": permission,

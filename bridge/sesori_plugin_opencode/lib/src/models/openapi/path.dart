@@ -20,6 +20,7 @@ class Path {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "home": home,

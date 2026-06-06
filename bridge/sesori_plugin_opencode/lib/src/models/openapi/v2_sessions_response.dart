@@ -15,6 +15,7 @@ class V2SessionsResponse {
     );
   }
 
+
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "data": data,

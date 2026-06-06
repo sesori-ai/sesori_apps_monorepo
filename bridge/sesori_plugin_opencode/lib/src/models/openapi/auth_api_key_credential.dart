@@ -17,6 +17,7 @@ class AuthApiKeyCredential implements AuthCredential {
     );
   }
 
+
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

@@ -27,17 +27,18 @@ class Agent {
       mode: json["mode"] as String,
       native: json["native"] as bool?,
       hidden: json["hidden"] as bool?,
-      topP: json["topP"] as double?,
-      temperature: json["temperature"] as double?,
+      topP: (json["topP"] as num?)?.toDouble(),
+      temperature: (json["temperature"] as num?)?.toDouble(),
       color: json["color"] as String?,
       permission: PermissionRuleset.fromJson(json["permission"] as List<dynamic>),
       model: json["model"] as Map<String, dynamic>?,
       variant: json["variant"] as String?,
       prompt: json["prompt"] as String?,
       options: json["options"] as Map<String, dynamic>,
-      steps: json["steps"] as double?,
+      steps: (json["steps"] as num?)?.toDouble(),
     );
   }
+
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
