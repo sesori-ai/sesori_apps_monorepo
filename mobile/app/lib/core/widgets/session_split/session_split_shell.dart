@@ -58,11 +58,14 @@ class SessionSplitShell extends StatelessWidget {
             SizedBox(
               key: const Key("session-split-left-pane"),
               width: listWidth,
-              child: SessionSplitScope(
-                isSplit: true,
-                projectId: projectId,
-                selectedSessionId: selectedSessionId,
-                child: list,
+              child: Material(
+                color: Colors.transparent,
+                child: SessionSplitScope(
+                  isSplit: true,
+                  projectId: projectId,
+                  selectedSessionId: selectedSessionId,
+                  child: list,
+                ),
               ),
             ),
             const VerticalDivider(
