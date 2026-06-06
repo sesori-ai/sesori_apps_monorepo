@@ -200,6 +200,72 @@ void main() {
       expect(capturedProjectId, "p1");
       expect(capturedSessionId, "s1");
     });
+
+    testWidgets("wide detail route shows exactly one app bar in right panel", (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1024, 800));
+      await tester.pumpWidget(
+        _buildTestHarness(
+          width: 1024,
+          child: SessionSplitShell(
+            projectId: "p1",
+            routeKind: SessionSplitRouteKind.detail,
+            list: const SizedBox(),
+            detail: Scaffold(
+              appBar: AppBar(title: const Text("Detail")),
+              body: const Text("Detail body"),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final rightPane = find.byKey(const Key("session-split-right-pane"));
+      final appBarsInRightPane = find.descendant(of: rightPane, matching: find.byType(AppBar));
+      expect(appBarsInRightPane, findsOneWidget);
+      expect(find.text("Detail"), findsOneWidget);
+    });
+
+    testWidgets("wide diffs route shows exactly one app bar in right panel", (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1024, 800));
+      await tester.pumpWidget(
+        _buildTestHarness(
+          width: 1024,
+          child: SessionSplitShell(
+            projectId: "p1",
+            routeKind: SessionSplitRouteKind.diffs,
+            list: const SizedBox(),
+            detail: Scaffold(
+              appBar: AppBar(title: const Text("Diffs")),
+              body: const Text("Diffs body"),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final rightPane = find.byKey(const Key("session-split-right-pane"));
+      final appBarsInRightPane = find.descendant(of: rightPane, matching: find.byType(AppBar));
+      expect(appBarsInRightPane, findsOneWidget);
+      expect(find.text("Diffs"), findsOneWidget);
+    });
+
+    testWidgets("shell itself does not add an outer app bar", (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1024, 800));
+      await tester.pumpWidget(
+        _buildTestHarness(
+          width: 1024,
+          child: const SessionSplitShell(
+            projectId: "p1",
+            routeKind: SessionSplitRouteKind.detail,
+            list: SizedBox(),
+            detail: SizedBox(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AppBar), findsNothing);
+    });
   });
 
   group("SessionSplitRouteChild", () {
