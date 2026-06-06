@@ -1,0 +1,44 @@
+// GENERATED FILE - DO NOT EDIT BY HAND
+
+import 'part.dart';
+
+class PatchPart implements Part {
+  const PatchPart({
+    required this.id,
+    required this.sessionID,
+    required this.messageID,
+    required this.type,
+    required this.hash,
+    required this.files,
+  });
+
+  factory PatchPart.fromJson(Map<String, dynamic> json) {
+    return PatchPart(
+      id: json["id"] as String,
+      sessionID: json["sessionID"] as String,
+      messageID: json["messageID"] as String,
+      type: json["type"] as String,
+      hash: json["hash"] as String,
+      files: (json["files"] as List<dynamic>).cast<String>(),
+    );
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "id": id,
+      "sessionID": sessionID,
+      "messageID": messageID,
+      "type": type,
+      "hash": hash,
+      "files": files,
+    };
+  }
+
+  final String id;
+  final String sessionID;
+  final String messageID;
+  final String type;
+  final String hash;
+  final List<String> files;
+}

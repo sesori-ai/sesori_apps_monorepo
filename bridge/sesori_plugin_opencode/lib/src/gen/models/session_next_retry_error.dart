@@ -1,0 +1,42 @@
+// GENERATED FILE - DO NOT EDIT BY HAND
+
+
+class SessionNextRetryError {
+  const SessionNextRetryError({
+    required this.message,
+    this.statusCode,
+    required this.isRetryable,
+    this.responseHeaders,
+    this.responseBody,
+    this.metadata,
+  });
+
+  factory SessionNextRetryError.fromJson(Map<String, dynamic> json) {
+    return SessionNextRetryError(
+      message: json["message"] as String,
+      statusCode: json["statusCode"] as double?,
+      isRetryable: json["isRetryable"] as bool,
+      responseHeaders: (json["responseHeaders"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as String)),
+      responseBody: json["responseBody"] as String?,
+      metadata: (json["metadata"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as String)),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "message": message,
+      "statusCode": statusCode,
+      "isRetryable": isRetryable,
+      "responseHeaders": responseHeaders,
+      "responseBody": responseBody,
+      "metadata": metadata,
+    };
+  }
+
+  final String message;
+  final double? statusCode;
+  final bool isRetryable;
+  final Map<String, String>? responseHeaders;
+  final String? responseBody;
+  final Map<String, String>? metadata;
+}
