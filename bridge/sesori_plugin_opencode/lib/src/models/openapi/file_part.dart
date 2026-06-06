@@ -24,7 +24,7 @@ class FilePart implements Part {
       mime: json["mime"] as String,
       filename: json["filename"] as String?,
       url: json["url"] as String,
-      source: json["source"] == null ? null : FilePartSource.fromJson(json["source"] as Map<String, dynamic>),
+      source: json["source"] == null ? null : FilePartSource.fromJson(json["source"]),
     );
   }
 

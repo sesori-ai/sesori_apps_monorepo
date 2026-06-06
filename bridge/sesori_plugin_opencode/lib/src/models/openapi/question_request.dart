@@ -25,7 +25,7 @@ class QuestionRequest {
     return <String, dynamic>{
       "id": id,
       "sessionID": sessionID,
-      "questions": questions,
+      "questions": questions.map((e) => e.toJson()).toList(),
       "tool": tool?.toJson(),
     };
   }

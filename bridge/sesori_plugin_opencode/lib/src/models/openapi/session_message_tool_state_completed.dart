@@ -30,7 +30,7 @@ class SessionMessageToolStateCompleted {
     return <String, dynamic>{
       "status": status,
       "input": input,
-      "attachments": attachments,
+      "attachments": attachments?.map((e) => e.toJson()).toList(),
       "content": content,
       "outputPaths": outputPaths,
       "structured": structured,

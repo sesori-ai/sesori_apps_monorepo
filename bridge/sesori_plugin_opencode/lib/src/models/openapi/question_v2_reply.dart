@@ -16,7 +16,7 @@ class QuestionV2Reply {
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      "answers": answers,
+      "answers": answers.map((e) => e.toJson()).toList(),
     };
   }
 

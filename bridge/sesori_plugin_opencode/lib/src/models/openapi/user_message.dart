@@ -23,7 +23,7 @@ class UserMessage implements Message {
       sessionID: json["sessionID"] as String,
       role: json["role"] as String,
       time: json["time"] as Map<String, dynamic>,
-      format: json["format"] == null ? null : OutputFormat.fromJson(json["format"] as Map<String, dynamic>),
+      format: json["format"] == null ? null : OutputFormat.fromJson(json["format"]),
       summary: json["summary"] as Map<String, dynamic>?,
       agent: json["agent"] as String,
       model: json["model"] as Map<String, dynamic>,

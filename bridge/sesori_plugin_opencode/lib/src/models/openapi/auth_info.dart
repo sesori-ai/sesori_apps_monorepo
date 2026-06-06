@@ -15,7 +15,7 @@ class AuthInfo {
       id: json["id"] as String,
       serviceID: json["serviceID"] as String,
       description: json["description"] as String,
-      credential: AuthCredential.fromJson(json["credential"] as Map<String, dynamic>),
+      credential: AuthCredential.fromJson(json["credential"]),
     );
   }
 

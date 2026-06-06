@@ -18,7 +18,7 @@ class V2SessionsResponse {
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      "data": data,
+      "data": data.map((e) => e.toJson()).toList(),
       "cursor": cursor,
     };
   }

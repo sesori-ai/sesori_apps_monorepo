@@ -1510,6 +1510,24 @@ class ModelWriter {
     return false;
   }
 
+  /// True if [refName] resolves to a schema that is a union of multiple
+  /// non-null variants (anyOf/oneOf with at least two non-`type:null`
+  /// entries). The generated factory for a union takes `dynamic` because
+  /// it dispatches on JSON shape (string vs map vs containsKey), so the
+  /// call site must NOT pre-cast the value to `Map<String, dynamic>`.
+  bool _isUnionRef(String refName) {
+    final refSchema = schemas[refName] as Map<String, dynamic>?;
+    if (refSchema == null) return false;
+    for (final key in ['anyOf', 'oneOf']) {
+      final v = refSchema[key];
+      if (v is List) {
+        final nonNull = v.where((e) => e is Map && e['type'] != 'null').length;
+        if (nonNull >= 2) return true;
+      }
+    }
+    return false;
+  }
+
   String _decodeField(String name, Map<String, dynamic> sch, bool isRequired) {
     final keyExpr = _safeKey(name);
     final safeName = _safeIdentifier(name);
@@ -1536,6 +1554,17 @@ class ModelWriter {
           return '$safeName: json[$keyExpr] == null ? null : $refType.fromJson(json[$keyExpr] as String)';
         }
         return '$safeName: $refType.fromJson(json[$keyExpr] as String)';
+      }
+      // Union refs (PermissionConfig, PermissionRuleConfig, etc.) generate a
+      // factory that takes `dynamic` and dispatches on JSON shape. Forcing
+      // a `as Map<String, dynamic>` cast at the call site breaks the string
+      // shorthand branch and causes the union to never match. Pass the raw
+      // value through instead.
+      if (_isUnionRef(refName)) {
+        if (isNullable) {
+          return '$safeName: json[$keyExpr] == null ? null : $refType.fromJson(json[$keyExpr])';
+        }
+        return '$safeName: $refType.fromJson(json[$keyExpr])';
       }
       if (isNullable) {
         return '$safeName: json[$keyExpr] == null ? null : $refType.fromJson(json[$keyExpr] as Map<String, dynamic>)';
@@ -1661,6 +1690,23 @@ class ModelWriter {
     if (type == 'string' &&
         (sch['format'] == 'date-time' || sch['format'] == 'uri' || sch['format'] == 'url')) {
       return '$keyExpr: $safeName$op.toIso8601String()';
+    }
+    if (type == 'array') {
+      final items = sch['items'];
+      if (items is Map<String, dynamic> && items[r'$ref'] is String) {
+        // List of generated model objects. `jsonEncode` cannot encode
+        // Dart class instances directly — map each element through
+        // its `toJson()` so the encoder sees plain maps.
+        return '$keyExpr: $safeName$op.map((e) => e.toJson()).toList()';
+      }
+    }
+    if (type == 'object') {
+      final ap = sch['additionalProperties'];
+      if (ap is Map<String, dynamic> && ap[r'$ref'] is String) {
+        // Map of generated model objects. Same constraint as
+        // arrays: jsonEncode needs plain maps, not model instances.
+        return '$keyExpr: $safeName$op.map((k, v) => MapEntry(k, v.toJson()))';
+      }
     }
     // Inline enums (and any other string fields) just use the raw value.
     return '$keyExpr: $safeName';

@@ -23,7 +23,7 @@ class ToolPart implements Part {
       type: json["type"] as String,
       callID: json["callID"] as String,
       tool: json["tool"] as String,
-      state: ToolState.fromJson(json["state"] as Map<String, dynamic>),
+      state: ToolState.fromJson(json["state"]),
       metadata: json["metadata"] as Map<String, dynamic>?,
     );
   }

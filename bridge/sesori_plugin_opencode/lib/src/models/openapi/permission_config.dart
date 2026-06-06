@@ -54,21 +54,21 @@ class permissionConfig01Inline implements PermissionConfig {
 
   factory permissionConfig01Inline.fromJson(Map<String, dynamic> json) {
     return permissionConfig01Inline(
-      read: json["read"] == null ? null : PermissionRuleConfig.fromJson(json["read"] as Map<String, dynamic>),
-      edit: json["edit"] == null ? null : PermissionRuleConfig.fromJson(json["edit"] as Map<String, dynamic>),
-      glob: json["glob"] == null ? null : PermissionRuleConfig.fromJson(json["glob"] as Map<String, dynamic>),
-      grep: json["grep"] == null ? null : PermissionRuleConfig.fromJson(json["grep"] as Map<String, dynamic>),
-      list: json["list"] == null ? null : PermissionRuleConfig.fromJson(json["list"] as Map<String, dynamic>),
-      bash: json["bash"] == null ? null : PermissionRuleConfig.fromJson(json["bash"] as Map<String, dynamic>),
-      task: json["task"] == null ? null : PermissionRuleConfig.fromJson(json["task"] as Map<String, dynamic>),
-      externalDirectory: json["external_directory"] == null ? null : PermissionRuleConfig.fromJson(json["external_directory"] as Map<String, dynamic>),
+      read: json["read"] == null ? null : PermissionRuleConfig.fromJson(json["read"]),
+      edit: json["edit"] == null ? null : PermissionRuleConfig.fromJson(json["edit"]),
+      glob: json["glob"] == null ? null : PermissionRuleConfig.fromJson(json["glob"]),
+      grep: json["grep"] == null ? null : PermissionRuleConfig.fromJson(json["grep"]),
+      list: json["list"] == null ? null : PermissionRuleConfig.fromJson(json["list"]),
+      bash: json["bash"] == null ? null : PermissionRuleConfig.fromJson(json["bash"]),
+      task: json["task"] == null ? null : PermissionRuleConfig.fromJson(json["task"]),
+      externalDirectory: json["external_directory"] == null ? null : PermissionRuleConfig.fromJson(json["external_directory"]),
       todowrite: json["todowrite"] == null ? null : PermissionActionConfig.fromJson(json["todowrite"] as String),
       question: json["question"] == null ? null : PermissionActionConfig.fromJson(json["question"] as String),
       webfetch: json["webfetch"] == null ? null : PermissionActionConfig.fromJson(json["webfetch"] as String),
       websearch: json["websearch"] == null ? null : PermissionActionConfig.fromJson(json["websearch"] as String),
-      lsp: json["lsp"] == null ? null : PermissionRuleConfig.fromJson(json["lsp"] as Map<String, dynamic>),
+      lsp: json["lsp"] == null ? null : PermissionRuleConfig.fromJson(json["lsp"]),
       doomLoop: json["doom_loop"] == null ? null : PermissionActionConfig.fromJson(json["doom_loop"] as String),
-      skill: json["skill"] == null ? null : PermissionRuleConfig.fromJson(json["skill"] as Map<String, dynamic>),
+      skill: json["skill"] == null ? null : PermissionRuleConfig.fromJson(json["skill"]),
     );
   }
 

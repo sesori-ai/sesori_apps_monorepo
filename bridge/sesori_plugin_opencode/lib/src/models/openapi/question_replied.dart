@@ -22,7 +22,7 @@ class QuestionReplied {
     return <String, dynamic>{
       "sessionID": sessionID,
       "requestID": requestID,
-      "answers": answers,
+      "answers": answers.map((e) => e.toJson()).toList(),
     };
   }
 

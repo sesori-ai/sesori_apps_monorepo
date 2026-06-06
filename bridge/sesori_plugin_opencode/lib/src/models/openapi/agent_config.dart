@@ -37,7 +37,7 @@ class AgentConfig {
       color: json["color"],
       steps: json["steps"] as int?,
       maxSteps: json["maxSteps"] as int?,
-      permission: json["permission"] == null ? null : PermissionConfig.fromJson(json["permission"] as Map<String, dynamic>),
+      permission: json["permission"] == null ? null : PermissionConfig.fromJson(json["permission"]),
     );
   }
 

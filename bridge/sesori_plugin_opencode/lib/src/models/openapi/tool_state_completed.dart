@@ -36,7 +36,7 @@ class ToolStateCompleted implements ToolState {
       "title": title,
       "metadata": metadata,
       "time": time,
-      "attachments": attachments,
+      "attachments": attachments?.map((e) => e.toJson()).toList(),
     };
   }
 

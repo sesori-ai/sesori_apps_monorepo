@@ -34,7 +34,7 @@ class Provider {
       "env": env,
       "key": key,
       "options": options,
-      "models": models,
+      "models": models.map((k, v) => MapEntry(k, v.toJson())),
     };
   }
 

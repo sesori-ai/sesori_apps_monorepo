@@ -38,9 +38,9 @@ class SessionMessageUser implements SessionMessage {
       "metadata": metadata,
       "time": time,
       "text": text,
-      "files": files,
-      "agents": agents,
-      "references": references,
+      "files": files?.map((e) => e.toJson()).toList(),
+      "agents": agents?.map((e) => e.toJson()).toList(),
+      "references": references?.map((e) => e.toJson()).toList(),
       "type": type,
     };
   }

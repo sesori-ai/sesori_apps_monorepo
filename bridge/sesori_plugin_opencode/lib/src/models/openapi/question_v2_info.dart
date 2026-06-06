@@ -26,7 +26,7 @@ class QuestionV2Info {
     return <String, dynamic>{
       "question": question,
       "header": header,
-      "options": options,
+      "options": options.map((e) => e.toJson()).toList(),
       "multiple": multiple,
       "custom": custom,
     };
