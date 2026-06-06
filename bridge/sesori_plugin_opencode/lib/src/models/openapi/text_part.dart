@@ -7,7 +7,6 @@ class TextPart implements Part {
     required this.id,
     required this.sessionID,
     required this.messageID,
-    required this.type,
     required this.text,
     this.synthetic,
     this.ignored,
@@ -20,7 +19,6 @@ class TextPart implements Part {
       id: json["id"] as String,
       sessionID: json["sessionID"] as String,
       messageID: json["messageID"] as String,
-      type: json["type"] as String,
       text: json["text"] as String,
       synthetic: json["synthetic"] as bool?,
       ignored: json["ignored"] as bool?,
@@ -36,7 +34,7 @@ class TextPart implements Part {
       "id": id,
       "sessionID": sessionID,
       "messageID": messageID,
-      "type": type,
+      "type": "text",
       "text": text,
       "synthetic": synthetic,
       "ignored": ignored,
@@ -48,7 +46,6 @@ class TextPart implements Part {
   final String id;
   final String sessionID;
   final String messageID;
-  final String type;
   final String text;
   final bool? synthetic;
   final bool? ignored;

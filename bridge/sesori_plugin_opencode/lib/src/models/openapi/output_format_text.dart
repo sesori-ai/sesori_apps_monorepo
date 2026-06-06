@@ -3,23 +3,19 @@
 import 'output_format.dart';
 
 class OutputFormatText implements OutputFormat {
-  const OutputFormatText({
-    required this.type,
-  });
+  const OutputFormatText();
 
+  // ignore: avoid_unused_constructor_parameters
   factory OutputFormatText.fromJson(Map<String, dynamic> json) {
-    return OutputFormatText(
-      type: json["type"] as String,
-    );
+    return const OutputFormatText();
   }
 
 
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      "type": type,
+      "type": "text",
     };
   }
 
-  final String type;
 }

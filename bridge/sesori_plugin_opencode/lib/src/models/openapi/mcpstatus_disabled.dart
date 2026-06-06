@@ -3,23 +3,19 @@
 import 'mcpstatus.dart';
 
 class MCPStatusDisabled implements MCPStatus {
-  const MCPStatusDisabled({
-    required this.status,
-  });
+  const MCPStatusDisabled();
 
+  // ignore: avoid_unused_constructor_parameters
   factory MCPStatusDisabled.fromJson(Map<String, dynamic> json) {
-    return MCPStatusDisabled(
-      status: json["status"] as String,
-    );
+    return const MCPStatusDisabled();
   }
 
 
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      "status": status,
+      "status": "disabled",
     };
   }
 
-  final String status;
 }

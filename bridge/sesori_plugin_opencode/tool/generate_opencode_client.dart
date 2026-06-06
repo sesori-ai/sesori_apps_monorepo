@@ -1243,12 +1243,27 @@ class ModelWriter {
       final props = (schema['properties'] as Map<String, dynamic>?) ?? const {};
       final required =
           ((schema['required'] as List?) ?? const []).cast<String>();
+      // Same discriminator-literal handling as `_emitObject`:
+      // a required single-value enum property of an inline
+      // variant is the class's own constant and must not be
+      // exposed as a constructor parameter.
+      final literals = <String, String>{};
+      for (final entry in props.entries) {
+        final sch = entry.value as Map<String, dynamic>?;
+        if (sch == null) continue;
+        if (sch['type'] != 'string') continue;
+        final vals = sch['enum'];
+        if (vals is! List || vals.length != 1) continue;
+        literals[entry.key] = vals.first as String;
+      }
       b.writeln('class $className implements $unionName {');
-      if (props.isEmpty) {
+      final realProps =
+          props.entries.where((e) => !literals.containsKey(e.key)).toList();
+      if (realProps.isEmpty) {
         b.writeln('  const $className();');
       } else {
         b.writeln('  const $className({');
-        for (final entry in props.entries) {
+        for (final entry in realProps) {
           final fieldName = entry.key;
           final safeName = _safeIdentifier(fieldName);
           final isRequired = required.contains(fieldName);
@@ -1263,12 +1278,20 @@ class ModelWriter {
         b.writeln('  });');
       }
       b.writeln();
+      if (realProps.isEmpty) {
+        // Empty variant: no fields to decode, the json parameter is
+        // unused. Suppress the lint because the signature is dictated
+        // by the parent union's dispatch, not by the implementation.
+        b.writeln(
+          '  // ignore: avoid_unused_constructor_parameters',
+        );
+      }
       b.writeln('  factory $className.fromJson(Map<String, dynamic> json) {');
-      if (props.isEmpty) {
+      if (realProps.isEmpty) {
         b.writeln('    return const $className();');
       } else {
         b.writeln('    return $className(');
-        for (final entry in props.entries) {
+        for (final entry in realProps) {
           final fieldName = entry.key;
           final isRequired = required.contains(fieldName);
           final propSch = entry.value as Map<String, dynamic>;
@@ -1286,6 +1309,11 @@ class ModelWriter {
         b.writeln('    return <String, dynamic>{');
         for (final entry in props.entries) {
           final fieldName = entry.key;
+          final literal = literals[fieldName];
+          if (literal != null) {
+            b.writeln('      ${_safeKey(fieldName)}: ${jsonEncode(literal)},');
+            continue;
+          }
           b.writeln('      ${_safeKey(fieldName)}: ${_safeIdentifier(fieldName)},');
         }
         b.writeln('    };');
@@ -1293,6 +1321,7 @@ class ModelWriter {
       b.writeln('  }');
       b.writeln();
       for (final entry in props.entries) {
+        if (literals.containsKey(entry.key)) continue;
         final fieldName = entry.key;
         final safeName = _safeIdentifier(fieldName);
         final propSch = entry.value as Map<String, dynamic>;
@@ -1330,16 +1359,40 @@ class ModelWriter {
     final required =
         ((schema['required'] as List?) ?? const []).cast<String>();
 
+    // Discriminator / literal properties: a required single-value enum
+    // property on a class that implements a union is a constant that
+    // fully determines the variant. Exposing it as a constructor
+    // parameter invites callers to construct a payload with a wrong
+    // discriminator value (e.g. `EventAccountRemoved(type: 'account.
+    // added')`), which would round-trip to a different variant on
+    // deserialization. Hide it from the constructor, fields, and
+    // fromJson, and emit the literal value in toJson.
+    final literals = <String, String>{};
+    if (implementsClass != null) {
+      for (final entry in properties.entries) {
+        final sch = entry.value as Map<String, dynamic>?;
+        if (sch == null) continue;
+        if (sch['type'] != 'string') continue;
+        final vals = sch['enum'];
+        if (vals is! List || vals.length != 1) continue;
+        literals[entry.key] = vals.first as String;
+      }
+    }
+
     b.writeln(implementsClass != null
         ? 'class $name implements $implementsClass {'
         : 'class $name {');
-    if (properties.isEmpty) {
+    // A class becomes empty (no constructor params) when it has no
+    // properties at all OR every property is a literal discriminator.
+    final realProps =
+        properties.entries.where((e) => !literals.containsKey(e.key)).toList();
+    if (realProps.isEmpty) {
       // Empty class: `const Name({});` is a Dart parse error (empty `{}`
       // parameter list). Use `()` instead.
       b.writeln('  const $name();');
     } else {
       b.writeln('  const $name({');
-      for (final entry in properties.entries) {
+      for (final entry in realProps) {
         final fieldName = entry.key;
         final safeName = _safeIdentifier(fieldName);
         final sch = entry.value as Map<String, dynamic>;
@@ -1359,7 +1412,7 @@ class ModelWriter {
     b.writeln();
 
     // fromJson
-    if (properties.isEmpty) {
+    if (realProps.isEmpty) {
       // Empty object: use `const` to satisfy `prefer_const_constructors`.
       // The OpenAPI spec defines this schema as `{}` with no modeled
       // fields, so the API may legitimately return additional
@@ -1376,6 +1429,7 @@ class ModelWriter {
       b.writeln('  factory $name.fromJson(Map<String, dynamic> json) {');
       b.writeln('    return $name(');
       for (final entry in properties.entries) {
+        if (literals.containsKey(entry.key)) continue;
         final fieldName = entry.key;
         final isRequired = required.contains(fieldName);
         final sch = entry.value as Map<String, dynamic>;
@@ -1397,6 +1451,13 @@ class ModelWriter {
     b.writeln('    return <String, dynamic>{');
     for (final entry in properties.entries) {
       final fieldName = entry.key;
+      final literal = literals[fieldName];
+      if (literal != null) {
+        // Discriminator / constant: emit the literal value the class
+        // is supposed to carry, not a field reference.
+        b.writeln('      ${_safeKey(fieldName)}: ${jsonEncode(literal)},');
+        continue;
+      }
       final sch = entry.value as Map<String, dynamic>;
       final isRequired = required.contains(fieldName);
       final isNullable = _isNullableSchema(sch) || !isRequired;
@@ -1408,6 +1469,7 @@ class ModelWriter {
 
     // Fields
     for (final entry in properties.entries) {
+      if (literals.containsKey(entry.key)) continue;
       final fieldName = entry.key;
       final safeName = _safeIdentifier(fieldName);
       final sch = entry.value as Map<String, dynamic>;

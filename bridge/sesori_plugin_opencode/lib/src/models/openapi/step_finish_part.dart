@@ -7,7 +7,6 @@ class StepFinishPart implements Part {
     required this.id,
     required this.sessionID,
     required this.messageID,
-    required this.type,
     required this.reason,
     this.snapshot,
     required this.cost,
@@ -19,7 +18,6 @@ class StepFinishPart implements Part {
       id: json["id"] as String,
       sessionID: json["sessionID"] as String,
       messageID: json["messageID"] as String,
-      type: json["type"] as String,
       reason: json["reason"] as String,
       snapshot: json["snapshot"] as String?,
       cost: (json["cost"] as num).toDouble(),
@@ -34,7 +32,7 @@ class StepFinishPart implements Part {
       "id": id,
       "sessionID": sessionID,
       "messageID": messageID,
-      "type": type,
+      "type": "step-finish",
       "reason": reason,
       "snapshot": snapshot,
       "cost": cost,
@@ -45,7 +43,6 @@ class StepFinishPart implements Part {
   final String id;
   final String sessionID;
   final String messageID;
-  final String type;
   final String reason;
   final String? snapshot;
   final double cost;

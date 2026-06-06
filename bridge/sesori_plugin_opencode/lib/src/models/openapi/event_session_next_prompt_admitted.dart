@@ -5,14 +5,12 @@ import 'event.dart';
 class EventSessionNextPromptAdmitted implements Event {
   const EventSessionNextPromptAdmitted({
     required this.id,
-    required this.type,
     required this.properties,
   });
 
   factory EventSessionNextPromptAdmitted.fromJson(Map<String, dynamic> json) {
     return EventSessionNextPromptAdmitted(
       id: json["id"] as String,
-      type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
@@ -22,12 +20,11 @@ class EventSessionNextPromptAdmitted implements Event {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
-      "type": type,
+      "type": "session.next.prompt.admitted",
       "properties": properties,
     };
   }
 
   final String id;
-  final String type;
   final Map<String, dynamic> properties;
 }

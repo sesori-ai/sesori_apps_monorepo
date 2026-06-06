@@ -4,7 +4,6 @@ import 'session_message.dart';
 
 class SessionMessageCompaction implements SessionMessage {
   const SessionMessageCompaction({
-    required this.type,
     required this.reason,
     required this.summary,
     required this.recent,
@@ -15,7 +14,6 @@ class SessionMessageCompaction implements SessionMessage {
 
   factory SessionMessageCompaction.fromJson(Map<String, dynamic> json) {
     return SessionMessageCompaction(
-      type: json["type"] as String,
       reason: json["reason"] as String,
       summary: json["summary"] as String,
       recent: json["recent"] as String,
@@ -29,7 +27,7 @@ class SessionMessageCompaction implements SessionMessage {
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      "type": type,
+      "type": "compaction",
       "reason": reason,
       "summary": summary,
       "recent": recent,
@@ -39,7 +37,6 @@ class SessionMessageCompaction implements SessionMessage {
     };
   }
 
-  final String type;
   final String reason;
   final String summary;
   final String recent;

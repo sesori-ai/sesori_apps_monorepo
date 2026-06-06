@@ -8,7 +8,6 @@ class ToolPart implements Part {
     required this.id,
     required this.sessionID,
     required this.messageID,
-    required this.type,
     required this.callID,
     required this.tool,
     required this.state,
@@ -20,7 +19,6 @@ class ToolPart implements Part {
       id: json["id"] as String,
       sessionID: json["sessionID"] as String,
       messageID: json["messageID"] as String,
-      type: json["type"] as String,
       callID: json["callID"] as String,
       tool: json["tool"] as String,
       state: ToolState.fromJson(json["state"]),
@@ -35,7 +33,7 @@ class ToolPart implements Part {
       "id": id,
       "sessionID": sessionID,
       "messageID": messageID,
-      "type": type,
+      "type": "tool",
       "callID": callID,
       "tool": tool,
       "state": state.toJson(),
@@ -46,7 +44,6 @@ class ToolPart implements Part {
   final String id;
   final String sessionID;
   final String messageID;
-  final String type;
   final String callID;
   final String tool;
   final ToolState state;

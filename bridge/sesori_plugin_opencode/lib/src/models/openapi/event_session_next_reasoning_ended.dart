@@ -5,14 +5,12 @@ import 'event.dart';
 class EventSessionNextReasoningEnded implements Event {
   const EventSessionNextReasoningEnded({
     required this.id,
-    required this.type,
     required this.properties,
   });
 
   factory EventSessionNextReasoningEnded.fromJson(Map<String, dynamic> json) {
     return EventSessionNextReasoningEnded(
       id: json["id"] as String,
-      type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
@@ -22,12 +20,11 @@ class EventSessionNextReasoningEnded implements Event {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
-      "type": type,
+      "type": "session.next.reasoning.ended",
       "properties": properties,
     };
   }
 
   final String id;
-  final String type;
   final Map<String, dynamic> properties;
 }

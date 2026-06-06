@@ -8,7 +8,6 @@ class SessionMessageAssistant implements SessionMessage {
     required this.id,
     this.metadata,
     required this.time,
-    required this.type,
     required this.agent,
     required this.model,
     required this.content,
@@ -24,7 +23,6 @@ class SessionMessageAssistant implements SessionMessage {
       id: json["id"] as String,
       metadata: json["metadata"] as Map<String, dynamic>?,
       time: json["time"] as Map<String, dynamic>,
-      type: json["type"] as String,
       agent: json["agent"] as String,
       model: json["model"] as Map<String, dynamic>,
       content: (json["content"] as List<dynamic>).cast<dynamic>(),
@@ -43,7 +41,7 @@ class SessionMessageAssistant implements SessionMessage {
       "id": id,
       "metadata": metadata,
       "time": time,
-      "type": type,
+      "type": "assistant",
       "agent": agent,
       "model": model,
       "content": content,
@@ -58,7 +56,6 @@ class SessionMessageAssistant implements SessionMessage {
   final String id;
   final Map<String, dynamic>? metadata;
   final Map<String, dynamic> time;
-  final String type;
   final String agent;
   final Map<String, dynamic> model;
   final List<dynamic> content;

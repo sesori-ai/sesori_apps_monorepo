@@ -5,14 +5,12 @@ import 'event.dart';
 class EventSessionNextInterruptRequested implements Event {
   const EventSessionNextInterruptRequested({
     required this.id,
-    required this.type,
     required this.properties,
   });
 
   factory EventSessionNextInterruptRequested.fromJson(Map<String, dynamic> json) {
     return EventSessionNextInterruptRequested(
       id: json["id"] as String,
-      type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
@@ -22,12 +20,11 @@ class EventSessionNextInterruptRequested implements Event {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
-      "type": type,
+      "type": "session.next.interrupt.requested",
       "properties": properties,
     };
   }
 
   final String id;
-  final String type;
   final Map<String, dynamic> properties;
 }

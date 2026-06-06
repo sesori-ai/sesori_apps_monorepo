@@ -5,14 +5,12 @@ import 'event.dart';
 class EventLspUpdated implements Event {
   const EventLspUpdated({
     required this.id,
-    required this.type,
     required this.properties,
   });
 
   factory EventLspUpdated.fromJson(Map<String, dynamic> json) {
     return EventLspUpdated(
       id: json["id"] as String,
-      type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
@@ -22,12 +20,11 @@ class EventLspUpdated implements Event {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
-      "type": type,
+      "type": "lsp.updated",
       "properties": properties,
     };
   }
 
   final String id;
-  final String type;
   final Map<String, dynamic> properties;
 }

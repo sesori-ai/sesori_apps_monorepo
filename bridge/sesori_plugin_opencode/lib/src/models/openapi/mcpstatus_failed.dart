@@ -4,13 +4,11 @@ import 'mcpstatus.dart';
 
 class MCPStatusFailed implements MCPStatus {
   const MCPStatusFailed({
-    required this.status,
     required this.error,
   });
 
   factory MCPStatusFailed.fromJson(Map<String, dynamic> json) {
     return MCPStatusFailed(
-      status: json["status"] as String,
       error: json["error"] as String,
     );
   }
@@ -19,11 +17,10 @@ class MCPStatusFailed implements MCPStatus {
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      "status": status,
+      "status": "failed",
       "error": error,
     };
   }
 
-  final String status;
   final String error;
 }

@@ -5,14 +5,12 @@ import 'event.dart';
 class EventInstallationUpdateAvailable implements Event {
   const EventInstallationUpdateAvailable({
     required this.id,
-    required this.type,
     required this.properties,
   });
 
   factory EventInstallationUpdateAvailable.fromJson(Map<String, dynamic> json) {
     return EventInstallationUpdateAvailable(
       id: json["id"] as String,
-      type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
@@ -22,12 +20,11 @@ class EventInstallationUpdateAvailable implements Event {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
-      "type": type,
+      "type": "installation.update-available",
       "properties": properties,
     };
   }
 
   final String id;
-  final String type;
   final Map<String, dynamic> properties;
 }

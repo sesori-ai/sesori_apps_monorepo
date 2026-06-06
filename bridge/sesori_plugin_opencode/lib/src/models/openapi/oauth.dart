@@ -4,7 +4,6 @@ import 'auth.dart';
 
 class OAuth implements Auth {
   const OAuth({
-    required this.type,
     required this.refresh,
     required this.access,
     required this.expires,
@@ -14,7 +13,6 @@ class OAuth implements Auth {
 
   factory OAuth.fromJson(Map<String, dynamic> json) {
     return OAuth(
-      type: json["type"] as String,
       refresh: json["refresh"] as String,
       access: json["access"] as String,
       expires: json["expires"] as int,
@@ -27,7 +25,7 @@ class OAuth implements Auth {
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      "type": type,
+      "type": "oauth",
       "refresh": refresh,
       "access": access,
       "expires": expires,
@@ -36,7 +34,6 @@ class OAuth implements Auth {
     };
   }
 
-  final String type;
   final String refresh;
   final String access;
   final int expires;

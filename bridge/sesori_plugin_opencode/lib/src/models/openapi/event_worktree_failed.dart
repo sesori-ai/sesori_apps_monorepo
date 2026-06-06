@@ -5,14 +5,12 @@ import 'event.dart';
 class EventWorktreeFailed implements Event {
   const EventWorktreeFailed({
     required this.id,
-    required this.type,
     required this.properties,
   });
 
   factory EventWorktreeFailed.fromJson(Map<String, dynamic> json) {
     return EventWorktreeFailed(
       id: json["id"] as String,
-      type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
@@ -22,12 +20,11 @@ class EventWorktreeFailed implements Event {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
-      "type": type,
+      "type": "worktree.failed",
       "properties": properties,
     };
   }
 
   final String id;
-  final String type;
   final Map<String, dynamic> properties;
 }

@@ -7,7 +7,6 @@ class PatchPart implements Part {
     required this.id,
     required this.sessionID,
     required this.messageID,
-    required this.type,
     required this.hash,
     required this.files,
   });
@@ -17,7 +16,6 @@ class PatchPart implements Part {
       id: json["id"] as String,
       sessionID: json["sessionID"] as String,
       messageID: json["messageID"] as String,
-      type: json["type"] as String,
       hash: json["hash"] as String,
       files: (json["files"] as List<dynamic>).cast<String>(),
     );
@@ -30,7 +28,7 @@ class PatchPart implements Part {
       "id": id,
       "sessionID": sessionID,
       "messageID": messageID,
-      "type": type,
+      "type": "patch",
       "hash": hash,
       "files": files,
     };
@@ -39,7 +37,6 @@ class PatchPart implements Part {
   final String id;
   final String sessionID;
   final String messageID;
-  final String type;
   final String hash;
   final List<String> files;
 }

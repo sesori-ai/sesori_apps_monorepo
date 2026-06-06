@@ -7,7 +7,6 @@ class SubtaskPart implements Part {
     required this.id,
     required this.sessionID,
     required this.messageID,
-    required this.type,
     required this.prompt,
     required this.description,
     required this.agent,
@@ -20,7 +19,6 @@ class SubtaskPart implements Part {
       id: json["id"] as String,
       sessionID: json["sessionID"] as String,
       messageID: json["messageID"] as String,
-      type: json["type"] as String,
       prompt: json["prompt"] as String,
       description: json["description"] as String,
       agent: json["agent"] as String,
@@ -36,7 +34,7 @@ class SubtaskPart implements Part {
       "id": id,
       "sessionID": sessionID,
       "messageID": messageID,
-      "type": type,
+      "type": "subtask",
       "prompt": prompt,
       "description": description,
       "agent": agent,
@@ -48,7 +46,6 @@ class SubtaskPart implements Part {
   final String id;
   final String sessionID;
   final String messageID;
-  final String type;
   final String prompt;
   final String description;
   final String agent;

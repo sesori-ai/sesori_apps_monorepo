@@ -5,14 +5,12 @@ import 'event.dart';
 class EventPtyDeleted implements Event {
   const EventPtyDeleted({
     required this.id,
-    required this.type,
     required this.properties,
   });
 
   factory EventPtyDeleted.fromJson(Map<String, dynamic> json) {
     return EventPtyDeleted(
       id: json["id"] as String,
-      type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
@@ -22,12 +20,11 @@ class EventPtyDeleted implements Event {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
-      "type": type,
+      "type": "pty.deleted",
       "properties": properties,
     };
   }
 
   final String id;
-  final String type;
   final Map<String, dynamic> properties;
 }

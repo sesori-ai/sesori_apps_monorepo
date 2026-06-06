@@ -5,14 +5,12 @@ import 'event.dart';
 class EventQuestionV2Asked implements Event {
   const EventQuestionV2Asked({
     required this.id,
-    required this.type,
     required this.properties,
   });
 
   factory EventQuestionV2Asked.fromJson(Map<String, dynamic> json) {
     return EventQuestionV2Asked(
       id: json["id"] as String,
-      type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
@@ -22,12 +20,11 @@ class EventQuestionV2Asked implements Event {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
-      "type": type,
+      "type": "question.v2.asked",
       "properties": properties,
     };
   }
 
   final String id;
-  final String type;
   final Map<String, dynamic> properties;
 }

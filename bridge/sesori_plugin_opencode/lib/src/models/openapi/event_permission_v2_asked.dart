@@ -5,14 +5,12 @@ import 'event.dart';
 class EventPermissionV2Asked implements Event {
   const EventPermissionV2Asked({
     required this.id,
-    required this.type,
     required this.properties,
   });
 
   factory EventPermissionV2Asked.fromJson(Map<String, dynamic> json) {
     return EventPermissionV2Asked(
       id: json["id"] as String,
-      type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
@@ -22,12 +20,11 @@ class EventPermissionV2Asked implements Event {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
-      "type": type,
+      "type": "permission.v2.asked",
       "properties": properties,
     };
   }
 
   final String id;
-  final String type;
   final Map<String, dynamic> properties;
 }

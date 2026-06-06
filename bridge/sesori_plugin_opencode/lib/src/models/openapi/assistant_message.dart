@@ -6,7 +6,6 @@ class AssistantMessage implements Message {
   const AssistantMessage({
     required this.id,
     required this.sessionID,
-    required this.role,
     required this.time,
     this.error,
     required this.parentID,
@@ -27,7 +26,6 @@ class AssistantMessage implements Message {
     return AssistantMessage(
       id: json["id"] as String,
       sessionID: json["sessionID"] as String,
-      role: json["role"] as String,
       time: json["time"] as Map<String, dynamic>,
       error: json["error"],
       parentID: json["parentID"] as String,
@@ -51,7 +49,7 @@ class AssistantMessage implements Message {
     return <String, dynamic>{
       "id": id,
       "sessionID": sessionID,
-      "role": role,
+      "role": "assistant",
       "time": time,
       "error": error,
       "parentID": parentID,
@@ -71,7 +69,6 @@ class AssistantMessage implements Message {
 
   final String id;
   final String sessionID;
-  final String role;
   final Map<String, dynamic> time;
   final dynamic error;
   final String parentID;

@@ -5,14 +5,12 @@ import 'event.dart';
 class EventTuiSessionSelect16fpc99 implements Event {
   const EventTuiSessionSelect16fpc99({
     required this.id,
-    required this.type,
     required this.properties,
   });
 
   factory EventTuiSessionSelect16fpc99.fromJson(Map<String, dynamic> json) {
     return EventTuiSessionSelect16fpc99(
       id: json["id"] as String,
-      type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
@@ -22,12 +20,11 @@ class EventTuiSessionSelect16fpc99 implements Event {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
-      "type": type,
+      "type": "tui.session.select",
       "properties": properties,
     };
   }
 
   final String id;
-  final String type;
   final Map<String, dynamic> properties;
 }

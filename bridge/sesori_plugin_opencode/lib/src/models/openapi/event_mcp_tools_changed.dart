@@ -5,14 +5,12 @@ import 'event.dart';
 class EventMcpToolsChanged implements Event {
   const EventMcpToolsChanged({
     required this.id,
-    required this.type,
     required this.properties,
   });
 
   factory EventMcpToolsChanged.fromJson(Map<String, dynamic> json) {
     return EventMcpToolsChanged(
       id: json["id"] as String,
-      type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
@@ -22,12 +20,11 @@ class EventMcpToolsChanged implements Event {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
-      "type": type,
+      "type": "mcp.tools.changed",
       "properties": properties,
     };
   }
 
   final String id;
-  final String type;
   final Map<String, dynamic> properties;
 }

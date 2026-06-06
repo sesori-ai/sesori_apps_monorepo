@@ -8,7 +8,6 @@ class RetryPart implements Part {
     required this.id,
     required this.sessionID,
     required this.messageID,
-    required this.type,
     required this.attempt,
     required this.error,
     required this.time,
@@ -19,7 +18,6 @@ class RetryPart implements Part {
       id: json["id"] as String,
       sessionID: json["sessionID"] as String,
       messageID: json["messageID"] as String,
-      type: json["type"] as String,
       attempt: json["attempt"] as int,
       error: APIError.fromJson(json["error"] as Map<String, dynamic>),
       time: json["time"] as Map<String, dynamic>,
@@ -33,7 +31,7 @@ class RetryPart implements Part {
       "id": id,
       "sessionID": sessionID,
       "messageID": messageID,
-      "type": type,
+      "type": "retry",
       "attempt": attempt,
       "error": error.toJson(),
       "time": time,
@@ -43,7 +41,6 @@ class RetryPart implements Part {
   final String id;
   final String sessionID;
   final String messageID;
-  final String type;
   final int attempt;
   final APIError error;
   final Map<String, dynamic> time;

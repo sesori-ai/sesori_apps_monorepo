@@ -5,14 +5,12 @@ import 'event.dart';
 class EventWorkspaceFailed implements Event {
   const EventWorkspaceFailed({
     required this.id,
-    required this.type,
     required this.properties,
   });
 
   factory EventWorkspaceFailed.fromJson(Map<String, dynamic> json) {
     return EventWorkspaceFailed(
       id: json["id"] as String,
-      type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
@@ -22,12 +20,11 @@ class EventWorkspaceFailed implements Event {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
-      "type": type,
+      "type": "workspace.failed",
       "properties": properties,
     };
   }
 
   final String id;
-  final String type;
   final Map<String, dynamic> properties;
 }

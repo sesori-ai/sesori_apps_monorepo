@@ -7,7 +7,6 @@ import 'range.dart';
 class SymbolSource implements FilePartSource {
   const SymbolSource({
     required this.text,
-    required this.type,
     required this.path,
     required this.range,
     required this.name,
@@ -17,7 +16,6 @@ class SymbolSource implements FilePartSource {
   factory SymbolSource.fromJson(Map<String, dynamic> json) {
     return SymbolSource(
       text: FilePartSourceText.fromJson(json["text"] as Map<String, dynamic>),
-      type: json["type"] as String,
       path: json["path"] as String,
       range: Range.fromJson(json["range"] as Map<String, dynamic>),
       name: json["name"] as String,
@@ -30,7 +28,7 @@ class SymbolSource implements FilePartSource {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "text": text.toJson(),
-      "type": type,
+      "type": "symbol",
       "path": path,
       "range": range.toJson(),
       "name": name,
@@ -39,7 +37,6 @@ class SymbolSource implements FilePartSource {
   }
 
   final FilePartSourceText text;
-  final String type;
   final String path;
   final Range range;
   final String name;

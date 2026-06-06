@@ -7,7 +7,6 @@ class ReasoningPart implements Part {
     required this.id,
     required this.sessionID,
     required this.messageID,
-    required this.type,
     required this.text,
     this.metadata,
     required this.time,
@@ -18,7 +17,6 @@ class ReasoningPart implements Part {
       id: json["id"] as String,
       sessionID: json["sessionID"] as String,
       messageID: json["messageID"] as String,
-      type: json["type"] as String,
       text: json["text"] as String,
       metadata: json["metadata"] as Map<String, dynamic>?,
       time: json["time"] as Map<String, dynamic>,
@@ -32,7 +30,7 @@ class ReasoningPart implements Part {
       "id": id,
       "sessionID": sessionID,
       "messageID": messageID,
-      "type": type,
+      "type": "reasoning",
       "text": text,
       "metadata": metadata,
       "time": time,
@@ -42,7 +40,6 @@ class ReasoningPart implements Part {
   final String id;
   final String sessionID;
   final String messageID;
-  final String type;
   final String text;
   final Map<String, dynamic>? metadata;
   final Map<String, dynamic> time;

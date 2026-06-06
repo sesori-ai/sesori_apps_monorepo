@@ -3,23 +3,19 @@
 import 'mcpstatus.dart';
 
 class MCPStatusNeedsAuth implements MCPStatus {
-  const MCPStatusNeedsAuth({
-    required this.status,
-  });
+  const MCPStatusNeedsAuth();
 
+  // ignore: avoid_unused_constructor_parameters
   factory MCPStatusNeedsAuth.fromJson(Map<String, dynamic> json) {
-    return MCPStatusNeedsAuth(
-      status: json["status"] as String,
-    );
+    return const MCPStatusNeedsAuth();
   }
 
 
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      "status": status,
+      "status": "needs_auth",
     };
   }
 
-  final String status;
 }

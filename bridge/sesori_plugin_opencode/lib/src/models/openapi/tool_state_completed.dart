@@ -5,7 +5,6 @@ import 'tool_state.dart';
 
 class ToolStateCompleted implements ToolState {
   const ToolStateCompleted({
-    required this.status,
     required this.input,
     required this.output,
     required this.title,
@@ -16,7 +15,6 @@ class ToolStateCompleted implements ToolState {
 
   factory ToolStateCompleted.fromJson(Map<String, dynamic> json) {
     return ToolStateCompleted(
-      status: json["status"] as String,
       input: json["input"] as Map<String, dynamic>,
       output: json["output"] as String,
       title: json["title"] as String,
@@ -30,7 +28,7 @@ class ToolStateCompleted implements ToolState {
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      "status": status,
+      "status": "completed",
       "input": input,
       "output": output,
       "title": title,
@@ -40,7 +38,6 @@ class ToolStateCompleted implements ToolState {
     };
   }
 
-  final String status;
   final Map<String, dynamic> input;
   final String output;
   final String title;

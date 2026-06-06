@@ -14,7 +14,6 @@ class SessionMessageUser implements SessionMessage {
     this.files,
     this.agents,
     this.references,
-    required this.type,
   });
 
   factory SessionMessageUser.fromJson(Map<String, dynamic> json) {
@@ -26,7 +25,6 @@ class SessionMessageUser implements SessionMessage {
       files: (json["files"] as List<dynamic>?)?.map((e) => PromptFileAttachment.fromJson(e as Map<String, dynamic>)).toList(),
       agents: (json["agents"] as List<dynamic>?)?.map((e) => PromptAgentAttachment.fromJson(e as Map<String, dynamic>)).toList(),
       references: (json["references"] as List<dynamic>?)?.map((e) => PromptReferenceAttachment.fromJson(e as Map<String, dynamic>)).toList(),
-      type: json["type"] as String,
     );
   }
 
@@ -41,7 +39,7 @@ class SessionMessageUser implements SessionMessage {
       "files": files?.map((e) => e.toJson()).toList(),
       "agents": agents?.map((e) => e.toJson()).toList(),
       "references": references?.map((e) => e.toJson()).toList(),
-      "type": type,
+      "type": "user",
     };
   }
 
@@ -52,5 +50,4 @@ class SessionMessageUser implements SessionMessage {
   final List<PromptFileAttachment>? files;
   final List<PromptAgentAttachment>? agents;
   final List<PromptReferenceAttachment>? references;
-  final String type;
 }

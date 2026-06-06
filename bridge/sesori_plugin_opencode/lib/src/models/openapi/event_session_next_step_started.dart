@@ -5,14 +5,12 @@ import 'event.dart';
 class EventSessionNextStepStarted implements Event {
   const EventSessionNextStepStarted({
     required this.id,
-    required this.type,
     required this.properties,
   });
 
   factory EventSessionNextStepStarted.fromJson(Map<String, dynamic> json) {
     return EventSessionNextStepStarted(
       id: json["id"] as String,
-      type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
@@ -22,12 +20,11 @@ class EventSessionNextStepStarted implements Event {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
-      "type": type,
+      "type": "session.next.step.started",
       "properties": properties,
     };
   }
 
   final String id;
-  final String type;
   final Map<String, dynamic> properties;
 }

@@ -7,7 +7,6 @@ class SessionMessageAgentSwitched implements SessionMessage {
     required this.id,
     this.metadata,
     required this.time,
-    required this.type,
     required this.agent,
   });
 
@@ -16,7 +15,6 @@ class SessionMessageAgentSwitched implements SessionMessage {
       id: json["id"] as String,
       metadata: json["metadata"] as Map<String, dynamic>?,
       time: json["time"] as Map<String, dynamic>,
-      type: json["type"] as String,
       agent: json["agent"] as String,
     );
   }
@@ -28,7 +26,7 @@ class SessionMessageAgentSwitched implements SessionMessage {
       "id": id,
       "metadata": metadata,
       "time": time,
-      "type": type,
+      "type": "agent-switched",
       "agent": agent,
     };
   }
@@ -36,6 +34,5 @@ class SessionMessageAgentSwitched implements SessionMessage {
   final String id;
   final Map<String, dynamic>? metadata;
   final Map<String, dynamic> time;
-  final String type;
   final String agent;
 }

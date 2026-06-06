@@ -18,6 +18,11 @@ MODULES := sesori_plugin_interface sesori_plugin_opencode app
 # Reads `tool/opencode_events_v1.json` (hand-curated v1 SSE event manifest)
 # and the OpenAPI spec at $(OPENCODE_SPEC).
 OPENCODE_SPEC ?= openapi.json
+# Resolve the spec path to an absolute one at parse time so the existence
+# check below (run in the Makefile's working directory) and the consumer
+# (run inside sesori_plugin_opencode/ after a `cd`) both see the same
+# file regardless of the caller's working directory.
+OPENCODE_SPEC := $(abspath $(OPENCODE_SPEC))
 opencode-codegen:
 	@if [ ! -f "$(OPENCODE_SPEC)" ]; then \
 		echo "error: OpenAPI spec not found at $(OPENCODE_SPEC)"; \

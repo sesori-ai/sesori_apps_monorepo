@@ -5,14 +5,12 @@ import 'event.dart';
 class EventSessionStatus implements Event {
   const EventSessionStatus({
     required this.id,
-    required this.type,
     required this.properties,
   });
 
   factory EventSessionStatus.fromJson(Map<String, dynamic> json) {
     return EventSessionStatus(
       id: json["id"] as String,
-      type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
@@ -22,12 +20,11 @@ class EventSessionStatus implements Event {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
-      "type": type,
+      "type": "session.status",
       "properties": properties,
     };
   }
 
   final String id;
-  final String type;
   final Map<String, dynamic> properties;
 }

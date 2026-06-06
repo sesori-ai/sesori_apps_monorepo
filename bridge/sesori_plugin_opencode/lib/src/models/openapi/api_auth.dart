@@ -4,14 +4,12 @@ import 'auth.dart';
 
 class ApiAuth implements Auth {
   const ApiAuth({
-    required this.type,
     required this.key,
     this.metadata,
   });
 
   factory ApiAuth.fromJson(Map<String, dynamic> json) {
     return ApiAuth(
-      type: json["type"] as String,
       key: json["key"] as String,
       metadata: (json["metadata"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as String)),
     );
@@ -21,13 +19,12 @@ class ApiAuth implements Auth {
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      "type": type,
+      "type": "api",
       "key": key,
       "metadata": metadata,
     };
   }
 
-  final String type;
   final String key;
   final Map<String, String>? metadata;
 }

@@ -5,14 +5,12 @@ import 'event.dart';
 class EventPtyExited implements Event {
   const EventPtyExited({
     required this.id,
-    required this.type,
     required this.properties,
   });
 
   factory EventPtyExited.fromJson(Map<String, dynamic> json) {
     return EventPtyExited(
       id: json["id"] as String,
-      type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
@@ -22,12 +20,11 @@ class EventPtyExited implements Event {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
-      "type": type,
+      "type": "pty.exited",
       "properties": properties,
     };
   }
 
   final String id;
-  final String type;
   final Map<String, dynamic> properties;
 }

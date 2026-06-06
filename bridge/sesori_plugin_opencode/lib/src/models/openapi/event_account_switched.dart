@@ -5,14 +5,12 @@ import 'event.dart';
 class EventAccountSwitched implements Event {
   const EventAccountSwitched({
     required this.id,
-    required this.type,
     required this.properties,
   });
 
   factory EventAccountSwitched.fromJson(Map<String, dynamic> json) {
     return EventAccountSwitched(
       id: json["id"] as String,
-      type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
@@ -22,12 +20,11 @@ class EventAccountSwitched implements Event {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
-      "type": type,
+      "type": "account.switched",
       "properties": properties,
     };
   }
 
   final String id;
-  final String type;
   final Map<String, dynamic> properties;
 }

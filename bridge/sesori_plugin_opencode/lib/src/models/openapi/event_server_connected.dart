@@ -5,14 +5,12 @@ import 'event.dart';
 class EventServerConnected implements Event {
   const EventServerConnected({
     required this.id,
-    required this.type,
     required this.properties,
   });
 
   factory EventServerConnected.fromJson(Map<String, dynamic> json) {
     return EventServerConnected(
       id: json["id"] as String,
-      type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
@@ -22,12 +20,11 @@ class EventServerConnected implements Event {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
-      "type": type,
+      "type": "server.connected",
       "properties": properties,
     };
   }
 
   final String id;
-  final String type;
   final Map<String, dynamic> properties;
 }

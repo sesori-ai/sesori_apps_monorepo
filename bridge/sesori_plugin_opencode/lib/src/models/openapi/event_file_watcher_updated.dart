@@ -5,14 +5,12 @@ import 'event.dart';
 class EventFileWatcherUpdated implements Event {
   const EventFileWatcherUpdated({
     required this.id,
-    required this.type,
     required this.properties,
   });
 
   factory EventFileWatcherUpdated.fromJson(Map<String, dynamic> json) {
     return EventFileWatcherUpdated(
       id: json["id"] as String,
-      type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
@@ -22,12 +20,11 @@ class EventFileWatcherUpdated implements Event {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
-      "type": type,
+      "type": "file.watcher.updated",
       "properties": properties,
     };
   }
 
   final String id;
-  final String type;
   final Map<String, dynamic> properties;
 }

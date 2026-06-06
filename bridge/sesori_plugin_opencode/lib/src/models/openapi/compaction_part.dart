@@ -7,7 +7,6 @@ class CompactionPart implements Part {
     required this.id,
     required this.sessionID,
     required this.messageID,
-    required this.type,
     required this.auto,
     this.overflow,
     this.tailStartId,
@@ -18,7 +17,6 @@ class CompactionPart implements Part {
       id: json["id"] as String,
       sessionID: json["sessionID"] as String,
       messageID: json["messageID"] as String,
-      type: json["type"] as String,
       auto: json["auto"] as bool,
       overflow: json["overflow"] as bool?,
       tailStartId: json["tail_start_id"] as String?,
@@ -32,7 +30,7 @@ class CompactionPart implements Part {
       "id": id,
       "sessionID": sessionID,
       "messageID": messageID,
-      "type": type,
+      "type": "compaction",
       "auto": auto,
       "overflow": overflow,
       "tail_start_id": tailStartId,
@@ -42,7 +40,6 @@ class CompactionPart implements Part {
   final String id;
   final String sessionID;
   final String messageID;
-  final String type;
   final bool auto;
   final bool? overflow;
   final String? tailStartId;

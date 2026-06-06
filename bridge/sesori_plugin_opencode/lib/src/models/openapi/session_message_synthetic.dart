@@ -9,7 +9,6 @@ class SessionMessageSynthetic implements SessionMessage {
     required this.time,
     required this.sessionID,
     required this.text,
-    required this.type,
   });
 
   factory SessionMessageSynthetic.fromJson(Map<String, dynamic> json) {
@@ -19,7 +18,6 @@ class SessionMessageSynthetic implements SessionMessage {
       time: json["time"] as Map<String, dynamic>,
       sessionID: json["sessionID"] as String,
       text: json["text"] as String,
-      type: json["type"] as String,
     );
   }
 
@@ -32,7 +30,7 @@ class SessionMessageSynthetic implements SessionMessage {
       "time": time,
       "sessionID": sessionID,
       "text": text,
-      "type": type,
+      "type": "synthetic",
     };
   }
 
@@ -41,5 +39,4 @@ class SessionMessageSynthetic implements SessionMessage {
   final Map<String, dynamic> time;
   final String sessionID;
   final String text;
-  final String type;
 }

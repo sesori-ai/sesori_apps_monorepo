@@ -3,23 +3,19 @@
 import 'mcpstatus.dart';
 
 class MCPStatusConnected implements MCPStatus {
-  const MCPStatusConnected({
-    required this.status,
-  });
+  const MCPStatusConnected();
 
+  // ignore: avoid_unused_constructor_parameters
   factory MCPStatusConnected.fromJson(Map<String, dynamic> json) {
-    return MCPStatusConnected(
-      status: json["status"] as String,
-    );
+    return const MCPStatusConnected();
   }
 
 
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      "status": status,
+      "status": "connected",
     };
   }
 
-  final String status;
 }

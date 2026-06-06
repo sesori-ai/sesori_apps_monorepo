@@ -7,7 +7,6 @@ class UserMessage implements Message {
   const UserMessage({
     required this.id,
     required this.sessionID,
-    required this.role,
     required this.time,
     this.format,
     this.summary,
@@ -21,7 +20,6 @@ class UserMessage implements Message {
     return UserMessage(
       id: json["id"] as String,
       sessionID: json["sessionID"] as String,
-      role: json["role"] as String,
       time: json["time"] as Map<String, dynamic>,
       format: json["format"] == null ? null : OutputFormat.fromJson(json["format"]),
       summary: json["summary"] as Map<String, dynamic>?,
@@ -38,7 +36,7 @@ class UserMessage implements Message {
     return <String, dynamic>{
       "id": id,
       "sessionID": sessionID,
-      "role": role,
+      "role": "user",
       "time": time,
       "format": format?.toJson(),
       "summary": summary,
@@ -51,7 +49,6 @@ class UserMessage implements Message {
 
   final String id;
   final String sessionID;
-  final String role;
   final Map<String, dynamic> time;
   final OutputFormat? format;
   final Map<String, dynamic>? summary;

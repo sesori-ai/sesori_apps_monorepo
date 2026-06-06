@@ -5,14 +5,12 @@ import 'event.dart';
 class EventSessionNextContextUpdated implements Event {
   const EventSessionNextContextUpdated({
     required this.id,
-    required this.type,
     required this.properties,
   });
 
   factory EventSessionNextContextUpdated.fromJson(Map<String, dynamic> json) {
     return EventSessionNextContextUpdated(
       id: json["id"] as String,
-      type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
@@ -22,12 +20,11 @@ class EventSessionNextContextUpdated implements Event {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
-      "type": type,
+      "type": "session.next.context.updated",
       "properties": properties,
     };
   }
 
   final String id;
-  final String type;
   final Map<String, dynamic> properties;
 }

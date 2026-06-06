@@ -24,30 +24,25 @@ abstract interface class SessionStatus {
 }
 
 class sessionStatus00Inline implements SessionStatus {
-  const sessionStatus00Inline({
-    required this.type,
-  });
+  const sessionStatus00Inline();
 
+  // ignore: avoid_unused_constructor_parameters
   factory sessionStatus00Inline.fromJson(Map<String, dynamic> json) {
-    return sessionStatus00Inline(
-      type: json["type"] as String,
-    );
+    return const sessionStatus00Inline();
   }
 
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      "type": type,
+      "type": "idle",
     };
   }
 
-  final String type;
 }
 
 
 class sessionStatus01Inline implements SessionStatus {
   const sessionStatus01Inline({
-    required this.type,
     required this.attempt,
     required this.message,
     this.action,
@@ -56,7 +51,6 @@ class sessionStatus01Inline implements SessionStatus {
 
   factory sessionStatus01Inline.fromJson(Map<String, dynamic> json) {
     return sessionStatus01Inline(
-      type: json["type"] as String,
       attempt: json["attempt"] as int,
       message: json["message"] as String,
       action: json["action"] as Map<String, dynamic>?,
@@ -67,7 +61,7 @@ class sessionStatus01Inline implements SessionStatus {
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      "type": type,
+      "type": "retry",
       "attempt": attempt,
       "message": message,
       "action": action,
@@ -75,7 +69,6 @@ class sessionStatus01Inline implements SessionStatus {
     };
   }
 
-  final String type;
   final int attempt;
   final String message;
   final Map<String, dynamic>? action;
@@ -84,22 +77,18 @@ class sessionStatus01Inline implements SessionStatus {
 
 
 class sessionStatus02Inline implements SessionStatus {
-  const sessionStatus02Inline({
-    required this.type,
-  });
+  const sessionStatus02Inline();
 
+  // ignore: avoid_unused_constructor_parameters
   factory sessionStatus02Inline.fromJson(Map<String, dynamic> json) {
-    return sessionStatus02Inline(
-      type: json["type"] as String,
-    );
+    return const sessionStatus02Inline();
   }
 
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      "type": type,
+      "type": "busy",
     };
   }
 
-  final String type;
 }

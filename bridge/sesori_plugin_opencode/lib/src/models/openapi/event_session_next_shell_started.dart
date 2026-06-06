@@ -5,14 +5,12 @@ import 'event.dart';
 class EventSessionNextShellStarted implements Event {
   const EventSessionNextShellStarted({
     required this.id,
-    required this.type,
     required this.properties,
   });
 
   factory EventSessionNextShellStarted.fromJson(Map<String, dynamic> json) {
     return EventSessionNextShellStarted(
       id: json["id"] as String,
-      type: json["type"] as String,
       properties: json["properties"] as Map<String, dynamic>,
     );
   }
@@ -22,12 +20,11 @@ class EventSessionNextShellStarted implements Event {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
-      "type": type,
+      "type": "session.next.shell.started",
       "properties": properties,
     };
   }
 
   final String id;
-  final String type;
   final Map<String, dynamic> properties;
 }

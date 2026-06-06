@@ -7,7 +7,6 @@ class AgentPart implements Part {
     required this.id,
     required this.sessionID,
     required this.messageID,
-    required this.type,
     required this.name,
     this.source,
   });
@@ -17,7 +16,6 @@ class AgentPart implements Part {
       id: json["id"] as String,
       sessionID: json["sessionID"] as String,
       messageID: json["messageID"] as String,
-      type: json["type"] as String,
       name: json["name"] as String,
       source: json["source"] as Map<String, dynamic>?,
     );
@@ -30,7 +28,7 @@ class AgentPart implements Part {
       "id": id,
       "sessionID": sessionID,
       "messageID": messageID,
-      "type": type,
+      "type": "agent",
       "name": name,
       "source": source,
     };
@@ -39,7 +37,6 @@ class AgentPart implements Part {
   final String id;
   final String sessionID;
   final String messageID;
-  final String type;
   final String name;
   final Map<String, dynamic>? source;
 }

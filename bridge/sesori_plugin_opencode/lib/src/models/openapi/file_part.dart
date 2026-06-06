@@ -8,7 +8,6 @@ class FilePart implements Part {
     required this.id,
     required this.sessionID,
     required this.messageID,
-    required this.type,
     required this.mime,
     this.filename,
     required this.url,
@@ -20,7 +19,6 @@ class FilePart implements Part {
       id: json["id"] as String,
       sessionID: json["sessionID"] as String,
       messageID: json["messageID"] as String,
-      type: json["type"] as String,
       mime: json["mime"] as String,
       filename: json["filename"] as String?,
       url: json["url"] as String,
@@ -35,7 +33,7 @@ class FilePart implements Part {
       "id": id,
       "sessionID": sessionID,
       "messageID": messageID,
-      "type": type,
+      "type": "file",
       "mime": mime,
       "filename": filename,
       "url": url,
@@ -46,7 +44,6 @@ class FilePart implements Part {
   final String id;
   final String sessionID;
   final String messageID;
-  final String type;
   final String mime;
   final String? filename;
   final String url;

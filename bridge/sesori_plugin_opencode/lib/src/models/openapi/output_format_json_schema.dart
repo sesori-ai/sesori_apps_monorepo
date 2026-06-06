@@ -5,14 +5,12 @@ import 'output_format.dart';
 
 class OutputFormatJsonSchema implements OutputFormat {
   const OutputFormatJsonSchema({
-    required this.type,
     required this.schema,
     this.retryCount,
   });
 
   factory OutputFormatJsonSchema.fromJson(Map<String, dynamic> json) {
     return OutputFormatJsonSchema(
-      type: json["type"] as String,
       schema: JSONSchema.fromJson(json["schema"] as Map<String, dynamic>),
       retryCount: json["retryCount"] as int?,
     );
@@ -22,13 +20,12 @@ class OutputFormatJsonSchema implements OutputFormat {
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      "type": type,
+      "type": "json_schema",
       "schema": schema.toJson(),
       "retryCount": retryCount,
     };
   }
 
-  final String type;
   final JSONSchema schema;
   final int? retryCount;
 }
