@@ -362,6 +362,58 @@ void main() {
       expect(routeChild.child, isA<SessionDiffsScreen>());
     });
 
+    test("detail child carries stable key with session id", () {
+      final widget = _sessionShellChildRoute(AppRouteDef.sessionDetail).builder!(
+        _FakeBuildContext(),
+        _FakeGoRouterState(
+          pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"},
+          queryParameters: {"title": "Debug session", "readOnly": "true"},
+        ),
+      );
+
+      expect(widget, isA<SessionSplitRouteChild>());
+      final routeChild = widget as SessionSplitRouteChild;
+      expect(routeChild.child, isA<Builder>());
+    });
+
+    testWidgets("detail child builder produces SessionDetailScreen with stable key", (tester) async {
+      final widget = _sessionShellChildRoute(AppRouteDef.sessionDetail).builder!(
+        _FakeBuildContext(),
+        _FakeGoRouterState(
+          pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"},
+          queryParameters: {"title": "Debug session", "readOnly": "false"},
+        ),
+      );
+      final routeChild = widget as SessionSplitRouteChild;
+
+      SessionDetailScreen? capturedScreen;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) {
+              capturedScreen = (routeChild.child as Builder).builder(context) as SessionDetailScreen;
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+
+      expect(capturedScreen, isNotNull);
+      expect(capturedScreen!.key, const ValueKey("session-detail-ses-99"));
+    });
+
+    test("diffs child carries stable key with session id", () {
+      final widget = _sessionShellChildRoute(AppRouteDef.sessionDiffs).builder!(
+        _FakeBuildContext(),
+        _FakeGoRouterState(pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"}),
+      );
+
+      expect(widget, isA<SessionSplitRouteChild>());
+      final routeChild = widget as SessionSplitRouteChild;
+      final screen = routeChild.child as SessionDiffsScreen;
+      expect(screen.key, const ValueKey("session-diffs-ses-99"));
+    });
+
     testWidgets("shell builder accepts typed route child", (tester) async {
       await tester.binding.setSurfaceSize(const Size(390, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));

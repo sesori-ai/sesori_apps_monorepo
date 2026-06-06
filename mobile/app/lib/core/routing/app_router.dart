@@ -123,6 +123,7 @@ Widget _buildSessionSplitChild({required AppRoute route}) {
         builder: (context) {
           final splitScope = SessionSplitScope.maybeOf(context);
           return SessionDetailScreen(
+            key: ValueKey("session-detail-$sessionId"),
             projectId: projectId,
             sessionId: sessionId,
             sessionTitle: sessionTitle,
@@ -133,7 +134,11 @@ Widget _buildSessionSplitChild({required AppRoute route}) {
           );
         },
       ),
-    AppRouteSessionDiffs(:final projectId, :final sessionId) => SessionDiffsScreen(projectId: projectId, sessionId: sessionId),
+    AppRouteSessionDiffs(:final projectId, :final sessionId) => SessionDiffsScreen(
+        key: ValueKey("session-diffs-$sessionId"),
+        projectId: projectId,
+        sessionId: sessionId,
+      ),
     AppRouteSplash() ||
     AppRouteLogin() ||
     AppRouteProjects() ||
