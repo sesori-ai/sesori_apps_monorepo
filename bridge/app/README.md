@@ -109,7 +109,9 @@ Phone <--(E2E encrypted)--> Relay Server <--(E2E encrypted)--> Bridge CLI -> [Op
 8. Phone HTTP requests are decrypted by the bridge and forwarded to the local OpenCode server.
 9. Responses flow back encrypted through the relay to the phone.
 
-## CLI Flags
+## CLI Flags (for `run` command)
+
+These flags apply when running the bridge. The `run` command is the default, so you can use these flags directly without specifying `run`.
 
 | Flag | Default | Description |
 |------|---------|-------------|
@@ -128,6 +130,7 @@ In addition to flags, the bridge supports subcommands:
 
 | Command | Description |
 |---------|-------------|
+| `help` | Show the help message (also available via `--help` or `-h`) |
 | `config` | Open the bridge configuration file in your default editor |
 | `logout` | Clear stored authentication tokens. You will be asked to log in again on next start. |
 
