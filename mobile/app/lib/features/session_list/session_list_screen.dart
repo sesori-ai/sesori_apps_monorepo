@@ -15,6 +15,7 @@ import "session_list_cubit_provider.dart";
 import "session_list_scaffold.dart";
 
 part "session_list_actions.dart";
+part "session_list_action_dispatcher.dart";
 part "session_cleanup_dialogs.dart";
 part "session_force_dialog.dart";
 
@@ -46,60 +47,10 @@ class _SessionListBody extends StatelessWidget {
 
   const _SessionListBody({required this.projectId, this.projectName});
 
-  void _showSessionActions({required BuildContext context, required Session session}) {
-    final loc = context.loc;
-    final cubit = context.read<SessionListCubit>();
-    final isArchived = session.time?.archived != null;
-
-    showAppModalBottomSheet<void>(
-      context: context,
-      builder: (sheetContext) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: Text(loc.rename),
-              onTap: () {
-                sheetContext.pop();
-                showRenameSessionDialog(
-                  context: context,
-                  session: session,
-                  cubit: cubit,
-                );
-              },
-            ),
-            ListTile(
-              leading: Icon(isArchived ? Icons.unarchive_outlined : Icons.archive_outlined),
-              title: Text(isArchived ? loc.sessionListUnarchive : loc.sessionListArchive),
-              onTap: () {
-                sheetContext.pop();
-                if (isArchived) {
-                  _unarchiveSession(context: context, cubit: cubit, sessionId: session.id);
-                } else {
-                  _showArchiveSheet(context: context, cubit: cubit, session: session);
-                }
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.delete_outlined, color: context.zyra.colors.fgErrorPrimary),
-              title: Text(
-                loc.sessionListDelete,
-                style: TextStyle(color: context.zyra.colors.fgErrorPrimary),
-              ),
-              onTap: () {
-                sheetContext.pop();
-                _showDeleteSheet(context: context, cubit: cubit, session: session);
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    const actionDispatcher = SessionListActionDispatcher();
+
     return SessionListScaffold(
       projectName: projectName,
       onNewSession: () {
@@ -115,15 +66,8 @@ class _SessionListBody extends StatelessWidget {
           ),
         );
       },
-      onSessionLongPress: (session) => _showSessionActions(context: context, session: session),
-      onSessionSwipe: (session) {
-        final cubit = context.read<SessionListCubit>();
-        if (session.time?.archived != null) {
-          _unarchiveSession(context: context, cubit: cubit, sessionId: session.id);
-        } else {
-          _showArchiveSheet(context: context, cubit: cubit, session: session);
-        }
-      },
+      onSessionLongPress: (session) => actionDispatcher.showSessionActions(context: context, session: session),
+      onSessionSwipe: (session) => actionDispatcher.handleSessionSwipe(context: context, session: session),
     );
   }
 }
