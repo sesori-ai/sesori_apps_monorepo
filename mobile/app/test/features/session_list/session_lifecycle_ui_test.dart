@@ -584,6 +584,34 @@ void main() {
       expect(find.text("Panel Session"), findsOneWidget);
       expect(find.byIcon(Icons.add), findsOneWidget);
     });
+
+    testWidgets("selected session is visually marked", (tester) async {
+      final session = testSession(title: "Selected Session");
+      when(() => mockCubit.state).thenReturn(
+        SessionListState.loaded(sessions: [session], baseBranch: null),
+      );
+
+      await tester.pumpWidget(
+        _buildScreenApp(
+          child: Material(
+            child: BlocProvider<SessionListCubit>.value(
+              value: mockCubit,
+              child: SessionListPanel(
+                projectName: "Project One",
+                selectedSessionId: session.id,
+                onNewSession: () {},
+                onSessionTap: (_) {},
+                onSessionLongPress: (_) {},
+                onSessionSwipe: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final tile = tester.widget<ListTile>(find.byType(ListTile));
+      expect(tile.selected, isTrue);
+    });
   });
 
   // ---------------------------------------------------------------------------
