@@ -5,13 +5,16 @@
 //
 // Defaults:
 //   spec:    /Users/alexandrudochioiu/sesori-ai/opencode/packages/sdk/openapi.json
-//   outDir:  lib/src/gen
+//   outDir:  lib/src
 //
 // This script consumes an OpenAPI 3.1 JSON document (OpenCode's `packages/sdk/openapi.json`)
-// and emits:
-//   - lib/src/gen/opencode_client.dart   — public API client class
-//   - lib/src/gen/models/<SchemaName>.dart — one file per top-level schema
-//   - lib/src/gen/models.dart              — barrel
+// and emits, relative to outDir:
+//   - opencode_client.dart                 — public API client class (Layer 1)
+//   - models/openapi/<SchemaName>.dart     — one file per top-level schema (Layer 0)
+//
+// Models live under `models/openapi/` to avoid filename collisions with the
+// hand-written v1 models already in `models/` (e.g. session.dart, message.dart).
+// Layer-mirror rule (bridge/AGENTS.md): directory structure mirrors layers.
 //
 // Generated code uses package:http directly (no codegen runtime),
 // immutable classes with hand-written fromJson/toJson (no freezed/json_serializable),
@@ -24,7 +27,7 @@ Future<void> main(List<String> args) async {
   final specPath = args.isNotEmpty
       ? args[0]
       : '/Users/alexandrudochioiu/sesori-ai/opencode/packages/sdk/openapi.json';
-  final outDir = args.length >= 2 ? args[1] : 'lib/src/gen';
+  final outDir = args.length >= 2 ? args[1] : 'lib/src';
   final verbose = args.contains('--verbose') || args.contains('-v');
 
   stdout.writeln('Reading OpenAPI spec: $specPath');
@@ -105,7 +108,7 @@ class Codegen {
   }
 
   void run() {
-    final modelsDir = Directory('$outDir/models');
+    final modelsDir = Directory('$outDir/models/openapi');
     modelsDir.createSync(recursive: true);
 
     final sortedSchemas = schemas.keys.toList()..sort();
@@ -147,7 +150,7 @@ class Codegen {
   void _writeModelFile(String rawName, Map<String, dynamic> schema) {
     final cleanName = _pascalFromSnake(rawName);
     final fileName = _snakeFromCamel(rawName);
-    final relPath = 'models/$fileName.dart';
+    final relPath = 'models/openapi/$fileName.dart';
     final writer = ModelWriter(
       name: cleanName,
       rawName: rawName,
@@ -164,7 +167,7 @@ class Codegen {
     final referenced = _collectOperationSchemas();
     final imports = <String>[];
     for (final schemaName in referenced) {
-      imports.add("import 'models/${_snakeFromCamel(schemaName)}.dart';");
+      imports.add("import 'models/openapi/${_snakeFromCamel(schemaName)}.dart';");
     }
     imports.sort();
 
