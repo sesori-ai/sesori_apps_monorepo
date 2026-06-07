@@ -17,6 +17,7 @@ void main() {
       assistantAgentModel: null,
       children: [],
       childStatuses: {},
+      parentId: null,
       queuedMessages: [],
       availableAgents: [],
       availableProviders: [],

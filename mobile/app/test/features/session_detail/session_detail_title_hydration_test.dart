@@ -50,6 +50,7 @@ SessionDetailLoadResult _loadedResult() {
       commands: [],
       canonicalSessionTitle: null,
       promptDefaults: null,
+      parentId: null,
     ),
     isBridgeConnected: true,
   );
@@ -69,6 +70,7 @@ SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
       commands: const [],
       canonicalSessionTitle: title,
       promptDefaults: null,
+      parentId: null,
     ),
     isBridgeConnected: true,
   );

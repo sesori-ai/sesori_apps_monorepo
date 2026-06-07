@@ -161,6 +161,7 @@ void main() {
           commands: <CommandInfo>[],
           canonicalSessionTitle: null,
           promptDefaults: null,
+          parentId: null,
         ),
         isBridgeConnected: true,
       ),
@@ -228,10 +229,11 @@ void main() {
         agents: <AgentInfo?>[],
         providerData: null,
         commands: <CommandInfo>[],
-        canonicalSessionTitle: null,
-        promptDefaults: null,
-      ),
-      isBridgeConnected: true,
+          canonicalSessionTitle: null,
+          promptDefaults: null,
+          parentId: null,
+        ),
+        isBridgeConnected: true,
     );
 
     when(

@@ -1186,7 +1186,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       SessionStatusBusy() => null,
     };
 
-    return SessionDetailLoaded(
+      return SessionDetailLoaded(
       messages: snapshot.messages,
       streamingText: const {},
       sessionStatus: initialSessionStatus,
@@ -1198,6 +1198,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       assistantAgentModel: assistantAgentModel,
       children: childSessions,
       childStatuses: childStatuses,
+      parentId: snapshot.parentId,
       queuedMessages: _promptQueue.items,
       availableAgents: agents,
       availableProviders: providers,

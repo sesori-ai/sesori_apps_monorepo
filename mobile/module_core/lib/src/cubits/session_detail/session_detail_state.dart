@@ -24,6 +24,8 @@ sealed class SessionDetailState with _$SessionDetailState {
     // Background tasks (child sessions).
     required List<Session> children,
     required Map<String, SessionStatus> childStatuses,
+    // Null for main sessions, set for child (sub-task) sessions.
+    required String? parentId,
     // Queued messages (waiting to be sent when connection is restored).
     required List<QueuedSessionSubmission> queuedMessages,
     // Available agents and providers for selection.
