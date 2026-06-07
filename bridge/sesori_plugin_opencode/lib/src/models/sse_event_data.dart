@@ -296,7 +296,7 @@ class SseGlobalDisposed extends SseEventData {
     return const SseGlobalDisposed();
   }
 }
-class SseSessionCreated extends SseEventData {
+class SseSessionCreated extends SseEventData implements SseSessionEventData {
   const SseSessionCreated({
     required this.info,
   });
@@ -318,7 +318,7 @@ class SseSessionCreated extends SseEventData {
     );
   }
 }
-class SseSessionUpdated extends SseEventData {
+class SseSessionUpdated extends SseEventData implements SseSessionEventData {
   const SseSessionUpdated({
     required this.info,
   });
@@ -340,7 +340,7 @@ class SseSessionUpdated extends SseEventData {
     );
   }
 }
-class SseSessionDeleted extends SseEventData {
+class SseSessionDeleted extends SseEventData implements SseSessionEventData {
   const SseSessionDeleted({
     required this.info,
   });
@@ -521,7 +521,7 @@ class SseCommandExecuted extends SseEventData implements SseSessionEventData {
     );
   }
 }
-class SseMessageUpdated extends SseEventData {
+class SseMessageUpdated extends SseEventData implements SseSessionEventData {
   const SseMessageUpdated({
     required this.info,
   });
@@ -569,7 +569,7 @@ class SseMessageRemoved extends SseEventData implements SseSessionEventData {
     );
   }
 }
-class SseMessagePartUpdated extends SseEventData {
+class SseMessagePartUpdated extends SseEventData implements SseSessionEventData {
   const SseMessagePartUpdated({
     required this.part,
   });

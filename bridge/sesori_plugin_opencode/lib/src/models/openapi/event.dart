@@ -1,4 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
+// Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
+// Generated: 2026-06-07T10:22:51.638924Z
 
 import 'event.tui.command.execute.dart';
 import 'event.tui.prompt.append.dart';
@@ -53,7 +55,6 @@ import 'event_session_next_compaction_delta.dart';
 import 'event_session_next_compaction_ended.dart';
 import 'event_session_next_compaction_started.dart';
 import 'event_session_next_context_updated.dart';
-import 'event_session_next_interrupt_requested.dart';
 import 'event_session_next_model_switched.dart';
 import 'event_session_next_moved.dart';
 import 'event_session_next_prompt_admitted.dart';
@@ -137,8 +138,6 @@ abstract interface class Event {
         return EventSessionNextPromptAdmitted.fromJson(map);
       case "session.next.prompt.promoted":
         return EventSessionNextPromptPromoted.fromJson(map);
-      case "session.next.interrupt.requested":
-        return EventSessionNextInterruptRequested.fromJson(map);
       case "session.next.context.updated":
         return EventSessionNextContextUpdated.fromJson(map);
       case "session.next.synthetic":

@@ -4,7 +4,9 @@
 // (a hand-curated manifest of v1 OpenCode SSE event shapes) and emits
 // `lib/src/models/sse_event_data.dart` as a hand-written sealed class
 // hierarchy. Marker interface SseSessionEventData is auto-implemented by
-// any variant whose payload has a `sessionID` field.
+// any variant whose payload has a `sessionID` field, OR for which the
+// manifest sets `session_marker: true` (used for events that carry
+// session context through a nested payload like `info` or `part`).
 //
 // To regenerate:
 //   dart run tool/generate_sse_events.dart
@@ -173,7 +175,14 @@ void _emitVariant(StringBuffer out, Map<String, dynamic> ev) {
   final type = ev['type'] as String;
   final className = _classNameFor(type);
   final fields = (ev['fields'] as List).cast<Map<String, dynamic>>();
+  // A variant is a session-scoped event either when it has a top-level
+  // `sessionID` field, or when the manifest sets `session_marker: true`
+  // explicitly (used when the session context is carried through a
+  // nested payload, e.g. `info` for session.created/updated/deleted
+  // and message.updated, or `part` for message.part.updated).
   final hasSessionID = fields.any((f) => f['name'] == 'sessionID');
+  final explicitMarker = ev['session_marker'] == true;
+  final isSessionEvent = hasSessionID || explicitMarker;
   final isDeprecated = ev['deprecated'] == true;
   final deprecatedMsg = ev['deprecated_message'] as String?;
 
@@ -187,7 +196,8 @@ void _emitVariant(StringBuffer out, Map<String, dynamic> ev) {
         '// ignore: remove_deprecations_in_breaking_versions, keep idle event for backward compatibility');
     out.writeln('@Deprecated("$msg")');
   }
-  final implementsClause = hasSessionID ? ' implements SseSessionEventData' : '';
+  final implementsClause =
+      isSessionEvent ? ' implements SseSessionEventData' : '';
   out.writeln('class $className extends SseEventData$implementsClause {');
 
   // Constructor.

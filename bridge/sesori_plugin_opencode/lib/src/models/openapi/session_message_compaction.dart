@@ -1,4 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
+// Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
+// Generated: 2026-06-07T10:22:51.677769Z
 
 import 'session_message.dart';
 
@@ -6,7 +8,7 @@ class SessionMessageCompaction implements SessionMessage {
   const SessionMessageCompaction({
     required this.reason,
     required this.summary,
-    required this.recent,
+    this.include,
     required this.id,
     this.metadata,
     required this.time,
@@ -16,7 +18,7 @@ class SessionMessageCompaction implements SessionMessage {
     return SessionMessageCompaction(
       reason: json["reason"] as String,
       summary: json["summary"] as String,
-      recent: json["recent"] as String,
+      include: json["include"] as String?,
       id: json["id"] as String,
       metadata: json["metadata"] as Map<String, dynamic>?,
       time: json["time"] as Map<String, dynamic>,
@@ -30,7 +32,7 @@ class SessionMessageCompaction implements SessionMessage {
       "type": "compaction",
       "reason": reason,
       "summary": summary,
-      "recent": recent,
+      "include": include,
       "id": id,
       "metadata": metadata,
       "time": time,
@@ -39,7 +41,7 @@ class SessionMessageCompaction implements SessionMessage {
 
   final String reason;
   final String summary;
-  final String recent;
+  final String? include;
   final String id;
   final Map<String, dynamic>? metadata;
   final Map<String, dynamic> time;

@@ -1,9 +1,14 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 //
 // Auto-generated OpenCode v2 client generated from the OpenAPI spec.
+// Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
+// Generated: 2026-06-07T10:22:51.697127Z
 //
 // To regenerate, run:
-//   dart run tool/generate_opencode_client.dart
+//   make opencode-codegen OPENCODE_TAG=<tag>
+//   make opencode-codegen OPENCODE_BRANCH=<branch>
+//   make opencode-codegen OPENCODE_COMMIT=<40-char-sha>
+//   make opencode-codegen OPENCODE_SPEC=/path/to/openapi.json
 
 import 'dart:async';
 import 'dart:convert';
@@ -547,11 +552,12 @@ Future<void> experimentalProjectCopyRefresh1bcq0rc({
 Future<void> experimentalProjectCopyRemove08oftkp({
     required String projectID,
     required Map<String, dynamic> body,
+    String? directory,
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/experimental/project/$projectID/copy',
-      queryParameters: {if (workspace != null) 'workspace': workspace.toString()},
+      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
       ..._authHeaders,
@@ -3612,7 +3618,7 @@ Future<dynamic> v2AgentList04wolh4({
   }) async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/api/agent',
-      queryParameters: {if (location != null) 'location': location.toString()},
+      queryParameters: {if (location != null) 'location': jsonEncode(location)},
     );
     final headers = <String, String>{
       ..._authHeaders,
@@ -3639,7 +3645,7 @@ Future<dynamic> v2CommandList0s4856s({
   }) async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/api/command',
-      queryParameters: {if (location != null) 'location': location.toString()},
+      queryParameters: {if (location != null) 'location': jsonEncode(location)},
     );
     final headers = <String, String>{
       ..._authHeaders,
@@ -3666,7 +3672,7 @@ Future<dynamic> v2EventSubscribe1kzmned({
   }) async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/api/event',
-      queryParameters: {if (location != null) 'location': location.toString()},
+      queryParameters: {if (location != null) 'location': jsonEncode(location)},
     );
     final headers = <String, String>{
       ..._authHeaders,
@@ -3695,7 +3701,7 @@ Future<dynamic> v2FsList06obgvk({
   }) async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/api/fs/list',
-      queryParameters: {if (location != null) 'location': location.toString(), if (path != null) 'path': path.toString(), if (reference != null) 'reference': reference.toString()},
+      queryParameters: {if (location != null) 'location': jsonEncode(location), if (path != null) 'path': path.toString(), if (reference != null) 'reference': reference.toString()},
     );
     final headers = <String, String>{
       ..._authHeaders,
@@ -3724,7 +3730,7 @@ Future<dynamic> v2FsRead19gekbg({
   }) async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/api/fs/read',
-      queryParameters: {if (location != null) 'location': location.toString(), 'path': path.toString(), if (reference != null) 'reference': reference.toString()},
+      queryParameters: {if (location != null) 'location': jsonEncode(location), 'path': path.toString(), if (reference != null) 'reference': reference.toString()},
     );
     final headers = <String, String>{
       ..._authHeaders,
@@ -3776,7 +3782,7 @@ Future<dynamic> v2ModelList023wqvw({
   }) async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/api/model',
-      queryParameters: {if (location != null) 'location': location.toString()},
+      queryParameters: {if (location != null) 'location': jsonEncode(location)},
     );
     final headers = <String, String>{
       ..._authHeaders,
@@ -3803,7 +3809,7 @@ Future<dynamic> v2PermissionRequestList0aqcd9p({
   }) async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/api/permission/request',
-      queryParameters: {if (location != null) 'location': location.toString()},
+      queryParameters: {if (location != null) 'location': jsonEncode(location)},
     );
     final headers = <String, String>{
       ..._authHeaders,
@@ -3885,7 +3891,7 @@ Future<dynamic> v2ProviderGet0sn51oa({
   }) async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/api/provider/$providerID',
-      queryParameters: {if (location != null) 'location': location.toString()},
+      queryParameters: {if (location != null) 'location': jsonEncode(location)},
     );
     final headers = <String, String>{
       ..._authHeaders,
@@ -3912,7 +3918,7 @@ Future<dynamic> v2ProviderList1iv3bdm({
   }) async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/api/provider',
-      queryParameters: {if (location != null) 'location': location.toString()},
+      queryParameters: {if (location != null) 'location': jsonEncode(location)},
     );
     final headers = <String, String>{
       ..._authHeaders,
@@ -3939,7 +3945,7 @@ Future<dynamic> v2QuestionRequestList1m7rz6g({
   }) async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/api/question/request',
-      queryParameters: {if (location != null) 'location': location.toString()},
+      queryParameters: {if (location != null) 'location': jsonEncode(location)},
     );
     final headers = <String, String>{
       ..._authHeaders,
@@ -4257,7 +4263,7 @@ Future<dynamic> v2SkillList15ujty0({
   }) async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/api/skill',
-      queryParameters: {if (location != null) 'location': location.toString()},
+      queryParameters: {if (location != null) 'location': jsonEncode(location)},
     );
     final headers = <String, String>{
       ..._authHeaders,

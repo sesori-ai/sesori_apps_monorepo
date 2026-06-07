@@ -1,5 +1,5 @@
 {
-  "_comment": "Hand-curated manifest of v1 OpenCode SSE event payload shapes. Mirrors the structure of the hand-written sse_event_data.dart. Each event is an entry in `events`. Fields reference openapi.json schemas by `ref` (the schema's PascalCase class name) or use a primitive `type`. The marker interface SseSessionEventData is auto-implemented by any variant that has a field named `sessionID` with primitive string type.",
+  "_comment": "Hand-curated manifest of v1 OpenCode SSE event payload shapes. Mirrors the structure of the hand-written sse_event_data.dart. Each event is an entry in `events`. Fields reference openapi.json schemas by `ref` (the schema's PascalCase class name) or use a primitive `type`. The marker interface SseSessionEventData is auto-implemented by any variant that has a field named `sessionID` with primitive string type, OR for which `session_marker: true` is set explicitly (used for events whose session context is carried through a nested payload — e.g. session.created/updated/deleted via `info`, message.updated via `info`, message.part.updated via `part`).",
   "events": [
     {
       "type": "server.connected",
@@ -21,18 +21,21 @@
     },
     {
       "type": "session.created",
+      "session_marker": true,
       "fields": [
         { "name": "info", "ref": "Session" }
       ]
     },
     {
       "type": "session.updated",
+      "session_marker": true,
       "fields": [
         { "name": "info", "ref": "Session" }
       ]
     },
     {
       "type": "session.deleted",
+      "session_marker": true,
       "fields": [
         { "name": "info", "ref": "Session" }
       ]
@@ -82,6 +85,7 @@
     },
     {
       "type": "message.updated",
+      "session_marker": true,
       "fields": [
         { "name": "info", "ref": "Message" }
       ]
@@ -95,6 +99,7 @@
     },
     {
       "type": "message.part.updated",
+      "session_marker": true,
       "fields": [
         { "name": "part", "ref": "MessagePart" }
       ]

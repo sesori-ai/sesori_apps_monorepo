@@ -1,14 +1,23 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 //
 // Usage:
-//   dart run tool/generate_opencode_client.dart [path/to/openapi.json] [output/dir]
+//   # Fetch the spec from anomalyco/opencode and record the source in every
+//   # generated file header:
+//   dart run tool/generate_opencode_client.dart --tag v1.16.2
+//   dart run tool/generate_opencode_client.dart --branch dev
+//   dart run tool/generate_opencode_client.dart --commit 76c631d1...
 //
-// Defaults:
-//   spec:    /Users/alexandrudochioiu/sesori-ai/opencode/packages/sdk/openapi.json
-//   outDir:  lib/src
+//   # Use a local openapi.json (no upstream ref recorded in the header):
+//   dart run tool/generate_opencode_client.dart --local /path/to/openapi.json
 //
-// This script consumes an OpenAPI 3.1 JSON document (OpenCode's `packages/sdk/openapi.json`)
-// and emits, relative to outDir:
+//   # Override the output directory (default: lib/src):
+//   dart run tool/generate_opencode_client.dart --tag v1.16.2 --out-dir lib/src
+//
+// Exactly one of --tag, --branch, --commit, or --local is required. There
+// is no default: this script will not guess what you meant.
+//
+// This script consumes an OpenAPI 3.1 JSON document (OpenCode's
+// `packages/sdk/openapi.json`) and emits, relative to outDir:
 //   - opencode_client.dart                 — public API client class (Layer 1)
 //   - models/openapi/<SchemaName>.dart     — one file per top-level schema (Layer 0)
 //
@@ -23,20 +32,257 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:http/http.dart' as http;
+
+const _upstreamOwner = 'anomalyco';
+const _upstreamRepo = 'opencode';
+const _specPathInRepo = 'packages/sdk/openapi.json';
+
+/// Resolved upstream ref description passed to the codegen. Exactly one
+/// of [tag], [branch], [commit] is non-null. [commitSha] is the 40-char
+/// hex commit SHA the ref points at (always populated when [kind] is set).
+class SourceRef {
+  SourceRef({required this.kind, required this.value, required this.commitSha});
+
+  /// One of 'tag', 'branch', 'commit'.
+  final String kind;
+  /// The user-supplied ref string (`v1.16.2`, `dev`, or a 40-char SHA).
+  final String value;
+  /// The 40-char hex commit SHA the ref resolves to. Pre-resolved at
+  /// startup via `git ls-remote` so generation is fully offline after
+  /// the initial fetch.
+  final String commitSha;
+
+  /// Display form used in generated file headers:
+  /// `anomalyco/opencode@<value> (<commitSha>)`.
+  String get display => '$_upstreamOwner/$_upstreamRepo@$value ($commitSha)';
+}
+
 Future<void> main(List<String> args) async {
-  final specPath = args.isNotEmpty
-      ? args[0]
-      : '/Users/alexandrudochioiu/sesori-ai/opencode/packages/sdk/openapi.json';
-  final outDir = args.length >= 2 ? args[1] : 'lib/src';
-  final verbose = args.contains('--verbose') || args.contains('-v');
+  String? tag;
+  String? branch;
+  String? commit;
+  String? localSpecPath;
+  var outDir = 'lib/src';
+  var verbose = false;
+
+  // Positional args are not used; everything is an explicit flag so the
+  // script never has to guess what the user meant.
+  var i = 0;
+  while (i < args.length) {
+    final a = args[i++];
+    switch (a) {
+      case '--tag':
+        if (i >= args.length) {
+          stderr.writeln('error: --tag requires a value');
+          _printUsage();
+          exit(2);
+        }
+        tag = args[i++];
+      case '--branch':
+        if (i >= args.length) {
+          stderr.writeln('error: --branch requires a value');
+          _printUsage();
+          exit(2);
+        }
+        branch = args[i++];
+      case '--commit':
+        if (i >= args.length) {
+          stderr.writeln('error: --commit requires a value');
+          _printUsage();
+          exit(2);
+        }
+        commit = args[i++];
+      case '--local':
+        if (i >= args.length) {
+          stderr.writeln('error: --local requires a value');
+          _printUsage();
+          exit(2);
+        }
+        localSpecPath = args[i++];
+      case '--out-dir':
+        if (i >= args.length) {
+          stderr.writeln('error: --out-dir requires a value');
+          _printUsage();
+          exit(2);
+        }
+        outDir = args[i++];
+      case '--verbose':
+      case '-v':
+        verbose = true;
+      case '--help':
+      case '-h':
+        _printUsage();
+        exit(0);
+      default:
+        stderr.writeln('error: unknown argument: $a');
+        _printUsage();
+        exit(2);
+    }
+  }
+
+  // Exactly one of --tag / --branch / --commit / --local is required.
+  final sourceCount =
+      [tag, branch, commit, localSpecPath].where((e) => e != null).length;
+  if (sourceCount == 0) {
+    stderr.writeln('error: one of --tag, --branch, --commit, or --local is required');
+    _printUsage();
+    exit(2);
+  }
+  if (sourceCount > 1) {
+    stderr.writeln('error: --tag, --branch, --commit, and --local are mutually exclusive');
+    _printUsage();
+    exit(2);
+  }
+
+  String? specPath;
+  SourceRef? sourceRef;
+  var deleteSpecPathOnExit = false;
+
+  if (tag != null) {
+    sourceRef = await _resolveAndFetch(
+      kind: 'tag',
+      value: tag,
+      verbose: verbose,
+      onSpecPath: (p) {
+        specPath = p;
+        deleteSpecPathOnExit = true;
+      },
+    );
+  } else if (branch != null) {
+    sourceRef = await _resolveAndFetch(
+      kind: 'branch',
+      value: branch,
+      verbose: verbose,
+      onSpecPath: (p) {
+        specPath = p;
+        deleteSpecPathOnExit = true;
+      },
+    );
+  } else if (commit != null) {
+    if (!RegExp(r'^[0-9a-f]{40}$').hasMatch(commit)) {
+      stderr.writeln(
+          'error: --commit must be a 40-character hex SHA; got "$commit"');
+      exit(2);
+    }
+    sourceRef = SourceRef(kind: 'commit', value: commit, commitSha: commit);
+    specPath = await _fetchSpec(
+      commit,
+      verbose: verbose,
+    );
+    deleteSpecPathOnExit = true;
+  } else {
+    specPath = localSpecPath;
+  }
 
   stdout.writeln('Reading OpenAPI spec: $specPath');
-  final raw = File(specPath).readAsStringSync();
+  final raw = File(specPath!).readAsStringSync();
   final spec = jsonDecode(raw) as Map<String, dynamic>;
 
-  final gen = Codegen(spec: spec, outDir: outDir, verbose: verbose);
-  gen.run();
+  final gen = Codegen(
+    spec: spec,
+    outDir: outDir,
+    verbose: verbose,
+    sourceRef: sourceRef,
+  );
+  try {
+    await gen.run();
+  } finally {
+    if (deleteSpecPathOnExit) {
+      try {
+        File(specPath!).deleteSync();
+      } catch (_) {/* best-effort cleanup */}
+    }
+  }
   stdout.writeln('Done. Output: $outDir');
+}
+
+void _printUsage() {
+  stderr.writeln('');
+  stderr.writeln('Usage: dart run tool/generate_opencode_client.dart '
+      '[--tag <tag> | --branch <branch> | --commit <sha> | --local <path>] '
+      '[--out-dir <dir>] [--verbose]');
+  stderr.writeln('');
+  stderr.writeln('  --tag <name>        Fetch the spec from anomalyco/opencode at '
+      'the given git tag (e.g. v1.16.2)');
+  stderr.writeln('  --branch <name>     Fetch the spec from anomalyco/opencode at '
+      'the given git branch (e.g. dev)');
+  stderr.writeln('  --commit <sha>      Fetch the spec from anomalyco/opencode at '
+      'the given 40-char commit SHA');
+  stderr.writeln('  --local <path>      Use a local openapi.json file '
+      '(no upstream ref recorded in headers)');
+  stderr.writeln('  --out-dir <dir>     Output directory (default: lib/src)');
+  stderr.writeln('  --verbose, -v       Print extra progress information');
+}
+
+/// Fetch the OpenCode openapi.json from upstream at [ref] (a branch name,
+/// tag name, or commit SHA) and return the path to the downloaded temp
+/// file. Caller is responsible for deleting the file.
+Future<String> _fetchSpec(String ref, {required bool verbose}) async {
+  final url = Uri.parse(
+    'https://raw.githubusercontent.com/$_upstreamOwner/$_upstreamRepo/'
+    '$ref/$_specPathInRepo',
+  );
+  if (verbose) stdout.writeln('Fetching $url');
+  final response = await http.get(url);
+  if (response.statusCode != 200) {
+    stderr.writeln(
+        'error: failed to fetch $url (HTTP ${response.statusCode})');
+    exit(1);
+  }
+  final tmp = File('${Directory.systemTemp.path}/opencode-openapi-$ref.json');
+  tmp.writeAsBytesSync(response.bodyBytes);
+  return tmp.path;
+}
+
+/// Resolve [value] (a tag or branch name) to its 40-char commit SHA via
+/// `git ls-remote`, then fetch the spec at that commit. The resolved
+/// SHA is recorded in every generated file header.
+Future<SourceRef> _resolveAndFetch({
+  required String kind,
+  required String value,
+  required bool verbose,
+  required void Function(String specPath) onSpecPath,
+}) async {
+  if (verbose) stdout.writeln('Resolving $kind "$value" to a commit SHA...');
+  final r = await Process.run('git', [
+    'ls-remote',
+    '--exit-code',
+    'https://github.com/$_upstreamOwner/$_upstreamRepo',
+    value,
+  ]);
+  if (r.exitCode != 0) {
+    stderr.writeln(
+        'error: could not resolve $kind "$value" via git ls-remote '
+        '(exit ${r.exitCode}). '
+        'Check your network connection and that the ref exists.');
+    if (r.stderr is String && (r.stderr as String).isNotEmpty) {
+      stderr.writeln(r.stderr);
+    }
+    exit(1);
+  }
+  // Output line shape: "<sha>\trefs/<kind>/<ref>"
+  String? sha;
+  for (final line in (r.stdout as String).split('\n')) {
+    final parts = line.split('\t');
+    if (parts.length != 2) continue;
+    final refName = parts[1];
+    if (refName == 'refs/tags/$value' || refName == 'refs/heads/$value') {
+      sha = parts[0];
+      break;
+    }
+  }
+  if (sha == null) {
+    stderr.writeln(
+        'error: git ls-remote returned no entry for $kind "$value"');
+    exit(1);
+  }
+  if (verbose) stdout.writeln('Resolved $kind "$value" to commit $sha');
+  // Fetch the spec at the resolved commit so we get a reproducible
+  // tree even if the branch head moves after we resolved the SHA.
+  final specPath = await _fetchSpec(sha, verbose: verbose);
+  onSpecPath(specPath);
+  return SourceRef(kind: kind, value: value, commitSha: sha);
 }
 
 class Codegen {
@@ -44,11 +290,18 @@ class Codegen {
     required this.spec,
     required this.outDir,
     required this.verbose,
+    this.sourceRef,
   });
 
   final Map<String, dynamic> spec;
   final String outDir;
   final bool verbose;
+  /// Upstream ref (tag, branch, or commit SHA) the spec was fetched
+  /// from, pre-resolved to a commit SHA. Recorded in every generated
+  /// file header so we always know exactly what the code was generated
+  /// from. Null when the generator is run against a local file with no
+  /// tracked upstream.
+  final SourceRef? sourceRef;
 
   late final Map<String, dynamic> components =
       (spec['components'] as Map<String, dynamic>?) ?? const {};
@@ -63,6 +316,28 @@ class Codegen {
   /// Pre-scan: list of schema names that are top-level array schemas.
   /// Populated eagerly so the API client emitter can detect them.
   late final Set<String> _arrayWrapperClassNames = _buildArrayWrapperClassNames();
+
+  /// Header block describing the upstream source the code was
+  /// generated from. Always returns at least a one-line comment with
+  /// the generation timestamp; when [sourceRef] is set, also includes
+  /// the upstream ref and resolved commit SHA. Lines are returned
+  /// WITHOUT the `// ` prefix so callers can emit them as comments
+  /// themselves.
+  String sourceHeader() {
+    final b = StringBuffer();
+    final now = DateTime.now().toUtc().toIso8601String();
+    if (sourceRef != null) {
+      b.writeln('Source: ${sourceRef!.display}');
+    } else {
+      b.writeln('Source: local (no upstream ref)');
+    }
+    b.writeln('Generated: $now');
+    return b.toString().trimRight();
+  }
+
+  Future<void> run() async {
+    _run();
+  }
 
   Set<String> _buildArrayWrapperClassNames() {
     final out = <String>{};
@@ -107,7 +382,7 @@ class Codegen {
     if (verbose) stdout.writeln('[codegen] $msg');
   }
 
-  void run() {
+  void _run() {
     final modelsDir = Directory('$outDir/models/openapi');
     modelsDir.createSync(recursive: true);
 
@@ -163,6 +438,7 @@ class Codegen {
       schema: schema,
       schemas: schemas,
       implementsClass: _unionParents[rawName],
+      sourceHeader: sourceHeader(),
     );
     var body = writer.emit();
     // Trim trailing whitespace and ensure the file ends with exactly
@@ -188,9 +464,15 @@ class Codegen {
     b.writeln('// GENERATED FILE - DO NOT EDIT BY HAND');
     b.writeln('//');
     b.writeln('// Auto-generated OpenCode v2 client generated from the OpenAPI spec.');
+    for (final line in sourceHeader().split('\n')) {
+      b.writeln('// $line');
+    }
     b.writeln('//');
     b.writeln('// To regenerate, run:');
-    b.writeln('//   dart run tool/generate_opencode_client.dart');
+    b.writeln('//   make opencode-codegen OPENCODE_TAG=<tag>');
+    b.writeln('//   make opencode-codegen OPENCODE_BRANCH=<branch>');
+    b.writeln('//   make opencode-codegen OPENCODE_COMMIT=<40-char-sha>');
+    b.writeln('//   make opencode-codegen OPENCODE_SPEC=/path/to/openapi.json');
     b.writeln();
     b.writeln("import 'dart:async';");
     b.writeln("import 'dart:convert';");
@@ -391,10 +673,17 @@ class Codegen {
     final queryBuffer = StringBuffer('{');
     final queryParts = <String>[];
     for (final p in queryParams) {
+      // Object-typed query parameters (e.g. `Map<String, dynamic>? location`)
+      // can't use `toString()` — that produces Dart's debug format
+      // `{directory: /repo}` rather than a query-serializable value.
+      // JSON-encode them so the server sees a structured payload (the
+      // server is expected to URL-decode the JSON string).
+      final isMap = p.schema != null && p.schema!['type'] == 'object';
+      final valueExpr = isMap ? 'jsonEncode(${p.name})' : '${p.name}.toString()';
       if (p.required) {
-        queryParts.add("'${p.name}': ${p.name}.toString()");
+        queryParts.add("'${p.name}': $valueExpr");
       } else {
-        queryParts.add("if (${p.name} != null) '${p.name}': ${p.name}.toString()");
+        queryParts.add("if (${p.name} != null) '${p.name}': $valueExpr");
       }
     }
     queryBuffer.write(queryParts.join(', '));
@@ -734,6 +1023,7 @@ class ModelWriter {
     required this.schema,
     required this.schemas,
     this.implementsClass,
+    this.sourceHeader,
   });
 
   /// Cleaned, valid Dart class name.
@@ -745,6 +1035,11 @@ class ModelWriter {
   /// If this schema is a variant of a union, the name of the union class it
   /// implements.
   final String? implementsClass;
+  /// Multi-line comment block describing the upstream ref / commit /
+  /// generation timestamp. Emitted at the top of every generated file
+  /// so consumers and reviewers always know what the code was
+  /// generated from.
+  final String? sourceHeader;
 
   /// Track inline enums we emit (de-duped by their values tuple).
   final List<InlineEnum> _inlineEnums = [];
@@ -861,6 +1156,14 @@ class ModelWriter {
         visitField(entry.value);
       }
     }
+    // If the schema has no `properties` but defines `additionalProperties`
+    // (a map-typed class — e.g. `PermissionObjectConfig`,
+    // `ReferenceConfig`), follow the value-side ref so the import for
+    // the value class is emitted.
+    if (properties == null || properties.isEmpty) {
+      final ap = sch['additionalProperties'];
+      if (ap is Map) visitField(ap);
+    }
     // If this is itself a union (anyOf/oneOf at the top level), each
     // variant is referenced in the discriminator switch — but only if a
     // discriminator value can be resolved. Otherwise (no discriminator
@@ -898,6 +1201,11 @@ class ModelWriter {
   String _emitHeader(Set<String> refs, {required bool usesJsonAnnotation}) {
     final b = StringBuffer();
     b.writeln('// GENERATED FILE - DO NOT EDIT BY HAND');
+    if (sourceHeader != null && sourceHeader!.isNotEmpty) {
+      for (final line in sourceHeader!.split('\n')) {
+        b.writeln('// $line');
+      }
+    }
     b.writeln();
     // Only emit the json_annotation import if the body actually uses it
     // (e.g. enum @JsonValue annotations). Otherwise it triggers
@@ -1374,6 +1682,20 @@ class ModelWriter {
 
     final properties =
         (schema['properties'] as Map<String, dynamic>?) ?? const {};
+
+    // Pure map-typed schema: `type: object, additionalProperties: <schema>`
+    // with no `properties`. Generate a class that wraps a single
+    // `Map<String, ValueType>` field instead of an empty class, so the
+    // generated code round-trips OpenCode config fields like
+    // `permission: { bash: { "git status": "allow" } }` and
+    // `reference: { myAlias: ... }` instead of silently dropping
+    // every entry on `fromJson` and writing `{}` on `toJson`.
+    if (properties.isEmpty) {
+      final ap = schema['additionalProperties'];
+      if (ap is Map<String, dynamic>) {
+        return _emitMapWrapper(b, ap);
+      }
+    }
     final required =
         ((schema['required'] as List?) ?? const []).cast<String>();
 
@@ -1509,6 +1831,80 @@ class ModelWriter {
       b.writeln(ie.emit());
     }
 
+    return b.toString();
+  }
+
+  /// Emit a class for a top-level map-typed schema (no `properties`, but
+  /// `additionalProperties: <schema>`). The class has a single field
+  /// `value` of type `Map<String, ValueType>` and round-trips through
+  /// `fromJson` / `toJson` by decoding/encoding each entry.
+  ///
+  /// Used for schemas like `PermissionObjectConfig` (typed map of string
+  /// → `PermissionActionConfig`) and `ReferenceConfig` (typed map of
+  /// string → `ReferenceConfigEntry`).
+  String _emitMapWrapper(StringBuffer b, Map<String, dynamic> ap) {
+    final valueDart = _dartTypeForInline(ap);
+    final isPrimitive = _isInlinePrimitive(valueDart);
+    final isNullable = _isNullableSchema(ap);
+    final valueType = isNullable
+        ? (valueDart == 'dynamic' ? 'dynamic' : '$valueDart?')
+        : valueDart;
+
+    b.writeln(implementsClass != null
+        ? 'class $name implements $implementsClass {'
+        : 'class $name {');
+    b.writeln('  const $name({required this.value});');
+    b.writeln();
+
+    // fromJson: decode each entry's value per the inner schema shape.
+    // For $ref object values, call `RefType.fromJson(v)`. For $ref array
+    // values (top-level array wrappers), call `ArrayType.fromJson(v as
+    // List<dynamic>)`. For $ref string-enum values, call
+    // `EnumType.fromJson(v as String)`. For primitive values, plain cast.
+    String decodeExpr;
+    if (ap[r'$ref'] is String) {
+      final refName = (ap[r'$ref'] as String)
+          .substring('#/components/schemas/'.length);
+      final refSchema = schemas[refName] as Map<String, dynamic>?;
+      final isRefArray = refSchema != null && refSchema['type'] == 'array';
+      final isRefStringEnum = refSchema != null &&
+          refSchema['type'] == 'string' &&
+          refSchema['enum'] is List;
+      final cast =
+          isRefArray ? 'List<dynamic>' : (isRefStringEnum ? 'String' : 'Map<String, dynamic>');
+      decodeExpr = '$valueDart.fromJson(v as $cast)';
+    } else if (isPrimitive) {
+      decodeExpr = 'v as $valueDart';
+    } else {
+      decodeExpr = 'v as $valueDart';
+    }
+
+    b.writeln('  factory $name.fromJson(Map<String, dynamic> json) {');
+    b.writeln('    return $name(');
+    b.writeln('      value: Map<String, $valueType>.from(');
+    b.writeln('        json.map((k, v) => MapEntry(k, $decodeExpr)),');
+    b.writeln('      ),');
+    b.writeln('    );');
+    b.writeln('  }');
+    b.writeln();
+
+    b.writeln('  final Map<String, $valueType> value;');
+    b.writeln();
+    if (implementsClass != null) {
+      b.writeln('  @override');
+    }
+    b.writeln('  Map<String, dynamic> toJson() {');
+    if (isPrimitive) {
+      b.writeln('    return Map<String, dynamic>.from(value);');
+    } else if (ap[r'$ref'] is String) {
+      b.writeln(
+        '    return value.map((k, v) => MapEntry(k, v.toJson()));',
+      );
+    } else {
+      b.writeln('    return Map<String, dynamic>.from(value);');
+    }
+    b.writeln('  }');
+    b.writeln('}');
     return b.toString();
   }
 

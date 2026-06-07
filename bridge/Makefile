@@ -9,27 +9,48 @@ MODULES := sesori_plugin_interface sesori_plugin_opencode app
 # Regenerates the OpenCode v2 REST client, model classes, and SSE event
 # sealed-class hierarchy. OPT-IN: not a dependency of the regular `codegen`
 # target, because the OpenAPI spec is maintained in a sibling repo
-# (https://github.com/ssesori/opencode) that may not be present on every
+# (https://github.com/anomalyco/opencode) that may not be present on every
 # developer's machine. Run explicitly when you want to refresh the v2
 # generated code:
 #
+#   # Fetch a specific tag (the ref is resolved to a commit SHA via
+#   # git ls-remote and recorded in every generated file header):
+#   make opencode-codegen OPENCODE_TAG=v1.16.2
+#
+#   # Fetch the latest from a branch:
+#   make opencode-codegen OPENCODE_BRANCH=dev
+#
+#   # Fetch a specific commit SHA (must be a 40-char hex SHA):
+#   make opencode-codegen OPENCODE_COMMIT=76c631d1...
+#
+#   # Use a local openapi.json (no upstream ref recorded):
 #   make opencode-codegen OPENCODE_SPEC=/path/to/openapi.json
 #
+# Exactly one of OPENCODE_TAG, OPENCODE_BRANCH, OPENCODE_COMMIT, or
+# OPENCODE_SPEC is required. There is no default.
+#
 # Reads `tool/opencode_events_v1.json` (hand-curated v1 SSE event manifest)
-# and the OpenAPI spec at $(OPENCODE_SPEC).
-OPENCODE_SPEC ?= openapi.json
-# Resolve the spec path to an absolute one at parse time so the existence
-# check below (run in the Makefile's working directory) and the consumer
-# (run inside sesori_plugin_opencode/ after a `cd`) both see the same
-# file regardless of the caller's working directory.
-OPENCODE_SPEC := $(abspath $(OPENCODE_SPEC))
+# and the OpenAPI spec.
 opencode-codegen:
-	@if [ ! -f "$(OPENCODE_SPEC)" ]; then \
-		echo "error: OpenAPI spec not found at $(OPENCODE_SPEC)"; \
-		echo "  pass an absolute path: make opencode-codegen OPENCODE_SPEC=/path/to/openapi.json"; \
+	@count=0; \
+	if [ -n "$(OPENCODE_TAG)" ]; then GEN_FLAGS="--tag $(OPENCODE_TAG)"; count=$$((count+1)); fi; \
+	if [ -n "$(OPENCODE_BRANCH)" ]; then GEN_FLAGS="--branch $(OPENCODE_BRANCH)"; count=$$((count+1)); fi; \
+	if [ -n "$(OPENCODE_COMMIT)" ]; then GEN_FLAGS="--commit $(OPENCODE_COMMIT)"; count=$$((count+1)); fi; \
+	if [ -n "$(OPENCODE_SPEC)" ]; then GEN_FLAGS="--local $(OPENCODE_SPEC)"; count=$$((count+1)); fi; \
+	if [ $$count -eq 0 ]; then \
+		echo "error: one of OPENCODE_TAG, OPENCODE_BRANCH, OPENCODE_COMMIT, or OPENCODE_SPEC is required."; \
+		echo "  examples:"; \
+		echo "    make opencode-codegen OPENCODE_TAG=v1.16.2"; \
+		echo "    make opencode-codegen OPENCODE_BRANCH=dev"; \
+		echo "    make opencode-codegen OPENCODE_COMMIT=76c631d1..."; \
+		echo "    make opencode-codegen OPENCODE_SPEC=/path/to/openapi.json"; \
 		exit 1; \
-	fi
-	(cd sesori_plugin_opencode && $(DART) run tool/generate_opencode_client.dart $(OPENCODE_SPEC))
+	fi; \
+	if [ $$count -gt 1 ]; then \
+		echo "error: OPENCODE_TAG, OPENCODE_BRANCH, OPENCODE_COMMIT, and OPENCODE_SPEC are mutually exclusive."; \
+		exit 1; \
+	fi; \
+	(cd sesori_plugin_opencode && $(DART) run tool/generate_opencode_client.dart $$GEN_FLAGS) && \
 	(cd sesori_plugin_opencode && $(DART) run tool/generate_sse_events.dart)
 
 codegen:
