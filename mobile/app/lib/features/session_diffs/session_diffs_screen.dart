@@ -192,6 +192,9 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
       _isComputing = true;
       _computeError = null;
       _viewModels = null;
+      // Drop stale GlobalKeys from the previous file list so they don't
+      // accumulate when the user switches sessions or refreshes.
+      _headerKeys.clear();
     });
     try {
       final viewModels = await DiffViewModelBuilder.build(
