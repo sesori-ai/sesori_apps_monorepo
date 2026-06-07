@@ -90,7 +90,12 @@ class SessionTile extends StatelessWidget {
               ),
           ],
         ),
-        isThreeLine: updatedAt != null && (filesChanged > 0 || isActive || session.pullRequest != null),
+        isThreeLine: [
+          updatedAt != null,
+          filesChanged > 0,
+          session.pullRequest != null,
+          isActive,
+        ].where((v) => v).length >= 2,
         trailing: const Icon(Icons.chevron_right),
         onTap: onTap,
         onLongPress: onLongPress,

@@ -4,14 +4,12 @@ import "../../../core/extensions/build_context_x.dart";
 
 class BackgroundTasksHeader extends StatelessWidget {
   final int runningCount;
-  final int totalCount;
   final bool expanded;
   final VoidCallback onTap;
 
   const BackgroundTasksHeader({
     super.key,
     required this.runningCount,
-    required this.totalCount,
     required this.expanded,
     required this.onTap,
   });
@@ -54,7 +52,7 @@ class BackgroundTasksHeader extends StatelessWidget {
               ),
             ),
             Icon(
-              expanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_up,
+              expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
               size: 20,
               color: zyra.colors.textSecondary,
             ),

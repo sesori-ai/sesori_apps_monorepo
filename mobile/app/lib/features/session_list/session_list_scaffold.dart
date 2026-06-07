@@ -52,7 +52,12 @@ class SessionListScaffold extends StatelessWidget {
           IconButton(
             icon: Icon(showArchived ? Icons.archive : Icons.archive_outlined),
             tooltip: loc.sessionListToggleArchived,
-            onPressed: state is SessionListLoaded ? () => context.read<SessionListCubit>().toggleArchived() : null,
+            onPressed: () {
+              final cubit = context.read<SessionListCubit>();
+              if (cubit.state is SessionListLoaded) {
+                cubit.toggleArchived();
+              }
+            },
           ),
         ],
       ),

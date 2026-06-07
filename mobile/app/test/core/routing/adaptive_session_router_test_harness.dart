@@ -173,31 +173,7 @@ class AdaptiveSessionRouterTestHarness {
   );
 }
 
-List<RouteBase> _buildHarnessRoutes() {
-  return [
-    AppRouteDef.splash.toGoRoute(),
-    AppRouteDef.login.toGoRoute(),
-    AppRouteDef.projects.toGoRoute(),
-    AppRouteDef.settings.toGoRoute(),
-    AppRouteDef.newSession.toGoRoute(),
-    _buildAdaptiveSessionRoute(def: AppRouteDef.sessions),
-    _buildAdaptiveSessionRoute(def: AppRouteDef.sessionDetail),
-    _buildAdaptiveSessionRoute(def: AppRouteDef.sessionDiffs),
-  ];
-}
-
-GoRoute _buildAdaptiveSessionRoute({required AppRouteDef def}) {
-  final shell = buildAppRoutes().whereType<ShellRoute>().single;
-  final childRoute = shell.routes.whereType<GoRoute>().singleWhere((route) => route.path == def.path);
-
-  return GoRoute(
-    path: def.path,
-    builder: (context, state) {
-      final child = childRoute.builder!(context, state);
-      return shell.builder!(context, state, child);
-    },
-  );
-}
+List<RouteBase> _buildHarnessRoutes() => buildAppRoutes();
 
 Session adaptiveTestSession({
   required String projectId,

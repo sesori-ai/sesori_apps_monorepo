@@ -58,7 +58,6 @@ class _BackgroundTasksBarState extends State<BackgroundTasksBar> {
         children: [
           BackgroundTasksHeader(
             runningCount: _runningCount,
-            totalCount: widget.children.length,
             expanded: _expanded,
             onTap: () => setState(() {
               _expanded = !_expanded;

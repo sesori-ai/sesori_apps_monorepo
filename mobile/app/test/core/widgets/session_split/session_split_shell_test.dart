@@ -1,9 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/widgets/session_split/empty_session_detail_panel.dart";
 import "package:sesori_mobile/core/widgets/session_split/session_split_breakpoints.dart";
-import "package:sesori_mobile/core/widgets/session_split/session_split_route_child.dart";
 import "package:sesori_mobile/core/widgets/session_split/session_split_scope.dart";
 import "package:sesori_mobile/core/widgets/session_split/session_split_shell.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
@@ -36,7 +34,6 @@ void main() {
         width: width,
         child: SessionSplitShell(
           projectId: "p1",
-          projectName: "Project One",
           selectedSessionId: "s1",
           routeKind: routeKind,
           list: const SizedBox(key: listKey, child: Text("List")),
@@ -265,29 +262,6 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(AppBar), findsNothing);
-    });
-  });
-
-  group("SessionSplitRouteChild", () {
-    testWidgets("carries routeKind, route, and child", (tester) async {
-      const route = AppRoute.sessions(projectId: "p1", projectName: null);
-
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: SessionSplitRouteChild(
-            routeKind: SessionSplitRouteKind.list,
-            route: route,
-            child: Text("Hello"),
-          ),
-        ),
-      );
-
-      final routeChild = tester.widget<SessionSplitRouteChild>(
-        find.byType(SessionSplitRouteChild),
-      );
-      expect(routeChild.routeKind, SessionSplitRouteKind.list);
-      expect(routeChild.route, route);
-      expect(find.text("Hello"), findsOneWidget);
     });
   });
 

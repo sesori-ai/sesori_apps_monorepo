@@ -1,8 +1,14 @@
 import "package:flutter/material.dart";
 
 import "session_split_breakpoints.dart";
-import "session_split_route_child.dart";
 import "session_split_scope.dart";
+
+/// Identifies which kind of session route is currently active.
+enum SessionSplitRouteKind {
+  list,
+  detail,
+  diffs,
+}
 
 /// Adaptive shell that renders either a single-pane narrow layout or a
 /// two-pane wide layout for session routes.
@@ -15,7 +21,6 @@ import "session_split_scope.dart";
 /// a divider, and a flexible right panel is rendered.
 class SessionSplitShell extends StatelessWidget {
   final String projectId;
-  final String? projectName;
   final String? selectedSessionId;
   final SessionSplitRouteKind routeKind;
   final Widget list;
@@ -24,7 +29,6 @@ class SessionSplitShell extends StatelessWidget {
   const SessionSplitShell({
     super.key,
     required this.projectId,
-    this.projectName,
     this.selectedSessionId,
     required this.routeKind,
     required this.list,

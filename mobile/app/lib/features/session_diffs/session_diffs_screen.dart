@@ -22,7 +22,7 @@ class SessionDiffsScreen extends StatelessWidget {
         sessionRepository: getIt<SessionRepository>(),
         sessionId: sessionId,
       ),
-      child: SessionDiffsBody(sessionId: sessionId),
+      child: const SessionDiffsBody(),
     );
   }
 }

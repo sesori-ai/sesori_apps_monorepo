@@ -8,7 +8,6 @@ import "package:get_it/get_it.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
-import "package:sesori_mobile/core/widgets/session_split/session_split_route_child.dart";
 import "package:sesori_mobile/core/widgets/session_split/session_split_shell.dart";
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_body.dart";
 import "package:sesori_mobile/features/session_diffs/session_diffs_body.dart";
@@ -32,7 +31,6 @@ Widget _buildWideShell({required Widget detail}) {
     supportedLocales: AppLocalizations.supportedLocales,
     home: SessionSplitShell(
       projectId: "project-1",
-      projectName: "Project One",
       selectedSessionId: "session-1",
       routeKind: SessionSplitRouteKind.detail,
       list: const SizedBox(key: Key("test-list")),
@@ -142,7 +140,7 @@ void main() {
         _buildWideShell(
           detail: BlocProvider<DiffCubit>.value(
             value: cubit,
-            child: const SessionDiffsBody(sessionId: "session-1"),
+            child: const SessionDiffsBody(),
           ),
         ),
       );
@@ -161,7 +159,7 @@ void main() {
         _buildWideShell(
           detail: BlocProvider<DiffCubit>.value(
             value: cubit,
-            child: const SessionDiffsBody(sessionId: "session-1"),
+            child: const SessionDiffsBody(),
           ),
         ),
       );

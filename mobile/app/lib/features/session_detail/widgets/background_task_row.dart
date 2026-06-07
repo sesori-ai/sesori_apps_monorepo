@@ -75,15 +75,10 @@ class BackgroundTaskRow extends StatelessWidget {
         color: zyra.colors.bgBrandSolid,
       ),
     ),
-    SessionStatusIdle() => Icon(
+    SessionStatusIdle() || null => Icon(
       Icons.check_circle,
       size: 16,
       color: zyra.colors.bgBrandSolid,
-    ),
-    null => Icon(
-      Icons.play_circle_outline,
-      size: 16,
-      color: zyra.colors.borderPrimary,
     ),
   };
 
@@ -116,13 +111,7 @@ class BackgroundTaskRow extends StatelessWidget {
         ],
       ),
     ),
-    SessionStatusIdle() => Text(
-      _completedLabel(loc),
-      style: zyra.textTheme.textXs.regular.copyWith(
-        color: zyra.colors.textSecondary,
-      ),
-    ),
-    null => Text(
+    SessionStatusIdle() || null => Text(
       _completedLabel(loc),
       style: zyra.textTheme.textXs.regular.copyWith(
         color: zyra.colors.textSecondary,
@@ -134,13 +123,13 @@ class BackgroundTaskRow extends StatelessWidget {
     final updatedMs = session.time?.updated;
     if (updatedMs == null) return loc.backgroundTaskStatusIdle;
 
-    final diff = DateTime.now().difference(
-      DateTime.fromMillisecondsSinceEpoch(updatedMs),
+    final diff = DateTime.now().toUtc().difference(
+      DateTime.fromMillisecondsSinceEpoch(updatedMs, isUtc: true),
     );
 
-    if (diff.inMinutes < 1) return "${loc.backgroundTaskStatusIdle} \u00b7 just now";
-    if (diff.inHours < 1) return "${loc.backgroundTaskStatusIdle} \u00b7 ${diff.inMinutes}m ago";
-    if (diff.inDays < 1) return "${loc.backgroundTaskStatusIdle} \u00b7 ${diff.inHours}h ago";
-    return "${loc.backgroundTaskStatusIdle} \u00b7 ${diff.inDays}d ago";
+    if (diff.inMinutes < 1) return "${loc.backgroundTaskStatusIdle} \u00b7 ${loc.timestampJustNow}";
+    if (diff.inHours < 1) return "${loc.backgroundTaskStatusIdle} \u00b7 ${loc.timestampMinutesAgo(diff.inMinutes)}";
+    if (diff.inDays < 1) return "${loc.backgroundTaskStatusIdle} \u00b7 ${loc.timestampHoursAgo(diff.inHours)}";
+    return "${loc.backgroundTaskStatusIdle} \u00b7 ${loc.timestampDaysAgo(diff.inDays)}";
   }
 }

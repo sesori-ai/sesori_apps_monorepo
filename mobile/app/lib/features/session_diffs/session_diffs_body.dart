@@ -10,11 +10,10 @@ import "models/diff_view_model_builder.dart";
 import "widgets/diff_file_header_delegate.dart";
 import "widgets/diff_hunk_widget.dart";
 import "widgets/diff_line_widget.dart";
+import "widgets/diff_skipped_placeholder.dart";
 
 class SessionDiffsBody extends StatefulWidget {
-  final String sessionId;
-
-  const SessionDiffsBody({super.key, required this.sessionId});
+  const SessionDiffsBody({super.key});
 
   @override
   State<SessionDiffsBody> createState() => _SessionDiffsBodyState();
@@ -28,6 +27,19 @@ class _SessionDiffsBodyState extends State<SessionDiffsBody> {
   List<FileDiff>? _lastFiles;
   int _computeToken = 0;
   Brightness? _lastBrightness;
+  bool _didInit = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_didInit) {
+      _didInit = true;
+      final state = context.read<DiffCubit>().state;
+      if (state is DiffStateLoaded && state.files.isNotEmpty) {
+        _maybeComputeViewModels(files: state.files);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,18 +67,28 @@ class _SessionDiffsBodyState extends State<SessionDiffsBody> {
           },
         ),
       ),
-      body: BlocBuilder<DiffCubit, DiffState>(
-        buildWhen: (prev, curr) =>
+      body: BlocListener<DiffCubit, DiffState>(
+        listenWhen: (prev, curr) =>
             prev.runtimeType != curr.runtimeType ||
             (prev is DiffStateLoaded && curr is DiffStateLoaded && !identical(prev.files, curr.files)),
-        builder: (context, state) => switch (state) {
-          DiffStateLoading() => const Center(child: CircularProgressIndicator()),
-          DiffStateFailed(:final error) => _buildErrorState(context: context, error: error),
-          DiffStateLoaded(:final files) when files.isEmpty => Center(
-            child: Text(context.loc.diffNoFileChanges),
-          ),
-          DiffStateLoaded(:final files) => _buildLoadedState(context: context, files: files),
+        listener: (context, state) {
+          if (state is DiffStateLoaded && state.files.isNotEmpty) {
+            _maybeComputeViewModels(files: state.files);
+          }
         },
+        child: BlocBuilder<DiffCubit, DiffState>(
+          buildWhen: (prev, curr) =>
+              prev.runtimeType != curr.runtimeType ||
+              (prev is DiffStateLoaded && curr is DiffStateLoaded && !identical(prev.files, curr.files)),
+          builder: (context, state) => switch (state) {
+            DiffStateLoading() => const Center(child: CircularProgressIndicator()),
+            DiffStateFailed(:final error) => _buildErrorState(context: context, error: error),
+            DiffStateLoaded(:final files) when files.isEmpty => Center(
+              child: Text(context.loc.diffNoFileChanges),
+            ),
+            DiffStateLoaded(:final files) => _buildLoadedState(context: context, files: files),
+          },
+        ),
       ),
     );
   }
@@ -85,7 +107,6 @@ class _SessionDiffsBodyState extends State<SessionDiffsBody> {
   }
 
   Widget _buildLoadedState({required BuildContext context, required List<FileDiff> files}) {
-    _maybeComputeViewModels(files: files);
     if (_computeError case final computeError?) {
       return _buildErrorState(context: context, error: computeError);
     }
@@ -121,7 +142,7 @@ class _SessionDiffsBodyState extends State<SessionDiffsBody> {
 
   Widget _buildFileContentSliver(DiffFileViewModel vm) {
     if (vm.skipReason case final skipReason?) {
-      return SliverToBoxAdapter(child: _buildSkippedPlaceholder(skipReason));
+      return SliverToBoxAdapter(child: DiffSkippedPlaceholder(reason: skipReason));
     }
     final childCount = vm.hunks.fold<int>(0, (sum, h) => sum + 1 + h.lines.length);
     return SliverList.builder(
@@ -143,10 +164,11 @@ class _SessionDiffsBodyState extends State<SessionDiffsBody> {
 
   void _maybeComputeViewModels({required List<FileDiff> files}) {
     final brightness = Theme.of(context).brightness;
-    if (identical(files, _lastFiles) && brightness == _lastBrightness) return;
+    if (identical(files, _lastFiles) && brightness == _lastBrightness && _computeError == null) return;
     final preserveExpansion = identical(files, _lastFiles);
     _lastFiles = files;
     _lastBrightness = brightness;
+    _computeError = null;
 
     // Defer computation to avoid setState() during build.
     Future.microtask(() {
@@ -201,25 +223,6 @@ class _SessionDiffsBodyState extends State<SessionDiffsBody> {
       expanded.add(fileIndex);
     }
     setState(() => _expandedFileIndices = expanded);
-  }
-
-  Widget _buildSkippedPlaceholder(FileDiffSkipReason reason) {
-    final loc = context.loc;
-    final message = switch (reason) {
-      FileDiffSkipReason.binary => loc.diffBinaryFileChanged,
-      FileDiffSkipReason.tooLarge => loc.diffFileTooLarge,
-      FileDiffSkipReason.readError => loc.diffCouldNotReadFile,
-    };
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Text(
-        message,
-        style: const TextStyle(
-          color: Colors.grey,
-          fontStyle: FontStyle.italic,
-        ),
-      ),
-    );
   }
 
   Widget _buildErrorState({required BuildContext context, required Object error}) {

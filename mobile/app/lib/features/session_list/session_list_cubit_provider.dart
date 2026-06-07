@@ -9,7 +9,10 @@ class SessionListCubitProvider extends StatelessWidget {
   final String projectId;
   final Widget child;
 
-  const SessionListCubitProvider({super.key, required this.projectId, required this.child});
+  SessionListCubitProvider({
+    required this.projectId,
+    required this.child,
+  }) : super(key: ValueKey("session-list-cubit-$projectId"));
 
   @override
   Widget build(BuildContext context) {

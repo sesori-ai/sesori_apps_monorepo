@@ -5,7 +5,6 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "package:sesori_mobile/core/platform/go_router_route_dispatcher.dart";
 import "package:sesori_mobile/core/routing/app_router.dart";
-import "package:sesori_mobile/core/widgets/session_split/session_split_route_child.dart";
 import "package:sesori_mobile/core/widgets/session_split/session_split_scope.dart";
 import "package:sesori_mobile/core/widgets/session_split/session_split_shell.dart";
 import "package:sesori_mobile/features/login/login_screen.dart";
@@ -13,7 +12,6 @@ import "package:sesori_mobile/features/new_session/new_session_screen.dart";
 import "package:sesori_mobile/features/project_list/project_list_screen.dart";
 import "package:sesori_mobile/features/session_detail/session_detail_screen.dart";
 import "package:sesori_mobile/features/session_diffs/session_diffs_screen.dart";
-import "package:sesori_mobile/features/session_list/session_list_screen.dart";
 import "package:sesori_mobile/features/settings/settings_screen.dart";
 import "package:sesori_mobile/features/splash/splash_screen.dart";
 
@@ -137,14 +135,7 @@ void main() {
   group("buildAppRoutes", () {
     test("explicit route table covers every AppRouteDef exactly once", () {
       final routes = buildAppRoutes();
-      final flatPaths = routes.whereType<GoRoute>().map((route) => route.path);
-      final shellPaths = routes
-          .whereType<ShellRoute>()
-          .single
-          .routes
-          .whereType<GoRoute>()
-          .map((route) => route.path);
-      final registeredPaths = [...flatPaths, ...shellPaths].toList();
+      final registeredPaths = routes.whereType<GoRoute>().map((route) => route.path).toList();
 
       expect(registeredPaths, hasLength(AppRouteDef.values.length));
       expect(
@@ -153,43 +144,17 @@ void main() {
       );
     });
 
-    test("keeps non-session routes flat and session routes shell-wrapped", () {
-      final flatPaths = buildAppRoutes().whereType<GoRoute>().map((route) => route.path).toList();
+    test("keeps non-session routes flat and session routes as GoRoute", () {
+      final allPaths = buildAppRoutes().whereType<GoRoute>().map((route) => route.path).toList();
 
       expect(
-        flatPaths,
+        allPaths,
         equals([
           AppRouteDef.splash.path,
           AppRouteDef.login.path,
           AppRouteDef.projects.path,
           AppRouteDef.settings.path,
           AppRouteDef.newSession.path,
-        ]),
-      );
-      expect(flatPaths, isNot(contains(AppRouteDef.sessions.path)));
-      expect(flatPaths, isNot(contains(AppRouteDef.sessionDetail.path)));
-      expect(flatPaths, isNot(contains(AppRouteDef.sessionDiffs.path)));
-    });
-
-    test("registers newSession before the session-family shell", () {
-      final routes = buildAppRoutes();
-      final newSessionIndex = routes.indexWhere(
-        (route) => route is GoRoute && route.path == AppRouteDef.newSession.path,
-      );
-      final shellIndex = routes.indexWhere((route) => route is ShellRoute);
-
-      expect(newSessionIndex, isNonNegative);
-      expect(shellIndex, isNonNegative);
-      expect(newSessionIndex, lessThan(shellIndex));
-    });
-
-    test("wraps only sessions, detail, and diffs in a ShellRoute", () {
-      final shell = buildAppRoutes().whereType<ShellRoute>().single;
-      final shellPaths = shell.routes.whereType<GoRoute>().map((route) => route.path).toList();
-
-      expect(
-        shellPaths,
-        equals([
           AppRouteDef.sessions.path,
           AppRouteDef.sessionDetail.path,
           AppRouteDef.sessionDiffs.path,
@@ -197,54 +162,101 @@ void main() {
       );
     });
 
-    test("sessions child preserves typed route decoding", () {
-      final widget = _sessionShellChildRoute(AppRouteDef.sessions).builder!(
-        _FakeBuildContext(),
-        _FakeGoRouterState(
-          pathParameters: {"projectId": "proj-42"},
-          queryParameters: {"name": "My Project"},
-        ),
+    test("registers newSession before dynamic session routes", () {
+      final routes = buildAppRoutes();
+      final newSessionIndex = routes.indexWhere(
+        (route) => route is GoRoute && route.path == AppRouteDef.newSession.path,
+      );
+      final sessionsIndex = routes.indexWhere(
+        (route) => route is GoRoute && route.path == AppRouteDef.sessions.path,
       );
 
-      expect(widget, isA<SessionSplitRouteChild>());
-      final routeChild = widget as SessionSplitRouteChild;
-      expect(routeChild.routeKind, SessionSplitRouteKind.list);
-      expect(routeChild.route, isA<AppRouteSessions>());
-      expect((routeChild.route as AppRouteSessions).projectName, "My Project");
-      expect(routeChild.child, isA<SessionListScreen>());
-      expect((routeChild.child as SessionListScreen).projectName, "My Project");
+      expect(newSessionIndex, isNonNegative);
+      expect(sessionsIndex, isNonNegative);
+      expect(newSessionIndex, lessThan(sessionsIndex));
     });
 
-    test("detail child preserves typed route decoding", () {
-      final widget = _sessionShellChildRoute(AppRouteDef.sessionDetail).builder!(
+    test("session routes build SessionSplitShell", () {
+      final routes = buildAppRoutes().whereType<GoRoute>();
+
+      final sessionsRoute = routes.singleWhere((r) => r.path == AppRouteDef.sessions.path);
+      final detailRoute = routes.singleWhere((r) => r.path == AppRouteDef.sessionDetail.path);
+      final diffsRoute = routes.singleWhere((r) => r.path == AppRouteDef.sessionDiffs.path);
+
+      final sessionsHost = sessionsRoute.builder!(
+        _FakeBuildContext(),
+        _FakeGoRouterState(pathParameters: {"projectId": "proj-42"}, queryParameters: {"name": "My Project"}),
+      ) as StatelessWidget;
+      final detailHost = detailRoute.builder!(
         _FakeBuildContext(),
         _FakeGoRouterState(
           pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"},
           queryParameters: {"title": "Debug session", "readOnly": "true"},
         ),
-      );
+      ) as StatelessWidget;
+      final diffsHost = diffsRoute.builder!(
+        _FakeBuildContext(),
+        _FakeGoRouterState(pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"}),
+      ) as StatelessWidget;
 
-      expect(widget, isA<SessionSplitRouteChild>());
-      final routeChild = widget as SessionSplitRouteChild;
-      expect(routeChild.routeKind, SessionSplitRouteKind.detail);
-      expect(routeChild.route, isA<AppRouteSessionDetail>());
-      final route = routeChild.route as AppRouteSessionDetail;
-      expect(route.projectId, "proj-42");
-      expect(route.sessionId, "ses-99");
-      expect(route.sessionTitle, "Debug session");
-      expect(route.readOnly, isTrue);
-      expect(routeChild.child, isA<Builder>());
+      // ignore: invalid_use_of_protected_member
+      expect(sessionsHost.build(_FakeBuildContext()), isA<SessionSplitShell>());
+      // ignore: invalid_use_of_protected_member
+      expect(detailHost.build(_FakeBuildContext()), isA<SessionSplitShell>());
+      // ignore: invalid_use_of_protected_member
+      expect(diffsHost.build(_FakeBuildContext()), isA<SessionSplitShell>());
     });
 
-    testWidgets("detail child builder provides split-aware diffs callback and stable key", (tester) async {
-      final widget = _sessionShellChildRoute(AppRouteDef.sessionDetail).builder!(
+    test("sessions shell preserves typed route decoding", () {
+      final routes = buildAppRoutes().whereType<GoRoute>();
+      final sessionsRoute = routes.singleWhere((r) => r.path == AppRouteDef.sessions.path);
+
+      final host = sessionsRoute.builder!(
+        _FakeBuildContext(),
+        _FakeGoRouterState(
+          pathParameters: {"projectId": "proj-42"},
+          queryParameters: {"name": "My Project"},
+        ),
+      ) as StatelessWidget;
+
+      // ignore: invalid_use_of_protected_member
+      final shell = host.build(_FakeBuildContext()) as SessionSplitShell;
+      expect(shell.routeKind, SessionSplitRouteKind.list);
+    });
+
+    test("detail shell preserves typed route decoding", () {
+      final routes = buildAppRoutes().whereType<GoRoute>();
+      final detailRoute = routes.singleWhere((r) => r.path == AppRouteDef.sessionDetail.path);
+
+      final host = detailRoute.builder!(
+        _FakeBuildContext(),
+        _FakeGoRouterState(
+          pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"},
+          queryParameters: {"title": "Debug session", "readOnly": "true"},
+        ),
+      ) as StatelessWidget;
+
+      // ignore: invalid_use_of_protected_member
+      final shell = host.build(_FakeBuildContext()) as SessionSplitShell;
+      expect(shell.routeKind, SessionSplitRouteKind.detail);
+    });
+
+    testWidgets("detail shell builder provides split-aware diffs callback and stable key", (tester) async {
+      final routes = buildAppRoutes().whereType<GoRoute>();
+      final detailRoute = routes.singleWhere((r) => r.path == AppRouteDef.sessionDetail.path);
+
+      final host = detailRoute.builder!(
         _FakeBuildContext(),
         _FakeGoRouterState(
           pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"},
           queryParameters: {"title": "Debug session", "readOnly": "false"},
         ),
-      );
-      final routeChild = widget as SessionSplitRouteChild;
+      ) as StatelessWidget;
+
+      // ignore: invalid_use_of_protected_member
+      final shell = host.build(_FakeBuildContext()) as SessionSplitShell;
+      final detailChild = shell.detail;
+      expect(detailChild, isA<Builder>());
 
       SessionDetailScreen? capturedScreen;
       await tester.pumpWidget(
@@ -254,7 +266,7 @@ void main() {
           selectedSessionId: "ses-99",
           child: Builder(
             builder: (context) {
-              capturedScreen = (routeChild.child as Builder).builder(context) as SessionDetailScreen;
+              capturedScreen = (detailChild as Builder).builder(context) as SessionDetailScreen;
               return const SizedBox();
             },
           ),
@@ -266,22 +278,29 @@ void main() {
       expect(capturedScreen!.onOpenDiffs, isNotNull);
     });
 
-    testWidgets("detail child builder omits split callback outside split scope", (tester) async {
-      final widget = _sessionShellChildRoute(AppRouteDef.sessionDetail).builder!(
+    testWidgets("detail shell builder omits split callback outside split scope", (tester) async {
+      final routes = buildAppRoutes().whereType<GoRoute>();
+      final detailRoute = routes.singleWhere((r) => r.path == AppRouteDef.sessionDetail.path);
+
+      final host = detailRoute.builder!(
         _FakeBuildContext(),
         _FakeGoRouterState(
           pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"},
           queryParameters: {"title": "Debug session", "readOnly": "false"},
         ),
-      );
-      final routeChild = widget as SessionSplitRouteChild;
+      ) as StatelessWidget;
+
+      // ignore: invalid_use_of_protected_member
+      final shell = host.build(_FakeBuildContext()) as SessionSplitShell;
+      final detailChild = shell.detail;
+      expect(detailChild, isA<Builder>());
 
       SessionDetailScreen? capturedScreen;
       await tester.pumpWidget(
         MaterialApp(
           home: Builder(
             builder: (context) {
-              capturedScreen = (routeChild.child as Builder).builder(context) as SessionDetailScreen;
+              capturedScreen = (detailChild as Builder).builder(context) as SessionDetailScreen;
               return const SizedBox();
             },
           ),
@@ -292,45 +311,20 @@ void main() {
       expect(capturedScreen!.onOpenDiffs, isNull);
     });
 
-    test("diffs child preserves typed route decoding and stable key", () {
-      final widget = _sessionShellChildRoute(AppRouteDef.sessionDiffs).builder!(
+    test("diffs shell preserves typed route decoding and stable key", () {
+      final routes = buildAppRoutes().whereType<GoRoute>();
+      final diffsRoute = routes.singleWhere((r) => r.path == AppRouteDef.sessionDiffs.path);
+
+      final host = diffsRoute.builder!(
         _FakeBuildContext(),
         _FakeGoRouterState(pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"}),
-      );
+      ) as StatelessWidget;
 
-      expect(widget, isA<SessionSplitRouteChild>());
-      final routeChild = widget as SessionSplitRouteChild;
-      expect(routeChild.routeKind, SessionSplitRouteKind.diffs);
-      expect(routeChild.route, isA<AppRouteSessionDiffs>());
-      final route = routeChild.route as AppRouteSessionDiffs;
-      expect(route.projectId, "proj-42");
-      expect(route.sessionId, "ses-99");
-      expect(routeChild.child, isA<SessionDiffsScreen>());
-      expect((routeChild.child as SessionDiffsScreen).key, const ValueKey("session-diffs-ses-99"));
-    });
-
-    testWidgets("shell builder accepts typed route child", (tester) async {
-      await tester.binding.setSurfaceSize(const Size(390, 800));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      final shell = buildAppRoutes().whereType<ShellRoute>().single;
-      final widget = shell.builder!(
-        _FakeBuildContext(),
-        _FakeGoRouterState(),
-        const SessionSplitRouteChild(
-          routeKind: SessionSplitRouteKind.detail,
-          route: AppRoute.sessionDetail(
-            projectId: "proj-42",
-            sessionId: "ses-99",
-            sessionTitle: null,
-            readOnly: false,
-          ),
-          child: Text("Detail"),
-        ),
-      );
-
-      await tester.pumpWidget(Directionality(textDirection: TextDirection.ltr, child: widget));
-
-      expect(find.byType(SessionSplitShell), findsOneWidget);
+      // ignore: invalid_use_of_protected_member
+      final shell = host.build(_FakeBuildContext()) as SessionSplitShell;
+      expect(shell.routeKind, SessionSplitRouteKind.diffs);
+      expect(shell.detail, isA<SessionDiffsScreen>());
+      expect((shell.detail as SessionDiffsScreen).key, const ValueKey("session-diffs-ses-99"));
     });
   });
 
@@ -409,9 +403,4 @@ class _FakeGoRouterState extends Fake implements GoRouterState {
 
   @override
   final Uri uri;
-}
-
-GoRoute _sessionShellChildRoute(AppRouteDef def) {
-  final shell = buildAppRoutes().whereType<ShellRoute>().single;
-  return shell.routes.whereType<GoRoute>().singleWhere((route) => route.path == def.path);
 }
