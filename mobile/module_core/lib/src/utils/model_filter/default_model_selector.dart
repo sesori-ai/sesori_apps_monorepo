@@ -44,7 +44,8 @@ class DefaultModelSelector {
       }
     }
 
-    // 2. Upstream "(latest)" name marker. Ties broken by newest release date.
+    // 2. Upstream "(latest)" name marker. Ties broken by newest release
+    //    date, then by `id` for determinism.
     final latestMarked =
         list.where((m) => m.name.toLowerCase().contains("(latest)")).toList();
     if (latestMarked.isNotEmpty) {
@@ -54,22 +55,39 @@ class DefaultModelSelector {
       latestMarked.sort((a, b) {
         final dateA = a.releaseDate;
         final dateB = b.releaseDate;
-        if (dateB == null && dateA == null) return 0;
-        if (dateB == null) return -1;
-        if (dateA == null) return 1;
-        return dateB.compareTo(dateA);
+        final int dateCompare;
+        if (dateB == null && dateA == null) {
+          dateCompare = 0;
+        } else if (dateB == null) {
+          dateCompare = -1;
+        } else if (dateA == null) {
+          dateCompare = 1;
+        } else {
+          dateCompare = dateB.compareTo(dateA);
+        }
+        if (dateCompare != 0) return dateCompare;
+        return a.id.compareTo(b.id);
       });
       return latestMarked.first;
     }
 
-    // 3. Newest by releaseDate. See note above about the inline comparator.
+    // 3. Newest by releaseDate, then by `id` for determinism. See note
+    //    above about the inline comparator.
     final sorted = [...list]..sort((a, b) {
         final dateA = a.releaseDate;
         final dateB = b.releaseDate;
-        if (dateB == null && dateA == null) return 0;
-        if (dateB == null) return -1;
-        if (dateA == null) return 1;
-        return dateB.compareTo(dateA);
+        final int dateCompare;
+        if (dateB == null && dateA == null) {
+          dateCompare = 0;
+        } else if (dateB == null) {
+          dateCompare = -1;
+        } else if (dateA == null) {
+          dateCompare = 1;
+        } else {
+          dateCompare = dateB.compareTo(dateA);
+        }
+        if (dateCompare != 0) return dateCompare;
+        return a.id.compareTo(b.id);
       });
     return sorted.first;
   }

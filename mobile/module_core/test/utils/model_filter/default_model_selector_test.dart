@@ -106,6 +106,35 @@ void main() {
       expect(picked?.id, "latest-newer");
     });
 
+    test("breaks date ties deterministically by `id` (no unstable sort)", () {
+      // Regression: with no `id` tie-breaker, a sort that returns 0 for
+      // every comparison (all dates equal) preserves insertion order —
+      // which means a model added to the family first wins regardless of
+      // its id. With the `id` tie-breaker, the result is deterministic.
+      final group = [
+        _model(id: "zebra", name: "Zebra", releaseDate: DateTime(2026, 4)),
+        _model(id: "alpha", name: "Alpha", releaseDate: DateTime(2026, 4)),
+        _model(id: "mango", name: "Mango", releaseDate: DateTime(2026, 4)),
+      ];
+      final picked = selector.pickFromFamily(
+        group: group,
+        defaultModelId: null,
+      );
+      expect(picked?.id, "alpha");
+    });
+
+    test("breaks null-date ties deterministically by `id`", () {
+      final group = [
+        _model(id: "zebra", name: "Zebra", releaseDate: null),
+        _model(id: "alpha", name: "Alpha", releaseDate: null),
+      ];
+      final picked = selector.pickFromFamily(
+        group: group,
+        defaultModelId: null,
+      );
+      expect(picked?.id, "alpha");
+    });
+
     test("falls back to the model with the most recent releaseDate", () {
       final group = [
         _model(id: "old", releaseDate: DateTime(2024, 1)),
