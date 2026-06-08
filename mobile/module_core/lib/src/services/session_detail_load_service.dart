@@ -129,7 +129,7 @@ class SessionDetailLoadService {
           commands: commands,
           canonicalSessionTitle: projectContext?.sessionTitle,
           promptDefaults: promptDefaults,
-          parentId: session?.parentID,
+          isRootSession: session != null ? session.parentID == null : null,
         ),
         isBridgeConnected: _connectionService.currentStatus is ConnectionConnected,
       );
@@ -171,7 +171,10 @@ class SessionDetailSnapshot {
   final List<CommandInfo> commands;
   final String? canonicalSessionTitle;
   final SessionPromptDefaults? promptDefaults;
-  final String? parentId;
+  /// Whether this session is a root (main) session. `true` when the session
+  /// metadata confirms `parentID == null`; `false` when `parentID != null`;
+  /// `null` when the session metadata lookup failed, so we cannot tell.
+  final bool? isRootSession;
 
   const SessionDetailSnapshot({
     required this.projectId,
@@ -185,7 +188,7 @@ class SessionDetailSnapshot {
     required this.commands,
     required this.canonicalSessionTitle,
     required this.promptDefaults,
-    required this.parentId,
+    required this.isRootSession,
   });
 }
 

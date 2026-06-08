@@ -75,7 +75,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
           fallbackTitle: widget.sessionTitle ?? loc.sessionDetailTitle,
         ),
         actions: [
-          if (state case SessionDetailLoaded(:final parentId) when parentId == null)
+          if (state case SessionDetailLoaded(:final isRootSession) when isRootSession == true)
             IconButton(
               icon: const Icon(Icons.difference_outlined),
               tooltip: loc.sessionDetailFileChangesTooltip,

@@ -161,7 +161,7 @@ void main() {
           commands: <CommandInfo>[],
           canonicalSessionTitle: null,
           promptDefaults: null,
-          parentId: null,
+          isRootSession: true,
         ),
         isBridgeConnected: true,
       ),
@@ -231,7 +231,7 @@ void main() {
         commands: <CommandInfo>[],
           canonicalSessionTitle: null,
           promptDefaults: null,
-          parentId: null,
+          isRootSession: true,
         ),
         isBridgeConnected: true,
     );
