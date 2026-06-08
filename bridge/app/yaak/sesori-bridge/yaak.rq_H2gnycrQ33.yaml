@@ -10,7 +10,7 @@ authenticationType: null
 body:
   text: |-
     {
-      "projectId": "$${[ project_id ]}"
+      "projectId": "${[ project_id ]}"
     }
 bodyType: application/json
 description: ''
