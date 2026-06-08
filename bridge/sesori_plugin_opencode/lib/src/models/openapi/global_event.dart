@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T07:51:39.987654Z
+// Generated: 2026-06-08T08:11:58.901343Z
 
 
 class GlobalEvent {
@@ -16,7 +16,7 @@ class GlobalEvent {
       directory: json["directory"] as String,
       project: json["project"] as String?,
       workspace: json["workspace"] as String?,
-      payload: json["payload"],
+      payload: json["payload"] as Object,
     );
   }
 
@@ -33,5 +33,5 @@ class GlobalEvent {
   final String directory;
   final String? project;
   final String? workspace;
-  final dynamic payload;
+  final Object payload;
 }

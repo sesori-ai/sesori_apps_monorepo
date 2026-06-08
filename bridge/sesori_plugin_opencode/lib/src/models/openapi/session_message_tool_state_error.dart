@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T07:51:40.005482Z
+// Generated: 2026-06-08T08:11:58.921083Z
 
 import 'session_error_unknown.dart';
 
@@ -18,10 +18,10 @@ class SessionMessageToolStateError {
     return SessionMessageToolStateError(
       status: json["status"] as String,
       input: json["input"] as Map<String, dynamic>,
-      content: (json["content"] as List<dynamic>).cast<dynamic>(),
+      content: (json["content"] as List<dynamic>).cast<Object>(),
       structured: json["structured"] as Map<String, dynamic>,
       error: SessionErrorUnknown.fromJson(json["error"] as Map<String, dynamic>),
-      result: json["result"],
+      result: json["result"] as Object?,
     );
   }
 
@@ -39,8 +39,8 @@ class SessionMessageToolStateError {
 
   final String status;
   final Map<String, dynamic> input;
-  final List<dynamic> content;
+  final List<Object> content;
   final Map<String, dynamic> structured;
   final SessionErrorUnknown error;
-  final dynamic result;
+  final Object? result;
 }

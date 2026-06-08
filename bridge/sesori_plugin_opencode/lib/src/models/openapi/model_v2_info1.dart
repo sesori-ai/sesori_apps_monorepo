@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T07:51:39.992455Z
+// Generated: 2026-06-08T08:11:58.906402Z
 
 
 class ModelV2Info1 {
@@ -26,7 +26,7 @@ class ModelV2Info1 {
       providerID: json["providerID"] as String,
       family: json["family"] as String?,
       name: json["name"] as String,
-      api: json["api"],
+      api: json["api"] as Object,
       capabilities: json["capabilities"] as Map<String, dynamic>,
       request: json["request"] as Map<String, dynamic>,
       variants: (json["variants"] as List<dynamic>).cast<Map<String, dynamic>>(),
@@ -61,7 +61,7 @@ class ModelV2Info1 {
   final String providerID;
   final String? family;
   final String name;
-  final dynamic api;
+  final Object api;
   final Map<String, dynamic> capabilities;
   final Map<String, dynamic> request;
   final List<Map<String, dynamic>> variants;

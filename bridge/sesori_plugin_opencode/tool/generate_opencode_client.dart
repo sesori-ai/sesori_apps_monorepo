@@ -782,7 +782,7 @@ class Codegen {
       if (items is Map<String, dynamic>) {
         return _wrap('List<${_dartTypeForSchema(items, nullable: false)}>', nullable);
       }
-      return _wrap('List<dynamic>', nullable);
+      return _wrap('List<Object>', nullable);
     }
     if (type == 'object') {
       final ap = sch['additionalProperties'];
@@ -790,9 +790,9 @@ class Codegen {
         return _wrap('Map<String, ${_dartTypeForSchema(ap, nullable: false)}>', nullable);
       }
       if (ap == true) {
-        return _wrap('Map<String, dynamic>', nullable);
+        return _wrap('Map<String, Object>', nullable);
       }
-      return _wrap('Map<String, dynamic>', nullable);
+      return _wrap('Map<String, Object>', nullable);
     }
     if (sch['anyOf'] is List) {
       final variants = (sch['anyOf'] as List).cast<Map<String, dynamic>>();
@@ -807,13 +807,13 @@ class Codegen {
     if (sch['enum'] is List) {
       return _wrap('String', nullable);
     }
-    return _wrap('dynamic', nullable);
+    return _wrap('Object', nullable);
   }
 
   String _wrap(String t, bool nullable) => nullable ? '$t?' : t;
 
   bool _isPrimitiveType(String t) {
-    return t == 'bool' || t == 'int' || t == 'double' || t == 'String' || t == 'DateTime' || t == 'Uri' || t == 'dynamic';
+    return t == 'bool' || t == 'int' || t == 'double' || t == 'String' || t == 'DateTime' || t == 'Uri' || t == 'Object';
   }
 
   String _parsePrimitive(String type, String body) {
@@ -822,7 +822,7 @@ class Codegen {
     if (type == 'double') return 'double.parse($body)';
     if (type == 'DateTime') return 'DateTime.parse($body)';
     if (type == 'Uri') return 'Uri.parse($body)';
-    if (type == 'dynamic') return 'jsonDecode($body) as dynamic';
+    if (type == 'Object') return 'jsonDecode($body) as Object';
     return body;
   }
 
@@ -979,7 +979,7 @@ class ResponseSpec {
     }
   }
   String? description;
-  String dartType = 'dynamic';
+  String dartType = 'Object';
   bool isNoContent = false;
 
   static String _dartTypeFromSchema(Map<String, dynamic> sch) {
@@ -998,7 +998,7 @@ class ResponseSpec {
       if (items is Map<String, dynamic>) {
         return 'List<${_dartTypeFromSchema(items)}>';
       }
-      return 'List<dynamic>';
+      return 'List<Object>';
     }
     if (sch['anyOf'] is List) {
       final variants = (sch['anyOf'] as List).cast<Map<String, dynamic>>();
@@ -1006,9 +1006,9 @@ class ResponseSpec {
       if (nonNull.length == 1) {
         return _dartTypeFromSchema(nonNull.first);
       }
-      return 'dynamic';
+      return 'Object';
     }
-    return 'dynamic';
+    return 'Object';
   }
 }
 
@@ -1244,7 +1244,7 @@ class ModelWriter {
     // `PermissionRuleset` = `List<PermissionRule>`. Implemented as a class
     // with a single static `fromList` factory for JSON compatibility.
     final items = schema['items'] as Map<String, dynamic>?;
-    final innerDart = items != null ? _dartTypeForInline(items) : 'dynamic';
+    final innerDart = items != null ? _dartTypeForInline(items) : 'Object';
     final innerClass = items != null && items[r'$ref'] is String
         ? _pascalFromSnake((items[r'$ref'] as String).substring('#/components/schemas/'.length))
         : innerDart;
@@ -1270,7 +1270,7 @@ class ModelWriter {
   /// Like `_isPrimitiveType` but available as a static method (ModelWriter
   /// cannot reach Codegen's instance state).
   static bool _isInlinePrimitive(String t) {
-    return t == 'bool' || t == 'int' || t == 'double' || t == 'String' || t == 'DateTime' || t == 'Uri' || t == 'dynamic';
+    return t == 'bool' || t == 'int' || t == 'double' || t == 'String' || t == 'DateTime' || t == 'Uri' || t == 'Object';
   }
 
   // -------------------------------------------------------------------------
@@ -1541,7 +1541,7 @@ class ModelWriter {
           innerDart = _dartTypeForInline(items);
         }
       } else {
-        innerDart = 'dynamic';
+        innerDart = 'Object';
       }
       b.writeln('class $className implements $unionName {');
       b.writeln('  const $className({required this.items});');
@@ -1587,9 +1587,7 @@ class ModelWriter {
           final fieldName = entry.key;
           final safeName = _safeIdentifier(fieldName);
           final isRequired = required.contains(fieldName);
-          final propSch = entry.value as Map<String, dynamic>;
-          final isNullable = _isNullableSchema(propSch);
-          if (isRequired && !isNullable) {
+          if (isRequired) {
             b.writeln('    required this.$safeName,');
           } else {
             b.writeln('    this.$safeName,');
@@ -1735,13 +1733,12 @@ class ModelWriter {
       for (final entry in realProps) {
         final fieldName = entry.key;
         final safeName = _safeIdentifier(fieldName);
-        final sch = entry.value as Map<String, dynamic>;
         final isRequired = required.contains(fieldName);
-        final isNullable = _isNullableSchema(sch);
-        // A field is a `required` constructor param only when the schema marks
-        // it as required AND it does not allow null. If it allows null, the
-        // type itself is nullable, so `required` would be a contradiction.
-        if (isRequired && !isNullable) {
+        // A field is a `required` constructor param whenever the schema marks
+        // it as required, even when the type is nullable. The `required`
+        // keyword in Dart means the caller must provide the argument; a
+        // nullable type simply allows passing `null`.
+        if (isRequired) {
           b.writeln('    required this.$safeName,');
         } else {
           b.writeln('    this.$safeName,');
@@ -1816,11 +1813,9 @@ class ModelWriter {
       final isRequired = required.contains(fieldName);
       final isNullable = _isNullableSchema(sch);
       final dartType = _dartTypeForInline(sch);
-      // `dynamic` is already nullable — adding `?` is unnecessary.
+      // `Object` is non-nullable — optional fields need `?` appended.
       final isNonNull = isRequired && !isNullable;
-      final finalType = isNonNull
-          ? dartType
-          : (dartType == 'dynamic' ? 'dynamic' : '$dartType?');
+      final finalType = isNonNull ? dartType : '$dartType?';
       b.writeln('  final $finalType $safeName;');
     }
     b.writeln('}');
@@ -1846,9 +1841,7 @@ class ModelWriter {
     final valueDart = _dartTypeForInline(ap);
     final isPrimitive = _isInlinePrimitive(valueDart);
     final isNullable = _isNullableSchema(ap);
-    final valueType = isNullable
-        ? (valueDart == 'dynamic' ? 'dynamic' : '$valueDart?')
-        : valueDart;
+    final valueType = isNullable ? '$valueDart?' : valueDart;
 
     b.writeln(implementsClass != null
         ? 'class $name implements $implementsClass {'
@@ -1951,7 +1944,7 @@ class ModelWriter {
       if (nonNull.length == 1) {
         return _dartTypeForInline(nonNull.first);
       }
-      return 'dynamic';
+      return 'Object';
     }
     if (sch['enum'] is List) {
       // Inline enum — register for emission.
@@ -1964,7 +1957,7 @@ class ModelWriter {
       }
       return _inlineEnumName(values);
     }
-    return 'dynamic';
+    return 'Object';
   }
 
   String _inlineEnumName(List<String> values) {
@@ -2150,6 +2143,13 @@ class ModelWriter {
         return '$safeName: json[$keyExpr] as $dartType?';
       }
       return '$safeName: json[$keyExpr] as $dartType';
+    }
+    final fallbackDartType = _dartTypeForInline(sch);
+    if (fallbackDartType == 'Object') {
+      if (isNullable) {
+        return '$safeName: json[$keyExpr] as Object?';
+      }
+      return '$safeName: json[$keyExpr] as Object';
     }
     return '$safeName: json[$keyExpr]';
   }

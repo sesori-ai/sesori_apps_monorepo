@@ -2,7 +2,7 @@
 //
 // Auto-generated OpenCode v2 client generated from the OpenAPI spec.
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T07:51:40.018876Z
+// Generated: 2026-06-08T08:11:58.936074Z
 //
 // To regenerate, run:
 //   make opencode-codegen OPENCODE_TAG=<tag>
@@ -144,7 +144,7 @@ Future<bool> appLog1xnlo30({
 /// Get a list of all available skills in the OpenCode system.
 ///
 /// `operationId`: `app.skills`
-Future<List<dynamic>> appSkills08tc0dg({
+Future<List<Object>> appSkills08tc0dg({
     String? directory,
     String? workspace,
   }) async {
@@ -164,7 +164,7 @@ Future<List<dynamic>> appSkills08tc0dg({
       );
     }
     final decoded = jsonDecode(resp.body) as List<dynamic>;
-    return decoded.cast<dynamic>();
+    return decoded.cast<Object>();
   }
 
 
@@ -287,7 +287,7 @@ Future<Config> configGet1032yv9({
 /// Get a list of all configured AI providers and their default models.
 ///
 /// `operationId`: `config.providers`
-Future<dynamic> configProviders1oc7hrf({
+Future<Object> configProviders1oc7hrf({
     String? directory,
     String? workspace,
   }) async {
@@ -306,7 +306,7 @@ Future<dynamic> configProviders1oc7hrf({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -346,7 +346,7 @@ Future<Config> configUpdate1pfe7yi({
 /// Get events
 ///
 /// `operationId`: `event.subscribe`
-Future<dynamic> eventSubscribe0ggbail({
+Future<Object> eventSubscribe0ggbail({
     String? directory,
     String? workspace,
   }) async {
@@ -365,7 +365,7 @@ Future<dynamic> eventSubscribe0ggbail({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -403,7 +403,7 @@ Future<ConsoleState> experimentalConsoleGet1yb75vy({
 /// Get the available Console orgs across logged-in accounts, including the current active org.
 ///
 /// `operationId`: `experimental.console.listOrgs`
-Future<dynamic> experimentalConsoleListOrgs08lc08d({
+Future<Object> experimentalConsoleListOrgs08lc08d({
     String? directory,
     String? workspace,
   }) async {
@@ -422,7 +422,7 @@ Future<dynamic> experimentalConsoleListOrgs08lc08d({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -580,7 +580,7 @@ Future<void> experimentalProjectCopyRemove08oftkp({
 /// Get all available MCP resources from connected servers. Optionally filter by name.
 ///
 /// `operationId`: `experimental.resource.list`
-Future<dynamic> experimentalResourceList0u28nzv({
+Future<Object> experimentalResourceList0u28nzv({
     String? directory,
     String? workspace,
   }) async {
@@ -599,7 +599,7 @@ Future<dynamic> experimentalResourceList0u28nzv({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -672,7 +672,7 @@ Future<List<GlobalSession>> experimentalSessionList033ard1({
 /// List all available workspace adapters for the current project.
 ///
 /// `operationId`: `experimental.workspace.adapter.list`
-Future<List<dynamic>> experimentalWorkspaceAdapterList0q9fsrt({
+Future<List<Object>> experimentalWorkspaceAdapterList0q9fsrt({
     String? directory,
     String? workspace,
   }) async {
@@ -692,7 +692,7 @@ Future<List<dynamic>> experimentalWorkspaceAdapterList0q9fsrt({
       );
     }
     final decoded = jsonDecode(resp.body) as List<dynamic>;
-    return decoded.cast<dynamic>();
+    return decoded.cast<Object>();
   }
 
 
@@ -791,7 +791,7 @@ Future<Workspace> experimentalWorkspaceRemove1yjezh2({
 /// Get connection status for workspaces in the current project.
 ///
 /// `operationId`: `experimental.workspace.status`
-Future<List<dynamic>> experimentalWorkspaceStatus03xz7p8({
+Future<List<Object>> experimentalWorkspaceStatus03xz7p8({
     String? directory,
     String? workspace,
   }) async {
@@ -811,7 +811,7 @@ Future<List<dynamic>> experimentalWorkspaceStatus03xz7p8({
       );
     }
     final decoded = jsonDecode(resp.body) as List<dynamic>;
-    return decoded.cast<dynamic>();
+    return decoded.cast<Object>();
   }
 
 
@@ -1030,7 +1030,7 @@ Future<List<Symbol>> findSymbols1r7pfgx({
 /// Search for text patterns across files in the project using ripgrep.
 ///
 /// `operationId`: `find.text`
-Future<List<dynamic>> findText0kfx8or({
+Future<List<Object>> findText0kfx8or({
     String? directory,
     String? workspace,
     required String pattern,
@@ -1051,7 +1051,7 @@ Future<List<dynamic>> findText0kfx8or({
       );
     }
     final decoded = jsonDecode(resp.body) as List<dynamic>;
-    return decoded.cast<dynamic>();
+    return decoded.cast<Object>();
   }
 
 
@@ -1167,7 +1167,7 @@ Future<bool> globalDispose1p539kh() async {
 /// Subscribe to global events from the OpenCode system using server-sent events.
 ///
 /// `operationId`: `global.event`
-Future<dynamic> globalEvent0vipzew() async {
+Future<Object> globalEvent0vipzew() async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/global/event',
       queryParameters: {},
@@ -1183,7 +1183,7 @@ Future<dynamic> globalEvent0vipzew() async {
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -1192,7 +1192,7 @@ Future<dynamic> globalEvent0vipzew() async {
 /// Get health information about the OpenCode server.
 ///
 /// `operationId`: `global.health`
-Future<dynamic> globalHealth1gczf2e() async {
+Future<Object> globalHealth1gczf2e() async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/global/health',
       queryParameters: {},
@@ -1208,7 +1208,7 @@ Future<dynamic> globalHealth1gczf2e() async {
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -1217,7 +1217,7 @@ Future<dynamic> globalHealth1gczf2e() async {
 /// Upgrade opencode to the specified version or latest if not specified.
 ///
 /// `operationId`: `global.upgrade`
-Future<dynamic> globalUpgrade09jf9d8({
+Future<Object> globalUpgrade09jf9d8({
     required Map<String, dynamic> body,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
@@ -1236,7 +1236,7 @@ Future<dynamic> globalUpgrade09jf9d8({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -1302,7 +1302,7 @@ Future<List<LSPStatus>> lspStatus1oobkkc({
 /// Dynamically add a new Model Context Protocol (MCP) server to the system.
 ///
 /// `operationId`: `mcp.add`
-Future<dynamic> mcpAdd0l0265e({
+Future<Object> mcpAdd0l0265e({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
@@ -1323,7 +1323,7 @@ Future<dynamic> mcpAdd0l0265e({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -1394,7 +1394,7 @@ Future<MCPStatus> mcpAuthCallback0q96uku({
 /// Remove OAuth credentials for an MCP server.
 ///
 /// `operationId`: `mcp.auth.remove`
-Future<dynamic> mcpAuthRemove01qxgz9({
+Future<Object> mcpAuthRemove01qxgz9({
     required String name,
     String? directory,
     String? workspace,
@@ -1414,7 +1414,7 @@ Future<dynamic> mcpAuthRemove01qxgz9({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -1423,7 +1423,7 @@ Future<dynamic> mcpAuthRemove01qxgz9({
 /// Start OAuth authentication flow for a Model Context Protocol (MCP) server.
 ///
 /// `operationId`: `mcp.auth.start`
-Future<dynamic> mcpAuthStart0ma1q4n({
+Future<Object> mcpAuthStart0ma1q4n({
     required String name,
     String? directory,
     String? workspace,
@@ -1443,7 +1443,7 @@ Future<dynamic> mcpAuthStart0ma1q4n({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -1510,7 +1510,7 @@ Future<bool> mcpDisconnect0dxkxi5({
 /// Get the status of all Model Context Protocol (MCP) servers.
 ///
 /// `operationId`: `mcp.status`
-Future<dynamic> mcpStatus1f3kikh({
+Future<Object> mcpStatus1f3kikh({
     String? directory,
     String? workspace,
   }) async {
@@ -1529,7 +1529,7 @@ Future<dynamic> mcpStatus1f3kikh({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -1873,7 +1873,7 @@ Future<Project> projectUpdate1vsx7n5({
 /// Retrieve available authentication methods for all AI providers.
 ///
 /// `operationId`: `provider.auth`
-Future<dynamic> providerAuth0gvddmk({
+Future<Object> providerAuth0gvddmk({
     String? directory,
     String? workspace,
   }) async {
@@ -1892,7 +1892,7 @@ Future<dynamic> providerAuth0gvddmk({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -1901,7 +1901,7 @@ Future<dynamic> providerAuth0gvddmk({
 /// Get a list of all available AI providers, including both available and connected ones.
 ///
 /// `operationId`: `provider.list`
-Future<dynamic> providerList1mmuhr6({
+Future<Object> providerList1mmuhr6({
     String? directory,
     String? workspace,
   }) async {
@@ -1920,7 +1920,7 @@ Future<dynamic> providerList1mmuhr6({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -2023,7 +2023,7 @@ Future<bool> ptyConnect08baauo({
 /// Create a short-lived ticket for opening a PTY WebSocket connection.
 ///
 /// `operationId`: `pty.connectToken`
-Future<dynamic> ptyConnectToken0jvig2t({
+Future<Object> ptyConnectToken0jvig2t({
     required String ptyID,
     String? directory,
     String? workspace,
@@ -2043,7 +2043,7 @@ Future<dynamic> ptyConnectToken0jvig2t({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -2171,7 +2171,7 @@ Future<bool> ptyRemove0an4ifq({
 /// Get a list of available shells on the system.
 ///
 /// `operationId`: `pty.shells`
-Future<List<dynamic>> ptyShells1e4qy0l({
+Future<List<Object>> ptyShells1e4qy0l({
     String? directory,
     String? workspace,
   }) async {
@@ -2191,7 +2191,7 @@ Future<List<dynamic>> ptyShells1e4qy0l({
       );
     }
     final decoded = jsonDecode(resp.body) as List<dynamic>;
-    return decoded.cast<dynamic>();
+    return decoded.cast<Object>();
   }
 
 
@@ -2380,7 +2380,7 @@ Future<List<Session>> sessionChildren0vlr0f8({
 /// Send a new command to a session for execution by the AI assistant.
 ///
 /// `operationId`: `session.command`
-Future<dynamic> sessionCommand1srqry0({
+Future<Object> sessionCommand1srqry0({
     required String sessionID,
     required Map<String, dynamic> body,
     String? directory,
@@ -2402,7 +2402,7 @@ Future<dynamic> sessionCommand1srqry0({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -2660,7 +2660,7 @@ Future<List<Session>> sessionList18c0yn7({
 /// Retrieve a specific message from a session by its message ID.
 ///
 /// `operationId`: `session.message`
-Future<dynamic> sessionMessage1r9z50i({
+Future<Object> sessionMessage1r9z50i({
     required String sessionID,
     required String messageID,
     String? directory,
@@ -2681,7 +2681,7 @@ Future<dynamic> sessionMessage1r9z50i({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -2690,7 +2690,7 @@ Future<dynamic> sessionMessage1r9z50i({
 /// Retrieve all messages in a session, including user prompts and AI responses.
 ///
 /// `operationId`: `session.messages`
-Future<List<dynamic>> sessionMessages0n20y2r({
+Future<List<Object>> sessionMessages0n20y2r({
     required String sessionID,
     String? directory,
     String? workspace,
@@ -2713,7 +2713,7 @@ Future<List<dynamic>> sessionMessages0n20y2r({
       );
     }
     final decoded = jsonDecode(resp.body) as List<dynamic>;
-    return decoded.cast<dynamic>();
+    return decoded.cast<Object>();
   }
 
 
@@ -2722,7 +2722,7 @@ Future<List<dynamic>> sessionMessages0n20y2r({
 /// Create and send a new message to a session, streaming the AI response.
 ///
 /// `operationId`: `session.prompt`
-Future<dynamic> sessionPrompt1hunqop({
+Future<Object> sessionPrompt1hunqop({
     required String sessionID,
     required Map<String, dynamic> body,
     String? directory,
@@ -2744,7 +2744,7 @@ Future<dynamic> sessionPrompt1hunqop({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -2846,7 +2846,7 @@ Future<Session> sessionShare1ymticy({
 /// Execute a shell command within the session context and return the AI's response.
 ///
 /// `operationId`: `session.shell`
-Future<dynamic> sessionShell1nz5n5b({
+Future<Object> sessionShell1nz5n5b({
     required String sessionID,
     required Map<String, dynamic> body,
     String? directory,
@@ -2868,7 +2868,7 @@ Future<dynamic> sessionShell1nz5n5b({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -2877,7 +2877,7 @@ Future<dynamic> sessionShell1nz5n5b({
 /// Retrieve the current status of all sessions, including active, idle, and completed states.
 ///
 /// `operationId`: `session.status`
-Future<dynamic> sessionStatus15y01m5({
+Future<Object> sessionStatus15y01m5({
     String? directory,
     String? workspace,
   }) async {
@@ -2896,7 +2896,7 @@ Future<dynamic> sessionStatus15y01m5({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -3058,7 +3058,7 @@ Future<Session> sessionUpdate03pn94q({
 /// List sync events for all aggregates. Keys are aggregate IDs the client already knows about, values are the last known sequence ID. Events with seq > value are returned for those aggregates. Aggregates not listed in the input get their full history.
 ///
 /// `operationId`: `sync.history.list`
-Future<List<dynamic>> syncHistoryList1xy9idu({
+Future<List<Object>> syncHistoryList1xy9idu({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
@@ -3080,7 +3080,7 @@ Future<List<dynamic>> syncHistoryList1xy9idu({
       );
     }
     final decoded = jsonDecode(resp.body) as List<dynamic>;
-    return decoded.cast<dynamic>();
+    return decoded.cast<Object>();
   }
 
 
@@ -3089,7 +3089,7 @@ Future<List<dynamic>> syncHistoryList1xy9idu({
 /// Validate and replay a complete sync event history.
 ///
 /// `operationId`: `sync.replay`
-Future<dynamic> syncReplay1dpj7p7({
+Future<Object> syncReplay1dpj7p7({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
@@ -3110,7 +3110,7 @@ Future<dynamic> syncReplay1dpj7p7({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -3147,7 +3147,7 @@ Future<bool> syncStart0y4kx0w({
 /// Update a session to belong to the current workspace through the sync event system.
 ///
 /// `operationId`: `sync.steal`
-Future<dynamic> syncSteal0kd93hj({
+Future<Object> syncSteal0kd93hj({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
@@ -3168,7 +3168,7 @@ Future<dynamic> syncSteal0kd93hj({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -3295,7 +3295,7 @@ Future<bool> tuiClearPrompt18smi0o({
 /// Retrieve the next TUI request from the queue for processing.
 ///
 /// `operationId`: `tui.control.next`
-Future<dynamic> tuiControlNext0jnwdbt({
+Future<Object> tuiControlNext0jnwdbt({
     String? directory,
     String? workspace,
   }) async {
@@ -3314,7 +3314,7 @@ Future<dynamic> tuiControlNext0jnwdbt({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -3613,8 +3613,8 @@ Future<bool> tuiSubmitPrompt1f9mibn({
 /// Retrieve currently registered v2 agents.
 ///
 /// `operationId`: `v2.agent.list`
-Future<dynamic> v2AgentList04wolh4({
-    Map<String, dynamic>? location,
+Future<Object> v2AgentList04wolh4({
+    Map<String, Object>? location,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/api/agent',
@@ -3631,7 +3631,7 @@ Future<dynamic> v2AgentList04wolh4({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -3640,8 +3640,8 @@ Future<dynamic> v2AgentList04wolh4({
 /// Retrieve currently registered v2 commands.
 ///
 /// `operationId`: `v2.command.list`
-Future<dynamic> v2CommandList0s4856s({
-    Map<String, dynamic>? location,
+Future<Object> v2CommandList0s4856s({
+    Map<String, Object>? location,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/api/command',
@@ -3658,7 +3658,7 @@ Future<dynamic> v2CommandList0s4856s({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -3667,8 +3667,8 @@ Future<dynamic> v2CommandList0s4856s({
 /// Subscribe to native EventV2 payloads for a location.
 ///
 /// `operationId`: `v2.event.subscribe`
-Future<dynamic> v2EventSubscribe1kzmned({
-    Map<String, dynamic>? location,
+Future<Object> v2EventSubscribe1kzmned({
+    Map<String, Object>? location,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/api/event',
@@ -3685,7 +3685,7 @@ Future<dynamic> v2EventSubscribe1kzmned({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -3694,8 +3694,8 @@ Future<dynamic> v2EventSubscribe1kzmned({
 /// List direct children of one directory relative to the requested location.
 ///
 /// `operationId`: `v2.fs.list`
-Future<dynamic> v2FsList06obgvk({
-    Map<String, dynamic>? location,
+Future<Object> v2FsList06obgvk({
+    Map<String, Object>? location,
     String? path,
     String? reference,
   }) async {
@@ -3714,7 +3714,7 @@ Future<dynamic> v2FsList06obgvk({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -3723,8 +3723,8 @@ Future<dynamic> v2FsList06obgvk({
 /// Read one file relative to the requested location.
 ///
 /// `operationId`: `v2.fs.read`
-Future<dynamic> v2FsRead19gekbg({
-    Map<String, dynamic>? location,
+Future<Object> v2FsRead19gekbg({
+    Map<String, Object>? location,
     required String path,
     String? reference,
   }) async {
@@ -3743,7 +3743,7 @@ Future<dynamic> v2FsRead19gekbg({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -3752,7 +3752,7 @@ Future<dynamic> v2FsRead19gekbg({
 /// Check whether the v2 API server is ready to accept requests.
 ///
 /// `operationId`: `v2.health.get`
-Future<dynamic> v2HealthGet0r7uj1x() async {
+Future<Object> v2HealthGet0r7uj1x() async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/api/health',
       queryParameters: {},
@@ -3768,7 +3768,7 @@ Future<dynamic> v2HealthGet0r7uj1x() async {
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -3777,8 +3777,8 @@ Future<dynamic> v2HealthGet0r7uj1x() async {
 /// Retrieve available v2 models ordered by release date.
 ///
 /// `operationId`: `v2.model.list`
-Future<dynamic> v2ModelList023wqvw({
-    Map<String, dynamic>? location,
+Future<Object> v2ModelList023wqvw({
+    Map<String, Object>? location,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/api/model',
@@ -3795,7 +3795,7 @@ Future<dynamic> v2ModelList023wqvw({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -3804,8 +3804,8 @@ Future<dynamic> v2ModelList023wqvw({
 /// Retrieve pending permission requests for a location.
 ///
 /// `operationId`: `v2.permission.request.list`
-Future<dynamic> v2PermissionRequestList0aqcd9p({
-    Map<String, dynamic>? location,
+Future<Object> v2PermissionRequestList0aqcd9p({
+    Map<String, Object>? location,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/api/permission/request',
@@ -3822,7 +3822,7 @@ Future<dynamic> v2PermissionRequestList0aqcd9p({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -3831,7 +3831,7 @@ Future<dynamic> v2PermissionRequestList0aqcd9p({
 /// Retrieve saved permissions, optionally filtered by project.
 ///
 /// `operationId`: `v2.permission.saved.list`
-Future<dynamic> v2PermissionSavedList1qwvlnn({
+Future<Object> v2PermissionSavedList1qwvlnn({
     String? projectID,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
@@ -3849,7 +3849,7 @@ Future<dynamic> v2PermissionSavedList1qwvlnn({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -3885,9 +3885,9 @@ Future<void> v2PermissionSavedRemove0fu1grr({
 /// Retrieve a single v2 AI provider so clients can inspect its availability and endpoint settings.
 ///
 /// `operationId`: `v2.provider.get`
-Future<dynamic> v2ProviderGet0sn51oa({
+Future<Object> v2ProviderGet0sn51oa({
     required String providerID,
-    Map<String, dynamic>? location,
+    Map<String, Object>? location,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/api/provider/$providerID',
@@ -3904,7 +3904,7 @@ Future<dynamic> v2ProviderGet0sn51oa({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -3913,8 +3913,8 @@ Future<dynamic> v2ProviderGet0sn51oa({
 /// Retrieve active v2 AI providers so clients can show provider availability and configuration.
 ///
 /// `operationId`: `v2.provider.list`
-Future<dynamic> v2ProviderList1iv3bdm({
-    Map<String, dynamic>? location,
+Future<Object> v2ProviderList1iv3bdm({
+    Map<String, Object>? location,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/api/provider',
@@ -3931,7 +3931,7 @@ Future<dynamic> v2ProviderList1iv3bdm({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -3940,8 +3940,8 @@ Future<dynamic> v2ProviderList1iv3bdm({
 /// Retrieve pending question requests for a location.
 ///
 /// `operationId`: `v2.question.request.list`
-Future<dynamic> v2QuestionRequestList1m7rz6g({
-    Map<String, dynamic>? location,
+Future<Object> v2QuestionRequestList1m7rz6g({
+    Map<String, Object>? location,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/api/question/request',
@@ -3958,7 +3958,7 @@ Future<dynamic> v2QuestionRequestList1m7rz6g({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -3994,7 +3994,7 @@ Future<void> v2SessionCompact0bpgkv0({
 /// Retrieve the active context messages for a v2 session (all messages after the last compaction).
 ///
 /// `operationId`: `v2.session.context`
-Future<dynamic> v2SessionContext12eb6ii({
+Future<Object> v2SessionContext12eb6ii({
     required String sessionID,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
@@ -4012,7 +4012,7 @@ Future<dynamic> v2SessionContext12eb6ii({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -4087,7 +4087,7 @@ Future<V2SessionMessagesResponse> v2SessionMessages10dlr63({
 /// Retrieve pending permission requests owned by a session.
 ///
 /// `operationId`: `v2.session.permission.list`
-Future<dynamic> v2SessionPermissionList1rfro1m({
+Future<Object> v2SessionPermissionList1rfro1m({
     required String sessionID,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
@@ -4105,7 +4105,7 @@ Future<dynamic> v2SessionPermissionList1rfro1m({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -4144,7 +4144,7 @@ Future<void> v2SessionPermissionReply0wyople({
 /// Durably admit one v2 session input and schedule agent-loop execution unless resume is false.
 ///
 /// `operationId`: `v2.session.prompt`
-Future<dynamic> v2SessionPrompt1uri19t({
+Future<Object> v2SessionPrompt1uri19t({
     required String sessionID,
     required Map<String, dynamic> body,
   }) async {
@@ -4164,7 +4164,7 @@ Future<dynamic> v2SessionPrompt1uri19t({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -4258,8 +4258,8 @@ Future<void> v2SessionWait1u3afyi({
 /// Retrieve currently registered v2 skills.
 ///
 /// `operationId`: `v2.skill.list`
-Future<dynamic> v2SkillList15ujty0({
-    Map<String, dynamic>? location,
+Future<Object> v2SkillList15ujty0({
+    Map<String, Object>? location,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
       path: '/api/skill',
@@ -4276,7 +4276,7 @@ Future<dynamic> v2SkillList15ujty0({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -4285,7 +4285,7 @@ Future<dynamic> v2SkillList15ujty0({
 /// Apply a raw patch to the current working tree.
 ///
 /// `operationId`: `vcs.apply`
-Future<dynamic> vcsApply0d74x4t({
+Future<Object> vcsApply0d74x4t({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
@@ -4306,7 +4306,7 @@ Future<dynamic> vcsApply0d74x4t({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 
@@ -4346,7 +4346,7 @@ Future<List<VcsFileDiff>> vcsDiff0beqeiw({
 /// Retrieve a raw patch for current uncommitted changes.
 ///
 /// `operationId`: `vcs.diff.raw`
-Future<dynamic> vcsDiffRaw18sym3w({
+Future<Object> vcsDiffRaw18sym3w({
     String? directory,
     String? workspace,
   }) async {
@@ -4365,7 +4365,7 @@ Future<dynamic> vcsDiffRaw18sym3w({
         body: resp.body,
       );
     }
-    return jsonDecode(resp.body) as dynamic;
+    return jsonDecode(resp.body) as Object;
   }
 
 

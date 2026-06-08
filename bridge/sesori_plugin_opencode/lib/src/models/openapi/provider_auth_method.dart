@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T07:51:39.998731Z
+// Generated: 2026-06-08T08:11:58.912999Z
 
 
 class ProviderAuthMethod {
@@ -14,7 +14,7 @@ class ProviderAuthMethod {
     return ProviderAuthMethod(
       type: json["type"] as String,
       label: json["label"] as String,
-      prompts: (json["prompts"] as List<dynamic>?)?.cast<dynamic>(),
+      prompts: (json["prompts"] as List<dynamic>?)?.cast<Object>(),
     );
   }
 
@@ -29,5 +29,5 @@ class ProviderAuthMethod {
 
   final String type;
   final String label;
-  final List<dynamic>? prompts;
+  final List<Object>? prompts;
 }

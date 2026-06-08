@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T07:51:39.963768Z
+// Generated: 2026-06-08T08:11:58.877253Z
 
 import 'permission_v2_ruleset.dart';
 
@@ -27,7 +27,7 @@ class AgentV2Info {
       description: json["description"] as String?,
       mode: json["mode"] as String,
       hidden: json["hidden"] as bool,
-      color: json["color"],
+      color: json["color"] as Object?,
       steps: json["steps"] as int?,
       permissions: PermissionV2Ruleset.fromJson(json["permissions"] as List<dynamic>),
     );
@@ -56,7 +56,7 @@ class AgentV2Info {
   final String? description;
   final String mode;
   final bool hidden;
-  final dynamic color;
+  final Object? color;
   final int? steps;
   final PermissionV2Ruleset permissions;
 }

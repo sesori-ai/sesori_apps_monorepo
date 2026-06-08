@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T07:51:39.998830Z
+// Generated: 2026-06-08T08:11:58.913102Z
 
 
 class ProviderConfig {
@@ -25,7 +25,7 @@ class ProviderConfig {
       npm: json["npm"] as String?,
       whitelist: (json["whitelist"] as List<dynamic>?)?.cast<String>(),
       blacklist: (json["blacklist"] as List<dynamic>?)?.cast<String>(),
-      options: (json["options"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as dynamic)),
+      options: (json["options"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as Object)),
       models: (json["models"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as Map<String, dynamic>)),
     );
   }
@@ -52,6 +52,6 @@ class ProviderConfig {
   final String? npm;
   final List<String>? whitelist;
   final List<String>? blacklist;
-  final Map<String, dynamic>? options;
+  final Map<String, Object>? options;
   final Map<String, Map<String, dynamic>>? models;
 }

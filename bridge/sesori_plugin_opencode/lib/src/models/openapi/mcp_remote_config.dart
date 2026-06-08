@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T07:51:39.991340Z
+// Generated: 2026-06-08T08:11:58.905184Z
 
 
 class McpRemoteConfig {
@@ -19,7 +19,7 @@ class McpRemoteConfig {
       url: json["url"] as String,
       enabled: json["enabled"] as bool?,
       headers: (json["headers"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as String)),
-      oauth: json["oauth"],
+      oauth: json["oauth"] as Object?,
       timeout: json["timeout"] as int?,
     );
   }
@@ -40,6 +40,6 @@ class McpRemoteConfig {
   final String url;
   final bool? enabled;
   final Map<String, String>? headers;
-  final dynamic oauth;
+  final Object? oauth;
   final int? timeout;
 }

@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T07:51:40.003540Z
+// Generated: 2026-06-08T08:11:58.918881Z
 
 
 class SessionMessageAssistantTool {
@@ -19,7 +19,7 @@ class SessionMessageAssistantTool {
       id: json["id"] as String,
       name: json["name"] as String,
       provider: json["provider"] as Map<String, dynamic>?,
-      state: json["state"],
+      state: json["state"] as Object,
       time: json["time"] as Map<String, dynamic>,
     );
   }
@@ -40,6 +40,6 @@ class SessionMessageAssistantTool {
   final String id;
   final String name;
   final Map<String, dynamic>? provider;
-  final dynamic state;
+  final Object state;
   final Map<String, dynamic> time;
 }

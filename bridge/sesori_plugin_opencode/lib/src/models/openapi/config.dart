@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T07:51:39.969972Z
+// Generated: 2026-06-08T08:11:58.882947Z
 
 import 'agent_config.dart';
 import 'attachment_config.dart';
@@ -60,10 +60,10 @@ class Config {
       reference: json["reference"] == null ? null : ReferenceConfig.fromJson(json["reference"] as Map<String, dynamic>),
       watcher: json["watcher"] as Map<String, dynamic>?,
       snapshot: json["snapshot"] as bool?,
-      plugin: (json["plugin"] as List<dynamic>?)?.cast<dynamic>(),
+      plugin: (json["plugin"] as List<dynamic>?)?.cast<Object>(),
       share: json["share"] as String?,
       autoshare: json["autoshare"] as bool?,
-      autoupdate: json["autoupdate"],
+      autoupdate: json["autoupdate"] as Object?,
       disabledProviders: (json["disabled_providers"] as List<dynamic>?)?.cast<String>(),
       enabledProviders: (json["enabled_providers"] as List<dynamic>?)?.cast<String>(),
       model: json["model"] as String?,
@@ -73,9 +73,9 @@ class Config {
       mode: (json["mode"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, AgentConfig.fromJson(v as Map<String, dynamic>))),
       agent: (json["agent"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, AgentConfig.fromJson(v as Map<String, dynamic>))),
       provider: (json["provider"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, ProviderConfig.fromJson(v as Map<String, dynamic>))),
-      mcp: (json["mcp"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as dynamic)),
-      formatter: json["formatter"],
-      lsp: json["lsp"],
+      mcp: (json["mcp"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as Object)),
+      formatter: json["formatter"] as Object?,
+      lsp: json["lsp"] as Object?,
       instructions: (json["instructions"] as List<dynamic>?)?.cast<String>(),
       layout: json["layout"] == null ? null : LayoutConfig.fromJson(json["layout"] as String),
       permission: json["permission"] == null ? null : PermissionConfig.fromJson(json["permission"]),
@@ -137,10 +137,10 @@ class Config {
   final ReferenceConfig? reference;
   final Map<String, dynamic>? watcher;
   final bool? snapshot;
-  final List<dynamic>? plugin;
+  final List<Object>? plugin;
   final String? share;
   final bool? autoshare;
-  final dynamic autoupdate;
+  final Object? autoupdate;
   final List<String>? disabledProviders;
   final List<String>? enabledProviders;
   final String? model;
@@ -150,9 +150,9 @@ class Config {
   final Map<String, AgentConfig>? mode;
   final Map<String, AgentConfig>? agent;
   final Map<String, ProviderConfig>? provider;
-  final Map<String, dynamic>? mcp;
-  final dynamic formatter;
-  final dynamic lsp;
+  final Map<String, Object>? mcp;
+  final Object? formatter;
+  final Object? lsp;
   final List<String>? instructions;
   final LayoutConfig? layout;
   final PermissionConfig? permission;

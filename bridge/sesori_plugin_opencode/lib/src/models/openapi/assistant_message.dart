@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T07:51:39.964506Z
+// Generated: 2026-06-08T08:11:58.877918Z
 
 import 'message.dart';
 
@@ -29,7 +29,7 @@ class AssistantMessage implements Message {
       id: json["id"] as String,
       sessionID: json["sessionID"] as String,
       time: json["time"] as Map<String, dynamic>,
-      error: json["error"],
+      error: json["error"] as Object?,
       parentID: json["parentID"] as String,
       modelID: json["modelID"] as String,
       providerID: json["providerID"] as String,
@@ -39,7 +39,7 @@ class AssistantMessage implements Message {
       summary: json["summary"] as bool?,
       cost: (json["cost"] as num).toDouble(),
       tokens: json["tokens"] as Map<String, dynamic>,
-      structured: json["structured"],
+      structured: json["structured"] as Object?,
       variant: json["variant"] as String?,
       finish: json["finish"] as String?,
     );
@@ -72,7 +72,7 @@ class AssistantMessage implements Message {
   final String id;
   final String sessionID;
   final Map<String, dynamic> time;
-  final dynamic error;
+  final Object? error;
   final String parentID;
   final String modelID;
   final String providerID;
@@ -82,7 +82,7 @@ class AssistantMessage implements Message {
   final bool? summary;
   final double cost;
   final Map<String, dynamic> tokens;
-  final dynamic structured;
+  final Object? structured;
   final String? variant;
   final String? finish;
 }

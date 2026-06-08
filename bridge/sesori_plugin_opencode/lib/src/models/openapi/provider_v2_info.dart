@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T07:51:39.999031Z
+// Generated: 2026-06-08T08:11:58.913330Z
 
 
 class ProviderV2Info {
@@ -17,9 +17,9 @@ class ProviderV2Info {
     return ProviderV2Info(
       id: json["id"] as String,
       name: json["name"] as String,
-      enabled: json["enabled"],
+      enabled: json["enabled"] as Object,
       env: (json["env"] as List<dynamic>).cast<String>(),
-      api: json["api"],
+      api: json["api"] as Object,
       request: json["request"] as Map<String, dynamic>,
     );
   }
@@ -38,8 +38,8 @@ class ProviderV2Info {
 
   final String id;
   final String name;
-  final dynamic enabled;
+  final Object enabled;
   final List<String> env;
-  final dynamic api;
+  final Object api;
   final Map<String, dynamic> request;
 }

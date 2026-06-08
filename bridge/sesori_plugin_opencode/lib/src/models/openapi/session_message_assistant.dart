@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T07:51:40.002897Z
+// Generated: 2026-06-08T08:11:58.918059Z
 
 import 'session_error_unknown.dart';
 import 'session_message.dart';
@@ -27,7 +27,7 @@ class SessionMessageAssistant implements SessionMessage {
       time: json["time"] as Map<String, dynamic>,
       agent: json["agent"] as String,
       model: json["model"] as Map<String, dynamic>,
-      content: (json["content"] as List<dynamic>).cast<dynamic>(),
+      content: (json["content"] as List<dynamic>).cast<Object>(),
       snapshot: json["snapshot"] as Map<String, dynamic>?,
       finish: json["finish"] as String?,
       cost: (json["cost"] as num?)?.toDouble(),
@@ -60,7 +60,7 @@ class SessionMessageAssistant implements SessionMessage {
   final Map<String, dynamic> time;
   final String agent;
   final Map<String, dynamic> model;
-  final List<dynamic> content;
+  final List<Object> content;
   final Map<String, dynamic>? snapshot;
   final String? finish;
   final double? cost;

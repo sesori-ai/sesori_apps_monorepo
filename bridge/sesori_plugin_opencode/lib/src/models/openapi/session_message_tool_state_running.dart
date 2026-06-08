@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T07:51:40.005703Z
+// Generated: 2026-06-08T08:11:58.921364Z
 
 
 class SessionMessageToolStateRunning {
@@ -16,7 +16,7 @@ class SessionMessageToolStateRunning {
       status: json["status"] as String,
       input: json["input"] as Map<String, dynamic>,
       structured: json["structured"] as Map<String, dynamic>,
-      content: (json["content"] as List<dynamic>).cast<dynamic>(),
+      content: (json["content"] as List<dynamic>).cast<Object>(),
     );
   }
 
@@ -33,5 +33,5 @@ class SessionMessageToolStateRunning {
   final String status;
   final Map<String, dynamic> input;
   final Map<String, dynamic> structured;
-  final List<dynamic> content;
+  final List<Object> content;
 }

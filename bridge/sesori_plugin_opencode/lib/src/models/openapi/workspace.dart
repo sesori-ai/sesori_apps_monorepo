@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T07:51:40.014664Z
+// Generated: 2026-06-08T08:11:58.931882Z
 
 
 class Workspace {
@@ -22,9 +22,9 @@ class Workspace {
       name: json["name"] as String,
       branch: json["branch"] as String?,
       directory: json["directory"] as String?,
-      extra: json["extra"],
+      extra: json["extra"] as Object?,
       projectID: json["projectID"] as String,
-      timeUsed: json["timeUsed"],
+      timeUsed: json["timeUsed"] as Object,
     );
   }
 
@@ -47,7 +47,7 @@ class Workspace {
   final String name;
   final String? branch;
   final String? directory;
-  final dynamic extra;
+  final Object? extra;
   final String projectID;
-  final dynamic timeUsed;
+  final Object timeUsed;
 }

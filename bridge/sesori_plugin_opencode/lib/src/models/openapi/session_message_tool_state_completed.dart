@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T07:51:40.005344Z
+// Generated: 2026-06-08T08:11:58.920921Z
 
 import 'prompt_file_attachment.dart';
 
@@ -19,9 +19,9 @@ class SessionMessageToolStateCompleted {
       status: json["status"] as String,
       input: json["input"] as Map<String, dynamic>,
       attachments: (json["attachments"] as List<dynamic>?)?.map((e) => PromptFileAttachment.fromJson(e as Map<String, dynamic>)).toList(),
-      content: (json["content"] as List<dynamic>).cast<dynamic>(),
+      content: (json["content"] as List<dynamic>).cast<Object>(),
       structured: json["structured"] as Map<String, dynamic>,
-      result: json["result"],
+      result: json["result"] as Object?,
     );
   }
 
@@ -40,7 +40,7 @@ class SessionMessageToolStateCompleted {
   final String status;
   final Map<String, dynamic> input;
   final List<PromptFileAttachment>? attachments;
-  final List<dynamic> content;
+  final List<Object> content;
   final Map<String, dynamic> structured;
-  final dynamic result;
+  final Object? result;
 }
