@@ -37,6 +37,7 @@ SessionDetailState _loadedState({
     assistantAgentModel: null,
     children: const [],
     childStatuses: const {},
+    isRootSession: true,
     queuedMessages: const [],
     availableAgents: const [],
     availableProviders: const [],
