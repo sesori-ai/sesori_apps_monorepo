@@ -226,5 +226,6 @@ SessionDetailSnapshot _buildDetailSnapshot({
     commands: const [],
     canonicalSessionTitle: matchingSession?.title ?? "Session",
     promptDefaults: null,
+    isRootSession: true,
   );
 }
