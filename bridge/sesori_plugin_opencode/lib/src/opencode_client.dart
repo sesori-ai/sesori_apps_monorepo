@@ -2,7 +2,7 @@
 //
 // Auto-generated OpenCode v2 client generated from the OpenAPI spec.
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T09:42:34.367613Z
+// Generated: 2026-06-08T13:32:28.082475Z
 //
 // To regenerate, run:
 //   make opencode-codegen OPENCODE_TAG=<tag>
@@ -98,7 +98,7 @@ Future<List<Agent>> appAgents1w4t5xc({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -129,13 +129,13 @@ Future<bool> appLog1xnlo30({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -157,7 +157,7 @@ Future<List<Object>> appSkills08tc0dg({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -177,7 +177,7 @@ Future<bool> authRemove035ixzz({
     required String providerID,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/auth/$providerID',
+      path: '/auth/${Uri.encodeComponent(providerID)}',
       queryParameters: {},
     );
     final headers = <String, String>{
@@ -185,13 +185,13 @@ Future<bool> authRemove035ixzz({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.delete(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -205,7 +205,7 @@ Future<bool> authSet04dq3o1({
     required Auth body,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/auth/$providerID',
+      path: '/auth/${Uri.encodeComponent(providerID)}',
       queryParameters: {},
     );
     final headers = <String, String>{
@@ -214,13 +214,13 @@ Future<bool> authSet04dq3o1({
     };
     final encoded = jsonEncode(body.toJson());
     final http.Response resp = await _http.put(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -242,7 +242,7 @@ Future<List<Command>> commandList1xa0c70({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -271,7 +271,7 @@ Future<Config> configGet1032yv9({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -300,7 +300,7 @@ Future<Object> configProviders1oc7hrf({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -330,7 +330,7 @@ Future<Config> configUpdate1pfe7yi({
     };
     final encoded = jsonEncode(body.toJson());
     final http.Response resp = await _http.patch(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -359,7 +359,7 @@ Future<Object> eventSubscribe0ggbail({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -387,7 +387,7 @@ Future<ConsoleState> experimentalConsoleGet1yb75vy({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -416,7 +416,7 @@ Future<Object> experimentalConsoleListOrgs08lc08d({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -446,13 +446,13 @@ Future<bool> experimentalConsoleSwitchOrg1voyi40({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -474,7 +474,7 @@ Future<void> experimentalControlPlaneMoveSession1jtwf5z({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -495,7 +495,7 @@ Future<ProjectCopyCopy> experimentalProjectCopyCreate01k04qh({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/project/$projectID/copy',
+      path: '/experimental/project/${Uri.encodeComponent(projectID)}/copy',
       queryParameters: {if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -504,7 +504,7 @@ Future<ProjectCopyCopy> experimentalProjectCopyCreate01k04qh({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -526,7 +526,7 @@ Future<void> experimentalProjectCopyRefresh1bcq0rc({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/project/$projectID/copy/refresh',
+      path: '/experimental/project/${Uri.encodeComponent(projectID)}/copy/refresh',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -534,7 +534,7 @@ Future<void> experimentalProjectCopyRefresh1bcq0rc({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -556,7 +556,7 @@ Future<void> experimentalProjectCopyRemove08oftkp({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/project/$projectID/copy',
+      path: '/experimental/project/${Uri.encodeComponent(projectID)}/copy',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -565,7 +565,7 @@ Future<void> experimentalProjectCopyRemove08oftkp({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.delete(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -593,7 +593,7 @@ Future<Object> experimentalResourceList0u28nzv({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -614,7 +614,7 @@ Future<bool> experimentalSessionBackground15z5vah({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/session/$sessionID/background',
+      path: '/experimental/session/${Uri.encodeComponent(sessionID)}/background',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -622,13 +622,13 @@ Future<bool> experimentalSessionBackground15z5vah({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -656,7 +656,7 @@ Future<List<GlobalSession>> experimentalSessionList033ard1({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -685,7 +685,7 @@ Future<List<Object>> experimentalWorkspaceAdapterList0q9fsrt({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -716,7 +716,7 @@ Future<Workspace> experimentalWorkspaceCreate1judteu({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -745,7 +745,7 @@ Future<List<Workspace>> experimentalWorkspaceList1ipa75a({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -767,7 +767,7 @@ Future<Workspace> experimentalWorkspaceRemove1yjezh2({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/workspace/$id',
+      path: '/experimental/workspace/${Uri.encodeComponent(id)}',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -775,7 +775,7 @@ Future<Workspace> experimentalWorkspaceRemove1yjezh2({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.delete(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -804,7 +804,7 @@ Future<List<Object>> experimentalWorkspaceStatus03xz7p8({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -833,7 +833,7 @@ Future<void> experimentalWorkspaceSyncList1mkmdth({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -863,7 +863,7 @@ Future<void> experimentalWorkspaceWarp1qxuxg8({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -892,7 +892,7 @@ Future<List<FileNode>> fileList0mfkv1b({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -922,7 +922,7 @@ Future<FileContent> fileRead1qtg4u3({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -951,7 +951,7 @@ Future<List<File>> fileStatus1ksoc4h({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -984,7 +984,7 @@ Future<List<String>> findFiles16bzypn({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1014,7 +1014,7 @@ Future<List<Symbol>> findSymbols1r7pfgx({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1044,7 +1044,7 @@ Future<List<Object>> findText0kfx8or({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1071,7 +1071,7 @@ Future<List<FormatterStatus>> formatterStatus0t2bk6r({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1097,7 +1097,7 @@ Future<Config> globalConfigGet04xw6cc() async {
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1126,7 +1126,7 @@ Future<Config> globalConfigUpdate0cs363l({
     };
     final encoded = jsonEncode(body.toJson());
     final http.Response resp = await _http.patch(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1152,13 +1152,13 @@ Future<bool> globalDispose1p539kh() async {
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -1177,7 +1177,7 @@ Future<Object> globalEvent0vipzew() async {
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1202,7 +1202,7 @@ Future<Object> globalHealth1gczf2e() async {
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1230,7 +1230,7 @@ Future<Object> globalUpgrade09jf9d8({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1258,13 +1258,13 @@ Future<bool> instanceDispose1pv67h1({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -1286,7 +1286,7 @@ Future<List<LSPStatus>> lspStatus1oobkkc({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1317,7 +1317,7 @@ Future<Object> mcpAdd0l0265e({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1338,7 +1338,7 @@ Future<MCPStatus> mcpAuthAuthenticate0j2ie1g({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/mcp/$name/auth/authenticate',
+      path: '/mcp/${Uri.encodeComponent(name)}/auth/authenticate',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -1346,7 +1346,7 @@ Future<MCPStatus> mcpAuthAuthenticate0j2ie1g({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1369,7 +1369,7 @@ Future<MCPStatus> mcpAuthCallback0q96uku({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/mcp/$name/auth/callback',
+      path: '/mcp/${Uri.encodeComponent(name)}/auth/callback',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -1378,7 +1378,7 @@ Future<MCPStatus> mcpAuthCallback0q96uku({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1400,7 +1400,7 @@ Future<Object> mcpAuthRemove01qxgz9({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/mcp/$name/auth',
+      path: '/mcp/${Uri.encodeComponent(name)}/auth',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -1408,7 +1408,7 @@ Future<Object> mcpAuthRemove01qxgz9({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.delete(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1429,7 +1429,7 @@ Future<Object> mcpAuthStart0ma1q4n({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/mcp/$name/auth',
+      path: '/mcp/${Uri.encodeComponent(name)}/auth',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -1437,7 +1437,7 @@ Future<Object> mcpAuthStart0ma1q4n({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1458,7 +1458,7 @@ Future<bool> mcpConnect1nj937f({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/mcp/$name/connect',
+      path: '/mcp/${Uri.encodeComponent(name)}/connect',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -1466,13 +1466,13 @@ Future<bool> mcpConnect1nj937f({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -1487,7 +1487,7 @@ Future<bool> mcpDisconnect0dxkxi5({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/mcp/$name/disconnect',
+      path: '/mcp/${Uri.encodeComponent(name)}/disconnect',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -1495,13 +1495,13 @@ Future<bool> mcpDisconnect0dxkxi5({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -1523,7 +1523,7 @@ Future<Object> mcpStatus1f3kikh({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1546,7 +1546,7 @@ Future<bool> partDelete1ine2zd({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID/message/$messageID/part/$partID',
+      path: '/session/${Uri.encodeComponent(sessionID)}/message/${Uri.encodeComponent(messageID)}/part/${Uri.encodeComponent(partID)}',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -1554,13 +1554,13 @@ Future<bool> partDelete1ine2zd({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.delete(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -1578,7 +1578,7 @@ Future<Part> partUpdate1k6slrr({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID/message/$messageID/part/$partID',
+      path: '/session/${Uri.encodeComponent(sessionID)}/message/${Uri.encodeComponent(messageID)}/part/${Uri.encodeComponent(partID)}',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -1587,7 +1587,7 @@ Future<Part> partUpdate1k6slrr({
     };
     final encoded = jsonEncode(body.toJson());
     final http.Response resp = await _http.patch(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1616,7 +1616,7 @@ Future<Path> pathGet1b1u2no({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1645,7 +1645,7 @@ Future<List<PermissionRequest>> permissionList0y9746k({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1668,7 +1668,7 @@ Future<bool> permissionReply1hz42hs({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/permission/$requestID/reply',
+      path: '/permission/${Uri.encodeComponent(requestID)}/reply',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -1677,13 +1677,13 @@ Future<bool> permissionReply1hz42hs({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -1700,7 +1700,7 @@ Future<bool> permissionRespond0bacmnl({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID/permissions/$permissionID',
+      path: '/session/${Uri.encodeComponent(sessionID)}/permissions/${Uri.encodeComponent(permissionID)}',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -1709,13 +1709,13 @@ Future<bool> permissionRespond0bacmnl({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -1737,7 +1737,7 @@ Future<Project> projectCurrent1gqqtmd({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1759,7 +1759,7 @@ Future<ProjectDirectories> projectDirectories0yhgr5f({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/project/$projectID/directories',
+      path: '/project/${Uri.encodeComponent(projectID)}/directories',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -1767,7 +1767,7 @@ Future<ProjectDirectories> projectDirectories0yhgr5f({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1796,7 +1796,7 @@ Future<Project> projectInitGit0mlbvle({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1825,7 +1825,7 @@ Future<List<Project>> projectList09typ88({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1848,7 +1848,7 @@ Future<Project> projectUpdate1vsx7n5({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/project/$projectID',
+      path: '/project/${Uri.encodeComponent(projectID)}',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -1857,7 +1857,7 @@ Future<Project> projectUpdate1vsx7n5({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.patch(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1886,7 +1886,7 @@ Future<Object> providerAuth0gvddmk({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1914,7 +1914,7 @@ Future<Object> providerList1mmuhr6({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1936,7 +1936,7 @@ Future<ProviderAuthAuthorization> providerOauthAuthorize1h4oaj8({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/provider/$providerID/oauth/authorize',
+      path: '/provider/${Uri.encodeComponent(providerID)}/oauth/authorize',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -1945,7 +1945,7 @@ Future<ProviderAuthAuthorization> providerOauthAuthorize1h4oaj8({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -1968,7 +1968,7 @@ Future<bool> providerOauthCallback0wlw36a({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/provider/$providerID/oauth/callback',
+      path: '/provider/${Uri.encodeComponent(providerID)}/oauth/callback',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -1977,13 +1977,13 @@ Future<bool> providerOauthCallback0wlw36a({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -2000,7 +2000,7 @@ Future<bool> ptyConnect08baauo({
     String? ticket,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/pty/$ptyID/connect',
+      path: '/pty/${Uri.encodeComponent(ptyID)}/connect',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), if (cursor != null) 'cursor': cursor.toString(), if (ticket != null) 'ticket': ticket.toString()},
     );
     final headers = <String, String>{
@@ -2008,13 +2008,13 @@ Future<bool> ptyConnect08baauo({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -2029,7 +2029,7 @@ Future<Object> ptyConnectToken0jvig2t({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/pty/$ptyID/connect-token',
+      path: '/pty/${Uri.encodeComponent(ptyID)}/connect-token',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -2037,7 +2037,7 @@ Future<Object> ptyConnectToken0jvig2t({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -2067,7 +2067,7 @@ Future<Pty> ptyCreate113tf8m({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -2089,7 +2089,7 @@ Future<Pty> ptyGet1l2ksm6({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/pty/$ptyID',
+      path: '/pty/${Uri.encodeComponent(ptyID)}',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -2097,7 +2097,7 @@ Future<Pty> ptyGet1l2ksm6({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -2126,7 +2126,7 @@ Future<List<Pty>> ptyList1twsm3y({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -2148,7 +2148,7 @@ Future<bool> ptyRemove0an4ifq({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/pty/$ptyID',
+      path: '/pty/${Uri.encodeComponent(ptyID)}',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -2156,13 +2156,13 @@ Future<bool> ptyRemove0an4ifq({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.delete(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -2184,7 +2184,7 @@ Future<List<Object>> ptyShells1e4qy0l({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -2207,7 +2207,7 @@ Future<Pty> ptyUpdate0dxxjfv({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/pty/$ptyID',
+      path: '/pty/${Uri.encodeComponent(ptyID)}',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -2216,7 +2216,7 @@ Future<Pty> ptyUpdate0dxxjfv({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.put(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -2245,7 +2245,7 @@ Future<List<QuestionRequest>> questionList0tm089p({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -2267,7 +2267,7 @@ Future<bool> questionReject19zsy1m({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/question/$requestID/reject',
+      path: '/question/${Uri.encodeComponent(requestID)}/reject',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -2275,13 +2275,13 @@ Future<bool> questionReject19zsy1m({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -2297,7 +2297,7 @@ Future<bool> questionReply1kb6y7v({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/question/$requestID/reply',
+      path: '/question/${Uri.encodeComponent(requestID)}/reply',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -2306,13 +2306,13 @@ Future<bool> questionReply1kb6y7v({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -2327,7 +2327,7 @@ Future<bool> sessionAbort1lzcp4n({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID/abort',
+      path: '/session/${Uri.encodeComponent(sessionID)}/abort',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -2335,13 +2335,13 @@ Future<bool> sessionAbort1lzcp4n({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -2356,7 +2356,7 @@ Future<List<Session>> sessionChildren0vlr0f8({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID/children',
+      path: '/session/${Uri.encodeComponent(sessionID)}/children',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -2364,7 +2364,7 @@ Future<List<Session>> sessionChildren0vlr0f8({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -2387,7 +2387,7 @@ Future<Object> sessionCommand1srqry0({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID/command',
+      path: '/session/${Uri.encodeComponent(sessionID)}/command',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -2396,7 +2396,7 @@ Future<Object> sessionCommand1srqry0({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -2426,7 +2426,7 @@ Future<Session> sessionCreate10ftnhn({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -2448,7 +2448,7 @@ Future<bool> sessionDelete05dcy94({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID',
+      path: '/session/${Uri.encodeComponent(sessionID)}',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -2456,13 +2456,13 @@ Future<bool> sessionDelete05dcy94({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.delete(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -2478,7 +2478,7 @@ Future<bool> sessionDeleteMessage08dlgvz({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID/message/$messageID',
+      path: '/session/${Uri.encodeComponent(sessionID)}/message/${Uri.encodeComponent(messageID)}',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -2486,13 +2486,13 @@ Future<bool> sessionDeleteMessage08dlgvz({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.delete(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -2508,7 +2508,7 @@ Future<List<SnapshotFileDiff>> sessionDiff128f2zs({
     String? messageID,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID/diff',
+      path: '/session/${Uri.encodeComponent(sessionID)}/diff',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), if (messageID != null) 'messageID': messageID.toString()},
     );
     final headers = <String, String>{
@@ -2516,7 +2516,7 @@ Future<List<SnapshotFileDiff>> sessionDiff128f2zs({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -2539,7 +2539,7 @@ Future<Session> sessionFork12yfemn({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID/fork',
+      path: '/session/${Uri.encodeComponent(sessionID)}/fork',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -2548,7 +2548,7 @@ Future<Session> sessionFork12yfemn({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -2570,7 +2570,7 @@ Future<Session> sessionGet02u88yd({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID',
+      path: '/session/${Uri.encodeComponent(sessionID)}',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -2578,7 +2578,7 @@ Future<Session> sessionGet02u88yd({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -2601,7 +2601,7 @@ Future<bool> sessionInit1ag7oud({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID/init',
+      path: '/session/${Uri.encodeComponent(sessionID)}/init',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -2610,13 +2610,13 @@ Future<bool> sessionInit1ag7oud({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -2644,7 +2644,7 @@ Future<List<Session>> sessionList18c0yn7({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -2667,7 +2667,7 @@ Future<Object> sessionMessage1r9z50i({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID/message/$messageID',
+      path: '/session/${Uri.encodeComponent(sessionID)}/message/${Uri.encodeComponent(messageID)}',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -2675,7 +2675,7 @@ Future<Object> sessionMessage1r9z50i({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -2698,7 +2698,7 @@ Future<List<Object>> sessionMessages0n20y2r({
     String? before,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID/message',
+      path: '/session/${Uri.encodeComponent(sessionID)}/message',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), if (limit != null) 'limit': limit.toString(), if (before != null) 'before': before.toString()},
     );
     final headers = <String, String>{
@@ -2706,7 +2706,7 @@ Future<List<Object>> sessionMessages0n20y2r({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -2729,7 +2729,7 @@ Future<Object> sessionPrompt1hunqop({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID/message',
+      path: '/session/${Uri.encodeComponent(sessionID)}/message',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -2738,7 +2738,7 @@ Future<Object> sessionPrompt1hunqop({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -2760,7 +2760,7 @@ Future<void> sessionPromptAsync06mmj9i({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID/prompt_async',
+      path: '/session/${Uri.encodeComponent(sessionID)}/prompt_async',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -2769,7 +2769,7 @@ Future<void> sessionPromptAsync06mmj9i({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -2791,7 +2791,7 @@ Future<Session> sessionRevert0y3ggt1({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID/revert',
+      path: '/session/${Uri.encodeComponent(sessionID)}/revert',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -2800,7 +2800,7 @@ Future<Session> sessionRevert0y3ggt1({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -2822,7 +2822,7 @@ Future<Session> sessionShare1ymticy({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID/share',
+      path: '/session/${Uri.encodeComponent(sessionID)}/share',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -2830,7 +2830,7 @@ Future<Session> sessionShare1ymticy({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -2853,7 +2853,7 @@ Future<Object> sessionShell1nz5n5b({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID/shell',
+      path: '/session/${Uri.encodeComponent(sessionID)}/shell',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -2862,7 +2862,7 @@ Future<Object> sessionShell1nz5n5b({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -2890,7 +2890,7 @@ Future<Object> sessionStatus15y01m5({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -2912,7 +2912,7 @@ Future<bool> sessionSummarize1aggp6g({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID/summarize',
+      path: '/session/${Uri.encodeComponent(sessionID)}/summarize',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -2921,13 +2921,13 @@ Future<bool> sessionSummarize1aggp6g({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -2942,7 +2942,7 @@ Future<List<Todo>> sessionTodo0y2kdaz({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID/todo',
+      path: '/session/${Uri.encodeComponent(sessionID)}/todo',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -2950,7 +2950,7 @@ Future<List<Todo>> sessionTodo0y2kdaz({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -2972,7 +2972,7 @@ Future<Session> sessionUnrevert0lg6g0a({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID/unrevert',
+      path: '/session/${Uri.encodeComponent(sessionID)}/unrevert',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -2980,7 +2980,7 @@ Future<Session> sessionUnrevert0lg6g0a({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -3002,7 +3002,7 @@ Future<Session> sessionUnshare1qlnox3({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID/share',
+      path: '/session/${Uri.encodeComponent(sessionID)}/share',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -3010,7 +3010,7 @@ Future<Session> sessionUnshare1qlnox3({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.delete(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -3033,7 +3033,7 @@ Future<Session> sessionUpdate03pn94q({
     String? workspace,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/session/$sessionID',
+      path: '/session/${Uri.encodeComponent(sessionID)}',
       queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
     );
     final headers = <String, String>{
@@ -3042,7 +3042,7 @@ Future<Session> sessionUpdate03pn94q({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.patch(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -3073,7 +3073,7 @@ Future<List<Object>> syncHistoryList1xy9idu({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -3104,7 +3104,7 @@ Future<Object> syncReplay1dpj7p7({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -3132,13 +3132,13 @@ Future<bool> syncStart0y4kx0w({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -3162,7 +3162,7 @@ Future<Object> syncSteal0kd93hj({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -3190,7 +3190,7 @@ Future<ToolIDs> toolIds07vzujz({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -3221,7 +3221,7 @@ Future<ToolList> toolList0u0155f({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -3252,13 +3252,13 @@ Future<bool> tuiAppendPrompt0769qef({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -3280,13 +3280,13 @@ Future<bool> tuiClearPrompt18smi0o({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -3308,7 +3308,7 @@ Future<Object> tuiControlNext0jnwdbt({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -3338,13 +3338,13 @@ Future<bool> tuiControlResponse0wkw7t3({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -3368,13 +3368,13 @@ Future<bool> tuiExecuteCommand01ccfah({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -3396,13 +3396,13 @@ Future<bool> tuiOpenHelp1o51zme({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -3424,13 +3424,13 @@ Future<bool> tuiOpenModels14hvwb3({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -3452,13 +3452,13 @@ Future<bool> tuiOpenSessions1o29xr4({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -3480,13 +3480,13 @@ Future<bool> tuiOpenThemes03lisen({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -3510,13 +3510,13 @@ Future<bool> tuiPublish08xcqa8({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -3540,13 +3540,13 @@ Future<bool> tuiSelectSession1qw881j({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -3570,13 +3570,13 @@ Future<bool> tuiShowToast1dzfjo3({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -3598,13 +3598,13 @@ Future<bool> tuiSubmitPrompt1f9mibn({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -3625,7 +3625,7 @@ Future<Object> v2AgentList04wolh4({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -3652,7 +3652,7 @@ Future<Object> v2CommandList0s4856s({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -3679,7 +3679,7 @@ Future<Object> v2EventSubscribe1kzmned({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -3708,7 +3708,7 @@ Future<Object> v2FsList06obgvk({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -3737,7 +3737,7 @@ Future<Object> v2FsRead19gekbg({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -3762,7 +3762,7 @@ Future<Object> v2HealthGet0r7uj1x() async {
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -3789,7 +3789,7 @@ Future<Object> v2ModelList023wqvw({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -3816,7 +3816,7 @@ Future<Object> v2PermissionRequestList0aqcd9p({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -3843,7 +3843,7 @@ Future<Object> v2PermissionSavedList1qwvlnn({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -3862,7 +3862,7 @@ Future<void> v2PermissionSavedRemove0fu1grr({
     required String id,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/api/permission/saved/$id',
+      path: '/api/permission/saved/${Uri.encodeComponent(id)}',
       queryParameters: {},
     );
     final headers = <String, String>{
@@ -3870,7 +3870,7 @@ Future<void> v2PermissionSavedRemove0fu1grr({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.delete(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -3890,7 +3890,7 @@ Future<Object> v2ProviderGet0sn51oa({
     Map<String, Object>? location,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/api/provider/$providerID',
+      path: '/api/provider/${Uri.encodeComponent(providerID)}',
       queryParameters: {if (location != null) 'location': jsonEncode(location)},
     );
     final headers = <String, String>{
@@ -3898,7 +3898,7 @@ Future<Object> v2ProviderGet0sn51oa({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -3925,7 +3925,7 @@ Future<Object> v2ProviderList1iv3bdm({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -3952,7 +3952,7 @@ Future<Object> v2QuestionRequestList1m7rz6g({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -3971,7 +3971,7 @@ Future<void> v2SessionCompact0bpgkv0({
     required String sessionID,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/api/session/$sessionID/compact',
+      path: '/api/session/${Uri.encodeComponent(sessionID)}/compact',
       queryParameters: {},
     );
     final headers = <String, String>{
@@ -3979,7 +3979,7 @@ Future<void> v2SessionCompact0bpgkv0({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -3998,7 +3998,7 @@ Future<Object> v2SessionContext12eb6ii({
     required String sessionID,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/api/session/$sessionID/context',
+      path: '/api/session/${Uri.encodeComponent(sessionID)}/context',
       queryParameters: {},
     );
     final headers = <String, String>{
@@ -4006,7 +4006,7 @@ Future<Object> v2SessionContext12eb6ii({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -4040,7 +4040,7 @@ Future<V2SessionsResponse> v2SessionList0lt02e3({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -4063,7 +4063,7 @@ Future<V2SessionMessagesResponse> v2SessionMessages10dlr63({
     String? cursor,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/api/session/$sessionID/message',
+      path: '/api/session/${Uri.encodeComponent(sessionID)}/message',
       queryParameters: {if (limit != null) 'limit': limit.toString(), if (order != null) 'order': order.toString(), if (cursor != null) 'cursor': cursor.toString()},
     );
     final headers = <String, String>{
@@ -4071,7 +4071,7 @@ Future<V2SessionMessagesResponse> v2SessionMessages10dlr63({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -4091,7 +4091,7 @@ Future<Object> v2SessionPermissionList1rfro1m({
     required String sessionID,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/api/session/$sessionID/permission/request',
+      path: '/api/session/${Uri.encodeComponent(sessionID)}/permission/request',
       queryParameters: {},
     );
     final headers = <String, String>{
@@ -4099,7 +4099,7 @@ Future<Object> v2SessionPermissionList1rfro1m({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -4120,7 +4120,7 @@ Future<void> v2SessionPermissionReply0wyople({
     required Map<String, dynamic> body,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/api/session/$sessionID/permission/request/$requestID/reply',
+      path: '/api/session/${Uri.encodeComponent(sessionID)}/permission/request/${Uri.encodeComponent(requestID)}/reply',
       queryParameters: {},
     );
     final headers = <String, String>{
@@ -4129,7 +4129,7 @@ Future<void> v2SessionPermissionReply0wyople({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -4149,7 +4149,7 @@ Future<Object> v2SessionPrompt1uri19t({
     required Map<String, dynamic> body,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/api/session/$sessionID/prompt',
+      path: '/api/session/${Uri.encodeComponent(sessionID)}/prompt',
       queryParameters: {},
     );
     final headers = <String, String>{
@@ -4158,7 +4158,7 @@ Future<Object> v2SessionPrompt1uri19t({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -4178,7 +4178,7 @@ Future<void> v2SessionQuestionReject0tg0z0w({
     required String requestID,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/api/session/$sessionID/question/request/$requestID/reject',
+      path: '/api/session/${Uri.encodeComponent(sessionID)}/question/request/${Uri.encodeComponent(requestID)}/reject',
       queryParameters: {},
     );
     final headers = <String, String>{
@@ -4186,7 +4186,7 @@ Future<void> v2SessionQuestionReject0tg0z0w({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -4207,7 +4207,7 @@ Future<void> v2SessionQuestionReply17ib33x({
     required QuestionV2Reply body,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/api/session/$sessionID/question/request/$requestID/reply',
+      path: '/api/session/${Uri.encodeComponent(sessionID)}/question/request/${Uri.encodeComponent(requestID)}/reply',
       queryParameters: {},
     );
     final headers = <String, String>{
@@ -4216,7 +4216,7 @@ Future<void> v2SessionQuestionReply17ib33x({
     };
     final encoded = jsonEncode(body.toJson());
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -4235,7 +4235,7 @@ Future<void> v2SessionWait1u3afyi({
     required String sessionID,
   }) async {
     final uri = Uri.parse(baseUrl).replace(
-      path: '/api/session/$sessionID/wait',
+      path: '/api/session/${Uri.encodeComponent(sessionID)}/wait',
       queryParameters: {},
     );
     final headers = <String, String>{
@@ -4243,7 +4243,7 @@ Future<void> v2SessionWait1u3afyi({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.post(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -4270,7 +4270,7 @@ Future<Object> v2SkillList15ujty0({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -4300,7 +4300,7 @@ Future<Object> vcsApply0d74x4t({
     };
     final encoded = jsonEncode(body);
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -4330,7 +4330,7 @@ Future<List<VcsFileDiff>> vcsDiff0beqeiw({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -4359,7 +4359,7 @@ Future<Object> vcsDiffRaw18sym3w({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -4387,7 +4387,7 @@ Future<VcsInfo> vcsGet16ws8ol({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -4416,7 +4416,7 @@ Future<List<VcsFileStatus>> vcsStatus1dfz499({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -4447,7 +4447,7 @@ Future<Worktree> worktreeCreate16yygzq({
     };
     final encoded = jsonEncode(body.toJson());
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -4476,7 +4476,7 @@ Future<List<String>> worktreeList0viov7y({
       'Content-Type': 'application/json',
     };
     final http.Response resp = await _http.get(uri, headers: headers);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
@@ -4507,13 +4507,13 @@ Future<bool> worktreeRemove0b92nau({
     };
     final encoded = jsonEncode(body.toJson());
     final http.Response resp = await _http.delete(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 
@@ -4537,13 +4537,13 @@ Future<bool> worktreeReset0jwyzk5({
     };
     final encoded = jsonEncode(body.toJson());
     final http.Response resp = await _http.post(uri, headers: headers, body: encoded);
-    if (resp.statusCode >= 400) {
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
       throw OpenCodeApiException(
         statusCode: resp.statusCode,
         body: resp.body,
       );
     }
-    return resp.body == "true";
+    return jsonDecode(resp.body) as bool;
   }
 
 

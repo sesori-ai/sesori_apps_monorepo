@@ -31,7 +31,13 @@ Use the `pr-inline-comments` skill to fetch ONLY unresolved comments:
 
 If the user specifies a time window (e.g., "since yesterday"), also pass `--since <ISO_8601>`.
 
-Parse the JSON output. You will receive an array of thread objects. Each thread contains:
+**Important:** The JSON output can be large and may get truncated in the terminal. Always save it to a file first:
+
+```bash
+../pr-inline-comments/scripts/fetch.sh <pr-number> --unresolved > /tmp/pr_comments.json
+```
+
+Then parse the file with `jq` or similar tools. You will receive an array of thread objects. Each thread contains:
 - `thread_id`: The root comment ID (use this for posting replies)
 - `path`: File path
 - `line`: Line number

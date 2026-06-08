@@ -361,7 +361,7 @@ class Codegen {
         if (v is! Map<String, dynamic>) continue;
         final r = v[r'$ref'];
         if (r is String && r.startsWith('#/components/schemas/')) {
-          final childRaw = r.substring('#/components/schemas/'.length);
+          final childRaw = _schemaNameFromRef(r);
           // Skip enum variants: Dart enums cannot `implements` an
           // abstract interface class with abstract members, so treating
           // an enum as a union variant would generate broken code.
@@ -547,7 +547,7 @@ class Codegen {
   void _collectTypesFromSchema(Map<String, dynamic> sch, Set<String> out) {
     final r = sch[r'$ref'];
     if (r is String) {
-      final name = r.substring('#/components/schemas/'.length);
+      final name = _schemaNameFromRef(r);
       if (schemas.containsKey(name)) out.add(name);
       return;
     }
@@ -737,7 +737,7 @@ class Codegen {
     final bodyArg = op.requestBodySchema != null ? ', body: encoded' : '';
     b.writeln('    final http.Response resp = await _http.$methodUpper(uri, headers: headers$bodyArg);');
 
-    b.writeln('    if (resp.statusCode >= 400) {');
+    b.writeln('    if (resp.statusCode < 200 || resp.statusCode >= 300) {');
     b.writeln('      throw OpenCodeApiException(');
     b.writeln('        statusCode: resp.statusCode,');
     b.writeln('        body: resp.body,');
@@ -788,7 +788,7 @@ class Codegen {
   String _dartTypeForSchema(Map<String, dynamic> sch, {required bool nullable}) {
     final r = sch[r'$ref'];
     if (r is String) {
-      final name = r.substring('#/components/schemas/'.length);
+      final name = _schemaNameFromRef(r);
       return _wrap(_pascalFromSnake(name), nullable);
     }
     final type = sch['type'];
@@ -841,7 +841,7 @@ class Codegen {
   }
 
   String _parsePrimitive(String type, String body) {
-    if (type == 'bool') return '$body == "true"';
+    if (type == 'bool') return 'jsonDecode($body) as bool';
     if (type == 'int') return 'int.parse($body)';
     if (type == 'double') return 'double.parse($body)';
     if (type == 'DateTime') return 'DateTime.parse($body)';
@@ -853,7 +853,7 @@ class Codegen {
   /// Used for typed body parameters and response types.
   String _classNameForRef(Map<String, dynamic> ref) {
     final r = ref[r'$ref'] as String;
-    final name = r.substring('#/components/schemas/'.length);
+    final name = _schemaNameFromRef(r);
     return _pascalFromSnake(name);
   }
 
@@ -881,8 +881,9 @@ class Codegen {
       if (m.start > lastEnd) {
         out.write(_escapeDartString(path.substring(lastEnd, m.start)));
       }
-      out.write(r'$');
+      out.write(r'${Uri.encodeComponent(');
       out.write(_safeIdentifier(m.group(1) ?? ''));
+      out.write(')}');
       lastEnd = m.end;
     }
     if (lastEnd < path.length) {
@@ -894,6 +895,14 @@ class Codegen {
 
   String _escapeDartString(String s) =>
       s.replaceAll(r'\', r'\\').replaceAll(r'$', r'\$').replaceAll("'", r"\'");
+}
+
+String _schemaNameFromRef(String ref) {
+  const prefix = '#/components/schemas/';
+  if (!ref.startsWith(prefix)) {
+    throw ArgumentError('Invalid \$ref: $ref');
+  }
+  return ref.substring(prefix.length);
 }
 
 // ---------------------------------------------------------------------------
@@ -1009,7 +1018,7 @@ class ResponseSpec {
   static String _dartTypeFromSchema(Map<String, dynamic> sch) {
     final r = sch[r'$ref'];
     if (r is String) {
-      final name = r.substring('#/components/schemas/'.length);
+      final name = _schemaNameFromRef(r);
       return _pascalFromSnake(name);
     }
     final t = sch['type'];
@@ -1102,7 +1111,7 @@ class ModelWriter {
         for (final v in variants) {
           final r = v[r'$ref'];
           if (r is String) {
-            final vName = r.substring('#/components/schemas/'.length);
+            final vName = _schemaNameFromRef(r);
             final sch = schemas[vName] as Map<String, dynamic>?;
             if (sch != null && sch['type'] == 'string' && sch['enum'] is List) {
               usedRefs.add(vName);
@@ -1129,7 +1138,7 @@ class ModelWriter {
     final refs = <String>{};
     void addRef(String s) {
       if (s.startsWith('#/components/schemas/')) {
-        refs.add(s.substring('#/components/schemas/'.length));
+        refs.add(_schemaNameFromRef(s));
       }
     }
     void visitField(Object? node) {
@@ -1201,7 +1210,7 @@ class ModelWriter {
         if (variant is! Map) continue;
         final r = variant[r'$ref'];
         if (r is! String) continue;
-        final vName = r.substring('#/components/schemas/'.length);
+        final vName = _schemaNameFromRef(r);
         if (disc != null) {
           if (_discriminatorValue(vName, schemas, disc) != null) {
             addRef(r);
@@ -1271,7 +1280,7 @@ class ModelWriter {
     final items = schema['items'] as Map<String, dynamic>?;
     final innerDart = items != null ? _dartTypeForInline(items) : 'Object';
     final innerClass = items != null && items[r'$ref'] is String
-        ? _pascalFromSnake((items[r'$ref'] as String).substring('#/components/schemas/'.length))
+        ? _pascalFromSnake(_schemaNameFromRef(items[r'$ref'] as String))
         : innerDart;
     final isPrimitiveInner = _isInlinePrimitive(innerDart);
     final innerElement = isPrimitiveInner
@@ -1376,7 +1385,7 @@ class ModelWriter {
       for (final v in variants) {
         final r = v[r'$ref'];
         if (r is String) {
-          final vName = r.substring('#/components/schemas/'.length);
+          final vName = _schemaNameFromRef(r);
           final d = _discriminatorValue(vName, schemas, disc);
           if (d != null) {
             b.writeln('      case ${jsonEncode(d)}:');
@@ -1420,7 +1429,7 @@ class ModelWriter {
         // variants get their own synthesized classes too.
         final r = v[r'$ref'];
         if (r is String) {
-          final vName = r.substring('#/components/schemas/'.length);
+          final vName = _schemaNameFromRef(r);
           final sch = schemas[vName] as Map<String, dynamic>?;
           if (sch != null && sch['type'] == 'string' && sch['enum'] is List) {
             final inlineName = '${_safeIdentifier(name)}${inlineIndex.toString().padLeft(2, '0')}Inline';
@@ -1478,7 +1487,7 @@ class ModelWriter {
     // class) and lets the dispatch site return a typed object.
     final ref = schema[r'$ref'];
     if (ref is String) {
-      final refName = ref.substring('#/components/schemas/'.length);
+      final refName = _schemaNameFromRef(ref);
       final refType = _pascalFromSnake(refName);
       final sch = schemas[refName] as Map<String, dynamic>?;
       final isEnum = sch != null && sch['type'] == 'string' && sch['enum'] is List;
@@ -1564,7 +1573,7 @@ class ModelWriter {
       if (items is Map<String, dynamic>) {
         final ir = items[r'$ref'];
         if (ir is String) {
-          innerDart = _pascalFromSnake(ir.substring('#/components/schemas/'.length));
+          innerDart = _pascalFromSnake(_schemaNameFromRef(ir));
         } else {
           innerDart = _dartTypeForInline(items);
         }
@@ -1649,27 +1658,23 @@ class ModelWriter {
       b.writeln();
       b.writeln('  @override');
       b.writeln('  dynamic toJson() {');
-      if (realProps.isEmpty) {
-        b.writeln('    return <String, dynamic>{};');
-      } else {
-        b.writeln('    return <String, dynamic>{');
-        for (final entry in props.entries) {
-          final fieldName = entry.key;
-          final literal = literals[fieldName];
-          if (literal != null) {
-            b.writeln('      ${_safeKey(fieldName)}: ${jsonEncode(literal)},');
-            continue;
-          }
-          final isRequired = required.contains(fieldName);
-          final propSch = entry.value as Map<String, dynamic>;
-          // Delegate to _encodeField so that typed model fields
-          // (e.g. `PermissionRuleConfig`) get their `.toJson()` called
-          // — emitting the raw field would leave Dart class instances
-          // in the map and crash `jsonEncode` on the consumer side.
-          b.writeln('      ${_encodeField(fieldName, propSch, isNullable: !isRequired)},');
+      b.writeln('    return <String, dynamic>{');
+      for (final entry in props.entries) {
+        final fieldName = entry.key;
+        final literal = literals[fieldName];
+        if (literal != null) {
+          b.writeln('      ${_safeKey(fieldName)}: ${jsonEncode(literal)},');
+          continue;
         }
-        b.writeln('    };');
+        final isRequired = required.contains(fieldName);
+        final propSch = entry.value as Map<String, dynamic>;
+        // Delegate to _encodeField so that typed model fields
+        // (e.g. `PermissionRuleConfig`) get their `.toJson()` called
+        // — emitting the raw field would leave Dart class instances
+        // in the map and crash `jsonEncode` on the consumer side.
+        b.writeln('      ${_encodeField(fieldName, propSch, isNullable: !isRequired)},');
       }
+      b.writeln('    };');
       b.writeln('  }');
       b.writeln();
       for (final entry in props.entries) {
@@ -1884,16 +1889,28 @@ class ModelWriter {
     // `EnumType.fromJson(v as String)`. For primitive values, plain cast.
     String decodeExpr;
     if (ap[r'$ref'] is String) {
-      final refName = (ap[r'$ref'] as String)
-          .substring('#/components/schemas/'.length);
+      final refName = _schemaNameFromRef(ap[r'$ref'] as String);
       final refSchema = schemas[refName] as Map<String, dynamic>?;
       final isRefArray = refSchema != null && refSchema['type'] == 'array';
       final isRefStringEnum = refSchema != null &&
           refSchema['type'] == 'string' &&
           refSchema['enum'] is List;
-      final cast =
-          isRefArray ? 'List<dynamic>' : (isRefStringEnum ? 'String' : 'Map<String, dynamic>');
-      decodeExpr = '$valueDart.fromJson(v as $cast)';
+      String cast;
+      if (isRefArray) {
+        cast = 'List<dynamic>';
+      } else if (isRefStringEnum) {
+        cast = 'String';
+      } else if (_isUnionRef(refName)) {
+        // Union factories take `dynamic` and dispatch on shape; a
+        // pre-cast to Map<String, dynamic> would break the string-
+        // shorthand branch.
+        cast = '';
+      } else {
+        cast = 'Map<String, dynamic>';
+      }
+      decodeExpr = cast.isEmpty
+          ? '$valueDart.fromJson(v)'
+          : '$valueDart.fromJson(v as $cast)';
     } else if (isPrimitive) {
       decodeExpr = 'v as $valueDart';
     } else {
@@ -1936,7 +1953,7 @@ class ModelWriter {
   String _dartTypeForInline(Map<String, dynamic> sch) {
     final r = sch[r'$ref'];
     if (r is String) {
-      return _pascalFromSnake(r.substring('#/components/schemas/'.length));
+      return _pascalFromSnake(_schemaNameFromRef(r));
     }
     final type = sch['type'];
     final format = sch['format'];
@@ -2031,7 +2048,7 @@ class ModelWriter {
     final isNullable = _isNullableSchema(sch) || !isRequired;
     final r = sch[r'$ref'];
     if (r is String) {
-      final refName = r.substring('#/components/schemas/'.length);
+      final refName = _schemaNameFromRef(r);
       final refType = _pascalFromSnake(refName);
       // Look up the referenced schema to determine its shape (object, array,
       // or string enum).
@@ -2101,7 +2118,7 @@ class ModelWriter {
       if (items is Map<String, dynamic>) {
         final itemsRef = items[r'$ref'];
         if (itemsRef is String) {
-          final refName = itemsRef.substring('#/components/schemas/'.length);
+          final refName = _schemaNameFromRef(itemsRef);
           final refType = _pascalFromSnake(refName);
           // If the items $ref points to a top-level array schema, the
           // element cast must be `as List<dynamic>` not `as Map<String, dynamic>`.
@@ -2130,7 +2147,7 @@ class ModelWriter {
         // decoded via `List.fromJson`) or an object class (values decoded
         // via `Class.fromJson`). Inline schemas (no $ref) use a plain cast.
         if (ap[r'$ref'] is String) {
-          final refName = (ap[r'$ref'] as String).substring('#/components/schemas/'.length);
+          final refName = _schemaNameFromRef(ap[r'$ref'] as String);
           final refSchema = schemas[refName] as Map<String, dynamic>?;
           if (refSchema != null && refSchema['type'] == 'array') {
             if (isNullable) {
@@ -2140,11 +2157,14 @@ class ModelWriter {
           }
           // Object ref: use `RefType.fromJson(v)` so the JSON map is
           // decoded through the model's factory instead of being
-          // mis-cast as a Dart class instance.
+          // mis-cast as a Dart class instance. Union refs must NOT be
+          // pre-cast because their factory takes `dynamic` and has a
+          // string-shorthand branch.
+          final vCast = _isUnionRef(refName) ? '' : ' as Map<String, dynamic>';
           if (isNullable) {
-            return "$safeName: (json[$keyExpr] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, $valueDart.fromJson(v as Map<String, dynamic>)))";
+            return "$safeName: (json[$keyExpr] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, $valueDart.fromJson(v$vCast)))";
           }
-          return "$safeName: (json[$keyExpr] as Map<String, dynamic>).map((k, v) => MapEntry(k, $valueDart.fromJson(v as Map<String, dynamic>)))";
+          return "$safeName: (json[$keyExpr] as Map<String, dynamic>).map((k, v) => MapEntry(k, $valueDart.fromJson(v$vCast)))";
         }
         if (isNullable) {
           return "$safeName: (json[$keyExpr] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as $valueDart))";
@@ -2192,9 +2212,11 @@ class ModelWriter {
       return '$keyExpr: $entryOp$safeName$callOp.toJson()';
     }
     final type = sch['type'];
-    if (type == 'string' &&
-        (sch['format'] == 'date-time' || sch['format'] == 'uri' || sch['format'] == 'url')) {
+    if (type == 'string' && sch['format'] == 'date-time') {
       return '$keyExpr: $entryOp$safeName$callOp.toIso8601String()';
+    }
+    if (type == 'string' && (sch['format'] == 'uri' || sch['format'] == 'url')) {
+      return '$keyExpr: $entryOp$safeName$callOp.toString()';
     }
     if (type == 'array') {
       final items = sch['items'];
@@ -2232,7 +2254,7 @@ class ModelWriter {
     for (final v in variants) {
       final r = v[r'$ref'];
       if (r is String) {
-        final s = schemas[r.substring('#/components/schemas/'.length)] as Map<String, dynamic>?;
+        final s = schemas[_schemaNameFromRef(r)] as Map<String, dynamic>?;
         if (s != null) resolved.add(s);
       } else if (v['type'] == 'object') {
         resolved.add(v);
@@ -2303,7 +2325,7 @@ class ModelWriter {
   String? _unionTypeGuard(Map<String, dynamic> variant, int inlineIndex) {
     final r = variant[r'$ref'];
     if (r is String) {
-      final vName = r.substring('#/components/schemas/'.length);
+      final vName = _schemaNameFromRef(r);
       final sch = schemas[vName] as Map<String, dynamic>?;
       if (sch == null) return null;
       final t = sch['type'];
@@ -2335,7 +2357,7 @@ class ModelWriter {
   String? _unionTypeDecode(Map<String, dynamic> variant, int inlineIndex) {
     final r = variant[r'$ref'];
     if (r is String) {
-      final vName = r.substring('#/components/schemas/'.length);
+      final vName = _schemaNameFromRef(r);
       final refType = _pascalFromSnake(vName);
       final sch = schemas[vName] as Map<String, dynamic>?;
       if (sch == null) return null;
