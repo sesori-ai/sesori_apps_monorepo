@@ -3,6 +3,10 @@ FLUTTER_VERSION := $(shell grep '^flutter' $(TOOL_VERSIONS) | awk '{print $$2}')
 DART := $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)/bin/cache/dart-sdk/bin/dart
 FLUTTER := $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)/bin/flutter
 
+# Pin FLUTTER_ROOT to the version-locked SDK so the bundled `dart` resolves the
+# right Flutter even when the shell exports a stale FLUTTER_ROOT (e.g. asdf global).
+export FLUTTER_ROOT := $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)
+
 # Dependency order: module_auth -> module_core -> module_zyra -> app
 MODULES := module_auth module_core module_zyra app
 
@@ -11,7 +15,7 @@ MODULES := module_auth module_core module_zyra app
 codegen:
 	@for mod in $(MODULES); do \
 		echo "=== codegen: $$mod ==="; \
-		(cd $$mod && $(DART) run build_runner build --delete-conflicting-outputs); \
+		(cd $$mod && $(DART) run build_runner build) || exit 1; \
 	done
 
 pub-get:

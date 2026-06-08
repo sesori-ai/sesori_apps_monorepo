@@ -39,7 +39,7 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i164.TokenStorageService(gh<_i892.SecureStorage>()),
     );
     gh.lazySingleton<_i655.AuthManager>(
-      () => _i655.AuthManager(
+      () => _i655.AuthManager.create(
         gh<_i519.Client>(),
         gh<_i164.TokenStorageService>(),
         gh<_i765.OAuthStorageService>(),

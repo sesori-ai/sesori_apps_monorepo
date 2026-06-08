@@ -49,6 +49,20 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
        _delay = delay ?? Future<void>.delayed,
        _authState = BehaviorSubject.seeded(const AuthState.initial());
 
+  /// Builds the singleton with only its production dependencies.
+  ///
+  /// injectable uses this factory instead of the default constructor so the
+  /// `@visibleForTesting` seams (`pollInterval`, `pollTimeout`, `delay`) keep
+  /// their defaults. Without it, injectable_generator 3.0.2 under analyzer 10.x
+  /// tries to inject those optional params from get_it — and can't resolve the
+  /// inline `delay` function type at all.
+  @factoryMethod
+  factory AuthManager.create(
+    http.Client client,
+    TokenStorageService tokenStorage,
+    OAuthStorageService oAuthStorage,
+  ) => AuthManager(client, tokenStorage, oAuthStorage);
+
   @override
   ValueStream<AuthState> get authStateStream => _authState.stream;
 
