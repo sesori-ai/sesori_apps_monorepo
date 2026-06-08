@@ -338,7 +338,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         final current = state.agentModelData;
         emit(
           NewSessionState.error(
-            message: _describeError(error: error),
+            error: error,
             availableAgents: current?.agents ?? const [],
             availableProviders: current?.providers ?? const [],
             availableCommands: current?.commands ?? const [],
@@ -349,16 +349,5 @@ class NewSessionCubit extends Cubit<NewSessionState> {
           ),
         );
     }
-  }
-
-  String _describeError({required ApiError error}) {
-    return switch (error) {
-      NotAuthenticatedError() => "Authentication required.",
-      NonSuccessCodeError(:final rawErrorString) => rawErrorString ?? "Failed to create session.",
-      DartHttpClientError() => "Unable to reach server.",
-      JsonParsingError() => "Unexpected server response.",
-      GenericError() => "Failed to create session.",
-      EmptyResponseError() => "Empty response from server.",
-    };
   }
 }
