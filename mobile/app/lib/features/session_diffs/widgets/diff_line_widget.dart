@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
+import "../../../core/extensions/text_style_x.dart";
 import "../models/diff_file_view_model.dart";
 import "../utils/diff_theme.dart";
 
@@ -11,11 +12,10 @@ class DiffLineWidget extends StatelessWidget {
 
   const DiffLineWidget({super.key, required this.viewModel});
 
-  static const _monoStyle = TextStyle(
-    fontFamily: "monospace",
+  static final _monoStyle = const TextStyle(
     fontSize: 12,
     height: 1.4,
-  );
+  ).monospace;
 
   @override
   Widget build(BuildContext context) {

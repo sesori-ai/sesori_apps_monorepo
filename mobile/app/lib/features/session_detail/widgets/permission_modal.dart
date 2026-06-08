@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_zyra/module_zyra.dart";
 
 import "../../../core/extensions/build_context_x.dart";
+import "../../../core/extensions/text_style_x.dart";
 import "../../../core/widgets/app_modal_bottom_sheet.dart";
 import "../../../core/widgets/markdown_styles.dart";
 
@@ -142,8 +143,7 @@ class PermissionModal extends StatelessWidget {
                         permission.tool,
                         style: zyra.textTheme.textSm.bold.copyWith(
                           fontWeight: FontWeight.bold,
-                          fontFamily: "monospace",
-                        ),
+                        ).monospace,
                       ),
                     ],
                   ),

@@ -24,11 +24,7 @@ class _CommandBlock extends StatelessWidget {
     final zyra = context.zyra;
     final colors = zyra.colors;
     final loc = context.loc;
-    final mono = zyra.textTheme.textXs.regular.copyWith(
-      fontFamily: "monospace",
-      fontFamilyFallback: const ["Menlo", "Roboto Mono", "Courier New"],
-      color: colors.textSecondary,
-    );
+    final mono = zyra.textTheme.textXs.regular.copyWith(color: colors.textSecondary).monospace;
 
     return Container(
       width: double.infinity,
