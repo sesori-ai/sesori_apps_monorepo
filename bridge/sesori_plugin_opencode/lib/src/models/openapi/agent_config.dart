@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:32:27.996450Z
+// Generated: 2026-06-08T13:40:29.583479Z
 
 import 'permission_config.dart';
 
@@ -37,9 +37,9 @@ class AgentConfig {
       hidden: json["hidden"] as bool?,
       options: json["options"] as Map<String, dynamic>?,
       color: json["color"] as Object?,
-      steps: json["steps"] as int?,
-      maxSteps: json["maxSteps"] as int?,
-      permission: json["permission"] == null ? null : PermissionConfig.fromJson(json["permission"]),
+      steps: (json["steps"] as num?)?.toInt(),
+      maxSteps: (json["maxSteps"] as num?)?.toInt(),
+      permission: json["permission"] == null ? null : PermissionConfig.fromJson(json["permission"] as Object),
     );
   }
 

@@ -1370,9 +1370,9 @@ class ModelWriter {
     b.writeln('  /// variant encodes as the scalar itself, not a wrapped map.');
     b.writeln('  /// Callers pass the result straight to `jsonEncode` or');
     b.writeln('  /// another `toJson()`, both of which accept `dynamic`.');
-    b.writeln('  dynamic toJson();');
+    b.writeln('  Object? toJson();');
     b.writeln();
-    b.writeln('  factory $name.fromJson(dynamic json) {');
+    b.writeln('  factory $name.fromJson(Object json) {');
     if (disc != null) {
       // Discriminator-driven dispatch: every variant carries the same
       // string-enum property with a unique value. Works for both
@@ -1909,7 +1909,7 @@ class ModelWriter {
         cast = 'Map<String, dynamic>';
       }
       decodeExpr = cast.isEmpty
-          ? '$valueDart.fromJson(v)'
+          ? '$valueDart.fromJson(v as Object)'
           : '$valueDart.fromJson(v as $cast)';
     } else if (isPrimitive) {
       decodeExpr = 'v as $valueDart';
@@ -2076,9 +2076,9 @@ class ModelWriter {
       // value through instead.
       if (_isUnionRef(refName)) {
         if (isNullable) {
-          return '$safeName: json[$keyExpr] == null ? null : $refType.fromJson(json[$keyExpr])';
+          return '$safeName: json[$keyExpr] == null ? null : $refType.fromJson(json[$keyExpr] as Object)';
         }
-        return '$safeName: $refType.fromJson(json[$keyExpr])';
+        return '$safeName: $refType.fromJson(json[$keyExpr] as Object)';
       }
       if (isNullable) {
         return '$safeName: json[$keyExpr] == null ? null : $refType.fromJson(json[$keyExpr] as Map<String, dynamic>)';
@@ -2158,9 +2158,9 @@ class ModelWriter {
           // Object ref: use `RefType.fromJson(v)` so the JSON map is
           // decoded through the model's factory instead of being
           // mis-cast as a Dart class instance. Union refs must NOT be
-          // pre-cast because their factory takes `dynamic` and has a
-          // string-shorthand branch.
-          final vCast = _isUnionRef(refName) ? '' : ' as Map<String, dynamic>';
+          // pre-cast to Map because their factory takes Object and has a
+          // string-shorthand branch; cast to Object instead.
+          final vCast = _isUnionRef(refName) ? ' as Object' : ' as Map<String, dynamic>';
           if (isNullable) {
             return "$safeName: (json[$keyExpr] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, $valueDart.fromJson(v$vCast)))";
           }
@@ -2185,7 +2185,15 @@ class ModelWriter {
       }
       return '$safeName: (json[$keyExpr] as num).toDouble()';
     }
-    if (type == 'integer' || type == 'boolean' || type == 'string') {
+    if (type == 'integer') {
+      // jsonDecode may parse `5.0` as a double even when the schema
+      // declares the field as integer, so normalise via `toInt()`.
+      if (isNullable) {
+        return '$safeName: (json[$keyExpr] as num?)?.toInt()';
+      }
+      return '$safeName: (json[$keyExpr] as num).toInt()';
+    }
+    if (type == 'boolean' || type == 'string') {
       final dartType = _dartTypeForInline(sch);
       if (isNullable) {
         return '$safeName: json[$keyExpr] as $dartType?';

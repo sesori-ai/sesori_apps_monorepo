@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:32:28.051914Z
+// Generated: 2026-06-08T13:40:29.631915Z
 
 import 'session_message_agent_switched.dart';
 import 'session_message_assistant.dart';
@@ -21,9 +21,9 @@ abstract interface class SessionMessage {
   /// variant encodes as the scalar itself, not a wrapped map.
   /// Callers pass the result straight to `jsonEncode` or
   /// another `toJson()`, both of which accept `dynamic`.
-  dynamic toJson();
+  Object? toJson();
 
-  factory SessionMessage.fromJson(dynamic json) {
+  factory SessionMessage.fromJson(Object json) {
     final map = json as Map<String, dynamic>;
     final discriminator = map["type"];
     switch (discriminator) {

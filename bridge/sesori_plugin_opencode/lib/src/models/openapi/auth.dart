@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:32:28.000909Z
+// Generated: 2026-06-08T13:40:29.587511Z
 
 import 'api_auth.dart';
 import 'oauth.dart';
@@ -16,9 +16,9 @@ abstract interface class Auth {
   /// variant encodes as the scalar itself, not a wrapped map.
   /// Callers pass the result straight to `jsonEncode` or
   /// another `toJson()`, both of which accept `dynamic`.
-  dynamic toJson();
+  Object? toJson();
 
-  factory Auth.fromJson(dynamic json) {
+  factory Auth.fromJson(Object json) {
     final map = json as Map<String, dynamic>;
     final discriminator = map["type"];
     switch (discriminator) {

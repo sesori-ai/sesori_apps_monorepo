@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:32:28.050262Z
+// Generated: 2026-06-08T13:40:29.630752Z
 
 import 'apierror.dart';
 import 'part.dart';
@@ -20,7 +20,7 @@ class RetryPart implements Part {
       id: json["id"] as String,
       sessionID: json["sessionID"] as String,
       messageID: json["messageID"] as String,
-      attempt: json["attempt"] as int,
+      attempt: (json["attempt"] as num).toInt(),
       error: APIError.fromJson(json["error"] as Map<String, dynamic>),
       time: json["time"] as Map<String, dynamic>,
     );

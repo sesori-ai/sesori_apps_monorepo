@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:32:28.025740Z
+// Generated: 2026-06-08T13:40:29.610082Z
 
 
 class File {
@@ -14,8 +14,8 @@ class File {
   factory File.fromJson(Map<String, dynamic> json) {
     return File(
       path: json["path"] as String,
-      added: json["added"] as int,
-      removed: json["removed"] as int,
+      added: (json["added"] as num).toInt(),
+      removed: (json["removed"] as num).toInt(),
       status: json["status"] as String,
     );
   }

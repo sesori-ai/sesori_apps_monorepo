@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:32:28.026669Z
+// Generated: 2026-06-08T13:40:29.610946Z
 
 import 'file_part_source.dart';
 
@@ -21,7 +21,7 @@ class FilePartInput {
       mime: json["mime"] as String,
       filename: json["filename"] as String?,
       url: json["url"] as String,
-      source: json["source"] == null ? null : FilePartSource.fromJson(json["source"]),
+      source: json["source"] == null ? null : FilePartSource.fromJson(json["source"] as Object),
     );
   }
 

@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:32:28.074835Z
+// Generated: 2026-06-08T13:40:29.647401Z
 
 import 'message.dart';
 import 'output_format.dart';
@@ -23,7 +23,7 @@ class UserMessage implements Message {
       id: json["id"] as String,
       sessionID: json["sessionID"] as String,
       time: json["time"] as Map<String, dynamic>,
-      format: json["format"] == null ? null : OutputFormat.fromJson(json["format"]),
+      format: json["format"] == null ? null : OutputFormat.fromJson(json["format"] as Object),
       summary: json["summary"] as Map<String, dynamic>?,
       agent: json["agent"] as String,
       model: json["model"] as Map<String, dynamic>,

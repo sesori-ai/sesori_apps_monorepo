@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:32:28.063407Z
+// Generated: 2026-06-08T13:40:29.639475Z
 
 import 'file_part_source.dart';
 import 'file_part_source_text.dart';
@@ -21,7 +21,7 @@ class SymbolSource implements FilePartSource {
       path: json["path"] as String,
       range: Range.fromJson(json["range"] as Map<String, dynamic>),
       name: json["name"] as String,
-      kind: json["kind"] as int,
+      kind: (json["kind"] as num).toInt(),
     );
   }
 

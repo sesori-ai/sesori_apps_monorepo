@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:32:28.006034Z
+// Generated: 2026-06-08T13:40:29.592179Z
 
 import 'agent_config.dart';
 import 'attachment_config.dart';
@@ -78,7 +78,7 @@ class Config {
       lsp: json["lsp"] as Object?,
       instructions: (json["instructions"] as List<dynamic>?)?.cast<String>(),
       layout: json["layout"] == null ? null : LayoutConfig.fromJson(json["layout"] as String),
-      permission: json["permission"] == null ? null : PermissionConfig.fromJson(json["permission"]),
+      permission: json["permission"] == null ? null : PermissionConfig.fromJson(json["permission"] as Object),
       tools: (json["tools"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as bool)),
       attachment: json["attachment"] == null ? null : AttachmentConfig.fromJson(json["attachment"] as Map<String, dynamic>),
       enterprise: json["enterprise"] as Map<String, dynamic>?,

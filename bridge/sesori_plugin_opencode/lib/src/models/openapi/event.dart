@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:32:28.007742Z
+// Generated: 2026-06-08T13:40:29.593867Z
 
 import 'event.tui.command.execute.dart';
 import 'event.tui.prompt.append.dart';
@@ -100,9 +100,9 @@ abstract interface class Event {
   /// variant encodes as the scalar itself, not a wrapped map.
   /// Callers pass the result straight to `jsonEncode` or
   /// another `toJson()`, both of which accept `dynamic`.
-  dynamic toJson();
+  Object? toJson();
 
-  factory Event.fromJson(dynamic json) {
+  factory Event.fromJson(Object json) {
     final map = json as Map<String, dynamic>;
     final discriminator = map["type"];
     switch (discriminator) {

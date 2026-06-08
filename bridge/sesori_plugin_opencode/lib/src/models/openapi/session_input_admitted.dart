@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:32:28.051720Z
+// Generated: 2026-06-08T13:40:29.631750Z
 
 import 'prompt.dart';
 
@@ -17,13 +17,13 @@ class SessionInputAdmitted {
 
   factory SessionInputAdmitted.fromJson(Map<String, dynamic> json) {
     return SessionInputAdmitted(
-      admittedSeq: json["admittedSeq"] as int,
+      admittedSeq: (json["admittedSeq"] as num).toInt(),
       id: json["id"] as String,
       sessionID: json["sessionID"] as String,
       prompt: Prompt.fromJson(json["prompt"] as Map<String, dynamic>),
       delivery: json["delivery"] as String,
       timeCreated: (json["timeCreated"] as num).toDouble(),
-      promotedSeq: json["promotedSeq"] as int?,
+      promotedSeq: (json["promotedSeq"] as num?)?.toInt(),
     );
   }
 

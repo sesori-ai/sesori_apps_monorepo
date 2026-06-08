@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:32:28.003226Z
+// Generated: 2026-06-08T13:40:29.589755Z
 
 import 'auth_api_key_credential.dart';
 import 'auth_oauth_credential.dart';
@@ -15,9 +15,9 @@ abstract interface class AuthCredential {
   /// variant encodes as the scalar itself, not a wrapped map.
   /// Callers pass the result straight to `jsonEncode` or
   /// another `toJson()`, both of which accept `dynamic`.
-  dynamic toJson();
+  Object? toJson();
 
-  factory AuthCredential.fromJson(dynamic json) {
+  factory AuthCredential.fromJson(Object json) {
     final map = json as Map<String, dynamic>;
     final discriminator = map["type"];
     switch (discriminator) {

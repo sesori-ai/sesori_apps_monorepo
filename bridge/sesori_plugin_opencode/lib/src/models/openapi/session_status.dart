@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:32:28.060099Z
+// Generated: 2026-06-08T13:40:29.637253Z
 
 
 abstract interface class SessionStatus {
@@ -13,9 +13,9 @@ abstract interface class SessionStatus {
   /// variant encodes as the scalar itself, not a wrapped map.
   /// Callers pass the result straight to `jsonEncode` or
   /// another `toJson()`, both of which accept `dynamic`.
-  dynamic toJson();
+  Object? toJson();
 
-  factory SessionStatus.fromJson(dynamic json) {
+  factory SessionStatus.fromJson(Object json) {
     final map = json as Map<String, dynamic>;
     final discriminator = map["type"];
     switch (discriminator) {
@@ -59,10 +59,10 @@ class sessionStatus01Inline implements SessionStatus {
 
   factory sessionStatus01Inline.fromJson(Map<String, dynamic> json) {
     return sessionStatus01Inline(
-      attempt: json["attempt"] as int,
+      attempt: (json["attempt"] as num).toInt(),
       message: json["message"] as String,
       action: json["action"] as Map<String, dynamic>?,
-      next: json["next"] as int,
+      next: (json["next"] as num).toInt(),
     );
   }
 

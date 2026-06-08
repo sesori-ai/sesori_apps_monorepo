@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:32:28.038968Z
+// Generated: 2026-06-08T13:40:29.620874Z
 
 import 'permission_action_config.dart';
 import 'permission_rule_config.dart';
@@ -15,9 +15,9 @@ abstract interface class PermissionConfig {
   /// variant encodes as the scalar itself, not a wrapped map.
   /// Callers pass the result straight to `jsonEncode` or
   /// another `toJson()`, both of which accept `dynamic`.
-  dynamic toJson();
+  Object? toJson();
 
-  factory PermissionConfig.fromJson(dynamic json) {
+  factory PermissionConfig.fromJson(Object json) {
     if (json is String) {
       return permissionConfig00Inline.fromJson(json);
     }
@@ -60,21 +60,21 @@ class permissionConfig01Inline implements PermissionConfig {
 
   factory permissionConfig01Inline.fromJson(Map<String, dynamic> json) {
     return permissionConfig01Inline(
-      read: json["read"] == null ? null : PermissionRuleConfig.fromJson(json["read"]),
-      edit: json["edit"] == null ? null : PermissionRuleConfig.fromJson(json["edit"]),
-      glob: json["glob"] == null ? null : PermissionRuleConfig.fromJson(json["glob"]),
-      grep: json["grep"] == null ? null : PermissionRuleConfig.fromJson(json["grep"]),
-      list: json["list"] == null ? null : PermissionRuleConfig.fromJson(json["list"]),
-      bash: json["bash"] == null ? null : PermissionRuleConfig.fromJson(json["bash"]),
-      task: json["task"] == null ? null : PermissionRuleConfig.fromJson(json["task"]),
-      externalDirectory: json["external_directory"] == null ? null : PermissionRuleConfig.fromJson(json["external_directory"]),
+      read: json["read"] == null ? null : PermissionRuleConfig.fromJson(json["read"] as Object),
+      edit: json["edit"] == null ? null : PermissionRuleConfig.fromJson(json["edit"] as Object),
+      glob: json["glob"] == null ? null : PermissionRuleConfig.fromJson(json["glob"] as Object),
+      grep: json["grep"] == null ? null : PermissionRuleConfig.fromJson(json["grep"] as Object),
+      list: json["list"] == null ? null : PermissionRuleConfig.fromJson(json["list"] as Object),
+      bash: json["bash"] == null ? null : PermissionRuleConfig.fromJson(json["bash"] as Object),
+      task: json["task"] == null ? null : PermissionRuleConfig.fromJson(json["task"] as Object),
+      externalDirectory: json["external_directory"] == null ? null : PermissionRuleConfig.fromJson(json["external_directory"] as Object),
       todowrite: json["todowrite"] == null ? null : PermissionActionConfig.fromJson(json["todowrite"] as String),
       question: json["question"] == null ? null : PermissionActionConfig.fromJson(json["question"] as String),
       webfetch: json["webfetch"] == null ? null : PermissionActionConfig.fromJson(json["webfetch"] as String),
       websearch: json["websearch"] == null ? null : PermissionActionConfig.fromJson(json["websearch"] as String),
-      lsp: json["lsp"] == null ? null : PermissionRuleConfig.fromJson(json["lsp"]),
+      lsp: json["lsp"] == null ? null : PermissionRuleConfig.fromJson(json["lsp"] as Object),
       doomLoop: json["doom_loop"] == null ? null : PermissionActionConfig.fromJson(json["doom_loop"] as String),
-      skill: json["skill"] == null ? null : PermissionRuleConfig.fromJson(json["skill"]),
+      skill: json["skill"] == null ? null : PermissionRuleConfig.fromJson(json["skill"] as Object),
     );
   }
 
