@@ -34,6 +34,11 @@ on:
         description: "Build number to submit (must match an existing build-<N> tag)"
         type: string
         required: true
+      upload_metadata:
+        description: "Pull and upload all App Store / Play listing metadata (text, changelogs, screenshots, images) from the private metadata repo"
+        type: boolean
+        required: false
+        default: false
 
 run-name: "submit · ${{ inputs.track }} · ${{ inputs.platforms }} · build ${{ inputs.build_number }}"
 
@@ -116,6 +121,25 @@ jobs:
         with:
           ref: ${{ needs.resolve.outputs.commit_sha }}
 
+      # Pull App Store listing metadata from the private metadata repo. Only
+      # when this is a production submit dispatched with upload_metadata=true
+      # (and STORE_METADATA_REPO is configured). Lands at
+      # $GITHUB_WORKSPACE/store-metadata — the `path` is workspace-relative,
+      # independent of the job's working-directory (mobile/app/ios).
+      # persist-credentials:false so the read-only token is not left in git
+      # config for later steps (fastlane reads files, not git). When skipped,
+      # the lane no-ops (promote/submit only), so a routine submission never
+      # rewrites the live listing.
+      - name: Checkout store metadata
+        if: ${{ inputs.track == 'production' && inputs.upload_metadata && vars.STORE_METADATA_REPO != '' }}
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ vars.STORE_METADATA_REPO }}
+          ref: ${{ vars.STORE_METADATA_REF || 'main' }}
+          path: store-metadata
+          persist-credentials: false
+          token: ${{ secrets.METADATA_REPO_TOKEN }}
+
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -132,6 +156,11 @@ jobs:
           ITC_TEAM_ID:                       ${{ secrets.ITC_TEAM_ID }}
           BUILD_NUMBER:                      ${{ needs.resolve.outputs.build_number }}
           TRACK:                             ${{ inputs.track }}
+          # Absolute paths: fastlane runs from mobile/app/ios but the metadata
+          # clone lives at the workspace root. Resolve to non-existent dirs when
+          # the checkout above was skipped, so the lane uploads no metadata.
+          IOS_METADATA_PATH:                 ${{ github.workspace }}/store-metadata/ios/metadata
+          IOS_SCREENSHOTS_PATH:              ${{ github.workspace }}/store-metadata/ios/screenshots
         run: bundle exec fastlane submit_ios
 
       - name: Summary
@@ -165,6 +194,21 @@ jobs:
         with:
           ref: ${{ needs.resolve.outputs.commit_sha }}
 
+      # Pull Play Store listing metadata from the private metadata repo. Only
+      # when this is a production submit dispatched with upload_metadata=true
+      # (and STORE_METADATA_REPO is configured). See the iOS job for the
+      # rationale on path, auth, and persist-credentials. When skipped, the
+      # lane falls back to promotion-only.
+      - name: Checkout store metadata
+        if: ${{ inputs.track == 'production' && inputs.upload_metadata && vars.STORE_METADATA_REPO != '' }}
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ vars.STORE_METADATA_REPO }}
+          ref: ${{ vars.STORE_METADATA_REF || 'main' }}
+          path: store-metadata
+          persist-credentials: false
+          token: ${{ secrets.METADATA_REPO_TOKEN }}
+
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -177,6 +221,10 @@ jobs:
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           VERSION_CODE:                     ${{ needs.resolve.outputs.build_number }}
           TRACK:                            ${{ inputs.track }}
+          # Absolute path to the cloned metadata repo's Android listing dir
+          # (locale folders live directly under it). Resolves to a non-existent
+          # dir when the checkout above was skipped, so the lane promotes only.
+          ANDROID_METADATA_PATH:            ${{ github.workspace }}/store-metadata/android
         run: bundle exec fastlane submit_android
 
       - name: Cleanup credentials

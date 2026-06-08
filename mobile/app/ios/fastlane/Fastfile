@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "shellwords"
+
 default_platform(:ios)
 
 # Returns the highest build number among the 25 most recently uploaded builds
@@ -38,6 +40,41 @@ def highest_build_number_across_all_versions(api_key:)
   highest = recent_builds.map { |b| b.version.to_i }.max || 0
   UI.message("Scanned #{recent_builds.size} most recent builds; highest build number: #{highest}")
   highest
+end
+
+# Resolves an optional store-metadata directory passed via the named env var.
+# In CI this points at the private metadata repo that submit-release.yml clones
+# into the workspace (see .github/workflows/submit-release.yml). Returns an
+# ABSOLUTE path only when the directory exists and is non-empty; otherwise nil,
+# so the submit lanes cleanly fall back to "no metadata" and behave exactly as
+# they did before this feature existed. Absolute because fastlane runs from
+# mobile/app/ios while the clone lives at the workspace root.
+def metadata_dir_from_env(var)
+  raw = ENV[var].to_s.strip
+  return nil if raw.empty?
+
+  path = File.expand_path(raw)
+  return nil unless File.directory?(path)
+  return nil if Dir.children(path).reject { |e| e.start_with?(".") }.empty?
+
+  path
+end
+
+# Release notes for a TEST build (TestFlight): the message of the commit the
+# build was created for, so testers/operators see exactly what changed. A short
+# `commit: <sha>` trailer is appended so the originating commit is recoverable
+# even if the matching `build-<N>` git tag is ever lost. Falls back to the SHA
+# alone if git output is unavailable. `max_length` guards against store limits
+# (App Store "What to Test" caps at 4000 chars). NOTE: production "What's new"
+# is NOT this — it's the fixed copy in the private metadata repo.
+def build_commit_changelog(max_length: nil)
+  sha = ENV.fetch("GITHUB_SHA") { `git rev-parse HEAD`.strip }
+  message = `git log -1 --format=%B #{Shellwords.escape(sha)} 2>/dev/null`.strip
+  message = `git log -1 --format=%B 2>/dev/null`.strip if message.empty?
+  short_sha = sha[0, 7]
+  text = message.empty? ? "commit: #{short_sha}" : "#{message}\n\ncommit: #{short_sha}"
+  text = "#{text[0, max_length - 1].rstrip}…" if max_length && text.length > max_length
+  text
 end
 
 platform :ios do
@@ -142,16 +179,15 @@ platform :ios do
       output_name: "Runner.ipa"
     )
 
-    # Upload to TestFlight. Embed the short commit SHA in the TestFlight
-    # "What to Test" notes so it survives even if the matching `build-<N>`
-    # git tag is ever lost — operators can recover the originating commit by
-    # opening the build in App Store Connect.
-    short_sha = ENV.fetch("GITHUB_SHA", `git rev-parse HEAD`.strip)[0, 7]
+    # Upload to TestFlight. The "What to Test" notes are the build commit's
+    # message (with a `commit: <sha>` trailer for recoverability if the matching
+    # `build-<N>` git tag is ever lost). This is the TEST changelog only —
+    # production "What's new" is the fixed copy in the private metadata repo.
     upload_to_testflight(
       api_key: api_key,
       skip_waiting_for_build_processing: true,
       wait_for_uploaded_build: false,
-      changelog: "Build #{new_build_number} (v#{version}) commit=#{short_sha}"
+      changelog: build_commit_changelog(max_length: 4000)
     )
 
     # Write build info for CI summary
@@ -182,11 +218,54 @@ platform :ios do
     UI.message("Submitting iOS build #{build_number} (v#{version}) to #{track}")
 
     if track == "production"
-      # Submit the already-uploaded TestFlight build for App Store review.
-      # `skip_binary_upload: true` + `build_number:` tells deliver to pick
-      # the existing build instead of expecting a local IPA.
-      # `automatic_release: false` so the human approves the actual release
-      # to the App Store after Apple's review completes.
+      # Optional App Store listing metadata, cloned from the private metadata
+      # repo by CI only when the submission was dispatched with
+      # upload_metadata=true. Everything present in the cloned tree is uploaded:
+      # text from IOS_METADATA_PATH, plus screenshots from IOS_SCREENSHOTS_PATH
+      # when that tree exists. Both resolve to nil when the repo wasn't cloned,
+      # making the upload a no-op (preserving pre-feature behavior). NOTE:
+      # uploading screenshots can hard-fail on a screen size deliver doesn't yet
+      # recognize — but that happens in pass 1 below, before submission, so the
+      # already-uploaded build is never affected.
+      metadata_dir = metadata_dir_from_env("IOS_METADATA_PATH")
+      screenshots_dir = metadata_dir_from_env("IOS_SCREENSHOTS_PATH")
+
+      # Pass 1 — metadata only, NO submission. deliver uploads metadata and
+      # submits for review in two separate API calls, so we separate them too:
+      # a metadata error here fails BEFORE the build is attached/submitted and
+      # therefore can never orphan a half-submitted version. The already-
+      # uploaded TestFlight binary is never touched (skip_binary_upload).
+      if metadata_dir || screenshots_dir
+        UI.message(
+          "Uploading App Store metadata" \
+          "#{metadata_dir ? " from #{metadata_dir}" : ''}" \
+          "#{screenshots_dir ? " (+ screenshots from #{screenshots_dir})" : ''}"
+        )
+        meta_opts = {
+          api_key: api_key,
+          app_version: version,
+          skip_binary_upload: true,
+          submit_for_review: false,
+          force: true,
+          run_precheck_before_submit: false, # precheck runs in the submit pass
+          skip_metadata: metadata_dir.nil?,
+          skip_screenshots: screenshots_dir.nil?
+        }
+        meta_opts[:metadata_path] = metadata_dir if metadata_dir
+        if screenshots_dir
+          meta_opts[:screenshots_path] = screenshots_dir
+          meta_opts[:overwrite_screenshots] = true # deterministic set in the targeted locales
+        end
+        deliver(meta_opts)
+      end
+
+      # Pass 2 — attach the already-uploaded build and submit for review.
+      # `skip_binary_upload: true` + `build_number:` picks the existing build
+      # instead of expecting a local IPA. `skip_metadata`/`skip_screenshots:
+      # true` because any metadata was already uploaded in pass 1 (or there is
+      # none to upload when no metadata repo is configured). `automatic_release:
+      # false` so a human approves the actual App Store release after Apple's
+      # review completes.
       deliver(
         api_key: api_key,
         build_number: build_number,
