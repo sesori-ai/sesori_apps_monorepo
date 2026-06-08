@@ -195,7 +195,7 @@ void main() {
 
     test("saveUser writes the json-encoded user", () async {
       // given
-      const testUser = AuthUser(id: "user-1", provider: "github", providerUserId: "gh-1", providerUsername: "octocat");
+      const testUser = AuthUser(id: "user-1", provider: AuthProvider.github, providerUserId: "gh-1", providerUsername: "octocat");
       final encoded = jsonEncode(testUser.toJson());
       when(() => mockStorage.write(key: "auth_user", value: encoded)).thenAnswer((_) async {
         return;
@@ -223,7 +223,7 @@ void main() {
 
     test("getUser parses the stored user", () async {
       // given
-      const testUser = AuthUser(id: "user-1", provider: "github", providerUserId: "gh-1", providerUsername: "octocat");
+      const testUser = AuthUser(id: "user-1", provider: AuthProvider.github, providerUserId: "gh-1", providerUsername: "octocat");
       when(() => mockStorage.read(key: "auth_user")).thenAnswer((_) async => jsonEncode(testUser.toJson()));
 
       // when

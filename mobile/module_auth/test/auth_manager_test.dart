@@ -21,7 +21,7 @@ void main() {
   setUpAll(() {
     registerFallbackValue(Uri.parse("https://example.com"));
     registerFallbackValue(AuthProvider.github);
-    registerFallbackValue(const AuthUser(id: "", provider: "", providerUserId: "", providerUsername: null));
+    registerFallbackValue(const AuthUser(id: "", provider: AuthProvider.github, providerUserId: "", providerUsername: null));
   });
 
   late MockHttpClient mockHttpClient;
@@ -436,7 +436,7 @@ void main() {
             "refreshToken": "oauth-refresh-token",
             "user": {
               "id": user.id,
-              "provider": user.provider,
+              "provider": user.provider.key,
               "providerUserId": user.providerUserId,
               "providerUsername": user.providerUsername,
             },
@@ -908,7 +908,7 @@ void main() {
           jsonEncode({
             "user": {
               "id": user.id,
-              "provider": user.provider,
+              "provider": user.provider.key,
               "providerUserId": user.providerUserId,
               "providerUsername": user.providerUsername,
             },
@@ -938,7 +938,7 @@ void main() {
           jsonEncode({
             "user": {
               "id": user.id,
-              "provider": user.provider,
+              "provider": user.provider.key,
               "providerUserId": user.providerUserId,
               "providerUsername": user.providerUsername,
             },

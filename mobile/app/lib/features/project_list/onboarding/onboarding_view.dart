@@ -279,12 +279,12 @@ class _AccountLine extends StatelessWidget {
       initialData: authSession.currentState,
       builder: (context, snapshot) {
         final authState = snapshot.data ?? authSession.currentState;
-        final (String? account, String? provider) = switch (authState) {
+        final (String? account, AuthProvider? provider) = switch (authState) {
           AuthAuthenticated(:final user) => (user.providerUsername, user.provider),
           AuthInitial() || AuthUnauthenticated() || AuthAuthenticating() || AuthFailed() => (null, null),
         };
 
-        if (account != null && account.isNotEmpty && provider != null && provider.isNotEmpty) {
+        if (account != null && account.isNotEmpty && provider != null) {
           return Text.rich(
             TextSpan(
               style: baseStyle,
@@ -294,7 +294,7 @@ class _AccountLine extends StatelessWidget {
                   text: account,
                   style: baseStyle.copyWith(color: colors.textPrimary),
                 ),
-                TextSpan(text: loc.projectsOnboardingAccountSuffix(_providerDisplayName(provider))),
+                TextSpan(text: loc.projectsOnboardingAccountSuffix(provider.label)),
               ],
             ),
           );
@@ -306,21 +306,5 @@ class _AccountLine extends StatelessWidget {
         );
       },
     );
-  }
-
-  /// Canonical, brand-correct display names for known auth providers. Naive
-  /// first-letter capitalisation would render e.g. "Github" instead of "GitHub".
-  static const _providerDisplayNames = {
-    "google": "Google",
-    "github": "GitHub",
-    "apple": "Apple",
-    "openai": "OpenAI",
-    "anthropic": "Anthropic",
-  };
-
-  static String _providerDisplayName(String provider) {
-    final mapped = _providerDisplayNames[provider.toLowerCase()];
-    if (mapped != null) return mapped;
-    return provider.isEmpty ? provider : "${provider[0].toUpperCase()}${provider.substring(1)}";
   }
 }
