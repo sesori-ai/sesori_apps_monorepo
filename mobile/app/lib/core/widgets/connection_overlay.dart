@@ -49,7 +49,7 @@ class _ConnectionOverlayBody extends StatelessWidget {
         child,
 
         // Non-blocking bridge offline banner — user can still view the app.
-        if (isBridgeOffline)
+        if (!isBridgeOffline)
           const Positioned(
             top: 0,
             left: 0,
@@ -121,41 +121,15 @@ class _BridgeOfflineBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
     final loc = context.loc;
 
-    return Material(
-      elevation: 2,
-      color: Colors.orange.shade800,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Row(
-          children: [
-            const Icon(Icons.cloud_off_rounded, color: Colors.white, size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: .start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    loc.bridgeOfflineTitle,
-                    style: zyra.textTheme.textXs.medium.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    loc.bridgeOfflineMessage,
-                    style: zyra.textTheme.textXs.regular.copyWith(
-                      color: Colors.white70,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+    return ZyraInlineBanner(
+      title: loc.bridgeOfflineTitle,
+      icon: TablerOutline.wifi,
+      action: ZyraInlineBannerAction(
+        label: loc.connectionLostReconnect,
+        icon: TablerOutline.rotate_clockwise,
+        onPressed: () => context.read<ConnectionOverlayCubit>().reconnect(),
       ),
     );
   }

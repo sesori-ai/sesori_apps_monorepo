@@ -48,15 +48,33 @@ enum ZyraButtonsSolidHierarchy {
   link,
 }
 
+/// Colour tone for [ZyraButtonsSolid] — the colour family applied within the
+/// chosen [ZyraButtonsSolidHierarchy].
+enum ZyraButtonsSolidTone {
+  /// Brand blue — the default.
+  brand,
+
+  /// Error red — maps to the Figma `zyraButtonsDestructiveSolid` component.
+  destructive,
+
+  /// Warning amber. Only valid with [ZyraButtonsSolidHierarchy.primary] — the
+  /// only warning solid the Figma library exposes (an instance fill override on
+  /// `zyraButtonsSolid`). Mirrors the destructive primary treatment with
+  /// `bg-warning-solid` as the fill.
+  warning,
+}
+
 /// A solid-style button matching the Figma `zyraButtonsSolid` component.
 ///
 /// Supports all four [ZyraButtonsSolidHierarchy] values, all four
-/// [ZyraButtonsSolidSize] values, a `destructive` flag, icon-only mode,
-/// loading state, and disabled state.
+/// [ZyraButtonsSolidSize] values, the [ZyraButtonsSolidTone] colour families,
+/// icon-only mode, loading state, and disabled state.
 ///
-/// The `destructive` flag maps to the Figma `zyraButtonsDestructiveSolid`
-/// component — it is identical to the regular solid button except that
-/// error colour tokens replace brand colour tokens.
+/// [ZyraButtonsSolidTone.destructive] maps to the Figma
+/// `zyraButtonsDestructiveSolid` component — identical to the brand solid button
+/// except that error colour tokens replace brand colour tokens.
+/// [ZyraButtonsSolidTone.warning] keeps that treatment with the warning fill and
+/// is only valid for the [ZyraButtonsSolidHierarchy.primary] hierarchy.
 ///
 /// Hover and press overlays are handled by [ZyraTappable] using alpha-blended
 /// tokens (`bgPrimaryHover`, `bgPrimaryPressed`, etc.) that layer on top of
@@ -77,7 +95,7 @@ enum ZyraButtonsSolidHierarchy {
 ///   label: 'Delete',
 ///   hierarchy: ZyraButtonsSolidHierarchy.primary,
 ///   size: ZyraButtonsSolidSize.md,
-///   destructive: true,
+///   tone: ZyraButtonsSolidTone.destructive,
 ///   onPressed: () {},
 /// )
 /// ```
@@ -91,11 +109,15 @@ class ZyraButtonsSolid extends StatefulWidget {
     this.leadingIcon,
     this.trailingIcon,
     this.isLoading = false,
-    this.destructive = false,
+    this.tone = ZyraButtonsSolidTone.brand,
     this.fullWidth = false,
   }) : assert(
-         hierarchy != ZyraButtonsSolidHierarchy.primaryAlt || !destructive,
-         'destructive=true is not supported for primaryAlt — Figma does not define this variant.',
+         hierarchy != ZyraButtonsSolidHierarchy.primaryAlt || tone == ZyraButtonsSolidTone.brand,
+         'primaryAlt only supports the brand tone — Figma defines no destructive/warning variant for it.',
+       ),
+       assert(
+         tone != ZyraButtonsSolidTone.warning || hierarchy == ZyraButtonsSolidHierarchy.primary,
+         'The warning tone is only defined for the primary hierarchy.',
        ),
        iconOnly = false;
 
@@ -107,10 +129,14 @@ class ZyraButtonsSolid extends StatefulWidget {
     required this.size,
     required this.onPressed,
     this.isLoading = false,
-    this.destructive = false,
+    this.tone = ZyraButtonsSolidTone.brand,
   }) : assert(
-         hierarchy != ZyraButtonsSolidHierarchy.primaryAlt || !destructive,
-         'destructive=true is not supported for primaryAlt — Figma does not define this variant.',
+         hierarchy != ZyraButtonsSolidHierarchy.primaryAlt || tone == ZyraButtonsSolidTone.brand,
+         'primaryAlt only supports the brand tone — Figma defines no destructive/warning variant for it.',
+       ),
+       assert(
+         tone != ZyraButtonsSolidTone.warning || hierarchy == ZyraButtonsSolidHierarchy.primary,
+         'The warning tone is only defined for the primary hierarchy.',
        ),
        iconOnly = true,
        fullWidth = false,
@@ -141,9 +167,13 @@ class ZyraButtonsSolid extends StatefulWidget {
   /// even if [onPressed] is non-null.
   final bool isLoading;
 
-  /// When `true`, error colour tokens are used instead of brand colour tokens,
-  /// matching the Figma `zyraButtonsDestructiveSolid` component.
-  final bool destructive;
+  /// Colour family for the button. Defaults to [ZyraButtonsSolidTone.brand].
+  ///
+  /// [ZyraButtonsSolidTone.destructive] swaps brand tokens for error tokens (the
+  /// Figma `zyraButtonsDestructiveSolid` component); [ZyraButtonsSolidTone.warning]
+  /// keeps that treatment with the warning fill and is only valid with the
+  /// [ZyraButtonsSolidHierarchy.primary] hierarchy.
+  final ZyraButtonsSolidTone tone;
 
   /// Whether the button renders in icon-only mode (square, no label).
   final bool iconOnly;
@@ -161,6 +191,9 @@ class ZyraButtonsSolid extends StatefulWidget {
 
 class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
   bool _isFocused = false;
+
+  bool get _isDestructive => widget.tone == ZyraButtonsSolidTone.destructive;
+  bool get _isWarning => widget.tone == ZyraButtonsSolidTone.warning;
 
   @override
   Widget build(BuildContext context) {
@@ -206,8 +239,7 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
           final showSkeuomorphicOverlay = switch (widget.hierarchy) {
             ZyraButtonsSolidHierarchy.primary ||
             ZyraButtonsSolidHierarchy.primaryAlt => !_isFocused && (!isDisabled || widget.isLoading),
-            ZyraButtonsSolidHierarchy.secondary =>
-              widget.destructive ? ((!isHovered && !isPressed) || isDisabled) : true,
+            ZyraButtonsSolidHierarchy.secondary => _isDestructive ? ((!isHovered && !isPressed) || isDisabled) : true,
             ZyraButtonsSolidHierarchy.tertiary || ZyraButtonsSolidHierarchy.link => false,
           };
           final skeuomorphicBottomColor = _isFocused && widget.hierarchy == ZyraButtonsSolidHierarchy.secondary
@@ -331,12 +363,14 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
   /// Link: transparent — no hover background.
   Color _resolveHoverOverlayColor({required ZyraColors colors}) {
     return switch (widget.hierarchy) {
-      ZyraButtonsSolidHierarchy.primary => widget.destructive ? colors.bgDestructiveHover : colors.bgBrandHover,
+      // Warning reuses the destructive darken overlay (gray-alpha, tone-neutral).
+      ZyraButtonsSolidHierarchy.primary =>
+        (_isDestructive || _isWarning) ? colors.bgDestructiveHover : colors.bgBrandHover,
       // Primary Alt uses a translucent alpha overlay (alpha-white-10) that darkens
       // in light mode and lightens in dark mode — Figma does not define dedicated
       // hover/press background tokens for this hierarchy.
       ZyraButtonsSolidHierarchy.primaryAlt => colors.alphaWhite10,
-      ZyraButtonsSolidHierarchy.secondary => widget.destructive ? Colors.transparent : colors.bgGrayHover,
+      ZyraButtonsSolidHierarchy.secondary => _isDestructive ? Colors.transparent : colors.bgGrayHover,
       ZyraButtonsSolidHierarchy.tertiary || ZyraButtonsSolidHierarchy.link => Colors.transparent,
     };
   }
@@ -350,10 +384,11 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
   /// Link: transparent — no press background.
   Color _resolvePressOverlayColor({required ZyraColors colors}) {
     return switch (widget.hierarchy) {
-      ZyraButtonsSolidHierarchy.primary => widget.destructive ? colors.bgDestructivePressed : colors.bgBrandPressed,
+      ZyraButtonsSolidHierarchy.primary =>
+        (_isDestructive || _isWarning) ? colors.bgDestructivePressed : colors.bgBrandPressed,
       // Stronger alpha overlay on press for Primary Alt (alpha-white-20).
       ZyraButtonsSolidHierarchy.primaryAlt => colors.alphaWhite20,
-      ZyraButtonsSolidHierarchy.secondary => widget.destructive ? Colors.transparent : colors.bgGrayPressed,
+      ZyraButtonsSolidHierarchy.secondary => _isDestructive ? Colors.transparent : colors.bgGrayPressed,
       // Tertiary: bg handles pressed state directly (no overlay needed).
       ZyraButtonsSolidHierarchy.tertiary || ZyraButtonsSolidHierarchy.link => Colors.transparent,
     };
@@ -415,11 +450,15 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
   }
 
   Color _primaryBgColor({required ZyraColors colors, required bool isEnabled}) {
-    // Disabled: bg-disabled (same for both regular and destructive).
+    // Disabled: bg-disabled (shared across all tones).
     if (!isEnabled) return colors.bgDisabled;
     // Enabled, hover, and loading all use the same base bg.
-    // Hover/press darkening is handled by ZyraTappable overlay.
-    return widget.destructive ? colors.bgErrorSolid : colors.bgBrandSolid;
+    // Hover/press darkening is handled by the ZyraTappable overlay.
+    return switch (widget.tone) {
+      ZyraButtonsSolidTone.brand => colors.bgBrandSolid,
+      ZyraButtonsSolidTone.destructive => colors.bgErrorSolid,
+      ZyraButtonsSolidTone.warning => colors.bgWarningSolid,
+    };
   }
 
   Color _primaryAltBgColor({required ZyraColors colors, required bool isEnabled}) {
@@ -444,7 +483,7 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
       return colors.bgDisabled;
     }
 
-    if (widget.destructive) {
+    if (_isDestructive) {
       // Destructive secondary: pressed and hover use opaque bg colours directly
       // (no overlay). isPressed takes priority over isHovered.
       if (isPressed) return colors.bgDestructivePressedAlt;
@@ -469,7 +508,7 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
     // Focused tertiary uses bg-primary (white) as a base.
     if (_isFocused) return colors.bgPrimary;
 
-    if (widget.destructive) {
+    if (_isDestructive) {
       // Destructive tertiary: pressed and hover use opaque bg colours directly
       // (no overlay). isPressed takes priority over isHovered.
       if (isPressed) return colors.bgDestructivePressedAlt;
@@ -493,7 +532,7 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
     // Link has no bg at rest or on hover. On press, use the same bg as tertiary
     // for consistent tap feedback across platforms (especially Android).
     if (!isPressed || !isEnabled) return Colors.transparent;
-    return widget.destructive ? colors.bgDestructivePressedAlt : colors.bgGrayPressed;
+    return _isDestructive ? colors.bgDestructivePressedAlt : colors.bgGrayPressed;
   }
 
   Border? _resolveBorder({required ZyraColors colors, required Set<WidgetState> state}) {
@@ -502,7 +541,7 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
     if (isDisabled && !widget.isLoading) {
       return switch (widget.hierarchy) {
         ZyraButtonsSolidHierarchy.primary =>
-          widget.destructive
+          _isDestructive
               // Destructive primary disabled: fg-disabled_subtle border.
               ? Border.all(color: colors.fgDisabledSubtle, width: 1)
               // Regular primary disabled: border-disabled.
@@ -511,7 +550,7 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
         // No destructive variant exists for primaryAlt.
         ZyraButtonsSolidHierarchy.primaryAlt => Border.all(color: colors.borderDisabled, width: 1),
         ZyraButtonsSolidHierarchy.secondary =>
-          widget.destructive
+          _isDestructive
               // Destructive secondary disabled: border-disabled_subtle.
               ? Border.all(color: colors.borderDisabledSubtle, width: 1)
               // Regular secondary disabled: border-disabled_subtle.
@@ -530,7 +569,7 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
         width: 2,
       ),
       ZyraButtonsSolidHierarchy.secondary =>
-        widget.destructive
+        _isDestructive
             // Destructive secondary: border-error_subtle for all active states.
             ? Border.all(color: colors.borderErrorSubtle, width: 1)
             // Regular secondary: border-primary on hover/focused; border-secondary at rest.
@@ -545,7 +584,9 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
   }
 
   List<BoxShadow>? _resolveBoxShadows({required ZyraColors colors, required Set<WidgetState> state}) {
-    final focusRingColor = widget.destructive ? colors.focusRingError : colors.focusRing;
+    // Warning has no dedicated focus-ring token, so it uses the neutral brand
+    // ring (the ring conveys keyboard focus, not semantic colour).
+    final focusRingColor = _isDestructive ? colors.focusRingError : colors.focusRing;
 
     // Tertiary and link: 2-layer focus ring only when focused; no drop shadow ever.
     if (widget.hierarchy == ZyraButtonsSolidHierarchy.tertiary || widget.hierarchy == ZyraButtonsSolidHierarchy.link) {
@@ -611,7 +652,7 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
       };
     }
 
-    if (widget.destructive) {
+    if (_isDestructive) {
       return switch (widget.hierarchy) {
         // Destructive primary: always text-white.
         ZyraButtonsSolidHierarchy.primary => colors.textWhite,
@@ -652,7 +693,7 @@ class _ZyraButtonsSolidState extends State<ZyraButtonsSolid> {
       };
     }
 
-    if (widget.destructive) {
+    if (_isDestructive) {
       return switch (widget.hierarchy) {
         ZyraButtonsSolidHierarchy.primary => colors.textWhite,
         // Unreachable — assertion in constructor blocks primaryAlt + destructive.
