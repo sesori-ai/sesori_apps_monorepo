@@ -27,10 +27,7 @@ PluginProvidersResult mapProviderResponse({
             isAvailable: _isModelAvailable(
               status: _parseProviderModelStatus(rawStatus: m.status, modelId: m.id),
             ),
-            releaseDate: switch (m.releaseDate) {
-              final dateStr? => DateTime.tryParse(dateStr),
-              null => null,
-            },
+            releaseDate: _parseReleaseDate(m.releaseDate),
           ),
         )
         .toList();
@@ -60,6 +57,22 @@ _ProviderModelStatus _parseProviderModelStatus({
       return _ProviderModelStatus.unknown;
     }(),
   };
+}
+
+/// Parses a `release_date` string from models.dev into a [DateTime].
+///
+/// Dart's [DateTime.tryParse] only accepts `YYYY-MM-DD` (and full ISO 8601);
+/// models.dev emits the shorter `YYYY-MM` form for some providers (e.g.
+/// `kimi-for-coding`, where `release_date` is `2025-11` rather than
+/// `2025-11-01`). Without the `YYYY-MM-01` fallback, every model in those
+/// providers gets a `null` `releaseDate`, which makes any date-based
+/// downstream filter (e.g. the mobile model picker's "newest in family"
+/// default) fall back to iteration order — and on `kimi-for-coding` that
+/// surfaced the oldest model ("Kimi K2 Thinking") instead of the newest
+/// ("Kimi K2.6").
+DateTime? _parseReleaseDate(String? dateStr) {
+  if (dateStr == null) return null;
+  return DateTime.tryParse(dateStr) ?? DateTime.tryParse("$dateStr-01");
 }
 
 bool _isModelAvailable({required _ProviderModelStatus status}) {

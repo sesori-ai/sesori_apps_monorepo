@@ -89,3 +89,4 @@ export "src/services/session_detail_load_service.dart";
 // Utils
 export "src/utils/diff/diff_engine.dart";
 export "src/utils/diff/language_detector.dart";
+export "src/utils/model_filter/default_model_selector.dart";

@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart" show DefaultModelSelector;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_zyra/module_zyra.dart";
 
@@ -67,6 +68,8 @@ class ModelPickerSheet extends StatefulWidget {
 class _ModelPickerSheetState extends State<ModelPickerSheet> {
   String _query = "";
 
+  static const _defaultModelSelector = DefaultModelSelector();
+
   late final _sortedProviders = widget.providers.toList()..sort((a, b) => a.name.compareTo(b.name));
 
   bool _matchesQuery({required ProviderModel model, required String providerName}) {
@@ -79,9 +82,14 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
   }
 
   /// Builds the set of model IDs that should be visible by default.
+  ///
+  /// For each family of available models we pick a single representative
+  /// (the user can always reveal the rest by typing in the search field).
+  /// The selection priority lives in [DefaultModelSelector] — same priority
+  /// used by the cubits that pick the initial model when no prior
+  /// selection exists — so the picker's "default per family" matches the
+  /// cubit's "default for the whole provider".
   Set<String> _defaultVisibleIds(ProviderInfo provider) {
-    final now = DateTime.now();
-    final cutoff = DateTime(now.year, now.month - 6, now.day);
     final visible = <String>{};
 
     // Group available models by family.
@@ -93,19 +101,11 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
     }
 
     for (final group in byFamily.values) {
-      group.sort((a, b) {
-        final dateA = a.releaseDate;
-        final dateB = b.releaseDate;
-        if (dateB == null && dateA == null) return 0;
-        if (dateB == null) return -1;
-        if (dateA == null) return 1;
-        return dateB.compareTo(dateA);
-      });
-      final newest = group.first;
-      final date = newest.releaseDate;
-      if (date == null || date.isAfter(cutoff)) {
-        visible.add(newest.id);
-      }
+      final chosen = _defaultModelSelector.pickFromFamily(
+        group: group,
+        defaultModelId: provider.defaultModelID,
+      );
+      if (chosen != null) visible.add(chosen.id);
     }
 
     if (provider.id == widget.selectedProviderID) {
