@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "shellwords"
+
 default_platform(:ios)
 
 # Returns the highest build number among the 25 most recently uploaded builds
@@ -66,8 +68,8 @@ end
 # (App Store "What to Test" caps at 4000 chars). NOTE: production "What's new"
 # is NOT this — it's the fixed copy in the private metadata repo.
 def build_commit_changelog(max_length: nil)
-  sha = ENV.fetch("GITHUB_SHA", `git rev-parse HEAD`.strip)
-  message = `git log -1 --format=%B #{sha} 2>/dev/null`.strip
+  sha = ENV.fetch("GITHUB_SHA") { `git rev-parse HEAD`.strip }
+  message = `git log -1 --format=%B #{Shellwords.escape(sha)} 2>/dev/null`.strip
   message = `git log -1 --format=%B 2>/dev/null`.strip if message.empty?
   short_sha = sha[0, 7]
   text = message.empty? ? "commit: #{short_sha}" : "#{message}\n\ncommit: #{short_sha}"
