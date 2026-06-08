@@ -25,9 +25,6 @@ const double _kGlassFrostIntensity = 5.5;
 /// Light reflection intensity along the glass edge.
 const double _kGlassLightIntensity = 0.5;
 
-/// Alpha applied to the glass colour overlay tint.
-const double _kGlassColorAlpha = 0.3;
-
 /// Saturation boost applied to whatever is refracted behind the glass.
 const double _kGlassSaturation = 1.8;
 
