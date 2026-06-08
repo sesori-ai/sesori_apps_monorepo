@@ -3,8 +3,8 @@ part of "../project_list_screen.dart";
 // Asset paths for the "connect your computer" onboarding illustration.
 // The aurora backdrop and laptop each ship light/dark variants, picked by the
 // active Zyra brightness in build(); the remaining assets are theme-agnostic.
-const _kAuroraDarkAsset = "assets/images/projects_onboarding/aurora_bg-dark.png";
-const _kAuroraLightAsset = "assets/images/projects_onboarding/aurora_bg-light.png";
+const _kAuroraDarkAsset = "assets/images/projects_onboarding/aurora_bg-dark.jpeg";
+const _kAuroraLightAsset = "assets/images/projects_onboarding/aurora_bg-light.jpeg";
 const _kSignalArcsAsset = "assets/images/projects_onboarding/signal_arcs.svg";
 const _kFireflyDotsAsset = "assets/images/projects_onboarding/firefly_dots.svg";
 const _kLaptopDarkAsset = "assets/images/projects_onboarding/laptop-dark.svg";
