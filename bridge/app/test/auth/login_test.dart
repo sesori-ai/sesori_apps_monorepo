@@ -25,7 +25,7 @@ void main() {
               refreshToken: 'github-refresh-token',
               user: AuthUser(
                 id: 'user-1',
-                provider: 'github',
+                provider: AuthProvider.github,
                 providerUserId: 'gh-1',
                 providerUsername: 'octocat',
               ),
@@ -95,7 +95,7 @@ void main() {
               refreshToken: 'google-refresh-token',
               user: AuthUser(
                 id: 'user-1',
-                provider: 'google',
+                provider: AuthProvider.google,
                 providerUserId: 'google-1',
                 providerUsername: null,
               ),
@@ -326,7 +326,7 @@ class _MockLoginEmailApi implements LoginEmailApi {
         refreshToken: 'test-refresh-token',
         user: AuthUser(
           id: 'user-1',
-          provider: 'email',
+          provider: AuthProvider.email,
           providerUserId: 'user-1',
           providerUsername: 'testuser',
         ),
@@ -341,7 +341,7 @@ class _MockLoginEmailApi implements LoginEmailApi {
     AuthResponse(
       accessToken: '',
       refreshToken: '',
-      user: AuthUser(id: '', provider: '', providerUserId: '', providerUsername: null),
+      user: AuthUser(id: '', provider: AuthProvider.email, providerUserId: '', providerUsername: null),
     ),
     401,
   );
@@ -350,7 +350,7 @@ class _MockLoginEmailApi implements LoginEmailApi {
     AuthResponse(
       accessToken: '',
       refreshToken: '',
-      user: AuthUser(id: '', provider: '', providerUserId: '', providerUsername: null),
+      user: AuthUser(id: '', provider: AuthProvider.email, providerUserId: '', providerUsername: null),
     ),
     429,
   );
@@ -361,7 +361,7 @@ class _MockLoginEmailApi implements LoginEmailApi {
       refreshToken: '',
       user: AuthUser(
         id: 'user-1',
-        provider: 'email',
+        provider: AuthProvider.email,
         providerUserId: 'user-1',
         providerUsername: 'testuser',
       ),
