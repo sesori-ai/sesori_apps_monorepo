@@ -1,28 +1,32 @@
 type: http_request
 model: http_request
-id: rq_vqVFwSgfCP
-createdAt: 2026-03-24T12:39:53.285069
-updatedAt: 2026-06-08T13:33:17.459810
+id: rq_H2gnycrQ33
+createdAt: 2026-06-08T13:32:58.971652
+updatedAt: 2026-06-08T13:34:19.259893
 workspaceId: wk_rSi2KDTVqo
-folderId: null
+folderId: fl_sGi6kPYfcy
 authentication: {}
 authenticationType: null
-body: {}
-bodyType: null
+body:
+  text: |-
+    {
+      "projectId": "${[ project_id ]}"
+    }
+bodyType: application/json
 description: ''
 headers:
 - enabled: true
-  name: x-project-id
-  value: ${[ project_id ]}
-  id: EIqfjEaXNX
-- enabled: true
   name: ''
   value: ''
-  id: ve7GWShwjG
-method: GET
-name: All Sessions Status
-sortPriority: 4000.0
-url: ${[ url ]}/session/status
+  id: Vvzj8kX6z9
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: wqwzssCee8
+method: POST
+name: Providers List
+sortPriority: 0.0
+url: ${[ url ]}/provider
 urlParameters: []
 settingSendCookies:
   enabled: false
