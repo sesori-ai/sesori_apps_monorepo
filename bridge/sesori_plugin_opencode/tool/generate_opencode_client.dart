@@ -386,8 +386,32 @@ class Codegen {
     final modelsDir = Directory('$outDir/models/openapi');
     modelsDir.createSync(recursive: true);
 
+    // Skip undotted schemas that have a dotted equivalent with the same
+    // normalized filename (e.g. `EventTuiCommandExecute` and
+    // `Event.tui.command.execute` both become `event_tui_command_execute`).
+    // The dotted variant is the canonical one (it appears in the Event
+    // union); the undotted one is a duplicate that would create a
+    // second model family.
+    final skipSchemas = <String>{};
+    for (final name in schemas.keys) {
+      if (name.contains('.')) continue;
+      final fileName = _snakeFromCamel(name);
+      for (final other in schemas.keys) {
+        if (other == name) continue;
+        final otherFile = _snakeFromCamel(other).replaceAll('.', '_');
+        if (other.contains('.') && otherFile == fileName) {
+          skipSchemas.add(name);
+          break;
+        }
+      }
+    }
+
     final sortedSchemas = schemas.keys.toList()..sort();
     for (final name in sortedSchemas) {
+      if (skipSchemas.contains(name)) {
+        log('SKIP $name (dotted equivalent exists)');
+        continue;
+      }
       final schema = schemas[name] as Map<String, dynamic>;
       _writeModelFile(name, schema);
       log('model $name');
@@ -1032,6 +1056,7 @@ class ModelWriter {
   final String rawName;
   final Map<String, dynamic> schema;
   final Map<String, dynamic> schemas;
+
   /// If this schema is a variant of a union, the name of the union class it
   /// implements.
   final String? implementsClass;
@@ -1521,9 +1546,12 @@ class ModelWriter {
         b.writeln('    return $className(value: json);');
         b.writeln('  }');
         b.writeln('  @override');
-        b.writeln('  Map<String, dynamic> toJson() {');
-        b.writeln("    return <String, dynamic>{ 'value': value };");
-        b.writeln('  }');
+        // String shorthand variant — the JSON shape is the scalar
+        // string itself, not a wrapped map. Returning the scalar keeps
+        // a read-modify-write round-trip identical to the original
+        // server payload (e.g. 'ref: "abc"' stays 'ref: "abc"',
+        // not 'ref: {"value": "abc"}').
+        b.writeln('  dynamic toJson() => value;');
         b.writeln('  final String value;');
         b.writeln('}');
       }
