@@ -4,11 +4,13 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/session/session_service.dart";
+import "../../utils/model_filter/default_model_selector.dart";
 import "new_session_state.dart";
 
 class NewSessionCubit extends Cubit<NewSessionState> {
   final SessionService _sessionService;
   final String _projectId;
+  static const _defaultModelSelector = DefaultModelSelector();
 
   NewSessionCubit({
     required SessionService sessionService,
@@ -64,15 +66,19 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         defaultAgentModel = agentModel;
       } else if (providers.isNotEmpty) {
         final firstProvider = providers.first;
-        final defaultModelID = firstProvider.defaultModelID;
-        final modelID = defaultModelID != null && firstProvider.models.containsKey(defaultModelID)
-            ? defaultModelID
-            : firstProvider.models.values.first.id;
-        defaultAgentModel = AgentModel(
-          providerID: firstProvider.id,
-          modelID: modelID,
-          variant: null,
+        final picked = _defaultModelSelector.pickFromProvider(
+          models: firstProvider.models,
+          defaultModelId: firstProvider.defaultModelID,
         );
+        if (picked != null) {
+          defaultAgentModel = AgentModel(
+            providerID: firstProvider.id,
+            modelID: picked.id,
+            variant: null,
+          );
+        } else {
+          defaultAgentModel = null;
+        }
       } else {
         defaultAgentModel = null;
       }
