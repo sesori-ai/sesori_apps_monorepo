@@ -198,7 +198,7 @@ class _ErrorView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              _describeError(loc: loc, error: error),
+              error.localizedMessage(loc),
               textAlign: .center,
             ),
             const SizedBox(height: 24),
@@ -212,19 +212,4 @@ class _ErrorView extends StatelessWidget {
       ),
     );
   }
-
-  String _describeError({required AppLocalizations loc, required ApiError error}) => switch (error) {
-    NotAuthenticatedError() => loc.apiErrorNotAuthenticated,
-    NonSuccessCodeError(:final errorCode, :final rawErrorString) =>
-      rawErrorString != null
-          ? loc.connectErrorNonSuccessCodeWithBody(
-              errorCode,
-              rawErrorString,
-            )
-          : loc.connectErrorNonSuccessCode(errorCode),
-    DartHttpClientError(:final innerError) => loc.connectErrorConnectionFailed(innerError.toString()),
-    JsonParsingError() => loc.connectErrorUnexpectedFormat,
-    EmptyResponseError() => loc.connectErrorUnexpectedFormat,
-    GenericError() => loc.connectErrorUnknown,
-  };
 }

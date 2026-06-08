@@ -184,6 +184,9 @@ class FakeAuthSession implements AuthSession {
   Future<bool> restoreSession() async => false;
 
   @override
+  Future<bool> restoreLocalSession() async => false;
+
+  @override
   Future<AuthUser> loginWithEmail({required String email, required String password}) async {
     throw UnimplementedError();
   }

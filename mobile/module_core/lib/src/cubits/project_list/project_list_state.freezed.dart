@@ -231,4 +231,36 @@ $ApiErrorCopyWith<$Res> get error {
 }
 }
 
+/// @nodoc
+
+
+class ProjectListBridgeDisconnected implements ProjectListState {
+  const ProjectListBridgeDisconnected();
+  
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListBridgeDisconnected);
+}
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'ProjectListState.bridgeDisconnected()';
+}
+
+
+}
+
+
+
+
 // dart format on

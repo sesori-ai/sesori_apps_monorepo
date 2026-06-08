@@ -127,18 +127,46 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     }
   }
 
+  /// Whether the bridge (the user's computer) is currently unreachable, in
+  /// which case there are no projects to show and the onboarding is surfaced.
+  /// `ConnectionLost` is excluded — it has its own app-wide reconnect overlay.
+  bool get _isBridgeUnavailable => switch (_connectionService.currentStatus) {
+    ConnectionDisconnected() || ConnectionBridgeOffline() => true,
+    ConnectionConnected() || ConnectionReconnecting() || ConnectionLost() => false,
+  };
+
   void _onConnectionStatusChanged(ConnectionStatus status) {
     logd("[ProjectList] connection status: ${status.runtimeType}");
     if (isClosed) return;
-    if (status is ConnectionConnected) {
-      switch (state) {
-        case ProjectListLoaded():
-          unawaited(refreshProjects());
-        case ProjectListFailed():
-          unawaited(loadProjects());
-        case ProjectListLoading():
-          break; // Load already in progress.
-      }
+    switch (status) {
+      case ConnectionConnected():
+        // A reconnect driven by reconnectBridge (the onboarding pull-to-
+        // refresh) already owns the reload. Connecting emits this very
+        // ConnectionConnected transition synchronously, so without this guard
+        // we'd fire a second, non-coalesced fetch and flash a full-screen
+        // loading state over the onboarding. Defer to reconnectBridge.
+        if (_reconnectBridgeInFlight) break;
+        switch (state) {
+          case ProjectListLoaded():
+            unawaited(refreshProjects());
+          case ProjectListFailed():
+          case ProjectListBridgeDisconnected():
+            unawaited(loadProjects());
+          case ProjectListLoading():
+            break; // Load already in progress.
+        }
+      // The user's computer is offline / not yet connected — surface the
+      // onboarding instead of an error or stale list.
+      case ConnectionDisconnected():
+      case ConnectionBridgeOffline():
+        if (state is! ProjectListBridgeDisconnected) {
+          emit(const ProjectListState.bridgeDisconnected());
+        }
+      // Transient states: keep the current UI. ConnectionLost is handled by
+      // the app-wide reconnect overlay; ConnectionReconnecting is brief.
+      case ConnectionReconnecting():
+      case ConnectionLost():
+        break;
     }
   }
 
@@ -166,6 +194,10 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   Future<void> _loadInitialProjects() async {
     await _prepareInitialConnection();
     if (isClosed) return;
+    if (_isBridgeUnavailable) {
+      emit(const ProjectListState.bridgeDisconnected());
+      return;
+    }
     await _fetchProjects();
   }
 
@@ -242,6 +274,47 @@ class ProjectListCubit extends Cubit<ProjectListState> {
           .timeout(const Duration(seconds: 15));
     } on TimeoutException catch (_) {
       // Fall through — fetch will fail gracefully with a user-visible error.
+    }
+  }
+
+  /// True while [reconnectBridge] is re-establishing the connection. The
+  /// connection-status listener ([_onConnectionStatusChanged]) defers its own
+  /// reload to reconnectBridge during this window — see the guard there.
+  bool _reconnectBridgeInFlight = false;
+
+  /// Re-attempts to reach the bridge from the onboarding state (driven by the
+  /// onboarding's pull-to-refresh). Recovery from [ProjectListBridgeDisconnected]
+  /// is otherwise passive — it waits for a [ConnectionConnected] transition that,
+  /// for a never-connected bridge ([ConnectionDisconnected]), may never arrive
+  /// on its own. This actively re-establishes the connection, then reloads.
+  ///
+  /// Does not emit a loading state: the caller (a [RefreshIndicator]) shows its
+  /// own progress, so the onboarding stays visible until a result is known.
+  ///
+  /// [_reconnectBridgeInFlight] is held for the whole method so the
+  /// ConnectionConnected transition emitted while connecting doesn't also drive
+  /// [_onConnectionStatusChanged] into a duplicate (loading-flashing) reload —
+  /// reconnectBridge owns the single, silent fetch below.
+  Future<void> reconnectBridge() async {
+    _reconnectBridgeInFlight = true;
+    try {
+      if (_connectionService.currentStatus is ConnectionDisconnected) {
+        // No active config yet — establish a fresh connection from scratch.
+        await _connectionService.connectWithFreshAuthToken();
+      } else {
+        // An existing config dropped (e.g. bridge offline) — reconnect it.
+        await _reconnectIfNeeded();
+      }
+      if (isClosed) return;
+      if (_isBridgeUnavailable) {
+        if (state is! ProjectListBridgeDisconnected) {
+          emit(const ProjectListState.bridgeDisconnected());
+        }
+        return;
+      }
+      await _fetchProjects();
+    } finally {
+      _reconnectBridgeInFlight = false;
     }
   }
 
@@ -330,6 +403,10 @@ class ProjectListCubit extends Cubit<ProjectListState> {
       case ErrorResponse(:final error):
         if (silent) {
           logw("Failed to refresh projects: ${error.toString()}");
+        } else if (_isBridgeUnavailable) {
+          // The fetch failed because the bridge isn't connected — show the
+          // onboarding rather than a generic error.
+          emit(const ProjectListState.bridgeDisconnected());
         } else {
           emit(ProjectListState.failed(error: error));
         }
