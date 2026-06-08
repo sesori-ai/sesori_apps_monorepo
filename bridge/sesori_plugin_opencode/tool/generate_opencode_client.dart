@@ -1775,6 +1775,12 @@ class ModelWriter {
       if (ap is Map<String, dynamic>) {
         return _emitMapWrapper(b, ap);
       }
+      // Free-form object schema with no explicit additionalProperties
+      // restriction (e.g. JSONSchema). Preserve the raw JSON map rather
+      // than discarding every key in an empty class.
+      if (ap == true || ap == null) {
+        return _emitFreeformMapWrapper(b);
+      }
     }
     final required =
         ((schema['required'] as List?) ?? const []).cast<String>();
@@ -2017,6 +2023,28 @@ class ModelWriter {
       b.writeln('    return Map<String, dynamic>.from(value);');
     }
     b.writeln('  }');
+    b.writeln('}');
+    return b.toString();
+  }
+
+  /// Emit a class for a free-form object schema (no `properties`, no
+  /// explicit `additionalProperties` restriction). The class wraps the
+  /// raw `Map<String, dynamic>` so arbitrary JSON keys are preserved on
+  /// round-trip (e.g. `JSONSchema`).
+  String _emitFreeformMapWrapper(StringBuffer b) {
+    b.writeln('@immutable');
+    b.writeln(implementsClass != null
+        ? 'class $name implements $implementsClass {'
+        : 'class $name {');
+    b.writeln('  const $name({required this.json});');
+    b.writeln('  factory $name.fromJson(Map<String, dynamic> json) {');
+    b.writeln('    return $name(json: json);');
+    b.writeln('  }');
+    if (implementsClass != null) {
+      b.writeln('  @override');
+    }
+    b.writeln('  Map<String, dynamic> toJson() => json;');
+    b.writeln('  final Map<String, dynamic> json;');
     b.writeln('}');
     return b.toString();
   }
