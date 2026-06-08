@@ -33,10 +33,11 @@ MODULES := sesori_plugin_interface sesori_plugin_opencode app
 # and the OpenAPI spec.
 opencode-codegen:
 	@count=0; \
-	if [ -n "$(OPENCODE_TAG)" ]; then GEN_FLAGS="--tag $(OPENCODE_TAG)"; count=$$((count+1)); fi; \
-	if [ -n "$(OPENCODE_BRANCH)" ]; then GEN_FLAGS="--branch $(OPENCODE_BRANCH)"; count=$$((count+1)); fi; \
-	if [ -n "$(OPENCODE_COMMIT)" ]; then GEN_FLAGS="--commit $(OPENCODE_COMMIT)"; count=$$((count+1)); fi; \
-	if [ -n "$(OPENCODE_SPEC)" ]; then GEN_FLAGS="--local $(OPENCODE_SPEC)"; count=$$((count+1)); fi; \
+	GEN_FLAGS=""; \
+	if [ -n "$(OPENCODE_TAG)" ]; then GEN_FLAGS="$$GEN_FLAGS --tag $(OPENCODE_TAG)"; count=$$((count+1)); fi; \
+	if [ -n "$(OPENCODE_BRANCH)" ]; then GEN_FLAGS="$$GEN_FLAGS --branch $(OPENCODE_BRANCH)"; count=$$((count+1)); fi; \
+	if [ -n "$(OPENCODE_COMMIT)" ]; then GEN_FLAGS="$$GEN_FLAGS --commit $(OPENCODE_COMMIT)"; count=$$((count+1)); fi; \
+	if [ -n "$(OPENCODE_SPEC)" ]; then GEN_FLAGS="$$GEN_FLAGS --local '$(OPENCODE_SPEC)'"; count=$$((count+1)); fi; \
 	if [ $$count -eq 0 ]; then \
 		echo "error: one of OPENCODE_TAG, OPENCODE_BRANCH, OPENCODE_COMMIT, or OPENCODE_SPEC is required."; \
 		echo "  examples:"; \
