@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:04:07.978044Z
+// Generated: 2026-06-08T14:11:43.945533Z
 
 import 'package:meta/meta.dart';
 import 'permission_action_config.dart';
@@ -12,11 +12,11 @@ abstract interface class PermissionConfig {
 
   /// Serialize the underlying variant. Variants must override this.
   ///
-  /// The return type is `dynamic` (not `Map<String, dynamic>`)
+  /// The return type is `Object?` (not `Map<String, dynamic>`)
   /// because some unions are string-or-object and the string
   /// variant encodes as the scalar itself, not a wrapped map.
   /// Callers pass the result straight to `jsonEncode` or
-  /// another `toJson()`, both of which accept `dynamic`.
+  /// another `toJson()`, both of which accept `Object?`.
   Object? toJson();
 
   factory PermissionConfig.fromJson(Object json) {
@@ -37,7 +37,7 @@ class permissionConfig00Inline implements PermissionConfig {
     return permissionConfig00Inline(value: PermissionActionConfig.fromJson(json));
   }
   @override
-  dynamic toJson() => value.toJson();
+  Object? toJson() => value.toJson();
   final PermissionActionConfig value;
 }
 
@@ -83,7 +83,7 @@ class permissionConfig01Inline implements PermissionConfig {
   }
 
   @override
-  dynamic toJson() {
+  Object? toJson() {
     return <String, dynamic>{
       "read": ?read?.toJson(),
       "edit": ?edit?.toJson(),

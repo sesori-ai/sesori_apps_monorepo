@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:04:07.995573Z
+// Generated: 2026-06-08T14:11:43.964913Z
 
 import 'package:meta/meta.dart';
 
@@ -10,11 +10,11 @@ abstract interface class SessionStatus {
 
   /// Serialize the underlying variant. Variants must override this.
   ///
-  /// The return type is `dynamic` (not `Map<String, dynamic>`)
+  /// The return type is `Object?` (not `Map<String, dynamic>`)
   /// because some unions are string-or-object and the string
   /// variant encodes as the scalar itself, not a wrapped map.
   /// Callers pass the result straight to `jsonEncode` or
-  /// another `toJson()`, both of which accept `dynamic`.
+  /// another `toJson()`, both of which accept `Object?`.
   Object? toJson();
 
   factory SessionStatus.fromJson(Object json) {
@@ -43,7 +43,7 @@ class sessionStatus00Inline implements SessionStatus {
   }
 
   @override
-  dynamic toJson() {
+  Object? toJson() {
     return <String, dynamic>{
       "type": "idle",
     };
@@ -71,7 +71,7 @@ class sessionStatus01Inline implements SessionStatus {
   }
 
   @override
-  dynamic toJson() {
+  Object? toJson() {
     return <String, dynamic>{
       "type": "retry",
       "attempt": attempt,
@@ -110,7 +110,7 @@ class sessionStatus02Inline implements SessionStatus {
   }
 
   @override
-  dynamic toJson() {
+  Object? toJson() {
     return <String, dynamic>{
       "type": "busy",
     };

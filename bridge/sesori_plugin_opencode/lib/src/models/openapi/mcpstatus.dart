@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:04:07.972870Z
+// Generated: 2026-06-08T14:11:43.939608Z
 
 import 'package:meta/meta.dart';
 import 'mcpstatus_connected.dart';
@@ -15,11 +15,11 @@ abstract interface class MCPStatus {
 
   /// Serialize the underlying variant. Variants must override this.
   ///
-  /// The return type is `dynamic` (not `Map<String, dynamic>`)
+  /// The return type is `Object?` (not `Map<String, dynamic>`)
   /// because some unions are string-or-object and the string
   /// variant encodes as the scalar itself, not a wrapped map.
   /// Callers pass the result straight to `jsonEncode` or
-  /// another `toJson()`, both of which accept `dynamic`.
+  /// another `toJson()`, both of which accept `Object?`.
   Object? toJson();
 
   factory MCPStatus.fromJson(Object json) {

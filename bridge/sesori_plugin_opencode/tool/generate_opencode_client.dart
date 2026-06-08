@@ -1373,11 +1373,11 @@ class ModelWriter {
     b.writeln();
     b.writeln('  /// Serialize the underlying variant. Variants must override this.');
     b.writeln('  ///');
-    b.writeln('  /// The return type is `dynamic` (not `Map<String, dynamic>`)');
+    b.writeln('  /// The return type is `Object?` (not `Map<String, dynamic>`)');
     b.writeln('  /// because some unions are string-or-object and the string');
     b.writeln('  /// variant encodes as the scalar itself, not a wrapped map.');
     b.writeln('  /// Callers pass the result straight to `jsonEncode` or');
-    b.writeln('  /// another `toJson()`, both of which accept `dynamic`.');
+    b.writeln('  /// another `toJson()`, both of which accept `Object?`.');
     b.writeln('  Object? toJson();');
     b.writeln();
     b.writeln('  factory $name.fromJson(Object json) {');
@@ -1515,7 +1515,7 @@ class ModelWriter {
         // read-modify-write round-trip identical to the original
         // server payload (e.g. 'permission: "ask"' stays 'permission:
         // "ask"', not 'permission: {"value": "ask"}').
-        b.writeln('  dynamic toJson() => value.toJson();');
+        b.writeln('  Object? toJson() => value.toJson();');
         b.writeln('  final $refType value;');
         b.writeln('}');
         return b.toString();
@@ -1570,7 +1570,7 @@ class ModelWriter {
         // a read-modify-write round-trip identical to the original
         // server payload (e.g. 'ref: "abc"' stays 'ref: "abc"',
         // not 'ref: {"value": "abc"}').
-        b.writeln('  dynamic toJson() => value;');
+        b.writeln('  Object? toJson() => value;');
         b.writeln('  final String value;');
         b.writeln('}');
       }
@@ -1669,7 +1669,7 @@ class ModelWriter {
       b.writeln('  }');
       b.writeln();
       b.writeln('  @override');
-      b.writeln('  dynamic toJson() {');
+      b.writeln('  Object? toJson() {');
       b.writeln('    return <String, dynamic>{');
       for (final entry in props.entries) {
         final fieldName = entry.key;
