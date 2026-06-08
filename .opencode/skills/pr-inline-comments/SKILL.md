@@ -49,6 +49,17 @@ Threads are sorted by `path`, then `line`, then `thread_id`.
 ./scripts/fetch.sh <pr-number> [--since ISO_DATETIME] [--unresolved] [--repo OWNER/REPO]
 ```
 
+**Avoiding output truncation:** The JSON output can be large. To prevent truncation by the shell or terminal, redirect stdout to a uniquely-named file and read from there:
+
+```bash
+PR_NUMBER="<pr-number>"
+OUTFILE="/tmp/pr_${PR_NUMBER}_comments_$(date +%Y%m%d_%H%M%S).json"
+./scripts/fetch.sh "$PR_NUMBER" --unresolved > "$OUTFILE"
+# Then read "$OUTFILE"
+```
+
+The timestamp in the filename prevents conflicts with stale files from previous runs or other PRs.
+
 Flags:
 
 - `--since ISO_DATETIME`: keep only threads whose **latest comment** is at or after the given datetime. Inclusive. The whole thread is returned (including older replies) when it qualifies.

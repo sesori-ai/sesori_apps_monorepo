@@ -64,13 +64,14 @@ class SessionDetailLoadService {
       final projectContext = await projectContextFuture;
       final effectiveProjectId = routeProjectId ?? projectContext?.projectId;
       final commandsResponse = await (commandsFuture ?? _listCommands(projectId: effectiveProjectId));
-      final promptDefaults = switch (sessionResponse) {
-        SuccessResponse(:final data) => data.promptDefaults,
+      final session = switch (sessionResponse) {
+        SuccessResponse(:final data) => data,
         ErrorResponse(:final error) => () {
           logw("Failed to load session: ${error.toString()}");
           return null;
         }(),
       };
+      final promptDefaults = session?.promptDefaults;
 
       final messages = switch (messagesResponse) {
         SuccessResponse(:final data) => data.messages,
@@ -128,6 +129,7 @@ class SessionDetailLoadService {
           commands: commands,
           canonicalSessionTitle: projectContext?.sessionTitle,
           promptDefaults: promptDefaults,
+          isRootSession: session != null ? session.parentID == null : null,
         ),
         isBridgeConnected: _connectionService.currentStatus is ConnectionConnected,
       );
@@ -169,6 +171,10 @@ class SessionDetailSnapshot {
   final List<CommandInfo> commands;
   final String? canonicalSessionTitle;
   final SessionPromptDefaults? promptDefaults;
+  /// Whether this session is a root (main) session. `true` when the session
+  /// metadata confirms `parentID == null`; `false` when `parentID != null`;
+  /// `null` when the session metadata lookup failed, so we cannot tell.
+  final bool? isRootSession;
 
   const SessionDetailSnapshot({
     required this.projectId,
@@ -182,6 +188,7 @@ class SessionDetailSnapshot {
     required this.commands,
     required this.canonicalSessionTitle,
     required this.promptDefaults,
+    required this.isRootSession,
   });
 }
 
