@@ -15,6 +15,7 @@ class SessionListPanel extends StatelessWidget {
   final ValueChanged<Session> onSessionLongPress;
   final ValueChanged<Session> onSessionSwipe;
   final VoidCallback onNewSession;
+  final VoidCallback? onBack;
 
   const SessionListPanel({
     super.key,
@@ -24,6 +25,7 @@ class SessionListPanel extends StatelessWidget {
     required this.onSessionLongPress,
     required this.onSessionSwipe,
     required this.onNewSession,
+    this.onBack,
   });
 
   @override
@@ -43,6 +45,10 @@ class SessionListPanel extends StatelessWidget {
             children: [
               Row(
                 children: [
+                  if (onBack != null)
+                    BackButton(
+                      onPressed: onBack,
+                    ),
                   Expanded(
                     child: Text(
                       _title(loc: loc),

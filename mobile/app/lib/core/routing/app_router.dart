@@ -216,6 +216,7 @@ class _SessionListPane extends StatelessWidget {
         child: SessionListPanel(
           projectName: projectName,
           selectedSessionId: selectedSessionId,
+          onBack: ModalRoute.of(context)?.canPop ?? false ? () => context.pop() : null,
           onNewSession: () => context.pushRoute(AppRoute.newSession(projectId: projectId)),
           onSessionTap: (session) {
             context.replaceRoute(

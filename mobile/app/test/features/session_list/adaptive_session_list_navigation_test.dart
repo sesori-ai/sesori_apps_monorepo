@@ -7,6 +7,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/routing/app_router.dart";
 import "package:sesori_mobile/features/session_list/session_list_panel.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/routing/adaptive_session_router_test_harness.dart";
 import "../../helpers/test_helpers.dart";
@@ -80,6 +81,8 @@ void main() {
 
   testWidgets("replaceRoute preserves the parent stack below the current route", (tester) async {
     final harness = AdaptiveSessionRouterTestHarness();
+    await tester.binding.setSurfaceSize(const Size(1024, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     addTearDown(harness.tearDown);
     await harness.setUp(
       initialLocation: "/projects/p1/sessions",
@@ -103,7 +106,7 @@ void main() {
     // Replace the current route with the diffs route.  We verify the
     // replacement happened by checking canPop() stays true (the parent
     // /projects/p1/sessions route is preserved).  We avoid asserting on the
-    // exact path because GoRouter’s routeInformationProvider does not reflect
+    // exact path because GoRouter's routeInformationProvider does not reflect
     // push/replace state in widget tests when called directly on the router.
     harness.router.replaceRoute(
       const AppRoute.sessionDiffs(projectId: "p1", sessionId: "session-1"),
@@ -112,6 +115,141 @@ void main() {
 
     // replaceRoute should keep the /projects/p1/sessions route below the current one.
     expect(harness.router.canPop(), isTrue);
+  });
+
+  testWidgets("direct wide /projects/p1/sessions entry shows no BackButton in left pane", (tester) async {
+    const location = "/projects/p1/sessions";
+    final harness = AdaptiveSessionRouterTestHarness();
+    await tester.binding.setSurfaceSize(const Size(1024, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    addTearDown(harness.tearDown);
+    await harness.setUp(
+      initialLocation: location,
+      currentRouteDef: AppRouteDef.sessions,
+      sessionsByProject: {
+        "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
+      },
+    );
+
+    await tester.pumpWidget(harness.buildApp());
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
+    expect(find.byType(BackButton), findsNothing);
+  });
+
+  testWidgets("pushed wide /projects/p1/sessions from /projects shows BackButton in left pane", (tester) async {
+    final harness = AdaptiveSessionRouterTestHarness();
+    await tester.binding.setSurfaceSize(const Size(1024, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    addTearDown(harness.tearDown);
+    await harness.setUp(
+      initialLocation: "/projects",
+      currentRouteDef: AppRouteDef.projects,
+      sessionsByProject: {
+        "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
+      },
+    );
+
+    when(() => harness.projectService.listProjects()).thenAnswer(
+      (_) async => ApiResponse.success(
+        const Projects(
+          data: [
+            Project(
+              id: "p1",
+              name: "Project One",
+              time: ProjectTime(created: 1700000000000, updated: 1700000000000, initialized: null),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(harness.buildApp());
+    await tester.pumpAndSettle();
+
+    // Push the sessions route on top of /projects.
+    unawaited(harness.router.push("/projects/p1/sessions"));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
+    expect(find.byType(BackButton), findsOneWidget);
+
+    // Tapping BackButton should pop back to /projects and remove split panes.
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+
+    expect(harness.router.canPop(), isFalse);
+    expect(harness.currentLocation, "/projects");
+    expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
+    expect(find.byKey(const Key("session-split-right-pane")), findsNothing);
+  });
+
+  testWidgets("pushed wide list then selected detail keeps BackButton in left pane", (tester) async {
+    final harness = AdaptiveSessionRouterTestHarness();
+    await tester.binding.setSurfaceSize(const Size(1024, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    addTearDown(harness.tearDown);
+    await harness.setUp(
+      initialLocation: "/projects",
+      currentRouteDef: AppRouteDef.projects,
+      sessionsByProject: {
+        "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
+      },
+    );
+
+    when(() => harness.projectService.listProjects()).thenAnswer(
+      (_) async => ApiResponse.success(
+        const Projects(
+          data: [
+            Project(
+              id: "p1",
+              name: "Project One",
+              time: ProjectTime(created: 1700000000000, updated: 1700000000000, initialized: null),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(harness.buildApp());
+    await tester.pumpAndSettle();
+
+    // Push the sessions route on top of /projects.
+    unawaited(harness.router.push("/projects/p1/sessions"));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
+    expect(find.byType(BackButton), findsOneWidget);
+
+    // Select a session — this uses replaceRoute in wide mode.
+    await tester.tap(find.text("Session One"));
+    await tester.pumpAndSettle();
+
+    // BackButton should still be present in the left pane after replaceRoute to detail.
+    expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key("session-split-left-pane")),
+        matching: find.byType(BackButton),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
+
+    // Tapping BackButton in the left pane should pop back to /projects and remove split panes.
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key("session-split-left-pane")),
+        matching: find.byType(BackButton),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(harness.router.canPop(), isFalse);
+    expect(harness.currentLocation, "/projects");
+    expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
+    expect(find.byKey(const Key("session-split-right-pane")), findsNothing);
   });
 
   testWidgets("wide shell preserves the left-list cubit for same-project routes and resets it for a new project", (
