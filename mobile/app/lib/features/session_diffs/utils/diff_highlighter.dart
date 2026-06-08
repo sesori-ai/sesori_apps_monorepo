@@ -17,6 +17,8 @@ import 'package:re_highlight/re_highlight.dart';
 import 'package:re_highlight/styles/github-dark.dart';
 import 'package:re_highlight/styles/github.dart';
 
+import '../../../core/extensions/text_style_x.dart';
+
 /// Static helper for syntax highlighting diff lines.
 /// Must call [initialize] once before using [highlightLine].
 class DiffHighlighter {
@@ -24,7 +26,7 @@ class DiffHighlighter {
   static late Map<String, TextStyle> _theme;
   static bool _initialized = false;
 
-  static const _monoStyle = TextStyle(fontFamily: 'monospace', fontSize: 12);
+  static final _monoStyle = const TextStyle(fontSize: 12).monospace;
 
   /// Language registrations keyed by the name [detectLanguage] returns.
   static final _languages = <String, Mode>{

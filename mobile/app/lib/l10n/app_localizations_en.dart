@@ -73,6 +73,68 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get projectsOnboardingTitle => 'Set up Sesori Bridge';
+
+  @override
+  String get projectsOnboardingStep1Action => 'Install & Run';
+
+  @override
+  String get projectsOnboardingBridgeName => 'Sesori Bridge';
+
+  @override
+  String get projectsOnboardingTabUnix => 'Linux/Mac';
+
+  @override
+  String get projectsOnboardingTabWindows => 'Windows';
+
+  @override
+  String get projectsOnboardingCommandCopied => 'Command copied to clipboard';
+
+  @override
+  String get projectsOnboardingCopyCommand => 'Copy command';
+
+  @override
+  String get projectsOnboardingStepCompleted => 'Completed';
+
+  @override
+  String get projectsOnboardingStep2Action => 'Sign in';
+
+  @override
+  String get projectsOnboardingStep2Accent => 'on your computer';
+
+  @override
+  String get projectsOnboardingAccountPrefix => 'Use ';
+
+  @override
+  String projectsOnboardingAccountSuffix(String provider) {
+    return ' with $provider';
+  }
+
+  @override
+  String get projectsOnboardingAccountFallback => 'Sign in with the same account you used here.';
+
+  @override
+  String get projectsOnboardingStep3Title => 'Create or open a folder';
+
+  @override
+  String get projectsOnboardingStep3Detail => 'Once connected, your projects will appear here.';
+
+  @override
+  String get projectsConnectedTitle => 'Your bridge is connected';
+
+  @override
+  String get projectsConnectedStep2Action => 'Signed in';
+
+  @override
+  String get projectsConnectedStep3Detail => 'Choose a folder to start your first session.';
+
+  @override
+  String get projectsConnectedAccountFallback => 'Signed in with the account you used here.';
+
+  @override
+  String get projectsOnboardingOpenFolder => 'Open a folder';
+
+  @override
   String get connectionLostTitle => 'Connection Lost';
 
   @override

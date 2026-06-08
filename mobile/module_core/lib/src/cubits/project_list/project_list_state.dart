@@ -15,4 +15,10 @@ sealed class ProjectListState with _$ProjectListState {
   }) = ProjectListLoaded;
 
   const factory ProjectListState.failed({required ApiError error}) = ProjectListFailed;
+
+  /// The bridge (the user's computer) is not connected, so there are no
+  /// projects to show yet. Drives the "Let's connect your computer"
+  /// onboarding. Emitted when the connection is `ConnectionDisconnected` or
+  /// `ConnectionBridgeOffline`; replaced once the bridge comes online.
+  const factory ProjectListState.bridgeDisconnected() = ProjectListBridgeDisconnected;
 }

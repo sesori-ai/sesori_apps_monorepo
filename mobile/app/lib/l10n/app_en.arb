@@ -54,6 +54,33 @@
       }
     }
   },
+  "projectsOnboardingTitle": "Set up Sesori Bridge",
+  "projectsOnboardingStep1Action": "Install & Run",
+  "projectsOnboardingBridgeName": "Sesori Bridge",
+  "projectsOnboardingTabUnix": "Linux/Mac",
+  "projectsOnboardingTabWindows": "Windows",
+  "projectsOnboardingCommandCopied": "Command copied to clipboard",
+  "projectsOnboardingCopyCommand": "Copy command",
+  "projectsOnboardingStepCompleted": "Completed",
+  "projectsOnboardingStep2Action": "Sign in",
+  "projectsOnboardingStep2Accent": "on your computer",
+  "projectsOnboardingAccountPrefix": "Use ",
+  "projectsOnboardingAccountSuffix": " with {provider}",
+  "@projectsOnboardingAccountSuffix": {
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "projectsOnboardingAccountFallback": "Sign in with the same account you used here.",
+  "projectsOnboardingStep3Title": "Create or open a folder",
+  "projectsOnboardingStep3Detail": "Once connected, your projects will appear here.",
+  "projectsConnectedTitle": "Your bridge is connected",
+  "projectsConnectedStep2Action": "Signed in",
+  "projectsConnectedStep3Detail": "Choose a folder to start your first session.",
+  "projectsConnectedAccountFallback": "Signed in with the account you used here.",
+  "projectsOnboardingOpenFolder": "Open a folder",
   "connectionLostTitle": "Connection Lost",
   "connectionLostReconnect": "Reconnect",
   "connectionLostDisconnect": "Disconnect",

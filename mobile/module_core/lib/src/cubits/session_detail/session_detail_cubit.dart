@@ -13,6 +13,7 @@ import "../../platform/notification_canceller.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
 import "../../services/session_detail_load_service.dart";
+import "../../utils/model_filter/default_model_selector.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
 import "session_detail_state.dart";
@@ -23,6 +24,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final SessionRepository _sessionRepository;
   final ConnectionService _connectionService;
   final PermissionRepository _permissionRepository;
+  static const _defaultModelSelector = DefaultModelSelector();
   final String _sessionId;
   final String _projectId;
   final NotificationCanceller _notificationCanceller;
@@ -1146,16 +1148,26 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     } else if (agents.isNotEmpty && agents.first.model != null) {
       defaultAgentModel = agents.first.model;
     } else if (providers.isNotEmpty) {
-      final firstProvider = providers.first;
-      final defaultModelID = firstProvider.defaultModelID;
-      final modelID = defaultModelID != null && firstProvider.models.containsKey(defaultModelID)
-          ? defaultModelID
-          : firstProvider.models.values.first.id;
-      defaultAgentModel = AgentModel(
-        providerID: firstProvider.id,
-        modelID: modelID,
-        variant: null,
-      );
+      // Walk the provider list and use the first one that has at least
+      // one available model. Previously we only looked at `providers.first`,
+      // which silently produced `null` when the first provider happened
+      // to be misconfigured or fully deprecated.
+      AgentModel? pickedModel;
+      for (final provider in providers) {
+        final picked = _defaultModelSelector.pickFromProvider(
+          models: provider.models,
+          defaultModelId: provider.defaultModelID,
+        );
+        if (picked != null) {
+          pickedModel = AgentModel(
+            providerID: provider.id,
+            modelID: picked.id,
+            variant: null,
+          );
+          break;
+        }
+      }
+      defaultAgentModel = pickedModel;
     } else {
       defaultAgentModel = null;
     }

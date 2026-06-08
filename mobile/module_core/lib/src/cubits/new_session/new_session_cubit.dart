@@ -4,11 +4,13 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/session/session_service.dart";
+import "../../utils/model_filter/default_model_selector.dart";
 import "new_session_state.dart";
 
 class NewSessionCubit extends Cubit<NewSessionState> {
   final SessionService _sessionService;
   final String _projectId;
+  static const _defaultModelSelector = DefaultModelSelector();
 
   NewSessionCubit({
     required SessionService sessionService,
@@ -63,16 +65,26 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       if (agentModel != null) {
         defaultAgentModel = agentModel;
       } else if (providers.isNotEmpty) {
-        final firstProvider = providers.first;
-        final defaultModelID = firstProvider.defaultModelID;
-        final modelID = defaultModelID != null && firstProvider.models.containsKey(defaultModelID)
-            ? defaultModelID
-            : firstProvider.models.values.first.id;
-        defaultAgentModel = AgentModel(
-          providerID: firstProvider.id,
-          modelID: modelID,
-          variant: null,
-        );
+        // Walk the provider list and use the first one that has at least
+        // one available model. Previously we only looked at `providers.first`,
+        // which silently produced `null` when the first provider happened
+        // to be misconfigured or fully deprecated.
+        AgentModel? pickedModel;
+        for (final provider in providers) {
+          final picked = _defaultModelSelector.pickFromProvider(
+            models: provider.models,
+            defaultModelId: provider.defaultModelID,
+          );
+          if (picked != null) {
+            pickedModel = AgentModel(
+              providerID: provider.id,
+              modelID: picked.id,
+              variant: null,
+            );
+            break;
+          }
+        }
+        defaultAgentModel = pickedModel;
       } else {
         defaultAgentModel = null;
       }
@@ -326,7 +338,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         final current = state.agentModelData;
         emit(
           NewSessionState.error(
-            message: _describeError(error: error),
+            error: error,
             availableAgents: current?.agents ?? const [],
             availableProviders: current?.providers ?? const [],
             availableCommands: current?.commands ?? const [],
@@ -337,16 +349,5 @@ class NewSessionCubit extends Cubit<NewSessionState> {
           ),
         );
     }
-  }
-
-  String _describeError({required ApiError error}) {
-    return switch (error) {
-      NotAuthenticatedError() => "Authentication required.",
-      NonSuccessCodeError(:final rawErrorString) => rawErrorString ?? "Failed to create session.",
-      DartHttpClientError() => "Unable to reach server.",
-      JsonParsingError() => "Unexpected server response.",
-      GenericError() => "Failed to create session.",
-      EmptyResponseError() => "Empty response from server.",
-    };
   }
 }

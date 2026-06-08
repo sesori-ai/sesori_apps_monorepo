@@ -2,7 +2,7 @@ type: folder
 model: folder
 id: fl_aDHUTwiwwj
 createdAt: 2026-03-24T16:58:12.338574
-updatedAt: 2026-03-24T16:58:12.338575
+updatedAt: 2026-06-08T13:33:17.457050
 workspaceId: wk_rSi2KDTVqo
 folderId: null
 authentication: {}
@@ -10,4 +10,19 @@ authenticationType: null
 description: ''
 headers: []
 name: project
-sortPriority: -1774371492337.0
+sortPriority: 2000.0
+settingSendCookies:
+  enabled: false
+  value: true
+settingStoreCookies:
+  enabled: false
+  value: true
+settingValidateCertificates:
+  enabled: false
+  value: true
+settingFollowRedirects:
+  enabled: false
+  value: true
+settingRequestTimeout:
+  enabled: false
+  value: 0

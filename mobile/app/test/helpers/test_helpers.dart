@@ -458,7 +458,7 @@ ProviderListResponse testProviderListResponse() {
 AuthUser testAuthUser() {
   return const AuthUser(
     id: "user-1",
-    provider: "github",
+    provider: AuthProvider.github,
     providerUserId: "12345678",
     providerUsername: "testuser",
   );

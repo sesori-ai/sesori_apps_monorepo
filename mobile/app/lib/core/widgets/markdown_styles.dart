@@ -4,6 +4,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_zyra/module_zyra.dart";
 
 import "../di/injection.dart";
+import "../extensions/text_style_x.dart";
 
 /// Shared [MarkdownBody.onTapLink] handler that opens URLs in the system
 /// browser via the DI-registered [UrlLauncher].
@@ -27,10 +28,9 @@ MarkdownStyleSheet buildSessionMarkdownStyleSheet({
       borderRadius: BorderRadius.circular(8),
     ),
     code: TextStyle(
-      fontFamily: "monospace",
       fontSize: 13,
       color: zyra.colors.textPrimary,
-    ),
+    ).monospace,
   );
 }
 

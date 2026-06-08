@@ -3,8 +3,8 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_zyra/module_zyra.dart";
 
+import "../../../core/extensions/api_error_x.dart";
 import "../../../core/extensions/build_context_x.dart";
-import "../../../l10n/app_localizations.dart";
 import "queued_message_bubble.dart";
 
 class SessionDetailTitle extends StatelessWidget {
@@ -128,7 +128,7 @@ class SessionDetailErrorView extends StatelessWidget {
             Text(loc.sessionDetailErrorTitle, style: context.zyra.textTheme.textMd.bold),
             const SizedBox(height: 8),
             Text(
-              _describeError(loc: loc, error: error),
+              error.localizedMessage(loc),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -142,16 +142,4 @@ class SessionDetailErrorView extends StatelessWidget {
       ),
     );
   }
-
-  String _describeError({required AppLocalizations loc, required ApiError error}) => switch (error) {
-    NotAuthenticatedError() => loc.apiErrorNotAuthenticated,
-    NonSuccessCodeError(:final errorCode, :final rawErrorString) =>
-      rawErrorString != null
-          ? loc.connectErrorNonSuccessCodeWithBody(errorCode, rawErrorString)
-          : loc.connectErrorNonSuccessCode(errorCode),
-    DartHttpClientError(:final innerError) => loc.connectErrorConnectionFailed(innerError.toString()),
-    JsonParsingError() => loc.connectErrorUnexpectedFormat,
-    EmptyResponseError() => loc.connectErrorUnexpectedFormat,
-    GenericError() => loc.connectErrorUnknown,
-  };
 }

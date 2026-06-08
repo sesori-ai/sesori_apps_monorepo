@@ -140,6 +140,7 @@ Widget _buildProjectListShell({required ProjectListCubit cubit}) {
                       },
                     ),
             ProjectListFailed() => const Text("Error"),
+            ProjectListBridgeDisconnected() => const Text("Bridge disconnected"),
           },
         );
       },

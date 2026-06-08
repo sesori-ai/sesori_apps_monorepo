@@ -86,7 +86,7 @@ void main() {
         refreshToken: "refresh-token",
         user: AuthUser(
           id: "user-1",
-          provider: "github",
+          provider: AuthProvider.github,
           providerUserId: "12345",
           providerUsername: "octocat",
         ),
