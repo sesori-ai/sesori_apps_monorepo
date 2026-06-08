@@ -2,7 +2,7 @@
 //
 // Auto-generated OpenCode v2 client generated from the OpenAPI spec.
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:40:29.653417Z
+// Generated: 2026-06-08T13:43:24.212675Z
 //
 // To regenerate, run:
 //   make opencode-codegen OPENCODE_TAG=<tag>

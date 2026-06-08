@@ -2215,6 +2215,14 @@ class ModelWriter {
     final safeName = _safeIdentifier(name);
     final callOp = isNullable ? '?' : '';
     final entryOp = isNullable ? '?' : '';
+    // anyOf [T, null] → T? — delegate to the non-null branch.
+    if (sch['anyOf'] is List) {
+      final variants = (sch['anyOf'] as List).cast<Map<String, dynamic>>();
+      final nonNull = variants.where((v) => v['type'] != 'null').toList();
+      if (nonNull.length == 1) {
+        return _encodeField(name, nonNull.first, isNullable: true);
+      }
+    }
     final r = sch[r'$ref'];
     if (r is String) {
       return '$keyExpr: $entryOp$safeName$callOp.toJson()';
