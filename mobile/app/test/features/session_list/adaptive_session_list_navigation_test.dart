@@ -1,8 +1,11 @@
+import "dart:async";
+
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/core/routing/app_router.dart";
 import "package:sesori_mobile/features/session_list/session_list_panel.dart";
 
 import "../../core/routing/adaptive_session_router_test_harness.dart";
@@ -75,7 +78,45 @@ void main() {
     expect(tile.selected, isTrue);
   });
 
-  testWidgets("wide shell preserves the left-list cubit for same-project routes and resets it for a new project", (tester) async {
+  testWidgets("replaceRoute preserves the parent stack below the current route", (tester) async {
+    final harness = AdaptiveSessionRouterTestHarness();
+    addTearDown(harness.tearDown);
+    await harness.setUp(
+      initialLocation: "/projects/p1/sessions",
+      currentRouteDef: AppRouteDef.sessions,
+      sessionsByProject: {
+        "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
+      },
+    );
+
+    await tester.pumpWidget(harness.buildApp());
+    await tester.pumpAndSettle();
+
+    // Push session detail on top of sessions.
+    // The future only completes when the route is popped, which never
+    // happens in this test — fire-and-forget so the await doesn't hang.
+    unawaited(harness.router.push("/projects/p1/sessions/session-1"));
+    await tester.pumpAndSettle();
+
+    expect(harness.router.canPop(), isTrue);
+
+    // Replace the current route with the diffs route.  We verify the
+    // replacement happened by checking canPop() stays true (the parent
+    // /projects/p1/sessions route is preserved).  We avoid asserting on the
+    // exact path because GoRouter’s routeInformationProvider does not reflect
+    // push/replace state in widget tests when called directly on the router.
+    harness.router.replaceRoute(
+      const AppRoute.sessionDiffs(projectId: "p1", sessionId: "session-1"),
+    );
+    await tester.pumpAndSettle();
+
+    // replaceRoute should keep the /projects/p1/sessions route below the current one.
+    expect(harness.router.canPop(), isTrue);
+  });
+
+  testWidgets("wide shell preserves the left-list cubit for same-project routes and resets it for a new project", (
+    tester,
+  ) async {
     final harness = AdaptiveSessionRouterTestHarness();
     await tester.binding.setSurfaceSize(const Size(1024, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));

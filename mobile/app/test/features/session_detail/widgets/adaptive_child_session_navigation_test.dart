@@ -114,7 +114,7 @@ void main() {
       expect(find.text("readOnly=true"), findsOneWidget);
     });
 
-    testWidgets("tapping child session uses goRoute with readOnly=true in split scope", (tester) async {
+    testWidgets("tapping child session uses replaceRoute with readOnly=true in split scope", (tester) async {
       final child = _childSession(id: "child-1", title: "Child Session");
       await tester.pumpWidget(_buildApp(
         wrapInSplitScope: true,
@@ -132,7 +132,8 @@ void main() {
       await tester.tap(find.text("Child Session"));
       await tester.pumpAndSettle();
 
-      // goRoute replaces the stack, so canPop should be absent (no previous route).
+      // replaceRoute replaces the current route, so canPop should be absent
+      // when the test router started with only one route.
       expect(find.text("canPop=true"), findsNothing);
       expect(find.text("sessionId=child-1"), findsOneWidget);
       expect(find.text("readOnly=true"), findsOneWidget);
@@ -164,7 +165,7 @@ void main() {
       expect(find.text("readOnly=true"), findsOneWidget);
     });
 
-    testWidgets("tapping task row uses goRoute with readOnly=true in split scope", (tester) async {
+    testWidgets("tapping task row uses replaceRoute with readOnly=true in split scope", (tester) async {
       final child = _childSession(id: "task-1", title: "Task One");
       await tester.pumpWidget(_buildApp(
         wrapInSplitScope: true,

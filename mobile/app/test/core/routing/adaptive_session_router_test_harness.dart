@@ -41,6 +41,7 @@ class AdaptiveSessionRouterTestHarness {
     required Map<String, List<Session>> sessionsByProject,
     Map<String, String?> baseBranchByProject = const {},
     Map<String, List<FileDiff>> diffsBySession = const {},
+    List<RouteBase> extraRoutes = const [],
   }) async {
     await GetIt.instance.reset();
 
@@ -138,7 +139,7 @@ class AdaptiveSessionRouterTestHarness {
     getIt.registerSingleton<NotificationCanceller>(notificationCanceller);
     getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
 
-    router = GoRouter(initialLocation: initialLocation, routes: _buildHarnessRoutes());
+    router = GoRouter(initialLocation: initialLocation, routes: [...extraRoutes, ..._buildHarnessRoutes()]);
   }
 
   Widget buildApp() {

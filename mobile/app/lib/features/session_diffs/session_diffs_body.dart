@@ -28,22 +28,20 @@ class _SessionDiffsBodyState extends State<SessionDiffsBody> {
   int _computeToken = 0;
   Brightness? _lastBrightness;
 
+  @visibleForTesting
+  int get recomputeCount => _computeToken;
+
   /// Stable [GlobalKey]s attached to each file's header [SizedBox] so the
   /// post-frame scroll adjustment can find the next file's header after a
   /// collapse. Keys are created lazily as files are rendered.
   final Map<int, GlobalKey> _headerKeys = <int, GlobalKey>{};
 
-  bool _didInit = false;
-
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_didInit) {
-      _didInit = true;
-      final state = context.read<DiffCubit>().state;
-      if (state is DiffStateLoaded && state.files.isNotEmpty) {
-        _maybeComputeViewModels(files: state.files);
-      }
+    final state = context.read<DiffCubit>().state;
+    if (state is DiffStateLoaded && state.files.isNotEmpty) {
+      _maybeComputeViewModels(files: state.files);
     }
   }
 

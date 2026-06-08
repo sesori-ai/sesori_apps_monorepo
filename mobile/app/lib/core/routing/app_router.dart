@@ -34,11 +34,22 @@ extension AppRouteToGoRoute on AppRouteDef {
           AppRouteLogin() => const LoginScreen(),
           AppRouteProjects() => const ProjectListScreen(),
           AppRouteSettings() => const SettingsScreen(),
-          AppRouteSessions(:final projectId, :final projectName) => SessionListScreen(projectId: projectId, projectName: projectName),
+          AppRouteSessions(:final projectId, :final projectName) => SessionListScreen(
+            projectId: projectId,
+            projectName: projectName,
+          ),
           AppRouteNewSession(:final projectId) => NewSessionScreen(projectId: projectId),
           AppRouteSessionDetail(:final projectId, :final sessionId, :final sessionTitle, :final readOnly) =>
-            SessionDetailScreen(projectId: projectId, sessionId: sessionId, sessionTitle: sessionTitle, readOnly: readOnly),
-          AppRouteSessionDiffs(:final projectId, :final sessionId) => SessionDiffsScreen(projectId: projectId, sessionId: sessionId),
+            SessionDetailScreen(
+              projectId: projectId,
+              sessionId: sessionId,
+              sessionTitle: sessionTitle,
+              readOnly: readOnly,
+            ),
+          AppRouteSessionDiffs(:final projectId, :final sessionId) => SessionDiffsScreen(
+            projectId: projectId,
+            sessionId: sessionId,
+          ),
         };
       },
     );
@@ -59,11 +70,20 @@ extension BuildContextNavigation on BuildContext {
     // ignore: no_slop_linter/avoid_raw_go_router, typed wrapper implementation
     return GoRouter.of(this).push<T>(route.buildPath());
   }
+
+  void replaceRoute(AppRoute route) {
+    // ignore: no_slop_linter/avoid_raw_go_router, typed wrapper implementation
+    GoRouter.of(this).replace<void>(route.buildPath());
+  }
 }
 
 extension GoRouterNavigation on GoRouter {
   void goRoute(AppRoute route) {
     go(route.buildPath());
+  }
+
+  void replaceRoute(AppRoute route) {
+    replace<void>(route.buildPath());
   }
 }
 
@@ -110,13 +130,20 @@ class _SessionSplitShellHost extends StatelessWidget {
   Widget build(BuildContext context) {
     final (projectId, selectedSessionId, projectName) = switch (route) {
       AppRouteSessions(:final projectId, :final projectName) => (projectId, null, projectName),
-      AppRouteSessionDetail(:final projectId, :final sessionId) || AppRouteSessionDiffs(:final projectId, :final sessionId) => (projectId, sessionId, null),
-      AppRouteSplash() || AppRouteLogin() || AppRouteProjects() || AppRouteSettings() || AppRouteNewSession() =>
-        throw StateError("Route ${route.def.name} is not a session split child"),
+      AppRouteSessionDetail(:final projectId, :final sessionId) ||
+      AppRouteSessionDiffs(:final projectId, :final sessionId) => (projectId, sessionId, null),
+      AppRouteSplash() ||
+      AppRouteLogin() ||
+      AppRouteProjects() ||
+      AppRouteSettings() ||
+      AppRouteNewSession() => throw StateError("Route ${route.def.name} is not a session split child"),
     };
 
     final fullScreenChild = switch (route) {
-      AppRouteSessions(:final projectId, :final projectName) => SessionListScreen(projectId: projectId, projectName: projectName),
+      AppRouteSessions(:final projectId, :final projectName) => SessionListScreen(
+        projectId: projectId,
+        projectName: projectName,
+      ),
       AppRouteSessionDetail(:final projectId, :final sessionId, :final sessionTitle, :final readOnly) => Builder(
         builder: (context) {
           final splitScope = SessionSplitScope.maybeOf(context);
@@ -127,7 +154,7 @@ class _SessionSplitShellHost extends StatelessWidget {
             sessionTitle: sessionTitle,
             readOnly: readOnly,
             onOpenDiffs: splitScope != null && splitScope.isSplit
-                ? () => context.goRoute(AppRoute.sessionDiffs(projectId: projectId, sessionId: sessionId))
+                ? () => context.replaceRoute(AppRoute.sessionDiffs(projectId: projectId, sessionId: sessionId))
                 : null,
           );
         },
@@ -137,8 +164,11 @@ class _SessionSplitShellHost extends StatelessWidget {
         projectId: projectId,
         sessionId: sessionId,
       ),
-      AppRouteSplash() || AppRouteLogin() || AppRouteProjects() || AppRouteSettings() || AppRouteNewSession() =>
-        throw StateError("Route ${route.def.name} is not a session split child"),
+      AppRouteSplash() ||
+      AppRouteLogin() ||
+      AppRouteProjects() ||
+      AppRouteSettings() ||
+      AppRouteNewSession() => throw StateError("Route ${route.def.name} is not a session split child"),
     };
 
     return SessionSplitShell(
@@ -181,13 +211,14 @@ class _SessionListPane extends StatelessWidget {
     return KeyedSubtree(
       key: ValueKey("session-list-$projectId"),
       child: SessionListCubitProvider(
+        key: ValueKey("session-list-cubit-$projectId"),
         projectId: projectId,
         child: SessionListPanel(
           projectName: projectName,
           selectedSessionId: selectedSessionId,
           onNewSession: () => context.pushRoute(AppRoute.newSession(projectId: projectId)),
           onSessionTap: (session) {
-            context.goRoute(
+            context.replaceRoute(
               AppRoute.sessionDetail(
                 projectId: projectId,
                 sessionId: session.id,

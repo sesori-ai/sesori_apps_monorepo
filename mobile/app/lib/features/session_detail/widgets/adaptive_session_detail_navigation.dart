@@ -6,7 +6,7 @@ import "../../../core/widgets/session_split/session_split_scope.dart";
 
 /// Opens a session detail route adaptively based on split context.
 ///
-/// In a [SessionSplitScope] with [isSplit] true, uses [goRoute] so the
+/// In a [SessionSplitScope] with [isSplit] true, uses [replaceRoute] so the
 /// right panel updates without adding to the navigation stack.
 /// Otherwise uses [pushRoute] for standard fullscreen push behavior.
 ///
@@ -26,7 +26,7 @@ void openAdaptiveSessionDetail({
   );
   final splitScope = SessionSplitScope.maybeOf(context);
   if (splitScope != null && splitScope.isSplit) {
-    context.goRoute(route);
+    context.replaceRoute(route);
   } else {
     context.pushRoute(route);
   }

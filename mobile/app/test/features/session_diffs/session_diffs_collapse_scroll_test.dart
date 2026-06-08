@@ -1,15 +1,21 @@
+import "package:bloc_test/bloc_test.dart";
 import "package:flutter/material.dart";
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart" show ApiResponse;
+import "package:sesori_dart_core/sesori_dart_core.dart" show DiffCubit, DiffState;
 import "package:sesori_dart_core/sesori_dart_core.dart" show SessionRepository;
+import "package:sesori_mobile/features/session_diffs/session_diffs_body.dart";
 import "package:sesori_mobile/features/session_diffs/session_diffs_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_zyra/module_zyra.dart";
 
 import "../../helpers/test_helpers.dart";
+
+class _MockDiffCubit extends MockCubit<DiffState> implements DiffCubit {}
 
 class _MockSessionRepository extends Mock implements SessionRepository {}
 
@@ -83,11 +89,13 @@ void main() {
       // end of the list.
       when(() => mockRepo.getSessionDiffs(sessionId: any(named: "sessionId"))).thenAnswer(
         (_) async => ApiResponse.success(
-          SessionDiffsResponse(diffs: [
-            _makeDiff("aaa.dart", lineCount: 10),
-            _makeDiff("bbb.dart", lineCount: 2),
-            _makeDiff("ccc.dart", lineCount: 10),
-          ]),
+          SessionDiffsResponse(
+            diffs: [
+              _makeDiff("aaa.dart", lineCount: 10),
+              _makeDiff("bbb.dart", lineCount: 2),
+              _makeDiff("ccc.dart", lineCount: 10),
+            ],
+          ),
         ),
       );
 
@@ -130,39 +138,100 @@ void main() {
     },
   );
 
-  testWidgets(
-    "collapsing the last file leaves the viewport anchored to the end of the list",
-    (tester) async {
-      when(() => mockRepo.getSessionDiffs(sessionId: any(named: "sessionId"))).thenAnswer(
-        (_) async => ApiResponse.success(
-          SessionDiffsResponse(diffs: [
+  testWidgets("collapsing the last file leaves the viewport anchored to the end of the list", (tester) async {
+    when(() => mockRepo.getSessionDiffs(sessionId: any(named: "sessionId"))).thenAnswer(
+      (_) async => ApiResponse.success(
+        SessionDiffsResponse(
+          diffs: [
             _makeDiff("aaa.dart", lineCount: 10),
             _makeDiff("bbb.dart", lineCount: 2),
-          ]),
+          ],
+        ),
+      ),
+    );
+
+    await _pumpLoadedScreen(tester);
+
+    final scrollFinder = find.byType(CustomScrollView);
+    // Scroll past aaa.dart so bbb.dart's header is in the viewport.
+    await tester.drag(scrollFinder, const Offset(0, -200));
+    await tester.pumpAndSettle();
+
+    final scrollable = tester.state<ScrollableState>(find.byType(Scrollable).first);
+    final positionBefore = scrollable.position.pixels;
+
+    // Collapse the LAST file — there is no "next file" to anchor to, so
+    // the scroll offset should not jump to a new file's header.
+    await tester.tap(find.text("bbb.dart"));
+    await tester.pumpAndSettle();
+
+    final positionAfter = tester.state<ScrollableState>(find.byType(Scrollable).first).position.pixels;
+    // Collapsing the last file removes content above the viewport. The
+    // viewport may either stay at the same pixel offset or clamp to the
+    // new maxScrollExtent — both are acceptable as long as we did not
+    // jump to a new file's header.
+    expect(positionAfter, lessThanOrEqualTo(positionBefore));
+  });
+
+  testWidgets(
+    "theme brightness change recomputes diff view models",
+    (tester) async {
+      final mockCubit = _MockDiffCubit();
+      when(() => mockCubit.state).thenReturn(
+        DiffState.loaded(files: [_makeDiff("aaa.dart", lineCount: 2)]),
+      );
+      when(() => mockCubit.stream).thenAnswer(
+        (_) => Stream.value(DiffState.loaded(files: [_makeDiff("aaa.dart", lineCount: 2)])),
+      );
+
+      final bodyKey = GlobalKey();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(
+            brightness: tester.platformDispatcher.platformBrightness,
+            extensions: [ZyraDesignSystem.light],
+          ),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: BlocProvider<DiffCubit>.value(
+            value: mockCubit,
+            child: SessionDiffsBody(key: bodyKey),
+          ),
         ),
       );
 
-      await _pumpLoadedScreen(tester);
+      // Wait for the initial microtask-based computation to start and finish.
+      // DiffViewModelBuilder.build uses compute() which spawns a real isolate,
+      // so we alternate runAsync (real time) and pump (fake-async rebuild).
+      for (var i = 0; i < 10; i++) {
+        await tester.runAsync(() async {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+        });
+        await tester.pump();
+      }
 
-      final scrollFinder = find.byType(CustomScrollView);
-      // Scroll past aaa.dart so bbb.dart's header is in the viewport.
-      await tester.drag(scrollFinder, const Offset(0, -200));
-      await tester.pumpAndSettle();
+      // Sanity: the diff viewer should have rendered after initial compute.
+      expect(find.byType(CustomScrollView), findsOneWidget);
 
-      final scrollable = tester.state<ScrollableState>(find.byType(Scrollable).first);
-      final positionBefore = scrollable.position.pixels;
+      final stateBefore = tester.state(find.byType(SessionDiffsBody));
+      final initialRecomputeCount = (stateBefore as dynamic).recomputeCount as int;
 
-      // Collapse the LAST file — there is no "next file" to anchor to, so
-      // the scroll offset should not jump to a new file's header.
-      await tester.tap(find.text("bbb.dart"));
-      await tester.pumpAndSettle();
+      // Change platform brightness — this triggers didChangeDependencies on
+      // any widget that read Theme.of(context).brightness.
+      tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+      await tester.pump();
 
-      final positionAfter = tester.state<ScrollableState>(find.byType(Scrollable).first).position.pixels;
-      // Collapsing the last file removes content above the viewport. The
-      // viewport may either stay at the same pixel offset or clamp to the
-      // new maxScrollExtent — both are acceptable as long as we did not
-      // jump to a new file's header.
-      expect(positionAfter, lessThanOrEqualTo(positionBefore));
+      final stateAfter = tester.state(find.byType(SessionDiffsBody));
+      final recomputeAfter = (stateAfter as dynamic).recomputeCount as int;
+
+      // Restore brightness so the change does not leak to other tests.
+      tester.platformDispatcher.platformBrightnessTestValue = Brightness.light;
+
+      // With the fix, brightness mismatch triggers recomputation (new token).
+      // Without the fix, _didInit blocks didChangeDependencies from calling
+      // _maybeComputeViewModels, so the token stays the same.
+      expect(recomputeAfter, greaterThan(initialRecomputeCount));
     },
   );
 }
