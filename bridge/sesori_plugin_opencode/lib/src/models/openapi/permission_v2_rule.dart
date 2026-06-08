@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.180961Z
+// Generated: 2026-06-08T14:04:07.981446Z
 
+import 'package:meta/meta.dart';
 import 'permission_v2_effect.dart';
 
+@immutable
 class PermissionV2Rule {
   const PermissionV2Rule({
     required this.action,
@@ -27,6 +29,17 @@ class PermissionV2Rule {
       "effect": effect.toJson(),
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PermissionV2Rule &&
+          other.action == action &&
+          other.resource == resource &&
+          other.effect == effect);
+
+  @override
+  int get hashCode => Object.hash(action, resource, effect);
 
   final String action;
   final String resource;

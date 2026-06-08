@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.205912Z
+// Generated: 2026-06-08T14:04:08.007589Z
 
+import 'package:meta/meta.dart';
 import 'session_v2_info.dart';
 
+@immutable
 class V2SessionsResponse {
   const V2SessionsResponse({
     required this.data,
@@ -24,6 +26,16 @@ class V2SessionsResponse {
       "cursor": cursor,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is V2SessionsResponse &&
+          other.data == data &&
+          other.cursor == cursor);
+
+  @override
+  int get hashCode => Object.hash(data, cursor);
 
   final List<SessionV2Info> data;
   final Map<String, dynamic> cursor;

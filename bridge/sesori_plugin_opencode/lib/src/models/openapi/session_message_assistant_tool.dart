@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.190330Z
+// Generated: 2026-06-08T14:04:07.991195Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class SessionMessageAssistantTool {
   const SessionMessageAssistantTool({
     required this.type,
@@ -35,6 +37,20 @@ class SessionMessageAssistantTool {
       "time": time,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionMessageAssistantTool &&
+          other.type == type &&
+          other.id == id &&
+          other.name == name &&
+          other.provider == provider &&
+          other.state == state &&
+          other.time == time);
+
+  @override
+  int get hashCode => Object.hash(type, id, name, provider, state, time);
 
   final String type;
   final String id;

@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.171456Z
+// Generated: 2026-06-08T14:04:07.972632Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class LocationRef {
   const LocationRef({
     required this.directory,
@@ -23,6 +25,16 @@ class LocationRef {
       "workspaceID": ?workspaceID,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocationRef &&
+          other.directory == directory &&
+          other.workspaceID == workspaceID);
+
+  @override
+  int get hashCode => Object.hash(directory, workspaceID);
 
   final String directory;
   final String? workspaceID;

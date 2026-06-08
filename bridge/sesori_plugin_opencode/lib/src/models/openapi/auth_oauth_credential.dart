@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.145752Z
+// Generated: 2026-06-08T14:04:07.946504Z
 
+import 'package:meta/meta.dart';
 import 'auth_credential.dart';
 
+@immutable
 class AuthOAuthCredential implements AuthCredential {
   const AuthOAuthCredential({
     required this.refresh,
@@ -29,6 +31,17 @@ class AuthOAuthCredential implements AuthCredential {
       "expires": expires,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AuthOAuthCredential &&
+          other.refresh == refresh &&
+          other.access == access &&
+          other.expires == expires);
+
+  @override
+  int get hashCode => Object.hash(refresh, access, expires);
 
   final String refresh;
   final String access;

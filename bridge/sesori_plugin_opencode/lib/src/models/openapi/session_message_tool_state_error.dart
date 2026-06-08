@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.192826Z
+// Generated: 2026-06-08T14:04:07.994239Z
 
+import 'package:meta/meta.dart';
 import 'session_error_unknown.dart';
 
+@immutable
 class SessionMessageToolStateError {
   const SessionMessageToolStateError({
     required this.status,
@@ -36,6 +38,20 @@ class SessionMessageToolStateError {
       "result": ?result,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionMessageToolStateError &&
+          other.status == status &&
+          other.input == input &&
+          other.content == content &&
+          other.structured == structured &&
+          other.error == error &&
+          other.result == result);
+
+  @override
+  int get hashCode => Object.hash(status, input, content, structured, error, result);
 
   final String status;
   final Map<String, dynamic> input;

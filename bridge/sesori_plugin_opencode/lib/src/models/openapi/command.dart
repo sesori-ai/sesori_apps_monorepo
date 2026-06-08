@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.146851Z
+// Generated: 2026-06-08T14:04:07.947502Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class Command {
   const Command({
     required this.name,
@@ -41,6 +43,22 @@ class Command {
       "hints": hints,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Command &&
+          other.name == name &&
+          other.description == description &&
+          other.agent == agent &&
+          other.model == model &&
+          other.source == source &&
+          other.template == template &&
+          other.subtask == subtask &&
+          other.hints == hints);
+
+  @override
+  int get hashCode => Object.hash(name, description, agent, model, source, template, subtask, hints);
 
   final String name;
   final String? description;

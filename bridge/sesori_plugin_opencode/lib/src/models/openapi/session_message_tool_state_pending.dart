@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.193010Z
+// Generated: 2026-06-08T14:04:07.994443Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class SessionMessageToolStatePending {
   const SessionMessageToolStatePending({
     required this.status,
@@ -23,6 +25,16 @@ class SessionMessageToolStatePending {
       "input": input,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionMessageToolStatePending &&
+          other.status == status &&
+          other.input == input);
+
+  @override
+  int get hashCode => Object.hash(status, input);
 
   final String status;
   final String input;

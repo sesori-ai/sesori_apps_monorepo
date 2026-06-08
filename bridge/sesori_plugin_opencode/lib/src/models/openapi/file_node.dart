@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.167052Z
+// Generated: 2026-06-08T14:04:07.968255Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class FileNode {
   const FileNode({
     required this.name,
@@ -32,6 +34,19 @@ class FileNode {
       "ignored": ignored,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FileNode &&
+          other.name == name &&
+          other.path == path &&
+          other.absolute == absolute &&
+          other.type == type &&
+          other.ignored == ignored);
+
+  @override
+  int get hashCode => Object.hash(name, path, absolute, type, ignored);
 
   final String name;
   final String path;

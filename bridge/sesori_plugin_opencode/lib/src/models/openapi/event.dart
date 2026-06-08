@@ -1,7 +1,8 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.149581Z
+// Generated: 2026-06-08T14:04:07.950524Z
 
+import 'package:meta/meta.dart';
 import 'event.tui.command.execute.dart';
 import 'event.tui.prompt.append.dart';
 import 'event.tui.session.select.dart';
@@ -90,6 +91,7 @@ import 'event_workspace_status.dart';
 import 'event_worktree_failed.dart';
 import 'event_worktree_ready.dart';
 
+@immutable
 abstract interface class Event {
   const Event();
 

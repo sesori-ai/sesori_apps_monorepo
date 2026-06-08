@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.141948Z
+// Generated: 2026-06-08T14:04:07.942717Z
 
+import 'package:meta/meta.dart';
 import 'message.dart';
 
+@immutable
 class AssistantMessage implements Message {
   const AssistantMessage({
     required this.id,
@@ -68,6 +70,30 @@ class AssistantMessage implements Message {
       "finish": ?finish,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AssistantMessage &&
+          other.id == id &&
+          other.sessionID == sessionID &&
+          other.time == time &&
+          other.error == error &&
+          other.parentID == parentID &&
+          other.modelID == modelID &&
+          other.providerID == providerID &&
+          other.mode == mode &&
+          other.agent == agent &&
+          other.path == path &&
+          other.summary == summary &&
+          other.cost == cost &&
+          other.tokens == tokens &&
+          other.structured == structured &&
+          other.variant == variant &&
+          other.finish == finish);
+
+  @override
+  int get hashCode => Object.hash(id, sessionID, time, error, parentID, modelID, providerID, mode, agent, path, summary, cost, tokens, structured, variant, finish);
 
   final String id;
   final String sessionID;

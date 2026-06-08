@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.183586Z
+// Generated: 2026-06-08T14:04:07.984532Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class ProviderConfig {
   const ProviderConfig({
     this.api,
@@ -44,6 +46,23 @@ class ProviderConfig {
       "models": ?models,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ProviderConfig &&
+          other.api == api &&
+          other.name == name &&
+          other.env == env &&
+          other.id == id &&
+          other.npm == npm &&
+          other.whitelist == whitelist &&
+          other.blacklist == blacklist &&
+          other.options == options &&
+          other.models == models);
+
+  @override
+  int get hashCode => Object.hash(api, name, env, id, npm, whitelist, blacklist, options, models);
 
   final String? api;
   final String? name;

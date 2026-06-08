@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.190489Z
+// Generated: 2026-06-08T14:04:07.991384Z
 
+import 'package:meta/meta.dart';
 import 'session_message.dart';
 
+@immutable
 class SessionMessageCompaction implements SessionMessage {
   const SessionMessageCompaction({
     required this.reason,
@@ -38,6 +40,20 @@ class SessionMessageCompaction implements SessionMessage {
       "time": time,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionMessageCompaction &&
+          other.reason == reason &&
+          other.summary == summary &&
+          other.include == include &&
+          other.id == id &&
+          other.metadata == metadata &&
+          other.time == time);
+
+  @override
+  int get hashCode => Object.hash(reason, summary, include, id, metadata, time);
 
   final String reason;
   final String summary;

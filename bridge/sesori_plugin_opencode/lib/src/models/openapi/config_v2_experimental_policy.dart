@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.148827Z
+// Generated: 2026-06-08T14:04:07.949612Z
 
+import 'package:meta/meta.dart';
 import 'policy_effect.dart';
 
+@immutable
 class ConfigV2ExperimentalPolicy {
   const ConfigV2ExperimentalPolicy({
     required this.action,
@@ -27,6 +29,17 @@ class ConfigV2ExperimentalPolicy {
       "resource": resource,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ConfigV2ExperimentalPolicy &&
+          other.action == action &&
+          other.effect == effect &&
+          other.resource == resource);
+
+  @override
+  int get hashCode => Object.hash(action, effect, resource);
 
   final String action;
   final PolicyEffect effect;

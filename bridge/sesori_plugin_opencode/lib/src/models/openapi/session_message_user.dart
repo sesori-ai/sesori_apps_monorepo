@@ -1,12 +1,14 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.193306Z
+// Generated: 2026-06-08T14:04:07.994751Z
 
+import 'package:meta/meta.dart';
 import 'prompt_agent_attachment.dart';
 import 'prompt_file_attachment.dart';
 import 'prompt_reference_attachment.dart';
 import 'session_message.dart';
 
+@immutable
 class SessionMessageUser implements SessionMessage {
   const SessionMessageUser({
     required this.id,
@@ -44,6 +46,21 @@ class SessionMessageUser implements SessionMessage {
       "type": "user",
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionMessageUser &&
+          other.id == id &&
+          other.metadata == metadata &&
+          other.time == time &&
+          other.text == text &&
+          other.files == files &&
+          other.agents == agents &&
+          other.references == references);
+
+  @override
+  int get hashCode => Object.hash(id, metadata, time, text, files, agents, references);
 
   final String id;
   final Map<String, dynamic>? metadata;

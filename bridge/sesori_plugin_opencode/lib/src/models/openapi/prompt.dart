@@ -1,11 +1,13 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.182164Z
+// Generated: 2026-06-08T14:04:07.982958Z
 
+import 'package:meta/meta.dart';
 import 'prompt_agent_attachment.dart';
 import 'prompt_file_attachment.dart';
 import 'prompt_reference_attachment.dart';
 
+@immutable
 class Prompt {
   const Prompt({
     required this.text,
@@ -32,6 +34,18 @@ class Prompt {
       "references": ?references?.map((e) => e.toJson()).toList(),
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Prompt &&
+          other.text == text &&
+          other.files == files &&
+          other.agents == agents &&
+          other.references == references);
+
+  @override
+  int get hashCode => Object.hash(text, files, agents, references);
 
   final String text;
   final List<PromptFileAttachment>? files;

@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.183888Z
+// Generated: 2026-06-08T14:04:07.984864Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class ProviderV2Info {
   const ProviderV2Info({
     required this.id,
@@ -35,6 +37,20 @@ class ProviderV2Info {
       "request": request,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ProviderV2Info &&
+          other.id == id &&
+          other.name == name &&
+          other.enabled == enabled &&
+          other.env == env &&
+          other.api == api &&
+          other.request == request);
+
+  @override
+  int get hashCode => Object.hash(id, name, enabled, env, api, request);
 
   final String id;
   final String name;

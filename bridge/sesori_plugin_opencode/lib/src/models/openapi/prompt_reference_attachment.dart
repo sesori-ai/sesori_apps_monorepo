@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.182585Z
+// Generated: 2026-06-08T14:04:07.983398Z
 
+import 'package:meta/meta.dart';
 import 'prompt_source.dart';
 
+@immutable
 class PromptReferenceAttachment {
   const PromptReferenceAttachment({
     required this.name,
@@ -45,6 +47,23 @@ class PromptReferenceAttachment {
       "source": ?source?.toJson(),
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PromptReferenceAttachment &&
+          other.name == name &&
+          other.kind == kind &&
+          other.uri == uri &&
+          other.repository == repository &&
+          other.branch == branch &&
+          other.target == target &&
+          other.targetUri == targetUri &&
+          other.problem == problem &&
+          other.source == source);
+
+  @override
+  int get hashCode => Object.hash(name, kind, uri, repository, branch, target, targetUri, problem, source);
 
   final String name;
   final String kind;

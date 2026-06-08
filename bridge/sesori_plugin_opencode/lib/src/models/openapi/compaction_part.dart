@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.147405Z
+// Generated: 2026-06-08T14:04:07.948031Z
 
+import 'package:meta/meta.dart';
 import 'part.dart';
 
+@immutable
 class CompactionPart implements Part {
   const CompactionPart({
     required this.id,
@@ -38,6 +40,20 @@ class CompactionPart implements Part {
       "tail_start_id": ?tailStartId,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CompactionPart &&
+          other.id == id &&
+          other.sessionID == sessionID &&
+          other.messageID == messageID &&
+          other.auto == auto &&
+          other.overflow == overflow &&
+          other.tailStartId == tailStartId);
+
+  @override
+  int get hashCode => Object.hash(id, sessionID, messageID, auto, overflow, tailStartId);
 
   final String id;
   final String sessionID;

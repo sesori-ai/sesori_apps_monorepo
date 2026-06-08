@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.169023Z
+// Generated: 2026-06-08T14:04:07.970551Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class GlobalEvent {
   const GlobalEvent({
     required this.directory,
@@ -29,6 +31,18 @@ class GlobalEvent {
       "payload": payload,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is GlobalEvent &&
+          other.directory == directory &&
+          other.project == project &&
+          other.workspace == workspace &&
+          other.payload == payload);
+
+  @override
+  int get hashCode => Object.hash(directory, project, workspace, payload);
 
   final String directory;
   final String? project;

@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.180802Z
+// Generated: 2026-06-08T14:04:07.981275Z
 
+import 'package:meta/meta.dart';
 import 'permission_v2_source.dart';
 
+@immutable
 class PermissionV2Request {
   const PermissionV2Request({
     required this.id,
@@ -39,6 +41,21 @@ class PermissionV2Request {
       "source": ?source?.toJson(),
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PermissionV2Request &&
+          other.id == id &&
+          other.sessionID == sessionID &&
+          other.action == action &&
+          other.resources == resources &&
+          other.save == save &&
+          other.metadata == metadata &&
+          other.source == source);
+
+  @override
+  int get hashCode => Object.hash(id, sessionID, action, resources, save, metadata, source);
 
   final String id;
   final String sessionID;

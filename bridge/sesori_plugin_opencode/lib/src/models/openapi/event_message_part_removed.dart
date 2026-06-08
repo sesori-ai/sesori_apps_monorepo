@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.154465Z
+// Generated: 2026-06-08T14:04:07.955449Z
 
+import 'package:meta/meta.dart';
 import 'event.dart';
 
+@immutable
 class EventMessagePartRemoved implements Event {
   const EventMessagePartRemoved({
     required this.id,
@@ -26,6 +28,16 @@ class EventMessagePartRemoved implements Event {
       "properties": properties,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EventMessagePartRemoved &&
+          other.id == id &&
+          other.properties == properties);
+
+  @override
+  int get hashCode => Object.hash(id, properties);
 
   final String id;
   final Map<String, dynamic> properties;

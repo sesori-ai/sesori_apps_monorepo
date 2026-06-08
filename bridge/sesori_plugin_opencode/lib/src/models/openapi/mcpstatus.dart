@@ -1,13 +1,15 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.171870Z
+// Generated: 2026-06-08T14:04:07.972870Z
 
+import 'package:meta/meta.dart';
 import 'mcpstatus_connected.dart';
 import 'mcpstatus_disabled.dart';
 import 'mcpstatus_failed.dart';
 import 'mcpstatus_needs_auth.dart';
 import 'mcpstatus_needs_client_registration.dart';
 
+@immutable
 abstract interface class MCPStatus {
   const MCPStatus();
 

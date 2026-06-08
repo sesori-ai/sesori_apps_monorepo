@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.175163Z
+// Generated: 2026-06-08T14:04:07.975626Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class Model {
   const Model({
     required this.id,
@@ -56,6 +58,27 @@ class Model {
       "variants": ?variants,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Model &&
+          other.id == id &&
+          other.providerID == providerID &&
+          other.api == api &&
+          other.name == name &&
+          other.family == family &&
+          other.capabilities == capabilities &&
+          other.cost == cost &&
+          other.limit == limit &&
+          other.status == status &&
+          other.options == options &&
+          other.headers == headers &&
+          other.releaseDate == releaseDate &&
+          other.variants == variants);
+
+  @override
+  int get hashCode => Object.hash(id, providerID, api, name, family, capabilities, cost, limit, status, options, headers, releaseDate, variants);
 
   final String id;
   final String providerID;

@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.194686Z
+// Generated: 2026-06-08T14:04:07.996120Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class SkillV2Info {
   const SkillV2Info({
     required this.name,
@@ -32,6 +34,19 @@ class SkillV2Info {
       "content": content,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SkillV2Info &&
+          other.name == name &&
+          other.description == description &&
+          other.slash == slash &&
+          other.location == location &&
+          other.content == content);
+
+  @override
+  int get hashCode => Object.hash(name, description, slash, location, content);
 
   final String name;
   final String? description;

@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.141128Z
+// Generated: 2026-06-08T14:04:07.941935Z
 
+import 'package:meta/meta.dart';
 import 'permission_v2_ruleset.dart';
 
+@immutable
 class AgentV2Info {
   const AgentV2Info({
     required this.id,
@@ -48,6 +50,24 @@ class AgentV2Info {
       "permissions": permissions.toJson(),
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AgentV2Info &&
+          other.id == id &&
+          other.model == model &&
+          other.request == request &&
+          other.system == system &&
+          other.description == description &&
+          other.mode == mode &&
+          other.hidden == hidden &&
+          other.color == color &&
+          other.steps == steps &&
+          other.permissions == permissions);
+
+  @override
+  int get hashCode => Object.hash(id, model, request, system, description, mode, hidden, color, steps, permissions);
 
   final String id;
   final Map<String, dynamic>? model;

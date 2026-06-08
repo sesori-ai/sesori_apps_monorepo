@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.177306Z
+// Generated: 2026-06-08T14:04:07.977691Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class Path {
   const Path({
     required this.home,
@@ -32,6 +34,19 @@ class Path {
       "directory": directory,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Path &&
+          other.home == home &&
+          other.state == state &&
+          other.config == config &&
+          other.worktree == worktree &&
+          other.directory == directory);
+
+  @override
+  int get hashCode => Object.hash(home, state, config, worktree, directory);
 
   final String home;
   final String state;

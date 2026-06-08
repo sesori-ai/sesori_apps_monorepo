@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.193834Z
+// Generated: 2026-06-08T14:04:07.995237Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class SessionNextRetryError {
   const SessionNextRetryError({
     required this.message,
@@ -35,6 +37,20 @@ class SessionNextRetryError {
       "metadata": ?metadata,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionNextRetryError &&
+          other.message == message &&
+          other.statusCode == statusCode &&
+          other.isRetryable == isRetryable &&
+          other.responseHeaders == responseHeaders &&
+          other.responseBody == responseBody &&
+          other.metadata == metadata);
+
+  @override
+  int get hashCode => Object.hash(message, statusCode, isRetryable, responseHeaders, responseBody, metadata);
 
   final String message;
   final double? statusCode;

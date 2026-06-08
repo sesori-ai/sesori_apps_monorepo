@@ -1,10 +1,12 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.203602Z
+// Generated: 2026-06-08T14:04:08.005029Z
 
+import 'package:meta/meta.dart';
 import 'part.dart';
 import 'tool_state.dart';
 
+@immutable
 class ToolPart implements Part {
   const ToolPart({
     required this.id,
@@ -42,6 +44,21 @@ class ToolPart implements Part {
       "metadata": ?metadata,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ToolPart &&
+          other.id == id &&
+          other.sessionID == sessionID &&
+          other.messageID == messageID &&
+          other.callID == callID &&
+          other.tool == tool &&
+          other.state == state &&
+          other.metadata == metadata);
+
+  @override
+  int get hashCode => Object.hash(id, sessionID, messageID, callID, tool, state, metadata);
 
   final String id;
   final String sessionID;

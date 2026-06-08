@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.208437Z
+// Generated: 2026-06-08T14:04:08.009445Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class WorktreeRemoveInput {
   const WorktreeRemoveInput({
     required this.directory,
@@ -20,6 +22,15 @@ class WorktreeRemoveInput {
       "directory": directory,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WorktreeRemoveInput &&
+          other.directory == directory);
+
+  @override
+  int get hashCode => directory.hashCode;
 
   final String directory;
 }

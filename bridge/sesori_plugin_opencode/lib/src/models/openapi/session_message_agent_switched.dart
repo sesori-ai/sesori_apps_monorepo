@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.188781Z
+// Generated: 2026-06-08T14:04:07.989770Z
 
+import 'package:meta/meta.dart';
 import 'session_message.dart';
 
+@immutable
 class SessionMessageAgentSwitched implements SessionMessage {
   const SessionMessageAgentSwitched({
     required this.id,
@@ -32,6 +34,18 @@ class SessionMessageAgentSwitched implements SessionMessage {
       "agent": agent,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionMessageAgentSwitched &&
+          other.id == id &&
+          other.metadata == metadata &&
+          other.time == time &&
+          other.agent == agent);
+
+  @override
+  int get hashCode => Object.hash(id, metadata, time, agent);
 
   final String id;
   final Map<String, dynamic>? metadata;

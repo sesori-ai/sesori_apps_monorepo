@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.181598Z
+// Generated: 2026-06-08T14:04:07.982325Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class ProjectCopyCopy {
   const ProjectCopyCopy({
     required this.directory,
@@ -20,6 +22,15 @@ class ProjectCopyCopy {
       "directory": directory,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ProjectCopyCopy &&
+          other.directory == directory);
+
+  @override
+  int get hashCode => directory.hashCode;
 
   final String directory;
 }

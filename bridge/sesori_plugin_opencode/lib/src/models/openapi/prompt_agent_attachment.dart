@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.182324Z
+// Generated: 2026-06-08T14:04:07.983125Z
 
+import 'package:meta/meta.dart';
 import 'prompt_source.dart';
 
+@immutable
 class PromptAgentAttachment {
   const PromptAgentAttachment({
     required this.name,
@@ -24,6 +26,16 @@ class PromptAgentAttachment {
       "source": ?source?.toJson(),
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PromptAgentAttachment &&
+          other.name == name &&
+          other.source == source);
+
+  @override
+  int get hashCode => Object.hash(name, source);
 
   final String name;
   final PromptSource? source;

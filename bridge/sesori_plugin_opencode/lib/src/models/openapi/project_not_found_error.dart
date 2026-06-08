@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.181924Z
+// Generated: 2026-06-08T14:04:07.982677Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class ProjectNotFoundError {
   const ProjectNotFoundError({
     required this.tag,
@@ -26,6 +28,17 @@ class ProjectNotFoundError {
       "message": message,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ProjectNotFoundError &&
+          other.tag == tag &&
+          other.projectID == projectID &&
+          other.message == message);
+
+  @override
+  int get hashCode => Object.hash(tag, projectID, message);
 
   final String tag;
   final String projectID;

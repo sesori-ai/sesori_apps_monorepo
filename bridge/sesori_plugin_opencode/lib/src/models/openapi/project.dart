@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.181435Z
+// Generated: 2026-06-08T14:04:07.982144Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class Project {
   const Project({
     required this.id,
@@ -41,6 +43,22 @@ class Project {
       "sandboxes": sandboxes,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Project &&
+          other.id == id &&
+          other.worktree == worktree &&
+          other.vcs == vcs &&
+          other.name == name &&
+          other.icon == icon &&
+          other.commands == commands &&
+          other.time == time &&
+          other.sandboxes == sandboxes);
+
+  @override
+  int get hashCode => Object.hash(id, worktree, vcs, name, icon, commands, time, sandboxes);
 
   final String id;
   final String worktree;

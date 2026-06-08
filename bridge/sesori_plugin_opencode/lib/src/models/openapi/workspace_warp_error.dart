@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.207690Z
+// Generated: 2026-06-08T14:04:08.008836Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class WorkspaceWarpError {
   const WorkspaceWarpError({
     required this.name,
@@ -23,6 +25,16 @@ class WorkspaceWarpError {
       "data": data,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WorkspaceWarpError &&
+          other.name == name &&
+          other.data == data);
+
+  @override
+  int get hashCode => Object.hash(name, data);
 
   final String name;
   final Map<String, dynamic> data;

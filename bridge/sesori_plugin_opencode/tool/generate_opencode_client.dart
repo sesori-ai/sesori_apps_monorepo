@@ -502,6 +502,7 @@ class Codegen {
     b.writeln("import 'dart:convert';");
     b.writeln();
     b.writeln("import 'package:http/http.dart' as http;");
+    b.writeln("import 'package:meta/meta.dart';");
     b.writeln();
     imports.forEach(b.writeln);
     b.writeln();
@@ -584,6 +585,7 @@ class Codegen {
     b.writeln('/// OpenCode REST API client.');
     b.writeln('///');
     b.writeln('/// HTTP Basic auth: username `opencode`, password supplied at construction.');
+    b.writeln('@immutable');
     b.writeln('class OpenCodeClient {');
     b.writeln('  OpenCodeClient({');
     b.writeln('    required this.baseUrl,');
@@ -619,6 +621,7 @@ class Codegen {
     b.writeln('}');
 
     b.writeln();
+    b.writeln('@immutable');
     b.writeln('class OpenCodeApiException implements Exception {');
     b.writeln('  const OpenCodeApiException({');
     b.writeln('    required this.statusCode,');
@@ -1121,7 +1124,8 @@ class ModelWriter {
       }
     }
     final usesAnno = _isEnum(schema) || _inlineEnums.isNotEmpty;
-    final header = _emitHeader(usedRefs, usesJsonAnnotation: usesAnno);
+    final usesImmutable = !_isEnum(schema);
+    final header = _emitHeader(usedRefs, usesJsonAnnotation: usesAnno, usesImmutable: usesImmutable);
     if (_isEnum(schema)) return header + _emitEnum();
     if (_isUnion(schema)) return header + _emitUnion();
     if (_isArray(schema)) return header + _emitArrayAlias();
@@ -1232,7 +1236,7 @@ class ModelWriter {
     return refs;
   }
 
-  String _emitHeader(Set<String> refs, {required bool usesJsonAnnotation}) {
+  String _emitHeader(Set<String> refs, {required bool usesJsonAnnotation, required bool usesImmutable}) {
     final b = StringBuffer();
     b.writeln('// GENERATED FILE - DO NOT EDIT BY HAND');
     if (sourceHeader != null && sourceHeader!.isNotEmpty) {
@@ -1246,7 +1250,9 @@ class ModelWriter {
     // `unused_import` warnings on every generated file.
     if (usesJsonAnnotation) {
       b.writeln("import 'package:json_annotation/json_annotation.dart';");
-      b.writeln();
+    }
+    if (usesImmutable) {
+      b.writeln("import 'package:meta/meta.dart';");
     }
     final sortedRefs = refs.toList()..sort();
     for (final ref in sortedRefs) {
@@ -1288,6 +1294,7 @@ class ModelWriter {
         : '$innerClass.fromJson(e as Map<String, dynamic>)';
     final b = StringBuffer();
     b.writeln('/// Type alias for `List<$innerClass>` decoded from JSON.');
+    b.writeln('@immutable');
     b.writeln('class $name {');
     b.writeln('  const $name({required this.items});');
     b.writeln('  factory $name.fromJson(List<dynamic> json) => $name(items: json.map((e) => $innerElement).toList());');
@@ -1360,6 +1367,7 @@ class ModelWriter {
     final disc = _findDiscriminator(variants);
     final inlineVariantClasses = <_InlineVariantClassEntry>[];
 
+    b.writeln('@immutable');
     b.writeln('abstract interface class $name {');
     b.writeln('  const $name();');
     b.writeln();
@@ -1492,6 +1500,7 @@ class ModelWriter {
       final sch = schemas[refName] as Map<String, dynamic>?;
       final isEnum = sch != null && sch['type'] == 'string' && sch['enum'] is List;
       if (isEnum) {
+        b.writeln('@immutable');
         b.writeln('class $className implements $unionName {');
         b.writeln('  const $className({required this.value});');
         b.writeln('  factory $className.fromJson(String json) {');
@@ -1549,6 +1558,7 @@ class ModelWriter {
         b.writeln('  }');
         b.writeln('}');
       } else {
+        b.writeln('@immutable');
         b.writeln('class $className implements $unionName {');
         b.writeln('  const $className({required this.value});');
         b.writeln('  factory $className.fromJson(String json) {');
@@ -1580,6 +1590,7 @@ class ModelWriter {
       } else {
         innerDart = 'Object';
       }
+      b.writeln('@immutable');
       b.writeln('class $className implements $unionName {');
       b.writeln('  const $className({required this.items});');
       b.writeln('  factory $className.fromJson(List<dynamic> json) {');
@@ -1613,6 +1624,7 @@ class ModelWriter {
         if (vals is! List || vals.length != 1) continue;
         literals[entry.key] = vals.first as String;
       }
+      b.writeln('@immutable');
       b.writeln('class $className implements $unionName {');
       final realProps =
           props.entries.where((e) => !literals.containsKey(e.key)).toList();
@@ -1677,6 +1689,31 @@ class ModelWriter {
       b.writeln('    };');
       b.writeln('  }');
       b.writeln();
+
+      // == / hashCode
+      if (realProps.isNotEmpty) {
+        b.writeln('  @override');
+        b.writeln('  bool operator ==(Object other) =>');
+        b.writeln('      identical(this, other) ||');
+        b.writeln('      (other is $className &&');
+        final fieldChecks = realProps.map((e) {
+          final safeName = _safeIdentifier(e.key);
+          return '          other.$safeName == $safeName';
+        }).join(' &&\n');
+        b.writeln('$fieldChecks);');
+        b.writeln();
+        b.writeln('  @override');
+        final hashArgs = realProps.map((e) => _safeIdentifier(e.key)).join(', ');
+        if (realProps.length == 1) {
+          b.writeln('  int get hashCode => ${_safeIdentifier(realProps.first.key)}.hashCode;');
+        } else if (realProps.length <= 20) {
+          b.writeln('  int get hashCode => Object.hash($hashArgs);');
+        } else {
+          b.writeln('  int get hashCode => Object.hashAll([$hashArgs]);');
+        }
+        b.writeln();
+      }
+
       for (final entry in props.entries) {
         if (literals.containsKey(entry.key)) continue;
         final fieldName = entry.key;
@@ -1696,6 +1733,7 @@ class ModelWriter {
       return b.toString();
     }
     // Fallback: emit an opaque Map wrapper.
+    b.writeln('@immutable');
     b.writeln('class $className implements $unionName {');
     b.writeln('  const $className(this.json);');
     b.writeln('  factory $className.fromJson(Map<String, dynamic> json) {');
@@ -1703,6 +1741,17 @@ class ModelWriter {
     b.writeln('  }');
     b.writeln('  @override');
     b.writeln('  Map<String, dynamic> toJson() => json;');
+    b.writeln('  @override');
+    b.writeln('  bool operator ==(Object other) =>');
+    b.writeln('      identical(this, other) ||');
+    b.writeln('      (other is $className &&');
+    b.writeln('          other.json.length == json.length &&');
+    b.writeln('          other.json.entries.every((e) => json[e.key] == e.value));');
+    b.writeln();
+    b.writeln('  @override');
+    b.writeln('  int get hashCode => Object.hashAll(json.entries');
+    b.writeln('      .map((e) => Object.hash(e.key, e.value)));');
+    b.writeln();
     b.writeln('  final Map<String, dynamic> json;');
     b.writeln('}');
     return b.toString();
@@ -1750,6 +1799,7 @@ class ModelWriter {
       }
     }
 
+    b.writeln('@immutable');
     b.writeln(implementsClass != null
         ? 'class $name implements $implementsClass {'
         : 'class $name {');
@@ -1837,6 +1887,30 @@ class ModelWriter {
     b.writeln('  }');
     b.writeln();
 
+    // == / hashCode
+    if (realProps.isNotEmpty) {
+      b.writeln('  @override');
+      b.writeln('  bool operator ==(Object other) =>');
+      b.writeln('      identical(this, other) ||');
+      b.writeln('      (other is $name &&');
+      final fieldChecks = realProps.map((e) {
+        final safeName = _safeIdentifier(e.key);
+        return '          other.$safeName == $safeName';
+      }).join(' &&\n');
+      b.writeln('$fieldChecks);');
+      b.writeln();
+      b.writeln('  @override');
+      final hashArgs = realProps.map((e) => _safeIdentifier(e.key)).join(', ');
+      if (realProps.length == 1) {
+        b.writeln('  int get hashCode => ${_safeIdentifier(realProps.first.key)}.hashCode;');
+      } else if (realProps.length <= 20) {
+        b.writeln('  int get hashCode => Object.hash($hashArgs);');
+      } else {
+        b.writeln('  int get hashCode => Object.hashAll([$hashArgs]);');
+      }
+      b.writeln();
+    }
+
     // Fields
     for (final entry in properties.entries) {
       if (literals.containsKey(entry.key)) continue;
@@ -1876,6 +1950,7 @@ class ModelWriter {
     final isNullable = _isNullableSchema(ap);
     final valueType = isNullable ? '$valueDart?' : valueDart;
 
+    b.writeln('@immutable');
     b.writeln(implementsClass != null
         ? 'class $name implements $implementsClass {'
         : 'class $name {');

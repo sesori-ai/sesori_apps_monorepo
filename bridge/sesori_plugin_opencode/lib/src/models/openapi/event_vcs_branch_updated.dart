@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.165747Z
+// Generated: 2026-06-08T14:04:07.966303Z
 
+import 'package:meta/meta.dart';
 import 'event.dart';
 
+@immutable
 class EventVcsBranchUpdated implements Event {
   const EventVcsBranchUpdated({
     required this.id,
@@ -26,6 +28,16 @@ class EventVcsBranchUpdated implements Event {
       "properties": properties,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EventVcsBranchUpdated &&
+          other.id == id &&
+          other.properties == properties);
+
+  @override
+  int get hashCode => Object.hash(id, properties);
 
   final String id;
   final Map<String, dynamic> properties;

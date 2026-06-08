@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.147155Z
+// Generated: 2026-06-08T14:04:07.947795Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class CommandV2Info {
   const CommandV2Info({
     required this.name,
@@ -35,6 +37,20 @@ class CommandV2Info {
       "subtask": ?subtask,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CommandV2Info &&
+          other.name == name &&
+          other.template == template &&
+          other.description == description &&
+          other.agent == agent &&
+          other.model == model &&
+          other.subtask == subtask);
+
+  @override
+  int get hashCode => Object.hash(name, template, description, agent, model, subtask);
 
   final String name;
   final String template;

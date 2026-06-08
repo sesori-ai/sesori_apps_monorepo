@@ -1,10 +1,12 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.204025Z
+// Generated: 2026-06-08T14:04:08.005447Z
 
+import 'package:meta/meta.dart';
 import 'file_part.dart';
 import 'tool_state.dart';
 
+@immutable
 class ToolStateCompleted implements ToolState {
   const ToolStateCompleted({
     required this.input,
@@ -39,6 +41,20 @@ class ToolStateCompleted implements ToolState {
       "attachments": ?attachments?.map((e) => e.toJson()).toList(),
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ToolStateCompleted &&
+          other.input == input &&
+          other.output == output &&
+          other.title == title &&
+          other.metadata == metadata &&
+          other.time == time &&
+          other.attachments == attachments);
+
+  @override
+  int get hashCode => Object.hash(input, output, title, metadata, time, attachments);
 
   final Map<String, dynamic> input;
   final String output;

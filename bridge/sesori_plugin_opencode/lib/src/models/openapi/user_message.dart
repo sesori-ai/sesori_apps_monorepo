@@ -1,10 +1,12 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.205506Z
+// Generated: 2026-06-08T14:04:08.007161Z
 
+import 'package:meta/meta.dart';
 import 'message.dart';
 import 'output_format.dart';
 
+@immutable
 class UserMessage implements Message {
   const UserMessage({
     required this.id,
@@ -48,6 +50,23 @@ class UserMessage implements Message {
       "tools": ?tools,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UserMessage &&
+          other.id == id &&
+          other.sessionID == sessionID &&
+          other.time == time &&
+          other.format == format &&
+          other.summary == summary &&
+          other.agent == agent &&
+          other.model == model &&
+          other.system == system &&
+          other.tools == tools);
+
+  @override
+  int get hashCode => Object.hash(id, sessionID, time, format, summary, agent, model, system, tools);
 
   final String id;
   final String sessionID;

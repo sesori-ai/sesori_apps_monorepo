@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.186599Z
+// Generated: 2026-06-08T14:04:07.987460Z
 
+import 'package:meta/meta.dart';
 import 'part.dart';
 
+@immutable
 class ReasoningPart implements Part {
   const ReasoningPart({
     required this.id,
@@ -38,6 +40,20 @@ class ReasoningPart implements Part {
       "time": time,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ReasoningPart &&
+          other.id == id &&
+          other.sessionID == sessionID &&
+          other.messageID == messageID &&
+          other.text == text &&
+          other.metadata == metadata &&
+          other.time == time);
+
+  @override
+  int get hashCode => Object.hash(id, sessionID, messageID, text, metadata, time);
 
   final String id;
   final String sessionID;

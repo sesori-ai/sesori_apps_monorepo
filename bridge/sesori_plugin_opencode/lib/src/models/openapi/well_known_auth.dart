@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.207034Z
+// Generated: 2026-06-08T14:04:08.008297Z
 
+import 'package:meta/meta.dart';
 import 'auth.dart';
 
+@immutable
 class WellKnownAuth implements Auth {
   const WellKnownAuth({
     required this.key,
@@ -26,6 +28,16 @@ class WellKnownAuth implements Auth {
       "token": token,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WellKnownAuth &&
+          other.key == key &&
+          other.token == token);
+
+  @override
+  int get hashCode => Object.hash(key, token);
 
   final String key;
   final String token;

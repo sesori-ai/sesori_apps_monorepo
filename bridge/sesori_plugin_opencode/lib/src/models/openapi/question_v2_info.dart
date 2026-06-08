@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.185661Z
+// Generated: 2026-06-08T14:04:07.986679Z
 
+import 'package:meta/meta.dart';
 import 'question_v2_option.dart';
 
+@immutable
 class QuestionV2Info {
   const QuestionV2Info({
     required this.question,
@@ -33,6 +35,19 @@ class QuestionV2Info {
       "custom": ?custom,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is QuestionV2Info &&
+          other.question == question &&
+          other.header == header &&
+          other.options == options &&
+          other.multiple == multiple &&
+          other.custom == custom);
+
+  @override
+  int get hashCode => Object.hash(question, header, options, multiple, custom);
 
   final String question;
   final String header;

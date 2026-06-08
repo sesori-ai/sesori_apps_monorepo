@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.149227Z
+// Generated: 2026-06-08T14:04:07.950179Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class ConsoleState {
   const ConsoleState({
     required this.consoleManagedProviders,
@@ -26,6 +28,17 @@ class ConsoleState {
       "switchableOrgCount": switchableOrgCount,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ConsoleState &&
+          other.consoleManagedProviders == consoleManagedProviders &&
+          other.activeOrgName == activeOrgName &&
+          other.switchableOrgCount == switchableOrgCount);
+
+  @override
+  int get hashCode => Object.hash(consoleManagedProviders, activeOrgName, switchableOrgCount);
 
   final List<String> consoleManagedProviders;
   final String? activeOrgName;

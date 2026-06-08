@@ -1,10 +1,12 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.186144Z
+// Generated: 2026-06-08T14:04:07.987067Z
 
+import 'package:meta/meta.dart';
 import 'question_v2_info.dart';
 import 'question_v2_tool.dart';
 
+@immutable
 class QuestionV2Request {
   const QuestionV2Request({
     required this.id,
@@ -31,6 +33,18 @@ class QuestionV2Request {
       "tool": ?tool?.toJson(),
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is QuestionV2Request &&
+          other.id == id &&
+          other.sessionID == sessionID &&
+          other.questions == questions &&
+          other.tool == tool);
+
+  @override
+  int get hashCode => Object.hash(id, sessionID, questions, tool);
 
   final String id;
   final String sessionID;

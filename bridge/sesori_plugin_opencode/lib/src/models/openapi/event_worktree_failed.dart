@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.166386Z
+// Generated: 2026-06-08T14:04:07.967208Z
 
+import 'package:meta/meta.dart';
 import 'event.dart';
 
+@immutable
 class EventWorktreeFailed implements Event {
   const EventWorktreeFailed({
     required this.id,
@@ -26,6 +28,16 @@ class EventWorktreeFailed implements Event {
       "properties": properties,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EventWorktreeFailed &&
+          other.id == id &&
+          other.properties == properties);
+
+  @override
+  int get hashCode => Object.hash(id, properties);
 
   final String id;
   final Map<String, dynamic> properties;

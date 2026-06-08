@@ -2,7 +2,7 @@
 //
 // Auto-generated OpenCode v2 client generated from the OpenAPI spec.
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.212675Z
+// Generated: 2026-06-08T14:04:08.014141Z
 //
 // To regenerate, run:
 //   make opencode-codegen OPENCODE_TAG=<tag>
@@ -14,6 +14,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:meta/meta.dart';
 
 import 'models/openapi/agent.dart';
 import 'models/openapi/auth.dart';
@@ -57,6 +58,7 @@ import 'models/openapi/worktree_reset_input.dart';
 /// OpenCode REST API client.
 ///
 /// HTTP Basic auth: username `opencode`, password supplied at construction.
+@immutable
 class OpenCodeClient {
   OpenCodeClient({
     required this.baseUrl,
@@ -4549,6 +4551,7 @@ Future<bool> worktreeReset0jwyzk5({
 
 }
 
+@immutable
 class OpenCodeApiException implements Exception {
   const OpenCodeApiException({
     required this.statusCode,

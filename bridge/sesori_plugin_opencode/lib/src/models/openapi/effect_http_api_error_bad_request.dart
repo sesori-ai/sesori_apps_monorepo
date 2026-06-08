@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.208707Z
+// Generated: 2026-06-08T14:04:08.009722Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class HttpApiErrorBadRequest {
   const HttpApiErrorBadRequest({
     required this.tag,
@@ -20,6 +22,15 @@ class HttpApiErrorBadRequest {
       "_tag": tag,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is HttpApiErrorBadRequest &&
+          other.tag == tag);
+
+  @override
+  int get hashCode => tag.hashCode;
 
   final String tag;
 }

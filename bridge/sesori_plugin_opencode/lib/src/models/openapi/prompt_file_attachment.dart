@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.182443Z
+// Generated: 2026-06-08T14:04:07.983249Z
 
+import 'package:meta/meta.dart';
 import 'prompt_source.dart';
 
+@immutable
 class PromptFileAttachment {
   const PromptFileAttachment({
     required this.uri,
@@ -33,6 +35,19 @@ class PromptFileAttachment {
       "source": ?source?.toJson(),
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PromptFileAttachment &&
+          other.uri == uri &&
+          other.mime == mime &&
+          other.name == name &&
+          other.description == description &&
+          other.source == source);
+
+  @override
+  int get hashCode => Object.hash(uri, mime, name, description, source);
 
   final String uri;
   final String mime;

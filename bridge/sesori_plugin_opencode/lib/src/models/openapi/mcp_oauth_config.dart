@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.173795Z
+// Generated: 2026-06-08T14:04:07.974458Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class McpOAuthConfig {
   const McpOAuthConfig({
     this.clientId,
@@ -32,6 +34,19 @@ class McpOAuthConfig {
       "redirectUri": ?redirectUri,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is McpOAuthConfig &&
+          other.clientId == clientId &&
+          other.clientSecret == clientSecret &&
+          other.scope == scope &&
+          other.callbackPort == callbackPort &&
+          other.redirectUri == redirectUri);
+
+  @override
+  int get hashCode => Object.hash(clientId, clientSecret, scope, callbackPort, redirectUri);
 
   final String? clientId;
   final String? clientSecret;

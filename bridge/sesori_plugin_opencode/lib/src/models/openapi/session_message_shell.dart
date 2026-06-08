@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.191340Z
+// Generated: 2026-06-08T14:04:07.992543Z
 
+import 'package:meta/meta.dart';
 import 'session_message.dart';
 
+@immutable
 class SessionMessageShell implements SessionMessage {
   const SessionMessageShell({
     required this.id,
@@ -38,6 +40,20 @@ class SessionMessageShell implements SessionMessage {
       "output": output,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionMessageShell &&
+          other.id == id &&
+          other.metadata == metadata &&
+          other.time == time &&
+          other.callID == callID &&
+          other.command == command &&
+          other.output == output);
+
+  @override
+  int get hashCode => Object.hash(id, metadata, time, callID, command, output);
 
   final String id;
   final Map<String, dynamic>? metadata;

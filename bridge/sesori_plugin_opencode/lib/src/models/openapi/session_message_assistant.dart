@@ -1,10 +1,12 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.189232Z
+// Generated: 2026-06-08T14:04:07.990241Z
 
+import 'package:meta/meta.dart';
 import 'session_error_unknown.dart';
 import 'session_message.dart';
 
+@immutable
 class SessionMessageAssistant implements SessionMessage {
   const SessionMessageAssistant({
     required this.id,
@@ -54,6 +56,25 @@ class SessionMessageAssistant implements SessionMessage {
       "error": ?error?.toJson(),
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionMessageAssistant &&
+          other.id == id &&
+          other.metadata == metadata &&
+          other.time == time &&
+          other.agent == agent &&
+          other.model == model &&
+          other.content == content &&
+          other.snapshot == snapshot &&
+          other.finish == finish &&
+          other.cost == cost &&
+          other.tokens == tokens &&
+          other.error == error);
+
+  @override
+  int get hashCode => Object.hash(id, metadata, time, agent, model, content, snapshot, finish, cost, tokens, error);
 
   final String id;
   final Map<String, dynamic>? metadata;

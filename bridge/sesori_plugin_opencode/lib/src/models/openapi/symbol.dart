@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.196196Z
+// Generated: 2026-06-08T14:04:07.998140Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class Symbol {
   const Symbol({
     required this.name,
@@ -26,6 +28,17 @@ class Symbol {
       "location": location,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Symbol &&
+          other.name == name &&
+          other.kind == kind &&
+          other.location == location);
+
+  @override
+  int get hashCode => Object.hash(name, kind, location);
 
   final String name;
   final int kind;

@@ -1,10 +1,12 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.187441Z
+// Generated: 2026-06-08T14:04:07.988345Z
 
+import 'package:meta/meta.dart';
 import 'apierror.dart';
 import 'part.dart';
 
+@immutable
 class RetryPart implements Part {
   const RetryPart({
     required this.id,
@@ -39,6 +41,20 @@ class RetryPart implements Part {
       "time": time,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RetryPart &&
+          other.id == id &&
+          other.sessionID == sessionID &&
+          other.messageID == messageID &&
+          other.attempt == attempt &&
+          other.error == error &&
+          other.time == time);
+
+  @override
+  int get hashCode => Object.hash(id, sessionID, messageID, attempt, error, time);
 
   final String id;
   final String sessionID;

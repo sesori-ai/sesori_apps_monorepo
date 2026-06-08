@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.182891Z
+// Generated: 2026-06-08T14:04:07.983723Z
 
+import 'package:meta/meta.dart';
 import 'model.dart';
 
+@immutable
 class Provider {
   const Provider({
     required this.id,
@@ -39,6 +41,21 @@ class Provider {
       "models": models.map((k, v) => MapEntry(k, v.toJson())),
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Provider &&
+          other.id == id &&
+          other.name == name &&
+          other.source == source &&
+          other.env == env &&
+          other.key == key &&
+          other.options == options &&
+          other.models == models);
+
+  @override
+  int get hashCode => Object.hash(id, name, source, env, key, options, models);
 
   final String id;
   final String name;

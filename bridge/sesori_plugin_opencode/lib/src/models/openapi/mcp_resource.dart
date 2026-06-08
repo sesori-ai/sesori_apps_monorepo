@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.174263Z
+// Generated: 2026-06-08T14:04:07.974832Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class McpResource {
   const McpResource({
     required this.name,
@@ -32,6 +34,19 @@ class McpResource {
       "client": client,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is McpResource &&
+          other.name == name &&
+          other.uri == uri &&
+          other.description == description &&
+          other.mimeType == mimeType &&
+          other.client == client);
+
+  @override
+  int get hashCode => Object.hash(name, uri, description, mimeType, client);
 
   final String name;
   final String uri;

@@ -1,7 +1,8 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.147855Z
+// Generated: 2026-06-08T14:04:07.948504Z
 
+import 'package:meta/meta.dart';
 import 'agent_config.dart';
 import 'attachment_config.dart';
 import 'layout_config.dart';
@@ -11,6 +12,7 @@ import 'provider_config.dart';
 import 'reference_config.dart';
 import 'server_config.dart';
 
+@immutable
 class Config {
   const Config({
     this.schema,
@@ -127,6 +129,48 @@ class Config {
       "experimental": ?experimental,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Config &&
+          other.schema == schema &&
+          other.shell == shell &&
+          other.logLevel == logLevel &&
+          other.server == server &&
+          other.command == command &&
+          other.skills == skills &&
+          other.reference == reference &&
+          other.watcher == watcher &&
+          other.snapshot == snapshot &&
+          other.plugin == plugin &&
+          other.share == share &&
+          other.autoshare == autoshare &&
+          other.autoupdate == autoupdate &&
+          other.disabledProviders == disabledProviders &&
+          other.enabledProviders == enabledProviders &&
+          other.model == model &&
+          other.smallModel == smallModel &&
+          other.defaultAgent == defaultAgent &&
+          other.username == username &&
+          other.mode == mode &&
+          other.agent == agent &&
+          other.provider == provider &&
+          other.mcp == mcp &&
+          other.formatter == formatter &&
+          other.lsp == lsp &&
+          other.instructions == instructions &&
+          other.layout == layout &&
+          other.permission == permission &&
+          other.tools == tools &&
+          other.attachment == attachment &&
+          other.enterprise == enterprise &&
+          other.toolOutput == toolOutput &&
+          other.compaction == compaction &&
+          other.experimental == experimental);
+
+  @override
+  int get hashCode => Object.hashAll([schema, shell, logLevel, server, command, skills, reference, watcher, snapshot, plugin, share, autoshare, autoupdate, disabledProviders, enabledProviders, model, smallModel, defaultAgent, username, mode, agent, provider, mcp, formatter, lsp, instructions, layout, permission, tools, attachment, enterprise, toolOutput, compaction, experimental]);
 
   final String? schema;
   final String? shell;

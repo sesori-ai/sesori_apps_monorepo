@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.186936Z
+// Generated: 2026-06-08T14:04:07.987814Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 abstract interface class ReferenceConfigEntry {
   const ReferenceConfigEntry();
 
@@ -29,6 +31,7 @@ abstract interface class ReferenceConfigEntry {
   }
 }
 
+@immutable
 class referenceConfigEntry00Inline implements ReferenceConfigEntry {
   const referenceConfigEntry00Inline({required this.value});
   factory referenceConfigEntry00Inline.fromJson(String json) {
@@ -40,6 +43,7 @@ class referenceConfigEntry00Inline implements ReferenceConfigEntry {
 }
 
 
+@immutable
 class referenceConfigEntry01Inline implements ReferenceConfigEntry {
   const referenceConfigEntry01Inline({
     required this.repository,
@@ -61,11 +65,22 @@ class referenceConfigEntry01Inline implements ReferenceConfigEntry {
     };
   }
 
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is referenceConfigEntry01Inline &&
+          other.repository == repository &&
+          other.branch == branch);
+
+  @override
+  int get hashCode => Object.hash(repository, branch);
+
   final String repository;
   final String? branch;
 }
 
 
+@immutable
 class referenceConfigEntry02Inline implements ReferenceConfigEntry {
   const referenceConfigEntry02Inline({
     required this.path,
@@ -83,6 +98,15 @@ class referenceConfigEntry02Inline implements ReferenceConfigEntry {
       "path": path,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is referenceConfigEntry02Inline &&
+          other.path == path);
+
+  @override
+  int get hashCode => path.hashCode;
 
   final String path;
 }

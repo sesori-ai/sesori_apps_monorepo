@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.194168Z
+// Generated: 2026-06-08T14:04:07.995573Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 abstract interface class SessionStatus {
   const SessionStatus();
 
@@ -31,6 +33,7 @@ abstract interface class SessionStatus {
   }
 }
 
+@immutable
 class sessionStatus00Inline implements SessionStatus {
   const sessionStatus00Inline();
 
@@ -49,6 +52,7 @@ class sessionStatus00Inline implements SessionStatus {
 }
 
 
+@immutable
 class sessionStatus01Inline implements SessionStatus {
   const sessionStatus01Inline({
     required this.attempt,
@@ -77,6 +81,18 @@ class sessionStatus01Inline implements SessionStatus {
     };
   }
 
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is sessionStatus01Inline &&
+          other.attempt == attempt &&
+          other.message == message &&
+          other.action == action &&
+          other.next == next);
+
+  @override
+  int get hashCode => Object.hash(attempt, message, action, next);
+
   final int attempt;
   final String message;
   final Map<String, dynamic>? action;
@@ -84,6 +100,7 @@ class sessionStatus01Inline implements SessionStatus {
 }
 
 
+@immutable
 class sessionStatus02Inline implements SessionStatus {
   const sessionStatus02Inline();
 

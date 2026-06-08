@@ -1,10 +1,12 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.177697Z
+// Generated: 2026-06-08T14:04:07.978044Z
 
+import 'package:meta/meta.dart';
 import 'permission_action_config.dart';
 import 'permission_rule_config.dart';
 
+@immutable
 abstract interface class PermissionConfig {
   const PermissionConfig();
 
@@ -28,6 +30,7 @@ abstract interface class PermissionConfig {
   }
 }
 
+@immutable
 class permissionConfig00Inline implements PermissionConfig {
   const permissionConfig00Inline({required this.value});
   factory permissionConfig00Inline.fromJson(String json) {
@@ -39,6 +42,7 @@ class permissionConfig00Inline implements PermissionConfig {
 }
 
 
+@immutable
 class permissionConfig01Inline implements PermissionConfig {
   const permissionConfig01Inline({
     this.read,
@@ -98,6 +102,29 @@ class permissionConfig01Inline implements PermissionConfig {
       "skill": ?skill?.toJson(),
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is permissionConfig01Inline &&
+          other.read == read &&
+          other.edit == edit &&
+          other.glob == glob &&
+          other.grep == grep &&
+          other.list == list &&
+          other.bash == bash &&
+          other.task == task &&
+          other.externalDirectory == externalDirectory &&
+          other.todowrite == todowrite &&
+          other.question == question &&
+          other.webfetch == webfetch &&
+          other.websearch == websearch &&
+          other.lsp == lsp &&
+          other.doomLoop == doomLoop &&
+          other.skill == skill);
+
+  @override
+  int get hashCode => Object.hash(read, edit, glob, grep, list, bash, task, externalDirectory, todowrite, question, webfetch, websearch, lsp, doomLoop, skill);
 
   final PermissionRuleConfig? read;
   final PermissionRuleConfig? edit;

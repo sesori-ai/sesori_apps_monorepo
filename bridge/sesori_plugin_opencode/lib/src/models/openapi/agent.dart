@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.137726Z
+// Generated: 2026-06-08T14:04:07.938508Z
 
+import 'package:meta/meta.dart';
 import 'permission_ruleset.dart';
 
+@immutable
 class Agent {
   const Agent({
     required this.name,
@@ -60,6 +62,28 @@ class Agent {
       "steps": ?steps,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Agent &&
+          other.name == name &&
+          other.description == description &&
+          other.mode == mode &&
+          other.native == native &&
+          other.hidden == hidden &&
+          other.topP == topP &&
+          other.temperature == temperature &&
+          other.color == color &&
+          other.permission == permission &&
+          other.model == model &&
+          other.variant == variant &&
+          other.prompt == prompt &&
+          other.options == options &&
+          other.steps == steps);
+
+  @override
+  int get hashCode => Object.hash(name, description, mode, native, hidden, topP, temperature, color, permission, model, variant, prompt, options, steps);
 
   final String name;
   final String? description;

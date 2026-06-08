@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.194471Z
+// Generated: 2026-06-08T14:04:07.995899Z
 
+import 'package:meta/meta.dart';
 import 'location_ref.dart';
 
+@immutable
 class SessionV2Info {
   const SessionV2Info({
     required this.id,
@@ -51,6 +53,25 @@ class SessionV2Info {
       "subpath": ?subpath,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionV2Info &&
+          other.id == id &&
+          other.parentID == parentID &&
+          other.projectID == projectID &&
+          other.agent == agent &&
+          other.model == model &&
+          other.cost == cost &&
+          other.tokens == tokens &&
+          other.time == time &&
+          other.title == title &&
+          other.location == location &&
+          other.subpath == subpath);
+
+  @override
+  int get hashCode => Object.hash(id, parentID, projectID, agent, model, cost, tokens, time, title, location, subpath);
 
   final String id;
   final String? parentID;

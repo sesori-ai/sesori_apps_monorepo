@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.145529Z
+// Generated: 2026-06-08T14:04:07.946260Z
 
+import 'package:meta/meta.dart';
 import 'auth_credential.dart';
 
+@immutable
 class AuthInfo {
   const AuthInfo({
     required this.id,
@@ -30,6 +32,18 @@ class AuthInfo {
       "credential": credential.toJson(),
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AuthInfo &&
+          other.id == id &&
+          other.serviceID == serviceID &&
+          other.description == description &&
+          other.credential == credential);
+
+  @override
+  int get hashCode => Object.hash(id, serviceID, description, credential);
 
   final String id;
   final String serviceID;

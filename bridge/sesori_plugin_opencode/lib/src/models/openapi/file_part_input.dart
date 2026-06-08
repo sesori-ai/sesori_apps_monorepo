@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.167582Z
+// Generated: 2026-06-08T14:04:07.968994Z
 
+import 'package:meta/meta.dart';
 import 'file_part_source.dart';
 
+@immutable
 class FilePartInput {
   const FilePartInput({
     this.id,
@@ -36,6 +38,20 @@ class FilePartInput {
       "source": ?source?.toJson(),
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FilePartInput &&
+          other.id == id &&
+          other.type == type &&
+          other.mime == mime &&
+          other.filename == filename &&
+          other.url == url &&
+          other.source == source);
+
+  @override
+  int get hashCode => Object.hash(id, type, mime, filename, url, source);
 
   final String? id;
   final String type;

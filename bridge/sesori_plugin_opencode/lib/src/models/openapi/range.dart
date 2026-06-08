@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.186484Z
+// Generated: 2026-06-08T14:04:07.987335Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class Range {
   const Range({
     required this.start,
@@ -23,6 +25,16 @@ class Range {
       "end": end,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Range &&
+          other.start == start &&
+          other.end == end);
+
+  @override
+  int get hashCode => Object.hash(start, end);
 
   final Map<String, dynamic> start;
   final Map<String, dynamic> end;

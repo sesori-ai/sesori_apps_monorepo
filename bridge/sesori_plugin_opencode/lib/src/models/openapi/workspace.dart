@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.207235Z
+// Generated: 2026-06-08T14:04:08.008445Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class Workspace {
   const Workspace({
     required this.id,
@@ -41,6 +43,22 @@ class Workspace {
       "timeUsed": timeUsed,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Workspace &&
+          other.id == id &&
+          other.type == type &&
+          other.name == name &&
+          other.branch == branch &&
+          other.directory == directory &&
+          other.extra == extra &&
+          other.projectID == projectID &&
+          other.timeUsed == timeUsed);
+
+  @override
+  int get hashCode => Object.hash(id, type, name, branch, directory, extra, projectID, timeUsed);
 
   final String id;
   final String type;

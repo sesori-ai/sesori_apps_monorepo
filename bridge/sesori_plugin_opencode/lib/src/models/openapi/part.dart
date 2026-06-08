@@ -1,7 +1,8 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.176870Z
+// Generated: 2026-06-08T14:04:07.977270Z
 
+import 'package:meta/meta.dart';
 import 'agent_part.dart';
 import 'compaction_part.dart';
 import 'file_part.dart';
@@ -15,6 +16,7 @@ import 'subtask_part.dart';
 import 'text_part.dart';
 import 'tool_part.dart';
 
+@immutable
 abstract interface class Part {
   const Part();
 

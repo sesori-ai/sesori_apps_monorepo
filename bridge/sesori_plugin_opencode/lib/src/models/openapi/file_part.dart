@@ -1,10 +1,12 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.167216Z
+// Generated: 2026-06-08T14:04:07.968557Z
 
+import 'package:meta/meta.dart';
 import 'file_part_source.dart';
 import 'part.dart';
 
+@immutable
 class FilePart implements Part {
   const FilePart({
     required this.id,
@@ -42,6 +44,21 @@ class FilePart implements Part {
       "source": ?source?.toJson(),
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FilePart &&
+          other.id == id &&
+          other.sessionID == sessionID &&
+          other.messageID == messageID &&
+          other.mime == mime &&
+          other.filename == filename &&
+          other.url == url &&
+          other.source == source);
+
+  @override
+  int get hashCode => Object.hash(id, sessionID, messageID, mime, filename, url, source);
 
   final String id;
   final String sessionID;

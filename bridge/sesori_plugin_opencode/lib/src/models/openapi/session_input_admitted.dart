@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.188437Z
+// Generated: 2026-06-08T14:04:07.989408Z
 
+import 'package:meta/meta.dart';
 import 'prompt.dart';
 
+@immutable
 class SessionInputAdmitted {
   const SessionInputAdmitted({
     required this.admittedSeq,
@@ -39,6 +41,21 @@ class SessionInputAdmitted {
       "promotedSeq": ?promotedSeq,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionInputAdmitted &&
+          other.admittedSeq == admittedSeq &&
+          other.id == id &&
+          other.sessionID == sessionID &&
+          other.prompt == prompt &&
+          other.delivery == delivery &&
+          other.timeCreated == timeCreated &&
+          other.promotedSeq == promotedSeq);
+
+  @override
+  int get hashCode => Object.hash(admittedSeq, id, sessionID, prompt, delivery, timeCreated, promotedSeq);
 
   final int admittedSeq;
   final String id;

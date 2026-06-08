@@ -1,9 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.191769Z
+// Generated: 2026-06-08T14:04:07.993086Z
 
+import 'package:meta/meta.dart';
 import 'session_message.dart';
 
+@immutable
 class SessionMessageSynthetic implements SessionMessage {
   const SessionMessageSynthetic({
     required this.id,
@@ -35,6 +37,19 @@ class SessionMessageSynthetic implements SessionMessage {
       "type": "synthetic",
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionMessageSynthetic &&
+          other.id == id &&
+          other.metadata == metadata &&
+          other.time == time &&
+          other.sessionID == sessionID &&
+          other.text == text);
+
+  @override
+  int get hashCode => Object.hash(id, metadata, time, sessionID, text);
 
   final String id;
   final Map<String, dynamic>? metadata;

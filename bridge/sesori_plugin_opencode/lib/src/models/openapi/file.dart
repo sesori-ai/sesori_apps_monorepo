@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.166694Z
+// Generated: 2026-06-08T14:04:07.967517Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class File {
   const File({
     required this.path,
@@ -29,6 +31,18 @@ class File {
       "status": status,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is File &&
+          other.path == path &&
+          other.added == added &&
+          other.removed == removed &&
+          other.status == status);
+
+  @override
+  int get hashCode => Object.hash(path, added, removed, status);
 
   final String path;
   final int added;

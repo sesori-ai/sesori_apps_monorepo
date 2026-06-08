@@ -1,7 +1,8 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.188599Z
+// Generated: 2026-06-08T14:04:07.989586Z
 
+import 'package:meta/meta.dart';
 import 'session_message_agent_switched.dart';
 import 'session_message_assistant.dart';
 import 'session_message_compaction.dart';
@@ -11,6 +12,7 @@ import 'session_message_synthetic.dart';
 import 'session_message_system.dart';
 import 'session_message_user.dart';
 
+@immutable
 abstract interface class SessionMessage {
   const SessionMessage();
 

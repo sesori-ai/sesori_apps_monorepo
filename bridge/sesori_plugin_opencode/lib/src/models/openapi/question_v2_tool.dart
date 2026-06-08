@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.186355Z
+// Generated: 2026-06-08T14:04:07.987216Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class QuestionV2Tool {
   const QuestionV2Tool({
     required this.messageID,
@@ -23,6 +25,16 @@ class QuestionV2Tool {
       "callID": callID,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is QuestionV2Tool &&
+          other.messageID == messageID &&
+          other.callID == callID);
+
+  @override
+  int get hashCode => Object.hash(messageID, callID);
 
   final String messageID;
   final String callID;

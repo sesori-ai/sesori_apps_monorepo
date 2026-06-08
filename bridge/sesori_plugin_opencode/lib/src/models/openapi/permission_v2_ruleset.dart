@@ -1,10 +1,12 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.181090Z
+// Generated: 2026-06-08T14:04:07.981740Z
 
+import 'package:meta/meta.dart';
 import 'permission_v2_rule.dart';
 
 /// Type alias for `List<PermissionV2Rule>` decoded from JSON.
+@immutable
 class PermissionV2Ruleset {
   const PermissionV2Ruleset({required this.items});
   factory PermissionV2Ruleset.fromJson(List<dynamic> json) => PermissionV2Ruleset(items: json.map((e) => PermissionV2Rule.fromJson(e as Map<String, dynamic>)).toList());

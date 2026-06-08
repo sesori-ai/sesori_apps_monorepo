@@ -1,8 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.168380Z
+// Generated: 2026-06-08T14:04:07.969854Z
 
+import 'package:meta/meta.dart';
 
+@immutable
 class FileSystemBinaryContent {
   const FileSystemBinaryContent({
     required this.type,
@@ -29,6 +31,18 @@ class FileSystemBinaryContent {
       "mime": mime,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FileSystemBinaryContent &&
+          other.type == type &&
+          other.content == content &&
+          other.encoding == encoding &&
+          other.mime == mime);
+
+  @override
+  int get hashCode => Object.hash(type, content, encoding, mime);
 
   final String type;
   final String content;

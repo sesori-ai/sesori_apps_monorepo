@@ -1,10 +1,12 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T13:43:24.145367Z
+// Generated: 2026-06-08T14:04:07.946076Z
 
+import 'package:meta/meta.dart';
 import 'auth_api_key_credential.dart';
 import 'auth_oauth_credential.dart';
 
+@immutable
 abstract interface class AuthCredential {
   const AuthCredential();
 
