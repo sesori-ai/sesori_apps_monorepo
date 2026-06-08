@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AuthUser {
 
- String get id; String get provider; String get providerUserId; String? get providerUsername;
+ String get id;@authProviderConverter AuthProvider get provider; String get providerUserId; String? get providerUsername;
 /// Create a copy of AuthUser
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,7 +48,7 @@ abstract mixin class $AuthUserCopyWith<$Res>  {
   factory $AuthUserCopyWith(AuthUser value, $Res Function(AuthUser) _then) = _$AuthUserCopyWithImpl;
 @useResult
 $Res call({
- String id, String provider, String providerUserId, String? providerUsername
+ String id,@authProviderConverter AuthProvider provider, String providerUserId, String? providerUsername
 });
 
 
@@ -69,7 +69,7 @@ class _$AuthUserCopyWithImpl<$Res>
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,provider: null == provider ? _self.provider : provider // ignore: cast_nullable_to_non_nullable
-as String,providerUserId: null == providerUserId ? _self.providerUserId : providerUserId // ignore: cast_nullable_to_non_nullable
+as AuthProvider,providerUserId: null == providerUserId ? _self.providerUserId : providerUserId // ignore: cast_nullable_to_non_nullable
 as String,providerUsername: freezed == providerUsername ? _self.providerUsername : providerUsername // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
@@ -83,11 +83,11 @@ as String?,
 @JsonSerializable()
 
 class _AuthUser implements AuthUser {
-  const _AuthUser({required this.id, required this.provider, required this.providerUserId, required this.providerUsername});
+  const _AuthUser({required this.id, @authProviderConverter required this.provider, required this.providerUserId, required this.providerUsername});
   factory _AuthUser.fromJson(Map<String, dynamic> json) => _$AuthUserFromJson(json);
 
 @override final  String id;
-@override final  String provider;
+@override@authProviderConverter final  AuthProvider provider;
 @override final  String providerUserId;
 @override final  String? providerUsername;
 
@@ -124,7 +124,7 @@ abstract mixin class _$AuthUserCopyWith<$Res> implements $AuthUserCopyWith<$Res>
   factory _$AuthUserCopyWith(_AuthUser value, $Res Function(_AuthUser) _then) = __$AuthUserCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String provider, String providerUserId, String? providerUsername
+ String id,@authProviderConverter AuthProvider provider, String providerUserId, String? providerUsername
 });
 
 
@@ -145,7 +145,7 @@ class __$AuthUserCopyWithImpl<$Res>
   return _then(_AuthUser(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,provider: null == provider ? _self.provider : provider // ignore: cast_nullable_to_non_nullable
-as String,providerUserId: null == providerUserId ? _self.providerUserId : providerUserId // ignore: cast_nullable_to_non_nullable
+as AuthProvider,providerUserId: null == providerUserId ? _self.providerUserId : providerUserId // ignore: cast_nullable_to_non_nullable
 as String,providerUsername: freezed == providerUsername ? _self.providerUsername : providerUsername // ignore: cast_nullable_to_non_nullable
 as String?,
   ));

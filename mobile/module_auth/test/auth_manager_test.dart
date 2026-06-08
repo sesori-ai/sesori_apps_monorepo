@@ -30,7 +30,7 @@ void main() {
 
   const user = AuthUser(
     id: "user-1",
-    provider: "github",
+    provider: AuthProvider.github,
     providerUserId: "12345678",
     providerUsername: "testuser",
   );
@@ -81,7 +81,7 @@ void main() {
         "refreshToken": "new-refresh-token",
         "user": {
           "id": user.id,
-          "provider": user.provider,
+          "provider": user.provider.key,
           "providerUserId": user.providerUserId,
           "providerUsername": user.providerUsername,
         },
@@ -123,7 +123,7 @@ void main() {
         "refreshToken": "bg-refresh-token",
         "user": {
           "id": user.id,
-          "provider": user.provider,
+          "provider": user.provider.key,
           "providerUserId": user.providerUserId,
           "providerUsername": user.providerUsername,
         },
@@ -166,7 +166,7 @@ void main() {
         "refreshToken": "new-refresh-token",
         "user": {
           "id": user.id,
-          "provider": user.provider,
+          "provider": user.provider.key,
           "providerUserId": user.providerUserId,
           "providerUsername": user.providerUsername,
         },
@@ -228,7 +228,7 @@ void main() {
             "refreshToken": "singleflight-refresh",
             "user": {
               "id": user.id,
-              "provider": user.provider,
+              "provider": user.provider.key,
               "providerUserId": user.providerUserId,
               "providerUsername": user.providerUsername,
             },
@@ -346,7 +346,7 @@ void main() {
             "refreshToken": "oauth-refresh-token",
             "user": {
               "id": user.id,
-              "provider": user.provider,
+              "provider": user.provider.key,
               "providerUserId": user.providerUserId,
               "providerUsername": user.providerUsername,
             },
@@ -549,7 +549,7 @@ void main() {
           jsonEncode({
             "user": {
               "id": user.id,
-              "provider": user.provider,
+              "provider": user.provider.key,
               "providerUserId": user.providerUserId,
               "providerUsername": user.providerUsername,
             },

@@ -283,7 +283,7 @@ AuthState _authenticatedState() {
   return const AuthState.authenticated(
     user: AuthUser(
       id: "user-1",
-      provider: "github",
+      provider: AuthProvider.github,
       providerUserId: "provider-user-1",
       providerUsername: "alex",
     ),

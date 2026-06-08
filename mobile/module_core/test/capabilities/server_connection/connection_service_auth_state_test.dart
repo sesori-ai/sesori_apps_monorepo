@@ -109,7 +109,7 @@ void main() {
       addTearDown(service.dispose);
 
       authStateController.add(
-        const AuthState.authenticated(user: AuthUser(id: "u", provider: "github", providerUserId: "1", providerUsername: "u")),
+        const AuthState.authenticated(user: AuthUser(id: "u", provider: AuthProvider.github, providerUserId: "1", providerUsername: "u")),
       );
       await Future<void>.delayed(const Duration(milliseconds: 50));
 
@@ -137,7 +137,7 @@ void main() {
       addTearDown(service.dispose);
 
       authStateController.add(
-        const AuthState.authenticated(user: AuthUser(id: "u", provider: "github", providerUserId: "1", providerUsername: "u")),
+        const AuthState.authenticated(user: AuthUser(id: "u", provider: AuthProvider.github, providerUserId: "1", providerUsername: "u")),
       );
       await Future<void>.delayed(const Duration(milliseconds: 50));
 
@@ -163,7 +163,7 @@ void main() {
       addTearDown(service.dispose);
 
       authStateController.add(
-        const AuthState.authenticated(user: AuthUser(id: "u", provider: "github", providerUserId: "1", providerUsername: "u")),
+        const AuthState.authenticated(user: AuthUser(id: "u", provider: AuthProvider.github, providerUserId: "1", providerUsername: "u")),
       );
       await Future<void>.delayed(const Duration(milliseconds: 50));
 

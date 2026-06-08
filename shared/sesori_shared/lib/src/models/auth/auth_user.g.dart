@@ -8,14 +8,14 @@ part of 'auth_user.dart';
 
 _AuthUser _$AuthUserFromJson(Map json) => _AuthUser(
   id: json['id'] as String,
-  provider: json['provider'] as String,
+  provider: authProviderConverter.fromJson(json['provider'] as String),
   providerUserId: json['providerUserId'] as String,
   providerUsername: json['providerUsername'] as String?,
 );
 
 Map<String, dynamic> _$AuthUserToJson(_AuthUser instance) => <String, dynamic>{
   'id': instance.id,
-  'provider': instance.provider,
+  'provider': authProviderConverter.toJson(instance.provider),
   'providerUserId': instance.providerUserId,
   'providerUsername': instance.providerUsername,
 };
