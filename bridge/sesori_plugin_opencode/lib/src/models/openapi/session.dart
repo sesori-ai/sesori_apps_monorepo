@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-07T10:22:51.675425Z
+// Generated: 2026-06-08T07:51:40.001893Z
 
 import 'permission_ruleset.dart';
 
@@ -57,22 +57,22 @@ class Session {
       "id": id,
       "slug": slug,
       "projectID": projectID,
-      "workspaceID": workspaceID,
+      "workspaceID": ?workspaceID,
       "directory": directory,
-      "path": path,
-      "parentID": parentID,
-      "summary": summary,
-      "cost": cost,
-      "tokens": tokens,
-      "share": share,
+      "path": ?path,
+      "parentID": ?parentID,
+      "summary": ?summary,
+      "cost": ?cost,
+      "tokens": ?tokens,
+      "share": ?share,
       "title": title,
-      "agent": agent,
-      "model": model,
+      "agent": ?agent,
+      "model": ?model,
       "version": version,
-      "metadata": metadata,
+      "metadata": ?metadata,
       "time": time,
-      "permission": permission?.toJson(),
-      "revert": revert,
+      "permission": ?permission?.toJson(),
+      "revert": ?revert,
     };
   }
 

@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-07T10:22:51.671600Z
+// Generated: 2026-06-08T07:51:39.998830Z
 
 
 class ProviderConfig {
@@ -33,15 +33,15 @@ class ProviderConfig {
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      "api": api,
-      "name": name,
-      "env": env,
-      "id": id,
-      "npm": npm,
-      "whitelist": whitelist,
-      "blacklist": blacklist,
-      "options": options,
-      "models": models,
+      "api": ?api,
+      "name": ?name,
+      "env": ?env,
+      "id": ?id,
+      "npm": ?npm,
+      "whitelist": ?whitelist,
+      "blacklist": ?blacklist,
+      "options": ?options,
+      "models": ?models,
     };
   }
 

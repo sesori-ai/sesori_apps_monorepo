@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-07T10:22:51.692499Z
+// Generated: 2026-06-08T07:51:40.015114Z
 
 
 class WorktreeCreateInput {
@@ -19,8 +19,8 @@ class WorktreeCreateInput {
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      "name": name,
-      "startCommand": startCommand,
+      "name": ?name,
+      "startCommand": ?startCommand,
     };
   }
 

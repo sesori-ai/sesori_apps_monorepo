@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-07T10:22:51.681675Z
+// Generated: 2026-06-08T07:51:40.006409Z
 
 
 abstract interface class SessionStatus {
@@ -70,7 +70,7 @@ class sessionStatus01Inline implements SessionStatus {
       "type": "retry",
       "attempt": attempt,
       "message": message,
-      "action": action,
+      "action": ?action,
       "next": next,
     };
   }

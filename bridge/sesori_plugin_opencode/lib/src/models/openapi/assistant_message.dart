@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-07T10:22:51.630868Z
+// Generated: 2026-06-08T07:51:39.964506Z
 
 import 'message.dart';
 
@@ -53,19 +53,19 @@ class AssistantMessage implements Message {
       "sessionID": sessionID,
       "role": "assistant",
       "time": time,
-      "error": error,
+      "error": ?error,
       "parentID": parentID,
       "modelID": modelID,
       "providerID": providerID,
       "mode": mode,
       "agent": agent,
       "path": path,
-      "summary": summary,
+      "summary": ?summary,
       "cost": cost,
       "tokens": tokens,
-      "structured": structured,
-      "variant": variant,
-      "finish": finish,
+      "structured": ?structured,
+      "variant": ?variant,
+      "finish": ?finish,
     };
   }
 

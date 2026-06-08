@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-07T10:22:51.679991Z
+// Generated: 2026-06-08T07:51:40.005344Z
 
 import 'prompt_file_attachment.dart';
 
@@ -30,10 +30,10 @@ class SessionMessageToolStateCompleted {
     return <String, dynamic>{
       "status": status,
       "input": input,
-      "attachments": attachments?.map((e) => e.toJson()).toList(),
+      "attachments": ?attachments?.map((e) => e.toJson()).toList(),
       "content": content,
       "structured": structured,
-      "result": result,
+      "result": ?result,
     };
   }
 

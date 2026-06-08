@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-07T10:22:51.626127Z
+// Generated: 2026-06-08T07:51:39.960115Z
 
 import 'permission_ruleset.dart';
 
@@ -45,19 +45,19 @@ class Agent {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "name": name,
-      "description": description,
+      "description": ?description,
       "mode": mode,
-      "native": native,
-      "hidden": hidden,
-      "topP": topP,
-      "temperature": temperature,
-      "color": color,
+      "native": ?native,
+      "hidden": ?hidden,
+      "topP": ?topP,
+      "temperature": ?temperature,
+      "color": ?color,
       "permission": permission.toJson(),
-      "model": model,
-      "variant": variant,
-      "prompt": prompt,
+      "model": ?model,
+      "variant": ?variant,
+      "prompt": ?prompt,
       "options": options,
-      "steps": steps,
+      "steps": ?steps,
     };
   }
 

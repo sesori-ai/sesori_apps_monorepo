@@ -2157,15 +2157,16 @@ class ModelWriter {
   String _encodeField(String name, Map<String, dynamic> sch, {required bool isNullable}) {
     final keyExpr = _safeKey(name);
     final safeName = _safeIdentifier(name);
-    final op = isNullable ? '?' : '';
+    final callOp = isNullable ? '?' : '';
+    final entryOp = isNullable ? '?' : '';
     final r = sch[r'$ref'];
     if (r is String) {
-      return '$keyExpr: $safeName$op.toJson()';
+      return '$keyExpr: $entryOp$safeName$callOp.toJson()';
     }
     final type = sch['type'];
     if (type == 'string' &&
         (sch['format'] == 'date-time' || sch['format'] == 'uri' || sch['format'] == 'url')) {
-      return '$keyExpr: $safeName$op.toIso8601String()';
+      return '$keyExpr: $entryOp$safeName$callOp.toIso8601String()';
     }
     if (type == 'array') {
       final items = sch['items'];
@@ -2173,7 +2174,7 @@ class ModelWriter {
         // List of generated model objects. `jsonEncode` cannot encode
         // Dart class instances directly — map each element through
         // its `toJson()` so the encoder sees plain maps.
-        return '$keyExpr: $safeName$op.map((e) => e.toJson()).toList()';
+        return '$keyExpr: $entryOp$safeName$callOp.map((e) => e.toJson()).toList()';
       }
     }
     if (type == 'object') {
@@ -2181,11 +2182,11 @@ class ModelWriter {
       if (ap is Map<String, dynamic> && ap[r'$ref'] is String) {
         // Map of generated model objects. Same constraint as
         // arrays: jsonEncode needs plain maps, not model instances.
-        return '$keyExpr: $safeName$op.map((k, v) => MapEntry(k, v.toJson()))';
+        return '$keyExpr: $entryOp$safeName$callOp.map((k, v) => MapEntry(k, v.toJson()))';
       }
     }
     // Inline enums (and any other string fields) just use the raw value.
-    return '$keyExpr: $safeName';
+    return '$keyExpr: $entryOp$safeName';
   }
 
   // -------------------------------------------------------------------------

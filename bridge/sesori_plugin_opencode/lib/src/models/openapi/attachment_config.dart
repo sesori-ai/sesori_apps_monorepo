@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-07T10:22:51.631728Z
+// Generated: 2026-06-08T07:51:39.965280Z
 
 import 'image_attachment_config.dart';
 
@@ -18,7 +18,7 @@ class AttachmentConfig {
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      "image": image?.toJson(),
+      "image": ?image?.toJson(),
     };
   }
 

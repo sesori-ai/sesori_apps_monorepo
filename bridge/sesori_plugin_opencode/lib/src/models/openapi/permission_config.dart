@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-07T10:22:51.665742Z
+// Generated: 2026-06-08T07:51:39.993985Z
 
 import 'permission_action_config.dart';
 import 'permission_rule_config.dart';
@@ -81,21 +81,21 @@ class permissionConfig01Inline implements PermissionConfig {
   @override
   dynamic toJson() {
     return <String, dynamic>{
-      "read": read?.toJson(),
-      "edit": edit?.toJson(),
-      "glob": glob?.toJson(),
-      "grep": grep?.toJson(),
-      "list": list?.toJson(),
-      "bash": bash?.toJson(),
-      "task": task?.toJson(),
-      "external_directory": externalDirectory?.toJson(),
-      "todowrite": todowrite?.toJson(),
-      "question": question?.toJson(),
-      "webfetch": webfetch?.toJson(),
-      "websearch": websearch?.toJson(),
-      "lsp": lsp?.toJson(),
-      "doom_loop": doomLoop?.toJson(),
-      "skill": skill?.toJson(),
+      "read": ?read?.toJson(),
+      "edit": ?edit?.toJson(),
+      "glob": ?glob?.toJson(),
+      "grep": ?grep?.toJson(),
+      "list": ?list?.toJson(),
+      "bash": ?bash?.toJson(),
+      "task": ?task?.toJson(),
+      "external_directory": ?externalDirectory?.toJson(),
+      "todowrite": ?todowrite?.toJson(),
+      "question": ?question?.toJson(),
+      "webfetch": ?webfetch?.toJson(),
+      "websearch": ?websearch?.toJson(),
+      "lsp": ?lsp?.toJson(),
+      "doom_loop": ?doomLoop?.toJson(),
+      "skill": ?skill?.toJson(),
     };
   }
 

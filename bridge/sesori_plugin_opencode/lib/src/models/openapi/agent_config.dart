@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-07T10:22:51.627334Z
+// Generated: 2026-06-08T07:51:39.961245Z
 
 import 'permission_config.dart';
 
@@ -46,21 +46,21 @@ class AgentConfig {
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      "model": model,
-      "variant": variant,
-      "temperature": temperature,
-      "top_p": topP,
-      "prompt": prompt,
-      "tools": tools,
-      "disable": disable,
-      "description": description,
-      "mode": mode,
-      "hidden": hidden,
-      "options": options,
-      "color": color,
-      "steps": steps,
-      "maxSteps": maxSteps,
-      "permission": permission?.toJson(),
+      "model": ?model,
+      "variant": ?variant,
+      "temperature": ?temperature,
+      "top_p": ?topP,
+      "prompt": ?prompt,
+      "tools": ?tools,
+      "disable": ?disable,
+      "description": ?description,
+      "mode": ?mode,
+      "hidden": ?hidden,
+      "options": ?options,
+      "color": ?color,
+      "steps": ?steps,
+      "maxSteps": ?maxSteps,
+      "permission": ?permission?.toJson(),
     };
   }
 

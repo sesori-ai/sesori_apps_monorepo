@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-07T10:22:51.670979Z
+// Generated: 2026-06-08T07:51:39.998332Z
 
 import 'model.dart';
 
@@ -34,7 +34,7 @@ class Provider {
       "name": name,
       "source": source,
       "env": env,
-      "key": key,
+      "key": ?key,
       "options": options,
       "models": models.map((k, v) => MapEntry(k, v.toJson())),
     };

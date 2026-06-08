@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-07T10:22:51.670303Z
+// Generated: 2026-06-08T07:51:39.997788Z
 
 import 'prompt_agent_attachment.dart';
 import 'prompt_file_attachment.dart';
@@ -27,9 +27,9 @@ class Prompt {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "text": text,
-      "files": files?.map((e) => e.toJson()).toList(),
-      "agents": agents?.map((e) => e.toJson()).toList(),
-      "references": references?.map((e) => e.toJson()).toList(),
+      "files": ?files?.map((e) => e.toJson()).toList(),
+      "agents": ?agents?.map((e) => e.toJson()).toList(),
+      "references": ?references?.map((e) => e.toJson()).toList(),
     };
   }
 

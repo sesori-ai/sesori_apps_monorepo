@@ -1,6 +1,6 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-07T10:22:51.688109Z
+// Generated: 2026-06-08T07:51:40.011506Z
 
 import 'part.dart';
 
@@ -38,10 +38,10 @@ class TextPart implements Part {
       "messageID": messageID,
       "type": "text",
       "text": text,
-      "synthetic": synthetic,
-      "ignored": ignored,
-      "time": time,
-      "metadata": metadata,
+      "synthetic": ?synthetic,
+      "ignored": ?ignored,
+      "time": ?time,
+      "metadata": ?metadata,
     };
   }
 
