@@ -2,7 +2,7 @@ type: folder
 model: folder
 id: fl_KKPLMJLWXX
 createdAt: 2026-03-24T16:57:55.381695
-updatedAt: 2026-03-24T16:57:57.480362
+updatedAt: 2026-06-08T13:33:17.458492
 workspaceId: wk_rSi2KDTVqo
 folderId: null
 authentication: {}
@@ -10,4 +10,19 @@ authenticationType: null
 description: ''
 headers: []
 name: session
-sortPriority: 1000.0
+sortPriority: 3000.0
+settingSendCookies:
+  enabled: false
+  value: true
+settingStoreCookies:
+  enabled: false
+  value: true
+settingValidateCertificates:
+  enabled: false
+  value: true
+settingFollowRedirects:
+  enabled: false
+  value: true
+settingRequestTimeout:
+  enabled: false
+  value: 0
