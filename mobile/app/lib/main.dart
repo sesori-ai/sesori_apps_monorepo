@@ -104,6 +104,8 @@ Future<void> bootstrapSesoriApp({
   initializeDeepLinks();
   if (shouldInitializeFirebase) {
     if (supportsFirebaseAnalytics) {
+      // Side effect: the tracker auto-subscribes to auth state changes and
+      // syncs the hashed user ID with Firebase Analytics. Do not remove.
       AnalyticsUserIdTracker(
         authSession: getIt<AuthSession>(),
         analytics: FirebaseAnalytics.instance,

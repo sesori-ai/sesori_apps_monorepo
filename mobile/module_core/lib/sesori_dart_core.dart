@@ -2,7 +2,17 @@
 library;
 
 // Re-exports from sesori_auth (move + re-export pattern)
-export "package:sesori_auth/sesori_auth.dart" show AuthSession, OAuthFlowProvider, SecureStorage;
+export "package:sesori_auth/sesori_auth.dart"
+    show
+        AuthSession,
+        AuthState,
+        AuthInitial,
+        AuthUnauthenticated,
+        AuthAuthenticating,
+        AuthAuthenticated,
+        AuthFailed,
+        OAuthFlowProvider,
+        SecureStorage;
 export "package:sesori_auth/sesori_auth.dart"
     show
         ApiError,

@@ -4,8 +4,9 @@ import "package:crypto/crypto.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
-import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/analytics/analytics_user_id_tracker.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../../helpers/test_helpers.dart";
 
@@ -72,15 +73,12 @@ void main() {
       await tracker.dispose();
     });
 
-    test("does nothing for initial, authenticating, or failed states", () async {
+    test("clears user ID for failed state, does nothing for initial and authenticating", () async {
       final tracker = AnalyticsUserIdTracker(
         authSession: mockAuthSession,
         analytics: mockAnalytics,
       );
 
-      await Future<void>.delayed(Duration.zero);
-
-      authStateSubject.add(const AuthState.initial());
       await Future<void>.delayed(Duration.zero);
 
       authStateSubject.add(const AuthState.authenticating());
@@ -89,7 +87,8 @@ void main() {
       authStateSubject.add(const AuthState.failed(error: "oops"));
       await Future<void>.delayed(Duration.zero);
 
-      verifyNever(() => mockAnalytics.setUserId(id: any(named: "id")));
+      // Called once for the failed state; initial and authenticating are no-ops.
+      verify(() => mockAnalytics.setUserId(id: null)).called(1);
       await tracker.dispose();
     });
 
@@ -155,6 +154,58 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       verifyNever(() => mockAnalytics.setUserId(id: any(named: "id")));
+    });
+
+    test("swallows analytics errors without crashing", () async {
+      when(() => mockAnalytics.setUserId(id: any(named: "id"))).thenThrow(Exception("analytics crashed"));
+
+      authStateSubject.add(const AuthState.authenticated(user: AuthUser(
+        id: "user-1",
+        provider: AuthProvider.github,
+        providerUserId: "gh-1",
+        providerUsername: "test",
+      )));
+
+      AnalyticsUserIdTracker(
+        authSession: mockAuthSession,
+        analytics: mockAnalytics,
+      );
+
+      await Future<void>.delayed(Duration.zero);
+
+      // Test passes if no exception is thrown.
+      verify(() => mockAnalytics.setUserId(id: any(named: "id"))).called(1);
+    });
+
+    test("processes auth events sequentially with asyncMap", () async {
+      final events = <String>[];
+
+      when(() => mockAnalytics.setUserId(id: any(named: "id"))).thenAnswer((invocation) async {
+        final id = invocation.namedArguments[#id] as String?;
+        events.add(id ?? "null");
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      });
+
+      authStateSubject.add(const AuthState.authenticated(user: AuthUser(
+        id: "user-1",
+        provider: AuthProvider.github,
+        providerUserId: "gh-1",
+        providerUsername: "test",
+      )));
+
+      final tracker = AnalyticsUserIdTracker(
+        authSession: mockAuthSession,
+        analytics: mockAnalytics,
+      );
+
+      await Future<void>.delayed(Duration.zero);
+
+      authStateSubject.add(const AuthState.unauthenticated());
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      // Events should be processed in order: set hash first, then clear.
+      expect(events, [hasLength(greaterThan(0)), "null"]);
+      await tracker.dispose();
     });
   });
 }
