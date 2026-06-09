@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
+import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/permission_repository.dart";
@@ -16,7 +17,6 @@ import "../../services/session_detail_load_service.dart";
 import "../../utils/model_filter/default_model_selector.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
-import "session_detail_failed_reason.dart";
 import "session_detail_state.dart";
 import "streaming_text_buffer.dart";
 
@@ -112,13 +112,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           _waitingForConnection = false;
           unawaited(_loadMessages(isReload: true));
         }
-      case SessionDetailLoadResultFailed(:final error):
+      case SessionDetailLoadResultFailed(:final error, :final stackTrace):
         _waitingForConnection = false;
         _pendingSessionEvents.clear();
         _pendingGlobalEvents.clear();
+        loge("Session detail load failed", error, stackTrace);
         emit(
           SessionDetailState.failed(
-            reason: error is ApiError ? _failedReasonFor(error) : SessionDetailFailedReason.unknown,
+            reason: error is ApiError ? error.remoteFailureReason : RemoteFailureReason.unknown,
           ),
         );
     }
@@ -1288,14 +1289,3 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     return super.close();
   }
 }
-
-/// Maps a transport-level [ApiError] to the domain [SessionDetailFailedReason]
-/// surfaced by [SessionDetailState.failed], keeping `sesori_auth` out of the
-/// state and presentation layers.
-SessionDetailFailedReason _failedReasonFor(ApiError error) => switch (error) {
-  NotAuthenticatedError() => SessionDetailFailedReason.notAuthenticated,
-  NonSuccessCodeError() => SessionDetailFailedReason.serverRejected,
-  DartHttpClientError() => SessionDetailFailedReason.networkDown,
-  JsonParsingError() || EmptyResponseError() => SessionDetailFailedReason.badResponse,
-  GenericError() => SessionDetailFailedReason.unknown,
-};

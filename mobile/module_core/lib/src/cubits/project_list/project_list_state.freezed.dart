@@ -163,7 +163,7 @@ class ProjectListFailed implements ProjectListState {
   const ProjectListFailed({required this.reason});
   
 
- final  ProjectListFailedReason reason;
+ final  RemoteFailureReason reason;
 
 /// Create a copy of ProjectListState
 /// with the given fields replaced by the non-null parameter values.
@@ -195,7 +195,7 @@ abstract mixin class $ProjectListFailedCopyWith<$Res> implements $ProjectListSta
   factory $ProjectListFailedCopyWith(ProjectListFailed value, $Res Function(ProjectListFailed) _then) = _$ProjectListFailedCopyWithImpl;
 @useResult
 $Res call({
- ProjectListFailedReason reason
+ RemoteFailureReason reason
 });
 
 
@@ -215,7 +215,7 @@ class _$ProjectListFailedCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') $Res call({Object? reason = null,}) {
   return _then(ProjectListFailed(
 reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
-as ProjectListFailedReason,
+as RemoteFailureReason,
   ));
 }
 

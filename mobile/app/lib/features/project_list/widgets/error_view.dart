@@ -2,7 +2,7 @@ part of "../project_list_screen.dart";
 
 /// Shown when loading projects fails while the bridge is connected.
 class _ErrorView extends StatelessWidget {
-  final ProjectListFailedReason reason;
+  final RemoteFailureReason reason;
   final VoidCallback onRetry;
 
   const _ErrorView({required this.reason, required this.onRetry});
@@ -30,7 +30,7 @@ class _ErrorView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              _failureMessage(loc: loc, reason: reason),
+              reason.localizedMessage(loc),
               textAlign: .center,
             ),
             const SizedBox(height: 24),
@@ -45,12 +45,3 @@ class _ErrorView extends StatelessWidget {
     );
   }
 }
-
-/// Maps a [ProjectListFailedReason] to a localized, user-facing message.
-String _failureMessage({required AppLocalizations loc, required ProjectListFailedReason reason}) => switch (reason) {
-  ProjectListFailedReason.notAuthenticated => loc.apiErrorNotAuthenticated,
-  ProjectListFailedReason.serverRejected => loc.apiErrorServerRejected,
-  ProjectListFailedReason.networkDown => loc.apiErrorNetworkDown,
-  ProjectListFailedReason.badResponse => loc.connectErrorUnexpectedFormat,
-  ProjectListFailedReason.unknown => loc.connectErrorUnknown,
-};

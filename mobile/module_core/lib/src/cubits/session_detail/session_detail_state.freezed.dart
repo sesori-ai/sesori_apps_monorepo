@@ -310,7 +310,7 @@ class SessionDetailFailed implements SessionDetailState {
   const SessionDetailFailed({required this.reason});
   
 
- final  SessionDetailFailedReason reason;
+ final  RemoteFailureReason reason;
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
@@ -342,7 +342,7 @@ abstract mixin class $SessionDetailFailedCopyWith<$Res> implements $SessionDetai
   factory $SessionDetailFailedCopyWith(SessionDetailFailed value, $Res Function(SessionDetailFailed) _then) = _$SessionDetailFailedCopyWithImpl;
 @useResult
 $Res call({
- SessionDetailFailedReason reason
+ RemoteFailureReason reason
 });
 
 
@@ -362,7 +362,7 @@ class _$SessionDetailFailedCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') $Res call({Object? reason = null,}) {
   return _then(SessionDetailFailed(
 reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
-as SessionDetailFailedReason,
+as RemoteFailureReason,
   ));
 }
 

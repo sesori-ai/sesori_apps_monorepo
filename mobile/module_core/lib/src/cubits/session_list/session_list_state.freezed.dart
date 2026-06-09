@@ -243,7 +243,7 @@ class SessionListFailed implements SessionListState {
   const SessionListFailed({required this.reason});
   
 
- final  SessionListFailedReason reason;
+ final  RemoteFailureReason reason;
 
 /// Create a copy of SessionListState
 /// with the given fields replaced by the non-null parameter values.
@@ -275,7 +275,7 @@ abstract mixin class $SessionListFailedCopyWith<$Res> implements $SessionListSta
   factory $SessionListFailedCopyWith(SessionListFailed value, $Res Function(SessionListFailed) _then) = _$SessionListFailedCopyWithImpl;
 @useResult
 $Res call({
- SessionListFailedReason reason
+ RemoteFailureReason reason
 });
 
 
@@ -295,7 +295,7 @@ class _$SessionListFailedCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') $Res call({Object? reason = null,}) {
   return _then(SessionListFailed(
 reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
-as SessionListFailedReason,
+as RemoteFailureReason,
   ));
 }
 

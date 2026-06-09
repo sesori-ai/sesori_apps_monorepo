@@ -301,7 +301,7 @@ class NewSessionError implements NewSessionState {
   const NewSessionError({required this.reason, required final  List<AgentInfo> availableAgents, required final  List<ProviderInfo> availableProviders, required final  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedAgentModel, required this.stagedCommand, final  List<SessionVariant> availableVariants = const []}): _availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
   
 
- final  NewSessionFailedReason reason;
+ final  RemoteFailureReason reason;
  final  List<AgentInfo> _availableAgents;
  List<AgentInfo> get availableAgents {
   if (_availableAgents is EqualUnmodifiableListView) return _availableAgents;
@@ -364,7 +364,7 @@ abstract mixin class $NewSessionErrorCopyWith<$Res> implements $NewSessionStateC
   factory $NewSessionErrorCopyWith(NewSessionError value, $Res Function(NewSessionError) _then) = _$NewSessionErrorCopyWithImpl;
 @useResult
 $Res call({
- NewSessionFailedReason reason, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, String? selectedAgent, AgentModel? selectedAgentModel, CommandInfo? stagedCommand, List<SessionVariant> availableVariants
+ RemoteFailureReason reason, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, String? selectedAgent, AgentModel? selectedAgentModel, CommandInfo? stagedCommand, List<SessionVariant> availableVariants
 });
 
 
@@ -384,7 +384,7 @@ class _$NewSessionErrorCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') $Res call({Object? reason = null,Object? availableAgents = null,Object? availableProviders = null,Object? availableCommands = null,Object? selectedAgent = freezed,Object? selectedAgentModel = freezed,Object? stagedCommand = freezed,Object? availableVariants = null,}) {
   return _then(NewSessionError(
 reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
-as NewSessionFailedReason,availableAgents: null == availableAgents ? _self._availableAgents : availableAgents // ignore: cast_nullable_to_non_nullable
+as RemoteFailureReason,availableAgents: null == availableAgents ? _self._availableAgents : availableAgents // ignore: cast_nullable_to_non_nullable
 as List<AgentInfo>,availableProviders: null == availableProviders ? _self._availableProviders : availableProviders // ignore: cast_nullable_to_non_nullable
 as List<ProviderInfo>,availableCommands: null == availableCommands ? _self._availableCommands : availableCommands // ignore: cast_nullable_to_non_nullable
 as List<CommandInfo>,selectedAgent: freezed == selectedAgent ? _self.selectedAgent : selectedAgent // ignore: cast_nullable_to_non_nullable

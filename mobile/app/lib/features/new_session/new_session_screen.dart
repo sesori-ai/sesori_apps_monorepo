@@ -6,12 +6,12 @@ import "package:theme_zyra/module_zyra.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
+import "../../core/extensions/remote_failure_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/agent_model_buttons.dart";
 import "../../core/widgets/agent_picker_sheet.dart";
 import "../../core/widgets/model_picker_sheet.dart";
 import "../../core/widgets/variant_picker_sheet.dart";
-import "../../l10n/app_localizations.dart";
 import "../session_detail/widgets/prompt_input.dart";
 import "new_session_loading_overlay.dart";
 
@@ -93,7 +93,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
           children: [
             Expanded(
               child: Text(
-                _failureMessage(loc: loc, reason: reason),
+                reason.localizedMessage(loc),
                 style: TextStyle(color: zyra.colors.fgErrorPrimary),
               ),
             ),
@@ -239,12 +239,3 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     );
   }
 }
-
-/// Maps a [NewSessionFailedReason] to a localized, user-facing message.
-String _failureMessage({required AppLocalizations loc, required NewSessionFailedReason reason}) => switch (reason) {
-  NewSessionFailedReason.notAuthenticated => loc.apiErrorNotAuthenticated,
-  NewSessionFailedReason.serverRejected => loc.apiErrorServerRejected,
-  NewSessionFailedReason.networkDown => loc.apiErrorNetworkDown,
-  NewSessionFailedReason.badResponse => loc.connectErrorUnexpectedFormat,
-  NewSessionFailedReason.unknown => loc.connectErrorUnknown,
-};

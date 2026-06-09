@@ -8,6 +8,7 @@ import "package:theme_zyra/module_zyra.dart";
 import "../../core/constants.dart";
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
+import "../../core/extensions/remote_failure_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/status_colors.dart";
 import "../../core/widgets/app_modal_bottom_sheet.dart";

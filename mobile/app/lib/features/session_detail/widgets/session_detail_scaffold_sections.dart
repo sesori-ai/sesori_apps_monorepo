@@ -4,7 +4,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_zyra/module_zyra.dart";
 
 import "../../../core/extensions/build_context_x.dart";
-import "../../../l10n/app_localizations.dart";
+import "../../../core/extensions/remote_failure_x.dart";
 import "queued_message_bubble.dart";
 
 class SessionDetailTitle extends StatelessWidget {
@@ -108,7 +108,7 @@ class SessionDetailQueuedMessagesSection extends StatelessWidget {
 }
 
 class SessionDetailErrorView extends StatelessWidget {
-  final SessionDetailFailedReason reason;
+  final RemoteFailureReason reason;
   final VoidCallback onRetry;
 
   const SessionDetailErrorView({super.key, required this.reason, required this.onRetry});
@@ -128,7 +128,7 @@ class SessionDetailErrorView extends StatelessWidget {
             Text(loc.sessionDetailErrorTitle, style: context.zyra.textTheme.textMd.bold),
             const SizedBox(height: 8),
             Text(
-              _failureMessage(loc: loc, reason: reason),
+              reason.localizedMessage(loc),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -143,12 +143,3 @@ class SessionDetailErrorView extends StatelessWidget {
     );
   }
 }
-
-/// Maps a [SessionDetailFailedReason] to a localized, user-facing message.
-String _failureMessage({required AppLocalizations loc, required SessionDetailFailedReason reason}) => switch (reason) {
-  SessionDetailFailedReason.notAuthenticated => loc.apiErrorNotAuthenticated,
-  SessionDetailFailedReason.serverRejected => loc.apiErrorServerRejected,
-  SessionDetailFailedReason.networkDown => loc.apiErrorNetworkDown,
-  SessionDetailFailedReason.badResponse => loc.connectErrorUnexpectedFormat,
-  SessionDetailFailedReason.unknown => loc.connectErrorUnknown,
-};

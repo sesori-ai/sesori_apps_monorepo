@@ -171,7 +171,7 @@ class _StaleProjectView extends StatelessWidget {
 }
 
 class _ErrorView extends StatelessWidget {
-  final SessionListFailedReason reason;
+  final RemoteFailureReason reason;
   final VoidCallback onRetry;
 
   const _ErrorView({required this.reason, required this.onRetry});
@@ -198,7 +198,7 @@ class _ErrorView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              _failureMessage(loc: loc, reason: reason),
+              reason.localizedMessage(loc),
               textAlign: .center,
             ),
             const SizedBox(height: 24),
@@ -213,12 +213,3 @@ class _ErrorView extends StatelessWidget {
     );
   }
 }
-
-/// Maps a [SessionListFailedReason] to a localized, user-facing message.
-String _failureMessage({required AppLocalizations loc, required SessionListFailedReason reason}) => switch (reason) {
-  SessionListFailedReason.notAuthenticated => loc.apiErrorNotAuthenticated,
-  SessionListFailedReason.serverRejected => loc.apiErrorServerRejected,
-  SessionListFailedReason.networkDown => loc.apiErrorNetworkDown,
-  SessionListFailedReason.badResponse => loc.connectErrorUnexpectedFormat,
-  SessionListFailedReason.unknown => loc.connectErrorUnknown,
-};

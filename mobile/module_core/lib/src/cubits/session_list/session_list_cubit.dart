@@ -13,10 +13,10 @@ import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../capabilities/session/session_service.dart";
 import "../../capabilities/sse/session_activity_info.dart";
 import "../../capabilities/sse/sse_event_repository.dart";
+import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
 import "../../routing/app_routes.dart";
-import "session_list_failed_reason.dart";
 import "session_list_state.dart";
 
 class SessionListCubit extends Cubit<SessionListState> {
@@ -610,7 +610,8 @@ class SessionListCubit extends Cubit<SessionListState> {
         if (silent) {
           logw("Failed to refresh sessions: ${error.toString()}");
         } else {
-          emit(SessionListState.failed(reason: _failedReasonFor(error)));
+          loge("Session list load failed", error);
+          emit(SessionListState.failed(reason: error.remoteFailureReason));
         }
         return false;
     }
@@ -622,14 +623,3 @@ class SessionListCubit extends Cubit<SessionListState> {
     return super.close();
   }
 }
-
-/// Maps a transport-level [ApiError] to the domain [SessionListFailedReason]
-/// surfaced by [SessionListState.failed], keeping `sesori_auth` out of the
-/// state and presentation layers.
-SessionListFailedReason _failedReasonFor(ApiError error) => switch (error) {
-  NotAuthenticatedError() => SessionListFailedReason.notAuthenticated,
-  NonSuccessCodeError() => SessionListFailedReason.serverRejected,
-  DartHttpClientError() => SessionListFailedReason.networkDown,
-  JsonParsingError() || EmptyResponseError() => SessionListFailedReason.badResponse,
-  GenericError() => SessionListFailedReason.unknown,
-};

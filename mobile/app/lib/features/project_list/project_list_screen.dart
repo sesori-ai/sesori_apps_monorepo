@@ -14,9 +14,9 @@ import "../../core/bridge_install.dart";
 import "../../core/constants.dart";
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
+import "../../core/extensions/remote_failure_x.dart";
 import "../../core/extensions/text_style_x.dart";
 import "../../core/routing/app_router.dart";
-import "../../l10n/app_localizations.dart";
 import "add_project_dialog.dart";
 import "rename_project_dialog.dart";
 
