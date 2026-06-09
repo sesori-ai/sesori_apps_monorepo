@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/session/session_service.dart";
 import "../../utils/model_filter/default_model_selector.dart";
+import "new_session_failed_reason.dart";
 import "new_session_state.dart";
 
 class NewSessionCubit extends Cubit<NewSessionState> {
@@ -338,7 +339,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         final current = state.agentModelData;
         emit(
           NewSessionState.error(
-            error: error,
+            reason: _failedReasonFor(error),
             availableAgents: current?.agents ?? const [],
             availableProviders: current?.providers ?? const [],
             availableCommands: current?.commands ?? const [],
@@ -351,3 +352,14 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     }
   }
 }
+
+/// Maps a transport-level [ApiError] to the domain [NewSessionFailedReason]
+/// surfaced by [NewSessionState.error], keeping `sesori_auth` out of the
+/// state and presentation layers.
+NewSessionFailedReason _failedReasonFor(ApiError error) => switch (error) {
+  NotAuthenticatedError() => NewSessionFailedReason.notAuthenticated,
+  NonSuccessCodeError() => NewSessionFailedReason.serverRejected,
+  DartHttpClientError() => NewSessionFailedReason.networkDown,
+  JsonParsingError() || EmptyResponseError() => NewSessionFailedReason.badResponse,
+  GenericError() => NewSessionFailedReason.unknown,
+};

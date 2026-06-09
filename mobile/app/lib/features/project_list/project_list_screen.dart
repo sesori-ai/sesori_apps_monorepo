@@ -13,10 +13,10 @@ import "package:theme_zyra/module_zyra.dart";
 import "../../core/bridge_install.dart";
 import "../../core/constants.dart";
 import "../../core/di/injection.dart";
-import "../../core/extensions/api_error_x.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/extensions/text_style_x.dart";
 import "../../core/routing/app_router.dart";
+import "../../l10n/app_localizations.dart";
 import "add_project_dialog.dart";
 import "rename_project_dialog.dart";
 
@@ -200,8 +200,8 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
             ),
           ],
         ),
-        ProjectListFailed(:final error) => _ErrorView(
-          error: error,
+        ProjectListFailed(:final reason) => _ErrorView(
+          reason: reason,
           onRetry: () => context.read<ProjectListCubit>().retryLoadProjects(),
         ),
       },

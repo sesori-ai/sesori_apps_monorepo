@@ -7,7 +7,6 @@ import "package:theme_zyra/module_zyra.dart";
 
 import "../../core/constants.dart";
 import "../../core/di/injection.dart";
-import "../../core/extensions/api_error_x.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/status_colors.dart";
@@ -214,8 +213,8 @@ class _SessionListBody extends StatelessWidget {
         SessionListStaleProject() => _StaleProjectView(
           onBack: () => context.pop(),
         ),
-        SessionListFailed(:final error) => _ErrorView(
-          error: error,
+        SessionListFailed(:final reason) => _ErrorView(
+          reason: reason,
           onRetry: () => context.read<SessionListCubit>().retryLoadSessions(),
         ),
       },

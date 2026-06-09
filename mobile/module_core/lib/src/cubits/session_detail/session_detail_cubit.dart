@@ -16,6 +16,7 @@ import "../../services/session_detail_load_service.dart";
 import "../../utils/model_filter/default_model_selector.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
+import "session_detail_failed_reason.dart";
 import "session_detail_state.dart";
 import "streaming_text_buffer.dart";
 
@@ -115,7 +116,11 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         _waitingForConnection = false;
         _pendingSessionEvents.clear();
         _pendingGlobalEvents.clear();
-        emit(SessionDetailState.failed(error: error is ApiError ? error : ApiError.generic()));
+        emit(
+          SessionDetailState.failed(
+            reason: error is ApiError ? _failedReasonFor(error) : SessionDetailFailedReason.unknown,
+          ),
+        );
     }
   }
 
@@ -1198,7 +1203,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       SessionStatusBusy() => null,
     };
 
-      return SessionDetailLoaded(
+    return SessionDetailLoaded(
       messages: snapshot.messages,
       streamingText: const {},
       sessionStatus: initialSessionStatus,
@@ -1283,3 +1288,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     return super.close();
   }
 }
+
+/// Maps a transport-level [ApiError] to the domain [SessionDetailFailedReason]
+/// surfaced by [SessionDetailState.failed], keeping `sesori_auth` out of the
+/// state and presentation layers.
+SessionDetailFailedReason _failedReasonFor(ApiError error) => switch (error) {
+  NotAuthenticatedError() => SessionDetailFailedReason.notAuthenticated,
+  NonSuccessCodeError() => SessionDetailFailedReason.serverRejected,
+  DartHttpClientError() => SessionDetailFailedReason.networkDown,
+  JsonParsingError() || EmptyResponseError() => SessionDetailFailedReason.badResponse,
+  GenericError() => SessionDetailFailedReason.unknown,
+};

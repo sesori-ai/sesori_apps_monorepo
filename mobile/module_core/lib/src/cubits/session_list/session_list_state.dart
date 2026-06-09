@@ -1,8 +1,8 @@
 import "package:freezed_annotation/freezed_annotation.dart";
-import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/sse/session_activity_info.dart";
+import "session_list_failed_reason.dart";
 
 part "session_list_state.freezed.dart";
 
@@ -32,5 +32,5 @@ sealed class SessionListState with _$SessionListState {
     required String resolvedProjectId,
   }) = SessionListStaleProject;
 
-  const factory SessionListState.failed({required ApiError error}) = SessionListFailed;
+  const factory SessionListState.failed({required SessionListFailedReason reason}) = SessionListFailed;
 }

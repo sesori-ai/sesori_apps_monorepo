@@ -1,8 +1,8 @@
 import "package:freezed_annotation/freezed_annotation.dart";
-import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "queued_session_submission.dart";
+import "session_detail_failed_reason.dart";
 
 part "session_detail_state.freezed.dart";
 
@@ -44,5 +44,5 @@ sealed class SessionDetailState with _$SessionDetailState {
     required String? retryErrorMessage,
   }) = SessionDetailLoaded;
 
-  const factory SessionDetailState.failed({required ApiError error}) = SessionDetailFailed;
+  const factory SessionDetailState.failed({required SessionDetailFailedReason reason}) = SessionDetailFailed;
 }

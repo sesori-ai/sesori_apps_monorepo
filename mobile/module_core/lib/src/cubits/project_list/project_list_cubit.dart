@@ -13,6 +13,7 @@ import "../../capabilities/sse/sse_event_repository.dart";
 import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
 import "../../routing/app_routes.dart";
+import "project_list_failed_reason.dart";
 import "project_list_state.dart";
 
 /// How long to wait after an activity event before auto-refreshing project
@@ -408,7 +409,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
           // onboarding rather than a generic error.
           emit(const ProjectListState.bridgeDisconnected());
         } else {
-          emit(ProjectListState.failed(error: error));
+          emit(ProjectListState.failed(reason: _failedReasonFor(error)));
         }
         return false;
     }
@@ -420,3 +421,14 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     return super.close();
   }
 }
+
+/// Maps a transport-level [ApiError] to the domain [ProjectListFailedReason]
+/// surfaced by [ProjectListState.failed], keeping `sesori_auth` out of the
+/// state and presentation layers.
+ProjectListFailedReason _failedReasonFor(ApiError error) => switch (error) {
+  NotAuthenticatedError() => ProjectListFailedReason.notAuthenticated,
+  NonSuccessCodeError() => ProjectListFailedReason.serverRejected,
+  DartHttpClientError() => ProjectListFailedReason.networkDown,
+  JsonParsingError() || EmptyResponseError() => ProjectListFailedReason.badResponse,
+  GenericError() => ProjectListFailedReason.unknown,
+};

@@ -307,10 +307,10 @@ $CommandInfoCopyWith<$Res>? get stagedCommand {
 
 
 class SessionDetailFailed implements SessionDetailState {
-  const SessionDetailFailed({required this.error});
+  const SessionDetailFailed({required this.reason});
   
 
- final  ApiError error;
+ final  SessionDetailFailedReason reason;
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
@@ -322,16 +322,16 @@ $SessionDetailFailedCopyWith<SessionDetailFailed> get copyWith => _$SessionDetai
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailFailed&&(identical(other.error, error) || other.error == error));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailFailed&&(identical(other.reason, reason) || other.reason == reason));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,error);
+int get hashCode => Object.hash(runtimeType,reason);
 
 @override
 String toString() {
-  return 'SessionDetailState.failed(error: $error)';
+  return 'SessionDetailState.failed(reason: $reason)';
 }
 
 
@@ -342,11 +342,11 @@ abstract mixin class $SessionDetailFailedCopyWith<$Res> implements $SessionDetai
   factory $SessionDetailFailedCopyWith(SessionDetailFailed value, $Res Function(SessionDetailFailed) _then) = _$SessionDetailFailedCopyWithImpl;
 @useResult
 $Res call({
- ApiError error
+ SessionDetailFailedReason reason
 });
 
 
-$ApiErrorCopyWith<$Res> get error;
+
 
 }
 /// @nodoc
@@ -359,23 +359,14 @@ class _$SessionDetailFailedCopyWithImpl<$Res>
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? error = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? reason = null,}) {
   return _then(SessionDetailFailed(
-error: null == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
-as ApiError,
+reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as SessionDetailFailedReason,
   ));
 }
 
-/// Create a copy of SessionDetailState
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$ApiErrorCopyWith<$Res> get error {
-  
-  return $ApiErrorCopyWith<$Res>(_self.error, (value) {
-    return _then(_self.copyWith(error: value));
-  });
-}
+
 }
 
 // dart format on
