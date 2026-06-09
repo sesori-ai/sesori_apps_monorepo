@@ -145,7 +145,7 @@ class ZyraInlineBanner extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: zyra.textTheme.textSm.bold.copyWith(
-                        color: zyra.colors.textPrimary,
+                        color: zyra.colors.textPrimaryOnWhite,
                       ),
                     ),
                   ),
@@ -193,10 +193,22 @@ class _WideEllipseGradientTransform extends GradientTransform {
     // translation term keeps that centre fixed: x' = scaleX·x + cx·(1 - scaleX).
     final centerX = bounds.center.dx;
     return Matrix4(
-      scaleX, 0, 0, 0, // column 0
-      0, 1, 0, 0, // column 1
-      0, 0, 1, 0, // column 2
-      centerX * (1 - scaleX), 0, 0, 1, // column 3 (translation)
+      scaleX,
+      0,
+      0,
+      0, // column 0
+      0,
+      1,
+      0,
+      0, // column 1
+      0,
+      0,
+      1,
+      0, // column 2
+      centerX * (1 - scaleX),
+      0,
+      0,
+      1, // column 3 (translation)
     );
   }
 }
