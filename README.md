@@ -123,7 +123,7 @@ cd ../mobile && flutter pub get
 
 ## Common Tasks
 
-Each workspace ships a `Makefile` with the same core targets — run them from that workspace's directory (`bridge/`, `mobile/`, or `shared/`). They invoke the Flutter-bundled Dart SDK pinned in `.tool-versions`, so they work regardless of what's on your `PATH`.
+Each directory (bridge/, mobile/, or shared/) ships a Makefile with the same core targets — run them from that directory. They invoke the Flutter-bundled Dart SDK pinned in .tool-versions, so they work regardless of what's on your PATH.
 
 | Target | What it does |
 |---|---|
