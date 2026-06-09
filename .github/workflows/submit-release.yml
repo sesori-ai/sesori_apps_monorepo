@@ -34,11 +34,6 @@ on:
         description: "Build number to submit (must match an existing build-<N> tag)"
         type: string
         required: true
-      upload_metadata:
-        description: "Pull and upload all App Store / Play listing metadata (text, changelogs, screenshots, images) from the private metadata repo"
-        type: boolean
-        required: false
-        default: false
 
 run-name: "submit · ${{ inputs.track }} · ${{ inputs.platforms }} · build ${{ inputs.build_number }}"
 
@@ -93,9 +88,11 @@ jobs:
             exit 1
           fi
 
-          echo "build_number=${N}"  >> "$GITHUB_OUTPUT"
-          echo "commit_sha=${SHA}"  >> "$GITHUB_OUTPUT"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          {
+            echo "build_number=${N}"
+            echo "commit_sha=${SHA}"
+            echo "version=${VERSION}"
+          } >> "$GITHUB_OUTPUT"
           {
             echo "### Resolved"
             echo "- **Build number**: \`${N}\`"
@@ -109,6 +106,11 @@ jobs:
     needs: resolve
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Surface the metadata-publish decision so the `tag` job knows whether (and
+    # which private-repo commit) to tag v<VERSION> after a successful submit.
+    outputs:
+      meta_publish: ${{ steps.gate.outputs.publish }}
+      meta_head:    ${{ steps.gate.outputs.head }}
     # `store-production` environment requires reviewer approval before this job
     # starts; `store-beta` has no protection rules. Both must exist as repo
     # environments (Settings → Environments).
@@ -121,24 +123,48 @@ jobs:
         with:
           ref: ${{ needs.resolve.outputs.commit_sha }}
 
-      # Pull App Store listing metadata from the private metadata repo. Only
-      # when this is a production submit dispatched with upload_metadata=true
-      # (and STORE_METADATA_REPO is configured). Lands at
-      # $GITHUB_WORKSPACE/store-metadata — the `path` is workspace-relative,
-      # independent of the job's working-directory (mobile/app/ios).
-      # persist-credentials:false so the read-only token is not left in git
-      # config for later steps (fastlane reads files, not git). When skipped,
-      # the lane no-ops (promote/submit only), so a routine submission never
-      # rewrites the live listing.
+      # Clone the private metadata repo so we can both read its listing and decide
+      # whether it needs publishing. Only for production submits with
+      # STORE_METADATA_REPO configured. fetch-depth:0 so HEAD's tags are present
+      # for the gate below. Lands at $GITHUB_WORKSPACE/store-metadata — the `path`
+      # is workspace-relative, independent of the job's working-directory
+      # (mobile/app/ios). persist-credentials:false so the token is not left in
+      # git config for the fastlane steps (fastlane reads files, not git).
       - name: Checkout store metadata
-        if: ${{ inputs.track == 'production' && inputs.upload_metadata && vars.STORE_METADATA_REPO != '' }}
+        id: cometa
+        if: ${{ inputs.track == 'production' && vars.STORE_METADATA_REPO != '' }}
         uses: actions/checkout@v6
         with:
           repository: ${{ vars.STORE_METADATA_REPO }}
           ref: ${{ vars.STORE_METADATA_REF || 'main' }}
           path: store-metadata
+          fetch-depth: 0
           persist-credentials: false
           token: ${{ secrets.METADATA_REPO_TOKEN }}
+
+      # Tag-driven gate: publish the listing only when the metadata repo's latest
+      # commit is NOT yet tagged `v*`. An untagged HEAD means there are listing
+      # changes that haven't shipped; a `v*` tag means this exact listing was
+      # already published in an earlier release, so we skip it (binary only). The
+      # `tag` job stamps v<VERSION> onto this commit on success (see below).
+      - name: Decide metadata publish
+        id: gate
+        if: ${{ steps.cometa.outcome == 'success' }}
+        working-directory: ${{ github.workspace }}/store-metadata
+        run: |
+          set -euo pipefail
+          head="$(git rev-parse HEAD)"
+          if git tag --points-at HEAD | grep -q '^v'; then
+            publish=false
+            echo "Metadata HEAD ${head} is already tagged $(git tag --points-at HEAD | grep '^v' | paste -sd, -) — already published; skipping listing."
+          else
+            publish=true
+            echo "Metadata HEAD ${head} has no v* tag — listing changed since last release; will publish + tag."
+          fi
+          {
+            echo "head=${head}"
+            echo "publish=${publish}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -157,10 +183,11 @@ jobs:
           BUILD_NUMBER:                      ${{ needs.resolve.outputs.build_number }}
           TRACK:                             ${{ inputs.track }}
           # Absolute paths: fastlane runs from mobile/app/ios but the metadata
-          # clone lives at the workspace root. Resolve to non-existent dirs when
-          # the checkout above was skipped, so the lane uploads no metadata.
-          IOS_METADATA_PATH:                 ${{ github.workspace }}/store-metadata/ios/metadata
-          IOS_SCREENSHOTS_PATH:              ${{ github.workspace }}/store-metadata/ios/screenshots
+          # clone lives at the workspace root. Set ONLY when the gate decided to
+          # publish; otherwise empty, so the lane sees no metadata dir and uploads
+          # nothing (binary submit only). Empty also when the checkout was skipped.
+          IOS_METADATA_PATH:                 ${{ steps.gate.outputs.publish == 'true' && format('{0}/store-metadata/ios/metadata', github.workspace) || '' }}
+          IOS_SCREENSHOTS_PATH:              ${{ steps.gate.outputs.publish == 'true' && format('{0}/store-metadata/ios/screenshots', github.workspace) || '' }}
         run: bundle exec fastlane submit_ios
 
       - name: Summary
@@ -185,6 +212,10 @@ jobs:
     needs: resolve
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # See submit-ios: surface the gate decision for the `tag` job.
+    outputs:
+      meta_publish: ${{ steps.gate.outputs.publish }}
+      meta_head:    ${{ steps.gate.outputs.head }}
     environment: ${{ inputs.track == 'production' && 'store-production' || 'store-beta' }}
     defaults:
       run:
@@ -194,20 +225,41 @@ jobs:
         with:
           ref: ${{ needs.resolve.outputs.commit_sha }}
 
-      # Pull Play Store listing metadata from the private metadata repo. Only
-      # when this is a production submit dispatched with upload_metadata=true
-      # (and STORE_METADATA_REPO is configured). See the iOS job for the
-      # rationale on path, auth, and persist-credentials. When skipped, the
-      # lane falls back to promotion-only.
+      # Clone the private metadata repo (production + STORE_METADATA_REPO only) to
+      # read the listing and run the same tag-driven gate as iOS. See the iOS job
+      # for the rationale on path, auth, fetch-depth, and persist-credentials.
       - name: Checkout store metadata
-        if: ${{ inputs.track == 'production' && inputs.upload_metadata && vars.STORE_METADATA_REPO != '' }}
+        id: cometa
+        if: ${{ inputs.track == 'production' && vars.STORE_METADATA_REPO != '' }}
         uses: actions/checkout@v6
         with:
           repository: ${{ vars.STORE_METADATA_REPO }}
           ref: ${{ vars.STORE_METADATA_REF || 'main' }}
           path: store-metadata
+          fetch-depth: 0
           persist-credentials: false
           token: ${{ secrets.METADATA_REPO_TOKEN }}
+
+      # Publish the listing only when the metadata repo's latest commit is not yet
+      # tagged `v*` (see submit-ios for the full rationale).
+      - name: Decide metadata publish
+        id: gate
+        if: ${{ steps.cometa.outcome == 'success' }}
+        working-directory: ${{ github.workspace }}/store-metadata
+        run: |
+          set -euo pipefail
+          head="$(git rev-parse HEAD)"
+          if git tag --points-at HEAD | grep -q '^v'; then
+            publish=false
+            echo "Metadata HEAD ${head} is already tagged $(git tag --points-at HEAD | grep '^v' | paste -sd, -) — already published; skipping listing."
+          else
+            publish=true
+            echo "Metadata HEAD ${head} has no v* tag — listing changed since last release; will publish + tag."
+          fi
+          {
+            echo "head=${head}"
+            echo "publish=${publish}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -221,10 +273,11 @@ jobs:
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           VERSION_CODE:                     ${{ needs.resolve.outputs.build_number }}
           TRACK:                            ${{ inputs.track }}
-          # Absolute path to the cloned metadata repo's Android listing dir
-          # (locale folders live directly under it). Resolves to a non-existent
-          # dir when the checkout above was skipped, so the lane promotes only.
-          ANDROID_METADATA_PATH:            ${{ github.workspace }}/store-metadata/android
+          # Absolute path to the cloned metadata repo's Android listing dir (locale
+          # folders live directly under it). Set ONLY when the gate decided to
+          # publish; otherwise empty, so the lane promotes only. Empty also when
+          # the checkout was skipped.
+          ANDROID_METADATA_PATH:            ${{ steps.gate.outputs.publish == 'true' && format('{0}/store-metadata/android', github.workspace) || '' }}
         run: bundle exec fastlane submit_android
 
       - name: Cleanup credentials
@@ -312,3 +365,64 @@ jobs:
           name: "v${{ needs.resolve.outputs.version }} (build ${{ needs.resolve.outputs.build_number }})"
           generate_release_notes: true
           make_latest: "true"
+
+      # Stamp the SAME v<VERSION> onto the metadata repo's published commit, so its
+      # HEAD is marked "published" and the next release's gate skips re-pushing an
+      # unchanged listing. Runs only when a platform actually published this run,
+      # tagging the exact commit that was published (meta_head). iOS and Android
+      # evaluate the same remote, so their decisions agree; the head is taken from
+      # whichever platform published (iOS preferred). Kept LAST so a tag-push
+      # failure can't suppress the GitHub Release above (the binary already
+      # shipped). METADATA_REPO_TOKEN must be a REPOSITORY secret with Contents:
+      # Write — this job declares no environment, so an environment-scoped secret
+      # would read as empty here.
+      - name: Tag store metadata repo
+        if: ${{ needs.submit-ios.outputs.meta_publish == 'true' || needs.submit-android.outputs.meta_publish == 'true' }}
+        env:
+          REPO:            ${{ vars.STORE_METADATA_REPO }}
+          VERSION:         ${{ needs.resolve.outputs.version }}
+          PUBLISH_IOS:     ${{ needs.submit-ios.outputs.meta_publish }}
+          PUBLISH_ANDROID: ${{ needs.submit-android.outputs.meta_publish }}
+          HEAD_IOS:        ${{ needs.submit-ios.outputs.meta_head }}
+          HEAD_ANDROID:    ${{ needs.submit-android.outputs.meta_head }}
+          TOKEN:           ${{ secrets.METADATA_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Tag the commit a publishing platform actually shipped (both evaluate
+          # the same remote, so when both publish their heads match).
+          HEAD=""
+          if [[ "$PUBLISH_IOS" == "true" ]]; then
+            HEAD="$HEAD_IOS"
+          elif [[ "$PUBLISH_ANDROID" == "true" ]]; then
+            HEAD="$HEAD_ANDROID"
+          fi
+          TAG="v${VERSION}"
+          if [[ -z "$HEAD" ]]; then
+            echo "::error::Metadata publish flagged but no published commit was reported by either platform."
+            exit 1
+          fi
+          if [[ -z "$TOKEN" ]]; then
+            echo "::error::Metadata was published but METADATA_REPO_TOKEN is empty in this job. It must be a REPOSITORY secret (not environment-scoped) with Contents: Write, so the tag job can push ${TAG} to ${REPO}."
+            exit 1
+          fi
+          work="$(mktemp -d)"
+          git clone --quiet "https://x-access-token:${TOKEN}@github.com/${REPO}.git" "$work"
+          cd "$work"
+          # Idempotent: if the tag already exists on the published commit, done;
+          # on a DIFFERENT commit, fail loudly (the listing for this version was
+          # already published from elsewhere).
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            existing="$(git rev-list -n1 "refs/tags/${TAG}")"
+            if [[ "$existing" == "$HEAD" ]]; then
+              echo "Metadata repo already tagged ${TAG} → ${HEAD} — nothing to do."
+              echo "- **Metadata repo**: \`${TAG}\` already → \`${HEAD}\`" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "::error::Metadata repo tag ${TAG} exists on ${existing}, expected ${HEAD}."
+            exit 1
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${TAG}" "${HEAD}" -m "Published store metadata with ${TAG}"
+          git push --quiet origin "refs/tags/${TAG}"
+          echo "- **Metadata repo tagged**: \`${TAG}\` → \`${HEAD}\`" >> "$GITHUB_STEP_SUMMARY"
