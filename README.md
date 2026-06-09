@@ -123,7 +123,7 @@ cd ../mobile && flutter pub get
 
 ## Common Tasks
 
-Each directory (bridge/, mobile/, or shared/) ships a Makefile with the same core targets — run them from that directory. They invoke the Flutter-bundled Dart SDK pinned in .tool-versions, so they work regardless of what's on your PATH.
+Each directory (bridge/, mobile/, or shared/) ships a Makefile with the same core targets — run them from that directory. They resolve the Flutter-bundled Dart SDK via the version pinned in .tool-versions and the default asdf install path (`~/.asdf/installs/flutter/<version>`), so they bypass whatever is on your PATH — provided you've run `asdf install`.
 
 | Target | What it does |
 |---|---|
