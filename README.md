@@ -26,15 +26,17 @@ bridge/                     # Dart workspace — Bridge CLI + plugin system
   app/                      # CLI relay server
   sesori_plugin_interface/  # Abstract plugin contract
   sesori_plugin_opencode/   # OpenCode backend plugin
-mobile/                     # Dart workspace — Flutter mobile client
+mobile/                     # Flutter workspace — mobile client
   app/                      # Flutter UI shell
   module_core/              # Pure Dart business logic
   module_auth/              # Auth & token lifecycle
+  module_zyra/              # Zyra design system — theme, fonts, icons, UI components
 shared/
   sesori_shared/            # Shared crypto & protocol types
+  no_slop_linter/           # Custom Dart lint rules (dev tooling)
 ```
 
-`bridge/` and `mobile/` are independent Dart workspaces with separate dependency resolution. `shared/sesori_shared` is referenced via path by both workspaces.
+`bridge/` and `mobile/` are independent Dart pub workspaces with separate dependency resolution. The packages under `shared/` are referenced via path by both: `sesori_shared` carries the crypto and protocol types, while `no_slop_linter` is a custom analyzer plugin pulled in as a dev dependency to enforce the repo's lint rules.
 
 ## Dependency Graph
 
@@ -47,11 +49,14 @@ graph TD
   sesori_plugin_opencode --> sesori_shared
   mobile_app[mobile/app] --> module_core[mobile/module_core]
   mobile_app --> module_auth[mobile/module_auth]
+  mobile_app --> module_zyra[mobile/module_zyra]
   mobile_app --> sesori_shared
   module_core --> module_auth
   module_core --> sesori_shared
   module_auth --> sesori_shared
 ```
+
+`shared/no_slop_linter` is omitted above — it is a dev-only analyzer plugin, not a runtime dependency.
 
 ## Data Flow
 
@@ -99,9 +104,9 @@ When a phone connects, it performs an **X25519 Diffie-Hellman key exchange** wit
 
 ## Prerequisites
 
-- **Dart 3.11.2** — bridge workspace
-- **Flutter 3.41.4-stable** — mobile workspace
-- **asdf** — recommended for version management
+- **Flutter** — mobile workspace; the exact version is pinned in [`.tool-versions`](.tool-versions)
+- **Dart SDK** — bridge workspace (a pure Dart workspace); ships with the pinned Flutter version, so no separate install is needed
+- **asdf** — recommended for version management; reads [`.tool-versions`](.tool-versions) automatically
 
 ## Getting Started
 
@@ -113,8 +118,33 @@ cd sesori_apps_monorepo
 cd bridge && dart pub get
 
 # Install mobile dependencies
-cd ../mobile && dart pub get
+cd ../mobile && flutter pub get
 ```
+
+## Common Tasks
+
+Each workspace ships a `Makefile` with the same core targets — run them from that workspace's directory (`bridge/`, `mobile/`, or `shared/`). They invoke the Flutter-bundled Dart SDK pinned in `.tool-versions`, so they work regardless of what's on your `PATH`.
+
+| Target | What it does |
+|---|---|
+| `make pub-get` | Resolve dependencies for the workspace |
+| `make codegen` | Run `build_runner` across modules (freezed, json_serializable, …) |
+| `make analyze` | Static analysis across modules |
+| `make test` | Run unit tests across modules |
+
+`mobile/` adds design-system helpers for the Zyra module:
+
+| Target | What it does |
+|---|---|
+| `make generate-assets` | Regenerate the Tabler/VESPR icon-font Dart bindings |
+| `make generate-tokens` | Sync Figma design tokens into `module_zyra` |
+
+The root `Makefile` manages cross-workspace versioning:
+
+| Target | What it does |
+|---|---|
+| `make bump-version TYPE=patch\|minor\|major` | Bump bridge + mobile versions in lockstep (or pass `VERSION=X.Y.Z`) |
+| `make bump-version-check` | Preview the version bump without writing changes |
 
 ## Bridge Install
 
@@ -158,7 +188,9 @@ If you used the npm bootstrap path, `npm uninstall @sesori/bridge` only removes 
 ## Workspace Docs
 
 - [bridge/README.md](bridge/README.md) — bridge CLI, plugin system, codegen, and testing
+- [bridge/ARCHITECTURE.md](bridge/ARCHITECTURE.md) — bridge layered architecture (Foundation → API → Repository → Service)
 - [mobile/README.md](mobile/README.md) — Flutter client, module structure, and testing
+- [shared/no_slop_linter/README.md](shared/no_slop_linter/README.md) — custom lint rules and how they're wired in
 
 ## License
 
