@@ -1,36 +1,11 @@
 {
   "@@locale": "en",
   "appTitle": "Sesori Mobile",
-  "connectErrorNonSuccessCode": "Server returned {errorCode}",
-  "@connectErrorNonSuccessCode": {
-    "placeholders": {
-      "errorCode": {
-        "type": "int"
-      }
-    }
-  },
-  "connectErrorNonSuccessCodeWithBody": "Server returned {errorCode}: {body}",
-  "@connectErrorNonSuccessCodeWithBody": {
-    "placeholders": {
-      "errorCode": {
-        "type": "int"
-      },
-      "body": {
-        "type": "String"
-      }
-    }
-  },
-  "connectErrorConnectionFailed": "Connection failed: {detail}",
-  "@connectErrorConnectionFailed": {
-    "placeholders": {
-      "detail": {
-        "type": "String"
-      }
-    }
-  },
   "connectErrorUnexpectedFormat": "Unexpected response format",
   "connectErrorUnknown": "An unknown error occurred",
   "apiErrorNotAuthenticated": "Not authenticated — check your connection",
+  "apiErrorServerRejected": "The server returned an error. Please try again.",
+  "apiErrorNetworkDown": "Connection failed — check your network and try again.",
   "projectListTitle": "Projects",
   "projectListEmpty": "No projects found",
   "projectListUpdated": "Updated {timestamp}",

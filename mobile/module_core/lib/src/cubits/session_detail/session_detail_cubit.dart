@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
+import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/permission_repository.dart";
@@ -111,11 +112,16 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           _waitingForConnection = false;
           unawaited(_loadMessages(isReload: true));
         }
-      case SessionDetailLoadResultFailed(:final error):
+      case SessionDetailLoadResultFailed(:final error, :final stackTrace):
         _waitingForConnection = false;
         _pendingSessionEvents.clear();
         _pendingGlobalEvents.clear();
-        emit(SessionDetailState.failed(error: error is ApiError ? error : ApiError.generic()));
+        loge("Session detail load failed", error, stackTrace);
+        emit(
+          SessionDetailState.failed(
+            reason: error is ApiError ? error.remoteFailureReason : RemoteFailureReason.unknown,
+          ),
+        );
     }
   }
 
@@ -1198,7 +1204,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       SessionStatusBusy() => null,
     };
 
-      return SessionDetailLoaded(
+    return SessionDetailLoaded(
       messages: snapshot.messages,
       streamingText: const {},
       sessionStatus: initialSessionStatus,

@@ -1,6 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
-import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
+
+import "../../errors/remote_failure_reason.dart";
 
 part "new_session_state.freezed.dart";
 
@@ -27,7 +28,7 @@ sealed class NewSessionState with _$NewSessionState {
   }) = NewSessionSending;
 
   const factory NewSessionState.error({
-    required ApiError error,
+    required RemoteFailureReason reason,
     required List<AgentInfo> availableAgents,
     required List<ProviderInfo> availableProviders,
     required List<CommandInfo> availableCommands,

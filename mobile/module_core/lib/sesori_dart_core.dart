@@ -61,6 +61,8 @@ export "src/cubits/splash/splash_cubit.dart";
 export "src/cubits/splash/splash_state.dart";
 // DI
 export "src/di/injection.dart";
+// Errors
+export "src/errors/remote_failure_reason.dart";
 // Logging
 export "src/logging/logging.dart";
 // Platform interfaces
