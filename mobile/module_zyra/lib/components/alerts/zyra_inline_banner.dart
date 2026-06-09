@@ -98,22 +98,28 @@ class ZyraInlineBanner extends StatelessWidget {
         ),
         child: Stack(
           children: [
-            // Warm accent overlay — a faint dark centre fading out to the
-            // variant accent at the edges, composited at 30% opacity to match
-            // the Figma radial gradient. Sits over [bgPrimary] so it adapts to
-            // the surface brightness.
+            // Warm accent overlay — a near-transparent dark centre by the top
+            // edge fading out to the variant accent (warning-primary) at the
+            // rim, at 30% opacity. The circle is stretched into a wide, shallow
+            // ellipse (~6.7x wider than tall) so it reads as a glow emanating
+            // from far above the banner, matching the Figma radial. Sits over
+            // [bgPrimary] so it adapts to the surface brightness.
             Positioned.fill(
               child: IgnorePointer(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      // center: Alignment.center,
-                      // radius: 1.0,
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
+                    gradient: RadialGradient(
+                      // 3.5px down in Figma's 61px banner — just below the top.
+                      center: const Alignment(0, -0.885),
+                      // Vertical reach (fraction of the height) lands the accent
+                      // rim on the bottom edge.
+                      radius: 0.94,
+                      // Flutter has no native elliptical radial gradient, so we
+                      // stretch the circle horizontally via the shader matrix.
+                      transform: const _WideEllipseGradientTransform(6.7),
                       colors: [
-                        Colors.black.withValues(alpha: 0.1),
-                        accentColor.withValues(alpha: 0.3),
+                        Colors.black.withValues(alpha: 0.03),
+                        accentColor.withValues(alpha: 0.30),
                       ],
                     ),
                   ),
@@ -166,4 +172,31 @@ class ZyraInlineBanner extends StatelessWidget {
   Color _resolveAccentColor({required ZyraColors colors}) => switch (variant) {
     ZyraInlineBannerVariant.warning => colors.fgWarningPrimary,
   };
+}
+
+/// Stretches a [RadialGradient] horizontally into a wide, shallow ellipse.
+///
+/// Flutter's [RadialGradient] only draws circles; scaling the shader's local
+/// matrix about the gradient centre (the banner's horizontal midpoint) turns
+/// the circular iso-colour rings into ellipses [scaleX] times wider than they
+/// are tall. The warm overlay then fans out almost horizontally, as if its
+/// centre sat far above the banner — matching the Figma radial.
+class _WideEllipseGradientTransform extends GradientTransform {
+  const _WideEllipseGradientTransform(this.scaleX);
+
+  /// How many times wider than tall each iso-colour ring is drawn.
+  final double scaleX;
+
+  @override
+  Matrix4 transform(Rect bounds, {TextDirection? textDirection}) {
+    // Scale x by [scaleX] about the gradient centre (the banner's mid-x). The
+    // translation term keeps that centre fixed: x' = scaleX·x + cx·(1 - scaleX).
+    final centerX = bounds.center.dx;
+    return Matrix4(
+      scaleX, 0, 0, 0, // column 0
+      0, 1, 0, 0, // column 1
+      0, 0, 1, 0, // column 2
+      centerX * (1 - scaleX), 0, 0, 1, // column 3 (translation)
+    );
+  }
 }
