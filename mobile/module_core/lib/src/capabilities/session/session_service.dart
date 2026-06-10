@@ -82,13 +82,8 @@ class SessionService {
     return _repository.getSessionStatuses();
   }
 
-  Future<ApiResponse<Agents>> listAgents({required String? projectId}) {
-    final normalizedProjectId = projectId?.normalize();
-    if (normalizedProjectId == null) {
-      return Future.value(ApiResponse.success(const Agents(agents: <AgentInfo>[])));
-    }
-
-    return _repository.listAgents(projectId: normalizedProjectId);
+  Future<ApiResponse<Agents>> listAgents({required String projectId}) {
+    return _repository.listAgents(projectId: projectId);
   }
 
   Future<ApiResponse<ProviderListResponse>> listProviders({required String projectId}) {
