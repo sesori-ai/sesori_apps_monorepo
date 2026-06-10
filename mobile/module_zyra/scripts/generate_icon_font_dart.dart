@@ -8,8 +8,10 @@
 ///     --font-dir assets/fonts/TablerIcons \
 ///     --output lib/icons/tabler_icons.g.dart \
 ///     --font-package theme_zyra \
-///     --family-map "tabler-icons.ttf:TablerOutline:TablerOutline" \
-///     --family-map "tabler-icons-filled.ttf:TablerFilled:TablerFilled"
+///     --family-map "TablerIcons-Thin.ttf:TablerThin:TablerThin" \
+///     --family-map "TablerIcons-Light.ttf:TablerLight:TablerLight" \
+///     --family-map "TablerIcons-Regular.ttf:TablerRegular:TablerRegular" \
+///     --family-map "TablerIcons-Solid.ttf:TablerSolid:TablerSolid"
 library;
 
 import 'dart:io';

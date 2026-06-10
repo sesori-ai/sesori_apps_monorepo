@@ -40,7 +40,7 @@ analyze:
 	done
 
 generate-assets:
-	(cd module_zyra && $(DART) run scripts/generate_icon_font_dart.dart --font-dir assets/fonts/TablerIcons --output lib/icons/tabler_icons.g.dart --font-package theme_zyra --family-map "tabler-icons.ttf:TablerOutline:TablerOutline" --family-map "tabler-icons-filled.ttf:TablerFilled:TablerFilled")
+	(cd module_zyra && $(DART) run scripts/generate_icon_font_dart.dart --font-dir assets/fonts/TablerIcons --output lib/icons/tabler_icons.g.dart --font-package theme_zyra --family-map "TablerIcons-Thin.ttf:TablerThin:TablerThin" --family-map "TablerIcons-Light.ttf:TablerLight:TablerLight" --family-map "TablerIcons-Regular.ttf:TablerRegular:TablerRegular" --family-map "TablerIcons-Solid.ttf:TablerSolid:TablerSolid")
 	(cd module_zyra && $(DART) run scripts/generate_icon_font_dart.dart --font-dir assets/fonts/VESPRIcons --output lib/icons/vespr_icons.g.dart --font-package theme_zyra --family-map "VESPRIcons-Light.ttf:VESPRLight:VESPRLight" --family-map "VESPRIcons-Regular.ttf:VESPRRegular:VESPRRegular" --family-map "VESPRIcons-Solid.ttf:VESPRSolid:VESPRSolid")
 
 generate-tokens:
