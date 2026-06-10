@@ -1,10 +1,10 @@
 import 'dart:io';
 
-import '../auth/token.dart' as token_store;
-import '../server/foundation/terminal_prompt_decision.dart';
-import '../server/repositories/bridge_instance_repository.dart';
-import '../server/repositories/terminal_prompt_repository.dart';
-import '../server/services/bridge_instance_service.dart';
+import '../../auth/token.dart' as token_store;
+import '../../server/foundation/terminal_prompt_decision.dart';
+import '../../server/repositories/bridge_instance_repository.dart';
+import '../../server/repositories/terminal_prompt_repository.dart';
+import '../../server/services/bridge_instance_service.dart';
 
 enum BridgeLogoutStatus {
   /// Tokens cleared; no bridge instances left running.
@@ -33,8 +33,8 @@ class BridgeLogoutResult {
   final Object? error;
 }
 
-class BridgeLogoutService {
-  BridgeLogoutService({
+class BridgeLogoutRunner {
+  BridgeLogoutRunner({
     required BridgeInstanceRepository bridgeInstanceRepository,
     required BridgeInstanceService bridgeInstanceService,
     required TerminalPromptRepository terminalPromptRepository,

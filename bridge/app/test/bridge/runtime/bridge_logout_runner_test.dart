@@ -1,22 +1,22 @@
 import 'dart:io';
 
+import 'package:sesori_bridge/src/bridge/runtime/bridge_logout_runner.dart';
 import 'package:sesori_bridge/src/server/foundation/process_identity.dart';
 import 'package:sesori_bridge/src/server/foundation/process_user.dart';
 import 'package:sesori_bridge/src/server/foundation/terminal_prompt_decision.dart';
 import 'package:sesori_bridge/src/server/repositories/bridge_instance_repository.dart';
 import 'package:sesori_bridge/src/server/repositories/terminal_prompt_repository.dart';
 import 'package:sesori_bridge/src/server/services/bridge_instance_service.dart';
-import 'package:sesori_bridge/src/services/bridge_logout_service.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('BridgeLogoutService', () {
+  group('BridgeLogoutRunner', () {
     late _FakeBridgeInstanceRepository bridgeInstanceRepository;
     late _FakeBridgeInstanceService bridgeInstanceService;
     late _FakeTerminalPromptRepository terminalPromptRepository;
     late int clearTokensCalls;
     late Object? clearTokensError;
-    late BridgeLogoutService service;
+    late BridgeLogoutRunner service;
 
     setUp(() {
       bridgeInstanceRepository = _FakeBridgeInstanceRepository();
@@ -24,7 +24,7 @@ void main() {
       terminalPromptRepository = _FakeTerminalPromptRepository();
       clearTokensCalls = 0;
       clearTokensError = null;
-      service = BridgeLogoutService(
+      service = BridgeLogoutRunner(
         bridgeInstanceRepository: bridgeInstanceRepository,
         bridgeInstanceService: bridgeInstanceService,
         terminalPromptRepository: terminalPromptRepository,

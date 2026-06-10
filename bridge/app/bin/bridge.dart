@@ -10,6 +10,7 @@ import 'package:sesori_bridge/src/bridge/foundation/device_type_detector.dart';
 import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_dispatch.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart';
+import 'package:sesori_bridge/src/bridge/runtime/bridge_logout_runner.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
 import 'package:sesori_bridge/src/repositories/default_editor_repository.dart';
@@ -23,7 +24,6 @@ import 'package:sesori_bridge/src/server/repositories/process_repository.dart';
 import 'package:sesori_bridge/src/server/repositories/terminal_prompt_repository.dart';
 import 'package:sesori_bridge/src/server/services/bridge_instance_service.dart';
 import 'package:sesori_bridge/src/services/bridge_config_service.dart';
-import 'package:sesori_bridge/src/services/bridge_logout_service.dart';
 import 'package:sesori_bridge/src/services/sleep_prevention_service.dart';
 import 'package:sesori_bridge/src/version.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log, LogLevel;
@@ -161,7 +161,7 @@ class LogoutCommand extends cli.Command<void> {
     final terminalPromptRepository = TerminalPromptRepository(
       api: TerminalPromptApi(stdin: stdin, stdout: stdout),
     );
-    final logoutService = BridgeLogoutService(
+    final logoutRunner = BridgeLogoutRunner(
       bridgeInstanceRepository: bridgeInstanceRepository,
       bridgeInstanceService: BridgeInstanceService(
         bridgeInstanceRepository: bridgeInstanceRepository,
@@ -175,7 +175,7 @@ class LogoutCommand extends cli.Command<void> {
       terminalPromptRepository: terminalPromptRepository,
     );
 
-    final result = await logoutService.logout(currentPid: pid);
+    final result = await logoutRunner.logout(currentPid: pid);
     switch (result.status) {
       case BridgeLogoutStatus.loggedOut:
         stdout.writeln('Authentication cleared. You will be asked to log in on next start.');
