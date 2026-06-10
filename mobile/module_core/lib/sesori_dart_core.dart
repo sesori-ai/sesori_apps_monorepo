@@ -4,13 +4,13 @@ library;
 // Re-exports from sesori_auth (move + re-export pattern)
 export "package:sesori_auth/sesori_auth.dart"
     show
+        AuthAuthenticated,
+        AuthAuthenticating,
+        AuthFailed,
+        AuthInitial,
         AuthSession,
         AuthState,
-        AuthInitial,
         AuthUnauthenticated,
-        AuthAuthenticating,
-        AuthAuthenticated,
-        AuthFailed,
         OAuthFlowProvider,
         SecureStorage;
 export "package:sesori_auth/sesori_auth.dart"
