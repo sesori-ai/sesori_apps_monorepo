@@ -97,7 +97,10 @@ abstract class BridgePluginApi {
 
   Future<void> abortSession({required String sessionId});
 
-  Future<List<PluginAgent>> getAgents();
+  /// Returns the agents available for the given project.
+  ///
+  /// [projectId] identifies the project; its format is plugin-defined.
+  Future<List<PluginAgent>> getAgents({required String projectId});
 
   Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId});
 

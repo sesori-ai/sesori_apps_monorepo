@@ -16,7 +16,7 @@ void main() {
       mockSessionService = MockSessionService();
 
       when(
-        () => mockSessionService.listAgents(),
+        () => mockSessionService.listAgents(projectId: any(named: "projectId")),
       ).thenAnswer((_) async => ApiResponse<Agents>.success(const Agents(agents: <AgentInfo>[])));
       when(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).thenAnswer(
         (_) async => ApiResponse<ProviderListResponse>.success(
@@ -170,7 +170,7 @@ void main() {
     blocTest<NewSessionCubit, NewSessionState>(
       "selectVariant updates state and createSession forwards variant",
       build: () {
-        when(() => mockSessionService.listAgents()).thenAnswer(
+        when(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).thenAnswer(
           (_) async => ApiResponse.success(
             const Agents(
               agents: [
@@ -244,7 +244,7 @@ void main() {
     blocTest<NewSessionCubit, NewSessionState>(
       "selectAgent changes agent without affecting selected model variant",
       build: () {
-        when(() => mockSessionService.listAgents()).thenAnswer(
+        when(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).thenAnswer(
           (_) async => ApiResponse.success(
             const Agents(
               agents: [
@@ -291,7 +291,7 @@ void main() {
     blocTest<NewSessionCubit, NewSessionState>(
       "selectModel updates selectedAgentModel to the chosen model variant",
       build: () {
-        when(() => mockSessionService.listAgents()).thenAnswer(
+        when(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).thenAnswer(
           (_) async => ApiResponse.success(
             const Agents(
               agents: [
@@ -334,7 +334,7 @@ void main() {
     blocTest<NewSessionCubit, NewSessionState>(
       "selectVariant updates selectedAgentModel variant",
       build: () {
-        when(() => mockSessionService.listAgents()).thenAnswer(
+        when(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).thenAnswer(
           (_) async => ApiResponse.success(
             const Agents(
               agents: [
@@ -395,7 +395,7 @@ void main() {
     blocTest<NewSessionCubit, NewSessionState>(
       "selectVariant to null clears selectedAgentModel variant",
       build: () {
-        when(() => mockSessionService.listAgents()).thenAnswer(
+        when(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).thenAnswer(
           (_) async => ApiResponse.success(
             const Agents(
               agents: [

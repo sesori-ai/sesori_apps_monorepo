@@ -70,7 +70,7 @@ void main() {
     sessionService = MockSessionService();
     voiceTranscriptionService = MockVoiceTranscriptionService();
 
-    when(() => sessionService.listAgents()).thenAnswer(
+    when(() => sessionService.listAgents(projectId: any(named: "projectId"))).thenAnswer(
       (_) async => ApiResponse.success(
         Agents(
           agents: [

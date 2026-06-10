@@ -140,7 +140,7 @@ void main() {
         verifyNever(() => mockSessionService.getPendingQuestions(sessionId: sessionId));
         verifyNever(() => mockSessionService.getChildren(sessionId: sessionId));
         verifyNever(() => mockSessionService.getSessionStatuses());
-        verifyNever(() => mockSessionService.listAgents());
+        verifyNever(() => mockSessionService.listAgents(projectId: any(named: "projectId")));
         verifyNever(() => mockSessionService.listProviders(projectId: any(named: "projectId")));
 
         connectionStatus.add(connectedStatus);
@@ -189,7 +189,7 @@ void main() {
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
-      verify(() => mockSessionService.listAgents()).called(1);
+      verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).called(1);
       verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
 
       expect(emitted.first, isA<SessionDetailLoaded>().having((s) => s.isRefreshing, "isRefreshing", isTrue));
@@ -219,7 +219,7 @@ void main() {
       cubit.selectModel(providerID: "openai", modelID: "gpt-4.1");
       cubit.selectVariant(const SessionVariant(id: "xhigh"));
 
-      when(() => mockSessionService.listAgents()).thenAnswer(
+      when(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).thenAnswer(
         (_) async => ApiResponse.success(
           const Agents(
             agents: [
@@ -336,7 +336,7 @@ void main() {
         (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
       );
       when(
-        () => mockSessionService.listAgents(),
+        () => mockSessionService.listAgents(projectId: any(named: "projectId")),
       ).thenAnswer((_) async => ApiResponse.success(Agents(agents: _agents())));
       when(
         () => mockSessionService.listProviders(projectId: any(named: "projectId")),
@@ -427,7 +427,7 @@ void main() {
       verify(() => mockSessionService.getPendingPermissions()).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
-      verify(() => mockSessionService.listAgents()).called(1);
+      verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).called(1);
       verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
 
       messagesCompleter.complete(ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts()])));
@@ -532,7 +532,7 @@ void main() {
         (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
       );
       when(
-        () => mockSessionService.listAgents(),
+        () => mockSessionService.listAgents(projectId: any(named: "projectId")),
       ).thenAnswer((_) async => ApiResponse.success(Agents(agents: _agents())));
       when(
         () => mockSessionService.listProviders(projectId: any(named: "projectId")),
@@ -555,7 +555,7 @@ void main() {
       verify(() => mockSessionService.getPendingPermissions()).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
-      verify(() => mockSessionService.listAgents()).called(1);
+      verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).called(1);
       verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
     });
   });
@@ -597,7 +597,7 @@ void _stubLoadApis(MockSessionService service, {required String sessionId}) {
       ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
     ),
   );
-  when(() => service.listAgents()).thenAnswer(
+  when(() => service.listAgents(projectId: any(named: "projectId"))).thenAnswer(
     (_) => Future<ApiResponse<Agents>>.value(ApiResponse.success(Agents(agents: _agents()))),
   );
   when(() => service.listProviders(projectId: any(named: "projectId"))).thenAnswer(

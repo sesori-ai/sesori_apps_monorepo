@@ -26,6 +26,7 @@ import "routing/abort_session_handler.dart";
 import "routing/get_agents_handler.dart";
 import "routing/get_commands_handler.dart";
 import "routing/get_session_diffs_handler.dart";
+import "routing/post_agents_handler.dart";
 import "routing/request_router.dart";
 import "routing/send_prompt_handler.dart";
 import "services/pr_sync_service.dart";
@@ -225,6 +226,9 @@ class OrchestratorSession {
          projectRepository: projectRepository,
          providerRepository: ProviderRepository(plugin: plugin),
          getAgentsHandler: GetAgentsHandler(
+           AgentRepository(plugin: plugin),
+         ),
+         postAgentsHandler: PostAgentsHandler(
            AgentRepository(plugin: plugin),
          ),
          permissionRepository: permissionRepository,
