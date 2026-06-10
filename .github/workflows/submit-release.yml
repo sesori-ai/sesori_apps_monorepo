@@ -362,18 +362,35 @@ jobs:
       MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
       MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
 
+  # bridge-only submits skip both store jobs and with them the
+  # store-production reviewer gate. This no-op job holds that gate BEFORE the
+  # tag job, so a rejected approval leaves no v* tag behind (a stray stable
+  # tag would mark the version as consumed and trip the preflight guard on
+  # main). Regular submits never run it — they pass the gate at the store jobs.
+  approve-bridge-only:
+    name: Approve bridge-only release
+    if: ${{ inputs.platforms == 'bridge-only' }}
+    needs: resolve
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: store-production
+    steps:
+      - name: Approved
+        run: echo "bridge-only release of v${{ needs.resolve.outputs.version }} approved by a store-production reviewer."
+
   tag:
     name: Tag commit
-    needs: [resolve, submit-ios, submit-android, build-bridge]
+    needs: [resolve, submit-ios, submit-android, build-bridge, approve-bridge-only]
     # Run only if every REQUESTED job succeeded. A skipped store platform
     # (one-platform-only or bridge-only submits) counts as OK; build-bridge is
-    # skipped on beta. For non-bridge-only submits at least one store platform
-    # must actually have run.
+    # skipped on beta; approve-bridge-only is skipped unless bridge-only. For
+    # non-bridge-only submits at least one store platform must actually have run.
     if: |
       always() && needs.resolve.result == 'success' &&
       (needs.submit-ios.result    == 'success' || needs.submit-ios.result    == 'skipped') &&
       (needs.submit-android.result == 'success' || needs.submit-android.result == 'skipped') &&
       (needs.build-bridge.result  == 'success' || needs.build-bridge.result  == 'skipped') &&
+      (needs.approve-bridge-only.result == 'success' || needs.approve-bridge-only.result == 'skipped') &&
       (inputs.platforms == 'bridge-only' || !(needs.submit-ios.result == 'skipped' && needs.submit-android.result == 'skipped'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -510,11 +527,9 @@ jobs:
     permissions:
       contents: write
       actions: write
-    # bridge-only submits skip both store jobs and with them the
-    # store-production reviewer gate, so this job carries the gate instead.
-    # Regular submits already passed it at the store jobs and go through the
-    # unprotected store-beta environment to avoid a second approval pause.
-    environment: ${{ inputs.platforms == 'bridge-only' && 'store-production' || 'store-beta' }}
+    # No environment gate here: every path already passed store-production
+    # approval upstream (store jobs for regular submits, approve-bridge-only
+    # for bridge-only) — re-declaring it would pause the run a second time.
     steps:
       # Deliberately NOT the resolved commit: this job needs nothing from the
       # release's tree (notes are API-driven, checksums come from artifacts,
