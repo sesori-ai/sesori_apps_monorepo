@@ -1,4 +1,5 @@
 import "package:sesori_bridge/src/bridge/routing/request_handler.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -20,6 +21,21 @@ class _StubHandler extends RequestHandlerBase {
     headers: {},
     body: null,
   );
+}
+
+// Throws the configured error from handle() to exercise error mapping.
+class _ThrowingGetHandler extends GetRequestHandler<Object> {
+  _ThrowingGetHandler(this._error) : super("/throw");
+
+  final Object _error;
+
+  @override
+  Future<Object> handle(
+    RelayRequest request, {
+    required Map<String, String> pathParams,
+    required Map<String, String> queryParams,
+    required String? fragment,
+  }) async => throw _error;
 }
 
 void main() {
@@ -154,6 +170,38 @@ void main() {
       final p = h.extractParams(makeRequest("GET", "/anything/at/all?q=1"));
       expect(p.pathParams, isEmpty);
       expect(p.queryParams, equals({"q": "1"}));
+    });
+  });
+
+  group("GetRequestHandler error mapping", () {
+    Future<RelayResponse> respond(Object error) {
+      final request = makeRequest("GET", "/throw");
+      return _ThrowingGetHandler(error).handleInternal(
+        request,
+        pathParams: const {},
+        queryParams: const {},
+        fragment: null,
+      );
+    }
+
+    test("PluginApiException keeps its upstream status", () async {
+      final response = await respond(PluginApiException("/session/abc", 404));
+      expect(response.status, 404);
+    });
+
+    test("PluginOperationException with a status forwards it", () async {
+      final response = await respond(const PluginOperationException("op", statusCode: 409));
+      expect(response.status, 409);
+    });
+
+    test("PluginOperationException without a status maps to 502, not 500", () async {
+      final response = await respond(const PluginOperationException("createSession", message: "cli exited 1"));
+      expect(response.status, 502);
+    });
+
+    test("unknown errors still map to 500", () async {
+      final response = await respond(StateError("boom"));
+      expect(response.status, 500);
     });
   });
 }

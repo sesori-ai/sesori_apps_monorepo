@@ -1,6 +1,6 @@
 import "process_identity.dart";
 
-enum ProcessMatchKind { sesoriBridge, openCodeServe, unknown }
+enum ProcessMatchKind { sesoriBridge, unknown }
 
 class ProcessMatch {
   const ProcessMatch({

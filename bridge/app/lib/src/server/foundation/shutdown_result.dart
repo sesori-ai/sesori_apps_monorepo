@@ -1,19 +1,4 @@
-import 'dart:io';
-
-enum ShutdownSignal { graceful, force }
-
-class ShutdownResult {
-  const ShutdownResult({
-    required this.pid,
-    required this.requestedSignal,
-    required this.deliveredSignal,
-    required this.wasRequested,
-    required this.attemptedAt,
-  });
-
-  final int pid;
-  final ShutdownSignal requestedSignal;
-  final ProcessSignal deliveredSignal;
-  final bool wasRequested;
-  final DateTime attemptedAt;
-}
+// Moved to sesori_plugin_interface (ShutdownResult is now SignalResult);
+// this shim keeps existing imports working until the migration's final
+// cleanup PR removes it.
+export "package:sesori_plugin_interface/sesori_plugin_interface.dart" show ShutdownResult, ShutdownSignal, SignalResult;

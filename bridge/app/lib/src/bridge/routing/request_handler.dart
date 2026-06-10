@@ -50,8 +50,8 @@ abstract class GetRequestHandler<RES extends Object> extends RequestHandlerBase 
       );
 
       return buildOkJsonResponse(request, result);
-    } on PluginApiException catch (err) {
-      return buildErrorResponse(request, err.statusCode, err.toString());
+    } on PluginOperationException catch (err) {
+      return buildErrorResponse(request, err.statusCode ?? 502, err.toString());
     } on RelayResponse catch (err) {
       if (err.status >= 200 && err.status < 300) {
         // we don't expect to throw success responses from handleBody
@@ -109,8 +109,8 @@ abstract class BodyRequestHandler<REQ, RES extends Object> extends RequestHandle
       );
 
       return buildOkJsonResponse(request, result);
-    } on PluginApiException catch (err) {
-      return buildErrorResponse(request, err.statusCode, err.toString());
+    } on PluginOperationException catch (err) {
+      return buildErrorResponse(request, err.statusCode ?? 502, err.toString());
     } on RelayResponse catch (err) {
       if (err.status >= 200 && err.status < 300) {
         // we don't expect to throw success responses from handleBody

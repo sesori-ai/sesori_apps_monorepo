@@ -166,11 +166,11 @@ class RequestRouter {
         headers: {},
         body: "no handler found for ${request.method} ${request.path}",
       );
-    } on PluginApiException catch (e) {
+    } on PluginOperationException catch (e) {
       Log.w("upstream error: $e");
       return RelayResponse(
         id: request.id,
-        status: e.statusCode,
+        status: e.statusCode ?? 502,
         headers: {},
         body: e.toString(),
       );

@@ -77,12 +77,6 @@ class ProcessRepository {
       return ProcessMatchKind.sesoriBridge;
     }
 
-    if (executableBasename == "opencode" ||
-        executableBasename == "opencode.exe" ||
-        commandLine.contains("opencode serve")) {
-      return ProcessMatchKind.openCodeServe;
-    }
-
     return ProcessMatchKind.unknown;
   }
 }

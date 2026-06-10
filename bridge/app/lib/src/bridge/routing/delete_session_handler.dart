@@ -79,8 +79,8 @@ class DeleteSessionHandler extends BodyRequestHandler<DeleteSessionRequest, Succ
 
     try {
       await _plugin.deleteSession(sessionId);
-    } on PluginApiException catch (error) {
-      if (error.statusCode != 404) {
+    } on PluginOperationException catch (error) {
+      if (!error.isNotFound) {
         rethrow;
       }
     }
