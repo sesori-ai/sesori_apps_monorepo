@@ -53,6 +53,7 @@ sealed class RelayMessage with _$RelayMessage {
   const factory RelayMessage.auth({
     required String token,
     required String role,
+    @JsonKey(includeIfNull: false) required String? bridgeId,
   }) = AuthRelayMessage;
 
   factory RelayMessage.fromJson(Map<String, dynamic> json) => _$RelayMessageFromJson(json);

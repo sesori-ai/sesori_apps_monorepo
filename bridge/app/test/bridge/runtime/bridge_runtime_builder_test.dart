@@ -52,6 +52,7 @@ void main() {
       httpClient: httpClient,
       accessTokenProvider: FakeAccessTokenProvider(),
       tokenRefresher: _FakeTokenRefresher(),
+      bridgeRegistrationService: createFakeBridgeRegistrationService(),
       database: database,
       processRunner: ProcessRunner(),
       failureReporter: FakeFailureReporter(),

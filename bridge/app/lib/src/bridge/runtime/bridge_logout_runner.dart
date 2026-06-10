@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
+
 import '../../auth/token.dart' as token_store;
 import '../../server/foundation/terminal_prompt_decision.dart';
 import '../../server/repositories/bridge_instance_repository.dart';
@@ -38,15 +40,18 @@ class BridgeLogoutRunner {
     required BridgeInstanceRepository bridgeInstanceRepository,
     required BridgeInstanceService bridgeInstanceService,
     required TerminalPromptRepository terminalPromptRepository,
+    required Future<void> Function() unregisterBridge,
     Future<void> Function() clearTokens = token_store.clearTokens,
   }) : _bridgeInstanceRepository = bridgeInstanceRepository,
        _bridgeInstanceService = bridgeInstanceService,
        _terminalPromptRepository = terminalPromptRepository,
+       _unregisterBridge = unregisterBridge,
        _clearTokens = clearTokens;
 
   final BridgeInstanceRepository _bridgeInstanceRepository;
   final BridgeInstanceService _bridgeInstanceService;
   final TerminalPromptRepository _terminalPromptRepository;
+  final Future<void> Function() _unregisterBridge;
   final Future<void> Function() _clearTokens;
 
   Future<BridgeLogoutResult> logout({required int currentPid}) async {
@@ -74,6 +79,14 @@ class BridgeLogoutRunner {
       }
     }
 
+    // Best-effort: remove this bridge's registration on the auth server while
+    // we still have tokens. Logout must never block or fail because of this.
+    try {
+      await _unregisterBridge();
+    } on Object catch (error) {
+      Log.w('Failed to remove bridge registration on auth server (ignored): $error');
+    }
+
     try {
       await _clearTokens();
     } on FileSystemException catch (error) {
@@ -85,9 +98,7 @@ class BridgeLogoutRunner {
     }
 
     return BridgeLogoutResult(
-      status: runningBridgeCount > 0
-          ? BridgeLogoutStatus.loggedOutWithRunningBridges
-          : BridgeLogoutStatus.loggedOut,
+      status: runningBridgeCount > 0 ? BridgeLogoutStatus.loggedOutWithRunningBridges : BridgeLogoutStatus.loggedOut,
       runningBridgeCount: runningBridgeCount,
     );
   }

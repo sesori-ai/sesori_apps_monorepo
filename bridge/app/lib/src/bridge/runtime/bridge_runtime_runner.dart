@@ -6,6 +6,9 @@ import "package:path/path.dart" as path;
 import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginApi, Log;
 
+import "../../auth/bridge_registration_api.dart";
+import "../../auth/bridge_registration_repository.dart";
+import "../../auth/bridge_registration_service.dart";
 import "../../auth/login_email_api.dart";
 import "../../auth/login_email_repository.dart";
 import "../../auth/login_oauth_api.dart";
@@ -230,6 +233,20 @@ class BridgeRuntimeRunner {
       );
       shutdownCoordinator.add(disposable: tokenManager.dispose);
 
+      final bridgeRegistrationService = BridgeRegistrationService(
+        repository: BridgeRegistrationRepository(
+          api: BridgeRegistrationApi(
+            authBackendUrl: options.authBackendUrl,
+            client: httpClient,
+          ),
+        ),
+        tokenRefresher: tokenManager,
+        loadTokens: loadTokens,
+        saveTokens: saveTokens,
+        hostName: io.Platform.localHostname,
+        platform: BridgeRegistrationService.currentPlatformName(),
+      );
+
       final runtime = BridgeRuntime.create(
         config: BridgeConfig(
           relayURL: options.relayUrl,
@@ -245,6 +262,7 @@ class BridgeRuntimeRunner {
         httpClient: httpClient,
         accessTokenProvider: tokenManager,
         tokenRefresher: tokenManager,
+        bridgeRegistrationService: bridgeRegistrationService,
         database: AppDatabase.create(),
         processRunner: processRunner,
         failureReporter: LogFailureReporter(),

@@ -7,13 +7,16 @@ import 'package:sesori_shared/sesori_shared.dart';
 class TokenData {
   final String accessToken;
   final String refreshToken;
-  final String? bridgeToken;
+
+  /// The bridge id assigned by the auth server's `/auth/bridges` endpoint,
+  /// or null when this bridge has not registered yet.
+  final String? bridgeId;
   final AuthProvider lastProvider;
 
   TokenData({
     required this.accessToken,
     required this.refreshToken,
-    this.bridgeToken,
+    required this.bridgeId,
     required this.lastProvider,
   });
 
@@ -31,7 +34,7 @@ class TokenData {
     return TokenData(
       accessToken: json['accessToken'] as String,
       refreshToken: json['refreshToken'] as String,
-      bridgeToken: json['bridgeToken'] as String?,
+      bridgeId: json['bridgeId'] as String?,
       lastProvider: provider,
     );
   }
@@ -42,8 +45,8 @@ class TokenData {
       'accessToken': accessToken,
       'refreshToken': refreshToken,
     };
-    if (bridgeToken != null) {
-      json['bridgeToken'] = bridgeToken;
+    if (bridgeId != null) {
+      json['bridgeId'] = bridgeId;
     }
     json['lastProvider'] = lastProvider.key;
     return json;
