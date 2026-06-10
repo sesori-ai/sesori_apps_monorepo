@@ -1,0 +1,38 @@
+{
+  // Launch configurations for the Sesori mobile app (mobile/app, package: sesori_mobile).
+  // Requires the Dart & Flutter VS Code extensions. There are no build flavors,
+  // so each entry differs only by Flutter build mode.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Mobile (debug)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "cwd": "${workspaceFolder}/mobile/app",
+      "flutterMode": "debug"
+    },
+    {
+      "name": "Mobile (profile)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "cwd": "${workspaceFolder}/mobile/app",
+      "flutterMode": "profile"
+    },
+    {
+      "name": "Mobile (release)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "cwd": "${workspaceFolder}/mobile/app",
+      "flutterMode": "release"
+    },
+    {
+      "name": "Mobile (attach)",
+      "request": "attach",
+      "type": "dart",
+      "cwd": "${workspaceFolder}/mobile/app"
+    }
+  ]
+}
