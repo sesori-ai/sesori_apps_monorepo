@@ -1,0 +1,171 @@
+name: Bridge Build (reusable)
+
+# Builds the 5-platform sesori-bridge archives and uploads them as workflow
+# artifacts (sesori-bridge-<os>-<arch>.<ext>). Used by:
+#   - release-all-platforms.yml — per main merge, baking an X.Y.Z-internal.<N>
+#     version so internal binaries self-report exactly their release tag.
+#   - submit-release.yml — at production submit, building from the resolved
+#     commit whose committed pubspec already holds the clean version.
+#
+# Version contract: the binaries MUST report `inputs.version`.
+#   - pubspec already matches  → build as-is.
+#   - pre-release requested    → bake it at build time via bump_version.dart
+#                                (never committed).
+#   - clean version mismatch   → fail loudly: the committed tree is out of
+#                                sync (run tool/sync_versions.dart), and
+#                                silently rewriting would mask it.
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Commit/ref to build (defaults to the triggering sha)"
+        required: false
+        default: ""
+        type: string
+      version:
+        description: "Version the binaries must report (X.Y.Z or X.Y.Z-internal.N)"
+        required: true
+        type: string
+    secrets:
+      MACOS_CERT_P12_BASE64:
+        required: true
+      MACOS_CERT_PASSWORD:
+        required: true
+      MACOS_KEYCHAIN_PASSWORD:
+        required: true
+
+jobs:
+  build:
+    name: Build (${{ matrix.asset_name }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    env:
+      PUB_CACHE: ${{ github.workspace }}/.pub-cache
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-latest
+            asset_name: sesori-bridge-macos-arm64
+            archive_ext: tar.gz
+          - runner: macos-26-intel
+            asset_name: sesori-bridge-macos-x64
+            archive_ext: tar.gz
+          - runner: ubuntu-latest
+            asset_name: sesori-bridge-linux-x64
+            archive_ext: tar.gz
+          - runner: ubuntu-24.04-arm
+            asset_name: sesori-bridge-linux-arm64
+            archive_ext: tar.gz
+          - runner: windows-latest
+            asset_name: sesori-bridge-windows-x64
+            archive_ext: zip
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: dart-lang/setup-dart@v1
+
+      - uses: actions/cache@v5
+        with:
+          path: ${{ github.workspace }}/.pub-cache
+          key: ${{ runner.os }}-${{ runner.arch }}-pub-${{ hashFiles('bridge/pubspec.lock') }}
+
+      - name: Get dependencies
+        run: dart pub get
+        working-directory: bridge
+
+      - name: Apply build version
+        shell: bash
+        working-directory: bridge/app
+        env:
+          TARGET_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          CURRENT_VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
+          if [[ "$CURRENT_VERSION" == "$TARGET_VERSION" ]]; then
+            echo "Version already set to $CURRENT_VERSION; nothing to bake."
+          elif [[ "$TARGET_VERSION" == *-* ]]; then
+            echo "Baking pre-release version $TARGET_VERSION (pubspec has $CURRENT_VERSION)."
+            dart run tool/bump_version.dart "$TARGET_VERSION"
+          else
+            echo "::error::Committed bridge version ($CURRENT_VERSION) does not match the requested release version ($TARGET_VERSION). Run tool/sync_versions.dart and merge the bump before releasing."
+            exit 1
+          fi
+
+      - name: Build binary
+        run: dart build cli -o build/cli
+        working-directory: bridge/app
+
+      - name: Rename binary (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: mv build/cli/bundle/bin/bridge build/cli/bundle/bin/sesori-bridge
+        working-directory: bridge/app
+
+      - name: Rename binary (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Rename-Item -Path "bridge/app/build/cli/bundle/bin/bridge.exe" -NewName "sesori-bridge.exe"
+
+      - name: Import signing certificate
+        if: runner.os == 'macOS'
+        env:
+          MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+        run: |
+          echo -n "$MACOS_CERT_P12_BASE64" | base64 --decode -o certificate.p12
+          security create-keychain -p "$MACOS_KEYCHAIN_PASSWORD" build.keychain
+          security unlock-keychain -p "$MACOS_KEYCHAIN_PASSWORD" build.keychain
+          security set-keychain-settings -lut 1200 build.keychain
+          security import certificate.p12 -k build.keychain -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$MACOS_KEYCHAIN_PASSWORD" build.keychain
+          security list-keychains -s build.keychain login.keychain
+          security default-keychain -s build.keychain
+          rm -f certificate.p12
+        working-directory: bridge/app
+
+      - name: Verify signing prerequisites
+        if: runner.os == 'macOS'
+        env:
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+        run: |
+          if [ -z "$APPLE_TEAM_ID" ]; then
+            echo "Error: APPLE_TEAM_ID repository variable is not set." >&2
+            echo "Set it in Settings > Secrets and variables > Variables." >&2
+            exit 1
+          fi
+        working-directory: bridge/app
+
+      - name: Sign binary
+        if: runner.os == 'macOS'
+        env:
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+        run: |
+          codesign -s "Developer ID Application: DigitalBlock Labs LTD ($APPLE_TEAM_ID)" \
+            --timestamp \
+            --force \
+            --verbose \
+            build/cli/bundle/bin/sesori-bridge
+          codesign -dv --verbose=4 build/cli/bundle/bin/sesori-bridge
+        working-directory: bridge/app
+
+      - name: Create archive (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: tar -czf ${{ matrix.asset_name }}.tar.gz -C build/cli/bundle .
+        working-directory: bridge/app
+
+      - name: Create archive (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path "bridge/app/build/cli/bundle/*" -DestinationPath "bridge/app/${{ matrix.asset_name }}.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: bridge/app/${{ matrix.asset_name }}.${{ matrix.archive_ext }}

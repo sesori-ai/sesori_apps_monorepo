@@ -3,25 +3,15 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-/// Validates that a version string is valid semver (X.Y.Z).
-/// Returns true if valid, false otherwise.
+/// Validates that a version string is valid semver: X.Y.Z with an optional
+/// pre-release suffix (e.g. 1.0.9 or 1.0.9-internal.53). Pre-release versions
+/// are baked into CI builds of internal (per-merge) releases and are never
+/// committed.
 bool isValidSemver({required String version}) {
-  final parts = version.split('.');
-  if (parts.length != 3) {
-    return false;
-  }
-
-  for (final part in parts) {
-    if (part.isEmpty) {
-      return false;
-    }
-    final num = int.tryParse(part);
-    if (num == null || num < 0) {
-      return false;
-    }
-  }
-
-  return true;
+  final pattern = RegExp(
+    r'^\d+\.\d+\.\d+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$',
+  );
+  return pattern.hasMatch(version);
 }
 
 /// Reads a file and returns its content as a string.
@@ -111,7 +101,7 @@ Future<void> main(final List<String> args) async {
   // Validate semver
   if (!isValidSemver(version: newVersion)) {
     stderr.writeln('Error: Invalid version format "$newVersion"');
-    stderr.writeln('Expected format: X.Y.Z (e.g., 0.3.0)');
+    stderr.writeln('Expected format: X.Y.Z with optional pre-release suffix (e.g., 0.3.0 or 0.3.0-internal.42)');
     exit(1);
   }
 

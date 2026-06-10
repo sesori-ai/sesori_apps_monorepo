@@ -192,6 +192,25 @@ void main() {
       }
     });
 
+    test('accepts a pre-release version and updates all manifests', () async {
+      const internalVersion = '9.8.7-internal.53';
+      final result = await _runTool(fixture: fixture, args: [internalVersion]);
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+
+      final pubspec = await File(fixture.pubspecPath).readAsString();
+      final versionDart = await File(fixture.versionDartPath).readAsString();
+      final wrapperPackage = await _readJson(path: fixture.wrapperPackagePath);
+
+      expect(pubspec, contains('version: $internalVersion'));
+      expect(versionDart, equals("const String appVersion = '$internalVersion';\n"));
+      expect(wrapperPackage['version'], equals(internalVersion));
+      expect(
+        (wrapperPackage['sesoriBridge'] as Map<String, dynamic>)['releaseTag'],
+        equals('v$internalVersion'),
+      );
+    });
+
     test('rejects invalid semver and keeps fixture files unchanged', () async {
       final beforePubspec = await File(fixture.pubspecPath).readAsString();
       final beforeVersionDart = await File(fixture.versionDartPath).readAsString();

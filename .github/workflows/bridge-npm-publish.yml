@@ -1,222 +1,89 @@
-name: Bridge Release
+name: Bridge npm Publish
+
+# Publishes the bridge npm packages (5 platform packages + the @sesori/bridge
+# wrapper) when a stable v<X.Y.Z> GitHub release goes LIVE.
+#
+# The `released` event type fires both when submit-release.yml publishes the
+# release immediately (publish_bridge ticked) and when an operator manually
+# promotes a pre-release to a full release in the GitHub UI — so npm
+# availability always coincides exactly with the moment the bridge
+# auto-updater starts seeing the release. It never fires for the rolling
+# v*-internal.* pre-releases.
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: "Release tag (e.g., v1.0.0)"
-        required: true
-        type: string
-      dry_run:
-        description: "Dry run (build only, no publish)"
-        required: false
-        default: false
-        type: boolean
+  release:
+    types: [released]
 
 jobs:
-  build:
-    name: Build (${{ matrix.asset_name }})
-    runs-on: ${{ matrix.runner }}
-    env:
-      PUB_CACHE: ${{ github.workspace }}/.pub-cache
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-latest
-            target_os: macos
-            target_arch: arm64
-            asset_name: sesori-bridge-macos-arm64
-            archive_ext: tar.gz
-          - runner: macos-26-intel
-            target_os: macos
-            target_arch: x64
-            asset_name: sesori-bridge-macos-x64
-            archive_ext: tar.gz
-          - runner: ubuntu-latest
-            target_os: linux
-            target_arch: x64
-            asset_name: sesori-bridge-linux-x64
-            archive_ext: tar.gz
-          - runner: ubuntu-24.04-arm
-            target_os: linux
-            target_arch: arm64
-            asset_name: sesori-bridge-linux-arm64
-            archive_ext: tar.gz
-          - runner: windows-latest
-            target_os: windows
-            target_arch: x64
-            asset_name: sesori-bridge-windows-x64
-            archive_ext: zip
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: dart-lang/setup-dart@v1
-
-      - uses: actions/cache@v4
-        with:
-          path: ${{ github.workspace }}/.pub-cache
-          key: ${{ runner.os }}-${{ runner.arch }}-pub-${{ hashFiles('bridge/pubspec.lock') }}
-
-      - name: Extract version
-        id: version
-        shell: bash
-        run: |
-          RELEASE_TAG="${{ github.event.inputs.tag }}"
-          VERSION="${RELEASE_TAG#v}"
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Get dependencies
-        run: dart pub get
-        working-directory: bridge
-
-      - name: Bump version
-        if: github.event.inputs.tag != ''
-        shell: bash
-        run: |
-          CURRENT_VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
-          if [[ "$CURRENT_VERSION" == "${{ steps.version.outputs.VERSION }}" ]]; then
-            echo "Version already set to $CURRENT_VERSION; skipping bump."
-            exit 0
-          fi
-
-          dart run tool/bump_version.dart ${{ steps.version.outputs.VERSION }}
-        working-directory: bridge/app
-
-      - name: Build binary
-        run: dart build cli -o build/cli
-        working-directory: bridge/app
-
-      - name: Rename binary (Unix)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: mv build/cli/bundle/bin/bridge build/cli/bundle/bin/sesori-bridge
-        working-directory: bridge/app
-
-      - name: Rename binary (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: Rename-Item -Path "bridge/app/build/cli/bundle/bin/bridge.exe" -NewName "sesori-bridge.exe"
-
-      - name: Import signing certificate
-        if: runner.os == 'macOS'
-        env:
-          MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
-          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
-          MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
-        run: |
-          echo -n "$MACOS_CERT_P12_BASE64" | base64 --decode -o certificate.p12
-          security create-keychain -p "$MACOS_KEYCHAIN_PASSWORD" build.keychain
-          security unlock-keychain -p "$MACOS_KEYCHAIN_PASSWORD" build.keychain
-          security set-keychain-settings -lut 1200 build.keychain
-          security import certificate.p12 -k build.keychain -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12
-          security set-key-partition-list -S apple-tool:,apple: -s -k "$MACOS_KEYCHAIN_PASSWORD" build.keychain
-          security list-keychains -s build.keychain login.keychain
-          security default-keychain -s build.keychain
-          rm -f certificate.p12
-        working-directory: bridge/app
-
-      - name: Verify signing prerequisites
-        if: runner.os == 'macOS'
-        env:
-          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
-        run: |
-          if [ -z "$APPLE_TEAM_ID" ]; then
-            echo "Error: APPLE_TEAM_ID repository variable is not set." >&2
-            echo "Set it in Settings > Secrets and variables > Variables." >&2
-            exit 1
-          fi
-        working-directory: bridge/app
-
-      - name: Sign binary
-        if: runner.os == 'macOS'
-        env:
-          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
-        run: |
-          codesign -s "Developer ID Application: DigitalBlock Labs LTD ($APPLE_TEAM_ID)" \
-            --timestamp \
-            --force \
-            --verbose \
-            build/cli/bundle/bin/sesori-bridge
-          codesign -dv --verbose=4 build/cli/bundle/bin/sesori-bridge
-        working-directory: bridge/app
-
-      - name: Create archive (Unix)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: tar -czf ${{ matrix.asset_name }}.tar.gz -C build/cli/bundle .
-        working-directory: bridge/app
-
-      - name: Create archive (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: Compress-Archive -Path "bridge/app/build/cli/bundle/*" -DestinationPath "bridge/app/${{ matrix.asset_name }}.zip"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.asset_name }}
-          path: bridge/app/${{ matrix.asset_name }}.${{ matrix.archive_ext }}
-
-  release:
-    name: Create GitHub Release
-    needs: build
+  gate:
+    name: Validate release tag
     runs-on: ubuntu-latest
-    if: github.event.inputs.dry_run != 'true' && github.event.inputs.tag != ''
+    timeout-minutes: 5
+    outputs:
+      proceed: ${{ steps.check.outputs.proceed }}
+      version: ${{ steps.check.outputs.version }}
     permissions:
       contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Generate checksums
-        working-directory: artifacts
+      - name: Check tag format
+        id: check
         run: |
-          find . -type f \( -name '*.tar.gz' -o -name '*.zip' \) -print0 | sort -z | while IFS= read -r -d '' file; do
-            sha256sum "$file" | awk -v name="$(basename "$file")" '{print $1 "  " name}'
-          done > checksums.txt
-          cat checksums.txt
+          set -euo pipefail
+          if [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+            echo "version=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
+            echo "Release ${RELEASE_TAG} is a stable bridge release — publishing npm packages."
+          else
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+            echo "version=" >> "$GITHUB_OUTPUT"
+            echo "Release ${RELEASE_TAG} is not a stable v<X.Y.Z> release — skipping npm publish."
+          fi
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.event.inputs.tag }}
-          name: Bridge ${{ github.event.inputs.tag }}
-          make_latest: "true"
-          generate_release_notes: true
-          files: |
-            artifacts/**/*.tar.gz
-            artifacts/**/*.zip
-            artifacts/checksums.txt
+      # The rolling internal pre-release for this version (v<X.Y.Z>-internal.<N>)
+      # is now superseded by the stable release — drop the release object (its
+      # tag is kept: submit-release.yml uses it to map build numbers to
+      # commits). Internal pre-releases for OTHER versions (e.g. the next bump
+      # already merged on main) are left alone.
+      - name: Delete superseded internal pre-release
+        if: steps.check.outputs.proceed == 'true'
+        env:
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          set -euo pipefail
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName,isPrerelease \
+            --jq '.[] | select(.isPrerelease) | .tagName' \
+            | { grep -E "^v${VERSION//./\\.}-internal\.[0-9]+$" || true; } \
+            | while read -r stale; do
+                echo "Deleting superseded internal pre-release $stale (tag kept)"
+                gh release delete "$stale" --repo "$GITHUB_REPOSITORY" --yes
+              done
 
   publish-platform:
     name: Publish platform npm packages
-    needs: release
+    needs: gate
+    if: needs.gate.outputs.proceed == 'true'
     runs-on: ubuntu-latest
-    if: github.event.inputs.dry_run != 'true' && github.event.inputs.tag != ''
+    timeout-minutes: 15
     permissions:
       contents: read
       id-token: write
     env:
-      RELEASE_TAG: ${{ github.event.inputs.tag }}
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
     steps:
-
-      - uses: actions/checkout@v4
+      # Check out the TAGGED commit (not main) so the package.json manifests
+      # match the version actually being published.
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
-
-      - name: Extract version
-        id: version
-        shell: bash
-        run: |
-          VERSION="${RELEASE_TAG#v}"
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Download release assets
         env:
@@ -263,6 +130,8 @@ jobs:
 
       - name: Extract archives and copy runtime bundles
         shell: bash
+        env:
+          VERSION: ${{ needs.gate.outputs.version }}
         run: |
           mkdir -p /tmp/bridges/macos-arm64 /tmp/bridges/macos-x64 \
                    /tmp/bridges/linux-x64 /tmp/bridges/linux-arm64 \
@@ -317,7 +186,7 @@ jobs:
                   bootstrapOnly: metadata.bootstrapOnly,
                 }, null, 2) + "\n"
               );
-            ' "$package_root/package.json" "$RELEASE_TAG" "${{ steps.version.outputs.VERSION }}" "$asset_name" "$package_name"
+            ' "$package_root/package.json" "$RELEASE_TAG" "$VERSION" "$asset_name" "$package_name"
 
             diff -r "$source_root/bin" "$package_root/lib/runtime/bin"
             diff -r "$source_root/lib" "$package_root/lib/runtime/lib"
@@ -380,16 +249,19 @@ jobs:
 
   publish-wrapper:
     name: Publish wrapper npm package
-    needs: publish-platform
+    needs: [gate, publish-platform]
+    if: needs.gate.outputs.proceed == 'true'
     runs-on: ubuntu-latest
-    if: github.event.inputs.dry_run != 'true' && github.event.inputs.tag != ''
+    timeout-minutes: 10
     permissions:
       contents: read
       id-token: write
     env:
-      RELEASE_TAG: ${{ github.event.inputs.tag }}
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -397,15 +269,10 @@ jobs:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Extract version
-        id: version
-        shell: bash
-        run: |
-          VERSION="${RELEASE_TAG#v}"
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-
       - name: Validate wrapper package metadata
         shell: bash
+        env:
+          VERSION: ${{ needs.gate.outputs.version }}
         run: |
           node -e '
             const fs = require("fs");
@@ -433,7 +300,7 @@ jobs:
             if (metadata.releaseTag !== releaseTag) {
               throw new Error("releaseTag drift in " + packageJsonPath + ": expected " + releaseTag + ", got " + metadata.releaseTag);
             }
-          ' bridge/app/npm/sesori-bridge/package.json "$RELEASE_TAG" "${{ steps.version.outputs.VERSION }}"
+          ' bridge/app/npm/sesori-bridge/package.json "$RELEASE_TAG" "$VERSION"
 
       - name: Publish wrapper package
         run: npm publish --access public
