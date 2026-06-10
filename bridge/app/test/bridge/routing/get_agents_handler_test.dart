@@ -24,6 +24,28 @@ void main() {
       expect(handler.canHandle(makeRequest("GET", "/agent")), isTrue);
     });
 
+    test("forwards the projectId query parameter to the plugin", () async {
+      await handler.handle(
+        makeRequest("GET", "/agent?projectId=/repo"),
+        pathParams: {},
+        queryParams: {"projectId": "/repo"},
+        fragment: null,
+      );
+
+      expect(plugin.lastAgentsProjectId, equals("/repo"));
+    });
+
+    test("passes a null projectId when the query parameter is absent", () async {
+      await handler.handle(
+        makeRequest("GET", "/agent"),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastAgentsProjectId, isNull);
+    });
+
     test("returns typed list", () async {
       final response = await handler.handle(
         makeRequest("GET", "/agent"),

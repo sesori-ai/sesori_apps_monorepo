@@ -1,5 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
+        PluginAgent,
         PluginCommand,
         PluginCommandSource,
         PluginPermissionReply,
@@ -9,6 +10,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginSessionVariant;
 import "package:sesori_shared/sesori_shared.dart" show StringExtensions, wait2;
 
+import "models/agent_info.dart";
 import "models/command.dart";
 import "models/pending_permission.dart";
 import "models/pending_question.dart";
@@ -62,6 +64,11 @@ class OpenCodeRepository {
   Future<List<PluginCommand>> getCommands({required String? projectId}) async {
     final commands = await _api.listCommands(directory: projectId?.normalize());
     return commands.map<PluginCommand>(_mapCommand).toList();
+  }
+
+  Future<List<PluginAgent>> getAgents({required String? directory}) async {
+    final agents = await _api.listAgents(directory: directory?.normalize());
+    return agents.map((agent) => agent.toPlugin()).toList();
   }
 
   Future<PluginSession> createSession({

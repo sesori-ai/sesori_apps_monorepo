@@ -327,8 +327,14 @@ class OpenCodeApi {
     _ensureSuccess(response, "POST /session/$sessionId/abort");
   }
 
-  Future<List<AgentInfo>> listAgents() async {
-    final response = await _client.get(Uri.parse("$serverURL/agent"), headers: _authHeaders);
+  Future<List<AgentInfo>> listAgents({required String? directory}) async {
+    // OpenCode resolves agents per project; newer releases reject requests
+    // that carry no directory context with a 500.
+    final headers = <String, String>{
+      ..._authHeaders,
+      _directoryOpenCodeHeader: ?directory,
+    };
+    final response = await _client.get(Uri.parse("$serverURL/agent"), headers: headers);
     _ensureSuccess(response, "GET /agent");
 
     final decoded = jsonDecodeListMap(response.body);
@@ -514,17 +520,33 @@ class OpenCodeApi {
 
   static void _ensureSuccess(http.Response response, String endpoint) {
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw OpenCodeApiException(endpoint, response.statusCode);
+      throw OpenCodeApiException(endpoint, response.statusCode, responseBody: response.body);
     }
   }
 }
 
 class OpenCodeApiException implements Exception {
+  static const _maxBodyLength = 500;
+
   final String endpoint;
   final int statusCode;
 
-  OpenCodeApiException(this.endpoint, this.statusCode);
+  /// Upstream response body, truncated to [_maxBodyLength] characters.
+  /// OpenCode error bodies carry the actual failure reason (e.g.
+  /// `{"name":"UnknownError","data":{...}}`), which is essential for
+  /// diagnosing failures from logs.
+  final String? responseBody;
+
+  OpenCodeApiException(this.endpoint, this.statusCode, {String? responseBody})
+    : responseBody = switch (responseBody) {
+        null => null,
+        final body when body.length > _maxBodyLength => "${body.substring(0, _maxBodyLength)}…",
+        final body => body,
+      };
 
   @override
-  String toString() => "OpenCodeApiException: $endpoint failed with status $statusCode";
+  String toString() {
+    final bodySuffix = responseBody == null || responseBody!.isEmpty ? "" : " body=$responseBody";
+    return "OpenCodeApiException: $endpoint failed with status $statusCode$bodySuffix";
+  }
 }

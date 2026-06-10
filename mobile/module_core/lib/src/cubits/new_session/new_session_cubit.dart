@@ -40,12 +40,16 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         ApiResponse<ProviderListResponse> providersResponse,
         ApiResponse<CommandListResponse> commandsResponse,
       ) = await wait3(
-        _sessionService.listAgents(),
+        _sessionService.listAgents(projectId: _projectId),
         _sessionService.listProviders(projectId: _projectId),
         _sessionService.listCommands(projectId: _projectId),
       );
 
       if (isClosed) return;
+
+      _logComposerDataError(resource: "agents", response: agentsResponse);
+      _logComposerDataError(resource: "providers", response: providersResponse);
+      _logComposerDataError(resource: "commands", response: commandsResponse);
 
       final agents = switch (agentsResponse) {
         SuccessResponse(:final data) => data.agents.where((a) => !a.hidden && a.mode != AgentMode.subagent).toList(),
@@ -98,8 +102,18 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         selectedAgent: defaultAgent,
         selectedAgentModel: defaultAgentModel,
       );
-    } catch (_) {
+    } catch (e, stackTrace) {
+      loge("New session: failed to load composer data for project $_projectId", e, stackTrace);
       return;
+    }
+  }
+
+  /// The composer degrades gracefully on partial failures (empty pickers),
+  /// which previously made these errors invisible. Log them so missing
+  /// agent/model pickers can be traced back to the failing request.
+  void _logComposerDataError<T>({required String resource, required ApiResponse<T> response}) {
+    if (response case ErrorResponse(:final error)) {
+      loge("New session: failed to load $resource for project $_projectId", error);
     }
   }
 

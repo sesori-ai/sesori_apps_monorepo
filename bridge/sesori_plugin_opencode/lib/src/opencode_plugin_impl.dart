@@ -90,7 +90,7 @@ class OpenCodePlugin implements BridgePluginApi {
     try {
       return await fn();
     } on OpenCodeApiException catch (e) {
-      throw PluginApiException(e.endpoint, e.statusCode);
+      throw PluginApiException(e.endpoint, e.statusCode, detail: e.responseBody);
     }
   }
 
@@ -308,9 +308,8 @@ class OpenCodePlugin implements BridgePluginApi {
   }
 
   @override
-  Future<List<PluginAgent>> getAgents() async {
-    final agents = await _call(_service.repository.api.listAgents);
-    return agents.map((agent) => agent.toPlugin()).toList();
+  Future<List<PluginAgent>> getAgents({String? projectId}) {
+    return _call(() => _service.getAgents(projectId: projectId));
   }
 
   @override

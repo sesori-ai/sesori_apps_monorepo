@@ -122,7 +122,7 @@ void delegateSessionRepositoryToService({
     (invocation) => service.getChildren(sessionId: invocation.namedArguments[#sessionId]! as String),
   );
   when(() => repository.getSessionStatuses()).thenAnswer((_) => service.getSessionStatuses());
-  when(() => repository.listAgents()).thenAnswer((_) => service.listAgents());
+  when(() => repository.listAgents(projectId: any(named: "projectId"))).thenAnswer((_) => service.listAgents());
   when(() => repository.listProviders(projectId: any(named: "projectId"))).thenAnswer(
     (invocation) => service.listProviders(projectId: invocation.namedArguments[#projectId] as String),
   );

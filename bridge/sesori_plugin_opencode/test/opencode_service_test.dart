@@ -1,3 +1,5 @@
+import "dart:io" as io;
+
 import "package:opencode_plugin/opencode_plugin.dart" hide Message, MessageError, MessageErrorData, MessageWithParts;
 import "package:opencode_plugin/src/models/message.dart" as plugin_msg;
 import "package:opencode_plugin/src/models/message_with_parts.dart" as plugin;
@@ -37,6 +39,26 @@ void main() {
       expect(repository.lastCommandsProjectId, equals("/repo"));
       expect(commands, hasLength(1));
       expect(commands.single.name, equals("/review-work"));
+    });
+  });
+
+  group("OpenCodeService.getAgents", () {
+    test("passes the projectId through as the directory", () async {
+      final repository = FakeOpenCodeRepository();
+      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+
+      await service.getAgents(projectId: "/repo");
+
+      expect(repository.lastAgentsDirectory, equals("/repo"));
+    });
+
+    test("falls back to the current working directory when projectId is null", () async {
+      final repository = FakeOpenCodeRepository();
+      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+
+      await service.getAgents(projectId: null);
+
+      expect(repository.lastAgentsDirectory, equals(io.Directory.current.path));
     });
   });
 
@@ -585,7 +607,7 @@ class FakeOpenCodeApi implements OpenCodeApi {
   Future<void> abortSession({required String sessionId, required String? directory}) async {}
 
   @override
-  Future<List<AgentInfo>> listAgents() async => [];
+  Future<List<AgentInfo>> listAgents({required String? directory}) async => [];
 
   @override
   Future<List<PendingQuestion>> getPendingQuestions({required String? directory}) async => [];
@@ -662,6 +684,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   int getSessionsCalls = 0;
   String? lastWorktree;
   String? lastCommandsProjectId;
+  String? lastAgentsDirectory;
   String? lastCreateDirectory;
   String? lastCreateParentSessionId;
   String? lastPromptSessionId;
@@ -706,6 +729,12 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     getSessionsCalls += 1;
     lastWorktree = worktree;
     return _sessions;
+  }
+
+  @override
+  Future<List<PluginAgent>> getAgents({required String? directory}) async {
+    lastAgentsDirectory = directory;
+    return const [];
   }
 
   @override

@@ -8,8 +8,8 @@ class AgentRepository {
 
   AgentRepository({required BridgePluginApi plugin}) : _plugin = plugin;
 
-  Future<Agents> getAgents() async {
-    final pluginAgents = await _plugin.getAgents();
+  Future<Agents> getAgents({String? projectId}) async {
+    final pluginAgents = await _plugin.getAgents(projectId: projectId);
     final agents = pluginAgents.map((a) => a.toAgentInfo()).toList();
     return Agents(agents: agents);
   }

@@ -6,8 +6,15 @@ class PluginApiException implements Exception {
   final int statusCode;
   final String endpoint;
 
-  PluginApiException(this.endpoint, this.statusCode);
+  /// Optional upstream failure detail (e.g. the upstream response body) so
+  /// logs surface the actual reason instead of just a status code.
+  final String? detail;
+
+  PluginApiException(this.endpoint, this.statusCode, {this.detail});
 
   @override
-  String toString() => "PluginApiException: $endpoint failed with status $statusCode";
+  String toString() {
+    final detailSuffix = detail == null || detail!.isEmpty ? "" : ": $detail";
+    return "PluginApiException: $endpoint failed with status $statusCode$detailSuffix";
+  }
 }

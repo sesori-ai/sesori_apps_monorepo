@@ -57,7 +57,7 @@ class SessionDetailLoadService {
         _repository.getPendingPermissions(),
         _repository.getChildren(sessionId: sessionId),
         _repository.getSessionStatuses(),
-        _repository.listAgents(),
+        _repository.listAgents(projectId: routeProjectId),
         _repository.listProviders(projectId: projectId),
         _repository.getSession(sessionId: sessionId),
       ).wait;

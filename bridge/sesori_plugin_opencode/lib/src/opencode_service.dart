@@ -1,7 +1,10 @@
+import "dart:io" as io;
+
 import "package:json_annotation/json_annotation.dart" show CheckedFromJsonException;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         Log,
+        PluginAgent,
         PluginApiException,
         PluginCommand,
         PluginPermissionReply,
@@ -31,6 +34,21 @@ class OpenCodeService {
 
   Future<List<PluginCommand>> getCommands({required String? projectId}) {
     return repository.getCommands(projectId: projectId);
+  }
+
+  /// Returns the agents available for [projectId] (a worktree directory).
+  ///
+  /// OpenCode resolves agents per project, so a directory is always sent.
+  /// When [projectId] is `null` (callers that predate project-scoped agent
+  /// listing) we fall back to the bridge's own CWD, which yields the global
+  /// agent set.
+  Future<List<PluginAgent>> getAgents({required String? projectId}) {
+    var directory = projectId;
+    if (directory == null) {
+      directory = io.Directory.current.path;
+      Log.d("getAgents: no projectId given, falling back to bridge CWD: $directory");
+    }
+    return repository.getAgents(directory: directory);
   }
 
   Future<List<Session>> getSessions({
