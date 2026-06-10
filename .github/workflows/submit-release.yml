@@ -541,12 +541,12 @@ jobs:
       # predate the script entirely (legacy build-<N> tags).
       - uses: actions/checkout@v6
 
-      # Pinned toolchain from .tool-versions; the notes script is
-      # dependency-free, so no workspace pub get is needed.
-      - name: Setup Flutter (asdf)
-        uses: ./.github/actions/setup-flutter
+      # The notes script is dependency-free pure Dart — a bare Dart SDK
+      # installs in seconds, vs minutes for the asdf Flutter toolchain.
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
         with:
-          workspace: none
+          sdk: stable
 
       - name: Download bridge artifacts
         uses: actions/download-artifact@v4
