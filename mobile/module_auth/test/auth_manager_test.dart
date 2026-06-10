@@ -21,7 +21,9 @@ void main() {
   setUpAll(() {
     registerFallbackValue(Uri.parse("https://example.com"));
     registerFallbackValue(AuthProvider.github);
-    registerFallbackValue(const AuthUser(id: "", provider: AuthProvider.github, providerUserId: "", providerUsername: null));
+    registerFallbackValue(
+      const AuthUser(id: "", provider: AuthProvider.github, providerUserId: "", providerUsername: null),
+    );
   });
 
   late MockHttpClient mockHttpClient;
@@ -625,6 +627,7 @@ void main() {
               "providerUserId": user.providerUserId,
               "providerUsername": user.providerUsername,
             },
+            "bridges": <Object>[],
           }),
           200,
         ),
@@ -912,6 +915,7 @@ void main() {
               "providerUserId": user.providerUserId,
               "providerUsername": user.providerUsername,
             },
+            "bridges": <Object>[],
           }),
           200,
         ),
@@ -942,6 +946,7 @@ void main() {
               "providerUserId": user.providerUserId,
               "providerUsername": user.providerUsername,
             },
+            "bridges": <Object>[],
           }),
           200,
         ),

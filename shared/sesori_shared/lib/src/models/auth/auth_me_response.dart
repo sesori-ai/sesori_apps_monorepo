@@ -10,7 +10,7 @@ part "auth_me_response.g.dart";
 sealed class AuthMeResponse with _$AuthMeResponse {
   const factory AuthMeResponse({
     required AuthUser user,
-    @Default(<BridgeSummary>[]) List<BridgeSummary> bridges,
+    required List<BridgeSummary> bridges,
   }) = _AuthMeResponse;
 
   factory AuthMeResponse.fromJson(Map<String, dynamic> json) => _$AuthMeResponseFromJson(json);

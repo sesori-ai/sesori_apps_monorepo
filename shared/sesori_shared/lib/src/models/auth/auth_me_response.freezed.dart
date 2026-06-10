@@ -88,12 +88,12 @@ $AuthUserCopyWith<$Res> get user {
 @JsonSerializable(createToJson: false)
 
 class _AuthMeResponse implements AuthMeResponse {
-  const _AuthMeResponse({required this.user, final  List<BridgeSummary> bridges = const <BridgeSummary>[]}): _bridges = bridges;
+  const _AuthMeResponse({required this.user, required final  List<BridgeSummary> bridges}): _bridges = bridges;
   factory _AuthMeResponse.fromJson(Map<String, dynamic> json) => _$AuthMeResponseFromJson(json);
 
 @override final  AuthUser user;
  final  List<BridgeSummary> _bridges;
-@override@JsonKey() List<BridgeSummary> get bridges {
+@override List<BridgeSummary> get bridges {
   if (_bridges is EqualUnmodifiableListView) return _bridges;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_bridges);

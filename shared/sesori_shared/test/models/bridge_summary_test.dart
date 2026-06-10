@@ -34,17 +34,21 @@ void main() {
   });
 
   group("AuthMeResponse bridges", () {
-    test("defaults to an empty list when the key is absent", () {
-      final response = AuthMeResponse.fromJson({
-        "user": {
-          "id": "user-1",
-          "provider": "github",
-          "providerUserId": "12345",
-          "providerUsername": "octocat",
-        },
-      });
-
-      expect(response.bridges, isEmpty);
+    test("throws when the key is absent", () {
+      // The deployed auth server always returns bridges, so a missing key
+      // means a broken or incompatible server — fail fast instead of
+      // silently treating it as "no bridges".
+      expect(
+        () => AuthMeResponse.fromJson({
+          "user": {
+            "id": "user-1",
+            "provider": "github",
+            "providerUserId": "12345",
+            "providerUsername": "octocat",
+          },
+        }),
+        throwsA(isA<TypeError>()),
+      );
     });
 
     test("parses the bridges list when present", () {
