@@ -209,6 +209,23 @@ void main() {
         (wrapperPackage['sesoriBridge'] as Map<String, dynamic>)['releaseTag'],
         equals('v$internalVersion'),
       );
+
+      final optionalDependencies = wrapperPackage['optionalDependencies'] as Map<String, dynamic>;
+      for (final package in _FixtureApp.platformPackages) {
+        final dependencyName = '@sesori/${package.replaceFirst('sesori-bridge-', 'bridge-')}';
+        expect(optionalDependencies[dependencyName], equals(internalVersion), reason: 'failed for $package');
+
+        final packageJson = await _readJson(
+          path: p.join(fixture.rootPath, 'npm', package, 'package.json'),
+        );
+        expect(packageJson['version'], equals(internalVersion), reason: 'failed for $package');
+        expect(
+          (packageJson['sesoriBridge'] as Map<String, dynamic>)['releaseTag'],
+          equals('v$internalVersion'),
+          reason: 'failed releaseTag update for $package',
+        );
+      }
+      expect(optionalDependencies['@sesori/not-bridge'], equals('4.5.6'));
     });
 
     test('rejects invalid semver and keeps fixture files unchanged', () async {

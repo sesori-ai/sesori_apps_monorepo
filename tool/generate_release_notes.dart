@@ -252,27 +252,55 @@ Future<List<int>> _listMergedPrNumbers({
 }) async {
   final numbers = <int>[];
   final seen = <int>{};
+  var scannedCommits = 0;
+  var totalCommits = 0;
 
-  for (var page = 1; page <= 10; page++) {
+  var page = 1;
+  while (true) {
     final comparison =
         await api.getJson(path: '/repos/${api.repo}/compare/$from...$to?per_page=100&page=$page')
             as Map<String, dynamic>;
+    totalCommits = comparison['total_commits'] as int? ?? totalCommits;
     final commits = (comparison['commits'] as List<dynamic>).cast<Map<String, dynamic>>();
+    scannedCommits += commits.length;
     for (final commit in commits) {
       final message = (commit['commit'] as Map<String, dynamic>)['message'] as String;
       final subject = message.split('\n').first;
       final match = _mergePrPattern.firstMatch(subject) ?? _squashPrPattern.firstMatch(subject);
-      if (match == null) {
+      if (match != null) {
+        final number = int.parse(match.group(1)!);
+        if (seen.add(number)) {
+          numbers.add(number);
+        }
         continue;
       }
-      final number = int.parse(match.group(1)!);
-      if (seen.add(number)) {
-        numbers.add(number);
+      // Commits without a (#N) / merge-commit subject (rebase merges, edited
+      // squash titles, direct pushes): resolve through GitHub's commit -> PR
+      // association instead of silently dropping them.
+      final sha = commit['sha'] as String;
+      final associated =
+          await api.getJson(path: '/repos/${api.repo}/commits/$sha/pulls?per_page=10') as List<dynamic>;
+      for (final pull in associated.cast<Map<String, dynamic>>()) {
+        if (pull['merged_at'] == null) {
+          continue;
+        }
+        final number = pull['number'] as int;
+        if (seen.add(number)) {
+          numbers.add(number);
+        }
       }
     }
     if (commits.length < 100) {
       break;
     }
+    page++;
+  }
+
+  // Never truncate silently: incomplete notes on a release are worse than a
+  // failed workflow run (pass --from for a shorter range if this ever trips).
+  if (scannedCommits < totalCommits) {
+    throw StateError('Compare $from...$to reports $totalCommits commits but only '
+        '$scannedCommits were returned; refusing to publish truncated release notes.');
   }
 
   return numbers;
@@ -315,9 +343,13 @@ Future<_PrEntry?> _loadPr({required _GitHubApi api, required int number}) async 
   var touchesApp = false;
   var touchesBridge = false;
   var touchesShared = false;
-  for (var page = 1; page <= 10; page++) {
+  final changedFiles = pr['changed_files'] as int? ?? 0;
+  var listedFiles = 0;
+  var page = 1;
+  while (true) {
     final files = await api.getJson(path: '/repos/${api.repo}/pulls/$number/files?per_page=100&page=$page')
         as List<dynamic>;
+    listedFiles += files.length;
     for (final file in files.cast<Map<String, dynamic>>()) {
       final path = file['filename'] as String;
       touchesApp = touchesApp || path.startsWith('mobile/');
@@ -327,6 +359,16 @@ Future<_PrEntry?> _loadPr({required _GitHubApi api, required int number}) async 
     if (files.length < 100 || (touchesApp && touchesBridge && touchesShared)) {
       break;
     }
+    page++;
+  }
+  // The files API stops listing at 3000 files. If a PR is so large we could
+  // not see every file, degrade conservatively: list it under both sections
+  // rather than silently misclassifying it.
+  if (listedFiles < changedFiles && !(touchesApp && touchesBridge)) {
+    stderr.writeln('PR #$number lists only $listedFiles of $changedFiles changed files; '
+        'classifying it under both App and Bridge.');
+    touchesApp = true;
+    touchesBridge = true;
   }
 
   return _PrEntry(
