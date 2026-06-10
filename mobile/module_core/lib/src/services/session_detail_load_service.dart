@@ -42,7 +42,7 @@ class SessionDetailLoadService {
       final routeProjectId = projectId.normalize();
       final projectContextFuture = _loadProjectSessionContext(sessionId: sessionId);
       final commandsFuture = routeProjectId == null ? null : _listCommands(projectId: routeProjectId);
-      final agentsFuture = routeProjectId == null ? null : _repository.listAgents(projectId: routeProjectId);
+      final agentsFuture = routeProjectId == null ? null : _listAgents(projectId: routeProjectId);
       final (
         messagesResponse,
         questionsResponse,
@@ -65,7 +65,7 @@ class SessionDetailLoadService {
       // When the route carries no project id, resolve it from the session
       // context so agents and commands are still project-scoped.
       final commandsResponse = await (commandsFuture ?? _listCommands(projectId: effectiveProjectId));
-      final agentsResponse = await (agentsFuture ?? _repository.listAgents(projectId: effectiveProjectId));
+      final agentsResponse = await (agentsFuture ?? _listAgents(projectId: effectiveProjectId));
       final session = switch (sessionResponse) {
         SuccessResponse(:final data) => data,
         ErrorResponse(:final error) => () {
@@ -138,6 +138,19 @@ class SessionDetailLoadService {
     } on Object catch (error, stackTrace) {
       return SessionDetailLoadResult.failed(error: error, stackTrace: stackTrace);
     }
+  }
+
+  Future<ApiResponse<Agents>> _listAgents({required String? projectId}) {
+    final normalizedProjectId = projectId?.normalize();
+    if (normalizedProjectId == null) {
+      // Without any project context there is no way to scope the agent list;
+      // an empty list keeps the UI consistent instead of guessing a project.
+      return Future<ApiResponse<Agents>>.value(
+        ApiResponse.success(const Agents(agents: <AgentInfo>[])),
+      );
+    }
+
+    return _repository.listAgents(projectId: normalizedProjectId);
   }
 
   Future<ApiResponse<CommandListResponse>> _listCommands({required String? projectId}) {

@@ -195,7 +195,7 @@ void delegateSessionRepositoryToService({
   );
   when(() => repository.getSessionStatuses()).thenAnswer((_) => service.getSessionStatuses());
   when(() => repository.listAgents(projectId: any(named: "projectId"))).thenAnswer(
-    (invocation) => service.listAgents(projectId: invocation.namedArguments[#projectId] as String?),
+    (invocation) => service.listAgents(projectId: invocation.namedArguments[#projectId] as String),
   );
   when(() => repository.listProviders(projectId: any(named: "projectId"))).thenAnswer(
     (invocation) => service.listProviders(projectId: invocation.namedArguments[#projectId] as String),
