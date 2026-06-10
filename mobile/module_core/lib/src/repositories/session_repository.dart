@@ -93,7 +93,7 @@ class SessionRepository {
     return _api.getSession(sessionId: sessionId);
   }
 
-  Future<ApiResponse<Agents>> listAgents({String? projectId}) {
+  Future<ApiResponse<Agents>> listAgents({required String? projectId}) {
     return _api.listAgents(projectId: projectId);
   }
 

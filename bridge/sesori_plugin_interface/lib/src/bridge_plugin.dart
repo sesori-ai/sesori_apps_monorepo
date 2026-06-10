@@ -99,10 +99,8 @@ abstract class BridgePluginApi {
 
   /// Returns the agents available for the given project.
   ///
-  /// [projectId] is the project worktree directory. When `null`, the plugin
-  /// falls back to a directory it considers reasonable (e.g. its own CWD) —
-  /// kept for callers that predate project-scoped agent listing.
-  Future<List<PluginAgent>> getAgents({String? projectId});
+  /// [projectId] identifies the project; its format is plugin-defined.
+  Future<List<PluginAgent>> getAgents({required String projectId});
 
   Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId});
 

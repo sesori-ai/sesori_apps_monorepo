@@ -12,7 +12,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginProvidersResult,
         PluginSession,
         PluginSessionVariant;
-import "package:sesori_shared/sesori_shared.dart" show ProjectActivitySummary;
+import "package:sesori_shared/sesori_shared.dart" show ProjectActivitySummary, StringExtensions;
 
 import "../opencode_plugin.dart";
 
@@ -39,14 +39,16 @@ class OpenCodeService {
   /// Returns the agents available for [projectId] (a worktree directory).
   ///
   /// OpenCode resolves agents per project, so a directory is always sent.
-  /// When [projectId] is `null` (callers that predate project-scoped agent
-  /// listing) we fall back to the bridge's own CWD, which yields the global
-  /// agent set.
+  /// When [projectId] is `null` or blank we fall back to the bridge's own
+  /// CWD, which yields the global agent set.
   Future<List<PluginAgent>> getAgents({required String? projectId}) {
-    var directory = projectId;
-    if (directory == null) {
+    final String directory;
+    final normalized = projectId?.normalize();
+    if (normalized == null) {
       directory = io.Directory.current.path;
       Log.d("getAgents: no projectId given, falling back to bridge CWD: $directory");
+    } else {
+      directory = normalized;
     }
     return repository.getAgents(directory: directory);
   }

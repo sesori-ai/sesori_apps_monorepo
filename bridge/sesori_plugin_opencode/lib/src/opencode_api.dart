@@ -327,12 +327,12 @@ class OpenCodeApi {
     _ensureSuccess(response, "POST /session/$sessionId/abort");
   }
 
-  Future<List<AgentInfo>> listAgents({required String? directory}) async {
+  Future<List<AgentInfo>> listAgents({required String directory}) async {
     // OpenCode resolves agents per project; newer releases reject requests
     // that carry no directory context with a 500.
     final headers = <String, String>{
       ..._authHeaders,
-      _directoryOpenCodeHeader: ?directory,
+      _directoryOpenCodeHeader: directory,
     };
     final response = await _client.get(Uri.parse("$serverURL/agent"), headers: headers);
     _ensureSuccess(response, "GET /agent");

@@ -303,7 +303,7 @@ class FakeBridgePlugin implements BridgePluginApi {
   }
 
   @override
-  Future<List<PluginAgent>> getAgents({String? projectId}) async {
+  Future<List<PluginAgent>> getAgents({required String projectId}) async {
     lastAgentsProjectId = projectId;
     return agentsResult;
   }

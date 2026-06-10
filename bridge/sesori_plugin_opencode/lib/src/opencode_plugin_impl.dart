@@ -308,7 +308,7 @@ class OpenCodePlugin implements BridgePluginApi {
   }
 
   @override
-  Future<List<PluginAgent>> getAgents({String? projectId}) {
+  Future<List<PluginAgent>> getAgents({required String projectId}) {
     return _call(() => _service.getAgents(projectId: projectId));
   }
 

@@ -66,8 +66,8 @@ class OpenCodeRepository {
     return commands.map<PluginCommand>(_mapCommand).toList();
   }
 
-  Future<List<PluginAgent>> getAgents({required String? directory}) async {
-    final agents = await _api.listAgents(directory: directory?.normalize());
+  Future<List<PluginAgent>> getAgents({required String directory}) async {
+    final agents = await _api.listAgents(directory: directory);
     return agents.map((agent) => agent.toPlugin()).toList();
   }
 

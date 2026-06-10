@@ -42,13 +42,13 @@ class SessionDetailLoadService {
       final routeProjectId = projectId.normalize();
       final projectContextFuture = _loadProjectSessionContext(sessionId: sessionId);
       final commandsFuture = routeProjectId == null ? null : _listCommands(projectId: routeProjectId);
+      final agentsFuture = routeProjectId == null ? null : _repository.listAgents(projectId: routeProjectId);
       final (
         messagesResponse,
         questionsResponse,
         permissionsResponse,
         childrenResponse,
         statusesResponse,
-        agentsResponse,
         providersResponse,
         sessionResponse,
       ) = await (
@@ -57,13 +57,15 @@ class SessionDetailLoadService {
         _repository.getPendingPermissions(),
         _repository.getChildren(sessionId: sessionId),
         _repository.getSessionStatuses(),
-        _repository.listAgents(projectId: routeProjectId),
         _repository.listProviders(projectId: projectId),
         _repository.getSession(sessionId: sessionId),
       ).wait;
       final projectContext = await projectContextFuture;
       final effectiveProjectId = routeProjectId ?? projectContext?.projectId;
+      // When the route carries no project id, resolve it from the session
+      // context so agents and commands are still project-scoped.
       final commandsResponse = await (commandsFuture ?? _listCommands(projectId: effectiveProjectId));
+      final agentsResponse = await (agentsFuture ?? _repository.listAgents(projectId: effectiveProjectId));
       final session = switch (sessionResponse) {
         SuccessResponse(:final data) => data,
         ErrorResponse(:final error) => () {

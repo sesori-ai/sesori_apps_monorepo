@@ -17,11 +17,19 @@ class SessionApi {
 
   SessionApi({required RelayHttpApiClient client}) : _client = client;
 
-  Future<ApiResponse<Agents>> listAgents({String? projectId}) {
-    return _client.get(
+  Future<ApiResponse<Agents>> listAgents({required String? projectId}) {
+    if (projectId == null) {
+      // Deprecated bridge route for callers with no project context; the
+      // bridge resolves a fallback project (its CWD) itself.
+      return _client.get(
+        "/agent",
+        fromJson: Agents.fromJson,
+      );
+    }
+    return _client.post(
       "/agent",
       fromJson: Agents.fromJson,
-      queryParameters: projectId == null ? null : {"projectId": projectId},
+      body: ProjectIdRequest(projectId: projectId),
     );
   }
 

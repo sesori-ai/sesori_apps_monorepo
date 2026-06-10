@@ -86,25 +86,6 @@ void main() {
       expect(agents.single.name, equals("build"));
     });
 
-    test("omits the directory header when no directory is given", () async {
-      late http.BaseRequest capturedRequest;
-
-      final mockClient = MockClient((request) async {
-        capturedRequest = request;
-        return http.Response(jsonEncode(<Map<String, dynamic>>[]), 200);
-      });
-
-      final api = OpenCodeApi(
-        serverURL: "http://localhost:1234",
-        password: "test-pass",
-        client: mockClient,
-      );
-
-      await api.listAgents(directory: null);
-
-      expect(capturedRequest.headers.containsKey("x-opencode-directory"), isFalse);
-    });
-
     test("includes the upstream response body in the thrown exception", () async {
       final mockClient = MockClient((request) async {
         return http.Response('{"name":"UnknownError","data":{"message":"boom"}}', 500);

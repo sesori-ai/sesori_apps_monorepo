@@ -607,7 +607,7 @@ class FakeOpenCodeApi implements OpenCodeApi {
   Future<void> abortSession({required String sessionId, required String? directory}) async {}
 
   @override
-  Future<List<AgentInfo>> listAgents({required String? directory}) async => [];
+  Future<List<AgentInfo>> listAgents({required String directory}) async => [];
 
   @override
   Future<List<PendingQuestion>> getPendingQuestions({required String? directory}) async => [];
@@ -732,7 +732,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   }
 
   @override
-  Future<List<PluginAgent>> getAgents({required String? directory}) async {
+  Future<List<PluginAgent>> getAgents({required String directory}) async {
     lastAgentsDirectory = directory;
     return const [];
   }

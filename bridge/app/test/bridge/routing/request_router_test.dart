@@ -14,6 +14,7 @@ import "package:sesori_bridge/src/bridge/routing/abort_session_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/get_agents_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/get_commands_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/get_session_diffs_handler.dart";
+import "package:sesori_bridge/src/bridge/routing/post_agents_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
 import "package:sesori_bridge/src/bridge/routing/send_prompt_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
@@ -100,6 +101,7 @@ void main() {
         projectRepository: projectRepository,
         providerRepository: providerRepository,
         getAgentsHandler: GetAgentsHandler(AgentRepository(plugin: plugin)),
+        postAgentsHandler: PostAgentsHandler(AgentRepository(plugin: plugin)),
         permissionRepository: permissionRepository,
         sessionPersistenceService: sessionPersistenceService,
         worktreeService: worktreeService,
@@ -419,6 +421,7 @@ void main() {
         projectRepository: projectRepository,
         providerRepository: providerRepository,
         getAgentsHandler: GetAgentsHandler(AgentRepository(plugin: plugin)),
+        postAgentsHandler: PostAgentsHandler(AgentRepository(plugin: plugin)),
         permissionRepository: permissionRepository,
         sessionPersistenceService: sessionPersistenceService,
         worktreeService: worktreeService,

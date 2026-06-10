@@ -82,7 +82,7 @@ class SessionService {
     return _repository.getSessionStatuses();
   }
 
-  Future<ApiResponse<Agents>> listAgents({String? projectId}) {
+  Future<ApiResponse<Agents>> listAgents({required String? projectId}) {
     return _repository.listAgents(projectId: projectId?.normalize());
   }
 

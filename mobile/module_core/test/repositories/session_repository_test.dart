@@ -28,7 +28,9 @@ void main() {
     when(api.getSessionStatuses).thenAnswer(
       (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
     );
-    when(api.listAgents).thenAnswer((_) async => ApiResponse.success(const Agents(agents: <AgentInfo>[])));
+    when(
+      () => api.listAgents(projectId: any(named: "projectId")),
+    ).thenAnswer((_) async => ApiResponse.success(const Agents(agents: <AgentInfo>[])));
     when(() => api.listProviders(projectId: any(named: "projectId"))).thenAnswer(
       (_) async => ApiResponse.success(const ProviderListResponse(connectedOnly: false, items: <ProviderInfo>[])),
     );
@@ -63,7 +65,7 @@ void main() {
     await repository.getPendingPermissions();
     await repository.getChildren(sessionId: "session-1");
     await repository.getSessionStatuses();
-    await repository.listAgents();
+    await repository.listAgents(projectId: "project-1");
     await repository.listProviders(projectId: "project-1");
     await repository.listCommands(projectId: "project-1");
     await repository.sendMessage(
@@ -88,7 +90,7 @@ void main() {
     verify(api.getPendingPermissions).called(1);
     verify(() => api.getChildren(sessionId: "session-1")).called(1);
     verify(api.getSessionStatuses).called(1);
-    verify(api.listAgents).called(1);
+    verify(() => api.listAgents(projectId: "project-1")).called(1);
     verify(() => api.listProviders(projectId: "project-1")).called(1);
     verify(() => api.listCommands(projectId: "project-1")).called(1);
     verify(
