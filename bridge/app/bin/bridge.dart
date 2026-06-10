@@ -1,31 +1,35 @@
 import 'dart:io';
 
+import 'package:args/args.dart' show ArgParserException;
 import 'package:args/command_runner.dart' as cli;
 import 'package:opencode_plugin/opencode_plugin.dart';
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
 import 'package:sesori_bridge/src/api/default_editor_api.dart';
 import 'package:sesori_bridge/src/api/wake_lock_client.dart';
-import 'package:sesori_bridge/src/auth/token.dart';
 import 'package:sesori_bridge/src/bridge/foundation/device_type_detector.dart';
 import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
+import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_dispatch.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
 import 'package:sesori_bridge/src/repositories/default_editor_repository.dart';
 import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
 import 'package:sesori_bridge/src/server/api/system_process_api.dart';
-import 'package:sesori_bridge/src/server/foundation/process_identity.dart';
+import 'package:sesori_bridge/src/server/api/terminal_prompt_api.dart';
 import 'package:sesori_bridge/src/server/foundation/process_user.dart';
 import 'package:sesori_bridge/src/server/foundation/server_clock.dart';
 import 'package:sesori_bridge/src/server/repositories/bridge_instance_repository.dart';
+import 'package:sesori_bridge/src/server/repositories/process_repository.dart';
+import 'package:sesori_bridge/src/server/repositories/terminal_prompt_repository.dart';
+import 'package:sesori_bridge/src/server/services/bridge_instance_service.dart';
 import 'package:sesori_bridge/src/services/bridge_config_service.dart';
+import 'package:sesori_bridge/src/services/bridge_logout_service.dart';
 import 'package:sesori_bridge/src/services/sleep_prevention_service.dart';
 import 'package:sesori_bridge/src/version.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log, LogLevel;
 
 const String _defaultRelayURL = 'wss://relay.sesori.com';
 const String _defaultAuthURL = 'https://api.sesori.com';
-const Duration _bridgeShutdownWait = Duration(seconds: 5);
 
 OpenCodePlugin _createOpenCodePlugin({
   required String serverUrl,
@@ -91,12 +95,17 @@ class RunCommand extends cli.Command<void> {
       return;
     }
 
-    final options = BridgeCliOptions.fromArgResults(
-      cliArgs: globalResults!.arguments,
-      results: results,
-      environment: Platform.environment,
-      defaultAuthUrl: _defaultAuthURL,
-    );
+    final BridgeCliOptions options;
+    try {
+      options = BridgeCliOptions.fromArgResults(
+        cliArgs: globalResults!.arguments,
+        results: results,
+        environment: Platform.environment,
+        defaultAuthUrl: _defaultAuthURL,
+      );
+    } on ArgParserException catch (e) {
+      usageException(e.message);
+    }
     Log.level = LogLevel.values.byName(options.logLevelName);
 
     final settingsRepository = BridgeSettingsRepository(api: BridgeSettingsApi());
@@ -136,94 +145,52 @@ class LogoutCommand extends cli.Command<void> {
 
   @override
   Future<void> run() async {
-    final runningBridges = await _listRunningBridges();
-
-    if (runningBridges.isNotEmpty) {
-      final shouldStop = await _promptStopBridges(runningBridges.length);
-      if (shouldStop) {
-        await _terminateBridges(runningBridges);
-      }
-    }
-
-    try {
-      await clearTokens();
-      stdout.writeln('Authentication cleared. You will be asked to log in on next start.');
-    } on FileSystemException catch (e) {
-      stderr.writeln('Error: Failed to clear authentication tokens: ${e.message}');
-      exitCode = 1;
-    }
-  }
-
-  Future<List<ProcessIdentity>> _listRunningBridges() async {
-    final processApi = SystemProcessApi(
+    final systemProcessApi = SystemProcessApi(
       processRunner: ProcessRunner(),
       clock: const ServerClock(),
       isWindows: Platform.isWindows,
       platform: Platform.operatingSystem,
     );
-
     final currentUser = ProcessUser.fromRawUser(
       Platform.environment['USER'] ?? Platform.environment['USERNAME'],
     );
-
-    final bridgeRepo = BridgeInstanceRepository(
-      api: processApi,
+    final bridgeInstanceRepository = BridgeInstanceRepository(
+      api: systemProcessApi,
       currentUser: currentUser,
     );
-
-    return bridgeRepo.listLiveBridgeCandidates(currentPid: pid);
-  }
-
-  Future<bool> _promptStopBridges(int count) async {
-    if (!stdin.hasTerminal || !stdout.hasTerminal) {
-      stdout.writeln(
-        'Warning: $count bridge instance(s) are running in the background. '
-        'Tokens will be cleared, but active sessions may continue.',
-      );
-      return false;
-    }
-
-    stdout.writeln('$count bridge instance(s) are currently running.');
-    stdout.write('Stop them before logging out? [y/N] ');
-    final answer = stdin.readLineSync()?.trim().toLowerCase();
-    return answer == 'y' || answer == 'yes';
-  }
-
-  Future<void> _terminateBridges(List<ProcessIdentity> bridges) async {
-    final processApi = SystemProcessApi(
-      processRunner: ProcessRunner(),
-      clock: const ServerClock(),
-      isWindows: Platform.isWindows,
-      platform: Platform.operatingSystem,
+    final terminalPromptRepository = TerminalPromptRepository(
+      api: TerminalPromptApi(stdin: stdin, stdout: stdout),
+    );
+    final logoutService = BridgeLogoutService(
+      bridgeInstanceRepository: bridgeInstanceRepository,
+      bridgeInstanceService: BridgeInstanceService(
+        bridgeInstanceRepository: bridgeInstanceRepository,
+        terminalPromptRepository: terminalPromptRepository,
+        processRepository: ProcessRepository(
+          api: systemProcessApi,
+          currentUser: currentUser,
+        ),
+        clock: const ServerClock(),
+      ),
+      terminalPromptRepository: terminalPromptRepository,
     );
 
-    // Send graceful termination
-    for (final bridge in bridges) {
-      try {
-        await processApi.sendGracefulSignal(pid: bridge.pid);
-      } on Object catch (e) {
-        stderr.writeln('Warning: Failed to stop bridge (PID ${bridge.pid}): $e');
-      }
-    }
-
-    await Future<void>.delayed(_bridgeShutdownWait);
-
-    // Force kill any survivors
-    final currentUser = ProcessUser.fromRawUser(
-      Platform.environment['USER'] ?? Platform.environment['USERNAME'],
-    );
-    final bridgeRepo = BridgeInstanceRepository(
-      api: processApi,
-      currentUser: currentUser,
-    );
-    final stillRunning = await bridgeRepo.listLiveBridgeCandidates(currentPid: pid);
-
-    for (final bridge in stillRunning) {
-      try {
-        await processApi.sendForceSignal(pid: bridge.pid);
-      } on Object catch (e) {
-        stderr.writeln('Warning: Failed to force stop bridge (PID ${bridge.pid}): $e');
-      }
+    final result = await logoutService.logout(currentPid: pid);
+    switch (result.status) {
+      case BridgeLogoutStatus.loggedOut:
+        stdout.writeln('Authentication cleared. You will be asked to log in on next start.');
+      case BridgeLogoutStatus.loggedOutWithRunningBridges:
+        stdout.writeln('Authentication cleared. You will be asked to log in on next start.');
+        stdout.writeln(
+          'Warning: ${result.runningBridgeCount} bridge instance(s) are still running '
+          'and may re-create tokens when they refresh their session.',
+        );
+      case BridgeLogoutStatus.cancelled:
+        stdout.writeln('Logout cancelled; stored tokens were not cleared.');
+        exitCode = 1;
+      case BridgeLogoutStatus.failed:
+        stderr.writeln('Error: Failed to clear authentication tokens: ${result.error}');
+        exitCode = 1;
     }
   }
 }
@@ -254,33 +221,6 @@ class ConfigCommand extends cli.Command<void> {
   }
 }
 
-List<String> _effectiveArgs(List<String> args) {
-  // Handle global help/version before command dispatch
-  if (args.contains('--help') || args.contains('-h')) {
-    return args;
-  }
-
-  if (args.isEmpty) {
-    return ['run'];
-  }
-
-  final first = args[0];
-
-  // If first arg is a flag, it's meant for the default 'run' command
-  if (first.startsWith('-')) {
-    return ['run', ...args];
-  }
-
-  // If it's a known command, pass through
-  final knownCommands = {'run', 'logout', 'config', 'help'};
-  if (knownCommands.contains(first)) {
-    return args;
-  }
-
-  // Unknown command — let CommandRunner report the error
-  return args;
-}
-
 Future<void> main(List<String> args) async {
   if (!(Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
     Log.e('Unsupported platform ${Platform.operatingSystem}');
@@ -292,10 +232,8 @@ Future<void> main(List<String> args) async {
     ..addCommand(LogoutCommand())
     ..addCommand(ConfigCommand());
 
-  final effectiveArgs = _effectiveArgs(args);
-
   try {
-    await runner.run(effectiveArgs);
+    await runner.run(effectiveCliArgs(args));
   } on cli.UsageException catch (e) {
     stderr.writeln(e.message);
     stderr.writeln(e.usage);

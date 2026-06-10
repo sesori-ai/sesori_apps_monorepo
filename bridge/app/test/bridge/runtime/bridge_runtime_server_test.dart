@@ -320,6 +320,15 @@ class _FakeBridgeInstanceService implements BridgeInstanceService {
     operations.add("singleton.check");
     return resolution;
   }
+
+  @override
+  Future<List<ProcessIdentity>> terminateBridges({
+    required int currentPid,
+    required List<ProcessIdentity> existingBridges,
+  }) async {
+    operations.add("singleton.terminate");
+    return existingBridges;
+  }
 }
 
 class _FakeOpenCodeServerService implements OpenCodeServerService {
