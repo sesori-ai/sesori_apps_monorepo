@@ -8,11 +8,15 @@ sealed class AuthProvider {
 
   const AuthProvider._();
 
+  /// The key the auth server uses for email/password accounts.
+  static const _serverPasswordKey = "password";
+
   static AuthProvider? fromKey(String? key) => switch (true) {
     _ when github.key == key => github,
     _ when google.key == key => google,
     _ when apple.key == key => apple,
     _ when email.key == key => email,
+    _ when _serverPasswordKey == key => email,
     _ => null,
   };
 

@@ -39,6 +39,21 @@ void main() {
     });
   });
 
+  group("AuthUser", () {
+    test("parses the server's password provider key as the email provider", () {
+      final user = AuthUser.fromJson({
+        "id": "user-1",
+        "provider": "password",
+        "providerUserId": "test@example.com",
+        "providerUsername": null,
+      });
+
+      expect(user.provider, equals(AuthProvider.email));
+      // Serialization keeps the canonical client-side key.
+      expect(user.toJson()["provider"], equals("email"));
+    });
+  });
+
   group("AuthSessionStatusResponse", () {
     test("round-trips pending status", () {
       const original = AuthSessionStatusResponse.pending();

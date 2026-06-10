@@ -845,7 +845,8 @@ void main() {
             "refreshToken": "email-refresh-token",
             "user": {
               "id": user.id,
-              "provider": "email",
+              // The auth server reports email/password accounts as "password".
+              "provider": "password",
               "providerUserId": user.providerUserId,
               "providerUsername": user.providerUsername,
             },
@@ -878,6 +879,7 @@ void main() {
       ).called(1);
       final savedEmailUser = verify(() => mockTokenStorage.saveUser(captureAny())).captured.single as AuthUser;
       expect(savedEmailUser.providerUsername, "testuser");
+      expect(savedEmailUser.provider, AuthProvider.email);
     });
 
     test("throws on 401 invalid credentials", () async {

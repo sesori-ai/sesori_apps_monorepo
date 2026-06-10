@@ -15,6 +15,18 @@ void main() {
       expect(result, equals(AuthProvider.google));
     });
 
+    test("returns email provider for email key", () {
+      final result = AuthProvider.fromKey("email");
+
+      expect(result, equals(AuthProvider.email));
+    });
+
+    test("returns email provider for server password key", () {
+      final result = AuthProvider.fromKey("password");
+
+      expect(result, equals(AuthProvider.email));
+    });
+
     test("returns null for unknown key", () {
       final result = AuthProvider.fromKey("unknown");
 
