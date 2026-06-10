@@ -154,6 +154,50 @@ void main() {
       expect(savedTokens!.bridgeId, "br_abc12345");
     });
 
+    test("refresh keeps a bridgeId persisted while the refresh was in flight", () async {
+      final requestReceived = Completer<void>();
+      final server = await _RefreshTestServer.start(
+        responseDelay: const Duration(milliseconds: 60),
+        onRequest: (_, __) {
+          if (!requestReceived.isCompleted) {
+            requestReceived.complete();
+          }
+        },
+      );
+      addTearDown(server.close);
+
+      var stored = TokenData(
+        accessToken: "old-access",
+        refreshToken: "refresh-token",
+        lastProvider: AuthProvider.github,
+      );
+      final manager = TokenManager(
+        initialToken: _makeJwtFromNow(300),
+        authBackendUrl: server.baseUrl,
+        loadTokens: () async => stored,
+        saveTokens: (tokens) async {
+          stored = tokens;
+        },
+      );
+
+      final refreshFuture = manager.getAccessToken(forceRefresh: true);
+      // The refresh has loaded its pre-registration snapshot and is awaiting
+      // the HTTP response; registration now persists a freshly minted id.
+      await requestReceived.future.timeout(const Duration(seconds: 2));
+      stored = TokenData(
+        accessToken: stored.accessToken,
+        refreshToken: stored.refreshToken,
+        bridgeId: "br_minted123",
+        lastProvider: stored.lastProvider,
+      );
+
+      await refreshFuture;
+
+      expect(stored.bridgeId, "br_minted123");
+      expect(stored.accessToken, "new-access-token");
+      expect(stored.refreshToken, "new-refresh-token");
+    });
+
     test("successful refresh updates current access token", () async {
       final server = await _RefreshTestServer.start();
       addTearDown(server.close);

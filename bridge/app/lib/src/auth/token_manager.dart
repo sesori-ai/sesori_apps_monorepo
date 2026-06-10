@@ -114,11 +114,16 @@ class TokenManager implements AccessTokenProvider, AccessTokenUpdater, TokenRefr
 
     _tokenSubject.add(authResponse.accessToken);
 
+    // Re-read the token file before persisting: bridge registration can write
+    // a freshly minted bridgeId while this refresh is in flight (the
+    // background refresh at startup races registration), and persisting the
+    // pre-refresh snapshot would wipe it.
+    final latestTokens = await _loadTokens() ?? tokens;
     final persistedTokens = TokenData(
       accessToken: authResponse.accessToken,
       refreshToken: authResponse.refreshToken,
-      bridgeId: tokens.bridgeId,
-      lastProvider: tokens.lastProvider,
+      bridgeId: latestTokens.bridgeId,
+      lastProvider: latestTokens.lastProvider,
     );
     await _saveTokens(persistedTokens);
 
