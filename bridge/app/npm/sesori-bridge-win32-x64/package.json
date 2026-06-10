@@ -1,6 +1,6 @@
 {
   "name": "@sesori/bridge-win32-x64",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Bootstrap payload for the managed Sesori Bridge runtime on Windows x64",
   "os": [
     "win32"
@@ -14,7 +14,7 @@
   "sesoriBridge": {
     "bootstrapOnly": true,
     "managedRuntimeOwner": false,
-    "releaseTag": "v1.0.8",
+    "releaseTag": "v1.0.9",
     "releaseArtifact": "sesori-bridge-windows-x64.zip",
     "runtimeBundlePath": "lib/runtime"
   },
