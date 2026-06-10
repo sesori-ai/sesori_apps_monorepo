@@ -516,9 +516,12 @@ jobs:
     # unprotected store-beta environment to avoid a second approval pause.
     environment: ${{ inputs.platforms == 'bridge-only' && 'store-production' || 'store-beta' }}
     steps:
+      # Deliberately NOT the resolved commit: this job needs nothing from the
+      # release's tree (notes are API-driven, checksums come from artifacts,
+      # the tag is already pushed) — only tool/generate_release_notes.dart,
+      # which must come from the workflow's own revision. Resolved commits can
+      # predate the script entirely (legacy build-<N> tags).
       - uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.resolve.outputs.commit_sha }}
 
       - uses: dart-lang/setup-dart@v1
 
