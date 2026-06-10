@@ -10,6 +10,40 @@
 
 - No changes
 
+## [1.0.9] - 2026-06-10
+
+### App
+
+#### Added
+- Redesigned login screen to match Figma designs (#179)
+- Localized hardcoded UI strings across the mobile app (#180)
+- Bridge onboarding & connected-empty states for the Projects screen (#189)
+- Firebase Analytics user ID configured with privacy-preserving hashing (#207)
+- Tabler icons updated to four weight-based icon families (#209)
+
+#### Fixed
+- Model picker list no longer clipped above the home indicator (#187)
+- Pending changes banner text contrast in light and dark mode (#193)
+- Diff viewer scrolls to the next file header on collapse (#197)
+- Code diff button hidden on child session screens (#198)
+- Best available model shown by default in the picker and on new sessions (#201)
+- Agent & model pickers restored by scoping GET /agent to a directory (#216)
+
+#### Changed
+- Flutter upgraded to 3.44.1 (#203)
+- ApiError mapped to per-feature FailedReason enums at the cubit boundary (#208)
+
+### Bridge
+
+#### Added
+- Bridge instances registered with auth; bridgeId sent to the relay (#215)
+- `--login` flag replaced with an explicit `logout` command (#190)
+
+#### Fixed
+- New upstream OpenCode SSE event types ignored instead of failing the parser (#217)
+- Agent & model pickers restored by scoping GET /agent to a directory (#216)
+- Worktree directories fully deleted after `git worktree remove` (#211)
+
 ## [1.0.7] - 2026-05-20
 
 ### App
