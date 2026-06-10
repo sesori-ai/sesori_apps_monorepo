@@ -43,22 +43,32 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # use_asdf: the asdf/.tool-versions Flutter toolchain only works where
+        # Flutter publishes a host SDK and asdf runs — NOT on Windows (no asdf)
+        # and NOT on linux-arm64 (no Flutter host SDK; asdf would install the
+        # x64 tarball and dart dies with an Exec format error). Those legs use
+        # dart-lang/setup-dart instead, which ships all four host targets.
         include:
           - runner: macos-latest
             asset_name: sesori-bridge-macos-arm64
             archive_ext: tar.gz
+            use_asdf: true
           - runner: macos-26-intel
             asset_name: sesori-bridge-macos-x64
             archive_ext: tar.gz
+            use_asdf: true
           - runner: ubuntu-latest
             asset_name: sesori-bridge-linux-x64
             archive_ext: tar.gz
+            use_asdf: true
           - runner: ubuntu-24.04-arm
             asset_name: sesori-bridge-linux-arm64
             archive_ext: tar.gz
+            use_asdf: false
           - runner: windows-latest
             asset_name: sesori-bridge-windows-x64
             archive_ext: zip
+            use_asdf: false
     steps:
       - uses: actions/checkout@v6
         with:
@@ -70,7 +80,7 @@ jobs:
       # in mobile/). Pull the action from the workflow's own revision into a
       # side directory and run it from there.
       - name: Checkout CI actions at workflow revision
-        if: runner.os != 'Windows'
+        if: matrix.use_asdf
         uses: actions/checkout@v6
         with:
           path: .ci-workflow
@@ -79,26 +89,63 @@ jobs:
       # Same pinned toolchain as the mobile builds: asdf installs the Flutter
       # version from .tool-versions and dart comes from that installation. On
       # macOS the iOS deploy job usually warmed the same asdf cache already.
-      # asdf has no Windows support, so Windows keeps dart-lang/setup-dart.
       - name: Setup Flutter (asdf)
-        if: runner.os != 'Windows'
+        if: matrix.use_asdf
         uses: ./.ci-workflow/.github/actions/setup-flutter
         with:
           workspace: bridge
 
-      - name: Setup Dart (Windows)
-        if: runner.os == 'Windows'
-        uses: dart-lang/setup-dart@v1
+      # Even without asdf the toolchain must match .tool-versions: resolve the
+      # Dart SDK bundled with the pinned Flutter release from Flutter's
+      # releases manifest (read from the CHECKED-OUT ref, so rebuilds of older
+      # commits keep their own pin) and install exactly that version.
+      - name: Resolve pinned Dart version
+        id: dart-version
+        if: ${{ !matrix.use_asdf }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOOL_SPEC=$(awk '$1 == "flutter" {print $2}' .tool-versions)
+          if [[ -z "$TOOL_SPEC" ]]; then
+            echo "::error::No flutter entry found in .tool-versions"
+            exit 1
+          fi
+          if [[ "$TOOL_SPEC" == *-* ]]; then
+            FLUTTER_VERSION="${TOOL_SPEC%-*}"
+            CHANNEL="${TOOL_SPEC##*-}"
+          else
+            FLUTTER_VERSION="$TOOL_SPEC"
+            CHANNEL="stable"
+          fi
+          DART_VERSION=$(curl -fsSL https://storage.googleapis.com/flutter_infra_release/releases/releases_linux.json \
+            | jq -r --arg v "$FLUTTER_VERSION" --arg c "$CHANNEL" \
+                '[.releases[] | select(.version == $v and .channel == $c)][0].dart_sdk_version // empty' \
+            | awk '{print $1}')
+          if [[ -z "$DART_VERSION" ]]; then
+            echo "::error::Could not resolve the Dart SDK bundled with Flutter ${TOOL_SPEC} from the Flutter releases manifest."
+            exit 1
+          fi
+          echo "Flutter ${TOOL_SPEC} bundles Dart ${DART_VERSION}"
+          echo "version=${DART_VERSION}" >> "$GITHUB_OUTPUT"
 
-      - name: Cache pub dependencies (Windows)
-        if: runner.os == 'Windows'
+      - name: Setup Dart (setup-dart fallback)
+        if: ${{ !matrix.use_asdf }}
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: ${{ steps.dart-version.outputs.version }}
+
+      - name: Cache pub dependencies (setup-dart fallback)
+        if: ${{ !matrix.use_asdf }}
         uses: actions/cache@v5
         with:
-          path: ~\AppData\Local\Pub\Cache
+          # Default pub cache locations; only the one for the current OS exists.
+          path: |
+            ~/.pub-cache
+            ~\AppData\Local\Pub\Cache
           key: ${{ runner.os }}-${{ runner.arch }}-pub-${{ hashFiles('bridge/pubspec.lock') }}
 
-      - name: Get dependencies (Windows)
-        if: runner.os == 'Windows'
+      - name: Get dependencies (setup-dart fallback)
+        if: ${{ !matrix.use_asdf }}
         run: dart pub get
         working-directory: bridge
 

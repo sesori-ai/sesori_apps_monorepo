@@ -18,7 +18,10 @@ runs:
       uses: actions/cache@v5
       with:
         path: ${{ env.HOME }}/.asdf
-        key: ${{ runner.os }}-asdf-${{ hashFiles('.tool-versions') }}
+        # runner.arch is part of the key: macos-latest (arm64) and
+        # macos-26-intel (x64) would otherwise share and cross-poison a cache
+        # of architecture-specific binaries.
+        key: ${{ runner.os }}-${{ runner.arch }}-asdf-${{ hashFiles('.tool-versions') }}
 
     - name: Install asdf tools
       if: steps.asdf-cache.outputs.cache-hit != 'true'
@@ -34,9 +37,13 @@ runs:
       with:
         path: |
           ~/.pub-cache
-        key: ${{ runner.os }}-pub-${{ hashFiles('.tool-versions') }}-${{ hashFiles('**/pubspec.lock') }}
+        key: ${{ runner.os }}-${{ runner.arch }}-pub-${{ hashFiles('.tool-versions') }}-${{ hashFiles('**/pubspec.lock') }}
+        # Second restore key keeps the pub cache warm across .tool-versions
+        # bumps — pub packages are SDK-version independent, so seeding an SDK
+        # upgrade from the previous cache is safe (it re-saves under the new key).
         restore-keys: |
-          ${{ runner.os }}-pub-${{ hashFiles('.tool-versions') }}-
+          ${{ runner.os }}-${{ runner.arch }}-pub-${{ hashFiles('.tool-versions') }}-
+          ${{ runner.os }}-${{ runner.arch }}-pub-
 
     - name: Get dependencies (workspace)
       if: inputs.workspace != 'none'
