@@ -38,8 +38,12 @@ runs:
         path: |
           ~/.pub-cache
         key: ${{ runner.os }}-${{ runner.arch }}-pub-${{ hashFiles('.tool-versions') }}-${{ hashFiles('**/pubspec.lock') }}
+        # Second restore key keeps the pub cache warm across .tool-versions
+        # bumps — pub packages are SDK-version independent, so seeding an SDK
+        # upgrade from the previous cache is safe (it re-saves under the new key).
         restore-keys: |
           ${{ runner.os }}-${{ runner.arch }}-pub-${{ hashFiles('.tool-versions') }}-
+          ${{ runner.os }}-${{ runner.arch }}-pub-
 
     - name: Get dependencies (workspace)
       if: inputs.workspace != 'none'

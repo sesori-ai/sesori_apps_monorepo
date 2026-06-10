@@ -95,9 +95,44 @@ jobs:
         with:
           workspace: bridge
 
+      # Even without asdf the toolchain must match .tool-versions: resolve the
+      # Dart SDK bundled with the pinned Flutter release from Flutter's
+      # releases manifest (read from the CHECKED-OUT ref, so rebuilds of older
+      # commits keep their own pin) and install exactly that version.
+      - name: Resolve pinned Dart version
+        id: dart-version
+        if: ${{ !matrix.use_asdf }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOOL_SPEC=$(awk '$1 == "flutter" {print $2}' .tool-versions)
+          if [[ -z "$TOOL_SPEC" ]]; then
+            echo "::error::No flutter entry found in .tool-versions"
+            exit 1
+          fi
+          if [[ "$TOOL_SPEC" == *-* ]]; then
+            FLUTTER_VERSION="${TOOL_SPEC%-*}"
+            CHANNEL="${TOOL_SPEC##*-}"
+          else
+            FLUTTER_VERSION="$TOOL_SPEC"
+            CHANNEL="stable"
+          fi
+          DART_VERSION=$(curl -fsSL https://storage.googleapis.com/flutter_infra_release/releases/releases_linux.json \
+            | jq -r --arg v "$FLUTTER_VERSION" --arg c "$CHANNEL" \
+                '[.releases[] | select(.version == $v and .channel == $c)][0].dart_sdk_version // empty' \
+            | awk '{print $1}')
+          if [[ -z "$DART_VERSION" ]]; then
+            echo "::error::Could not resolve the Dart SDK bundled with Flutter ${TOOL_SPEC} from the Flutter releases manifest."
+            exit 1
+          fi
+          echo "Flutter ${TOOL_SPEC} bundles Dart ${DART_VERSION}"
+          echo "version=${DART_VERSION}" >> "$GITHUB_OUTPUT"
+
       - name: Setup Dart (setup-dart fallback)
         if: ${{ !matrix.use_asdf }}
         uses: dart-lang/setup-dart@v1
+        with:
+          sdk: ${{ steps.dart-version.outputs.version }}
 
       - name: Cache pub dependencies (setup-dart fallback)
         if: ${{ !matrix.use_asdf }}
