@@ -46,15 +46,6 @@ class BridgeRuntimeAuthService {
   }
 
   Future<TokenData> ensureAuthenticated({required BridgeCliOptions options}) async {
-    if (options.forceLogin) {
-      await clearTokens();
-      final provider = await promptForProvider();
-      return _loginAndPersist(
-        authBackendUrl: options.authBackendUrl,
-        provider: provider,
-      );
-    }
-
     try {
       final storedTokens = await loadTokens();
       try {

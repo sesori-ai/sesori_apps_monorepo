@@ -64,7 +64,7 @@ class BridgeInstanceService {
           terminatedBridges: const <ProcessIdentity>[],
         );
       case TerminalPromptDecision.replace:
-        final terminatedBridges = await _terminateExistingBridges(
+        final terminatedBridges = await terminateBridges(
           currentPid: currentPid,
           existingBridges: existingBridges,
         );
@@ -76,7 +76,7 @@ class BridgeInstanceService {
     }
   }
 
-  Future<List<ProcessIdentity>> _terminateExistingBridges({
+  Future<List<ProcessIdentity>> terminateBridges({
     required int currentPid,
     required List<ProcessIdentity> existingBridges,
   }) async {

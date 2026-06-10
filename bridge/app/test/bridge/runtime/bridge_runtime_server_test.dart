@@ -227,7 +227,6 @@ BridgeCliOptions _options({
     password: password,
     opencodeBin: "opencode",
     authBackendUrl: "https://api.sesori.com",
-    forceLogin: false,
     debugPort: null,
     logLevelName: "info",
   );
@@ -320,6 +319,15 @@ class _FakeBridgeInstanceService implements BridgeInstanceService {
     currentPids.add(currentPid);
     operations.add("singleton.check");
     return resolution;
+  }
+
+  @override
+  Future<List<ProcessIdentity>> terminateBridges({
+    required int currentPid,
+    required List<ProcessIdentity> existingBridges,
+  }) async {
+    operations.add("singleton.terminate");
+    return existingBridges;
   }
 }
 

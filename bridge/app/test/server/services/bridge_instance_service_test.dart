@@ -195,6 +195,13 @@ class _FakeTerminalPromptRepository implements TerminalPromptRepository {
   }
 
   @override
+  Future<TerminalPromptDecision> askStopBridgesBeforeLogout({required int bridgeCount}) async {
+    askCount += 1;
+    bridgeCounts.add(bridgeCount);
+    return decision;
+  }
+
+  @override
   ({String email, String password}) promptForEmailCredentials() {
     final newCount = emailPromptCount++;
     return (
