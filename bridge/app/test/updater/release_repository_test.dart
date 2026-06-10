@@ -672,6 +672,35 @@ void main() {
       );
     });
 
+    test('stable is higher precedence than internal build with same base', () {
+      expect(
+        BridgeVersion.parse(value: '9.8.7').compareTo(BridgeVersion.parse(value: '9.8.7-internal.53')),
+        isPositive,
+      );
+      expect(
+        BridgeVersion.parse(value: '9.8.7-internal.53').compareTo(BridgeVersion.parse(value: '9.8.7')),
+        isNegative,
+      );
+    });
+
+    test('internal builds with same base compare numerically by build number', () {
+      expect(
+        BridgeVersion.parse(value: '1.0.9-internal.9').compareTo(BridgeVersion.parse(value: '1.0.9-internal.53')),
+        isNegative,
+      );
+      expect(
+        BridgeVersion.parse(value: '1.0.9-internal.54').compareTo(BridgeVersion.parse(value: '1.0.9-internal.53')),
+        isPositive,
+      );
+    });
+
+    test('internal build of a newer base is higher than an older stable', () {
+      expect(
+        BridgeVersion.parse(value: '1.0.9-internal.53').compareTo(BridgeVersion.parse(value: '1.0.8')),
+        isPositive,
+      );
+    });
+
     test('prerelease with newer numeric base still compares positive', () {
       expect(
         BridgeVersion.parse(value: '2.0.0-beta').compareTo(BridgeVersion.parse(value: '1.9.9')),
