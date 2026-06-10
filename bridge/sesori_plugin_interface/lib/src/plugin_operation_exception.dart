@@ -35,6 +35,7 @@ class PluginOperationException implements Exception {
   String toString() {
     final status = statusCode == null ? "" : " with status $statusCode";
     final detail = message == null ? "" : ": $message";
-    return "PluginOperationException: $operation failed$status$detail";
+    final causeDetail = cause == null ? "" : " (cause: $cause)";
+    return "PluginOperationException: $operation failed$status$detail$causeDetail";
   }
 }

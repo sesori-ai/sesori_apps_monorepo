@@ -15,6 +15,11 @@ void main() {
       expect(exception.isNotFound, isTrue);
       expect(exception.statusCode, 404);
     });
+
+    test('toString includes the cause when present', () {
+      const exception = PluginOperationException('sync', cause: 'socket closed');
+      expect(exception.toString(), 'PluginOperationException: sync failed (cause: socket closed)');
+    });
   });
 
   group('PluginApiException', () {
@@ -30,6 +35,15 @@ void main() {
       final exception = PluginApiException('/session/abc', 404);
       expect(exception.toString(), 'PluginApiException: /session/abc failed with status 404');
       expect(exception.isNotFound, isTrue);
+    });
+
+    test('forwards message and cause for detailed error context', () {
+      final exception = PluginApiException('/session/abc', 500, message: 'upstream body', cause: 'timeout');
+      expect(exception.message, 'upstream body');
+      expect(
+        exception.toString(),
+        'PluginApiException: /session/abc failed with status 500: upstream body (cause: timeout)',
+      );
     });
   });
 }
