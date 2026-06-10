@@ -136,7 +136,12 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: dart-lang/setup-dart@v1
+      # Pinned toolchain from .tool-versions; the notes script is
+      # dependency-free, so no workspace pub get is needed.
+      - name: Setup Flutter (asdf)
+        uses: ./.github/actions/setup-flutter
+        with:
+          workspace: none
 
       - name: Download bridge artifacts
         uses: actions/download-artifact@v4

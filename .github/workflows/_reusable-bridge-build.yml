@@ -40,8 +40,6 @@ jobs:
     name: Build (${{ matrix.asset_name }})
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
-    env:
-      PUB_CACHE: ${{ github.workspace }}/.pub-cache
     strategy:
       fail-fast: false
       matrix:
@@ -66,14 +64,29 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
-      - uses: dart-lang/setup-dart@v1
-
-      - uses: actions/cache@v5
+      # Same pinned toolchain as the mobile builds: asdf installs the Flutter
+      # version from .tool-versions and dart comes from that installation. On
+      # macOS the iOS deploy job usually warmed the same asdf cache already.
+      # asdf has no Windows support, so Windows keeps dart-lang/setup-dart.
+      - name: Setup Flutter (asdf)
+        if: runner.os != 'Windows'
+        uses: ./.github/actions/setup-flutter
         with:
-          path: ${{ github.workspace }}/.pub-cache
+          workspace: bridge
+
+      - name: Setup Dart (Windows)
+        if: runner.os == 'Windows'
+        uses: dart-lang/setup-dart@v1
+
+      - name: Cache pub dependencies (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/cache@v5
+        with:
+          path: ~\AppData\Local\Pub\Cache
           key: ${{ runner.os }}-${{ runner.arch }}-pub-${{ hashFiles('bridge/pubspec.lock') }}
 
-      - name: Get dependencies
+      - name: Get dependencies (Windows)
+        if: runner.os == 'Windows'
         run: dart pub get
         working-directory: bridge
 
