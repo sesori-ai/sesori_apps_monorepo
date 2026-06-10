@@ -105,7 +105,7 @@ class _CopyIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Icon(TablerOutline.copy, size: 16, color: context.zyra.colors.textTertiary);
+    return Icon(TablerRegular.copy, size: 16, color: context.zyra.colors.textTertiary);
   }
 }
 

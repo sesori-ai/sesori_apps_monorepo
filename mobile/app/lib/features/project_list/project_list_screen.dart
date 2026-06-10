@@ -153,7 +153,7 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
       // the add-project affordance.
       floatingActionButton: state is ProjectListLoaded && state.projects.isNotEmpty
           ? ZyraButtonsIconGlass(
-              icon: TablerOutline.folder_plus,
+              icon: TablerRegular.folder_plus,
               size: ZyraButtonsIconGlassSize.lg,
               iconSize: 22,
               onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),

@@ -151,7 +151,7 @@ class _OnboardingChecklistState extends State<_OnboardingChecklist> {
                     // actionable button); when live it is also the sole add-
                     // project CTA, as the FAB is hidden here.
                     ZyraButtonsIconGlass(
-                      icon: TablerOutline.folder_plus,
+                      icon: TablerRegular.folder_plus,
                       size: ZyraButtonsIconGlassSize.lg,
                       iconSize: 30,
                       semanticLabel: loc.projectsOnboardingOpenFolder,
@@ -205,7 +205,7 @@ class _OnboardingStep extends StatelessWidget {
         ? SizedBox(
             height: lineHeight,
             child: Icon(
-              TablerOutline.check,
+              TablerRegular.check,
               size: 20,
               color: colors.textPrimary,
               semanticLabel: loc.projectsOnboardingStepCompleted,
