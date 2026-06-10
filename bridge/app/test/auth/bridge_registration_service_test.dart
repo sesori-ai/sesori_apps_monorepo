@@ -58,6 +58,26 @@ void main() {
       expect(tokenStore.tokens!.bridgeId, equals("br_persisted1"));
     });
 
+    test("reads the token file only once when persisting the server-minted id", () async {
+      var loadCount = 0;
+      final countingService = BridgeRegistrationService(
+        repository: repository,
+        tokenRefresher: tokenRefresher,
+        loadTokens: () {
+          loadCount += 1;
+          return tokenStore.load();
+        },
+        saveTokens: tokenStore.save,
+        hostName: "dev-laptop",
+        platform: "macos",
+      );
+
+      await countingService.ensureRegistered();
+
+      expect(loadCount, equals(1));
+      expect(tokenStore.tokens!.bridgeId, equals("br_test1234"));
+    });
+
     test("is memoized per process — a second call does not re-register", () async {
       await service.ensureRegistered();
       await service.ensureRegistered();

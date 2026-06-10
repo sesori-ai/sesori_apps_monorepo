@@ -41,13 +41,7 @@ class BridgeRegistrationApi {
     required String? bridgeId,
     required String accessToken,
   }) async {
-    final body = <String, dynamic>{
-      "name": name,
-      "platform": platform,
-    };
-    if (bridgeId != null) {
-      body["bridgeId"] = bridgeId;
-    }
+    final request = RegisterBridgeRequest(name: name, platform: platform, bridgeId: bridgeId);
 
     final response = await _client
         .post(
@@ -56,7 +50,7 @@ class BridgeRegistrationApi {
             "Content-Type": "application/json",
             "Authorization": "Bearer $accessToken",
           },
-          body: jsonEncode(body),
+          body: jsonEncode(request.toJson()),
         )
         .timeout(_requestTimeout);
 
@@ -77,7 +71,7 @@ class BridgeRegistrationApi {
   }) async {
     final response = await _client
         .delete(
-          Uri.parse("$_authBackendUrl/auth/bridges/$bridgeId"),
+          Uri.parse("$_authBackendUrl/auth/bridges/${Uri.encodeComponent(bridgeId)}"),
           headers: {"Authorization": "Bearer $accessToken"},
         )
         .timeout(_requestTimeout);

@@ -75,6 +75,18 @@ void main() {
       expect(request.authorization, equals("Bearer access-token"));
     });
 
+    test("URL-encodes a bridgeId that is not URL-safe (corrupt token file)", () async {
+      final server = await _BridgesTestServer.start(statusCode: 200);
+      addTearDown(server.close);
+
+      final api = _createApi(server);
+      await api.deleteBridge(bridgeId: "br weird/../id?x=1", accessToken: "access-token");
+
+      final request = server.requests.single;
+      expect(request.method, equals("DELETE"));
+      expect(request.path, equals("/auth/bridges/br%20weird%2F..%2Fid%3Fx%3D1"));
+    });
+
     test("throws BridgeRegistrationException with status 404 for unknown bridges", () async {
       final server = await _BridgesTestServer.start(statusCode: 404);
       addTearDown(server.close);

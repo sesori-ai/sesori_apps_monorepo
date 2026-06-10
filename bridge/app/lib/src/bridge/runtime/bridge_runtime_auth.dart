@@ -119,10 +119,25 @@ class BridgeRuntimeAuthService {
       EmailAuthProvider() => _loginEmailRepository.performEmailLogin(),
     };
 
+    // A fresh login response never carries a bridge id, so carry over the one
+    // persisted by a previous registration. Otherwise an interactive re-login
+    // (e.g. expired refresh token) would wipe it and the next registration
+    // would mint a duplicate bridge entry. Carrying it across an account
+    // switch is safe: registration is idempotent on (userId, bridgeId), and a
+    // bridge id not owned by the new account just gets a fresh mint.
+    String? existingBridgeId;
+    try {
+      final existingTokens = await loadTokens();
+      existingBridgeId = existingTokens.bridgeId;
+    } on Object {
+      // Token file missing or corrupt — no previous bridge id to carry over.
+      existingBridgeId = null;
+    }
+
     final tokensToSave = TokenData(
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
-      bridgeId: tokens.bridgeId,
+      bridgeId: tokens.bridgeId ?? existingBridgeId,
       lastProvider: provider,
     );
     await saveTokens(tokensToSave);
