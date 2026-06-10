@@ -64,13 +64,25 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
+      # Local `uses: ./...` actions resolve from the CHECKED-OUT tree, which
+      # for submit-release rebuilds can be an older commit whose copy of the
+      # action predates the `workspace` input (it would silently run pub get
+      # in mobile/). Pull the action from the workflow's own revision into a
+      # side directory and run it from there.
+      - name: Checkout CI actions at workflow revision
+        if: runner.os != 'Windows'
+        uses: actions/checkout@v6
+        with:
+          path: .ci-workflow
+          sparse-checkout: .github/actions
+
       # Same pinned toolchain as the mobile builds: asdf installs the Flutter
       # version from .tool-versions and dart comes from that installation. On
       # macOS the iOS deploy job usually warmed the same asdf cache already.
       # asdf has no Windows support, so Windows keeps dart-lang/setup-dart.
       - name: Setup Flutter (asdf)
         if: runner.os != 'Windows'
-        uses: ./.github/actions/setup-flutter
+        uses: ./.ci-workflow/.github/actions/setup-flutter
         with:
           workspace: bridge
 
