@@ -35,6 +35,7 @@ _DebugServerHarness _createDebugServerHarness({
     httpClient: httpClient,
     accessTokenProvider: FakeAccessTokenProvider(),
     tokenRefresher: _FakeTokenRefresher(),
+    bridgeRegistrationService: createFakeBridgeRegistrationService(),
     database: db,
     processRunner: ProcessRunner(),
     failureReporter: FakeFailureReporter(),

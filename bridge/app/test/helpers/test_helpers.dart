@@ -5,6 +5,11 @@ import "dart:math";
 
 import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge/src/auth/access_token_provider.dart";
+import "package:sesori_bridge/src/auth/bridge_id_provider.dart";
+import "package:sesori_bridge/src/auth/bridge_registration_repository.dart";
+import "package:sesori_bridge/src/auth/bridge_registration_service.dart";
+import "package:sesori_bridge/src/auth/token.dart";
+import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -18,6 +23,101 @@ class FakeAccessTokenProvider implements AccessTokenProvider {
 
   @override
   ValueStream<String> get tokenStream => _subject.stream;
+}
+
+class FakeBridgeIdProvider implements BridgeIdProvider {
+  String? id;
+
+  FakeBridgeIdProvider([this.id]);
+
+  @override
+  String? get bridgeId => id;
+}
+
+class FakeTokenRefresher implements TokenRefresher {
+  @override
+  Future<String> getAccessToken({bool forceRefresh = false}) async => "test-token";
+}
+
+/// In-memory token file substitute for [BridgeRegistrationService] tests.
+class InMemoryTokenStore {
+  TokenData? tokens;
+
+  InMemoryTokenStore([this.tokens]);
+
+  Future<TokenData> load() async {
+    final stored = tokens;
+    if (stored == null) {
+      throw const FileSystemException("no tokens stored");
+    }
+    return stored;
+  }
+
+  Future<void> save(TokenData data) async {
+    tokens = data;
+  }
+}
+
+/// A [BridgeRegistrationRepository] fake that records calls and returns
+/// configurable results without touching the network.
+class FakeBridgeRegistrationRepository implements BridgeRegistrationRepository {
+  /// The bridge ids that [register] was called with, in order.
+  final List<String?> registeredBridgeIds = [];
+
+  /// The bridge ids that [unregister] was called with, in order.
+  final List<String> unregisteredBridgeIds = [];
+
+  /// When non-null, [register] throws this error instead of succeeding.
+  Object? registerError;
+
+  /// The id returned from successful [register] calls.
+  String nextBridgeId = "br_test1234";
+
+  @override
+  Future<BridgeSummary> register({
+    required String name,
+    required String platform,
+    required String? bridgeId,
+    required String accessToken,
+  }) async {
+    registeredBridgeIds.add(bridgeId);
+    if (registerError != null) {
+      throw registerError!;
+    }
+    return BridgeSummary(
+      id: nextBridgeId,
+      name: name,
+      platform: platform,
+      addedAt: DateTime.utc(2026, 6, 1),
+      lastSeenAt: null,
+    );
+  }
+
+  @override
+  Future<void> unregister({required String bridgeId, required String accessToken}) async {
+    unregisteredBridgeIds.add(bridgeId);
+  }
+}
+
+/// Builds a [BridgeRegistrationService] backed by in-memory fakes, suitable
+/// for orchestrator and runtime tests.
+BridgeRegistrationService createFakeBridgeRegistrationService({
+  BridgeRegistrationRepository? repository,
+  InMemoryTokenStore? tokenStore,
+}) {
+  final store =
+      tokenStore ??
+      InMemoryTokenStore(
+        TokenData(accessToken: "access", refreshToken: "refresh", lastProvider: AuthProvider.github),
+      );
+  return BridgeRegistrationService(
+    repository: repository ?? FakeBridgeRegistrationRepository(),
+    tokenRefresher: FakeTokenRefresher(),
+    loadTokens: store.load,
+    saveTokens: store.save,
+    hostName: "test-host",
+    platform: "macos",
+  );
 }
 
 class FakeFailureReporter implements FailureReporter {
@@ -94,6 +194,7 @@ Future<RelayClient> connectTestRelayClient(HttpServer server) async {
   final client = RelayClient(
     relayURL: "ws://127.0.0.1:${server.port}",
     accessTokenProvider: FakeAccessTokenProvider(),
+    bridgeIdProvider: FakeBridgeIdProvider(),
   );
   await client.connect();
   return client;

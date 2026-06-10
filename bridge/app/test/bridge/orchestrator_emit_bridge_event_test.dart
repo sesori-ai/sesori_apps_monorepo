@@ -82,6 +82,7 @@ void main() {
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
@@ -103,6 +104,7 @@ void main() {
       completionListener: pushSubsystem.completionListener,
       maintenanceListener: pushSubsystem.maintenanceListener,
       tokenRefresher: _FakeTokenRefresher(),
+      bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: FakeFailureReporter(),
       prSyncService: fakePrSyncService,
       sessionRepository: sessionRepository,
@@ -189,6 +191,7 @@ void main() {
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
@@ -228,6 +231,7 @@ void main() {
       completionListener: pushListeners.completionListener,
       maintenanceListener: pushListeners.maintenanceListener,
       tokenRefresher: _FakeTokenRefresher(),
+      bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: FakeFailureReporter(),
       prSyncService: fakePrSyncService,
       sessionRepository: sessionRepository,
@@ -329,6 +333,7 @@ void main() {
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
     );
 
     await database.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
@@ -381,6 +386,7 @@ void main() {
       completionListener: pushListeners.completionListener,
       maintenanceListener: pushListeners.maintenanceListener,
       tokenRefresher: _FakeTokenRefresher(),
+      bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: FakeFailureReporter(),
       prSyncService: _FakePrSyncService(),
       sessionRepository: sessionRepository,
@@ -484,6 +490,7 @@ void main() {
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
@@ -505,6 +512,7 @@ void main() {
       completionListener: pushListeners.completionListener,
       maintenanceListener: pushListeners.maintenanceListener,
       tokenRefresher: _FakeTokenRefresher(),
+      bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: FakeFailureReporter(),
       prSyncService: _FakePrSyncService(),
       sessionRepository: sessionRepository,
@@ -579,6 +587,7 @@ void main() {
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
@@ -600,6 +609,7 @@ void main() {
       completionListener: pushSubsystem.completionListener,
       maintenanceListener: pushSubsystem.maintenanceListener,
       tokenRefresher: _FakeTokenRefresher(),
+      bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: FakeFailureReporter(),
       prSyncService: _FakePrSyncService(),
       sessionRepository: sessionRepository,
@@ -699,6 +709,7 @@ void main() {
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
@@ -720,6 +731,7 @@ void main() {
       completionListener: pushSubsystem.completionListener,
       maintenanceListener: pushSubsystem.maintenanceListener,
       tokenRefresher: _FakeTokenRefresher(),
+      bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: FakeFailureReporter(),
       prSyncService: _FakePrSyncService(),
       sessionRepository: sessionRepository,

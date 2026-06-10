@@ -59,7 +59,7 @@ class BridgeRuntimeAuthService {
           final tokensToSave = TokenData(
             accessToken: validatedTokens.accessToken,
             refreshToken: validatedTokens.refreshToken,
-            bridgeToken: storedTokens.bridgeToken,
+            bridgeId: storedTokens.bridgeId,
             lastProvider: storedTokens.lastProvider,
           );
           await saveTokens(tokensToSave);
@@ -122,7 +122,7 @@ class BridgeRuntimeAuthService {
     final tokensToSave = TokenData(
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
-      bridgeToken: tokens.bridgeToken,
+      bridgeId: tokens.bridgeId,
       lastProvider: provider,
     );
     await saveTokens(tokensToSave);

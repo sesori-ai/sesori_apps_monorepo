@@ -17,6 +17,7 @@ export "src/models/auth/auth_provider.dart";
 export "src/models/auth/auth_response.dart";
 export "src/models/auth/auth_url_response.dart";
 export "src/models/auth/auth_user.dart";
+export "src/models/auth/bridge_summary.dart";
 export "src/models/auth/logout_response.dart";
 export "src/models/auth/session_status_response.dart";
 export "src/models/sesori/active_session.dart";

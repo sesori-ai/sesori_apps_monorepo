@@ -8,6 +8,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../auth/bridge_registration_service.dart";
 import "../auth/token_refresher.dart";
 import "../push/completion_push_listener.dart";
 import "../push/maintenance_push_listener.dart";
@@ -50,6 +51,7 @@ class Orchestrator {
   final CompletionPushListener _completionListener;
   final MaintenancePushListener _maintenanceListener;
   final TokenRefresher _tokenRefresher;
+  final BridgeRegistrationService _bridgeRegistrationService;
   final FailureReporter _failureReporter;
   final PrSyncService _prSyncService;
   final SessionRepository _sessionRepository;
@@ -68,6 +70,7 @@ class Orchestrator {
     required CompletionPushListener completionListener,
     required MaintenancePushListener maintenanceListener,
     required TokenRefresher tokenRefresher,
+    required BridgeRegistrationService bridgeRegistrationService,
     required FailureReporter failureReporter,
     required PrSyncService prSyncService,
     required SessionRepository sessionRepository,
@@ -83,6 +86,7 @@ class Orchestrator {
        _completionListener = completionListener,
        _maintenanceListener = maintenanceListener,
        _tokenRefresher = tokenRefresher,
+       _bridgeRegistrationService = bridgeRegistrationService,
        _failureReporter = failureReporter,
        _sessionRepository = sessionRepository,
        _prSyncService = prSyncService,
@@ -122,6 +126,7 @@ class Orchestrator {
       completionListener: _completionListener,
       maintenanceListener: _maintenanceListener,
       tokenRefresher: _tokenRefresher,
+      bridgeRegistrationService: _bridgeRegistrationService,
       roomKey: roomKey,
       sseManager: sseManager,
       bytesSentController: bytesSentController,
@@ -163,6 +168,7 @@ class OrchestratorSession {
   final CompletionPushListener _completionListener;
   final MaintenancePushListener _maintenanceListener;
   final TokenRefresher _tokenRefresher;
+  final BridgeRegistrationService _bridgeRegistrationService;
   final StreamController<int> _bytesSentController;
   final FailureReporter _failureReporter;
   final PrSyncService _prSyncService;
@@ -180,6 +186,7 @@ class OrchestratorSession {
     required CompletionPushListener completionListener,
     required MaintenancePushListener maintenanceListener,
     required TokenRefresher tokenRefresher,
+    required BridgeRegistrationService bridgeRegistrationService,
     required List<int> roomKey,
     required SSEManager sseManager,
     required StreamController<int> bytesSentController,
@@ -200,6 +207,7 @@ class OrchestratorSession {
        _completionListener = completionListener,
        _maintenanceListener = maintenanceListener,
        _tokenRefresher = tokenRefresher,
+       _bridgeRegistrationService = bridgeRegistrationService,
        _roomKey = roomKey,
        _sseManager = sseManager,
        _bytesSentController = bytesSentController,
@@ -215,12 +223,12 @@ class OrchestratorSession {
          abortSessionHandler: AbortSessionHandler(sessionAbortService: sessionAbortService),
          sessionCreationService: sessionCreationService,
          sessionArchiveService: sessionArchiveService,
-          sendPromptHandler: SendPromptHandler(
-            sessionPromptService: SessionPromptService(
-              sessionRepository: sessionRepository,
-              sseManager: sseManager,
-            ),
-          ),
+         sendPromptHandler: SendPromptHandler(
+           sessionPromptService: SessionPromptService(
+             sessionRepository: sessionRepository,
+             sseManager: sseManager,
+           ),
+         ),
          prSyncService: prSyncService,
          projectRepository: projectRepository,
          providerRepository: ProviderRepository(plugin: plugin),
@@ -251,6 +259,10 @@ class OrchestratorSession {
   Future<void> run() async {
     final kxManager = KeyExchangeManager(_roomKey);
     final activePhones = <int, bool>{};
+
+    Log.d("registering bridge with auth server...");
+    await _bridgeRegistrationService.ensureRegistered();
+    Log.d("bridge registered");
 
     try {
       Log.d("connecting to relay...");
@@ -326,6 +338,11 @@ class OrchestratorSession {
         _sseManager.orphanAll();
         activePhones.clear();
 
+        if (_client.closeCode == RelayCloseCodes.bridgeRevoked) {
+          Log.w("Relay reports this bridge as revoked — re-registering with a fresh bridge id");
+          await _bridgeRegistrationService.handleBridgeRevoked();
+        }
+
         var backoff = const Duration(seconds: 1);
         while (!_cancelled) {
           await Future<void>.delayed(backoff);
@@ -336,6 +353,7 @@ class OrchestratorSession {
           await _refreshAccessToken();
 
           try {
+            await _bridgeRegistrationService.ensureRegistered();
             await _client.reconnect();
           } catch (e) {
             Log.w("Reconnect failed: $e (retrying in $backoff)");

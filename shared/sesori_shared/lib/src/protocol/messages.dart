@@ -50,9 +50,11 @@ sealed class RelayMessage with _$RelayMessage {
   const factory RelayMessage.rekeyRequired() = RelayRekeyRequired;
 
   @FreezedUnionValue("auth")
+  // ignore: no_slop_linter/prefer_required_named_parameters, optional bridgeId keeps existing phone/bridge callers compiling; absent means a legacy unregistered bridge.
   const factory RelayMessage.auth({
     required String token,
     required String role,
+    @JsonKey(includeIfNull: false) String? bridgeId,
   }) = AuthRelayMessage;
 
   factory RelayMessage.fromJson(Map<String, dynamic> json) => _$RelayMessageFromJson(json);

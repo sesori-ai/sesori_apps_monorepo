@@ -3,6 +3,7 @@ import "dart:io";
 import "dart:typed_data";
 
 import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../helpers/test_helpers.dart";
@@ -47,12 +48,87 @@ void main() {
       final client = RelayClient(
         relayURL: "ws://localhost:9999",
         accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
       );
 
       expect(
         () => client.send(0, "hello".codeUnits),
         throwsA(isA<StateError>()),
       );
+    });
+  });
+
+  group("RelayClient auth message", () {
+    test("includes bridgeId when the provider has one", () async {
+      final server = await TestRelayServer.start();
+      addTearDown(server.close);
+
+      final client = RelayClient(
+        relayURL: "ws://127.0.0.1:${server.port}",
+        accessTokenProvider: FakeAccessTokenProvider("jwt-token"),
+        bridgeIdProvider: FakeBridgeIdProvider("br_abc12345"),
+      );
+      await client.connect();
+      addTearDown(client.close);
+
+      final serverWs = await server.nextClient();
+      final authJson = await _firstTextFrame(serverWs);
+
+      expect(
+        authJson,
+        equals({
+          "type": "auth",
+          "token": "jwt-token",
+          "role": "bridge",
+          "bridgeId": "br_abc12345",
+        }),
+      );
+    });
+
+    test("omits bridgeId when the provider has none", () async {
+      final server = await TestRelayServer.start();
+      addTearDown(server.close);
+
+      final client = RelayClient(
+        relayURL: "ws://127.0.0.1:${server.port}",
+        accessTokenProvider: FakeAccessTokenProvider("jwt-token"),
+        bridgeIdProvider: FakeBridgeIdProvider(),
+      );
+      await client.connect();
+      addTearDown(client.close);
+
+      final serverWs = await server.nextClient();
+      final authJson = await _firstTextFrame(serverWs);
+
+      expect(
+        authJson,
+        equals({"type": "auth", "token": "jwt-token", "role": "bridge"}),
+      );
+    });
+  });
+
+  group("RelayClient close code", () {
+    test("exposes the server's close code after the stream ends", () async {
+      final server = await TestRelayServer.start();
+      addTearDown(server.close);
+
+      final client = RelayClient(
+        relayURL: "ws://127.0.0.1:${server.port}",
+        accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
+      );
+      await client.connect();
+      addTearDown(client.close);
+
+      final serverWs = await server.nextClient();
+      expect(client.closeCode, isNull);
+
+      final streamDone = Completer<void>();
+      client.read().listen((_) {}, onDone: streamDone.complete);
+      await serverWs.close(RelayCloseCodes.bridgeRevoked);
+      await streamDone.future.timeout(const Duration(seconds: 5));
+
+      expect(client.closeCode, equals(RelayCloseCodes.bridgeRevoked));
     });
   });
 
@@ -64,6 +140,7 @@ void main() {
       final client = RelayClient(
         relayURL: "ws://127.0.0.1:${server.port}",
         accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
       );
       await client.connect();
       addTearDown(client.close);
@@ -103,6 +180,7 @@ void main() {
       final client = RelayClient(
         relayURL: "ws://127.0.0.1:${server.port}",
         accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
       );
       await client.connect();
       addTearDown(client.close);
@@ -146,6 +224,7 @@ void main() {
       final client = RelayClient(
         relayURL: "ws://127.0.0.1:${server.port}",
         accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
       );
       await client.connect();
       addTearDown(client.close);
@@ -187,6 +266,7 @@ void main() {
       final client = RelayClient(
         relayURL: "ws://127.0.0.1:${server.port}",
         accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
       );
       await client.connect();
       addTearDown(client.close);
@@ -241,10 +321,16 @@ void main() {
       final client = RelayClient(
         relayURL: "ws://127.0.0.1:${rawServer.port}",
         accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
         connectTimeout: const Duration(milliseconds: 500),
       );
 
       await expectLater(client.connect(), throwsA(isA<TimeoutException>()));
     });
   });
+}
+
+Future<Map<String, dynamic>> _firstTextFrame(WebSocket socket) async {
+  final message = await socket.firstWhere((dynamic data) => data is String).timeout(const Duration(seconds: 5));
+  return jsonDecodeMap(message as String);
 }

@@ -730,11 +730,12 @@ String toString() {
 @JsonSerializable()
 
 class AuthRelayMessage implements RelayMessage {
-  const AuthRelayMessage({required this.token, required this.role, final  String? $type}): $type = $type ?? 'auth';
+  const AuthRelayMessage({required this.token, required this.role, @JsonKey(includeIfNull: false) this.bridgeId, final  String? $type}): $type = $type ?? 'auth';
   factory AuthRelayMessage.fromJson(Map<String, dynamic> json) => _$AuthRelayMessageFromJson(json);
 
  final  String token;
  final  String role;
+@JsonKey(includeIfNull: false) final  String? bridgeId;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -753,16 +754,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthRelayMessage&&(identical(other.token, token) || other.token == token)&&(identical(other.role, role) || other.role == role));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthRelayMessage&&(identical(other.token, token) || other.token == token)&&(identical(other.role, role) || other.role == role)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,token,role);
+int get hashCode => Object.hash(runtimeType,token,role,bridgeId);
 
 @override
 String toString() {
-  return 'RelayMessage.auth(token: $token, role: $role)';
+  return 'RelayMessage.auth(token: $token, role: $role, bridgeId: $bridgeId)';
 }
 
 
@@ -773,7 +774,7 @@ abstract mixin class $AuthRelayMessageCopyWith<$Res> implements $RelayMessageCop
   factory $AuthRelayMessageCopyWith(AuthRelayMessage value, $Res Function(AuthRelayMessage) _then) = _$AuthRelayMessageCopyWithImpl;
 @useResult
 $Res call({
- String token, String role
+ String token, String role,@JsonKey(includeIfNull: false) String? bridgeId
 });
 
 
@@ -790,11 +791,12 @@ class _$AuthRelayMessageCopyWithImpl<$Res>
 
 /// Create a copy of RelayMessage
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? token = null,Object? role = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? token = null,Object? role = null,Object? bridgeId = freezed,}) {
   return _then(AuthRelayMessage(
 token: null == token ? _self.token : token // ignore: cast_nullable_to_non_nullable
 as String,role: null == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
-as String,
+as String,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
