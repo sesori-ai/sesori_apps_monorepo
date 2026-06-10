@@ -280,6 +280,19 @@ void main() {
       expect(response.status, equals(200));
     });
 
+    test("routes POST /agent to PostAgentsHandler and forwards the project body", () async {
+      final response = await router.route(
+        makeRequest(
+          "POST",
+          "/agent",
+          body: jsonEncode({"projectId": "/repo"}),
+        ),
+      );
+
+      expect(response.status, equals(200));
+      expect(plugin.lastAgentsProjectId, equals("/repo"));
+    });
+
     test("routes POST /session/questions to GetSessionQuestionsHandler", () async {
       final response = await router.route(
         makeRequest(
