@@ -444,9 +444,11 @@ jobs:
   # evaluate the same remote, so their decisions agree; the head is taken from
   # whichever platform published (iOS preferred). A SEPARATE job (not a step in
   # `tag`) so a metadata tagging failure can never block the GitHub release
-  # below — the binary already shipped. METADATA_REPO_TOKEN must be a
-  # REPOSITORY secret with Contents: Write — this job declares no environment,
-  # so an environment-scoped secret would read as empty here.
+  # below — the binary already shipped. METADATA_REPO_TOKEN is scoped to the
+  # store-production environment, so this job must declare that environment to
+  # read it. That means a SECOND reviewer approval for runs that published a
+  # listing — the job is skipped (no approval prompt) when nothing was
+  # published, and metadata-publishing releases are the rare case.
   tag-metadata:
     name: Tag store metadata repo
     needs: [resolve, submit-ios, submit-android, tag]
@@ -455,6 +457,7 @@ jobs:
       (needs.submit-ios.outputs.meta_publish == 'true' || needs.submit-android.outputs.meta_publish == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    environment: store-production
     steps:
       - name: Tag store metadata repo
         env:
@@ -481,7 +484,7 @@ jobs:
             exit 1
           fi
           if [[ -z "$TOKEN" ]]; then
-            echo "::error::Metadata was published but METADATA_REPO_TOKEN is empty in this job. It must be a REPOSITORY secret (not environment-scoped) with Contents: Write, so the tag job can push ${TAG} to ${REPO}."
+            echo "::error::Metadata was published but METADATA_REPO_TOKEN is empty in this job. It must exist in the store-production environment with Contents: Write on ${REPO}."
             exit 1
           fi
           work="$(mktemp -d)"
