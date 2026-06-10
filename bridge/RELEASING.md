@@ -105,7 +105,7 @@ Run the `Submit Release` workflow (`submit-release.yml`) with the build number t
 
 ### 4. npm publish (automatic)
 
-When the stable `v<X.Y.Z>` release goes live (immediately, or at manual promotion), `bridge-npm-publish.yml` fires on the `release: released` event and publishes the npm packages.
+When the stable `v<X.Y.Z>` release goes live, `bridge-npm-publish.yml` publishes the npm packages: dispatched directly by `submit-release.yml` when publishing immediately, or fired by the `release: released` event when you promote a pre-release manually in the GitHub UI.
 
 ## What the release pipeline does
 

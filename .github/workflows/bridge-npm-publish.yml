@@ -1,18 +1,31 @@
 name: Bridge npm Publish
 
 # Publishes the bridge npm packages (5 platform packages + the @sesori/bridge
-# wrapper) when a stable v<X.Y.Z> GitHub release goes LIVE.
+# wrapper) when a stable v<X.Y.Z> GitHub release goes LIVE, via two triggers:
 #
-# The `released` event type fires both when submit-release.yml publishes the
-# release immediately (publish_bridge ticked) and when an operator manually
-# promotes a pre-release to a full release in the GitHub UI — so npm
-# availability always coincides exactly with the moment the bridge
-# auto-updater starts seeing the release. It never fires for the rolling
-# v*-internal.* pre-releases.
+#   - workflow_dispatch: invoked directly by submit-release.yml when
+#     publish_bridge is ticked. Necessary because releases created with the
+#     default GITHUB_TOKEN do not emit workflow-triggering events.
+#   - release [released]: fires when an operator manually promotes a
+#     pre-release to a full release in the GitHub UI (a user action, so the
+#     event triggers normally). Never fires for the rolling v*-internal.*
+#     pre-releases.
+#
+# Either way, npm availability coincides with the moment the bridge
+# auto-updater starts seeing the release; the gate verifies the release is
+# actually live (published, not draft, not pre-release) before publishing.
 
 on:
   release:
     types: [released]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Stable release tag to publish (e.g. v1.0.9)"
+        required: true
+        type: string
+
+run-name: "npm publish · ${{ inputs.tag || github.event.release.tag_name }}"
 
 jobs:
   gate:
@@ -22,25 +35,37 @@ jobs:
     outputs:
       proceed: ${{ steps.check.outputs.proceed }}
       version: ${{ steps.check.outputs.version }}
+      tag: ${{ steps.check.outputs.tag }}
     permissions:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
-      RELEASE_TAG: ${{ github.event.release.tag_name }}
+      RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
     steps:
-      - name: Check tag format
+      - name: Check tag format and release state
         id: check
         run: |
           set -euo pipefail
-          if [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "proceed=true" >> "$GITHUB_OUTPUT"
-            echo "version=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
-            echo "Release ${RELEASE_TAG} is a stable bridge release — publishing npm packages."
-          else
+          echo "tag=${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "proceed=false" >> "$GITHUB_OUTPUT"
             echo "version=" >> "$GITHUB_OUTPUT"
             echo "Release ${RELEASE_TAG} is not a stable v<X.Y.Z> release — skipping npm publish."
+            exit 0
           fi
+
+          # Publish only from a LIVE release — guards manual dispatches against
+          # drafts, pre-releases pending promotion, or typo'd tags.
+          STATE=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" \
+            --jq '{draft: .draft, prerelease: .prerelease}' 2>/dev/null || echo "missing")
+          if [[ "$STATE" != '{"draft":false,"prerelease":false}' ]]; then
+            echo "::error::Release ${RELEASE_TAG} is not a published stable release (state: ${STATE}). Promote/publish it first."
+            exit 1
+          fi
+
+          echo "proceed=true" >> "$GITHUB_OUTPUT"
+          echo "version=${RELEASE_TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "Release ${RELEASE_TAG} is a live stable bridge release — publishing npm packages."
 
       # The rolling internal pre-release for this version (v<X.Y.Z>-internal.<N>)
       # is now superseded by the stable release — drop the release object (its
@@ -71,13 +96,13 @@ jobs:
       contents: read
       id-token: write
     env:
-      RELEASE_TAG: ${{ github.event.release.tag_name }}
+      RELEASE_TAG: ${{ needs.gate.outputs.tag }}
     steps:
       # Check out the TAGGED commit (not main) so the package.json manifests
       # match the version actually being published.
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ needs.gate.outputs.tag }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -257,11 +282,11 @@ jobs:
       contents: read
       id-token: write
     env:
-      RELEASE_TAG: ${{ github.event.release.tag_name }}
+      RELEASE_TAG: ${{ needs.gate.outputs.tag }}
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ needs.gate.outputs.tag }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

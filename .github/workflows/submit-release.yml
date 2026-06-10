@@ -15,11 +15,12 @@ name: Submit Release
 #
 # Bridge publish modes (production):
 #   - publish_bridge ticked (default): the GitHub release is published
-#     immediately — bridge auto-update goes live for all users right away.
+#     immediately — bridge auto-update goes live for all users right away —
+#     and this workflow dispatches bridge-npm-publish.yml to publish npm
+#     (GITHUB_TOKEN-created releases don't fire workflow-triggering events).
 #   - unticked: the release is created as a PRE-RELEASE (invisible to the
-#     auto-updater); promote it manually in the GitHub UI when ready. Either
-#     path fires the `release: released` event that publishes npm packages
-#     (bridge-npm-publish.yml).
+#     auto-updater); promote it manually in the GitHub UI when ready — that
+#     user action fires `release: released`, which runs bridge-npm-publish.yml.
 
 on:
   workflow_dispatch:
@@ -419,16 +420,26 @@ jobs:
           echo "## Tagged" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Tag**: \`${TAG}\` → \`${SHA}\`" >> "$GITHUB_STEP_SUMMARY"
 
-      # Stamp the SAME v<VERSION> onto the metadata repo's published commit, so its
-      # HEAD is marked "published" and the next release's gate skips re-pushing an
-      # unchanged listing. Runs only when a platform actually published this run,
-      # tagging the exact commit that was published (meta_head). iOS and Android
-      # evaluate the same remote, so their decisions agree; the head is taken from
-      # whichever platform published (iOS preferred). METADATA_REPO_TOKEN must be a
-      # REPOSITORY secret with Contents: Write — this job declares no environment,
-      # so an environment-scoped secret would read as empty here.
+  # Stamp the SAME v<VERSION> onto the metadata repo's published commit, so its
+  # HEAD is marked "published" and the next release's gate skips re-pushing an
+  # unchanged listing. Runs only when a platform actually published this run,
+  # tagging the exact commit that was published (meta_head). iOS and Android
+  # evaluate the same remote, so their decisions agree; the head is taken from
+  # whichever platform published (iOS preferred). A SEPARATE job (not a step in
+  # `tag`) so a metadata tagging failure can never block the GitHub release
+  # below — the binary already shipped. METADATA_REPO_TOKEN must be a
+  # REPOSITORY secret with Contents: Write — this job declares no environment,
+  # so an environment-scoped secret would read as empty here.
+  tag-metadata:
+    name: Tag store metadata repo
+    needs: [resolve, submit-ios, submit-android, tag]
+    if: |
+      always() && needs.tag.result == 'success' &&
+      (needs.submit-ios.outputs.meta_publish == 'true' || needs.submit-android.outputs.meta_publish == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
       - name: Tag store metadata repo
-        if: ${{ needs.submit-ios.outputs.meta_publish == 'true' || needs.submit-android.outputs.meta_publish == 'true' }}
         env:
           REPO:            ${{ vars.STORE_METADATA_REPO }}
           VERSION:         ${{ needs.resolve.outputs.version }}
@@ -480,11 +491,13 @@ jobs:
 
   # Create the v<VERSION> GitHub release with the bridge binaries attached
   # (production only). When publish_bridge is ticked the release goes live
-  # immediately — the bridge auto-updater picks it up within minutes.
-  # Otherwise it is created as a pre-release: invisible to the updater until
-  # manually promoted in the GitHub UI. npm publishing happens in
-  # bridge-npm-publish.yml, driven by the `release: released` event, so it
-  # fires at the right moment in both modes.
+  # immediately — the bridge auto-updater picks it up within minutes — and
+  # this job DISPATCHES bridge-npm-publish.yml explicitly: releases created
+  # with the default GITHUB_TOKEN do not emit workflow-triggering events
+  # (workflow_dispatch is the documented exception). When unticked, the
+  # release is created as a pre-release, invisible to the updater until
+  # manually promoted in the GitHub UI — that promotion is a user action, so
+  # the `release: released` trigger on bridge-npm-publish.yml fires normally.
   release:
     name: Create GitHub release
     needs: [resolve, submit-ios, submit-android, build-bridge, tag]
@@ -496,6 +509,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
+      actions: write
     # bridge-only submits skip both store jobs and with them the
     # store-production reviewer gate, so this job carries the gate instead.
     # Regular submits already passed it at the store jobs and go through the
@@ -549,6 +563,15 @@ jobs:
             artifacts/*.tar.gz
             artifacts/*.zip
             artifacts/checksums.txt
+
+      # Releases created with GITHUB_TOKEN don't fire the `release: released`
+      # event, so kick off npm publishing directly when the release went live.
+      - name: Trigger npm publish
+        if: ${{ inputs.publish_bridge }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: gh workflow run bridge-npm-publish.yml --repo "$GITHUB_REPOSITORY" -f tag="v${VERSION}"
 
       - name: Summary
         env:
