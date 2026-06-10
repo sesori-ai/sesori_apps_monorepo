@@ -81,12 +81,14 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
             IconButton(
               icon: const Icon(Icons.difference_outlined),
               tooltip: loc.sessionDetailFileChangesTooltip,
-              onPressed: widget.onOpenDiffs ?? () => context.pushRoute(
-                AppRoute.sessionDiffs(
-                  projectId: widget.projectId,
-                  sessionId: widget.sessionId,
-                ),
-              ),
+              onPressed:
+                  widget.onOpenDiffs ??
+                  () => context.pushRoute(
+                    AppRoute.sessionDiffs(
+                      projectId: widget.projectId,
+                      sessionId: widget.sessionId,
+                    ),
+                  ),
             ),
           if (isBusy)
             Padding(
