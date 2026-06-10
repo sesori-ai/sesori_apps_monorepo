@@ -16,6 +16,14 @@ extension BuildContextLocalization on BuildContext {
     return Theme.of(this).brightness;
   }
 
+  /// True when OS accessibility settings ask to minimize motion; used to
+  /// skip decorative animations.
+  bool get isReducedMotion {
+    final disableAnimations = MediaQuery.maybeDisableAnimationsOf(this) ?? false;
+    final accessibleNavigation = MediaQuery.maybeAccessibleNavigationOf(this) ?? false;
+    return disableAnimations || accessibleNavigation;
+  }
+
   AppLocalizations get loc {
     final localizations = AppLocalizations.of(this);
     if (localizations == null) {

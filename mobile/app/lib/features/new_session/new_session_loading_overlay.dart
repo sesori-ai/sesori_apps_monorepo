@@ -4,6 +4,8 @@ import "package:cue/cue.dart";
 import "package:flutter/material.dart";
 import "package:theme_zyra/module_zyra.dart";
 
+import "../../core/extensions/build_context_x.dart";
+
 /// A full-screen loading overlay shown while a new session is being created.
 ///
 /// Fills its parent and visually dims underlying content. Displays a centered
@@ -29,11 +31,7 @@ class _NewSessionLoadingOverlayState extends State<NewSessionLoadingOverlay> {
   int _messageIndex = 0;
   Timer? _timer;
 
-  bool get _isReducedMotion {
-    final disableAnimations = MediaQuery.disableAnimationsOf(context);
-    final accessibleNav = MediaQuery.maybeAccessibleNavigationOf(context) ?? false;
-    return disableAnimations || accessibleNav;
-  }
+  bool get _isReducedMotion => context.isReducedMotion;
 
   void _startTimer() {
     if (_timer?.isActive ?? false) return;

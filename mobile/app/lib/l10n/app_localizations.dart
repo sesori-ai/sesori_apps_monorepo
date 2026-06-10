@@ -1525,12 +1525,6 @@ abstract class AppLocalizations {
   /// **'Retry'**
   String get diffRetry;
 
-  /// No description provided for @splashTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Sesori'**
-  String get splashTitle;
-
   /// No description provided for @newSessionLoadingSemantics.
   ///
   /// In en, this message translates to:
