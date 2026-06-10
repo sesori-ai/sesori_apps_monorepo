@@ -121,8 +121,8 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
                   onOpenModelPicker: _openModelPicker,
                   onOpenVariantPicker: _openVariantPicker,
                 ),
-        SessionDetailFailed(:final error) => SessionDetailErrorView(
-          error: error,
+        SessionDetailFailed(:final reason) => SessionDetailErrorView(
+          reason: reason,
           onRetry: () => context.read<SessionDetailCubit>().reload(),
         ),
       },

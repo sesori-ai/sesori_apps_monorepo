@@ -97,24 +97,6 @@ abstract class AppLocalizations {
   /// **'Sesori Mobile'**
   String get appTitle;
 
-  /// No description provided for @connectErrorNonSuccessCode.
-  ///
-  /// In en, this message translates to:
-  /// **'Server returned {errorCode}'**
-  String connectErrorNonSuccessCode(int errorCode);
-
-  /// No description provided for @connectErrorNonSuccessCodeWithBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Server returned {errorCode}: {body}'**
-  String connectErrorNonSuccessCodeWithBody(int errorCode, String body);
-
-  /// No description provided for @connectErrorConnectionFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Connection failed: {detail}'**
-  String connectErrorConnectionFailed(String detail);
-
   /// No description provided for @connectErrorUnexpectedFormat.
   ///
   /// In en, this message translates to:
@@ -132,6 +114,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not authenticated — check your connection'**
   String get apiErrorNotAuthenticated;
+
+  /// No description provided for @apiErrorServerRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'The server returned an error. Please try again.'**
+  String get apiErrorServerRejected;
+
+  /// No description provided for @apiErrorNetworkDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection failed — check your network and try again.'**
+  String get apiErrorNetworkDown;
 
   /// No description provided for @projectListTitle.
   ///

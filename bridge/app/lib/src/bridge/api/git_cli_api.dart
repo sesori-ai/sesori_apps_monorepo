@@ -192,7 +192,36 @@ class GitCliApi {
       projectPath: projectPath,
       arguments: ["worktree", "remove", if (force) "--force", "--", worktreePath],
     );
-    return result.exitCode == 0;
+    final removed = result.exitCode == 0;
+
+    // Git worktree remove may leave the directory behind if it contains
+    // untracked files or build artifacts. Only clean up when the git command
+    // succeeded, to avoid bypassing Git's safety checks (e.g. dirty worktree).
+    if (removed) {
+      final worktreeDir = Directory(worktreePath);
+      if (worktreeDir.existsSync()) {
+        try {
+          worktreeDir.deleteSync(recursive: true);
+        } on FileSystemException catch (e) {
+          Log.w("[GitCli] failed to delete worktree directory $worktreePath: $e");
+        }
+      }
+
+      // If the parent .worktrees/ directory is now empty, clean it up too.
+      final parentDir = worktreeDir.parent;
+      if (parentDir.existsSync() &&
+          parentDir.path.split(Platform.pathSeparator).last == ".worktrees") {
+        try {
+          if (parentDir.listSync().isEmpty) {
+            parentDir.deleteSync();
+          }
+        } on FileSystemException catch (e) {
+          Log.w("[GitCli] failed to delete empty .worktrees directory ${parentDir.path}: $e");
+        }
+      }
+    }
+
+    return removed;
   }
 
   Future<bool> deleteBranch({

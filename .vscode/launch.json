@@ -1,0 +1,85 @@
+{
+  // Launch configurations for the Sesori app (mobile/app, package: sesori_mobile).
+  // Requires the Dart & Flutter VS Code extensions. There are no build flavors,
+  // so entries differ only by Flutter build mode and target device. Desktop
+  // configs pin a host deviceId; pick the one matching your OS (only the macOS,
+  // Windows, and Linux desktop targets are enabled in mobile/app).
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Mobile (debug)",
+      "request": "launch",
+      "type": "dart",
+      "program": "${workspaceFolder}/mobile/app/lib/main.dart",
+      "cwd": "${workspaceFolder}/mobile/app",
+      "flutterMode": "debug"
+    },
+    {
+      "name": "Mobile (profile)",
+      "request": "launch",
+      "type": "dart",
+      "program": "${workspaceFolder}/mobile/app/lib/main.dart",
+      "cwd": "${workspaceFolder}/mobile/app",
+      "flutterMode": "profile"
+    },
+    {
+      "name": "Mobile (release)",
+      "request": "launch",
+      "type": "dart",
+      "program": "${workspaceFolder}/mobile/app/lib/main.dart",
+      "cwd": "${workspaceFolder}/mobile/app",
+      "flutterMode": "release"
+    },
+    {
+      "name": "Mobile (attach)",
+      "request": "attach",
+      "type": "dart",
+      "cwd": "${workspaceFolder}/mobile/app"
+    },
+    {
+      "name": "Desktop macOS (debug)",
+      "request": "launch",
+      "type": "dart",
+      "program": "${workspaceFolder}/mobile/app/lib/main.dart",
+      "cwd": "${workspaceFolder}/mobile/app",
+      "deviceId": "macos",
+      "flutterMode": "debug"
+    },
+    {
+      "name": "Desktop macOS (profile)",
+      "request": "launch",
+      "type": "dart",
+      "program": "${workspaceFolder}/mobile/app/lib/main.dart",
+      "cwd": "${workspaceFolder}/mobile/app",
+      "deviceId": "macos",
+      "flutterMode": "profile"
+    },
+    {
+      "name": "Desktop macOS (release)",
+      "request": "launch",
+      "type": "dart",
+      "program": "${workspaceFolder}/mobile/app/lib/main.dart",
+      "cwd": "${workspaceFolder}/mobile/app",
+      "deviceId": "macos",
+      "flutterMode": "release"
+    },
+    {
+      "name": "Desktop Windows (debug)",
+      "request": "launch",
+      "type": "dart",
+      "program": "${workspaceFolder}/mobile/app/lib/main.dart",
+      "cwd": "${workspaceFolder}/mobile/app",
+      "deviceId": "windows",
+      "flutterMode": "debug"
+    },
+    {
+      "name": "Desktop Linux (debug)",
+      "request": "launch",
+      "type": "dart",
+      "program": "${workspaceFolder}/mobile/app/lib/main.dart",
+      "cwd": "${workspaceFolder}/mobile/app",
+      "deviceId": "linux",
+      "flutterMode": "debug"
+    }
+  ]
+}

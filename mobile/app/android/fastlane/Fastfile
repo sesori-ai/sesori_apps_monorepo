@@ -248,13 +248,13 @@ platform :android do
       UI.message("Promoting Android version code #{version_code} (v#{version_name}) " \
                  "from internal → #{target_track}")
 
-      # Optional Play Store listing metadata, cloned from the private metadata
-      # repo by CI only when the submission was dispatched with
-      # upload_metadata=true. Unlike iOS, supply runs the promotion and the
-      # metadata upload inside a SINGLE Play Edit, so a metadata error aborts
-      # the whole edit and the promotion does not half-land — no two-pass split
-      # needed. nil when the repo wasn't cloned, making this a pure promotion
-      # (pre-feature behavior).
+      # Optional Play Store listing metadata from the private metadata repo. CI
+      # populates this path only when that repo's latest commit has no `v*` tag
+      # (unpublished listing changes — see submit-release.yml). Unlike iOS, supply
+      # runs the promotion and the metadata upload inside a SINGLE Play Edit, so a
+      # metadata error aborts the whole edit and the promotion does not half-land
+      # — no two-pass split needed. nil when the path is unset, making this a
+      # pure promotion (pre-feature behavior).
       metadata_dir = metadata_dir_from_env("ANDROID_METADATA_PATH")
       have_meta = !metadata_dir.nil?
       UI.message(

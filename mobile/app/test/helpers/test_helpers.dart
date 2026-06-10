@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:firebase_analytics/firebase_analytics.dart";
 import "package:firebase_crashlytics/firebase_crashlytics.dart";
 import "package:flutter_secure_storage/flutter_secure_storage.dart";
 import "package:http/http.dart" as http;
@@ -140,6 +141,8 @@ class MockSseEventRepository extends Mock implements SseEventRepository {
 class MockFailureReporter extends Mock implements FailureReporter {}
 
 class MockFirebaseCrashlytics extends Mock implements FirebaseCrashlytics {}
+
+class MockFirebaseAnalytics extends Mock implements FirebaseAnalytics {}
 
 // ---------------------------------------------------------------------------
 // Fake classes — for registerFallbackValue

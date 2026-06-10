@@ -1,14 +1,26 @@
 name: Submit Release
 
 # Manually-triggered workflow that promotes an already-uploaded mobile build
-# from staging (TestFlight / Play Store internal) to beta or production.
+# from staging (TestFlight / Play Store internal) to beta or production, and —
+# for production — rebuilds the bridge from the same commit and attaches its
+# binaries to the v<VERSION> GitHub release (which is what the bridge
+# auto-updater consumes).
 #
-# DOES NOT rebuild — every job runs on ubuntu-latest because submission is
-# pure HTTPS API work against App Store Connect and Google Play.
+# Store submission jobs run on ubuntu-latest because submission is pure HTTPS
+# API work; only the bridge binaries are (re)built, on their own matrix.
 #
 # Required prerequisite: the build must have been uploaded by
-# release-all-platforms.yml, which pushes a single annotated tag
-# `build-<N>` we use to map a build number → commit.
+# release-all-platforms.yml, which pushes an annotated `v<X>-internal.<N>` tag
+# (legacy: `build-<N>`) used to map a build number → commit.
+#
+# Bridge publish modes (production):
+#   - publish_bridge ticked (default): the GitHub release is published
+#     immediately — bridge auto-update goes live for all users right away —
+#     and this workflow dispatches bridge-npm-publish.yml to publish npm
+#     (GITHUB_TOKEN-created releases don't fire workflow-triggering events).
+#   - unticked: the release is created as a PRE-RELEASE (invisible to the
+#     auto-updater); promote it manually in the GitHub UI when ready — that
+#     user action fires `release: released`, which runs bridge-npm-publish.yml.
 
 on:
   workflow_dispatch:
@@ -22,7 +34,7 @@ on:
           - production
           - beta
       platforms:
-        description: "Platforms to submit"
+        description: "Platforms to submit (bridge-only skips both stores; production only)"
         type: choice
         required: true
         default: both
@@ -30,15 +42,16 @@ on:
           - both
           - ios
           - android
+          - bridge-only
       build_number:
-        description: "Build number to submit (must match an existing build-<N> tag)"
+        description: "Build number to submit (must match an existing v*-internal.<N> or build-<N> tag)"
         type: string
         required: true
-      upload_metadata:
-        description: "Pull and upload all App Store / Play listing metadata (text, changelogs, screenshots, images) from the private metadata repo"
+      publish_bridge:
+        description: "Publish bridge GitHub release immediately (untick = create as pre-release for manual promotion)"
         type: boolean
         required: false
-        default: false
+        default: true
 
 run-name: "submit · ${{ inputs.track }} · ${{ inputs.platforms }} · build ${{ inputs.build_number }}"
 
@@ -68,37 +81,64 @@ jobs:
       - id: pick
         env:
           N: ${{ inputs.build_number }}
+          TRACK: ${{ inputs.track }}
+          PLATFORMS: ${{ inputs.platforms }}
         run: |
           set -euo pipefail
+          # 0) bridge-only only makes sense for production: beta submits never
+          # create a GitHub release, so there would be nothing to ship.
+          if [[ "$PLATFORMS" == "bridge-only" && "$TRACK" != "production" ]]; then
+            echo "::error::platforms=bridge-only requires track=production."
+            exit 1
+          fi
+
           # 1) Validate build number.
           if ! [[ "$N" =~ ^[0-9]+$ ]]; then
             echo "::error::build_number must be a positive integer (got: $N)"
             exit 1
           fi
 
-          # 2) Resolve the originating commit from the build-<N> tag pushed by
-          # release-all-platforms.yml.
-          SHA=$(git rev-list -n1 "build-${N}" 2>/dev/null || true)
-          if [[ -z "$SHA" ]]; then
-            echo "::error::No tag build-${N} found. Build ${N} was either never created by release-all-platforms.yml or its tag was deleted."
+          # 2) Resolve the originating commit from the internal tag pushed by
+          # release-all-platforms.yml (legacy fallback: build-<N>).
+          mapfile -t MATCHES < <(git tag -l "v*-internal.${N}")
+          if [[ ${#MATCHES[@]} -gt 1 ]]; then
+            echo "::error::Multiple internal tags match build ${N}: ${MATCHES[*]}"
             exit 1
           fi
+          TAG_NAME="${MATCHES[0]:-}"
+          if [[ -z "$TAG_NAME" ]] && git rev-parse -q --verify "refs/tags/build-${N}" >/dev/null; then
+            TAG_NAME="build-${N}"
+          fi
+          if [[ -z "$TAG_NAME" ]]; then
+            echo "::error::No tag v*-internal.${N} (or legacy build-${N}) found. Build ${N} was either never created by release-all-platforms.yml or its tag was deleted."
+            exit 1
+          fi
+          SHA=$(git rev-list -n1 "$TAG_NAME")
 
           # 3) Read marketing version from pubspec.yaml on the resolved commit
-          # (NOT current main) so the submit tag matches the binary's version.
+          # (NOT current main) so the submit tag matches the binary's version,
+          # and assert mobile/bridge are in sync at that commit.
           VERSION=$(git show "${SHA}:mobile/app/pubspec.yaml" \
             | awk '/^version:/{split($2,a,"+"); print a[1]; exit}')
           if [[ -z "$VERSION" ]]; then
-            echo "::error::Could not parse version from pubspec.yaml at ${SHA}"
+            echo "::error::Could not parse version from mobile pubspec.yaml at ${SHA}"
+            exit 1
+          fi
+          BRIDGE_VERSION=$(git show "${SHA}:bridge/app/pubspec.yaml" \
+            | awk '/^version:/{print $2; exit}')
+          if [[ "$VERSION" != "$BRIDGE_VERSION" ]]; then
+            echo "::error::Mobile ($VERSION) and bridge ($BRIDGE_VERSION) versions differ at ${SHA}. This commit predates a version sync — pick a newer build."
             exit 1
           fi
 
-          echo "build_number=${N}"  >> "$GITHUB_OUTPUT"
-          echo "commit_sha=${SHA}"  >> "$GITHUB_OUTPUT"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          {
+            echo "build_number=${N}"
+            echo "commit_sha=${SHA}"
+            echo "version=${VERSION}"
+          } >> "$GITHUB_OUTPUT"
           {
             echo "### Resolved"
-            echo "- **Build number**: \`${N}\`"
+            echo "- **Build number**: \`${N}\` (tag \`${TAG_NAME}\`)"
             echo "- **Commit**: \`${SHA}\`"
             echo "- **Version**: \`${VERSION}\`"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -109,6 +149,11 @@ jobs:
     needs: resolve
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Surface the metadata-publish decision so the `tag` job knows whether (and
+    # which private-repo commit) to tag v<VERSION> after a successful submit.
+    outputs:
+      meta_publish: ${{ steps.gate.outputs.publish }}
+      meta_head:    ${{ steps.gate.outputs.head }}
     # `store-production` environment requires reviewer approval before this job
     # starts; `store-beta` has no protection rules. Both must exist as repo
     # environments (Settings → Environments).
@@ -121,24 +166,48 @@ jobs:
         with:
           ref: ${{ needs.resolve.outputs.commit_sha }}
 
-      # Pull App Store listing metadata from the private metadata repo. Only
-      # when this is a production submit dispatched with upload_metadata=true
-      # (and STORE_METADATA_REPO is configured). Lands at
-      # $GITHUB_WORKSPACE/store-metadata — the `path` is workspace-relative,
-      # independent of the job's working-directory (mobile/app/ios).
-      # persist-credentials:false so the read-only token is not left in git
-      # config for later steps (fastlane reads files, not git). When skipped,
-      # the lane no-ops (promote/submit only), so a routine submission never
-      # rewrites the live listing.
+      # Clone the private metadata repo so we can both read its listing and decide
+      # whether it needs publishing. Only for production submits with
+      # STORE_METADATA_REPO configured. fetch-depth:0 so HEAD's tags are present
+      # for the gate below. Lands at $GITHUB_WORKSPACE/store-metadata — the `path`
+      # is workspace-relative, independent of the job's working-directory
+      # (mobile/app/ios). persist-credentials:false so the token is not left in
+      # git config for the fastlane steps (fastlane reads files, not git).
       - name: Checkout store metadata
-        if: ${{ inputs.track == 'production' && inputs.upload_metadata && vars.STORE_METADATA_REPO != '' }}
+        id: cometa
+        if: ${{ inputs.track == 'production' && vars.STORE_METADATA_REPO != '' }}
         uses: actions/checkout@v6
         with:
           repository: ${{ vars.STORE_METADATA_REPO }}
           ref: ${{ vars.STORE_METADATA_REF || 'main' }}
           path: store-metadata
+          fetch-depth: 0
           persist-credentials: false
           token: ${{ secrets.METADATA_REPO_TOKEN }}
+
+      # Tag-driven gate: publish the listing only when the metadata repo's latest
+      # commit is NOT yet tagged `v*`. An untagged HEAD means there are listing
+      # changes that haven't shipped; a `v*` tag means this exact listing was
+      # already published in an earlier release, so we skip it (binary only). The
+      # `tag` job stamps v<VERSION> onto this commit on success (see below).
+      - name: Decide metadata publish
+        id: gate
+        if: ${{ steps.cometa.outcome == 'success' }}
+        working-directory: ${{ github.workspace }}/store-metadata
+        run: |
+          set -euo pipefail
+          head="$(git rev-parse HEAD)"
+          if git tag --points-at HEAD | grep -q '^v'; then
+            publish=false
+            echo "Metadata HEAD ${head} is already tagged $(git tag --points-at HEAD | grep '^v' | paste -sd, -) — already published; skipping listing."
+          else
+            publish=true
+            echo "Metadata HEAD ${head} has no v* tag — listing changed since last release; will publish + tag."
+          fi
+          {
+            echo "head=${head}"
+            echo "publish=${publish}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -157,10 +226,11 @@ jobs:
           BUILD_NUMBER:                      ${{ needs.resolve.outputs.build_number }}
           TRACK:                             ${{ inputs.track }}
           # Absolute paths: fastlane runs from mobile/app/ios but the metadata
-          # clone lives at the workspace root. Resolve to non-existent dirs when
-          # the checkout above was skipped, so the lane uploads no metadata.
-          IOS_METADATA_PATH:                 ${{ github.workspace }}/store-metadata/ios/metadata
-          IOS_SCREENSHOTS_PATH:              ${{ github.workspace }}/store-metadata/ios/screenshots
+          # clone lives at the workspace root. Set ONLY when the gate decided to
+          # publish; otherwise empty, so the lane sees no metadata dir and uploads
+          # nothing (binary submit only). Empty also when the checkout was skipped.
+          IOS_METADATA_PATH:                 ${{ steps.gate.outputs.publish == 'true' && format('{0}/store-metadata/ios/metadata', github.workspace) || '' }}
+          IOS_SCREENSHOTS_PATH:              ${{ steps.gate.outputs.publish == 'true' && format('{0}/store-metadata/ios/screenshots', github.workspace) || '' }}
         run: bundle exec fastlane submit_ios
 
       - name: Summary
@@ -185,6 +255,10 @@ jobs:
     needs: resolve
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # See submit-ios: surface the gate decision for the `tag` job.
+    outputs:
+      meta_publish: ${{ steps.gate.outputs.publish }}
+      meta_head:    ${{ steps.gate.outputs.head }}
     environment: ${{ inputs.track == 'production' && 'store-production' || 'store-beta' }}
     defaults:
       run:
@@ -194,20 +268,41 @@ jobs:
         with:
           ref: ${{ needs.resolve.outputs.commit_sha }}
 
-      # Pull Play Store listing metadata from the private metadata repo. Only
-      # when this is a production submit dispatched with upload_metadata=true
-      # (and STORE_METADATA_REPO is configured). See the iOS job for the
-      # rationale on path, auth, and persist-credentials. When skipped, the
-      # lane falls back to promotion-only.
+      # Clone the private metadata repo (production + STORE_METADATA_REPO only) to
+      # read the listing and run the same tag-driven gate as iOS. See the iOS job
+      # for the rationale on path, auth, fetch-depth, and persist-credentials.
       - name: Checkout store metadata
-        if: ${{ inputs.track == 'production' && inputs.upload_metadata && vars.STORE_METADATA_REPO != '' }}
+        id: cometa
+        if: ${{ inputs.track == 'production' && vars.STORE_METADATA_REPO != '' }}
         uses: actions/checkout@v6
         with:
           repository: ${{ vars.STORE_METADATA_REPO }}
           ref: ${{ vars.STORE_METADATA_REF || 'main' }}
           path: store-metadata
+          fetch-depth: 0
           persist-credentials: false
           token: ${{ secrets.METADATA_REPO_TOKEN }}
+
+      # Publish the listing only when the metadata repo's latest commit is not yet
+      # tagged `v*` (see submit-ios for the full rationale).
+      - name: Decide metadata publish
+        id: gate
+        if: ${{ steps.cometa.outcome == 'success' }}
+        working-directory: ${{ github.workspace }}/store-metadata
+        run: |
+          set -euo pipefail
+          head="$(git rev-parse HEAD)"
+          if git tag --points-at HEAD | grep -q '^v'; then
+            publish=false
+            echo "Metadata HEAD ${head} is already tagged $(git tag --points-at HEAD | grep '^v' | paste -sd, -) — already published; skipping listing."
+          else
+            publish=true
+            echo "Metadata HEAD ${head} has no v* tag — listing changed since last release; will publish + tag."
+          fi
+          {
+            echo "head=${head}"
+            echo "publish=${publish}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -221,10 +316,11 @@ jobs:
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           VERSION_CODE:                     ${{ needs.resolve.outputs.build_number }}
           TRACK:                            ${{ inputs.track }}
-          # Absolute path to the cloned metadata repo's Android listing dir
-          # (locale folders live directly under it). Resolves to a non-existent
-          # dir when the checkout above was skipped, so the lane promotes only.
-          ANDROID_METADATA_PATH:            ${{ github.workspace }}/store-metadata/android
+          # Absolute path to the cloned metadata repo's Android listing dir (locale
+          # folders live directly under it). Set ONLY when the gate decided to
+          # publish; otherwise empty, so the lane promotes only. Empty also when
+          # the checkout was skipped.
+          ANDROID_METADATA_PATH:            ${{ steps.gate.outputs.publish == 'true' && format('{0}/store-metadata/android', github.workspace) || '' }}
         run: bundle exec fastlane submit_android
 
       - name: Cleanup credentials
@@ -248,16 +344,54 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
+  # Rebuild the bridge from the RESOLVED commit with its committed (clean)
+  # version. The per-merge internal binaries cannot be promoted — they have
+  # `X.Y.Z-internal.<N>` baked in, while the production release must
+  # self-report plain X.Y.Z. Beta submits skip this: they never create a
+  # GitHub release, so there is nothing to attach binaries to.
+  build-bridge:
+    name: Build bridge (release)
+    if: ${{ inputs.track == 'production' }}
+    needs: resolve
+    uses: ./.github/workflows/_reusable-bridge-build.yml
+    with:
+      ref: ${{ needs.resolve.outputs.commit_sha }}
+      version: ${{ needs.resolve.outputs.version }}
+    secrets:
+      MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+      MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+      MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+
+  # bridge-only submits skip both store jobs and with them the
+  # store-production reviewer gate. This no-op job holds that gate BEFORE the
+  # tag job, so a rejected approval leaves no v* tag behind (a stray stable
+  # tag would mark the version as consumed and trip the preflight guard on
+  # main). Regular submits never run it — they pass the gate at the store jobs.
+  approve-bridge-only:
+    name: Approve bridge-only release
+    if: ${{ inputs.platforms == 'bridge-only' }}
+    needs: resolve
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: store-production
+    steps:
+      - name: Approved
+        run: echo "bridge-only release of v${{ needs.resolve.outputs.version }} approved by a store-production reviewer."
+
   tag:
-    name: Tag commit and create release
-    needs: [resolve, submit-ios, submit-android]
-    # Run only if every REQUESTED platform succeeded. A skipped platform
-    # (because the operator picked one-platform-only) counts as OK.
+    name: Tag commit
+    needs: [resolve, submit-ios, submit-android, build-bridge, approve-bridge-only]
+    # Run only if every REQUESTED job succeeded. A skipped store platform
+    # (one-platform-only or bridge-only submits) counts as OK; build-bridge is
+    # skipped on beta; approve-bridge-only is skipped unless bridge-only. For
+    # non-bridge-only submits at least one store platform must actually have run.
     if: |
       always() && needs.resolve.result == 'success' &&
       (needs.submit-ios.result    == 'success' || needs.submit-ios.result    == 'skipped') &&
       (needs.submit-android.result == 'success' || needs.submit-android.result == 'skipped') &&
-      !(needs.submit-ios.result == 'skipped' && needs.submit-android.result == 'skipped')
+      (needs.build-bridge.result  == 'success' || needs.build-bridge.result  == 'skipped') &&
+      (needs.approve-bridge-only.result == 'success' || needs.approve-bridge-only.result == 'skipped') &&
+      (inputs.platforms == 'bridge-only' || !(needs.submit-ios.result == 'skipped' && needs.submit-android.result == 'skipped'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -303,12 +437,176 @@ jobs:
           echo "## Tagged" >> "$GITHUB_STEP_SUMMARY"
           echo "- **Tag**: \`${TAG}\` → \`${SHA}\`" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Create GitHub Release (production only)
-        if: ${{ inputs.track == 'production' }}
+  # Stamp the SAME v<VERSION> onto the metadata repo's published commit, so its
+  # HEAD is marked "published" and the next release's gate skips re-pushing an
+  # unchanged listing. Runs only when a platform actually published this run,
+  # tagging the exact commit that was published (meta_head). iOS and Android
+  # evaluate the same remote, so their decisions agree; the head is taken from
+  # whichever platform published (iOS preferred). A SEPARATE job (not a step in
+  # `tag`) so a metadata tagging failure can never block the GitHub release
+  # below — the binary already shipped. METADATA_REPO_TOKEN must be a
+  # REPOSITORY secret with Contents: Write — this job declares no environment,
+  # so an environment-scoped secret would read as empty here.
+  tag-metadata:
+    name: Tag store metadata repo
+    needs: [resolve, submit-ios, submit-android, tag]
+    if: |
+      always() && needs.tag.result == 'success' &&
+      (needs.submit-ios.outputs.meta_publish == 'true' || needs.submit-android.outputs.meta_publish == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Tag store metadata repo
+        env:
+          REPO:            ${{ vars.STORE_METADATA_REPO }}
+          VERSION:         ${{ needs.resolve.outputs.version }}
+          PUBLISH_IOS:     ${{ needs.submit-ios.outputs.meta_publish }}
+          PUBLISH_ANDROID: ${{ needs.submit-android.outputs.meta_publish }}
+          HEAD_IOS:        ${{ needs.submit-ios.outputs.meta_head }}
+          HEAD_ANDROID:    ${{ needs.submit-android.outputs.meta_head }}
+          TOKEN:           ${{ secrets.METADATA_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Tag the commit a publishing platform actually shipped (both evaluate
+          # the same remote, so when both publish their heads match).
+          HEAD=""
+          if [[ "$PUBLISH_IOS" == "true" ]]; then
+            HEAD="$HEAD_IOS"
+          elif [[ "$PUBLISH_ANDROID" == "true" ]]; then
+            HEAD="$HEAD_ANDROID"
+          fi
+          TAG="v${VERSION}"
+          if [[ -z "$HEAD" ]]; then
+            echo "::error::Metadata publish flagged but no published commit was reported by either platform."
+            exit 1
+          fi
+          if [[ -z "$TOKEN" ]]; then
+            echo "::error::Metadata was published but METADATA_REPO_TOKEN is empty in this job. It must be a REPOSITORY secret (not environment-scoped) with Contents: Write, so the tag job can push ${TAG} to ${REPO}."
+            exit 1
+          fi
+          work="$(mktemp -d)"
+          git clone --quiet "https://x-access-token:${TOKEN}@github.com/${REPO}.git" "$work"
+          cd "$work"
+          # Idempotent: if the tag already exists on the published commit, done;
+          # on a DIFFERENT commit, fail loudly (the listing for this version was
+          # already published from elsewhere).
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            existing="$(git rev-list -n1 "refs/tags/${TAG}")"
+            if [[ "$existing" == "$HEAD" ]]; then
+              echo "Metadata repo already tagged ${TAG} → ${HEAD} — nothing to do."
+              echo "- **Metadata repo**: \`${TAG}\` already → \`${HEAD}\`" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "::error::Metadata repo tag ${TAG} exists on ${existing}, expected ${HEAD}."
+            exit 1
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${TAG}" "${HEAD}" -m "Published store metadata with ${TAG}"
+          git push --quiet origin "refs/tags/${TAG}"
+          echo "- **Metadata repo tagged**: \`${TAG}\` → \`${HEAD}\`" >> "$GITHUB_STEP_SUMMARY"
+
+  # Create the v<VERSION> GitHub release with the bridge binaries attached
+  # (production only). When publish_bridge is ticked the release goes live
+  # immediately — the bridge auto-updater picks it up within minutes — and
+  # this job DISPATCHES bridge-npm-publish.yml explicitly: releases created
+  # with the default GITHUB_TOKEN do not emit workflow-triggering events
+  # (workflow_dispatch is the documented exception). When unticked, the
+  # release is created as a pre-release, invisible to the updater until
+  # manually promoted in the GitHub UI — that promotion is a user action, so
+  # the `release: released` trigger on bridge-npm-publish.yml fires normally.
+  release:
+    name: Create GitHub release
+    needs: [resolve, submit-ios, submit-android, build-bridge, tag]
+    if: |
+      always() && inputs.track == 'production' &&
+      needs.tag.result == 'success' &&
+      needs.build-bridge.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: write
+    # No environment gate here: every path already passed store-production
+    # approval upstream (store jobs for regular submits, approve-bridge-only
+    # for bridge-only) — re-declaring it would pause the run a second time.
+    steps:
+      # Deliberately NOT the resolved commit: this job needs nothing from the
+      # release's tree (notes are API-driven, checksums come from artifacts,
+      # the tag is already pushed) — only tool/generate_release_notes.dart,
+      # which must come from the workflow's own revision. Resolved commits can
+      # predate the script entirely (legacy build-<N> tags).
+      - uses: actions/checkout@v6
+
+      # Pinned toolchain from .tool-versions; the notes script is
+      # dependency-free, so no workspace pub get is needed.
+      - name: Setup Flutter (asdf)
+        uses: ./.github/actions/setup-flutter
+        with:
+          workspace: none
+
+      - name: Download bridge artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: sesori-bridge-*
+          merge-multiple: true
+
+      - name: Generate checksums
+        working-directory: artifacts
+        run: |
+          find . -type f \( -name '*.tar.gz' -o -name '*.zip' \) -print0 | sort -z | while IFS= read -r -d '' file; do
+            sha256sum "$file" | awk -v name="$(basename "$file")" '{print $1 "  " name}'
+          done > checksums.txt
+          cat checksums.txt
+
+      - name: Generate release notes
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          dart tool/generate_release_notes.dart \
+            --repo "$GITHUB_REPOSITORY" \
+            --to "v${VERSION}" \
+            --version "${VERSION}" \
+            --output notes.md
+          cat notes.md
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.tag.outputs.tag }}
+          tag_name: v${{ needs.resolve.outputs.version }}
           target_commitish: ${{ needs.resolve.outputs.commit_sha }}
           name: "v${{ needs.resolve.outputs.version }} (build ${{ needs.resolve.outputs.build_number }})"
-          generate_release_notes: true
-          make_latest: "true"
+          body_path: notes.md
+          prerelease: ${{ !inputs.publish_bridge }}
+          make_latest: ${{ inputs.publish_bridge && 'true' || 'false' }}
+          files: |
+            artifacts/*.tar.gz
+            artifacts/*.zip
+            artifacts/checksums.txt
+
+      # Releases created with GITHUB_TOKEN don't fire the `release: released`
+      # event, so kick off npm publishing directly when the release went live.
+      - name: Trigger npm publish
+        if: ${{ inputs.publish_bridge }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+        run: gh workflow run bridge-npm-publish.yml --repo "$GITHUB_REPOSITORY" -f tag="v${VERSION}"
+
+      - name: Summary
+        env:
+          VERSION: ${{ needs.resolve.outputs.version }}
+          PUBLISH: ${{ inputs.publish_bridge }}
+        run: |
+          {
+            echo "## GitHub release"
+            echo "- **Tag**: \`v${VERSION}\`"
+            if [[ "$PUBLISH" == "true" ]]; then
+              echo "- **Mode**: published — bridge auto-update is LIVE; npm publish runs via bridge-npm-publish.yml."
+            else
+              echo "- **Mode**: pre-release — promote it in the GitHub UI to arm bridge auto-update and trigger npm publish."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

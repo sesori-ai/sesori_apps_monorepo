@@ -6,15 +6,14 @@ import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_svg/flutter_svg.dart";
 import "package:go_router/go_router.dart";
-import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_zyra/module_zyra.dart";
 import "../../core/bridge_install.dart";
 import "../../core/constants.dart";
 import "../../core/di/injection.dart";
-import "../../core/extensions/api_error_x.dart";
 import "../../core/extensions/build_context_x.dart";
+import "../../core/extensions/remote_failure_x.dart";
 import "../../core/extensions/text_style_x.dart";
 import "../../core/routing/app_router.dart";
 import "add_project_dialog.dart";
@@ -153,7 +152,7 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
       // the add-project affordance.
       floatingActionButton: state is ProjectListLoaded && state.projects.isNotEmpty
           ? ZyraButtonsIconGlass(
-              icon: TablerOutline.folder_plus,
+              icon: TablerRegular.folder_plus,
               size: ZyraButtonsIconGlassSize.lg,
               iconSize: 22,
               onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
@@ -200,8 +199,8 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
             ),
           ],
         ),
-        ProjectListFailed(:final error) => _ErrorView(
-          error: error,
+        ProjectListFailed(:final reason) => _ErrorView(
+          reason: reason,
           onRetry: () => context.read<ProjectListCubit>().retryLoadProjects(),
         ),
       },

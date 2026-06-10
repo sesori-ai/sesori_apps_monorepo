@@ -6,8 +6,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_zyra/module_zyra.dart";
 
 import "../../core/constants.dart";
-import "../../core/extensions/api_error_x.dart";
 import "../../core/extensions/build_context_x.dart";
+import "../../core/extensions/remote_failure_x.dart";
 import "../../l10n/app_localizations.dart";
 import "session_tile.dart";
 
@@ -78,8 +78,8 @@ class SessionListContent extends StatelessWidget {
         ],
       ),
       SessionListStaleProject() => _StaleProjectView(onBack: () => context.pop()),
-      SessionListFailed(:final error) => _ErrorView(
-        error: error,
+      SessionListFailed(:final reason) => _ErrorView(
+        reason: reason,
         onRetry: () => context.read<SessionListCubit>().retryLoadSessions(),
       ),
     };
@@ -132,10 +132,10 @@ class _StaleProjectView extends StatelessWidget {
 }
 
 class _ErrorView extends StatelessWidget {
-  final ApiError error;
+  final RemoteFailureReason reason;
   final VoidCallback onRetry;
 
-  const _ErrorView({required this.error, required this.onRetry});
+  const _ErrorView({required this.reason, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -152,7 +152,7 @@ class _ErrorView extends StatelessWidget {
             Text(loc.sessionListErrorTitle, style: context.zyra.textTheme.textMd.bold),
             const SizedBox(height: 8),
             Text(
-              error.localizedMessage(loc),
+              reason.localizedMessage(loc),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),

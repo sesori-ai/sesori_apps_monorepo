@@ -10,6 +10,7 @@ import "../../capabilities/project/project_service.dart";
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/sse/sse_event_repository.dart";
+import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
 import "../../routing/app_routes.dart";
@@ -408,7 +409,8 @@ class ProjectListCubit extends Cubit<ProjectListState> {
           // onboarding rather than a generic error.
           emit(const ProjectListState.bridgeDisconnected());
         } else {
-          emit(ProjectListState.failed(error: error));
+          loge("Project list load failed", error);
+          emit(ProjectListState.failed(reason: error.remoteFailureReason));
         }
         return false;
     }

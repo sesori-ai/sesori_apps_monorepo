@@ -42,7 +42,7 @@ modules/
 
 | Task             | Location                           | Notes                                                   |
 | ---------------- | ---------------------------------- | ------------------------------------------------------- |
-| CLI flags        | `bin/bridge.dart`                  | `--relay`, `--port`, `--no-auto-start`, `--login`, etc. |
+| CLI flags        | `bin/bridge.dart`                  | `--relay`, `--port`, `--no-auto-start`, etc. |
 | Auth flow        | `lib/src/auth/`                    | OAuth PKCE with token persistence to disk               |
 | Relay connection | `lib/src/bridge/relay_client.dart` | WebSocket + auth handshake + reconnection               |
 | Key exchange     | `lib/src/bridge/key_exchange.dart` | X25519 → HKDF → room key delivery                       |

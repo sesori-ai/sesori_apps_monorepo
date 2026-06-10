@@ -7,13 +7,23 @@ class TerminalPromptRepository {
   final TerminalPromptApi _api;
 
   Future<TerminalPromptDecision> askReplaceExistingBridge({required int bridgeCount}) async {
+    return _askYesNo(
+      message: 'Another Sesori bridge is already running. Kill it and start fresh? [y/N]',
+    );
+  }
+
+  Future<TerminalPromptDecision> askStopBridgesBeforeLogout({required int bridgeCount}) async {
+    return _askYesNo(
+      message: '$bridgeCount bridge instance(s) are currently running. Stop them before logging out? [y/N]',
+    );
+  }
+
+  Future<TerminalPromptDecision> _askYesNo({required String message}) async {
     if (!_api.isInteractive) {
       return TerminalPromptDecision.nonInteractive;
     }
 
-    final rawAnswer = _api.readLine(
-      message: 'Another Sesori bridge is already running. Kill it and start fresh? [y/N]',
-    );
+    final rawAnswer = _api.readLine(message: message);
     final answer = rawAnswer?.trim().toLowerCase();
     if (answer == 'y' || answer == 'yes') {
       return TerminalPromptDecision.replace;

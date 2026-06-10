@@ -218,12 +218,13 @@ platform :ios do
     UI.message("Submitting iOS build #{build_number} (v#{version}) to #{track}")
 
     if track == "production"
-      # Optional App Store listing metadata, cloned from the private metadata
-      # repo by CI only when the submission was dispatched with
-      # upload_metadata=true. Everything present in the cloned tree is uploaded:
-      # text from IOS_METADATA_PATH, plus screenshots from IOS_SCREENSHOTS_PATH
-      # when that tree exists. Both resolve to nil when the repo wasn't cloned,
-      # making the upload a no-op (preserving pre-feature behavior). NOTE:
+      # Optional App Store listing metadata from the private metadata repo. CI
+      # populates these paths only when that repo's latest commit has no `v*` tag
+      # (unpublished listing changes — see submit-release.yml). Everything present
+      # in the cloned tree is uploaded: text from IOS_METADATA_PATH, plus
+      # screenshots from IOS_SCREENSHOTS_PATH when that tree exists. Both resolve
+      # to nil when the paths are unset, making the upload a no-op (preserving
+      # pre-feature behavior). NOTE:
       # uploading screenshots can hard-fail on a screen size deliver doesn't yet
       # recognize — but that happens in pass 1 below, before submission, so the
       # already-uploaded build is never affected.

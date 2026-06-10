@@ -12,21 +12,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'Sesori Mobile';
 
   @override
-  String connectErrorNonSuccessCode(int errorCode) {
-    return 'Server returned $errorCode';
-  }
-
-  @override
-  String connectErrorNonSuccessCodeWithBody(int errorCode, String body) {
-    return 'Server returned $errorCode: $body';
-  }
-
-  @override
-  String connectErrorConnectionFailed(String detail) {
-    return 'Connection failed: $detail';
-  }
-
-  @override
   String get connectErrorUnexpectedFormat => 'Unexpected response format';
 
   @override
@@ -34,6 +19,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get apiErrorNotAuthenticated => 'Not authenticated — check your connection';
+
+  @override
+  String get apiErrorServerRejected => 'The server returned an error. Please try again.';
+
+  @override
+  String get apiErrorNetworkDown => 'Connection failed — check your network and try again.';
 
   @override
   String get projectListTitle => 'Projects';

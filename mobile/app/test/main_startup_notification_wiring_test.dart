@@ -36,6 +36,7 @@ void main() {
 
     await bootstrapSesoriApp(
       shouldInitializeFirebase: true,
+      supportsFirebaseAnalytics: false,
       configureDependenciesFn: configureDependencies,
       initializeDeepLinks: initializeDeepLinks,
       startNotificationStartupFn: startNotificationStartup,

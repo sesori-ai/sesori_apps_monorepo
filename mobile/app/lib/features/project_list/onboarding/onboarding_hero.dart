@@ -167,7 +167,7 @@ class _OnboardingHero extends StatelessWidget {
   Widget _badge() {
     return switch (variant) {
       _OnboardingHeroVariant.offline => ZyraButtonsIconGlass(
-        icon: TablerOutline.cloud_off,
+        icon: TablerRegular.cloud_off,
         onPressed: () {},
       ),
       _OnboardingHeroVariant.cli => SvgPicture.asset(_kCliAsset),

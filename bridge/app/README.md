@@ -109,7 +109,9 @@ Phone <--(E2E encrypted)--> Relay Server <--(E2E encrypted)--> Bridge CLI -> [Op
 8. Phone HTTP requests are decrypted by the bridge and forwarded to the local OpenCode server.
 9. Responses flow back encrypted through the relay to the phone.
 
-## CLI Flags
+## CLI Flags (for `run` command)
+
+These flags apply when running the bridge. The `run` command is the default, so you can use these flags directly without specifying `run`.
 
 | Flag | Default | Description |
 |------|---------|-------------|
@@ -119,9 +121,18 @@ Phone <--(E2E encrypted)--> Relay Server <--(E2E encrypted)--> Bridge CLI -> [Op
 | `--opencode-bin` | `opencode` | Path to the OpenCode binary |
 | `--no-auto-start` | `false` | Skip spawning OpenCode; connect to an existing server on localhost instead |
 | `--auth-backend` | `https://api.sesori.com` | Auth backend URL (also reads `AUTH_BACKEND_URL` env var) |
-| `--login` | `false` | Force re-login and clear stored tokens |
 | `--debug-port` | *(disabled)* | Start a debug HTTP server on this port for Postman/curl testing |
 | `--log-level` | `info` | Minimum log level: `verbose`, `debug`, `info`, `warning`, `error` |
+
+## Commands
+
+In addition to flags, the bridge supports subcommands:
+
+| Command | Description |
+|---------|-------------|
+| `help` | Show the help message (also available via `--help` or `-h`) |
+| `config` | Open the bridge configuration file in your default editor |
+| `logout` | Clear stored authentication tokens. You will be asked to log in again on next start. |
 
 ## Examples
 
@@ -138,11 +149,11 @@ Phone <--(E2E encrypted)--> Relay Server <--(E2E encrypted)--> Bridge CLI -> [Op
 # Use a custom OpenCode binary path
 ./dist/bridge-macos-arm64 --opencode-bin /usr/local/bin/opencode
 
-# Force re-login (clears stored tokens)
-./dist/bridge-macos-arm64 --login
-
 # Use a custom auth backend
-./dist/bridge-macos-arm64 --auth-backend https://my-auth.example.com --login
+./dist/bridge-macos-arm64 --auth-backend https://my-auth.example.com
+
+# Log out (clear stored tokens)
+./dist/bridge-macos-arm64 logout
 ```
 
 ## Security

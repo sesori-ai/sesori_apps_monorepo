@@ -80,48 +80,42 @@ And the following repository variable:
 
 ## Release steps
 
+The bridge releases together with the mobile apps under the shared `vX.Y.Z`
+version. There is no manual tagging — tags and GitHub releases are created by
+the workflows.
+
 ### 1. Bump version
 
 ```bash
 make bump-version TYPE=patch
 ```
 
-That bump step is the source of truth for the release version. It must keep `bridge/app/pubspec.yaml`, `bridge/app/lib/src/version.dart`, all six npm package manifests in `bridge/app/npm/`, and `mobile/app/pubspec.yaml` aligned to the same `X.Y.Z` semantic release before you tag. For an explicit version, run `make bump-version VERSION=X.Y.Z`.
+That bump step is the source of truth for the release version. It must keep `bridge/app/pubspec.yaml`, `bridge/app/lib/src/version.dart`, all six npm package manifests in `bridge/app/npm/`, and `mobile/app/pubspec.yaml` aligned to the same `X.Y.Z` semantic release. For an explicit version, run `make bump-version VERSION=X.Y.Z`. The bump is REQUIRED after every production release: `release-all-platforms.yml` fails its preflight guard for any main push whose version already has a `v<version>` tag.
 
-### 2. Commit and push
+### 2. Merge to main
 
-```bash
-git add .
-git commit -m "feat(bridge): release 0.3.1"
-git push
-```
+Every main merge runs `release-all-platforms.yml`: it uploads the mobile apps to TestFlight / Play internal, builds all five bridge platform archives with `X.Y.Z-internal.<N>` baked in, and — only when everything succeeded — pushes a `v<X.Y.Z>-internal.<N>` tag and rolls the single internal GitHub pre-release onto it (binaries + `checksums.txt` + regenerated notes). The auto-updater ignores pre-releases.
 
-### 3. Tag and push
+### 3. Submit to production
 
-```bash
-git tag v0.3.1
-git push origin v0.3.1
-```
+Run the `Submit Release` workflow (`submit-release.yml`) with the build number to promote. For production it rebuilds the bridge from the resolved commit with the clean version, tags `v<X.Y.Z>`, and creates the GitHub release with the five archives plus `checksums.txt`. Use `platforms: bridge-only` for a bridge hotfix that skips the app stores.
 
-## What the workflow does on manual dispatch
+- `publish_bridge` ticked (default): the release is published immediately — bridge auto-update goes live for all users right away.
+- `publish_bridge` unticked: the release is created as a pre-release, invisible to the auto-updater until you promote it in the GitHub UI.
 
-1. builds binaries for macOS arm64/x64, Linux x64/arm64, Windows x64
-2. renames `bridge` to `sesori-bridge`
+### 4. npm publish (automatic)
+
+When the stable `v<X.Y.Z>` release goes live, `bridge-npm-publish.yml` publishes the npm packages: dispatched directly by `submit-release.yml` when publishing immediately, or fired by the `release: released` event when you promote a pre-release manually in the GitHub UI.
+
+## What the release pipeline does
+
+1. builds binaries for macOS arm64/x64, Linux x64/arm64, Windows x64 (`_reusable-bridge-build.yml`)
+2. renames `bridge` to `sesori-bridge` and signs the macOS binaries
 3. creates release archives
 4. generates basename-based `checksums.txt`
-5. creates a GitHub Release and uploads all assets
+5. creates the `v<X.Y.Z>` GitHub Release and uploads all assets (`submit-release.yml`)
 6. publishes the five platform npm bootstrap packages from those tagged release assets
 7. publishes the `@sesori/bridge` wrapper package through npm trusted publishing
-
-## Dry run
-
-### GitHub CLI
-
-```bash
-gh workflow run bridge-release.yml -f dry_run=true
-```
-
-Expected: build jobs run, release/publish jobs do not.
 
 ## Manual test release and install
 
@@ -130,15 +124,9 @@ Use this sequence when you want to test the real packaged distribution flow end 
 ### A. Test a GitHub Release for the shell installers
 
 1. Bump the shared App + Bridge version with `make bump-version TYPE=<type>` or `make bump-version VERSION=X.Y.Z`.
-2. Commit and push the branch.
-3. Create and push a stable release tag:
-
-```bash
-git tag vX.Y.Z
-git push origin vX.Y.Z
-```
-
-4. Wait for `bridge-release.yml` to publish the GitHub Release assets and `checksums.txt`.
+2. Merge to main and wait for `release-all-platforms.yml` to roll the internal pre-release.
+3. Run `Submit Release` for production (use `platforms: bridge-only` to skip the app stores).
+4. Wait for the `v<X.Y.Z>` GitHub Release to be published with its assets and `checksums.txt`.
 5. Verify the release contains all five platform archives plus `checksums.txt`.
 6. Test the shell installer against that release:
 
@@ -225,7 +213,7 @@ Managed installs from these installers are the supported long-lived runtime and 
 
 ## npm trusted publishing prerequisites
 
-Configure npm trusted publishing for all six packages in this repo against the exact workflow file `.github/workflows/bridge-release.yml`:
+Configure npm trusted publishing for all six packages in this repo against the exact workflow file `.github/workflows/bridge-npm-publish.yml`:
 
 - `@sesori/bridge`
 - `@sesori/bridge-darwin-arm64`

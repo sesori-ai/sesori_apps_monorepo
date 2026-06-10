@@ -4,6 +4,8 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/session/session_service.dart";
+import "../../errors/api_error_remote_failure_x.dart";
+import "../../logging/logging.dart";
 import "../../utils/model_filter/default_model_selector.dart";
 import "new_session_state.dart";
 
@@ -332,13 +334,14 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       case SuccessResponse(:final data):
         emit(NewSessionState.created(session: data));
       case ErrorResponse(:final error):
+        loge("New session creation failed", error);
         // Read from current state (not pre-request snapshot) so that any
         // agent/provider data loaded while the request was in-flight is
         // preserved.
         final current = state.agentModelData;
         emit(
           NewSessionState.error(
-            error: error,
+            reason: error.remoteFailureReason,
             availableAgents: current?.agents ?? const [],
             availableProviders: current?.providers ?? const [],
             availableCommands: current?.commands ?? const [],

@@ -5,8 +5,8 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_zyra/module_zyra.dart";
 
 import "../../core/di/injection.dart";
-import "../../core/extensions/api_error_x.dart";
 import "../../core/extensions/build_context_x.dart";
+import "../../core/extensions/remote_failure_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/agent_model_buttons.dart";
 import "../../core/widgets/agent_picker_sheet.dart";
@@ -87,13 +87,13 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     final zyra = context.zyra;
     final loc = context.loc;
     return switch (state) {
-      NewSessionError(:final error) => Padding(
+      NewSessionError(:final reason) => Padding(
         padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 12, 4),
         child: Row(
           children: [
             Expanded(
               child: Text(
-                error.localizedMessage(loc),
+                reason.localizedMessage(loc),
                 style: TextStyle(color: zyra.colors.fgErrorPrimary),
               ),
             ),

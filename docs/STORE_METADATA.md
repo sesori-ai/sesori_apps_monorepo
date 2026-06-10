@@ -6,26 +6,47 @@ git repository and upload it as part of the submission. This keeps store copy
 (titles, descriptions, keywords, review notes, "What's new") versioned and
 editable by people who don't have access to the app source.
 
-The feature is **opt-in and non-breaking**. It activates only when a production
-submission is dispatched with the **`upload_metadata`** input ticked (default
-off) *and* the repository variable `STORE_METADATA_REPO` is set. Otherwise the
-metadata checkout is skipped and the fastlane lanes behave exactly as before
-(iOS: attach build + submit; Android: promote internal → production).
+Publishing is **driven by the metadata repo's own `v*` tags**, not a dispatch
+checkbox. On a **production** submit (and only when `STORE_METADATA_REPO` is set),
+CI inspects the **latest commit** of the private repo and:
 
-When activated, **everything in the cloned repo is uploaded** — listing text,
-"What's new" changelogs, screenshots, and images — so the repo is the single
-source of truth for the store listing.
+- **HEAD has no `v*` tag** → there are listing changes that haven't shipped →
+  **publish** the listing, then, on success, tag that exact commit with the
+  release's `v<VERSION>` (the same tag the monorepo gets). So `v1.0.8` ends up in
+  **both** repos.
+- **HEAD already has a `v*` tag** → this listing was already published in an
+  earlier release → **skip** it. The submit still ships the binary
+  (attach/promote), it just doesn't touch the live listing.
+- **Beta submit** → never publishes and never tags the metadata repo.
+
+In other words, the private repo's `v*` tag means "this commit's listing has been
+published." **To publish a listing edit, commit it to the private repo** — its
+HEAD becomes untagged again, and the next production release publishes and
+re-tags it. Unchanged metadata is never re-pushed.
+
+When it does publish, **everything in the cloned repo is uploaded** — listing
+text, "What's new" changelogs, screenshots, and images — so the repo is the
+single source of truth for the store listing. When it doesn't, the fastlane lanes
+behave exactly as before (iOS: attach build + submit; Android: promote
+internal → production).
+
+> **Token:** because CI now tags the private repo on publish, `METADATA_REPO_TOKEN`
+> must have **Contents: Write** (it was previously read-only) and be a
+> **repository** secret — the `tag` job that pushes the tag declares no
+> environment, so an environment-scoped secret would be empty there. The
+> production *submission* is still approval-gated; only the token's storage moves.
+> See [One-time setup](#2-configure-this-repo).
 
 ## Two ways metadata reaches the stores
 
 Both paths use the same tools (`deliver` for iOS, `supply` for Android) and the
 same private repo; they differ only in *when* and *what*:
 
-1. **With a release — `submit-release.yml`** in THIS repo (tick `upload_metadata`).
-   Pushes the full listing **alongside** a production binary submit/promote. This
-   is the only way to ship the per-release "What's new" changelog and the
-   new-version iOS screenshots/copy that must ride with the version under review.
-   Documented below.
+1. **With a release — `submit-release.yml`** in THIS repo (automatic when the
+   private repo's HEAD is untagged). Pushes the full listing **alongside** a
+   production binary submit/promote. This is the only way to ship the per-release
+   "What's new" changelog and the new-version iOS screenshots/copy that must ride
+   with the version under review. Documented below.
 2. **Standalone — `Sync Store Metadata` lives in the private metadata repo**
    (`app-stores-metadata`), not here. It pushes the listing (all languages +
    assets) **without** building or submitting a binary, runs on its own checkout
@@ -43,21 +64,28 @@ present.
 ## How it works
 
 1. `submit-release.yml` runs on `ubuntu-latest` (no rebuild — submission is pure
-   App Store Connect / Play API work).
-2. For a **production** run dispatched with `upload_metadata: true`, after
-   checking out the monorepo it also checks out the private metadata repo into
-   `$GITHUB_WORKSPACE/store-metadata` (`persist-credentials: false`, so the
-   read-only token isn't left behind). With `upload_metadata: false` (the
-   default) this step is skipped entirely.
-3. It passes **absolute** paths to the fastlane lanes via env vars
-   (`IOS_METADATA_PATH`, `IOS_SCREENSHOTS_PATH`, `ANDROID_METADATA_PATH`).
-   Absolute because fastlane runs from `mobile/app/<platform>` while the clone
-   lives at the workspace root.
+   App Store Connect / Play API work). The `resolve` job maps the dispatched
+   `build_number` → commit → version.
+2. Each submit job (`submit-ios`, `submit-android`) — on a **production** submit
+   with `STORE_METADATA_REPO` set — checks out the private metadata repo at
+   `STORE_METADATA_REF` (default `main`, `fetch-depth: 0` so its tags come too)
+   into `$GITHUB_WORKSPACE/store-metadata` (`persist-credentials: false`, so the
+   token isn't left in git config for the fastlane steps).
+3. A **gate** step then runs `git tag --points-at HEAD`: if the latest commit has
+   any `v*` tag the listing was already published, so the metadata env vars
+   (`IOS_METADATA_PATH`, `IOS_SCREENSHOTS_PATH`, `ANDROID_METADATA_PATH`) are left
+   **empty**; otherwise they point at the cloned tree. (Absolute paths, because
+   fastlane runs from `mobile/app/<platform>` while the clone lives at the
+   workspace root.)
 4. The lanes (`submit_ios`, `submit_android`) upload each part of the metadata
    **only when its directory exists and is non-empty** (`metadata_dir_from_env`
-   in each `Fastfile`). When the checkout was skipped the dirs are absent, so
-   the lanes no-op. A text-only repo uploads only text; add screenshots/images
-   to the repo and they upload too.
+   in each `Fastfile`). Empty paths → the lanes no-op (binary only). A text-only
+   repo uploads only text; add screenshots/images to the repo and they upload too.
+5. After the requested platforms submit successfully, the `tag` job stamps the
+   release's **`v<VERSION>`** onto the private repo's published commit (the same
+   value as the monorepo's release tag) using `METADATA_REPO_TOKEN` (write). This
+   marks that commit "published" so step 3 skips it next time. Idempotent: an
+   existing tag on the same commit is a no-op; on a different commit it fails loud.
 
 ### iOS — two passes (`submit_ios`)
 
@@ -106,7 +134,7 @@ Two distinct sources, by intent:
 
 ### Screenshots & images
 
-When `upload_metadata` is on, screenshots and images are uploaded too — but only
+When metadata publishes, screenshots and images are uploaded too — but only
 if you actually put them in the repo (an absent/empty `ios/screenshots` or
 Android `<locale>/images` tree is skipped). If you keep the repo text-only,
 nothing image-related is touched.
@@ -194,15 +222,17 @@ fastlane run download_from_play_store \
 # rm -rf android/*/images ios/screenshots
 
 # Optional: seed iOS screenshots (download_metadata does NOT fetch them).
-# Only needed if you want screenshots managed here (uploaded when you run a
-# production submit with upload_metadata=true).
+# Only needed if you want screenshots managed here (uploaded on the next
+# production release after they're committed — i.e. while HEAD is untagged).
 # fastlane deliver download_screenshots \
 #   --api_key_path "/abs/path/asc_api_key.json" \
 #   --app_identifier "com.sesori.app" \
 #   --screenshots_path "./ios/screenshots"
 
 git add -A && git commit -m "Seed store listing metadata"
-# create a PRIVATE remote, then push
+# create a PRIVATE remote, then push.
+# Leave this seed commit UNTAGGED — the first production release publishes it and
+# stamps v<VERSION> on it.
 ```
 
 ### 2. Configure this repo
@@ -210,37 +240,64 @@ git add -A && git commit -m "Seed store listing metadata"
 - **Repository variable** `STORE_METADATA_REPO` = `owner/store-metadata`
   (Settings → Secrets and variables → Actions → Variables). Optional:
   `STORE_METADATA_REF` (defaults to `main`).
-- **Secret** `METADATA_REPO_TOKEN` — read-only access to the private repo. Use a
-  fine-grained PAT scoped to just that repo with **Contents: Read**, or a
-  read-only deploy key (switch the checkout to `ssh-key:`). Add it to the
-  `store-production` environment.
+- **Secret** `METADATA_REPO_TOKEN` — **write** access to the private repo
+  (Contents: Write), because CI both clones the listing and pushes the
+  `v<VERSION>` tag back on publish. Use a fine-grained PAT scoped to just that
+  repo. Add it as a **repository** secret (Settings → Secrets and variables →
+  Actions → *Repository secrets*), **not** an environment secret: the `tag` job
+  that pushes the tag declares no environment, so an environment-scoped token
+  would resolve to empty and the tag push would fail. The submit jobs keep their
+  `store-production` approval gate on the actual submission regardless of where
+  the token lives.
 
-That's it. To push the listing, run **Submit Release** with `track: production`
-and tick **`upload_metadata`** — the run clones the private repo and uploads
-everything in it. Leaving `upload_metadata` unticked promotes/submits the binary
-only and never touches the listing. Edit copy by opening a PR against the private
-repo; no app-source access required.
+That's it. On a `track: production` **Submit Release**, the listing publishes
+**automatically whenever the private repo's latest commit is untagged** — the run
+clones the repo, uploads everything in it, ships the binary, and then stamps the
+release's `v<VERSION>` onto that commit (so `v1.0.8` exists in both repos). If the
+latest commit is already `v*`-tagged, the listing is left untouched and only the
+binary is submitted.
+
+**To publish a listing change**, commit it to the private repo (open a PR; no
+app-source access required). That moves HEAD to a new, untagged commit, and the
+next production release publishes and re-tags it. There's nothing to toggle at
+submit time.
+
+**Already-released, want to re-push the same commit?** Use the standalone **Sync
+Store Metadata** workflow in the private repo — it pushes the listing without a
+binary. (Deleting the `v<VERSION>` tag in the private repo and re-submitting would
+also re-trigger publish, but the standalone sync is cleaner.)
+
+**Split-platform releases:** the first platform to publish tags the private repo's
+HEAD, so a *separate* later single-platform submit sees the tag and skips the
+listing. Submit `platforms: both` in one run (both jobs see the untagged HEAD and
+publish; the tag is stamped once afterward), or push the lagging platform's
+listing via the standalone Sync workflow.
 
 ## Operational notes
 
-- **When you run with `upload_metadata: true`, a working `METADATA_REPO_TOKEN`
-  is required.** The metadata checkout runs before the submit step, so a
-  missing/expired/under-scoped token (or a deleted repo/ref) fails the job
-  *before* anything is promoted or submitted — a clean fail-fast with no
-  half-published state, but it does block the binary for that run. If the token
-  rotates, update the secret and re-run (the build is already on TestFlight /
-  the internal track, so re-running the submission is safe). A run with
-  `upload_metadata: false` never touches the private repo, so it's unaffected.
-  To degrade instead of fail — promotion-only when metadata can't be fetched —
-  add `continue-on-error: true` to the `Checkout store metadata` steps; note
-  that this trades loud failures for *silently* not updating the listing.
-- **Metadata tracks the latest `main` of the private repo, not the build's
-  commit.** The app is checked out at the historical `build-<N>` commit, but
-  metadata uses `STORE_METADATA_REF` (default `main`). This is intentional —
-  you normally want current store copy. To reproduce a past submission exactly,
-  set `STORE_METADATA_REF` to a tag/SHA in the private repo.
+- **A publishing production run needs a working write `METADATA_REPO_TOKEN`.**
+  The metadata checkout runs *before* the submit step, so a missing/expired/
+  under-scoped token (or a deleted repo/ref) fails the job *before* anything is
+  promoted or submitted — a clean fail-fast with no half-published state, but it
+  blocks the binary for that run. To degrade instead — promote/submit the binary
+  even when metadata can't be fetched — add `continue-on-error: true` to the
+  `Checkout store metadata` steps; that trades loud failure for *silently* not
+  updating the listing. A beta run, or a production run where HEAD is already
+  `v*`-tagged, never touches the private repo, so it's unaffected.
+- **If the final tag-push to the private repo fails** (e.g. the token lacks
+  write) *after* a successful submit, the listing is published but its commit
+  stays untagged. This is self-healing: fix the token and re-run — HEAD is still
+  untagged, so the gate republishes (idempotent) and re-attempts the tag. The
+  build is already on TestFlight / the internal track, so re-running the submit
+  is safe.
+- **Metadata tracks the latest `STORE_METADATA_REF` of the private repo, not the
+  build's commit.** The app is checked out at the historical `build-<N>` commit,
+  but the listing comes from `STORE_METADATA_REF` (default `main`). This is
+  intentional — you normally want current store copy. Note the gate keys off
+  *that* commit's tags, so pinning `STORE_METADATA_REF` to an already-`v*`-tagged
+  commit will skip publishing.
 - **The private repo is the source of truth for any field it contains.**
   `deliver`/`supply` only push fields whose file exists, so missing files leave
   the console value untouched — but for fields you *do* manage here, stop
-  editing them directly in App Store Connect / Play Console (every
-  `upload_metadata: true` submission re-pushes them).
+  editing them directly in App Store Connect / Play Console (every publishing
+  submission — and every standalone Sync run — re-pushes them).
