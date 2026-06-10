@@ -8,7 +8,7 @@
       "name": "Mobile (debug)",
       "request": "launch",
       "type": "dart",
-      "program": "lib/main.dart",
+      "program": "${workspaceFolder}/mobile/app/lib/main.dart",
       "cwd": "${workspaceFolder}/mobile/app",
       "flutterMode": "debug"
     },
@@ -16,7 +16,7 @@
       "name": "Mobile (profile)",
       "request": "launch",
       "type": "dart",
-      "program": "lib/main.dart",
+      "program": "${workspaceFolder}/mobile/app/lib/main.dart",
       "cwd": "${workspaceFolder}/mobile/app",
       "flutterMode": "profile"
     },
@@ -24,7 +24,7 @@
       "name": "Mobile (release)",
       "request": "launch",
       "type": "dart",
-      "program": "lib/main.dart",
+      "program": "${workspaceFolder}/mobile/app/lib/main.dart",
       "cwd": "${workspaceFolder}/mobile/app",
       "flutterMode": "release"
     },
