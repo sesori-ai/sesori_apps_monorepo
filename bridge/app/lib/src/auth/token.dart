@@ -16,14 +16,11 @@ class TokenData {
   TokenData({
     required this.accessToken,
     required this.refreshToken,
-    this.bridgeId,
+    required this.bridgeId,
     required this.lastProvider,
   });
 
   /// Creates a TokenData instance from a JSON map.
-  ///
-  /// Unknown keys (e.g. the legacy `bridgeToken` key from old token files)
-  /// are ignored.
   factory TokenData.fromJson(Map<String, dynamic> json) {
     final providerName = json['lastProvider'] as String?;
     if (providerName == null) {

@@ -24,6 +24,7 @@ void main() {
       final data = TokenData(
         accessToken: "access-token",
         refreshToken: "refresh-token",
+        bridgeId: null,
         lastProvider: AuthProvider.github,
       );
 

@@ -103,7 +103,9 @@ class RelayClient {
       // is provided by WSS (TLS). The relay cannot read E2EE application data.
       final token = authToken;
       if (token != null && token.isNotEmpty) {
-        final authMessage = RelayMessage.auth(token: token, role: RelayProtocol.rolePhone);
+        // Phones never register as bridges, so the bridgeId is always null
+        // for role "phone".
+        final authMessage = RelayMessage.auth(token: token, role: RelayProtocol.rolePhone, bridgeId: null);
         channel.sink.add(jsonEncode(authMessage.toJson()));
         logd("Relay auth message sent");
       }

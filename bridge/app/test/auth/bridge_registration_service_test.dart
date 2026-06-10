@@ -17,7 +17,7 @@ void main() {
   setUp(() {
     repository = FakeBridgeRegistrationRepository();
     tokenStore = InMemoryTokenStore(
-      TokenData(accessToken: "access", refreshToken: "refresh", lastProvider: AuthProvider.github),
+      TokenData(accessToken: "access", refreshToken: "refresh", bridgeId: null, lastProvider: AuthProvider.github),
     );
     tokenRefresher = _RecordingTokenRefresher();
     service = BridgeRegistrationService(
@@ -68,6 +68,7 @@ void main() {
         tokenStore.tokens = TokenData(
           accessToken: "rotated-access",
           refreshToken: "rotated-refresh",
+          bridgeId: null,
           lastProvider: AuthProvider.github,
         );
       };

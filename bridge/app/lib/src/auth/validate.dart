@@ -39,6 +39,7 @@ Future<(TokenData, bool)> validateToken({
       TokenData(
         accessToken: accessToken,
         refreshToken: refreshToken,
+        bridgeId: null,
         lastProvider: lastProvider,
       ),
       true,
@@ -51,6 +52,7 @@ Future<(TokenData, bool)> validateToken({
       TokenData(
         accessToken: accessToken,
         refreshToken: refreshToken,
+        bridgeId: null,
         lastProvider: lastProvider,
       ),
       false,
@@ -78,6 +80,7 @@ Future<(TokenData, bool)> validateToken({
       TokenData(
         accessToken: accessToken,
         refreshToken: refreshToken,
+        bridgeId: null,
         lastProvider: lastProvider,
       ),
       false,
@@ -102,6 +105,7 @@ Future<(TokenData, bool)> validateToken({
     TokenData(
       accessToken: refreshed.accessToken,
       refreshToken: refreshed.refreshToken,
+      bridgeId: null,
       lastProvider: lastProvider,
     ),
     true,

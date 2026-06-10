@@ -108,7 +108,7 @@ BridgeRegistrationService createFakeBridgeRegistrationService({
   final store =
       tokenStore ??
       InMemoryTokenStore(
-        TokenData(accessToken: "access", refreshToken: "refresh", lastProvider: AuthProvider.github),
+        TokenData(accessToken: "access", refreshToken: "refresh", bridgeId: null, lastProvider: AuthProvider.github),
       );
   return BridgeRegistrationService(
     repository: repository ?? FakeBridgeRegistrationRepository(),

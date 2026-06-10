@@ -4,7 +4,7 @@ import "package:test/test.dart";
 void main() {
   group("RelayMessage.auth bridgeId", () {
     test("omits bridgeId from JSON when null", () {
-      const msg = RelayMessage.auth(token: "jwt-token", role: "bridge");
+      const msg = RelayMessage.auth(token: "jwt-token", role: "bridge", bridgeId: null);
 
       final json = msg.toJson();
 

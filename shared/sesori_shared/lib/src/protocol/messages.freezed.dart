@@ -730,7 +730,7 @@ String toString() {
 @JsonSerializable()
 
 class AuthRelayMessage implements RelayMessage {
-  const AuthRelayMessage({required this.token, required this.role, @JsonKey(includeIfNull: false) this.bridgeId, final  String? $type}): $type = $type ?? 'auth';
+  const AuthRelayMessage({required this.token, required this.role, @JsonKey(includeIfNull: false) required this.bridgeId, final  String? $type}): $type = $type ?? 'auth';
   factory AuthRelayMessage.fromJson(Map<String, dynamic> json) => _$AuthRelayMessageFromJson(json);
 
  final  String token;

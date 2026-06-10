@@ -173,7 +173,7 @@ class _RegistrationHarness {
     final database = createTestDatabase();
     final plugin = FakeBridgePlugin();
     final tokenStore = InMemoryTokenStore(
-      TokenData(accessToken: "access", refreshToken: "refresh", lastProvider: AuthProvider.github),
+      TokenData(accessToken: "access", refreshToken: "refresh", bridgeId: null, lastProvider: AuthProvider.github),
     );
     final registrationService = BridgeRegistrationService(
       repository: repository,
