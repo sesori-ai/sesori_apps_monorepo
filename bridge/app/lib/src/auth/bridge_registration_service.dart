@@ -81,7 +81,7 @@ class BridgeRegistrationService implements BridgeIdProvider {
 
     _bridgeId = summary.id;
     if (tokens.bridgeId != summary.id) {
-      await _persistBridgeId(summary.id, tokens);
+      await _persistBridgeId(summary.id);
     }
     _registered = true;
   }
@@ -139,8 +139,12 @@ class BridgeRegistrationService implements BridgeIdProvider {
     }
   }
 
-  Future<void> _persistBridgeId(String? bridgeId, [TokenData? currentTokens]) async {
-    final tokens = currentTokens ?? await _loadTokens();
+  // Always re-reads the token file: the token refresher persists a rotated
+  // access/refresh pair mid-registration (e.g. on the 401-retry path), so a
+  // snapshot from before the register call would write stale credentials
+  // back to disk.
+  Future<void> _persistBridgeId(String? bridgeId) async {
+    final tokens = await _loadTokens();
     await _saveTokens(
       TokenData(
         accessToken: tokens.accessToken,

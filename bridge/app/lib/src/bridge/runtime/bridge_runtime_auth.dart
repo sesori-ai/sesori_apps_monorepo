@@ -129,8 +129,14 @@ class BridgeRuntimeAuthService {
     try {
       final existingTokens = await loadTokens();
       existingBridgeId = existingTokens.bridgeId;
-    } on Object {
-      // Token file missing or corrupt — no previous bridge id to carry over.
+    } on FileSystemException catch (error) {
+      if (error.osError?.errorCode != 2) {
+        rethrow;
+      }
+      // Token file missing — no previous bridge id to carry over.
+      existingBridgeId = null;
+    } on FormatException {
+      // Token file corrupt — no previous bridge id to carry over.
       existingBridgeId = null;
     }
 

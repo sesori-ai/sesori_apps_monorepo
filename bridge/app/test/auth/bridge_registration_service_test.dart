@@ -58,24 +58,25 @@ void main() {
       expect(tokenStore.tokens!.bridgeId, equals("br_persisted1"));
     });
 
-    test("reads the token file only once when persisting the server-minted id", () async {
-      var loadCount = 0;
-      final countingService = BridgeRegistrationService(
-        repository: repository,
-        tokenRefresher: tokenRefresher,
-        loadTokens: () {
-          loadCount += 1;
-          return tokenStore.load();
-        },
-        saveTokens: tokenStore.save,
-        hostName: "dev-laptop",
-        platform: "macos",
-      );
+    test("does not clobber tokens rotated and persisted mid-registration (401-retry path)", () async {
+      // TokenManager persists a rotated access/refresh pair to the token file
+      // when it force-refreshes; persisting the bridge id afterwards must keep
+      // those rotated credentials, not a snapshot from before the refresh.
+      repository.registerError = BridgeRegistrationException(statusCode: 401, body: "expired");
+      tokenRefresher.onForceRefresh = () {
+        repository.registerError = null;
+        tokenStore.tokens = TokenData(
+          accessToken: "rotated-access",
+          refreshToken: "rotated-refresh",
+          lastProvider: AuthProvider.github,
+        );
+      };
 
-      await countingService.ensureRegistered();
+      await service.ensureRegistered();
 
-      expect(loadCount, equals(1));
       expect(tokenStore.tokens!.bridgeId, equals("br_test1234"));
+      expect(tokenStore.tokens!.accessToken, equals("rotated-access"));
+      expect(tokenStore.tokens!.refreshToken, equals("rotated-refresh"));
     });
 
     test("is memoized per process — a second call does not re-register", () async {
