@@ -49,16 +49,15 @@ class BridgeRuntimeAuthService {
     try {
       final storedTokens = await loadTokens();
       try {
-        final (validatedTokens, ok) = await validateToken(
+        final validation = await validateToken(
           authBackendURL: options.authBackendUrl,
           accessToken: storedTokens.accessToken,
           refreshToken: storedTokens.refreshToken,
-          lastProvider: storedTokens.lastProvider,
         );
-        if (ok) {
+        if (validation.isValid) {
           final tokensToSave = TokenData(
-            accessToken: validatedTokens.accessToken,
-            refreshToken: validatedTokens.refreshToken,
+            accessToken: validation.accessToken,
+            refreshToken: validation.refreshToken,
             bridgeId: storedTokens.bridgeId,
             lastProvider: storedTokens.lastProvider,
           );
