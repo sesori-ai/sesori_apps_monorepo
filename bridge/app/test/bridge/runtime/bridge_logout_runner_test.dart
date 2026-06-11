@@ -1,12 +1,11 @@
 import 'dart:io';
 
 import 'package:sesori_bridge/src/bridge/runtime/bridge_logout_runner.dart';
-import 'package:sesori_bridge/src/server/foundation/process_identity.dart';
-import 'package:sesori_bridge/src/server/foundation/process_user.dart';
 import 'package:sesori_bridge/src/server/foundation/terminal_prompt_decision.dart';
 import 'package:sesori_bridge/src/server/repositories/bridge_instance_repository.dart';
 import 'package:sesori_bridge/src/server/repositories/terminal_prompt_repository.dart';
 import 'package:sesori_bridge/src/server/services/bridge_instance_service.dart';
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 import 'package:test/test.dart';
 
 void main() {

@@ -1,20 +1,22 @@
+import "plugin_operation_exception.dart";
+
 /// Thrown by plugin methods when the upstream API returns a non-success status.
 ///
 /// Handlers and routers can catch this to forward the real HTTP status
 /// instead of collapsing every failure to 502.
-class PluginApiException implements Exception {
-  final int statusCode;
-  final String endpoint;
+class PluginApiException extends PluginOperationException {
+  PluginApiException(super.endpoint, int statusCode, {super.message, super.cause}) : super(statusCode: statusCode);
 
-  /// Optional upstream failure detail (e.g. the upstream response body) so
-  /// logs surface the actual reason instead of just a status code.
-  final String? detail;
+  /// The endpoint that failed; alias of [operation] for HTTP-backed plugins.
+  String get endpoint => operation;
 
-  PluginApiException(this.endpoint, this.statusCode, {this.detail});
+  @override
+  int get statusCode => super.statusCode!;
 
   @override
   String toString() {
-    final detailSuffix = detail == null || detail!.isEmpty ? "" : ": $detail";
-    return "PluginApiException: $endpoint failed with status $statusCode$detailSuffix";
+    final detail = message == null || message!.isEmpty ? "" : ": $message";
+    final causeDetail = cause == null ? "" : " (cause: $cause)";
+    return "PluginApiException: $endpoint failed with status $statusCode$detail$causeDetail";
   }
 }

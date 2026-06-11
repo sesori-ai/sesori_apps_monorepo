@@ -1,24 +1,18 @@
-// ignore_for_file: unused_field
-
-import 'package:meta/meta.dart';
+import "package:meta/meta.dart";
 
 @immutable
 class ProcessUser {
-  final String _rawUser;
   final String _normalizedUser;
 
   const ProcessUser._({
-    required String rawUser,
     required String normalizedUser,
-  }) : _rawUser = rawUser,
-       _normalizedUser = normalizedUser;
+  }) : _normalizedUser = normalizedUser;
 
   static ProcessUser? fromRawUser(String? rawUser) {
     final trimmedRawUser = rawUser?.trim();
     if (trimmedRawUser == null || trimmedRawUser.isEmpty) return null;
 
     return ProcessUser._(
-      rawUser: trimmedRawUser,
       normalizedUser: _normalizeUser(trimmedRawUser),
     );
   }

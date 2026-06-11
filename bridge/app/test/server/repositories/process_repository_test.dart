@@ -1,11 +1,9 @@
 import "dart:async";
 
 import "package:sesori_bridge/src/server/api/system_process_api.dart";
-import "package:sesori_bridge/src/server/foundation/process_identity.dart";
 import "package:sesori_bridge/src/server/foundation/process_match.dart";
-import "package:sesori_bridge/src/server/foundation/process_user.dart";
-import "package:sesori_bridge/src/server/foundation/shutdown_result.dart";
 import "package:sesori_bridge/src/server/repositories/process_repository.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -89,14 +87,14 @@ void main() {
     });
 
     test("process repository exposes graceful and force signal primitives", () async {
-      api.gracefulResult = ShutdownResult(
+      api.gracefulResult = SignalResult(
         pid: 44,
         requestedSignal: ShutdownSignal.graceful,
         deliveredSignal: .sigterm,
         wasRequested: true,
         attemptedAt: DateTime.utc(2026, 5, 15, 12, 30),
       );
-      api.forceResult = ShutdownResult(
+      api.forceResult = SignalResult(
         pid: 44,
         requestedSignal: ShutdownSignal.force,
         deliveredSignal: .sigkill,
@@ -119,8 +117,8 @@ void main() {
 class _FakeSystemProcessApi implements SystemProcessApi {
   ProcessIdentity? inspectFact;
   List<ProcessIdentity> listFacts = <ProcessIdentity>[];
-  ShutdownResult? gracefulResult;
-  ShutdownResult? forceResult;
+  SignalResult? gracefulResult;
+  SignalResult? forceResult;
   int? inspectPid;
   int listCallCount = 0;
   final List<String> signalRequests = <String>[];
@@ -138,13 +136,13 @@ class _FakeSystemProcessApi implements SystemProcessApi {
   }
 
   @override
-  Future<ShutdownResult> sendForceSignal({required int pid}) async {
+  Future<SignalResult> sendForceSignal({required int pid}) async {
     signalRequests.add("force:$pid");
     return forceResult!;
   }
 
   @override
-  Future<ShutdownResult> sendGracefulSignal({required int pid}) async {
+  Future<SignalResult> sendGracefulSignal({required int pid}) async {
     signalRequests.add("graceful:$pid");
     return gracefulResult!;
   }

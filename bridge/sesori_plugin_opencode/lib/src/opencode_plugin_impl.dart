@@ -90,7 +90,7 @@ class OpenCodePlugin implements BridgePluginApi {
     try {
       return await fn();
     } on OpenCodeApiException catch (e) {
-      throw PluginApiException(e.endpoint, e.statusCode, detail: e.responseBody);
+      throw PluginApiException(e.endpoint, e.statusCode, message: e.responseBody);
     }
   }
 

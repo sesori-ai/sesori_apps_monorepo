@@ -1,5 +1,4 @@
-import 'package:sesori_bridge/src/server/foundation/process_identity.dart';
-import 'package:sesori_bridge/src/server/foundation/process_user.dart';
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 import 'package:test/test.dart';
 
 void main() {

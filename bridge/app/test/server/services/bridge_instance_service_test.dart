@@ -1,15 +1,12 @@
 import 'dart:io';
 
-import 'package:sesori_bridge/src/server/foundation/process_identity.dart';
 import 'package:sesori_bridge/src/server/foundation/process_match.dart';
-import 'package:sesori_bridge/src/server/foundation/process_user.dart';
-import 'package:sesori_bridge/src/server/foundation/server_clock.dart';
-import 'package:sesori_bridge/src/server/foundation/shutdown_result.dart';
 import 'package:sesori_bridge/src/server/foundation/terminal_prompt_decision.dart';
 import 'package:sesori_bridge/src/server/repositories/bridge_instance_repository.dart';
 import 'package:sesori_bridge/src/server/repositories/process_repository.dart';
 import 'package:sesori_bridge/src/server/repositories/terminal_prompt_repository.dart';
 import 'package:sesori_bridge/src/server/services/bridge_instance_service.dart';
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -235,9 +232,9 @@ class _FakeProcessRepository implements ProcessRepository {
   }
 
   @override
-  Future<ShutdownResult> sendGracefulSignal({required int pid}) async {
+  Future<SignalResult> sendGracefulSignal({required int pid}) async {
     signalRequests.add('graceful:$pid');
-    return ShutdownResult(
+    return SignalResult(
       pid: pid,
       requestedSignal: ShutdownSignal.graceful,
       deliveredSignal: .sigterm,
@@ -247,9 +244,9 @@ class _FakeProcessRepository implements ProcessRepository {
   }
 
   @override
-  Future<ShutdownResult> sendForceSignal({required int pid}) async {
+  Future<SignalResult> sendForceSignal({required int pid}) async {
     signalRequests.add('force:$pid');
-    return ShutdownResult(
+    return SignalResult(
       pid: pid,
       requestedSignal: ShutdownSignal.force,
       deliveredSignal: .sigkill,

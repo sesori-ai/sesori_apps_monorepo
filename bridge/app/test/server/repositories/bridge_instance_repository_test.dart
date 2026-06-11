@@ -1,8 +1,6 @@
 import 'package:sesori_bridge/src/server/api/system_process_api.dart';
-import 'package:sesori_bridge/src/server/foundation/process_identity.dart';
-import 'package:sesori_bridge/src/server/foundation/process_user.dart';
-import 'package:sesori_bridge/src/server/foundation/shutdown_result.dart';
 import 'package:sesori_bridge/src/server/repositories/bridge_instance_repository.dart';
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -165,12 +163,12 @@ class _FakeSystemProcessApi implements SystemProcessApi {
   }
 
   @override
-  Future<ShutdownResult> sendForceSignal({required int pid}) {
+  Future<SignalResult> sendForceSignal({required int pid}) {
     throw UnimplementedError();
   }
 
   @override
-  Future<ShutdownResult> sendGracefulSignal({required int pid}) {
+  Future<SignalResult> sendGracefulSignal({required int pid}) {
     throw UnimplementedError();
   }
 }
