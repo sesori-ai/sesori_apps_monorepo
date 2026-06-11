@@ -12,8 +12,6 @@ import "../routing/routing_test_helpers.dart";
 
 void main() {
   group("SessionPromptService command dispatch", () {
-    const fastFailWindow = Duration(milliseconds: 50);
-
     late FakeBridgePlugin plugin;
     late AppDatabase db;
     late SessionRepository sessionRepository;
@@ -33,7 +31,6 @@ void main() {
       service = SessionPromptService(
         sessionRepository: sessionRepository,
         sseManager: FakeSSEManager(),
-        commandDispatchFastFailWindow: fastFailWindow,
       );
     });
 
@@ -53,7 +50,7 @@ void main() {
       );
     }
 
-    test("completes when the command finishes within the window", () async {
+    test("sends the command and records normalized arguments", () async {
       await sendCommand();
 
       expect(plugin.lastSendCommandSessionId, equals("s1"));
@@ -61,7 +58,10 @@ void main() {
       expect(plugin.lastSendCommandArguments, equals("extra args"));
     });
 
-    test("propagates a failure raised within the window", () async {
+    test("propagates a command dispatch failure", () async {
+      // The fast-fail dispatch window lives inside the OpenCode plugin (see
+      // OpenCodeService) — the bridge stays plugin-agnostic and simply
+      // surfaces whatever the plugin throws.
       final completer = Completer<void>();
       plugin.sendCommandCompleter = completer;
       completer.completeError(StateError("unknown command"));
@@ -69,49 +69,7 @@ void main() {
       await expectLater(sendCommand(), throwsA(isA<StateError>()));
     });
 
-    test("propagates a TimeoutException raised by the send chain within the window", () async {
-      // Must not be conflated with the fast-fail window elapsing: a timeout
-      // thrown by the send chain itself is a genuine dispatch failure.
-      final completer = Completer<void>();
-      plugin.sendCommandCompleter = completer;
-      completer.completeError(TimeoutException("inner send timeout"));
-
-      await expectLater(sendCommand(), throwsA(isA<TimeoutException>()));
-    });
-
-    test("completes after the window when the command run keeps going", () async {
-      // Simulates OpenCode's synchronous /command endpoint: the HTTP response
-      // only arrives after the full agent run. The service must not hold the
-      // phone's request open that long.
-      final completer = Completer<void>();
-      plugin.sendCommandCompleter = completer;
-
-      final stopwatch = Stopwatch()..start();
-      await sendCommand();
-      stopwatch.stop();
-
-      expect(plugin.lastSendCommand, equals("review"));
-      expect(
-        stopwatch.elapsed,
-        lessThan(const Duration(seconds: 5)),
-        reason: "dispatch must detach instead of awaiting the full run",
-      );
-
-      completer.complete();
-    });
-
-    test("swallows and logs a failure raised after the window", () async {
-      final completer = Completer<void>();
-      plugin.sendCommandCompleter = completer;
-
-      await sendCommand();
-
-      completer.completeError(StateError("run failed mid-flight"));
-      // Flush microtasks — an unhandled async error would fail the test zone.
-      await Future<void>.delayed(Duration.zero);
-    });
-
-    test("still updates prompt defaults when the command run outlives the window", () async {
+    test("updates prompt defaults after the command is dispatched", () async {
       await sessionRepository.insertStoredSession(
         sessionId: "s-defaults-command",
         projectId: "/repo",
@@ -124,9 +82,6 @@ void main() {
         agent: "old-agent",
         agentModel: null,
       );
-      final completer = Completer<void>();
-      plugin.sendCommandCompleter = completer;
-
       await service.sendPrompt(
         sessionId: "s-defaults-command",
         parts: const [PromptPart.text(text: "")],
@@ -142,8 +97,6 @@ void main() {
       expect(dbSession.lastAgentModel?.providerID, equals("openai"));
       expect(dbSession.lastAgentModel?.modelID, equals("gpt-4o"));
       expect(dbSession.lastAgentModel?.variant, equals("low"));
-
-      completer.complete();
     });
 
     test("plain prompts are unaffected and delegate to sendPrompt", () async {

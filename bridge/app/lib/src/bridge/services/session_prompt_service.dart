@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -9,15 +7,12 @@ import "../sse/sse_manager.dart";
 class SessionPromptService {
   final SessionRepository _sessionRepository;
   final SSEManager _sseManager;
-  final Duration _commandDispatchFastFailWindow;
 
   SessionPromptService({
     required SessionRepository sessionRepository,
     required SSEManager sseManager,
-    Duration commandDispatchFastFailWindow = const Duration(seconds: 3),
   })  : _sessionRepository = sessionRepository,
-        _sseManager = sseManager,
-        _commandDispatchFastFailWindow = commandDispatchFastFailWindow;
+        _sseManager = sseManager;
 
   Future<void> sendPrompt({
     required String sessionId,
@@ -46,38 +41,17 @@ class SessionPromptService {
     }
 
     final textPart = parts.whereType<PromptPartText>().firstOrNull;
-    final sendFuture = _sessionRepository.sendCommand(
+    // Per the BridgePluginApi contract, sendCommand completes once the
+    // backend has accepted the command — not when its run finishes — so
+    // awaiting it here never holds the phone's relay request open for the
+    // duration of the command's agent run.
+    await _sessionRepository.sendCommand(
       sessionId: sessionId,
       command: normalizedCommand,
       arguments: textPart?.text ?? '',
       variant: variant,
       agent: agent,
       model: model,
-    );
-    // OpenCode's /command endpoint is synchronous — it responds only after
-    // the full agent run completes, and no async variant exists upstream.
-    // Surviving the fast-fail window means OpenCode accepted the command and
-    // the run is in progress (progress streams over SSE). Detach instead of
-    // holding the phone's relay request open until its client-side timeout
-    // misreports an in-flight command as a failed send.
-    //
-    // `onTimeout` (rather than catching [TimeoutException]) fires only when
-    // the window itself elapses, so a genuine TimeoutException raised by the
-    // send chain within the window still propagates as a dispatch failure.
-    await sendFuture.timeout(
-      _commandDispatchFastFailWindow,
-      onTimeout: () {
-        unawaited(
-          sendFuture.catchError((Object e, StackTrace s) {
-            Log.w(
-              "command '$normalizedCommand' for session $sessionId "
-              "failed after dispatch: $e",
-              e,
-              s,
-            );
-          }),
-        );
-      },
     );
     await _updatePromptDefaults(
       sessionId: sessionId,

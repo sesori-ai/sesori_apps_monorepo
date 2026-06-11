@@ -102,6 +102,10 @@ Do not extract a bridge collaborator only to make a file shorter. The extracted 
 
 In the push subsystem, `PushDispatcher` owns only outbound push sends. `CompletionPushListener` owns SSE-driven tracker/notifier bookkeeping plus abort suppression, and `MaintenancePushListener` owns the timer lifecycle, maintenance-step sequencing, and maintenance telemetry/logging.
 
+### Backend Quirks Live In The Plugin
+
+Backend-specific endpoint semantics and the workarounds they require (synchronous vs async endpoints, dispatch timeouts compensating for upstream API shape, retry quirks) belong inside the plugin that implements `BridgePluginApi` — never in bridge `app/` services or handlers. Bridge `app/` code must stay plugin-agnostic: it programs against the `BridgePluginApi` contract, and the contract's doc comments define the semantics (e.g., `sendCommand` completes on acceptance, not on run completion). If a fix requires knowing how a specific backend behaves, it goes in that backend's plugin.
+
 ### Orchestrator Owns SSE Decisions
 
 No component below the Orchestrator may emit SSE events directly. The Orchestrator subscribes to streams (`plugin.events`, `prSyncService.prChanges`) and decides what to emit to phones. No `emitBridgeEvent()` or similar public methods on the Orchestrator.

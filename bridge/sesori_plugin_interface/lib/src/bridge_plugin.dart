@@ -86,6 +86,18 @@ abstract class BridgePluginApi {
     required ({String providerID, String modelID})? model,
   });
 
+  /// Sends a slash command to a session.
+  ///
+  /// The returned future MUST complete once the backend has **accepted** the
+  /// command for execution — not when the command's run finishes. Callers
+  /// (bridge request handlers serving phones) await this future while holding
+  /// a client request open, so an implementation must never block for the
+  /// duration of the command's agent run. If the backend only exposes a
+  /// synchronous endpoint, the implementation is responsible for detaching
+  /// (and surfacing later failures through its [events] stream / logs).
+  ///
+  /// Dispatch failures (unknown command, missing session, backend down) MUST
+  /// be thrown so callers can report the send as failed.
   Future<void> sendCommand({
     required String sessionId,
     required String command,
