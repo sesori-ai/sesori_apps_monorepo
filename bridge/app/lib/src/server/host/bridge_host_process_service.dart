@@ -95,10 +95,11 @@ class BridgeHostProcessService implements HostProcessService {
     final ProcessIdentity? inspectedIdentity;
     try {
       inspectedIdentity = await _processRepository.inspectProcess(pid: spawnIdentity.pid);
-    } on Exception catch (error) {
+    } on Object catch (error) {
       // The child is already running and only the returned handle lets the
-      // caller stop it, so a failed process-table read must not fail the
-      // spawn — fall back to the partial spawn-time identity.
+      // caller stop it, so nothing thrown by the process-table read — Errors
+      // included — may fail the spawn. Fall back to the partial spawn-time
+      // identity.
       Log.w("Post-spawn identity inspection failed for pid ${spawnIdentity.pid}\n$error");
       return spawnIdentity;
     }

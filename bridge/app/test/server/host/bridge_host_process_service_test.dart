@@ -109,6 +109,16 @@ void main() {
       expect(spawned.identity.startMarker, isNull);
     });
 
+    test('spawn falls back when inspection throws an Error — the child must never be orphaned', () async {
+      starter.process = _FakeProcess(pidValue: 7001);
+      processRepository.inspectError = ArgumentError('broken process-table parse');
+
+      final spawned = await spawnAgent();
+
+      expect(spawned.identity.pid, 7001);
+      expect(spawned.identity.startMarker, isNull);
+    });
+
     test('spawn matches Windows image-name-only command lines by executable path', () async {
       starter.process = _FakeProcess(pidValue: 7001);
       final inspected = _identity(
@@ -363,7 +373,7 @@ class _FakeServerClock implements ServerClock {
 
 class _FakeProcessRepository implements ProcessRepository {
   final Map<int, List<ProcessIdentity?>> inspectResults = <int, List<ProcessIdentity?>>{};
-  Exception? inspectError;
+  Object? inspectError;
   List<ProcessIdentity> identities = <ProcessIdentity>[];
   int? lastExcludePid;
   SignalResult? gracefulResult;
