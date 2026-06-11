@@ -116,7 +116,7 @@ Widget _buildActivityRow({
   };
   final label = switch ((awaitingInput, isRetrying)) {
     (true, _) => loc.sessionListAwaitingInput,
-    (_, true) => "${loc.sessionListRunning} (retrying)",
+    (_, true) => loc.sessionListRunningRetrying,
     _ => loc.sessionListRunning,
   };
 

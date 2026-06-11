@@ -22,6 +22,7 @@ class ActiveSessionTracker {
   final Map<String, String?> _sessionParentIds = {};
 
   Map<String, int> _lastEmittedActiveSessions = {};
+  Map<String, int> _lastEmittedRetrySessions = {};
   Set<String> _lastEmittedPendingInputSessions = {};
 
   ActiveSessionTracker(this._repository);
@@ -93,6 +94,7 @@ class ActiveSessionTracker {
     }
 
     _lastEmittedActiveSessions = _activeSessionCounts;
+    _lastEmittedRetrySessions = _retrySessionCounts;
     _lastEmittedPendingInputSessions = _pendingInputSessions;
   }
 
@@ -154,13 +156,16 @@ class ActiveSessionTracker {
     }
 
     final next = _activeSessionCounts;
+    final nextRetry = _retrySessionCounts;
     final nextPendingInputSessions = _pendingInputSessions;
     if (!forceReemit &&
         _mapsEqual(_lastEmittedActiveSessions, next) &&
+        _mapsEqual(_lastEmittedRetrySessions, nextRetry) &&
         _setsEqual(_lastEmittedPendingInputSessions, nextPendingInputSessions)) {
       return false;
     }
     _lastEmittedActiveSessions = next;
+    _lastEmittedRetrySessions = nextRetry;
     _lastEmittedPendingInputSessions = nextPendingInputSessions;
     return true;
   }
@@ -174,6 +179,7 @@ class ActiveSessionTracker {
     _pendingQuestions.clear();
     _pendingPermissions.clear();
     _lastEmittedActiveSessions = {};
+    _lastEmittedRetrySessions = {};
     _lastEmittedPendingInputSessions = {};
   }
 
@@ -216,14 +222,17 @@ class ActiveSessionTracker {
     }
 
     final nextActive = _activeSessionCounts;
+    final nextRetry = _retrySessionCounts;
     final nextPending = _pendingInputSessions;
 
     if (_mapsEqual(_lastEmittedActiveSessions, nextActive) &&
+        _mapsEqual(_lastEmittedRetrySessions, nextRetry) &&
         _setsEqual(_lastEmittedPendingInputSessions, nextPending)) {
       return false;
     }
 
     _lastEmittedActiveSessions = nextActive;
+    _lastEmittedRetrySessions = nextRetry;
     _lastEmittedPendingInputSessions = nextPending;
     return true;
   }
@@ -300,6 +309,8 @@ class ActiveSessionTracker {
         continue;
       }
       final children = activeChildrenByParent[rootId] ?? const <String>[];
+      final isRetrying = _sessionStatuses[rootId] is SessionStatusRetry ||
+          children.any((childId) => _sessionStatuses[childId] is SessionStatusRetry);
       byWorktree
           .putIfAbsent(worktree, () => [])
           .add(
@@ -307,6 +318,7 @@ class ActiveSessionTracker {
               id: rootId,
               mainAgentRunning: activeRoots.contains(rootId),
               awaitingInput: _rootHasPendingInput(rootId, children),
+              isRetrying: isRetrying,
               childSessionIds: children,
             ),
           );
@@ -329,6 +341,21 @@ class ActiveSessionTracker {
   Map<String, int> get _activeSessionCounts {
     final counts = <String, int>{};
     for (final entry in _sessionStatuses.entries) {
+      final worktree = _sessionWorktrees[entry.key];
+      if (worktree == null) continue;
+      counts[worktree] = (counts[worktree] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  /// Count of retrying sessions per worktree.
+  ///
+  /// Used for change detection so that a busy→retry transition (where the
+  /// per-worktree active count does not change) still triggers a re-emit.
+  Map<String, int> get _retrySessionCounts {
+    final counts = <String, int>{};
+    for (final entry in _sessionStatuses.entries) {
+      if (entry.value is! SessionStatusRetry) continue;
       final worktree = _sessionWorktrees[entry.key];
       if (worktree == null) continue;
       counts[worktree] = (counts[worktree] ?? 0) + 1;

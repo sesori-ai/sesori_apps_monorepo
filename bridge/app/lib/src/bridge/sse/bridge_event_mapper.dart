@@ -186,6 +186,7 @@ class BridgeEventMapper {
                         id: a.id,
                         mainAgentRunning: a.mainAgentRunning,
                         awaitingInput: a.awaitingInput,
+                        isRetrying: a.isRetrying,
                         childSessionIds: a.childSessionIds,
                       ),
                     )
