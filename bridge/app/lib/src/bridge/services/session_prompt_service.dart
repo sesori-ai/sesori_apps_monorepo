@@ -54,26 +54,31 @@ class SessionPromptService {
       agent: agent,
       model: model,
     );
-    try {
-      await sendFuture.timeout(_commandDispatchFastFailWindow);
-    } on TimeoutException {
-      // OpenCode's /command endpoint is synchronous — it responds only after
-      // the full agent run completes, and no async variant exists upstream.
-      // Surviving the fast-fail window means OpenCode accepted the command and
-      // the run is in progress (progress streams over SSE). Detach instead of
-      // holding the phone's relay request open until its client-side timeout
-      // misreports an in-flight command as a failed send.
-      unawaited(
-        sendFuture.catchError((Object e, StackTrace s) {
-          Log.w(
-            "command '$normalizedCommand' for session $sessionId "
-            "failed after dispatch: $e",
-            e,
-            s,
-          );
-        }),
-      );
-    }
+    // OpenCode's /command endpoint is synchronous — it responds only after
+    // the full agent run completes, and no async variant exists upstream.
+    // Surviving the fast-fail window means OpenCode accepted the command and
+    // the run is in progress (progress streams over SSE). Detach instead of
+    // holding the phone's relay request open until its client-side timeout
+    // misreports an in-flight command as a failed send.
+    //
+    // `onTimeout` (rather than catching [TimeoutException]) fires only when
+    // the window itself elapses, so a genuine TimeoutException raised by the
+    // send chain within the window still propagates as a dispatch failure.
+    await sendFuture.timeout(
+      _commandDispatchFastFailWindow,
+      onTimeout: () {
+        unawaited(
+          sendFuture.catchError((Object e, StackTrace s) {
+            Log.w(
+              "command '$normalizedCommand' for session $sessionId "
+              "failed after dispatch: $e",
+              e,
+              s,
+            );
+          }),
+        );
+      },
+    );
     await _updatePromptDefaults(
       sessionId: sessionId,
       variant: variant,

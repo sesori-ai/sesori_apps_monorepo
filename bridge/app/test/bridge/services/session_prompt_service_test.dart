@@ -69,6 +69,16 @@ void main() {
       await expectLater(sendCommand(), throwsA(isA<StateError>()));
     });
 
+    test("propagates a TimeoutException raised by the send chain within the window", () async {
+      // Must not be conflated with the fast-fail window elapsing: a timeout
+      // thrown by the send chain itself is a genuine dispatch failure.
+      final completer = Completer<void>();
+      plugin.sendCommandCompleter = completer;
+      completer.completeError(TimeoutException("inner send timeout"));
+
+      await expectLater(sendCommand(), throwsA(isA<TimeoutException>()));
+    });
+
     test("completes after the window when the command run keeps going", () async {
       // Simulates OpenCode's synchronous /command endpoint: the HTTP response
       // only arrives after the full agent run. The service must not hold the
