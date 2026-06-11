@@ -1,6 +1,8 @@
 import "package:args/args.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_server.dart";
+import "package:sesori_bridge/src/server/foundation/process_match.dart";
+import "package:sesori_bridge/src/server/models/bridge_startup_lock.dart";
 import "package:sesori_bridge/src/server/models/open_code_ownership_record.dart";
 import "package:sesori_bridge/src/server/repositories/open_code_ownership_repository.dart";
 import "package:sesori_bridge/src/server/repositories/startup_mutex_repository.dart";
@@ -156,6 +158,8 @@ void main() {
 
     test("mutex rejection aborts before singleton or OpenCode work", () async {
       startupMutexRepository.rejectLock = true;
+      startupMutexRepository.rejection = _startupLockRejection();
+      bridgeInstanceService.startupLockStatus = BridgeInstanceResolutionStatus.declined;
 
       await expectLater(
         resolveServer(
@@ -179,6 +183,134 @@ void main() {
       expect(bridgeInstanceService.currentPids, isEmpty);
       expect(openCodeServerService.startCalls, isEmpty);
       expect(openCodeServerService.validateCalls, isEmpty);
+    });
+
+    test("mutex rejection with unidentifiable holder includes lock path recovery", () async {
+      startupMutexRepository.rejectLock = true;
+      startupMutexRepository.rejection = const StartupLockRejection(
+        lock: null,
+        holderMatch: null,
+        lockFilePath: "/tmp/bridge-startup.lock",
+      );
+
+      await expectLater(
+        resolveServer(
+          options: _options(port: null, noAutoStart: false),
+          currentBridgeIdentity: currentBridgeIdentity,
+          ownerSessionId: "owner-session",
+          startupMutexRepository: startupMutexRepository,
+          ownershipRepository: ownershipRepository,
+          bridgeInstanceService: bridgeInstanceService,
+          openCodeServerService: openCodeServerService,
+        ),
+        throwsA(
+          isA<BridgeRuntimeServerException>().having(
+            (error) => error.message,
+            "message",
+            allOf(contains("delete /tmp/bridge-startup.lock"), contains("already in progress")),
+          ),
+        ),
+      );
+
+      expect(bridgeInstanceService.startupLockContentionCalls, isEmpty);
+    });
+
+    test("startup lock takeover retries mutex and returns runtime", () async {
+      startupMutexRepository.rejectSequence = <bool>[true, false];
+      startupMutexRepository.rejection = _startupLockRejection();
+      bridgeInstanceService.startupLockStatus = BridgeInstanceResolutionStatus.allowed;
+
+      final runtime = await resolveServer(
+        options: _options(port: null, noAutoStart: false),
+        currentBridgeIdentity: currentBridgeIdentity,
+        ownerSessionId: "owner-session",
+        startupMutexRepository: startupMutexRepository,
+        ownershipRepository: ownershipRepository,
+        bridgeInstanceService: bridgeInstanceService,
+        openCodeServerService: openCodeServerService,
+      );
+
+      expect(runtime.port, equals(50123));
+      expect(startupMutexRepository.lockRequests, hasLength(2));
+      expect(bridgeInstanceService.startupLockContentionCalls.single.lock.bridgePid, equals(201));
+      expect(bridgeInstanceService.currentPids, equals(<int>[100]));
+    });
+
+    test("startup lock replacement decline aborts with declined message", () async {
+      startupMutexRepository.rejectLock = true;
+      startupMutexRepository.rejection = _startupLockRejection();
+      bridgeInstanceService.startupLockStatus = BridgeInstanceResolutionStatus.declined;
+
+      await expectLater(
+        resolveServer(
+          options: _options(port: null, noAutoStart: false),
+          currentBridgeIdentity: currentBridgeIdentity,
+          ownerSessionId: "owner-session",
+          startupMutexRepository: startupMutexRepository,
+          ownershipRepository: ownershipRepository,
+          bridgeInstanceService: bridgeInstanceService,
+          openCodeServerService: openCodeServerService,
+        ),
+        throwsA(
+          isA<BridgeRuntimeServerException>().having(
+            (error) => error.message,
+            "message",
+            contains("replacement was declined"),
+          ),
+        ),
+      );
+    });
+
+    test("startup lock nonInteractive message includes pid and lock path", () async {
+      startupMutexRepository.rejectLock = true;
+      startupMutexRepository.rejection = _startupLockRejection(lockFilePath: "/tmp/start.lock");
+      bridgeInstanceService.startupLockStatus = BridgeInstanceResolutionStatus.nonInteractive;
+
+      await expectLater(
+        resolveServer(
+          options: _options(port: null, noAutoStart: false),
+          currentBridgeIdentity: currentBridgeIdentity,
+          ownerSessionId: "owner-session",
+          startupMutexRepository: startupMutexRepository,
+          ownershipRepository: ownershipRepository,
+          bridgeInstanceService: bridgeInstanceService,
+          openCodeServerService: openCodeServerService,
+        ),
+        throwsA(
+          isA<BridgeRuntimeServerException>().having(
+            (error) => error.message,
+            "message",
+            allOf(contains("non-interactive"), contains("Bridge pid 201"), contains("/tmp/start.lock")),
+          ),
+        ),
+      );
+    });
+
+    test("startup lock allowed but still locked on retry aborts without infinite loop", () async {
+      startupMutexRepository.rejectSequence = <bool>[true, true];
+      startupMutexRepository.rejection = _startupLockRejection();
+      bridgeInstanceService.startupLockStatus = BridgeInstanceResolutionStatus.allowed;
+
+      await expectLater(
+        resolveServer(
+          options: _options(port: null, noAutoStart: false),
+          currentBridgeIdentity: currentBridgeIdentity,
+          ownerSessionId: "owner-session",
+          startupMutexRepository: startupMutexRepository,
+          ownershipRepository: ownershipRepository,
+          bridgeInstanceService: bridgeInstanceService,
+          openCodeServerService: openCodeServerService,
+        ),
+        throwsA(
+          isA<BridgeRuntimeServerException>().having(
+            (error) => error.message,
+            "message",
+            contains("still in progress after attempting replacement"),
+          ),
+        ),
+      );
+
+      expect(startupMutexRepository.lockRequests, hasLength(2));
     });
 
     test("no-auto-start explicit port validates existing server and creates no ownership", () async {
@@ -259,8 +391,23 @@ OpenCodeOwnershipRecord _ownedRecord() {
   );
 }
 
+StartupLockRejection _startupLockRejection({String lockFilePath = "/tmp/bridge-startup.lock"}) {
+  final holderIdentity = _identity(pid: 201, startMarker: "holder-start");
+  return StartupLockRejection(
+    lock: const BridgeStartupLock(bridgePid: 201, bridgeStartMarker: "holder-start"),
+    holderMatch: ProcessMatch(
+      identity: holderIdentity,
+      kind: ProcessMatchKind.sesoriBridge,
+      isCurrentUserProcess: true,
+    ),
+    lockFilePath: lockFilePath,
+  );
+}
+
 class _FakeStartupMutexRepository implements StartupMutexRepository {
   bool rejectLock = false;
+  List<bool>? rejectSequence;
+  StartupLockRejection? rejection;
   final List<({int pid, String? startMarker})> lockRequests = <({int pid, String? startMarker})>[];
   final List<String> operations = <String>[];
 
@@ -269,12 +416,20 @@ class _FakeStartupMutexRepository implements StartupMutexRepository {
     required int bridgePid,
     required String? bridgeStartMarker,
     required Future<T> Function() onLockAcquired,
-    required Future<T> Function(StartupMutexAcquireResult result) onLockRejected,
+    required Future<T> Function(StartupLockRejection rejection) onLockRejected,
   }) async {
     lockRequests.add((pid: bridgePid, startMarker: bridgeStartMarker));
     operations.add("mutex.acquire");
-    if (rejectLock) {
-      return onLockRejected(StartupMutexAcquireResult.alreadyLocked);
+    final shouldReject = rejectSequence?.removeAt(0) ?? rejectLock;
+    if (shouldReject) {
+      return onLockRejected(
+        rejection ??
+            const StartupLockRejection(
+              lock: null,
+              holderMatch: null,
+              lockFilePath: "/tmp/bridge-startup.lock",
+            ),
+      );
     }
     return onLockAcquired();
   }
@@ -312,6 +467,9 @@ class _FakeBridgeInstanceService implements BridgeInstanceService {
   );
   final List<int> currentPids = <int>[];
   final List<String> operations = <String>[];
+  BridgeInstanceResolutionStatus startupLockStatus = BridgeInstanceResolutionStatus.allowed;
+  final List<({BridgeStartupLock lock, ProcessMatch holder, int currentPid})> startupLockContentionCalls =
+      <({BridgeStartupLock lock, ProcessMatch holder, int currentPid})>[];
 
   @override
   Future<BridgeInstanceResolution> enforceSingleLiveBridge({required int currentPid}) async {
@@ -327,6 +485,16 @@ class _FakeBridgeInstanceService implements BridgeInstanceService {
   }) async {
     operations.add("singleton.terminate");
     return existingBridges;
+  }
+
+  @override
+  Future<BridgeInstanceResolutionStatus> resolveStartupLockContention({
+    required BridgeStartupLock lock,
+    required ProcessMatch holder,
+    required int currentPid,
+  }) async {
+    startupLockContentionCalls.add((lock: lock, holder: holder, currentPid: currentPid));
+    return startupLockStatus;
   }
 }
 

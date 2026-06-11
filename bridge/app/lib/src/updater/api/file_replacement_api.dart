@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../../bridge/foundation/process_runner.dart';
+import '../../bridge/foundation/post_update_restart_flag.dart';
 import '../models/file_replacement_result.dart';
 import '../models/pending_windows_update.dart';
 
@@ -183,6 +184,7 @@ class FileReplacementApi {
       '}',
       r'if (Test-Path $oldBinaryPath) { Remove-Item -Force $oldBinaryPath }',
       r'if (Test-Path $oldLibPath) { Remove-Item -Recurse -Force $oldLibPath }',
+      "\$env:$sesoriPostUpdateRestartEnvVar = '1'",
       r'Start-Process -FilePath $binaryPath -ArgumentList $args',
       r'if (Test-Path $archivePath) { Remove-Item -Force $archivePath }',
       r'if (Test-Path $stagingRoot) { Remove-Item -Recurse -Force $stagingRoot }',

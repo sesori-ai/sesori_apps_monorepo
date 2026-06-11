@@ -93,7 +93,10 @@ void main() {
         bridgeStartMarker: 'other-bridge-start-marker',
         onLockAcquired: () async => 2,
         onLockRejected: (result) async {
-          expect(result, equals(StartupMutexAcquireResult.alreadyLocked));
+          expect(result.lock?.bridgePid, equals(123));
+          expect(result.lock?.bridgeStartMarker, equals('bridge-start-marker'));
+          expect(result.holderMatch?.identity.pid, equals(123));
+          expect(result.lockFilePath, equals(runtimeFileApi.startupLockFilePath));
           return -1;
         },
       );
@@ -209,7 +212,31 @@ void main() {
         bridgeStartMarker: 'bridge-start-marker',
         onLockAcquired: () async => 42,
         onLockRejected: (result) async {
-          expect(result, equals(StartupMutexAcquireResult.alreadyLocked));
+          expect(result.lock?.bridgePid, equals(456));
+          expect(result.holderMatch?.identity.pid, equals(456));
+          expect(result.lockFilePath, equals(runtimeFileApi.startupLockFilePath));
+          return -1;
+        },
+      );
+
+      expect(result, equals(-1));
+    });
+
+    test('withLock rejection carries nulls when vanished lock race cannot identify holder', () async {
+      final fakeRuntimeFileApi = _RacingRuntimeFileApi(runtimeDirectory: p.join(tempDir.path, 'racing-runtime'));
+      final racingRepository = StartupMutexRepository(
+        runtimeFileApi: fakeRuntimeFileApi,
+        processRepository: processRepository,
+      );
+
+      final result = await racingRepository.withLock<int>(
+        bridgePid: 123,
+        bridgeStartMarker: 'bridge-start-marker',
+        onLockAcquired: () async => 42,
+        onLockRejected: (rejection) async {
+          expect(rejection.lock, isNull);
+          expect(rejection.holderMatch, isNull);
+          expect(rejection.lockFilePath, equals(fakeRuntimeFileApi.startupLockFilePath));
           return -1;
         },
       );
@@ -283,5 +310,19 @@ class _FakeProcessRepository implements ProcessRepository {
   @override
   Future<SignalResult> sendForceSignal({required int pid}) {
     throw UnimplementedError();
+  }
+}
+
+class _RacingRuntimeFileApi extends RuntimeFileApi {
+  _RacingRuntimeFileApi({required super.runtimeDirectory});
+
+  @override
+  Future<bool> acquireStartupLock({required String contents}) async {
+    return false;
+  }
+
+  @override
+  Future<String?> readStartupLock() async {
+    return null;
   }
 }

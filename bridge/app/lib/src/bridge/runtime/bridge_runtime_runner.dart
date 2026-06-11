@@ -123,6 +123,7 @@ class BridgeRuntimeRunner {
     final terminalPromptApi = TerminalPromptApi(
       stdin: io.stdin,
       stdout: io.stdout,
+      environment: environment,
     );
     final terminalPromptRepository = TerminalPromptRepository(
       api: terminalPromptApi,
@@ -194,6 +195,7 @@ class BridgeRuntimeRunner {
             currentUser: currentUser,
             isWindows: io.Platform.isWindows,
             platform: io.Platform.operatingSystem,
+            probeTimeout: const Duration(seconds: 5),
           ),
         ),
         processRepository: processRepository,
@@ -320,7 +322,7 @@ class BridgeRuntimeRunner {
       ),
       installedFileRepository: installedFileRepository,
       updateLock: UpdateLock(currentPid: io.pid, processRunner: processRunner),
-      updateRelaunchClient: UpdateRelaunchClient(),
+      updateRelaunchClient: UpdateRelaunchClient(processStarter: io.Process.start),
       installRoot: managedRuntimePaths.installRoot,
       executablePath: io.Platform.resolvedExecutable,
       managedExecutablePath: managedRuntimePaths.binaryPath,

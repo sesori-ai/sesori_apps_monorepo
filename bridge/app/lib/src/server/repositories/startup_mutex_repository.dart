@@ -8,8 +8,26 @@ import '../foundation/process_match.dart';
 import '../models/bridge_startup_lock.dart';
 import 'process_repository.dart';
 
-enum StartupMutexAcquireResult {
-  alreadyLocked,
+class StartupLockRejection {
+  const StartupLockRejection({
+    required this.lock,
+    required this.holderMatch,
+    required this.lockFilePath,
+  });
+
+  final BridgeStartupLock? lock;
+  final ProcessMatch? holderMatch;
+  final String lockFilePath;
+}
+
+class _LiveStartupLockHolder {
+  const _LiveStartupLockHolder({
+    required this.lock,
+    required this.match,
+  });
+
+  final BridgeStartupLock lock;
+  final ProcessMatch match;
 }
 
 class StartupMutexRepository {
@@ -26,7 +44,7 @@ class StartupMutexRepository {
     required int bridgePid,
     required String? bridgeStartMarker,
     required Future<T> Function() onLockAcquired,
-    required Future<T> Function(StartupMutexAcquireResult result) onLockRejected,
+    required Future<T> Function(StartupLockRejection rejection) onLockRejected,
   }) async {
     final lock = BridgeStartupLock(
       bridgePid: bridgePid,
@@ -44,8 +62,8 @@ class StartupMutexRepository {
       }
     }
 
-    final staleLockCleared = await _clearStaleLockIfAny();
-    if (staleLockCleared) {
+    final holder = await _inspectLiveHolder();
+    if (holder == null) {
       final retryAcquired = await _runtimeFileApi.acquireStartupLock(
         contents: jsonEncode(lock.toJson()),
       );
@@ -56,20 +74,35 @@ class StartupMutexRepository {
           await _runtimeFileApi.releaseStartupLock();
         }
       }
+
+      final retryHolder = await _inspectLiveHolder();
+      return onLockRejected(
+        StartupLockRejection(
+          lock: retryHolder?.lock,
+          holderMatch: retryHolder?.match,
+          lockFilePath: _runtimeFileApi.startupLockFilePath,
+        ),
+      );
     }
 
-    return onLockRejected(StartupMutexAcquireResult.alreadyLocked);
+    return onLockRejected(
+      StartupLockRejection(
+        lock: holder.lock,
+        holderMatch: holder.match,
+        lockFilePath: _runtimeFileApi.startupLockFilePath,
+      ),
+    );
   }
 
-  Future<bool> _clearStaleLockIfAny() async {
+  Future<_LiveStartupLockHolder?> _inspectLiveHolder() async {
     final lockContents = await _runtimeFileApi.readStartupLock();
     if (lockContents == null) {
-      return true;
+      return null;
     }
 
     if (lockContents.isEmpty) {
       await _runtimeFileApi.releaseStartupLock();
-      return true;
+      return null;
     }
 
     final BridgeStartupLock lock;
@@ -80,7 +113,7 @@ class StartupMutexRepository {
     } catch (err, st) {
       Log.w("Failed to parse lockfile to `BridgeStartupLock`", err, st);
       await _runtimeFileApi.releaseStartupLock();
-      return true;
+      return null;
     }
 
     final match = await _processRepository.inspectProcessMatch(pid: lock.bridgePid);
@@ -89,10 +122,10 @@ class StartupMutexRepository {
         !match.isCurrentUserProcess ||
         !_lockMatchesProcess(lock: lock, match: match)) {
       await _runtimeFileApi.releaseStartupLock();
-      return true;
+      return null;
     }
 
-    return false;
+    return _LiveStartupLockHolder(lock: lock, match: match);
   }
 
   bool _lockMatchesProcess({
