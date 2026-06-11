@@ -70,7 +70,7 @@ void main() {
     sessionService = MockSessionService();
     voiceTranscriptionService = MockVoiceTranscriptionService();
 
-    when(() => sessionService.listAgents()).thenAnswer(
+    when(() => sessionService.listAgents(projectId: any(named: "projectId"))).thenAnswer(
       (_) async => ApiResponse.success(
         Agents(
           agents: [
@@ -438,7 +438,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key("new_session_loading_overlay")), findsNothing);
-    expect(find.text("Failed to create session."), findsOneWidget);
+    // Error text now comes from the shared, localized ApiError mapping.
+    expect(find.text("An unknown error occurred"), findsOneWidget);
     expect(find.byType(TextField), findsOneWidget);
     expect(find.byIcon(Icons.send), findsOneWidget);
 

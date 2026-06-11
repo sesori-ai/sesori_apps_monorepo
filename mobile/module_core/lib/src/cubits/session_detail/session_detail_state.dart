@@ -1,7 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
-import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../errors/remote_failure_reason.dart";
 import "queued_session_submission.dart";
 
 part "session_detail_state.freezed.dart";
@@ -24,6 +24,9 @@ sealed class SessionDetailState with _$SessionDetailState {
     // Background tasks (child sessions).
     required List<Session> children,
     required Map<String, SessionStatus> childStatuses,
+    // Whether this session is a root (main) session. `true` = root,
+    // `false` = child, `null` = unknown (metadata lookup failed).
+    required bool? isRootSession,
     // Queued messages (waiting to be sent when connection is restored).
     required List<QueuedSessionSubmission> queuedMessages,
     // Available agents and providers for selection.
@@ -41,5 +44,5 @@ sealed class SessionDetailState with _$SessionDetailState {
     required String? retryErrorMessage,
   }) = SessionDetailLoaded;
 
-  const factory SessionDetailState.failed({required ApiError error}) = SessionDetailFailed;
+  const factory SessionDetailState.failed({required RemoteFailureReason reason}) = SessionDetailFailed;
 }

@@ -17,7 +17,7 @@ resolution: workspace
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.8+1
+version: 1.0.9+1
 environment:
   sdk: ^3.11.5
 
@@ -63,7 +63,7 @@ dependencies:
   app_links: ^7.0.0
   url_launcher: ^6.3.2
   universal_platform: ^1.1.0
-  record: ^6.2.0
+  record: ^7.0.0
   path: any
   path_provider: ^2.1.5
   re_highlight: ^0.0.3
@@ -72,7 +72,7 @@ dependencies:
   firebase_analytics: ^12.2.0
   firebase_crashlytics: ^5.1.0
   firebase_messaging: ^16.1.3
-  flutter_local_notifications: ^21.0.0
+  flutter_local_notifications: ^22.0.0
   flutter_svg: ^2.2.4
   cue: ^0.3.1
   sign_in_with_apple: ^8.0.0
@@ -122,6 +122,7 @@ flutter:
     - assets/images/
     - assets/images/bkg_png/
     - assets/images/bkg_webp/
+    - assets/images/projects_onboarding/
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

@@ -26,6 +26,7 @@ void main() {
 
     test("emits SplashReady(projects) when local session appears valid", () async {
       when(authSession.hasLocallyValidSession).thenAnswer((_) async => true);
+      when(() => authSession.restoreLocalSession()).thenAnswer((_) async => true);
 
       final cubit = SplashCubit(authSession);
       addTearDown(cubit.close);
@@ -35,6 +36,7 @@ void main() {
 
       expect(state, isA<SplashReady>());
       expect((state as SplashReady).route, isA<AppRouteProjects>());
+      verify(() => authSession.restoreLocalSession()).called(1);
       verifyNever(() => authSession.restoreSession());
     });
 
@@ -46,6 +48,7 @@ void main() {
       final state = await cubit.stream.firstWhere((s) => s is SplashReady);
 
       expect((state as SplashReady).route, isA<AppRouteLogin>());
+      verifyNever(() => authSession.restoreLocalSession());
       verifyNever(() => authSession.restoreSession());
     });
 

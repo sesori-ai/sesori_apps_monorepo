@@ -296,6 +296,14 @@ class OpenCodeApi {
     _ensureSuccess(response, "POST /session/$sessionId/prompt_async");
   }
 
+  /// Sends a slash command to a session via `POST /session/:id/command`.
+  ///
+  /// WARNING: this OpenCode endpoint is **synchronous** — the HTTP response
+  /// (and therefore the returned future) does not complete until the
+  /// command's full agent run has finished, which can take minutes. No async
+  /// variant exists upstream (unlike prompts, which have `prompt_async`).
+  /// Callers that must not block on the run (see [OpenCodeService]) are
+  /// responsible for detaching; this Layer 1 method stays a dumb HTTP call.
   Future<void> sendCommand({
     required String sessionId,
     required SendCommandBody body,
@@ -329,8 +337,14 @@ class OpenCodeApi {
     _ensureSuccess(response, "POST /session/$sessionId/abort");
   }
 
-  Future<List<Agent>> listAgents() async {
-    final response = await _client.get(Uri.parse("$serverURL/agent"), headers: _authHeaders);
+  Future<List<Agent>> listAgents({required String directory}) async {
+    // OpenCode resolves agents per project; newer releases reject requests
+    // that carry no directory context with a 500.
+    final headers = <String, String>{
+      ..._authHeaders,
+      _directoryOpenCodeHeader: directory,
+    };
+    final response = await _client.get(Uri.parse("$serverURL/agent"), headers: headers);
     _ensureSuccess(response, "GET /agent");
 
     final decoded = jsonDecodeListMap(response.body);
@@ -516,17 +530,33 @@ class OpenCodeApi {
 
   static void _ensureSuccess(http.Response response, String endpoint) {
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw OpenCodeApiException(endpoint, response.statusCode);
+      throw OpenCodeApiException(endpoint, response.statusCode, responseBody: response.body);
     }
   }
 }
 
 class OpenCodeApiException implements Exception {
+  static const _maxBodyLength = 500;
+
   final String endpoint;
   final int statusCode;
 
-  OpenCodeApiException(this.endpoint, this.statusCode);
+  /// Upstream response body, truncated to [_maxBodyLength] characters.
+  /// OpenCode error bodies carry the actual failure reason (e.g.
+  /// `{"name":"UnknownError","data":{...}}`), which is essential for
+  /// diagnosing failures from logs.
+  final String? responseBody;
+
+  OpenCodeApiException(this.endpoint, this.statusCode, {String? responseBody})
+    : responseBody = switch (responseBody) {
+        null => null,
+        final body when body.length > _maxBodyLength => "${body.substring(0, _maxBodyLength)}…",
+        final body => body,
+      };
 
   @override
-  String toString() => "OpenCodeApiException: $endpoint failed with status $statusCode";
+  String toString() {
+    final bodySuffix = responseBody == null || responseBody!.isEmpty ? "" : " body=$responseBody";
+    return "OpenCodeApiException: $endpoint failed with status $statusCode$bodySuffix";
+  }
 }

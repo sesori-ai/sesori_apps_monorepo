@@ -1,220 +1,117 @@
 # Sesori Plugin Interface
 
-Defines the abstract `BridgePlugin` contract and the data models that all backend plugins must implement. The bridge core depends only on this package, keeping it decoupled from any specific backend.
+The contract between the bridge core and backend plugins. The bridge core depends only on this package, keeping it decoupled from any specific backend (OpenCode today; other harnesses later).
 
-## BridgePlugin Interface
+The package has four parts:
 
-Every plugin must implement `BridgePlugin` from `lib/src/bridge_plugin.dart`. The interface has 8 members:
+1. **`BridgePluginApi`** — the request surface the bridge routes traffic through (sessions, prompts, questions, permissions, projects, providers, events).
+2. **The lifecycle contract** — `BridgePluginDescriptor` → `start(PluginHost)` → `BridgePlugin`: how plugins are registered, configured, started, observed, and stopped.
+3. **Data models** — Freezed value types exchanged through the API (`lib/src/models/`).
+4. **SSE events** — the sealed `BridgeSseEvent` family plugins emit and the bridge relays to phones.
+
+## Lifecycle contract
+
+```
+BridgePluginDescriptor (const, inert)
+        │  start(PluginHost)
+        ▼
+BridgePlugin { api, status, currentStatus, describe(), shutdown(budget) }
+```
+
+- **`BridgePluginDescriptor`** is the registration unit: `id`, `displayName`, CLI `options`, `validateConfig`, and `start(host)`. Descriptors are const and side-effect free — **registered is not started**. Option-level typed-parse hooks (`PluginValueOption.integer`, or a custom `validate`) and `validateConfig` both run at argument-parse time, strictly before the bridge's startup mutex and before any resident bridge could be replaced, so a config typo can never kill a healthy bridge. Reject bad configuration with `PluginConfigException`, and exercise every typed accessor in `validateConfig`.
+- **`BridgePlugin`** is a live instance. Its `api` must stay the same object for the plugin's lifetime (the bridge constructor-injects it widely); a plugin whose transport can be swapped puts a stable facade there. `status` is a replay-latest stream of the sealed `PluginStatus` family; `shutdown({budget})` is idempotent ordered teardown.
+- **`PluginHost`** offers opt-in services: parsed `config`, a private `stateDirectory`, `environment`, a `clock` seam, the cooperative `startAborted` signal, bridge identity facts (`BridgeHostInfo`, including the `isLiveBridgeProcess` capability that authorizes stale-runtime cleanup), process spawn/inspect/signal (`HostProcessService` — spawned children expose `stdin` for stdio protocols), port probing (`HostPortService`), and an atomic JSON store with a locked `update()` (`HostJsonStore`).
+
+### Status state machine
+
+`PluginStatus` is sealed: `Starting`, `Ready`, `Degraded`, `Restarting`, `Failed`, `Stopping`, `Stopped`.
+
+| From         | May become                                      |
+|--------------|-------------------------------------------------|
+| `Starting`   | `Ready`, `Degraded`, `Failed`, `Stopping`       |
+| `Ready`      | `Degraded`, `Restarting`, `Failed`, `Stopping`  |
+| `Degraded`   | `Ready`, `Degraded`, `Restarting`, `Failed`, `Stopping` |
+| `Restarting` | `Ready`, `Degraded`, `Restarting`, `Failed`, `Stopping` |
+| `Failed`     | `Stopping`                                      |
+| `Stopping`   | `Stopped`                                       |
+| `Stopped`    | — (the stream closes)                           |
+
+Two rules carry the weight: **no `Failed` after `Stopping`** (a clean shutdown must never be reported as a failure by a racy exit monitor), and **the stream closes after `Stopped`**. `PluginStatusController` implements the machine with a replay-latest stream: `set()` throws on illegal transitions (deliberate steps), `trySet()` drops them silently (racy sources).
+
+`status` is the *debounced* lifecycle signal for orchestration; `BridgePluginApi.healthCheck()` stays an instantaneous, mobile-facing probe.
+
+### `start()` contract
+
+- Runs under the bridge's cross-instance startup mutex; the mutex is held until `start()` settles. The bridge never abandons a start with `Future.timeout` — long phases must check `host.startAborted` at every phase boundary and roll back when aborted. An aborted start settles by throwing `PluginStartAbortedException` after the rollback.
+- On failure, release everything acquired (processes, records, sockets) before throwing — `PluginStartException` for expected failure modes.
+
+### `shutdown()` / `dispose()` contract
+
+`BridgePlugin.shutdown({budget})` owns ordered teardown and must be idempotent. `BridgePluginApi.dispose()` is kept for the migration window — the bridge core may still call it directly, before or after `shutdown()`, so both must be safe in either order. Prefer `shutdown()`; `dispose()` will be removed once the core stops calling it.
+
+### Steady plugins in a few lines
+
+Direct-CLI and remote-server plugins have no managed runtime; mix in `SteadyPluginLifecycle` and supply only `api`, `describe()`, and (optionally) `onShutdown`:
 
 ```dart
-abstract class BridgePlugin {
-  /// Unique plugin identifier, e.g. "opencode" or "codex".
-  String get id;
+class RemotePlugin with SteadyPluginLifecycle implements BridgePlugin {
+  @override
+  BridgePluginApi get api => _api;
 
-  /// Stream of bridge SSE events. Buffered until the first listener subscribes.
-  Stream<BridgeSseEvent> get events;
+  @override
+  PluginDiagnostics describe() =>
+      PluginDiagnostics(pluginId: api.id, endpoint: _url, details: const {});
 
-  /// Returns the list of projects from the backend.
-  Future<List<PluginProject>> getProjects();
-
-  /// Returns sessions for a worktree directory, with optional pagination.
-  Future<List<PluginSession>> getSessions(String worktree, {int? start, int? limit});
-
-  /// Returns messages for a session (last exchange only).
-  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId);
-
-  /// Returns the backend's health status as a raw JSON string.
-  Future<String> healthCheck();
-
-  /// Returns providers and their models.
-  /// Pass connectedOnly: true to filter to providers with valid credentials.
-  Future<PluginProvidersResult> getProviders({required bool connectedOnly});
-
-  /// Returns a per-project count of currently active (busy) sessions.
-  List<PluginProjectActivitySummary> getActiveSessionsSummary();
-
-  /// Proxies a raw HTTP request to the backend. Temporary escape hatch.
-  @Deprecated("Temporary proxy — replace with typed plugin methods")
-  Future<({int status, Map<String, String> headers, String? body})> proxyRequest({
-    required String method,
-    required String path,
-    required Map<String, String> headers,
-    String? body,
-  });
-
-  /// Stops the plugin and releases resources (SSE connections, HTTP clients, etc.).
-  Future<void> dispose();
+  @override
+  Future<void> onShutdown({required Duration? budget}) => _api.dispose();
 }
 ```
 
-## Data Models
+The mixin debounces the degraded side (`markDegraded` surfaces only after the degradation persists; `markReady` recovers immediately) and enforces the state machine on every transition.
 
-All models are generated with [Freezed](https://pub.dev/packages/freezed) and support JSON serialization.
+### Migration status
 
-### Sessions
+The bridge core still constructs the OpenCode plugin through a legacy factory; the runner adopts descriptors in a follow-up change. New code should target the descriptor contract.
 
-| Class | Fields |
-|-------|--------|
-| `PluginSession` | `id`, `projectID`, `directory`, `parentID?`, `title?`, `time?`, `summary?` |
-| `PluginSessionTime` | `created`, `updated`, `archived?` |
-| `PluginSessionSummary` | `additions`, `deletions`, `files` |
+## BridgePluginApi
 
-### Messages
+The request surface (`lib/src/bridge_plugin.dart`), grouped:
 
-| Class | Fields |
-|-------|--------|
-| `PluginMessage` | `role`, `id`, `sessionID`, `parentID?`, `agent?`, `modelID?`, `providerID?`, `cost?`, `time?`, `finish?` |
-| `PluginMessageWithParts` | `info` (PluginMessage), `parts` (List\<PluginMessagePart\>) |
-| `PluginMessagePart` | `id`, `sessionID`, `messageID`, `type`, `text?`, `tool?`, `callID?`, `state?`, `mime?`, `url?`, `filename?`, `cost?`, `reason?`, `prompt?`, `description?`, `agent?`, `snapshot?`, `time?` |
-| `PluginToolState` | `status`, `title?`, `output?`, `error?` |
-| `PluginMessageTime` | `created`, `completed?` |
-| `PluginPartTime` | `start?`, `end?` |
+| Area | Members |
+|------|---------|
+| Identity & events | `id`, `events` (buffered `Stream<BridgeSseEvent>` — use `BufferedUntilFirstListener`) |
+| Projects | `getProjects`, `getProject`, `renameProject`, `deleteWorkspace` |
+| Sessions | `getSessions`, `getChildSessions`, `createSession`, `renameSession`, `deleteSession`, `archiveSession`, `getSessionStatuses`, `getSessionMessages`, `getActiveSessionsSummary` |
+| Prompting | `sendPrompt`, `sendCommand`, `abortSession`, `getCommands`, `getAgents`, `getProviders` |
+| Questions & permissions | `getPendingQuestions`, `getProjectQuestions`, `replyToQuestion`, `rejectQuestion`, `replyToPermission` |
+| Health & teardown | `healthCheck` (instantaneous probe), `dispose` (prefer `BridgePlugin.shutdown`) |
 
-### Projects
+Failures are signaled with `PluginOperationException` (transport-agnostic; optional `statusCode`) or its HTTP-flavored subclass `PluginApiException`. Use `PluginOperationException.notFound` so idempotent deletes work for non-HTTP plugins.
 
-| Class | Fields |
-|-------|--------|
-| `PluginProject` | `id`, `worktree`, `name?`, `time?` |
-| `PluginProjectTime` | `created`, `updated`, `initialized?` |
-| `PluginProjectActivitySummary` | `worktree`, `activeSessions` |
+## Data models
 
-### Providers
+All models live in `lib/src/models/`, generated with [Freezed](https://pub.dev/packages/freezed), and support JSON serialization. The families:
 
-`PluginProvider` is a sealed union with named variants for known providers plus a `custom` catch-all. Each variant carries `id`, `name`, `authType`, `models`, and `defaultModelID?`.
+- **Sessions** — `PluginSession` (+ time/summary), `PluginActiveSession`, `PluginSessionStatus`, `PluginSessionVariant`
+- **Messages** — `PluginMessage`, `PluginMessageWithParts`, `PluginMessagePart`, tool state and timing types
+- **Projects** — `PluginProject`, `PluginProjectActivitySummary`
+- **Providers** — `PluginProvider` (sealed union of known providers + `custom`), `PluginModel`, `PluginProvidersResult`
+- **Prompting** — `PluginPromptPart`, `PluginCommand`, `PluginAgent`
+- **Questions & permissions** — `PluginPendingQuestion`, `PluginPermissionReply`
 
-| Variant | Factory |
-|---------|---------|
-| Anthropic | `PluginProvider.anthropic(...)` |
-| OpenAI | `PluginProvider.openAI(...)` |
-| Google | `PluginProvider.google(...)` |
-| Mistral | `PluginProvider.mistral(...)` |
-| Groq | `PluginProvider.groq(...)` |
-| xAI | `PluginProvider.xAI(...)` |
-| DeepSeek | `PluginProvider.deepseek(...)` |
-| Amazon Bedrock | `PluginProvider.amazonBedrock(...)` |
-| Azure | `PluginProvider.azure(...)` |
-| Custom | `PluginProvider.custom(...)` |
+See the source files for fields — they are the authority.
 
-`PluginProviderAuthType` is an enum: `apiKey`, `oauth`, `unknown`.
+## SSE events
 
-`PluginModel` carries `id`, `name`, and `family?`.
+`BridgeSseEvent` (`lib/src/bridge_sse_event.dart`) is a sealed class; plugins emit events on `events` and the bridge delivers them to connected phones. Categories: server lifecycle, session, message (including part deltas), PTY, permission/question, file/LSP/MCP, workspace/worktree, project/VCS, installation/UI. See the source file for the full family — event classes are added as upstream backends grow.
 
-`PluginProvidersResult` wraps a `List<PluginProvider>` and is the return type of `getProviders`.
+## Implementing a new plugin
 
-## SSE Events
-
-`BridgeSseEvent` is a sealed class. Plugins emit events on their `events` stream; the bridge core delivers them to connected phones. Events are grouped by category:
-
-### Server
-
-| Class | Notable fields |
-|-------|----------------|
-| `BridgeSseServerConnected` | none |
-| `BridgeSseServerHeartbeat` | none |
-| `BridgeSseServerInstanceDisposed` | `directory?` |
-| `BridgeSseGlobalDisposed` | none |
-
-### Session
-
-| Class | Notable fields |
-|-------|----------------|
-| `BridgeSseSessionCreated` | `info` (raw JSON map) |
-| `BridgeSseSessionUpdated` | `info` |
-| `BridgeSseSessionDeleted` | `info` |
-| `BridgeSseSessionDiff` | `sessionID`, `diff` (list of JSON maps) |
-| `BridgeSseSessionError` | `sessionID` |
-| `BridgeSseSessionCompacted` | `sessionID` |
-| `BridgeSseSessionStatus` | `sessionID`, `status` (raw JSON map) |
-| `BridgeSseSessionIdle` | `sessionID` |
-
-### Message
-
-| Class | Notable fields |
-|-------|----------------|
-| `BridgeSseMessageUpdated` | `info` (raw JSON map) |
-| `BridgeSseMessageRemoved` | `sessionID`, `messageID` |
-| `BridgeSseMessagePartUpdated` | `part` (raw JSON map) |
-| `BridgeSseMessagePartDelta` | `sessionID`, `messageID`, `partID`, `field`, `delta` |
-| `BridgeSseMessagePartRemoved` | `sessionID`, `messageID`, `partID` |
-
-### PTY
-
-| Class | Notable fields |
-|-------|----------------|
-| `BridgeSsePtyCreated` | none |
-| `BridgeSsePtyUpdated` | none |
-| `BridgeSsePtyExited` | `id?`, `exitCode?` |
-| `BridgeSsePtyDeleted` | `id?` |
-
-### Permission and Question
-
-| Class | Notable fields |
-|-------|----------------|
-| `BridgeSsePermissionAsked` | `requestID`, `sessionID`, `tool`, `description` |
-| `BridgeSsePermissionReplied` | `requestID`, `reply` |
-| `BridgeSsePermissionUpdated` | none |
-| `BridgeSseQuestionAsked` | `id`, `sessionID`, `questions` (list of JSON maps) |
-| `BridgeSseQuestionReplied` | `requestID`, `sessionID` |
-| `BridgeSseQuestionRejected` | `requestID`, `sessionID` |
-
-### File, LSP, and MCP
-
-| Class | Notable fields |
-|-------|----------------|
-| `BridgeSseFileEdited` | `file?` |
-| `BridgeSseFileWatcherUpdated` | `file?`, `event?` |
-| `BridgeSseLspUpdated` | none |
-| `BridgeSseLspClientDiagnostics` | `serverID?`, `path?` |
-| `BridgeSseMcpToolsChanged` | none |
-| `BridgeSseMcpBrowserOpenFailed` | none |
-
-### Workspace and Worktree
-
-| Class | Notable fields |
-|-------|----------------|
-| `BridgeSseWorkspaceReady` | `name?` |
-| `BridgeSseWorkspaceFailed` | `message?` |
-| `BridgeSseWorktreeReady` | none |
-| `BridgeSseWorktreeFailed` | none |
-
-### Project and VCS
-
-| Class | Notable fields |
-|-------|----------------|
-| `BridgeSseProjectUpdated` | none |
-| `BridgeSseVcsBranchUpdated` | none |
-| `BridgeSseTodoUpdated` | `sessionID` |
-
-### Installation and UI
-
-| Class | Notable fields |
-|-------|----------------|
-| `BridgeSseInstallationUpdated` | `version?` |
-| `BridgeSseInstallationUpdateAvailable` | `version?` |
-| `BridgeSseTuiToastShow` | `title?`, `message?`, `variant?` |
-
-## Implementing a New Plugin
-
-1. Create a new Dart package in `bridge/`.
-2. Add `sesori_plugin_interface` as a dependency.
-3. Implement `BridgePlugin`. All 8 members are required.
-4. Expose a `Stream<BridgeSseEvent>` on `events`. Use `BufferedUntilFirstListener` from this package to buffer events emitted before the bridge subscribes.
-5. Emit events by adding to the stream as your backend produces them.
-6. Register the plugin in `bridge/app/bin/bridge.dart`.
-
-```dart
-import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
-
-class MyPlugin implements BridgePlugin {
-  @override
-  String get id => 'my-backend';
-
-  @override
-  Stream<BridgeSseEvent> get events => _buffer.stream;
-
-  // ... implement all 8 methods
-}
-```
+1. Create a Dart package in `bridge/` and depend on `sesori_plugin_interface`.
+2. Implement `BridgePluginApi` for your backend. Buffer early events with `BufferedUntilFirstListener`.
+3. Implement `BridgePlugin` — mix in `SteadyPluginLifecycle` unless you manage a local runtime.
+4. Write a const `BridgePluginDescriptor` declaring your CLI options and `start(host)` flow; use only `PluginHost` services for processes, ports, and state files.
+5. Register the descriptor in `bridge/app/bin/bridge.dart` (descriptor registration lands with the runner migration — see Migration status above).
 
 ## Testing
 

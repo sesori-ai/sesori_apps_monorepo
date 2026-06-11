@@ -3,8 +3,8 @@ import "dart:convert";
 import "dart:io";
 
 import "package:sesori_bridge/src/server/api/open_code_process_api.dart";
-import "package:sesori_bridge/src/server/foundation/process_user.dart";
 import "package:sesori_bridge/src/server/repositories/open_code_process_repository.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {

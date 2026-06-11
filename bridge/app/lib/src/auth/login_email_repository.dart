@@ -62,6 +62,7 @@ class LoginEmailRepository {
       TokenData(
         accessToken: authResponse.accessToken,
         refreshToken: authResponse.refreshToken,
+        bridgeId: null,
         lastProvider: AuthProvider.email,
       ),
       authResponse.user.providerUsername ?? "",

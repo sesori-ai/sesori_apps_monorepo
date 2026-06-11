@@ -12,5 +12,6 @@ sealed class SessionActivityInfo with _$SessionActivityInfo {
     @Default(false) bool mainAgentRunning,
     @Default(false) bool awaitingInput,
     @Default(0) int backgroundTaskCount,
+    @Default(false) bool isRetrying,
   }) = _SessionActivityInfo;
 }

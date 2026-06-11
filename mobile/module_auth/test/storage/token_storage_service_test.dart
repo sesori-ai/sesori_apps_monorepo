@@ -4,7 +4,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart" show SecureStorage;
 import "package:sesori_auth/src/storage/oauth_storage_service.dart";
 import "package:sesori_auth/src/storage/token_storage_service.dart";
-import "package:sesori_shared/sesori_shared.dart" show AuthProvider, parseJwtExpiry;
+import "package:sesori_shared/sesori_shared.dart" show AuthProvider, AuthUser, parseJwtExpiry;
 import "package:test/test.dart";
 
 class MockSecureStorage extends Mock implements SecureStorage {}
@@ -193,12 +193,90 @@ void main() {
       expect(result, isFalse);
     });
 
-    test("clearTokens deletes both access and refresh token keys", () async {
+    test("saveUser writes the json-encoded user", () async {
+      // given
+      const testUser = AuthUser(id: "user-1", provider: AuthProvider.github, providerUserId: "gh-1", providerUsername: "octocat");
+      final encoded = jsonEncode(testUser.toJson());
+      when(() => mockStorage.write(key: "auth_user", value: encoded)).thenAnswer((_) async {
+        return;
+      });
+
+      // when
+      await tokenStorageService.saveUser(testUser);
+
+      // then
+      verify(() => mockStorage.write(key: "auth_user", value: encoded)).called(1);
+    });
+
+    test("saveUser deletes the key when user is null", () async {
+      // given
+      when(() => mockStorage.delete(key: "auth_user")).thenAnswer((_) async {
+        return;
+      });
+
+      // when
+      await tokenStorageService.saveUser(null);
+
+      // then
+      verify(() => mockStorage.delete(key: "auth_user")).called(1);
+    });
+
+    test("getUser parses the stored user", () async {
+      // given
+      const testUser = AuthUser(id: "user-1", provider: AuthProvider.github, providerUserId: "gh-1", providerUsername: "octocat");
+      when(() => mockStorage.read(key: "auth_user")).thenAnswer((_) async => jsonEncode(testUser.toJson()));
+
+      // when
+      final result = await tokenStorageService.getUser();
+
+      // then
+      verify(() => mockStorage.read(key: "auth_user")).called(1);
+      expect(result, testUser);
+    });
+
+    test("getUser returns null when nothing is stored", () async {
+      // given
+      when(() => mockStorage.read(key: "auth_user")).thenAnswer((_) async => null);
+
+      // when
+      final result = await tokenStorageService.getUser();
+
+      // then
+      expect(result, isNull);
+    });
+
+    test("getUser returns null on invalid stored json", () async {
+      // given
+      when(() => mockStorage.read(key: "auth_user")).thenAnswer((_) async => "not-json");
+
+      // when
+      final result = await tokenStorageService.getUser();
+
+      // then
+      expect(result, isNull);
+    });
+
+    test("getUser returns null on storage error", () async {
+      // given
+      when(() => mockStorage.read(key: "auth_user")).thenThrow(Exception("read failed"));
+
+      // when
+      final result = await tokenStorageService.getUser();
+
+      // then
+      verify(() => mockStorage.read(key: "auth_user")).called(1);
+      expect(result, isNull);
+    });
+
+    test("clearTokens deletes access, refresh, and user keys", () async {
       // given
       when(() => mockStorage.delete(key: "access_token")).thenAnswer((_) async {
         return;
       });
       when(() => mockStorage.delete(key: "refresh_token")).thenAnswer((_) async {
+        return;
+      });
+      when(() => mockStorage.delete(key: "auth_user")).thenAnswer((_) async {
         return;
       });
 
@@ -208,6 +286,7 @@ void main() {
       // then
       verify(() => mockStorage.delete(key: "access_token")).called(1);
       verify(() => mockStorage.delete(key: "refresh_token")).called(1);
+      verify(() => mockStorage.delete(key: "auth_user")).called(1);
     });
 
     group("parseJwtExpiry", () {

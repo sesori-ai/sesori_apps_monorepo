@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:firebase_analytics/firebase_analytics.dart";
 import "package:firebase_crashlytics/firebase_crashlytics.dart";
 import "package:flutter_secure_storage/flutter_secure_storage.dart";
 import "package:http/http.dart" as http;
@@ -141,6 +142,8 @@ class MockFailureReporter extends Mock implements FailureReporter {}
 
 class MockFirebaseCrashlytics extends Mock implements FirebaseCrashlytics {}
 
+class MockFirebaseAnalytics extends Mock implements FirebaseAnalytics {}
+
 // ---------------------------------------------------------------------------
 // Fake classes — for registerFallbackValue
 // ---------------------------------------------------------------------------
@@ -191,7 +194,9 @@ void delegateSessionRepositoryToService({
     (invocation) => service.getChildren(sessionId: invocation.namedArguments[#sessionId]! as String),
   );
   when(() => repository.getSessionStatuses()).thenAnswer((_) => service.getSessionStatuses());
-  when(() => repository.listAgents()).thenAnswer((_) => service.listAgents());
+  when(() => repository.listAgents(projectId: any(named: "projectId"))).thenAnswer(
+    (invocation) => service.listAgents(projectId: invocation.namedArguments[#projectId] as String),
+  );
   when(() => repository.listProviders(projectId: any(named: "projectId"))).thenAnswer(
     (invocation) => service.listProviders(projectId: invocation.namedArguments[#projectId] as String),
   );
@@ -458,7 +463,7 @@ ProviderListResponse testProviderListResponse() {
 AuthUser testAuthUser() {
   return const AuthUser(
     id: "user-1",
-    provider: "github",
+    provider: AuthProvider.github,
     providerUserId: "12345678",
     providerUsername: "testuser",
   );

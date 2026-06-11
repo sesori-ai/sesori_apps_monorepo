@@ -184,6 +184,46 @@ systemctl status sesori-bridge --no-pager
 
 ---
 
+## Updating
+
+### Sesori Bridge
+
+The bridge auto-updates, but only **at process startup**. While running it polls for new releases every 4 hours and logs `A new bridge version (vX.Y.Z) is available. Restart to update.` — it never swaps the binary mid-run. A long-running systemd service therefore stays on its current version until it restarts.
+
+To force an update, restart the service:
+
+```bash
+systemctl restart sesori-bridge
+```
+
+On startup the bridge checks GitHub releases, downloads and installs the newest version into `~/.local/share/sesori/bin/`, and relaunches. With `Restart=always` in the unit, the service ends up running the new binary.
+
+If the startup check is not picking up the update, re-run the installer and restart:
+
+```bash
+curl -fsSL https://sesori.com/install | bash
+systemctl restart sesori-bridge
+```
+
+Verify via the logs — you should see `Updating to vX.Y.Z...`, or a clean start on the current version:
+
+```bash
+journalctl -u sesori-bridge -n 50
+```
+
+Note: the startup update check is skipped when `SESORI_NO_UPDATE` is set or a CI environment variable (`CI`, `GITHUB_ACTIONS`, ...) is present in the service environment. The stock unit above has neither, so updates apply by default.
+
+### OpenCode
+
+OpenCode does not auto-update in this setup. Update it manually, then restart its service:
+
+```bash
+opencode upgrade
+systemctl restart opencode
+```
+
+---
+
 ## Logs and Debugging
 
 ### Follow OpenCode logs
@@ -238,5 +278,6 @@ dmesg -T | grep -i oom
 - OpenCode runs as a systemd service on port 9921
 - Sesori Bridge depends on it and connects to that port
 - Both auto-start on boot
+- Bridge updates apply on service restart; OpenCode updates via `opencode upgrade`
 - Logs are accessible via `journalctl`
 - Swap prevents crashes on low-memory instances

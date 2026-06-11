@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 
+import "../../../core/extensions/text_style_x.dart";
 import "../models/diff_file_view_model.dart";
 import "../utils/diff_theme.dart";
 
@@ -9,11 +10,10 @@ class DiffHunkWidget extends StatelessWidget {
 
   const DiffHunkWidget({super.key, required this.viewModel});
 
-  static const _headerTextStyle = TextStyle(
-    fontFamily: "monospace",
+  static final _headerTextStyle = const TextStyle(
     fontSize: 12,
     height: 1.4,
-  );
+  ).monospace;
 
   @override
   Widget build(BuildContext context) {

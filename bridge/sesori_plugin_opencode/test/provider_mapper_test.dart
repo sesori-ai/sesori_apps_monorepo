@@ -1,5 +1,6 @@
 import "package:opencode_plugin/src/models/openapi/config_providers_response.g.dart";
 import "package:opencode_plugin/src/provider_mapper.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginModel;
 import "package:test/test.dart";
 
 void main() {
@@ -80,6 +81,115 @@ void main() {
       final mapped = mapProviderResponse(response: response);
 
       expect(mapped.providers.single.models.single.variants, equals(["low", "high"]));
+    });
+
+    group("releaseDate parsing", () {
+      test("parses full YYYY-MM-DD release_date", () {
+        final response = ConfigProvidersResponse.fromJson(
+          _providersJson(<String, dynamic>{
+            "kimi-k2-thinking": _modelJson(
+              id: "moonshotai/kimi-k2-thinking",
+              name: "Kimi K2 Thinking",
+              variants: <String, dynamic>{},
+              family: "kimi-thinking",
+              status: "active",
+              releaseDate: "2025-11-06",
+            ),
+          }),
+        );
+
+        final mapped = mapProviderResponse(response: response);
+        final model = mapped.providers.single.models.single;
+        expect(model.releaseDate, equals(DateTime(2025, 11, 6)));
+      });
+
+      test(
+        "parses short YYYY-MM release_date as the first of the month "
+        "(regression: kimi-for-coding models were getting null releaseDate)",
+        () {
+          // Mirrors the live models.dev entry for `kimi-for-coding`:
+          //   kimi-k2-thinking -> "2025-11"
+          //   k2p5             -> "2026-01"
+          //   k2p6             -> "2026-04"
+          //
+          // Before this fix, `DateTime.tryParse("2025-11")` returned null
+          // (Dart only accepts YYYY-MM-DD and full ISO 8601), so every
+          // model in the family ended up with a null `releaseDate`. The
+          // mobile picker then fell back to iteration order and surfaced
+          // "Kimi K2 Thinking" instead of "Kimi K2.6".
+          final response = ConfigProvidersResponse.fromJson(
+            _providersJson(<String, dynamic>{
+              "kimi-k2-thinking": _modelJson(
+                id: "kimi-k2-thinking",
+                name: "Kimi K2 Thinking",
+                variants: <String, dynamic>{},
+                family: "kimi-thinking",
+                status: "active",
+                releaseDate: "2025-11",
+              ),
+              "k2p5": _modelJson(
+                id: "k2p5",
+                name: "Kimi K2.5",
+                variants: <String, dynamic>{},
+                family: "kimi-thinking",
+                status: "active",
+                releaseDate: "2026-01",
+              ),
+              "k2p6": _modelJson(
+                id: "k2p6",
+                name: "Kimi K2.6",
+                variants: <String, dynamic>{},
+                family: "kimi-thinking",
+                status: "active",
+                releaseDate: "2026-04",
+              ),
+            }),
+          );
+
+          final mapped = mapProviderResponse(response: response);
+          final modelsById = <String, PluginModel>{
+            for (final m in mapped.providers.single.models) m.id: m,
+          };
+          expect(modelsById["kimi-k2-thinking"]!.releaseDate, equals(DateTime(2025, 11, 1)));
+          expect(modelsById["k2p5"]!.releaseDate, equals(DateTime(2026, 1, 1)));
+          expect(modelsById["k2p6"]!.releaseDate, equals(DateTime(2026, 4, 1)));
+        },
+      );
+
+      test("leaves releaseDate null when the field is absent", () {
+        final response = ConfigProvidersResponse.fromJson(
+          _providersJson(<String, dynamic>{
+            "gpt-4.1": _modelJson(
+              id: "openai/gpt-4.1",
+              name: "GPT-4.1",
+              variants: <String, dynamic>{},
+              family: "gpt-4.1",
+              status: "active",
+            ),
+          }),
+        );
+
+        final mapped = mapProviderResponse(response: response);
+        expect(mapped.providers.single.models.single.releaseDate, isNull);
+      });
+
+      test("leaves releaseDate null when the value is unparseable", () {
+        final response = ConfigProvidersResponse.fromJson(
+          _providersJson(<String, dynamic>{
+            "gpt-4.1": _modelJson(
+              id: "openai/gpt-4.1",
+              name: "GPT-4.1",
+              variants: <String, dynamic>{},
+              family: "gpt-4.1",
+              status: "active",
+              releaseDate: "not-a-date",
+            ),
+          }),
+        );
+
+        final mapped = mapProviderResponse(response: response);
+        expect(mapped.providers.single.models.single.releaseDate, isNull);
+      });
     });
   });
 }

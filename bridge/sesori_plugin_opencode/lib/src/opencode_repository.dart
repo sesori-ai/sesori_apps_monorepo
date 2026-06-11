@@ -1,5 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
+        PluginAgent,
         PluginCommand,
         PluginCommandSource,
         PluginMessageWithParts,
@@ -69,6 +70,11 @@ class OpenCodeRepository {
   Future<List<PluginCommand>> getCommands({required String? projectId}) async {
     final commands = await _api.listCommands(directory: projectId?.normalize());
     return commands.map<PluginCommand>(_mapCommand).toList();
+  }
+
+  Future<List<PluginAgent>> getAgents({required String directory}) async {
+    final agents = await _api.listAgents(directory: directory);
+    return agents.map(_pluginModelMapper.mapAgent).toList();
   }
 
   Future<PluginSession> createSession({

@@ -155,7 +155,7 @@ class ZyraAlertsNotification extends StatelessWidget {
   };
 
   IconData _resolveIcon() => switch (variant) {
-    ZyraAlertsNotificationVariant.error => TablerOutline.alert_circle,
+    ZyraAlertsNotificationVariant.error => TablerRegular.alert_circle,
   };
 }
 
@@ -176,7 +176,7 @@ class _CloseButton extends StatelessWidget {
         child: child,
       ),
       child: Icon(
-        TablerOutline.x,
+        TablerRegular.x,
         size: 20,
         color: Colors.white.withValues(alpha: 0.5),
       ),

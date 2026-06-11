@@ -6,6 +6,7 @@ class _SessionTile extends StatelessWidget {
   final bool isArchived;
   final bool isActive;
   final bool awaitingInput;
+  final bool isRetrying;
   final int backgroundTaskCount;
   final VoidCallback onLongPress;
   final VoidCallback onSwipe;
@@ -16,6 +17,7 @@ class _SessionTile extends StatelessWidget {
     required this.isArchived,
     required this.isActive,
     this.awaitingInput = false,
+    this.isRetrying = false,
     this.backgroundTaskCount = 0,
     required this.onLongPress,
     required this.onSwipe,
@@ -77,6 +79,7 @@ class _SessionTile extends StatelessWidget {
                 context: context,
                 loc: loc,
                 awaitingInput: awaitingInput,
+                isRetrying: isRetrying,
                 backgroundTaskCount: backgroundTaskCount,
               ),
           ],
@@ -103,10 +106,19 @@ Widget _buildActivityRow({
   required BuildContext context,
   required AppLocalizations loc,
   required bool awaitingInput,
+  required bool isRetrying,
   required int backgroundTaskCount,
 }) {
-  final color = awaitingInput ? kStatusAmber : context.zyra.colors.bgBrandSolid;
-  final label = awaitingInput ? loc.sessionListAwaitingInput : loc.sessionListRunning;
+  final color = switch ((awaitingInput, isRetrying)) {
+    (true, _) => kStatusAmber,
+    (_, true) => context.zyra.colors.fgErrorPrimary,
+    _ => context.zyra.colors.bgBrandSolid,
+  };
+  final label = switch ((awaitingInput, isRetrying)) {
+    (true, _) => loc.sessionListAwaitingInput,
+    (_, true) => loc.sessionListRunningRetrying,
+    _ => loc.sessionListRunning,
+  };
 
   return Row(
     children: [
@@ -171,10 +183,10 @@ class _StaleProjectView extends StatelessWidget {
 }
 
 class _ErrorView extends StatelessWidget {
-  final ApiError error;
+  final RemoteFailureReason reason;
   final VoidCallback onRetry;
 
-  const _ErrorView({required this.error, required this.onRetry});
+  const _ErrorView({required this.reason, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -198,7 +210,7 @@ class _ErrorView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              _describeError(loc: loc, error: error),
+              reason.localizedMessage(loc),
               textAlign: .center,
             ),
             const SizedBox(height: 24),
@@ -212,19 +224,4 @@ class _ErrorView extends StatelessWidget {
       ),
     );
   }
-
-  String _describeError({required AppLocalizations loc, required ApiError error}) => switch (error) {
-    NotAuthenticatedError() => loc.apiErrorNotAuthenticated,
-    NonSuccessCodeError(:final errorCode, :final rawErrorString) =>
-      rawErrorString != null
-          ? loc.connectErrorNonSuccessCodeWithBody(
-              errorCode,
-              rawErrorString,
-            )
-          : loc.connectErrorNonSuccessCode(errorCode),
-    DartHttpClientError(:final innerError) => loc.connectErrorConnectionFailed(innerError.toString()),
-    JsonParsingError() => loc.connectErrorUnexpectedFormat,
-    EmptyResponseError() => loc.connectErrorUnexpectedFormat,
-    GenericError() => loc.connectErrorUnknown,
-  };
 }

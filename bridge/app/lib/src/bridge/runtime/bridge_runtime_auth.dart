@@ -46,29 +46,19 @@ class BridgeRuntimeAuthService {
   }
 
   Future<TokenData> ensureAuthenticated({required BridgeCliOptions options}) async {
-    if (options.forceLogin) {
-      await clearTokens();
-      final provider = await promptForProvider();
-      return _loginAndPersist(
-        authBackendUrl: options.authBackendUrl,
-        provider: provider,
-      );
-    }
-
     try {
       final storedTokens = await loadTokens();
       try {
-        final (validatedTokens, ok) = await validateToken(
+        final validation = await validateToken(
           authBackendURL: options.authBackendUrl,
           accessToken: storedTokens.accessToken,
           refreshToken: storedTokens.refreshToken,
-          lastProvider: storedTokens.lastProvider,
         );
-        if (ok) {
+        if (validation.isValid) {
           final tokensToSave = TokenData(
-            accessToken: validatedTokens.accessToken,
-            refreshToken: validatedTokens.refreshToken,
-            bridgeToken: storedTokens.bridgeToken,
+            accessToken: validation.accessToken,
+            refreshToken: validation.refreshToken,
+            bridgeId: storedTokens.bridgeId,
             lastProvider: storedTokens.lastProvider,
           );
           await saveTokens(tokensToSave);
@@ -128,10 +118,31 @@ class BridgeRuntimeAuthService {
       EmailAuthProvider() => _loginEmailRepository.performEmailLogin(),
     };
 
+    // A fresh login response never carries a bridge id, so carry over the one
+    // persisted by a previous registration. Otherwise an interactive re-login
+    // (e.g. expired refresh token) would wipe it and the next registration
+    // would mint a duplicate bridge entry. Carrying it across an account
+    // switch is safe: registration is idempotent on (userId, bridgeId), and a
+    // bridge id not owned by the new account just gets a fresh mint.
+    String? existingBridgeId;
+    try {
+      final existingTokens = await loadTokens();
+      existingBridgeId = existingTokens.bridgeId;
+    } on FileSystemException catch (error) {
+      if (error.osError?.errorCode != 2) {
+        rethrow;
+      }
+      // Token file missing — no previous bridge id to carry over.
+      existingBridgeId = null;
+    } on FormatException {
+      // Token file corrupt — no previous bridge id to carry over.
+      existingBridgeId = null;
+    }
+
     final tokensToSave = TokenData(
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
-      bridgeToken: tokens.bridgeToken,
+      bridgeId: tokens.bridgeId ?? existingBridgeId,
       lastProvider: provider,
     );
     await saveTokens(tokensToSave);

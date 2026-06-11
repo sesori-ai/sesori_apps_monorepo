@@ -1,36 +1,11 @@
 {
   "@@locale": "en",
   "appTitle": "Sesori Mobile",
-  "connectErrorNonSuccessCode": "Server returned {errorCode}",
-  "@connectErrorNonSuccessCode": {
-    "placeholders": {
-      "errorCode": {
-        "type": "int"
-      }
-    }
-  },
-  "connectErrorNonSuccessCodeWithBody": "Server returned {errorCode}: {body}",
-  "@connectErrorNonSuccessCodeWithBody": {
-    "placeholders": {
-      "errorCode": {
-        "type": "int"
-      },
-      "body": {
-        "type": "String"
-      }
-    }
-  },
-  "connectErrorConnectionFailed": "Connection failed: {detail}",
-  "@connectErrorConnectionFailed": {
-    "placeholders": {
-      "detail": {
-        "type": "String"
-      }
-    }
-  },
   "connectErrorUnexpectedFormat": "Unexpected response format",
   "connectErrorUnknown": "An unknown error occurred",
   "apiErrorNotAuthenticated": "Not authenticated — check your connection",
+  "apiErrorServerRejected": "The server returned an error. Please try again.",
+  "apiErrorNetworkDown": "Connection failed — check your network and try again.",
   "projectListTitle": "Projects",
   "projectListEmpty": "No projects found",
   "projectListUpdated": "Updated {timestamp}",
@@ -54,6 +29,33 @@
       }
     }
   },
+  "projectsOnboardingTitle": "Set up Sesori Bridge",
+  "projectsOnboardingStep1Action": "Install & Run",
+  "projectsOnboardingBridgeName": "Sesori Bridge",
+  "projectsOnboardingTabUnix": "Linux/Mac",
+  "projectsOnboardingTabWindows": "Windows",
+  "projectsOnboardingCommandCopied": "Command copied to clipboard",
+  "projectsOnboardingCopyCommand": "Copy command",
+  "projectsOnboardingStepCompleted": "Completed",
+  "projectsOnboardingStep2Action": "Sign in",
+  "projectsOnboardingStep2Accent": "on your computer",
+  "projectsOnboardingAccountPrefix": "Use ",
+  "projectsOnboardingAccountSuffix": " with {provider}",
+  "@projectsOnboardingAccountSuffix": {
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
+  "projectsOnboardingAccountFallback": "Sign in with the same account you used here.",
+  "projectsOnboardingStep3Title": "Create or open a folder",
+  "projectsOnboardingStep3Detail": "Once connected, your projects will appear here.",
+  "projectsConnectedTitle": "Your bridge is connected",
+  "projectsConnectedStep2Action": "Signed in",
+  "projectsConnectedStep3Detail": "Choose a folder to start your first session.",
+  "projectsConnectedAccountFallback": "Signed in with the account you used here.",
+  "projectsOnboardingOpenFolder": "Open a folder",
   "connectionLostTitle": "Connection Lost",
   "connectionLostReconnect": "Reconnect",
   "connectionLostDisconnect": "Disconnect",
@@ -235,6 +237,10 @@
   "@sessionListRunning": {
     "description": "Label shown next to the green dot for sessions that are currently active"
   },
+  "sessionListRunningRetrying": "Running (retrying)",
+  "@sessionListRunningRetrying": {
+    "description": "Label shown next to the red dot for sessions that are active but in a retry/error state"
+  },
   "sessionListAwaitingInput": "Awaiting input",
   "@sessionListAwaitingInput": {
     "description": "Label shown next to the amber dot for sessions that are waiting for user input (question or permission)"
@@ -378,7 +384,6 @@
     }
   },
   "diffRetry": "Retry",
-  "splashTitle": "Sesori",
   "newSessionLoadingSemantics": "Creating session",
   "newSessionLoadingMessage1": "Warming up the engines…",
   "newSessionLoadingMessage2": "Generating session telemetry…",

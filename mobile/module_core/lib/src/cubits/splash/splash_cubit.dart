@@ -25,6 +25,13 @@ class SplashCubit extends Cubit<SplashState> {
     try {
       final hasSession = await _authSession.hasLocallyValidSession();
       if (isClosed) return;
+      if (hasSession) {
+        // Best-effort, network-free rehydrate of the in-memory auth state so
+        // downstream screens (e.g. onboarding) know the signed-in account
+        // after a restart. Never affects routing.
+        await _authSession.restoreLocalSession();
+        if (isClosed) return;
+      }
       emit(
         SplashState.ready(
           route: hasSession ? const AppRoute.projects() : const AppRoute.login(),

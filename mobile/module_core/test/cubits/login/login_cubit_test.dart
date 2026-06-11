@@ -29,7 +29,7 @@ const testAuthInitResponse = AuthInitResponse(
 
 const testAuthUser = AuthUser(
   id: "id",
-  provider: "google",
+  provider: AuthProvider.google,
   providerUserId: "user123",
   providerUsername: null,
 );

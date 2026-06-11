@@ -86,6 +86,18 @@ abstract class BridgePluginApi {
     required ({String providerID, String modelID})? model,
   });
 
+  /// Sends a slash command to a session.
+  ///
+  /// The returned future MUST complete once the backend has **accepted** the
+  /// command for execution — not when the command's run finishes. Callers
+  /// (bridge request handlers serving phones) await this future while holding
+  /// a client request open, so an implementation must never block for the
+  /// duration of the command's agent run. If the backend only exposes a
+  /// synchronous endpoint, the implementation is responsible for detaching
+  /// (and surfacing later failures through its [events] stream / logs).
+  ///
+  /// Dispatch failures (unknown command, missing session, backend down) MUST
+  /// be thrown so callers can report the send as failed.
   Future<void> sendCommand({
     required String sessionId,
     required String command,
@@ -97,7 +109,10 @@ abstract class BridgePluginApi {
 
   Future<void> abortSession({required String sessionId});
 
-  Future<List<PluginAgent>> getAgents();
+  /// Returns the agents available for the given project.
+  ///
+  /// [projectId] identifies the project; its format is plugin-defined.
+  Future<List<PluginAgent>> getAgents({required String projectId});
 
   Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId});
 
@@ -137,6 +152,10 @@ abstract class BridgePluginApi {
 
   /// Health check — returns `true` when the backend is healthy, `false`
   /// otherwise.
+  ///
+  /// This is an *instantaneous*, mobile-facing probe: it reflects backend
+  /// reachability right now and is not debounced. The debounced lifecycle
+  /// signal used for orchestration decisions is `BridgePlugin.status`.
   Future<bool> healthCheck();
 
   /// Get connected providers and their models from the backend.
@@ -148,5 +167,11 @@ abstract class BridgePluginApi {
   List<PluginProjectActivitySummary> getActiveSessionsSummary();
 
   /// Stop the plugin and release resources (SSE connections, HTTP clients, etc.).
+  ///
+  /// Prefer `BridgePlugin.shutdown()`, which owns the plugin's ordered
+  /// teardown; this method will be removed once the bridge core stops
+  /// calling it directly. Until then the core may call `dispose()` before or
+  /// after `shutdown()`, so implementations MUST be idempotent and safe in
+  /// either order.
   Future<void> dispose();
 }

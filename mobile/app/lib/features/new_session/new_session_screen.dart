@@ -6,6 +6,7 @@ import "package:theme_zyra/module_zyra.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
+import "../../core/extensions/remote_failure_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/agent_model_buttons.dart";
 import "../../core/widgets/agent_picker_sheet.dart";
@@ -84,14 +85,15 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
 
   Widget? _buildErrorBanner(NewSessionState state) {
     final zyra = context.zyra;
+    final loc = context.loc;
     return switch (state) {
-      NewSessionError(:final message) => Padding(
+      NewSessionError(:final reason) => Padding(
         padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 12, 4),
         child: Row(
           children: [
             Expanded(
               child: Text(
-                message,
+                reason.localizedMessage(loc),
                 style: TextStyle(color: zyra.colors.fgErrorPrimary),
               ),
             ),

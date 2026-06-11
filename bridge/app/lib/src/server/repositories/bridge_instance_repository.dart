@@ -1,8 +1,7 @@
 import 'package:path/path.dart' as path;
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 
 import '../api/system_process_api.dart';
-import '../foundation/process_identity.dart';
-import '../foundation/process_user.dart';
 
 class BridgeInstanceRepository {
   BridgeInstanceRepository({

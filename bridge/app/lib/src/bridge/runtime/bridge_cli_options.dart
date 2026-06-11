@@ -8,7 +8,6 @@ class BridgeCliOptions {
   final String password;
   final String opencodeBin;
   final String authBackendUrl;
-  final bool forceLogin;
   final int? debugPort;
   final String logLevelName;
 
@@ -20,7 +19,6 @@ class BridgeCliOptions {
     required this.password,
     required this.opencodeBin,
     required this.authBackendUrl,
-    required this.forceLogin,
     required this.debugPort,
     required this.logLevelName,
   });
@@ -32,7 +30,7 @@ class BridgeCliOptions {
     required String defaultAuthUrl,
   }) {
     final authBackendFlag = results["auth-backend"] as String;
-    final authBackendUrl = _resolveAuthBackendUrl(
+    final authBackendUrl = resolveAuthBackendUrl(
       authBackendFlag: authBackendFlag,
       environment: environment,
       defaultAuthUrl: defaultAuthUrl,
@@ -55,13 +53,14 @@ class BridgeCliOptions {
       password: results["password"] as String,
       opencodeBin: results["opencode-bin"] as String,
       authBackendUrl: authBackendUrl,
-      forceLogin: results["login"] as bool,
       debugPort: debugPortRaw.isNotEmpty ? int.tryParse(debugPortRaw) : null,
       logLevelName: results["log-level"] as String,
     );
   }
 
-  static String _resolveAuthBackendUrl({
+  /// Resolves the auth backend URL from the CLI flag, the
+  /// `AUTH_BACKEND_URL` environment variable, or the default, in that order.
+  static String resolveAuthBackendUrl({
     required String authBackendFlag,
     required Map<String, String> environment,
     required String defaultAuthUrl,

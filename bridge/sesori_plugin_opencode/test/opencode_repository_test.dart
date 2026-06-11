@@ -768,7 +768,7 @@ class _FakeApi implements OpenCodeApi {
   Future<void> abortSession({required String sessionId, required String? directory}) async {}
 
   @override
-  Future<List<Agent>> listAgents() async => [];
+  Future<List<Agent>> listAgents({required String directory}) async => [];
 
   @override
   Future<List<QuestionRequest>> getPendingQuestions({required String? directory}) async => [];

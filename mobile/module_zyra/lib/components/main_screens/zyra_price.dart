@@ -86,8 +86,8 @@ class ZyraPrice extends StatelessWidget {
                 alignment: PlaceholderAlignment.middle,
                 child: Icon(
                   switch (direction) {
-                    ZyraPriceDirection.up => TablerOutline.caret_up,
-                    ZyraPriceDirection.down => TablerOutline.caret_down,
+                    ZyraPriceDirection.up => TablerRegular.caret_up,
+                    ZyraPriceDirection.down => TablerRegular.caret_down,
                   },
                   size: 14,
                   color: caretColor,
@@ -145,7 +145,7 @@ class _EyeToggleButton extends StatelessWidget {
       ),
       child: Center(
         child: Icon(
-          isBalanceHidden ? TablerOutline.eye_off : TablerOutline.eye,
+          isBalanceHidden ? TablerRegular.eye_off : TablerRegular.eye,
           size: _iconSize,
           color: iconColor,
         ),

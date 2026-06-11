@@ -66,6 +66,7 @@ void main() {
         completionListener: pushSubsystem.completionListener,
         maintenanceListener: pushSubsystem.maintenanceListener,
         tokenRefresher: _FakeTokenRefresher(),
+        bridgeRegistrationService: createFakeBridgeRegistrationService(),
         failureReporter: FakeFailureReporter(),
         prSyncService: PrSyncService(
           prSource: _NoopPrSource(),
@@ -191,6 +192,7 @@ class _TestHarness {
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
     );
 
     final metadataService = FakeMetadataService();
@@ -255,6 +257,7 @@ class _TestHarness {
       completionListener: pushSubsystem.completionListener,
       maintenanceListener: pushSubsystem.maintenanceListener,
       tokenRefresher: tokenRefresher,
+      bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: failureReporter,
       prSyncService: prSyncService,
       sessionRepository: sessionRepository,
@@ -457,7 +460,7 @@ class _ThrowingSummaryPlugin implements BridgePluginApi {
   Future<void> abortSession({required String sessionId}) async {}
 
   @override
-  Future<List<PluginAgent>> getAgents() async => [];
+  Future<List<PluginAgent>> getAgents({required String projectId}) async => [];
 
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({
@@ -536,6 +539,7 @@ class _ThrowingConnectRelayClient extends RelayClient {
     : super(
         relayURL: "ws://127.0.0.1:1",
         accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
       );
 
   @override

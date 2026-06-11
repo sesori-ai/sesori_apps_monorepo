@@ -3,9 +3,7 @@ import "dart:io";
 import "dart:math";
 
 import "package:http/http.dart" as http;
-
-import "../foundation/process_user.dart";
-import "../foundation/server_clock.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 typedef OpenCodeProcessStarter =
     Future<Process> Function(

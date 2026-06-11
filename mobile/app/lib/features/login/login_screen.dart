@@ -139,7 +139,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                             child: Column(
                               mainAxisSize: .min,
                               children: [
-                                const SesoriLogo(),
+                                const Hero(tag: SesoriLogo.heroTag, child: SesoriLogo()),
                                 Text(
                                   loc.loginTitle,
                                   style: zyra.textTheme.textSm.regular,

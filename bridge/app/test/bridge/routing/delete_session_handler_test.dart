@@ -364,6 +364,60 @@ void main() {
       expect(await db.sessionDao.getSession(sessionId: "s10"), isNotNull);
       expect(operationLog, equals(["checkSafety", "removeWorktree", "deleteBranch", "pluginDelete"]));
     });
+
+    test("11) plugin delete 404: tolerated, DB row still removed", () async {
+      await _insertSession(
+        db: db,
+        sessionId: "s11",
+        projectId: "/repo",
+        worktreePath: null,
+        branchName: null,
+      );
+      plugin.throwOnDeleteSessionError = PluginApiException("/session/s11", 404);
+
+      final response = await handler.handle(
+        makeRequest("DELETE", "/session/delete"),
+        body: const DeleteSessionRequest(
+          sessionId: "s11",
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response, isA<SuccessEmptyResponse>());
+      expect(await db.sessionDao.getSession(sessionId: "s11"), isNull);
+    });
+
+    test("12) plugin delete not-found from a non-HTTP plugin: tolerated, DB row still removed", () async {
+      await _insertSession(
+        db: db,
+        sessionId: "s12",
+        projectId: "/repo",
+        worktreePath: null,
+        branchName: null,
+      );
+      plugin.throwOnDeleteSessionError = const PluginOperationException.notFound("deleteSession");
+
+      final response = await handler.handle(
+        makeRequest("DELETE", "/session/delete"),
+        body: const DeleteSessionRequest(
+          sessionId: "s12",
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(response, isA<SuccessEmptyResponse>());
+      expect(await db.sessionDao.getSession(sessionId: "s12"), isNull);
+    });
   });
 }
 

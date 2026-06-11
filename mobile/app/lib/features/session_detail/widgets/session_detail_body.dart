@@ -75,16 +75,17 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
           fallbackTitle: widget.sessionTitle ?? loc.sessionDetailTitle,
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.difference_outlined),
-            tooltip: loc.sessionDetailFileChangesTooltip,
-            onPressed: () => context.pushRoute(
-              AppRoute.sessionDiffs(
-                projectId: widget.projectId,
-                sessionId: widget.sessionId,
+          if (state case SessionDetailLoaded(:final isRootSession) when isRootSession == true)
+            IconButton(
+              icon: const Icon(Icons.difference_outlined),
+              tooltip: loc.sessionDetailFileChangesTooltip,
+              onPressed: () => context.pushRoute(
+                AppRoute.sessionDiffs(
+                  projectId: widget.projectId,
+                  sessionId: widget.sessionId,
+                ),
               ),
             ),
-          ),
           if (isBusy)
             Padding(
               padding: const EdgeInsetsDirectional.only(end: 16),
@@ -118,8 +119,8 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
                   onOpenModelPicker: _openModelPicker,
                   onOpenVariantPicker: _openVariantPicker,
                 ),
-        SessionDetailFailed(:final error) => SessionDetailErrorView(
-          error: error,
+        SessionDetailFailed(:final reason) => SessionDetailErrorView(
+          reason: reason,
           onRetry: () => context.read<SessionDetailCubit>().reload(),
         ),
       },

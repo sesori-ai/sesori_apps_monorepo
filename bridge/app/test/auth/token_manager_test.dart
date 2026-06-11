@@ -19,7 +19,8 @@ void main() {
       final manager = TokenManager(
         initialToken: currentToken,
         authBackendUrl: server.baseUrl,
-        loadTokens: () async => TokenData(accessToken: "a", refreshToken: "r", lastProvider: AuthProvider.github),
+        loadTokens: () async =>
+            TokenData(accessToken: "a", refreshToken: "r", bridgeId: null, lastProvider: AuthProvider.github),
         saveTokens: (_) async {},
       );
 
@@ -48,7 +49,12 @@ void main() {
         authBackendUrl: server.baseUrl,
         loadTokens: () async {
           await Future<void>.delayed(const Duration(milliseconds: 120));
-          return TokenData(accessToken: "old-access", refreshToken: "refresh-token", lastProvider: AuthProvider.github);
+          return TokenData(
+            accessToken: "old-access",
+            refreshToken: "refresh-token",
+            bridgeId: null,
+            lastProvider: AuthProvider.github,
+          );
         },
         saveTokens: (_) async {
           if (!refreshCompleted.isCompleted) {
@@ -76,7 +82,12 @@ void main() {
       final manager = TokenManager(
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
-        loadTokens: () async => TokenData(accessToken: "old-access", refreshToken: "refresh-token", lastProvider: AuthProvider.github),
+        loadTokens: () async => TokenData(
+          accessToken: "old-access",
+          refreshToken: "refresh-token",
+          bridgeId: null,
+          lastProvider: AuthProvider.github,
+        ),
         saveTokens: (_) async {},
       );
 
@@ -93,7 +104,12 @@ void main() {
       final manager = TokenManager(
         initialToken: _makeJwtFromNow(300),
         authBackendUrl: server.baseUrl,
-        loadTokens: () async => TokenData(accessToken: "old-access", refreshToken: "refresh-token", lastProvider: AuthProvider.github),
+        loadTokens: () async => TokenData(
+          accessToken: "old-access",
+          refreshToken: "refresh-token",
+          bridgeId: null,
+          lastProvider: AuthProvider.github,
+        ),
         saveTokens: (_) async {},
       );
 
@@ -110,7 +126,12 @@ void main() {
       final manager = TokenManager(
         initialToken: _makeJwtFromNow(300),
         authBackendUrl: server.baseUrl,
-        loadTokens: () async => TokenData(accessToken: "old-access", refreshToken: "refresh-token", lastProvider: AuthProvider.github),
+        loadTokens: () async => TokenData(
+          accessToken: "old-access",
+          refreshToken: "refresh-token",
+          bridgeId: null,
+          lastProvider: AuthProvider.github,
+        ),
         saveTokens: (_) async {},
       );
 
@@ -124,7 +145,7 @@ void main() {
       expect(server.requestCount, 1);
     });
 
-    test("successful refresh persists new tokens while preserving bridgeToken", () async {
+    test("successful refresh persists new tokens while preserving bridgeId", () async {
       final server = await _RefreshTestServer.start();
       addTearDown(server.close);
 
@@ -135,7 +156,7 @@ void main() {
         loadTokens: () async => TokenData(
           accessToken: "old-access",
           refreshToken: "refresh-token",
-          bridgeToken: "bridge-token-value",
+          bridgeId: "br_abc12345",
           lastProvider: AuthProvider.github,
         ),
         saveTokens: (tokens) async {
@@ -148,7 +169,117 @@ void main() {
       expect(savedTokens, isNotNull);
       expect(savedTokens!.accessToken, "new-access-token");
       expect(savedTokens!.refreshToken, "new-refresh-token");
-      expect(savedTokens!.bridgeToken, "bridge-token-value");
+      expect(savedTokens!.bridgeId, "br_abc12345");
+    });
+
+    test("refresh keeps a bridgeId persisted while the refresh was in flight", () async {
+      final requestReceived = Completer<void>();
+      final server = await _RefreshTestServer.start(
+        responseDelay: const Duration(milliseconds: 60),
+        onRequest: (_, __) {
+          if (!requestReceived.isCompleted) {
+            requestReceived.complete();
+          }
+        },
+      );
+      addTearDown(server.close);
+
+      var stored = TokenData(
+        accessToken: "old-access",
+        refreshToken: "refresh-token",
+        bridgeId: null,
+        lastProvider: AuthProvider.github,
+      );
+      final manager = TokenManager(
+        initialToken: _makeJwtFromNow(300),
+        authBackendUrl: server.baseUrl,
+        loadTokens: () async => stored,
+        saveTokens: (tokens) async {
+          stored = tokens;
+        },
+      );
+
+      final refreshFuture = manager.getAccessToken(forceRefresh: true);
+      // The refresh has loaded its pre-registration snapshot and is awaiting
+      // the HTTP response; registration now persists a freshly minted id.
+      await requestReceived.future.timeout(const Duration(seconds: 2));
+      stored = TokenData(
+        accessToken: stored.accessToken,
+        refreshToken: stored.refreshToken,
+        bridgeId: "br_minted123",
+        lastProvider: stored.lastProvider,
+      );
+
+      await refreshFuture;
+
+      expect(stored.bridgeId, "br_minted123");
+      expect(stored.accessToken, "new-access-token");
+      expect(stored.refreshToken, "new-refresh-token");
+    });
+
+    test("refresh repairs a corrupt token file by persisting the snapshot's merge fields", () async {
+      final server = await _RefreshTestServer.start();
+      addTearDown(server.close);
+
+      var loadCalls = 0;
+      TokenData? savedTokens;
+      final manager = TokenManager(
+        initialToken: _makeJwtFromNow(10),
+        authBackendUrl: server.baseUrl,
+        loadTokens: () async {
+          loadCalls += 1;
+          if (loadCalls > 1) {
+            throw const FormatException("corrupt token file");
+          }
+          return TokenData(
+            accessToken: "old-access",
+            refreshToken: "refresh-token",
+            bridgeId: "br_abc12345",
+            lastProvider: AuthProvider.github,
+          );
+        },
+        saveTokens: (tokens) async {
+          savedTokens = tokens;
+        },
+      );
+
+      final token = await manager.getAccessToken();
+
+      expect(token, "new-access-token");
+      expect(savedTokens, isNotNull);
+      expect(savedTokens!.accessToken, "new-access-token");
+      expect(savedTokens!.refreshToken, "new-refresh-token");
+      expect(savedTokens!.bridgeId, "br_abc12345");
+    });
+
+    test("refresh does not recreate a token file deleted mid-refresh", () async {
+      final server = await _RefreshTestServer.start();
+      addTearDown(server.close);
+
+      var loadCalls = 0;
+      TokenData? savedTokens;
+      final manager = TokenManager(
+        initialToken: _makeJwtFromNow(10),
+        authBackendUrl: server.baseUrl,
+        loadTokens: () async {
+          loadCalls += 1;
+          if (loadCalls > 1) {
+            throw const FileSystemException("token file deleted", "token.json", OSError("No such file", 2));
+          }
+          return TokenData(
+            accessToken: "old-access",
+            refreshToken: "refresh-token",
+            bridgeId: null,
+            lastProvider: AuthProvider.github,
+          );
+        },
+        saveTokens: (tokens) async {
+          savedTokens = tokens;
+        },
+      );
+
+      await expectLater(manager.getAccessToken(), throwsA(isA<FileSystemException>()));
+      expect(savedTokens, isNull);
     });
 
     test("successful refresh updates current access token", () async {
@@ -158,7 +289,12 @@ void main() {
       final manager = TokenManager(
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
-        loadTokens: () async => TokenData(accessToken: "old-access", refreshToken: "refresh-token", lastProvider: AuthProvider.github),
+        loadTokens: () async => TokenData(
+          accessToken: "old-access",
+          refreshToken: "refresh-token",
+          bridgeId: null,
+          lastProvider: AuthProvider.github,
+        ),
         saveTokens: (_) async {},
       );
 
@@ -174,7 +310,12 @@ void main() {
       final manager = TokenManager(
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
-        loadTokens: () async => TokenData(accessToken: "old-access", refreshToken: "refresh-token", lastProvider: AuthProvider.github),
+        loadTokens: () async => TokenData(
+          accessToken: "old-access",
+          refreshToken: "refresh-token",
+          bridgeId: null,
+          lastProvider: AuthProvider.github,
+        ),
         saveTokens: (_) async {},
       );
 
@@ -185,7 +326,12 @@ void main() {
       final manager = TokenManager(
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: "http://127.0.0.1:1",
-        loadTokens: () async => TokenData(accessToken: "old-access", refreshToken: "refresh-token", lastProvider: AuthProvider.github),
+        loadTokens: () async => TokenData(
+          accessToken: "old-access",
+          refreshToken: "refresh-token",
+          bridgeId: null,
+          lastProvider: AuthProvider.github,
+        ),
         saveTokens: (_) async {},
         client: _ThrowingClient(),
       );
@@ -214,7 +360,8 @@ void main() {
       final manager = TokenManager(
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
-        loadTokens: () async => TokenData(accessToken: "old-access", refreshToken: "", lastProvider: AuthProvider.github),
+        loadTokens: () async =>
+            TokenData(accessToken: "old-access", refreshToken: "", bridgeId: null, lastProvider: AuthProvider.github),
         saveTokens: (_) async {},
       );
 
@@ -229,7 +376,12 @@ void main() {
       final manager = TokenManager(
         initialToken: malformedJwt,
         authBackendUrl: server.baseUrl,
-        loadTokens: () async => TokenData(accessToken: "old-access", refreshToken: "refresh-token", lastProvider: AuthProvider.github),
+        loadTokens: () async => TokenData(
+          accessToken: "old-access",
+          refreshToken: "refresh-token",
+          bridgeId: null,
+          lastProvider: AuthProvider.github,
+        ),
         saveTokens: (_) async {},
       );
 

@@ -2,6 +2,17 @@ name: Release All Platforms
 
 run-name: "release · build ${{ github.sha }}"
 
+# Per-merge internal release: uploads iOS to TestFlight and Android to the
+# Play internal track, builds the 5-platform bridge archives, and — only when
+# EVERYTHING succeeded (all-or-nothing) — pushes a `v<X>-internal.<N>` tag and
+# rolls the single internal GitHub pre-release onto it (previous pre-release
+# objects are deleted; their tags are kept forever as the build-number→commit
+# map used by submit-release.yml).
+#
+# The bridge auto-updater ignores pre-releases, so the rolling internal
+# pre-release never reaches end users — it serves internal testers and the
+# future pre-release update channel.
+
 on:
   workflow_dispatch:
   push:
@@ -16,8 +27,50 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  preflight:
+    name: Version guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+
+      # Fail the WHOLE run (mobile and bridge) when the committed version was
+      # already released/submitted: a `v<version>` tag is pushed by every beta
+      # or production submit, so its existence means this version is taken and
+      # a `tool/sync_versions.dart` bump PR must land before main can produce
+      # new internal builds. Never auto-increment.
+      - name: Verify versions are in sync and unreleased
+        id: check
+        run: |
+          set -euo pipefail
+          MOBILE_VERSION=$(awk '/^version:/{split($2,a,"+"); print a[1]; exit}' mobile/app/pubspec.yaml)
+          BRIDGE_VERSION=$(awk '/^version:/{print $2; exit}' bridge/app/pubspec.yaml)
+          if [[ -z "$MOBILE_VERSION" || -z "$BRIDGE_VERSION" ]]; then
+            echo "::error::Could not parse versions (mobile: '$MOBILE_VERSION', bridge: '$BRIDGE_VERSION')."
+            exit 1
+          fi
+          if [[ "$MOBILE_VERSION" != "$BRIDGE_VERSION" ]]; then
+            echo "::error::Mobile ($MOBILE_VERSION) and bridge ($BRIDGE_VERSION) versions differ. Run tool/sync_versions.dart."
+            exit 1
+          fi
+
+          TAG="v${MOBILE_VERSION}"
+          PEELED=$(git ls-remote origin "refs/tags/${TAG}^{}" | awk '{print $1}')
+          PLAIN=$(git ls-remote origin "refs/tags/${TAG}" | awk '{print $1}')
+          EXISTING="${PEELED:-$PLAIN}"
+          if [[ -n "$EXISTING" && "$EXISTING" != "$GITHUB_SHA" ]]; then
+            echo "::error::Tag ${TAG} already exists — version ${MOBILE_VERSION} was already submitted/released. Bump the version with tool/sync_versions.dart before merging further changes."
+            exit 1
+          fi
+
+          echo "version=${MOBILE_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Version ${MOBILE_VERSION} is in sync and unreleased."
+
   next-build-number:
     name: Resolve aligned build number
+    needs: preflight
     uses: ./.github/workflows/_reusable-next-build-number.yml
     secrets:
       APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
@@ -54,67 +107,125 @@ jobs:
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       ANDROID_PROPERTIES: ${{ secrets.ANDROID_PROPERTIES }}
 
-  summary:
-    name: Release Summary
+  bridge:
+    name: Build bridge (internal)
+    needs: [preflight, next-build-number]
+    uses: ./.github/workflows/_reusable-bridge-build.yml
+    with:
+      version: ${{ needs.preflight.outputs.version }}-internal.${{ needs.next-build-number.outputs.build_number }}
+    secrets:
+      MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+      MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+      MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+
+  # All-or-nothing: runs only when iOS, Android AND all five bridge targets
+  # succeeded, so every internal tag maps to a complete set (both store builds
+  # + all bridge binaries). On any failure nothing is tagged or published and
+  # the rolling pre-release keeps pointing at the previous good build.
+  finalize:
+    name: Tag and roll internal pre-release
     runs-on: ubuntu-latest
-    needs: [next-build-number, ios, android]
-    if: always()
+    needs: [preflight, next-build-number, ios, android, bridge]
+    timeout-minutes: 10
     permissions:
       contents: write
-
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.preflight.outputs.version }}
+      BUILD_NUMBER: ${{ needs.next-build-number.outputs.build_number }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
 
-      - name: Generate Summary
+      # The notes script is dependency-free pure Dart — a bare Dart SDK
+      # installs in seconds, vs minutes for the asdf Flutter toolchain.
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: Download bridge artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: sesori-bridge-*
+          merge-multiple: true
+
+      - name: Generate checksums
+        working-directory: artifacts
         run: |
-          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Platform Status" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          find . -type f \( -name '*.tar.gz' -o -name '*.zip' \) -print0 | sort -z | while IFS= read -r -d '' file; do
+            sha256sum "$file" | awk -v name="$(basename "$file")" '{print $1 "  " name}'
+          done > checksums.txt
+          cat checksums.txt
 
-          if [ "${{ needs.next-build-number.result }}" == "success" ]; then
-            echo "- **Aligned build number**: ${{ needs.next-build-number.outputs.build_number }} (iOS next: ${{ needs.next-build-number.outputs.ios_next }}, Android next: ${{ needs.next-build-number.outputs.android_next }})" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "- **Aligned build number**: ${{ needs.next-build-number.result }}" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          if [ "${{ needs.ios.result }}" == "success" ]; then
-            echo "- **iOS (artifact)**: Built" >> $GITHUB_STEP_SUMMARY
-          elif [ "${{ needs.ios.result }}" == "failure" ]; then
-            echo "- **iOS (artifact)**: Failed" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "- **iOS (artifact)**: ${{ needs.ios.result }}" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          if [ "${{ needs.android.result }}" == "success" ]; then
-            echo "- **Android Internal**: Deployed" >> $GITHUB_STEP_SUMMARY
-          elif [ "${{ needs.android.result }}" == "failure" ]; then
-            echo "- **Android Internal**: Failed" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "- **Android Internal**: ${{ needs.android.result }}" >> $GITHUB_STEP_SUMMARY
-          fi
-
-      # Push a single `build-<N>` tag on the released commit. iOS and Android
-      # share the same aligned build number, so one tag is enough — the manual
-      # submit-release.yml workflow uses it to map a build number back to its
-      # commit. Tagged only when the build number resolved and at least one
-      # platform uploaded successfully (i.e. a build actually exists in a store).
-      - name: Tag commit with build number
-        if: >-
-          needs.next-build-number.result == 'success' &&
-          (needs.ios.result == 'success' || needs.android.result == 'success')
-        env:
-          BUILD_NUMBER: ${{ needs.next-build-number.outputs.build_number }}
+      - name: Push internal tag
+        id: tag
         run: |
           set -euo pipefail
-          TAG="build-${BUILD_NUMBER}"
+          TAG="v${VERSION}-internal.${BUILD_NUMBER}"
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if [ -n "$(git ls-remote --tags origin "refs/tags/${TAG}")" ]; then
             echo "Tag ${TAG} already exists on origin — skipping"
           else
-            git tag -a "$TAG" -m "Build ${BUILD_NUMBER} sha=${GITHUB_SHA}"
+            git tag -a "$TAG" -m "Internal build ${BUILD_NUMBER} (v${VERSION}) sha=${GITHUB_SHA}"
             git push origin "refs/tags/${TAG}"
           fi
-          echo "- **Tag**: \`${TAG}\`" >> $GITHUB_STEP_SUMMARY
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate release notes
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          dart tool/generate_release_notes.dart \
+            --repo "$GITHUB_REPOSITORY" \
+            --to "$TAG" \
+            --version "${VERSION}-internal.${BUILD_NUMBER}" \
+            --output notes.md
+          cat notes.md
+
+      # Keep exactly ONE internal pre-release: delete previous internal
+      # pre-release OBJECTS (their tags stay — submit-release.yml resolves
+      # build numbers through them) before publishing the new one.
+      - name: Roll internal pre-release
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release list --limit 100 --json tagName,isPrerelease \
+            --jq '.[] | select(.isPrerelease) | .tagName' \
+            | { grep -E '^v.+-internal\.[0-9]+$' || true; } \
+            | while read -r stale; do
+                if [ "$stale" != "$TAG" ]; then
+                  echo "Deleting previous internal pre-release $stale (tag kept)"
+                  gh release delete "$stale" --yes
+                fi
+              done
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release for ${TAG} already exists — uploading assets idempotently"
+            gh release upload "$TAG" artifacts/*.tar.gz artifacts/*.zip artifacts/checksums.txt --clobber
+            gh release edit "$TAG" --prerelease --notes-file notes.md
+          else
+            gh release create "$TAG" \
+              --prerelease \
+              --verify-tag \
+              --title "Internal v${VERSION}-internal.${BUILD_NUMBER}" \
+              --notes-file notes.md \
+              artifacts/*.tar.gz artifacts/*.zip artifacts/checksums.txt
+          fi
+
+      - name: Summary
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          {
+            echo "## Internal Release"
+            echo ""
+            echo "- **Version**: \`${VERSION}-internal.${BUILD_NUMBER}\`"
+            echo "- **Tag**: \`${TAG}\`"
+            echo "- **iOS (TestFlight)** / **Android (internal track)**: build ${BUILD_NUMBER} (iOS next: ${{ needs.next-build-number.outputs.ios_next }}, Android next: ${{ needs.next-build-number.outputs.android_next }})"
+            echo "- **Bridge pre-release**: rolled to \`${TAG}\` (5 platform archives + checksums)"
+          } >> "$GITHUB_STEP_SUMMARY"

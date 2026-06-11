@@ -10,6 +10,7 @@ import "package:flutter/services.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_zyra/module_zyra.dart";
 
+import "core/analytics/analytics_user_id_tracker.dart";
 import "core/di/injection.dart";
 import "core/extensions/build_context_x.dart";
 import "core/routing/app_router.dart";
@@ -66,6 +67,7 @@ void main() async {
   if (_shouldInitializeFirebase) {
     await bootstrapSesoriApp(
       shouldInitializeFirebase: true,
+      supportsFirebaseAnalytics: _supportsFirebaseAnalytics,
       configureDependenciesFn: configureDependencies,
       initializeDeepLinks: () => getIt<DeepLinkService>().init(),
       startNotificationStartupFn: () => startNotificationStartup(
@@ -82,6 +84,7 @@ void main() async {
 
   await bootstrapSesoriApp(
     shouldInitializeFirebase: false,
+    supportsFirebaseAnalytics: false,
     configureDependenciesFn: configureDependencies,
     initializeDeepLinks: () => getIt<DeepLinkService>().init(),
     startNotificationStartupFn: () async {},
@@ -91,6 +94,7 @@ void main() async {
 
 Future<void> bootstrapSesoriApp({
   required bool shouldInitializeFirebase,
+  required bool supportsFirebaseAnalytics,
   required void Function() configureDependenciesFn,
   required void Function() initializeDeepLinks,
   required Future<void> Function() startNotificationStartupFn,
@@ -99,6 +103,14 @@ Future<void> bootstrapSesoriApp({
   configureDependenciesFn();
   initializeDeepLinks();
   if (shouldInitializeFirebase) {
+    if (supportsFirebaseAnalytics) {
+      // Side effect: the tracker auto-subscribes to auth state changes and
+      // syncs the hashed user ID with Firebase Analytics. Do not remove.
+      AnalyticsUserIdTracker(
+        authSession: getIt<AuthSession>(),
+        analytics: FirebaseAnalytics.instance,
+      );
+    }
     unawaited(
       startNotificationStartupFn().catchError((Object error, StackTrace stackTrace) {
         loge("Error bootstrapping notification startup", error, stackTrace);

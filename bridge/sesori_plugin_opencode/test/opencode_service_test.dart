@@ -1,3 +1,6 @@
+import "dart:async";
+import "dart:io" as io;
+
 import "package:opencode_plugin/opencode_plugin.dart";
 import "package:opencode_plugin/src/models/openapi/assistant_message.g.dart";
 import "package:opencode_plugin/src/models/openapi/user_message.g.dart";
@@ -47,6 +50,26 @@ void main() {
       expect(repository.lastCommandsProjectId, equals("/repo"));
       expect(commands, hasLength(1));
       expect(commands.single.name, equals("/review-work"));
+    });
+  });
+
+  group("OpenCodeService.getAgents", () {
+    test("passes the projectId through as the directory", () async {
+      final repository = FakeOpenCodeRepository();
+      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+
+      await service.getAgents(projectId: "/repo");
+
+      expect(repository.lastAgentsDirectory, equals("/repo"));
+    });
+
+    test("falls back to the current working directory when projectId is null", () async {
+      final repository = FakeOpenCodeRepository();
+      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+
+      await service.getAgents(projectId: null);
+
+      expect(repository.lastAgentsDirectory, equals(io.Directory.current.path));
     });
   });
 
@@ -382,6 +405,83 @@ void main() {
       expect(repository.lastCommandVariant, equals("xhigh"));
       expect(repository.lastCommandModel, equals((providerID: "openai", modelID: "gpt-4.1")));
     });
+
+    group("dispatch fast-fail window", () {
+      const fastFailWindow = Duration(milliseconds: 50);
+
+      late FakeOpenCodeRepository repository;
+      late OpenCodeService service;
+
+      setUp(() {
+        repository = FakeOpenCodeRepository();
+        service = OpenCodeService(
+          repository,
+          FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"}),
+          commandDispatchFastFailWindow: fastFailWindow,
+        );
+      });
+
+      Future<void> sendCommand() {
+        return service.sendCommand(
+          sessionId: "ses-1",
+          command: "/review-work",
+          arguments: "",
+          agent: null,
+          variant: null,
+          model: null,
+        );
+      }
+
+      test("propagates a failure raised within the window", () async {
+        final completer = Completer<void>();
+        repository.sendCommandCompleter = completer;
+        completer.completeError(StateError("unknown command"));
+
+        await expectLater(sendCommand(), throwsA(isA<StateError>()));
+      });
+
+      test("propagates a TimeoutException raised by the send chain within the window", () async {
+        // Must not be conflated with the fast-fail window elapsing: a timeout
+        // thrown by the send chain itself is a genuine dispatch failure.
+        final completer = Completer<void>();
+        repository.sendCommandCompleter = completer;
+        completer.completeError(TimeoutException("inner send timeout"));
+
+        await expectLater(sendCommand(), throwsA(isA<TimeoutException>()));
+      });
+
+      test("completes after the window when the command run keeps going", () async {
+        // Simulates OpenCode's synchronous /command endpoint: the HTTP
+        // response only arrives after the full agent run. The plugin must
+        // complete sendCommand once the command is considered accepted.
+        final completer = Completer<void>();
+        repository.sendCommandCompleter = completer;
+
+        final stopwatch = Stopwatch()..start();
+        await sendCommand();
+        stopwatch.stop();
+
+        expect(repository.lastCommandName, equals("/review-work"));
+        expect(
+          stopwatch.elapsed,
+          lessThan(const Duration(seconds: 5)),
+          reason: "dispatch must detach instead of awaiting the full run",
+        );
+
+        completer.complete();
+      });
+
+      test("swallows and logs a failure raised after the window", () async {
+        final completer = Completer<void>();
+        repository.sendCommandCompleter = completer;
+
+        await sendCommand();
+
+        completer.completeError(StateError("run failed mid-flight"));
+        // Flush microtasks — an unhandled async error would fail the test zone.
+        await Future<void>.delayed(Duration.zero);
+      });
+    });
   });
 
   group("OpenCodeService.handleSseEvent", () {
@@ -692,7 +792,7 @@ class FakeOpenCodeApi implements OpenCodeApi {
   Future<void> abortSession({required String sessionId, required String? directory}) async {}
 
   @override
-  Future<List<Agent>> listAgents() async => [];
+  Future<List<Agent>> listAgents({required String directory}) async => [];
 
   @override
   Future<List<QuestionRequest>> getPendingQuestions({required String? directory}) async => [];
@@ -768,6 +868,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   int getSessionsCalls = 0;
   String? lastWorktree;
   String? lastCommandsProjectId;
+  String? lastAgentsDirectory;
   String? lastCreateDirectory;
   String? lastCreateParentSessionId;
   String? lastPromptSessionId;
@@ -784,6 +885,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   String? lastCommandAgent;
   String? lastCommandVariant;
   ({String providerID, String modelID})? lastCommandModel;
+  Completer<void>? sendCommandCompleter;
   String? lastDeletedSessionId;
   String? lastDeletedDirectory;
 
@@ -828,6 +930,12 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     getSessionsCalls += 1;
     lastWorktree = worktree;
     return _sessions;
+  }
+
+  @override
+  Future<List<PluginAgent>> getAgents({required String directory}) async {
+    lastAgentsDirectory = directory;
+    return const [];
   }
 
   @override
@@ -901,6 +1009,9 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     lastCommandAgent = agent;
     lastCommandVariant = variant?.id;
     lastCommandModel = model;
+    if (sendCommandCompleter case final completer?) {
+      await completer.future;
+    }
   }
 
   @override

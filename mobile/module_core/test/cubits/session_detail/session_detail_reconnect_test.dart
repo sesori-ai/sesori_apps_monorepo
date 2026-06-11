@@ -161,6 +161,7 @@ void main() {
           commands: <CommandInfo>[],
           canonicalSessionTitle: null,
           promptDefaults: null,
+          isRootSession: true,
         ),
         isBridgeConnected: true,
       ),
@@ -228,10 +229,11 @@ void main() {
         agents: <AgentInfo?>[],
         providerData: null,
         commands: <CommandInfo>[],
-        canonicalSessionTitle: null,
-        promptDefaults: null,
-      ),
-      isBridgeConnected: true,
+          canonicalSessionTitle: null,
+          promptDefaults: null,
+          isRootSession: true,
+        ),
+        isBridgeConnected: true,
     );
 
     when(
@@ -299,7 +301,7 @@ void _stubLoadApis(MockSessionService service) {
   when(() => service.getSessionStatuses()).thenAnswer(
     (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
   );
-  when(() => service.listAgents()).thenAnswer(
+  when(() => service.listAgents(projectId: any(named: "projectId"))).thenAnswer(
     (_) async => ApiResponse.success(
       const Agents(
         agents: [

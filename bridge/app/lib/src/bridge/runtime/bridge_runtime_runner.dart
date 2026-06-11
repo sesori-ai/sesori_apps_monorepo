@@ -1,11 +1,25 @@
+import "dart:async";
 import "dart:io" as io;
 
 import "package:clock/clock.dart";
 import "package:http/http.dart" as http;
 import "package:path/path.dart" as path;
 import "package:rxdart/rxdart.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginApi, Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show
+        Log,
+        PluginConfig,
+        PluginFailed,
+        PluginStartAbortedException,
+        ProcessIdentity,
+        ProcessUser,
+        ServerClock,
+        StartAbortController,
+        StartAbortSignal;
 
+import "../../auth/bridge_registration_api.dart";
+import "../../auth/bridge_registration_repository.dart";
+import "../../auth/bridge_registration_service.dart";
 import "../../auth/login_email_api.dart";
 import "../../auth/login_email_repository.dart";
 import "../../auth/login_oauth_api.dart";
@@ -17,9 +31,11 @@ import "../../server/api/open_code_process_api.dart";
 import "../../server/api/runtime_file_api.dart";
 import "../../server/api/system_process_api.dart";
 import "../../server/api/terminal_prompt_api.dart";
-import "../../server/foundation/process_identity.dart";
-import "../../server/foundation/process_user.dart";
-import "../../server/foundation/server_clock.dart";
+import "../../server/host/bridge_host_info_impl.dart";
+import "../../server/host/bridge_host_json_store.dart";
+import "../../server/host/bridge_host_port_service.dart";
+import "../../server/host/bridge_host_process_service.dart";
+import "../../server/host/bridge_plugin_host_impl.dart";
 import "../../server/models/open_code_ownership_record.dart";
 import "../../server/repositories/bridge_instance_repository.dart";
 import "../../server/repositories/open_code_ownership_repository.dart";
@@ -63,27 +79,34 @@ import "bridge_runtime.dart";
 import "bridge_runtime_auth.dart";
 import "bridge_runtime_server.dart";
 import "bridge_shutdown_coordinator.dart";
-
-typedef BridgePluginFactory = BridgePluginApi Function({required String serverUrl, required String? serverPassword});
+import "legacy_opencode_descriptor.dart";
+import "plugin_failure_latch.dart";
 
 Future<int> runBridgeApp({
   required BridgeCliOptions options,
-  required BridgePluginFactory pluginFactory,
+  required PluginConfig pluginConfig,
 }) {
   return BridgeRuntimeRunner.run(
     options: options,
-    pluginFactory: pluginFactory,
+    pluginConfig: pluginConfig,
   );
 }
 
 class BridgeRuntimeRunner {
   const BridgeRuntimeRunner._();
 
+  /// Soft deadline granted to the plugin's ordered `shutdown()` step. The
+  /// shutdown coordinator's backstop is sized from it (budget + slack).
+  static const Duration _pluginShutdownBudget = Duration(seconds: 10);
+
   static Future<int> run({
     required BridgeCliOptions options,
-    required BridgePluginFactory pluginFactory,
+    required PluginConfig pluginConfig,
   }) async {
-    final shutdownCoordinator = BridgeShutdownCoordinator();
+    final failureLatch = PluginFailureLatch();
+    final shutdownCoordinator = BridgeShutdownCoordinator(
+      backstopExitCode: () => failureLatch.failure == null ? 0 : 1,
+    );
     final subscriptions = CompositeSubscription();
     shutdownCoordinator.add(disposable: subscriptions.cancel);
     final httpClient = http.Client();
@@ -98,9 +121,10 @@ class BridgeRuntimeRunner {
     final managedRuntimePaths = const ManagedRuntimePathService().currentPaths(
       environment: environment,
     );
-    final runtimeFileApi = RuntimeFileApi(
-      runtimeDirectory: path.join(managedRuntimePaths.cacheDirectory, "runtime"),
-    );
+    // Also the OpenCode plugin's state directory: its ownership file lives
+    // here under a frozen cross-version contract (see pluginStateDirectoryPath).
+    final runtimeDirectory = path.join(managedRuntimePaths.cacheDirectory, "runtime");
+    final runtimeFileApi = RuntimeFileApi(runtimeDirectory: runtimeDirectory);
     final systemProcessApi = SystemProcessApi(
       processRunner: processRunner,
       clock: serverClock,
@@ -205,22 +229,34 @@ class BridgeRuntimeRunner {
         random: null,
       );
 
-      final serverRuntime = await resolveServer(
-        options: options,
+      final startAbortController = StartAbortController();
+      final plugin = await startLegacyOpenCodePlugin(
+        pluginConfig: pluginConfig,
         currentBridgeIdentity: currentBridgeIdentity,
         ownerSessionId: ownerSessionId,
         startupMutexRepository: startupMutexRepository,
-        ownershipRepository: ownershipRepository,
         bridgeInstanceService: bridgeInstanceService,
+        ownershipRepository: ownershipRepository,
         openCodeServerService: openCodeServerService,
+        processRepository: processRepository,
+        runtimeFileApi: runtimeFileApi,
+        runtimeDirectory: runtimeDirectory,
+        serverClock: serverClock,
+        environment: environment,
+        currentUser: currentUser,
+        startAborted: startAbortController.signal,
       );
-      registerOwnedOpenCodeShutdown(
-        shutdownCoordinator: shutdownCoordinator,
-        serverRuntime: serverRuntime,
-        stopOwnedOpenCode: (record) {
-          return openCodeServerService.stopOwnedServer(record: record);
-        },
+      shutdownCoordinator.addOrdered(
+        action: () => plugin.shutdown(budget: _pluginShutdownBudget),
+        budget: _pluginShutdownBudget,
       );
+      plugin.status
+          .listen((status) {
+            if (status is PluginFailed) {
+              failureLatch.record(status);
+            }
+          })
+          .addTo(subscriptions);
 
       final tokenManager = TokenManager(
         initialToken: authTokens.accessToken,
@@ -230,21 +266,33 @@ class BridgeRuntimeRunner {
       );
       shutdownCoordinator.add(disposable: tokenManager.dispose);
 
+      final bridgeRegistrationService = BridgeRegistrationService(
+        repository: BridgeRegistrationRepository(
+          api: BridgeRegistrationApi(
+            authBackendUrl: options.authBackendUrl,
+            client: httpClient,
+          ),
+        ),
+        tokenRefresher: tokenManager,
+        loadTokens: loadTokens,
+        saveTokens: saveTokens,
+        hostName: io.Platform.localHostname,
+        platform: BridgeRegistrationService.currentPlatformName(),
+      );
+
       final runtime = BridgeRuntime.create(
         config: BridgeConfig(
           relayURL: options.relayUrl,
-          serverURL: serverRuntime.serverUrl,
-          serverPassword: serverRuntime.serverPassword,
+          serverURL: plugin.serverUrl,
+          serverPassword: plugin.serverPassword,
           authBackendURL: options.authBackendUrl,
           sseReplayWindow: SSEManager.defaultReplayWindow,
         ),
-        plugin: pluginFactory(
-          serverUrl: serverRuntime.serverUrl,
-          serverPassword: serverRuntime.serverPassword,
-        ),
+        plugin: plugin.api,
         httpClient: httpClient,
         accessTokenProvider: tokenManager,
         tokenRefresher: tokenManager,
+        bridgeRegistrationService: bridgeRegistrationService,
         database: AppDatabase.create(),
         processRunner: processRunner,
         failureReporter: LogFailureReporter(),
@@ -264,7 +312,20 @@ class BridgeRuntimeRunner {
           })
           .addTo(subscriptions);
 
+      final startupFailure = failureLatch.failure;
+      if (startupFailure != null) {
+        Log.e("Plugin failed before the session could start: ${startupFailure.reason}");
+        return 1;
+      }
+      failureLatch.bind((failure) {
+        Log.e("Plugin failed: ${failure.reason}. Cancelling the session.");
+        unawaited(runtime.session.cancel());
+      });
+
       await runtime.session.run();
+      return failureLatch.failure == null ? 0 : 1;
+    } on PluginStartAbortedException {
+      Log.i("Plugin start aborted as requested.");
       return 0;
     } catch (error) {
       Log.e("$error");
@@ -272,6 +333,100 @@ class BridgeRuntimeRunner {
     } finally {
       await shutdownCoordinator.shutdown();
     }
+  }
+
+  /// Runs the legacy OpenCode descriptor under the cross-instance startup
+  /// mutex: mutex → enforce-single-bridge → build host → descriptor.start.
+  ///
+  /// The mutex is held until `start()` settles; an abort would surface as
+  /// [PluginStartAbortedException] from `start()` and is handled by the
+  /// caller as "aborted as requested" (nothing triggers the abort signal
+  /// yet — the cooperative checks arrive with the supervisor).
+  ///
+  /// Public so tests can drive the live orchestration with fakes;
+  /// [buildPluginApi] is the test seam forwarded to the descriptor —
+  /// production omits it and gets a real `OpenCodePlugin`.
+  static Future<LegacyOpenCodeBridgePlugin> startLegacyOpenCodePlugin({
+    required PluginConfig pluginConfig,
+    required ProcessIdentity currentBridgeIdentity,
+    required String ownerSessionId,
+    required StartupMutexRepository startupMutexRepository,
+    required BridgeInstanceService bridgeInstanceService,
+    required OpenCodeOwnershipRepository ownershipRepository,
+    required OpenCodeServerService openCodeServerService,
+    required ProcessRepository processRepository,
+    required RuntimeFileApi runtimeFileApi,
+    required String runtimeDirectory,
+    required ServerClock serverClock,
+    required Map<String, String> environment,
+    required ProcessUser? currentUser,
+    required StartAbortSignal startAborted,
+    LegacyPluginApiBuilder? buildPluginApi,
+  }) {
+    return startupMutexRepository.withLock<LegacyOpenCodeBridgePlugin>(
+      bridgePid: currentBridgeIdentity.pid,
+      bridgeStartMarker: currentBridgeIdentity.startMarker,
+      onLockAcquired: () async {
+        Log.d("acquired startup lock");
+        final resolution = await bridgeInstanceService.enforceSingleLiveBridge(
+          currentPid: currentBridgeIdentity.pid,
+        );
+        switch (resolution.status) {
+          case BridgeInstanceResolutionStatus.allowed:
+            // The host contract promises the state directory exists before
+            // start() runs. The store shares the runner's RuntimeFileApi:
+            // its locked update() is only mutually exclusive within one
+            // instance per directory.
+            await io.Directory(runtimeDirectory).create(recursive: true);
+            final host = BridgePluginHostImpl(
+              config: pluginConfig,
+              stateDirectory: runtimeDirectory,
+              environment: Map<String, String>.unmodifiable(environment),
+              clock: serverClock,
+              startAborted: startAborted,
+              bridge: BridgeHostInfoImpl(
+                identity: currentBridgeIdentity,
+                ownerSessionId: ownerSessionId,
+                processRepository: processRepository,
+              ),
+              processes: BridgeHostProcessService(
+                processStarter: io.Process.start,
+                processRepository: processRepository,
+                clock: serverClock,
+                currentUser: currentUser,
+                isWindows: io.Platform.isWindows,
+                platform: io.Platform.operatingSystem,
+              ),
+              ports: const BridgeHostPortService(loopbackPortApi: LoopbackPortApi()),
+              store: BridgeHostJsonStore(fileApi: runtimeFileApi),
+            );
+            final descriptor = LegacyOpenCodeDescriptor(
+              openCodeServerService: openCodeServerService,
+              ownershipRepository: ownershipRepository,
+              ownerSessionId: ownerSessionId,
+              terminatedBridgeIdentities: resolution.terminatedBridges,
+              buildPluginApi: buildPluginApi,
+            );
+            return descriptor.start(host);
+          case BridgeInstanceResolutionStatus.declined:
+            throw const BridgeRuntimeServerException(
+              "Startup aborted because another Sesori bridge is already running and replacement was declined.",
+            );
+          case BridgeInstanceResolutionStatus.nonInteractive:
+            throw const BridgeRuntimeServerException(
+              "Startup aborted because another Sesori bridge is already running and this session is non-interactive.",
+            );
+        }
+      },
+      onLockRejected: (result) async {
+        switch (result) {
+          case StartupMutexAcquireResult.alreadyLocked:
+            throw const BridgeRuntimeServerException(
+              "Startup aborted because another Sesori bridge startup is already in progress.",
+            );
+        }
+      },
+    );
   }
 
   static UpdateService _createUpdateService({

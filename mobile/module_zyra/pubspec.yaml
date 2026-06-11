@@ -13,6 +13,7 @@ dependencies:
   meta: ^1.16.0
   flutter_svg: ^2.2.4
   universal_platform: ^1.1.0
+  liquid_glass_plus: ^0.3.1+1
 
 flutter:
   assets:
@@ -45,12 +46,18 @@ flutter:
         - asset: assets/fonts/SatoshiZyra/SatoshiZyra-BlackItalic.otf
           weight: 900
           style: italic
-    - family: TablerOutline
+    - family: TablerThin
       fonts:
-        - asset: assets/fonts/TablerIcons/tabler-icons.ttf
-    - family: TablerFilled
+        - asset: assets/fonts/TablerIcons/TablerIcons-Thin.ttf
+    - family: TablerLight
       fonts:
-        - asset: assets/fonts/TablerIcons/tabler-icons-filled.ttf
+        - asset: assets/fonts/TablerIcons/TablerIcons-Light.ttf
+    - family: TablerRegular
+      fonts:
+        - asset: assets/fonts/TablerIcons/TablerIcons-Regular.ttf
+    - family: TablerSolid
+      fonts:
+        - asset: assets/fonts/TablerIcons/TablerIcons-Solid.ttf
     - family: VESPRLight
       fonts:
         - asset: assets/fonts/VESPRIcons/VESPRIcons-Light.ttf

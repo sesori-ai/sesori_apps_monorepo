@@ -318,7 +318,7 @@ class _DirectoryBrowserState extends State<_DirectoryBrowser> {
                     padding: const EdgeInsets.symmetric(horizontal: 32),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
-                        children: [
+                      children: [
                         Icon(Icons.error_outline, size: 48, color: zyra.colors.fgErrorPrimary),
                         const SizedBox(height: 12),
                         Text(
@@ -347,7 +347,7 @@ class _DirectoryBrowserState extends State<_DirectoryBrowser> {
                   ),
                 )
               : _entries.isEmpty
-                ? Center(
+              ? Center(
                   child: Text(
                     loc.emptyDirectory,
                     style: zyra.textTheme.textSm.regular.copyWith(

@@ -1,7 +1,11 @@
+import "dart:async";
+import "dart:io" as io;
+
 import "package:json_annotation/json_annotation.dart" show CheckedFromJsonException;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         Log,
+        PluginAgent,
         PluginApiException,
         PluginCommand,
         PluginMessageWithParts,
@@ -10,15 +14,20 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginProvidersResult,
         PluginSession,
         PluginSessionVariant;
-import "package:sesori_shared/sesori_shared.dart" show ProjectActivitySummary;
+import "package:sesori_shared/sesori_shared.dart" show ProjectActivitySummary, StringExtensions;
 
 import "../opencode_plugin.dart";
 
 class OpenCodeService {
   final OpenCodeRepository repository;
   final ActiveSessionTracker tracker;
+  final Duration _commandDispatchFastFailWindow;
 
-  OpenCodeService(this.repository, this.tracker);
+  OpenCodeService(
+    this.repository,
+    this.tracker, {
+    Duration commandDispatchFastFailWindow = const Duration(seconds: 3),
+  }) : _commandDispatchFastFailWindow = commandDispatchFastFailWindow;
 
   Future<List<Project>> getProjects() {
     return repository.getProjects();
@@ -32,6 +41,23 @@ class OpenCodeService {
 
   Future<List<PluginCommand>> getCommands({required String? projectId}) {
     return repository.getCommands(projectId: projectId);
+  }
+
+  /// Returns the agents available for [projectId] (a worktree directory).
+  ///
+  /// OpenCode resolves agents per project, so a directory is always sent.
+  /// When [projectId] is `null` or blank we fall back to the bridge's own
+  /// CWD, which yields the global agent set.
+  Future<List<PluginAgent>> getAgents({required String? projectId}) {
+    final String directory;
+    final normalized = projectId?.normalize();
+    if (normalized == null) {
+      directory = io.Directory.current.path;
+      Log.d("getAgents: no projectId given, falling back to bridge CWD: $directory");
+    } else {
+      directory = normalized;
+    }
+    return repository.getAgents(directory: directory);
   }
 
   Future<List<Session>> getSessions({
@@ -122,9 +148,9 @@ class OpenCodeService {
     required String? agent,
     required PluginSessionVariant? variant,
     required ({String providerID, String modelID})? model,
-  }) {
+  }) async {
     final directory = _getTrackedDirectory(sessionId: sessionId);
-    return repository.sendCommand(
+    final sendFuture = repository.sendCommand(
       sessionId: sessionId,
       directory: directory,
       command: command,
@@ -132,6 +158,34 @@ class OpenCodeService {
       agent: agent,
       variant: variant,
       model: model,
+    );
+    // OpenCode's POST /session/:id/command endpoint is synchronous — it
+    // responds only after the command's full agent run completes, and no
+    // async variant exists upstream (see OpenCodeApi.sendCommand). The
+    // BridgePluginApi contract requires sendCommand to complete once the
+    // command is accepted, so dispatch with a fast-fail window: failures
+    // raised within the window (unknown command/agent, missing session,
+    // server down) propagate to the caller, while a run that outlives the
+    // window is treated as accepted and detached — its progress and errors
+    // stream over SSE.
+    //
+    // `onTimeout` (rather than catching [TimeoutException]) fires only when
+    // the window itself elapses, so a genuine TimeoutException raised by the
+    // send chain within the window still propagates as a dispatch failure.
+    await sendFuture.timeout(
+      _commandDispatchFastFailWindow,
+      onTimeout: () {
+        unawaited(
+          sendFuture.catchError((Object e, StackTrace s) {
+            Log.w(
+              "command '$command' for session $sessionId "
+              "failed after dispatch: $e",
+              e,
+              s,
+            );
+          }),
+        );
+      },
     );
   }
 

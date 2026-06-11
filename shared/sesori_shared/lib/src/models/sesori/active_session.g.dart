@@ -15,6 +15,7 @@ _ActiveSession _$ActiveSessionFromJson(Map json) => _ActiveSession(
           ?.map((e) => e as String)
           .toList() ??
       const [],
+  isRetrying: json['isRetrying'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$ActiveSessionToJson(_ActiveSession instance) =>
@@ -23,4 +24,5 @@ Map<String, dynamic> _$ActiveSessionToJson(_ActiveSession instance) =>
       'mainAgentRunning': instance.mainAgentRunning,
       'awaitingInput': instance.awaitingInput,
       'childSessionIds': instance.childSessionIds,
+      'isRetrying': instance.isRetrying,
     };

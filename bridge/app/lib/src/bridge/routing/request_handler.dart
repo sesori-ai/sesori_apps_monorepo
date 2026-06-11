@@ -50,8 +50,9 @@ abstract class GetRequestHandler<RES extends Object> extends RequestHandlerBase 
       );
 
       return buildOkJsonResponse(request, result);
-    } on PluginApiException catch (err) {
-      return buildErrorResponse(request, err.statusCode, err.toString());
+    } on PluginOperationException catch (err) {
+      Log.w("${request.method} ${request.path}: upstream failure: $err");
+      return buildErrorResponse(request, err.statusCode ?? 502, err.toString());
     } on RelayResponse catch (err) {
       if (err.status >= 200 && err.status < 300) {
         // we don't expect to throw success responses from handleBody
@@ -61,7 +62,8 @@ abstract class GetRequestHandler<RES extends Object> extends RequestHandlerBase 
         // just return the error response
         return err;
       }
-    } catch (err) {
+    } catch (err, stackTrace) {
+      Log.w("${request.method} ${request.path}: handler failed: $err\n$stackTrace");
       return buildErrorResponse(request, 500, "Internal Server Error: $err");
     }
   }
@@ -109,8 +111,9 @@ abstract class BodyRequestHandler<REQ, RES extends Object> extends RequestHandle
       );
 
       return buildOkJsonResponse(request, result);
-    } on PluginApiException catch (err) {
-      return buildErrorResponse(request, err.statusCode, err.toString());
+    } on PluginOperationException catch (err) {
+      Log.w("${request.method} ${request.path}: upstream failure: $err");
+      return buildErrorResponse(request, err.statusCode ?? 502, err.toString());
     } on RelayResponse catch (err) {
       if (err.status >= 200 && err.status < 300) {
         // we don't expect to throw success responses from handleBody
@@ -120,7 +123,8 @@ abstract class BodyRequestHandler<REQ, RES extends Object> extends RequestHandle
         // just return the error response
         return err;
       }
-    } catch (err) {
+    } catch (err, stackTrace) {
+      Log.w("${request.method} ${request.path}: handler failed: $err\n$stackTrace");
       return buildErrorResponse(request, 500, "Internal Server Error: $err");
     }
   }

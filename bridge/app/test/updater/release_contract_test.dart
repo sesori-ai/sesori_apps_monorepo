@@ -177,35 +177,45 @@ void main() {
       expect(script, contains(r'''if ($filePart -eq $ArchiveName) {'''));
     });
 
-    test('workflow and docs lock basename checksums and automatic trusted publishing', () async {
-      final workflow = await _readRepoFile(relativePath: '.github/workflows/bridge-release.yml');
+    test('workflows and docs lock basename checksums and automatic trusted publishing', () async {
+      final npmWorkflow = await _readRepoFile(relativePath: '.github/workflows/bridge-npm-publish.yml');
+      final submitWorkflow = await _readRepoFile(relativePath: '.github/workflows/submit-release.yml');
+      final internalWorkflow = await _readRepoFile(relativePath: '.github/workflows/release-all-platforms.yml');
       final docs = await _readRepoFile(relativePath: 'bridge/RELEASING.md');
 
-      expect(workflow, contains('workflow_dispatch:'));
-      expect(workflow, contains('dry_run:'));
-      expect(workflow, contains('tag:'));
-      expect(workflow, contains('needs: release'));
-      expect(workflow, contains('id-token: write'));
-      expect(workflow, contains('registry-url: "https://registry.npmjs.org"'));
-      expect(workflow, contains(r'gh release download "$RELEASE_TAG"'));
-      expect(workflow, contains('--pattern "*.tar.gz" --pattern "*.zip" --pattern "checksums.txt"'));
-      expect(workflow, contains('Verify release archive checksums'));
-      expect(workflow, contains('checksum_for()'));
-      expect(workflow, contains('verify_archive_checksum()'));
-      expect(workflow, contains('copy_runtime_bundle()'));
-      expect(workflow, contains(r'cp -R "$source_root/bin" "$package_root/lib/runtime/bin"'));
-      expect(workflow, contains(r'cp -R "$source_root/lib" "$package_root/lib/runtime/lib"'));
-      expect(workflow, contains('.bridge-release-provenance.json'));
-      expect(workflow, contains(r'diff -r "$source_root/bin" "$package_root/lib/runtime/bin"'));
-      expect(workflow, contains(r'diff -r "$source_root/lib" "$package_root/lib/runtime/lib"'));
-      expect(workflow, contains(r'sha256sum "$file" | awk -v name="$(basename "$file")"'));
-      expect(workflow, contains('Validate wrapper package metadata'));
-      expect(workflow, isNot(contains('NPM_TOKEN')));
+      // npm publishing fires when a stable release goes LIVE (immediate
+      // publish or manual pre-release promotion), via trusted publishing.
+      expect(npmWorkflow, contains('release:'));
+      expect(npmWorkflow, contains('types: [released]'));
+      expect(npmWorkflow, contains('needs: gate'));
+      expect(npmWorkflow, contains('needs: [gate, publish-platform]'));
+      expect(npmWorkflow, contains('id-token: write'));
+      expect(npmWorkflow, contains('registry-url: "https://registry.npmjs.org"'));
+      expect(npmWorkflow, contains(r'gh release download "$RELEASE_TAG"'));
+      expect(npmWorkflow, contains('--pattern "*.tar.gz" --pattern "*.zip" --pattern "checksums.txt"'));
+      expect(npmWorkflow, contains('Verify release archive checksums'));
+      expect(npmWorkflow, contains('checksum_for()'));
+      expect(npmWorkflow, contains('verify_archive_checksum()'));
+      expect(npmWorkflow, contains('copy_runtime_bundle()'));
+      expect(npmWorkflow, contains(r'cp -R "$source_root/bin" "$package_root/lib/runtime/bin"'));
+      expect(npmWorkflow, contains(r'cp -R "$source_root/lib" "$package_root/lib/runtime/lib"'));
+      expect(npmWorkflow, contains('.bridge-release-provenance.json'));
+      expect(npmWorkflow, contains(r'diff -r "$source_root/bin" "$package_root/lib/runtime/bin"'));
+      expect(npmWorkflow, contains(r'diff -r "$source_root/lib" "$package_root/lib/runtime/lib"'));
+      expect(npmWorkflow, contains('Validate wrapper package metadata'));
+      expect(npmWorkflow, isNot(contains('NPM_TOKEN')));
 
-      expect(docs, contains('## What the workflow does on manual dispatch'));
+      // Both release-producing workflows generate basename-keyed checksums
+      // exactly as the updater and installers expect.
+      const checksumLine = r'sha256sum "$file" | awk -v name="$(basename "$file")"';
+      expect(submitWorkflow, contains(checksumLine));
+      expect(internalWorkflow, contains(checksumLine));
+      expect(submitWorkflow, contains('artifacts/checksums.txt'));
+      expect(internalWorkflow, contains('artifacts/checksums.txt'));
+
+      expect(docs, contains('## What the release pipeline does'));
       expect(docs, contains('6. publishes the five platform npm bootstrap packages from those tagged release assets'));
       expect(docs, contains('7. publishes the `@sesori/bridge` wrapper package through npm trusted publishing'));
-      expect(docs, contains('gh workflow run bridge-release.yml -f dry_run=true'));
       expect(
         docs,
         contains(
@@ -216,19 +226,14 @@ void main() {
       expect(
         docs,
         contains(
-          'Configure npm trusted publishing for all six packages in this repo against the exact workflow file `.github/workflows/bridge-release.yml`',
-        ),
-      );
-      expect(
-        docs,
-        contains(
-          'The workflow verifies the archived GitHub Release assets against `checksums.txt`, derives each platform npm payload from those exact release artifacts, and then publishes through npm trusted publishing on `ubuntu-latest`.',
+          'Configure npm trusted publishing for all six packages in this repo against the exact workflow file `.github/workflows/bridge-npm-publish.yml`',
         ),
       );
     });
 
     test('workflow asset names and npm package manifests stay aligned', () async {
-      final workflow = await _readRepoFile(relativePath: '.github/workflows/bridge-release.yml');
+      final buildWorkflow = await _readRepoFile(relativePath: '.github/workflows/_reusable-bridge-build.yml');
+      final npmWorkflow = await _readRepoFile(relativePath: '.github/workflows/bridge-npm-publish.yml');
       final wrapperPackage = await _readRepoJson(
         relativePath: 'bridge/app/npm/sesori-bridge/package.json',
       );
@@ -243,8 +248,12 @@ void main() {
       };
 
       for (final entry in workflowAssets.entries) {
-        expect(workflow, contains(entry.value));
-        expect(workflow, contains(entry.key.replaceFirst('@sesori/', 'sesori-')));
+        // The reusable build matrix produces each archive name...
+        expect(buildWorkflow, contains(entry.value.replaceAll(RegExp(r'\.(tar\.gz|zip)$'), '')));
+        // ...and the npm publish workflow consumes each archive into the
+        // matching platform package directory.
+        expect(npmWorkflow, contains(entry.value));
+        expect(npmWorkflow, contains(entry.key.replaceFirst('@sesori/', 'sesori-')));
       }
 
       final optionalDependencies = wrapperPackage['optionalDependencies'] as Map<String, dynamic>;

@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:sesori_bridge/src/auth/validate.dart';
-import 'package:sesori_shared/sesori_shared.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -35,17 +34,15 @@ void main() {
         ),
       ]);
 
-      final (tokens, valid) = await validateToken(
+      final result = await validateToken(
         authBackendURL: baseUrl,
         accessToken: 'valid-token',
         refreshToken: 'refresh-token',
-        lastProvider: AuthProvider.github,
       );
 
-      expect(valid, isTrue);
-      expect(tokens.accessToken, equals('valid-token'));
-      expect(tokens.refreshToken, equals('refresh-token'));
-      expect(tokens.lastProvider, equals(AuthProvider.github));
+      expect(result.isValid, isTrue);
+      expect(result.accessToken, equals('valid-token'));
+      expect(result.refreshToken, equals('refresh-token'));
     });
 
     test('returns false when /auth/me returns 403', () async {
@@ -57,15 +54,14 @@ void main() {
         ),
       ]);
 
-      final (tokens, valid) = await validateToken(
+      final result = await validateToken(
         authBackendURL: baseUrl,
         accessToken: 'valid-token',
         refreshToken: 'refresh-token',
-        lastProvider: AuthProvider.github,
       );
 
-      expect(valid, isFalse);
-      expect(tokens.accessToken, equals('valid-token'));
+      expect(result.isValid, isFalse);
+      expect(result.accessToken, equals('valid-token'));
     });
 
     test('refreshes token on 401 and returns new tokens', () async {
@@ -91,16 +87,15 @@ void main() {
         ),
       ]);
 
-      final (tokens, valid) = await validateToken(
+      final result = await validateToken(
         authBackendURL: baseUrl,
         accessToken: 'expired-token',
         refreshToken: 'refresh-token',
-        lastProvider: AuthProvider.github,
       );
 
-      expect(valid, isTrue);
-      expect(tokens.accessToken, equals('new-access-token'));
-      expect(tokens.refreshToken, equals('new-refresh-token'));
+      expect(result.isValid, isTrue);
+      expect(result.accessToken, equals('new-access-token'));
+      expect(result.refreshToken, equals('new-refresh-token'));
     });
 
     test('returns false when refresh fails', () async {
@@ -117,15 +112,14 @@ void main() {
         ),
       ]);
 
-      final (tokens, valid) = await validateToken(
+      final result = await validateToken(
         authBackendURL: baseUrl,
         accessToken: 'expired-token',
         refreshToken: 'invalid-refresh',
-        lastProvider: AuthProvider.github,
       );
 
-      expect(valid, isFalse);
-      expect(tokens.accessToken, equals('expired-token'));
+      expect(result.isValid, isFalse);
+      expect(result.accessToken, equals('expired-token'));
     });
 
     test('throws on network error', () async {
@@ -136,7 +130,6 @@ void main() {
           authBackendURL: 'http://127.0.0.1:1',
           accessToken: 'token',
           refreshToken: 'refresh',
-          lastProvider: AuthProvider.github,
         ),
         throwsA(isA<Exception>()),
       );

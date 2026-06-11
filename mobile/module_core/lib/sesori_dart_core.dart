@@ -2,7 +2,17 @@
 library;
 
 // Re-exports from sesori_auth (move + re-export pattern)
-export "package:sesori_auth/sesori_auth.dart" show AuthSession, OAuthFlowProvider, SecureStorage;
+export "package:sesori_auth/sesori_auth.dart"
+    show
+        AuthAuthenticated,
+        AuthAuthenticating,
+        AuthFailed,
+        AuthInitial,
+        AuthSession,
+        AuthState,
+        AuthUnauthenticated,
+        OAuthFlowProvider,
+        SecureStorage;
 export "package:sesori_auth/sesori_auth.dart"
     show
         ApiError,
@@ -61,6 +71,8 @@ export "src/cubits/splash/splash_cubit.dart";
 export "src/cubits/splash/splash_state.dart";
 // DI
 export "src/di/injection.dart";
+// Errors
+export "src/errors/remote_failure_reason.dart";
 // Logging
 export "src/logging/logging.dart";
 // Platform interfaces
@@ -87,5 +99,8 @@ export "src/services/foreground_notification_dispatcher.dart";
 export "src/services/notification_registration_service.dart";
 export "src/services/session_detail_load_service.dart";
 // Utils
+export "src/utils/command_filter/command_picker_entry_builder.dart";
 export "src/utils/diff/diff_engine.dart";
 export "src/utils/diff/language_detector.dart";
+export "src/utils/model_filter/default_model_selector.dart";
+export "src/utils/model_filter/model_picker_section_builder.dart";

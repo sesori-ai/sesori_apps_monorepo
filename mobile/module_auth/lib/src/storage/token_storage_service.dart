@@ -1,7 +1,8 @@
+import "dart:convert";
 import "dart:developer" as developer;
 
 import "package:injectable/injectable.dart";
-import "package:sesori_shared/sesori_shared.dart" show parseJwtExpiry;
+import "package:sesori_shared/sesori_shared.dart" show AuthUser, jsonDecodeMap, parseJwtExpiry;
 
 import "../platform/secure_storage.dart";
 
@@ -9,6 +10,7 @@ import "../platform/secure_storage.dart";
 class TokenStorageService {
   static const _accessTokenKey = "access_token";
   static const _refreshTokenKey = "refresh_token";
+  static const _userKey = "auth_user";
 
   final SecureStorage _storage;
 
@@ -26,6 +28,43 @@ class TokenStorageService {
         name: "sesori_auth",
       );
       rethrow;
+    }
+  }
+
+  /// Persists the logged-in account (including its username) alongside the auth
+  /// tokens, so the session can be shown after an app restart without a network
+  /// call. A null [user] clears any previously stored value.
+  Future<void> saveUser(AuthUser? user) async {
+    try {
+      if (user == null) {
+        await _storage.delete(key: _userKey);
+      } else {
+        await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
+      }
+    } catch (error, stackTrace) {
+      developer.log(
+        "Failed to persist user",
+        error: error,
+        stackTrace: stackTrace,
+        name: "sesori_auth",
+      );
+      rethrow;
+    }
+  }
+
+  Future<AuthUser?> getUser() async {
+    try {
+      final raw = await _storage.read(key: _userKey);
+      if (raw == null || raw.isEmpty) return null;
+      return AuthUser.fromJson(jsonDecodeMap(raw));
+    } catch (error, stackTrace) {
+      developer.log(
+        "Failed to read user",
+        error: error,
+        stackTrace: stackTrace,
+        name: "sesori_auth",
+      );
+      return null;
     }
   }
 
@@ -82,6 +121,7 @@ class TokenStorageService {
       await Future.wait([
         _storage.delete(key: _accessTokenKey),
         _storage.delete(key: _refreshTokenKey),
+        _storage.delete(key: _userKey),
       ]);
     } catch (error, stackTrace) {
       developer.log(

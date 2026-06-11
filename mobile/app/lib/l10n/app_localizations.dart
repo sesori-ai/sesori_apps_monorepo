@@ -97,24 +97,6 @@ abstract class AppLocalizations {
   /// **'Sesori Mobile'**
   String get appTitle;
 
-  /// No description provided for @connectErrorNonSuccessCode.
-  ///
-  /// In en, this message translates to:
-  /// **'Server returned {errorCode}'**
-  String connectErrorNonSuccessCode(int errorCode);
-
-  /// No description provided for @connectErrorNonSuccessCodeWithBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Server returned {errorCode}: {body}'**
-  String connectErrorNonSuccessCodeWithBody(int errorCode, String body);
-
-  /// No description provided for @connectErrorConnectionFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Connection failed: {detail}'**
-  String connectErrorConnectionFailed(String detail);
-
   /// No description provided for @connectErrorUnexpectedFormat.
   ///
   /// In en, this message translates to:
@@ -132,6 +114,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not authenticated — check your connection'**
   String get apiErrorNotAuthenticated;
+
+  /// No description provided for @apiErrorServerRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'The server returned an error. Please try again.'**
+  String get apiErrorServerRejected;
+
+  /// No description provided for @apiErrorNetworkDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection failed — check your network and try again.'**
+  String get apiErrorNetworkDown;
 
   /// No description provided for @projectListTitle.
   ///
@@ -186,6 +180,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 active session} other{{count} active sessions}}'**
   String projectListActiveSessions(int count);
+
+  /// No description provided for @projectsOnboardingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up Sesori Bridge'**
+  String get projectsOnboardingTitle;
+
+  /// No description provided for @projectsOnboardingStep1Action.
+  ///
+  /// In en, this message translates to:
+  /// **'Install & Run'**
+  String get projectsOnboardingStep1Action;
+
+  /// No description provided for @projectsOnboardingBridgeName.
+  ///
+  /// In en, this message translates to:
+  /// **'Sesori Bridge'**
+  String get projectsOnboardingBridgeName;
+
+  /// No description provided for @projectsOnboardingTabUnix.
+  ///
+  /// In en, this message translates to:
+  /// **'Linux/Mac'**
+  String get projectsOnboardingTabUnix;
+
+  /// No description provided for @projectsOnboardingTabWindows.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows'**
+  String get projectsOnboardingTabWindows;
+
+  /// No description provided for @projectsOnboardingCommandCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Command copied to clipboard'**
+  String get projectsOnboardingCommandCopied;
+
+  /// No description provided for @projectsOnboardingCopyCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy command'**
+  String get projectsOnboardingCopyCommand;
+
+  /// No description provided for @projectsOnboardingStepCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get projectsOnboardingStepCompleted;
+
+  /// No description provided for @projectsOnboardingStep2Action.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get projectsOnboardingStep2Action;
+
+  /// No description provided for @projectsOnboardingStep2Accent.
+  ///
+  /// In en, this message translates to:
+  /// **'on your computer'**
+  String get projectsOnboardingStep2Accent;
+
+  /// No description provided for @projectsOnboardingAccountPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Use '**
+  String get projectsOnboardingAccountPrefix;
+
+  /// No description provided for @projectsOnboardingAccountSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **' with {provider}'**
+  String projectsOnboardingAccountSuffix(String provider);
+
+  /// No description provided for @projectsOnboardingAccountFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with the same account you used here.'**
+  String get projectsOnboardingAccountFallback;
+
+  /// No description provided for @projectsOnboardingStep3Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Create or open a folder'**
+  String get projectsOnboardingStep3Title;
+
+  /// No description provided for @projectsOnboardingStep3Detail.
+  ///
+  /// In en, this message translates to:
+  /// **'Once connected, your projects will appear here.'**
+  String get projectsOnboardingStep3Detail;
+
+  /// No description provided for @projectsConnectedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your bridge is connected'**
+  String get projectsConnectedTitle;
+
+  /// No description provided for @projectsConnectedStep2Action.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in'**
+  String get projectsConnectedStep2Action;
+
+  /// No description provided for @projectsConnectedStep3Detail.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a folder to start your first session.'**
+  String get projectsConnectedStep3Detail;
+
+  /// No description provided for @projectsConnectedAccountFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in with the account you used here.'**
+  String get projectsConnectedAccountFallback;
+
+  /// No description provided for @projectsOnboardingOpenFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a folder'**
+  String get projectsOnboardingOpenFolder;
 
   /// No description provided for @connectionLostTitle.
   ///
@@ -883,6 +997,12 @@ abstract class AppLocalizations {
   /// **'Running'**
   String get sessionListRunning;
 
+  /// Label shown next to the red dot for sessions that are active but in a retry/error state
+  ///
+  /// In en, this message translates to:
+  /// **'Running (retrying)'**
+  String get sessionListRunningRetrying;
+
   /// Label shown next to the amber dot for sessions that are waiting for user input (question or permission)
   ///
   /// In en, this message translates to:
@@ -1410,12 +1530,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Retry'**
   String get diffRetry;
-
-  /// No description provided for @splashTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Sesori'**
-  String get splashTitle;
 
   /// No description provided for @newSessionLoadingSemantics.
   ///

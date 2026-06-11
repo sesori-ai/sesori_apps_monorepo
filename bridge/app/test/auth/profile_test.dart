@@ -30,6 +30,7 @@ void main() {
                 'providerUserId': '1',
                 'providerUsername': 'testuser',
               },
+              'bridges': <Object>[],
             }),
           );
         } else {
@@ -54,6 +55,7 @@ void main() {
                 'providerUserId': '1',
                 'providerUsername': null,
               },
+              'bridges': <Object>[],
             }),
           );
         } else {

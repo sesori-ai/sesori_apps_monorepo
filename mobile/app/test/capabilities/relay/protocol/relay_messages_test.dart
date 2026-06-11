@@ -91,7 +91,7 @@ void main() {
     });
 
     test("auth message serialization includes type, token, and role fields", () {
-      const msg = RelayMessage.auth(token: "jwt_bearer_token", role: "phone");
+      const msg = RelayMessage.auth(token: "jwt_bearer_token", role: "phone", bridgeId: null);
       final json = msg.toJson();
 
       expect(json["type"], equals("auth"));

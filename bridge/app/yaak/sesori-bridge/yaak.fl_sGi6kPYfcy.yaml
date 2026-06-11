@@ -1,0 +1,28 @@
+type: folder
+model: folder
+id: fl_sGi6kPYfcy
+createdAt: 2026-06-08T13:33:03.693559
+updatedAt: 2026-06-08T13:33:17.451469
+workspaceId: wk_rSi2KDTVqo
+folderId: null
+authentication: {}
+authenticationType: null
+description: ''
+headers: []
+name: provider
+sortPriority: 0.0
+settingSendCookies:
+  enabled: false
+  value: true
+settingStoreCookies:
+  enabled: false
+  value: true
+settingValidateCertificates:
+  enabled: false
+  value: true
+settingFollowRedirects:
+  enabled: false
+  value: true
+settingRequestTimeout:
+  enabled: false
+  value: 0

@@ -10,10 +10,18 @@ class DiffFileHeaderDelegate extends SliverPersistentHeaderDelegate {
   final bool isExpanded;
   final VoidCallback onToggle;
 
+  /// Key attached to the header's [SizedBox] so callers can locate the
+  /// header inside the scrollable (e.g. via [Scrollable.ensureVisible] after
+  /// the owning file is collapsed). Nullable because callers may not need
+  /// the header to be addressable, but the constructor is `required` to
+  /// follow the project-wide named-argument convention.
+  final Key? headerKey;
+
   DiffFileHeaderDelegate({
     required this.viewModel,
     required this.isExpanded,
     required this.onToggle,
+    required this.headerKey,
   });
 
   /// Estimated height: 6px padding top + ~18px content + 6px padding bottom
@@ -34,6 +42,7 @@ class DiffFileHeaderDelegate extends SliverPersistentHeaderDelegate {
     // which is an invalid SliverGeometry (assertion failure in debug,
     // rendering glitch in release). Forcing exact height prevents this.
     return SizedBox(
+      key: headerKey,
       height: maxExtent,
       child: DiffFileWidget(
         viewModel: viewModel,
@@ -45,6 +54,8 @@ class DiffFileHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(DiffFileHeaderDelegate oldDelegate) {
-    return !identical(viewModel, oldDelegate.viewModel) || isExpanded != oldDelegate.isExpanded;
+    return !identical(viewModel, oldDelegate.viewModel) ||
+        isExpanded != oldDelegate.isExpanded ||
+        headerKey != oldDelegate.headerKey;
   }
 }

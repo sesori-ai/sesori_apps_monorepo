@@ -2,6 +2,9 @@
 .sisyphus/
 .worktrees/
 
+### Store metadata (private repo cloned into the workspace by CI / for local testing)
+/store-metadata/
+
 ### Dart
 .dart_tool/
 .packages

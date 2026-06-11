@@ -240,10 +240,10 @@ as String,
 
 
 class SessionListFailed implements SessionListState {
-  const SessionListFailed({required this.error});
+  const SessionListFailed({required this.reason});
   
 
- final  ApiError error;
+ final  RemoteFailureReason reason;
 
 /// Create a copy of SessionListState
 /// with the given fields replaced by the non-null parameter values.
@@ -255,16 +255,16 @@ $SessionListFailedCopyWith<SessionListFailed> get copyWith => _$SessionListFaile
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListFailed&&(identical(other.error, error) || other.error == error));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListFailed&&(identical(other.reason, reason) || other.reason == reason));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,error);
+int get hashCode => Object.hash(runtimeType,reason);
 
 @override
 String toString() {
-  return 'SessionListState.failed(error: $error)';
+  return 'SessionListState.failed(reason: $reason)';
 }
 
 
@@ -275,11 +275,11 @@ abstract mixin class $SessionListFailedCopyWith<$Res> implements $SessionListSta
   factory $SessionListFailedCopyWith(SessionListFailed value, $Res Function(SessionListFailed) _then) = _$SessionListFailedCopyWithImpl;
 @useResult
 $Res call({
- ApiError error
+ RemoteFailureReason reason
 });
 
 
-$ApiErrorCopyWith<$Res> get error;
+
 
 }
 /// @nodoc
@@ -292,23 +292,14 @@ class _$SessionListFailedCopyWithImpl<$Res>
 
 /// Create a copy of SessionListState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? error = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? reason = null,}) {
   return _then(SessionListFailed(
-error: null == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
-as ApiError,
+reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as RemoteFailureReason,
   ));
 }
 
-/// Create a copy of SessionListState
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$ApiErrorCopyWith<$Res> get error {
-  
-  return $ApiErrorCopyWith<$Res>(_self.error, (value) {
-    return _then(_self.copyWith(error: value));
-  });
-}
+
 }
 
 // dart format on

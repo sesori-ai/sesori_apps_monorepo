@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../../core/extensions/text_style_x.dart";
 import "../models/diff_file_view_model.dart";
 import "../utils/diff_theme.dart";
 
@@ -44,10 +45,9 @@ class DiffFileWidget extends StatelessWidget {
             child: Text(
               vm.fileName,
               style: const TextStyle(
-                fontFamily: "monospace",
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-              ),
+              ).monospace,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -57,20 +57,18 @@ class DiffFileWidget extends StatelessWidget {
           Text(
             "+${vm.additions}",
             style: TextStyle(
-              fontFamily: "monospace",
               fontSize: 12,
               color: Colors.green.shade700,
-            ),
+            ).monospace,
           ),
           const SizedBox(width: 4),
           // -M stats
           Text(
             "-${vm.deletions}",
             style: TextStyle(
-              fontFamily: "monospace",
               fontSize: 12,
               color: Colors.red.shade700,
-            ),
+            ).monospace,
           ),
           const SizedBox(width: 8),
           // Status badge

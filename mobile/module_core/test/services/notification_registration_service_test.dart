@@ -255,6 +255,9 @@ class FakeAuthSession implements AuthSession {
   Future<bool> restoreSession() async => false;
 
   @override
+  Future<bool> restoreLocalSession() async => false;
+
+  @override
   Future<AuthUser> loginWithEmail({required String email, required String password}) async {
     throw UnimplementedError();
   }
@@ -314,7 +317,7 @@ AuthState _authenticatedState() {
   return const AuthState.authenticated(
     user: AuthUser(
       id: "user-1",
-      provider: "github",
+      provider: AuthProvider.github,
       providerUserId: "provider-user-1",
       providerUsername: "alex",
     ),

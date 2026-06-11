@@ -160,10 +160,10 @@ as bool,
 
 
 class ProjectListFailed implements ProjectListState {
-  const ProjectListFailed({required this.error});
+  const ProjectListFailed({required this.reason});
   
 
- final  ApiError error;
+ final  RemoteFailureReason reason;
 
 /// Create a copy of ProjectListState
 /// with the given fields replaced by the non-null parameter values.
@@ -175,16 +175,16 @@ $ProjectListFailedCopyWith<ProjectListFailed> get copyWith => _$ProjectListFaile
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListFailed&&(identical(other.error, error) || other.error == error));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListFailed&&(identical(other.reason, reason) || other.reason == reason));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,error);
+int get hashCode => Object.hash(runtimeType,reason);
 
 @override
 String toString() {
-  return 'ProjectListState.failed(error: $error)';
+  return 'ProjectListState.failed(reason: $reason)';
 }
 
 
@@ -195,11 +195,11 @@ abstract mixin class $ProjectListFailedCopyWith<$Res> implements $ProjectListSta
   factory $ProjectListFailedCopyWith(ProjectListFailed value, $Res Function(ProjectListFailed) _then) = _$ProjectListFailedCopyWithImpl;
 @useResult
 $Res call({
- ApiError error
+ RemoteFailureReason reason
 });
 
 
-$ApiErrorCopyWith<$Res> get error;
+
 
 }
 /// @nodoc
@@ -212,23 +212,46 @@ class _$ProjectListFailedCopyWithImpl<$Res>
 
 /// Create a copy of ProjectListState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? error = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? reason = null,}) {
   return _then(ProjectListFailed(
-error: null == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
-as ApiError,
+reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as RemoteFailureReason,
   ));
 }
 
-/// Create a copy of ProjectListState
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$ApiErrorCopyWith<$Res> get error {
+
+}
+
+/// @nodoc
+
+
+class ProjectListBridgeDisconnected implements ProjectListState {
+  const ProjectListBridgeDisconnected();
   
-  return $ApiErrorCopyWith<$Res>(_self.error, (value) {
-    return _then(_self.copyWith(error: value));
-  });
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListBridgeDisconnected);
 }
+
+
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+  return 'ProjectListState.bridgeDisconnected()';
 }
+
+
+}
+
+
+
 
 // dart format on

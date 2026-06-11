@@ -201,6 +201,27 @@ void main() {
       expect(result.rawData, equals(rawData));
     });
 
+    test("plugin.added event is recognized and ignored with preserved metadata", () {
+      final parser = SseEventParser();
+      final rawData = jsonEncode({
+        "directory": "/repo",
+        "payload": {
+          "type": "plugin.added",
+          "properties": {
+            "name": "some-plugin",
+          },
+        },
+      });
+
+      final result = parser.parse(rawData);
+
+      expect(result.outcome, equals(SseParseOutcome.ignoredKnownEvent));
+      expect(result.event, isNull);
+      expect(result.directory, equals("/repo"));
+      expect(result.eventType, equals("plugin.added"));
+      expect(result.rawData, equals(rawData));
+    });
+
     test("malformed JSON returns null event and preserved rawData", () {
       final parser = SseEventParser();
       const rawData = "{not-json";

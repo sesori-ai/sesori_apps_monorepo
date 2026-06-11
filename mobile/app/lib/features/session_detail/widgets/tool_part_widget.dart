@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_zyra/module_zyra.dart";
 import "../../../core/extensions/build_context_x.dart";
+import "../../../core/extensions/text_style_x.dart";
 import "../../../l10n/app_localizations.dart";
 
 class ToolPartWidget extends StatelessWidget {
@@ -67,10 +68,7 @@ class ToolPartWidget extends StatelessWidget {
                   ),
                   child: Text(
                     _truncateOutput(output),
-                    style: zyra.textTheme.textXs.regular.copyWith(
-                      fontFamily: "monospace",
-                      fontSize: 11,
-                    ),
+                    style: zyra.textTheme.textXs.regular.copyWith(fontSize: 11).monospace,
                     maxLines: 8,
                     overflow: .ellipsis,
                   ),

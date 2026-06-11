@@ -1,18 +1,30 @@
 import "dart:async";
+import "dart:ui" as ui;
 
 import "package:flutter/material.dart";
+import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
+import "package:flutter_svg/flutter_svg.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_zyra/module_zyra.dart";
+import "../../core/bridge_install.dart";
 import "../../core/constants.dart";
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
+import "../../core/extensions/remote_failure_x.dart";
+import "../../core/extensions/text_style_x.dart";
 import "../../core/routing/app_router.dart";
-import "../../l10n/app_localizations.dart";
 import "add_project_dialog.dart";
 import "rename_project_dialog.dart";
+
+part "onboarding/command_block.dart";
+part "onboarding/onboarding_hero.dart";
+part "onboarding/onboarding_view.dart";
+part "widgets/connected_empty_view.dart";
+part "widgets/error_view.dart";
+part "widgets/project_tile.dart";
 
 class ProjectListScreen extends StatelessWidget {
   const ProjectListScreen({super.key});
@@ -109,25 +121,48 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
     final zyra = context.zyra;
 
     return Scaffold(
+      backgroundColor: zyra.colors.bgPrimaryAlt,
+      // TODO: we need to have app wide navigation bar component
       appBar: AppBar(
-        title: Text(loc.projectListTitle),
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        elevation: 0,
+        centerTitle: false,
+        titleSpacing: ZyraSpacing.xl,
+        title: Text(
+          loc.projectListTitle,
+          style: zyra.textTheme.textXl.medium.copyWith(color: zyra.colors.textPrimary),
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: loc.settingsTitle,
-            onPressed: () => context.pushRoute(const AppRoute.settings()),
+          Padding(
+            padding: const EdgeInsetsDirectional.only(end: ZyraSpacing.xl),
+            child: ZyraButtonsIconGlass(
+              icon: VESPRSolid.gear,
+              semanticLabel: loc.settingsTitle,
+              onPressed: () => context.pushRoute(const AppRoute.settings()),
+            ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        tooltip: loc.addProject,
-        onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
-        child: const Icon(Icons.add),
-      ),
+
+      // The FAB only makes sense once the bridge is connected with a non-empty
+      // project list. It is absent from the not-connected onboarding and from
+      // the connected-but-empty state, where the inline Step 3 folder button is
+      // the add-project affordance.
+      floatingActionButton: state is ProjectListLoaded && state.projects.isNotEmpty
+          ? ZyraButtonsIconGlass(
+              icon: TablerRegular.folder_plus,
+              size: ZyraButtonsIconGlassSize.lg,
+              iconSize: 22,
+              onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
+            )
+          : null,
       body: switch (state) {
         ProjectListLoading() => const Center(
           child: CircularProgressIndicator(),
         ),
+        ProjectListBridgeDisconnected() => const _BridgeOnboardingView(),
         ProjectListLoaded(:final projects, :final activityById, :final isRefreshing) => Column(
           children: [
             if (isRefreshing) const LinearProgressIndicator(),
@@ -144,39 +179,8 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
                   );
                 },
                 child: projects.isEmpty
-                    ? CustomScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        slivers: [
-                          SliverFillRemaining(
-                            child: Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.folder_off_outlined,
-                                    size: 48,
-                                    color: zyra.colors.borderPrimary,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(loc.noProjects, style: zyra.textTheme.textMd.bold),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    loc.addProjectPrompt,
-                                    style: zyra.textTheme.textSm.regular.copyWith(
-                                      color: zyra.colors.borderPrimary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 24),
-                                  FilledButton.icon(
-                                    onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
-                                    icon: const Icon(Icons.add),
-                                    label: Text(loc.addProject),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
+                    ? _ConnectedEmptyView(
+                        onAddProject: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
                       )
                     : ListView.builder(
                         physics: const AlwaysScrollableScrollPhysics(),
@@ -195,146 +199,11 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
             ),
           ],
         ),
-        ProjectListFailed(:final error) => _ErrorView(
-          error: error,
+        ProjectListFailed(:final reason) => _ErrorView(
+          reason: reason,
           onRetry: () => context.read<ProjectListCubit>().retryLoadProjects(),
         ),
       },
     );
   }
-}
-
-class _ProjectTile extends StatelessWidget {
-  final Project project;
-  final int activeSessions;
-  final VoidCallback? onLongPress;
-
-  const _ProjectTile({
-    required this.project,
-    required this.activeSessions,
-    this.onLongPress,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final loc = context.loc;
-    final zyra = context.zyra;
-    final lastSegment = project.id.split("/").last;
-    final displayName = project.name ?? (lastSegment.isNotEmpty ? lastSegment : loc.projectListDefaultName);
-    final updatedAt = project.time?.updated;
-    final isActive = activeSessions > 0;
-
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: zyra.colors.bgBrandSolid,
-        child: Icon(
-          Icons.folder_outlined,
-          color: zyra.colors.fgWhite,
-        ),
-      ),
-      title: Text(displayName),
-      subtitle: Column(
-        crossAxisAlignment: .start,
-        children: [
-          Text(
-            project.id,
-            style: zyra.textTheme.textXs.regular,
-            maxLines: 1,
-            overflow: .ellipsis,
-          ),
-          if (updatedAt != null)
-            Text(
-              loc.projectListUpdated(context.formatTimestamp(updatedAt)),
-              style: zyra.textTheme.textXs.regular.copyWith(
-                color: zyra.colors.textSecondary,
-              ),
-            ),
-          if (isActive)
-            Row(
-              children: [
-                Icon(Icons.circle, size: 8, color: zyra.colors.bgBrandSolid),
-                const SizedBox(width: 4),
-                Text(
-                  loc.projectListActiveSessions(activeSessions),
-                  style: zyra.textTheme.textXs.regular.copyWith(
-                    color: zyra.colors.bgBrandSolid,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-        ],
-      ),
-      isThreeLine: updatedAt != null || isActive,
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () {
-        context.read<ProjectListCubit>().setActiveProject(project);
-        context.pushRoute(
-          AppRoute.sessions(projectId: project.id, projectName: displayName),
-        );
-      },
-      onLongPress: onLongPress,
-    );
-  }
-
-}
-
-class _ErrorView extends StatelessWidget {
-  final ApiError error;
-  final VoidCallback onRetry;
-
-  const _ErrorView({required this.error, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    final loc = context.loc;
-    final zyra = context.zyra;
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: .min,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 48,
-              color: zyra.colors.fgErrorPrimary,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              loc.projectListErrorTitle,
-              style: zyra.textTheme.textMd.bold,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _describeError(loc: loc, error: error),
-              textAlign: .center,
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh),
-              label: Text(loc.projectListRetry),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _describeError({required AppLocalizations loc, required ApiError error}) => switch (error) {
-    NotAuthenticatedError() => loc.apiErrorNotAuthenticated,
-    NonSuccessCodeError(:final errorCode, :final rawErrorString) =>
-      rawErrorString != null
-          ? loc.connectErrorNonSuccessCodeWithBody(
-              errorCode,
-              rawErrorString,
-            )
-          : loc.connectErrorNonSuccessCode(errorCode),
-    DartHttpClientError(:final innerError) => loc.connectErrorConnectionFailed(innerError.toString()),
-    JsonParsingError() => loc.connectErrorUnexpectedFormat,
-    EmptyResponseError() => loc.connectErrorUnexpectedFormat,
-    GenericError() => loc.connectErrorUnknown,
-  };
 }

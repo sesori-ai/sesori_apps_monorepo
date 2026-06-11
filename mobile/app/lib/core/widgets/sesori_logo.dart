@@ -15,9 +15,17 @@ import "package:vector_graphics/vector_graphics.dart";
 class SesoriLogo extends StatelessWidget {
   const SesoriLogo({super.key, this.squareSize = _svgSquare});
 
+  /// Shared [Hero] tag so the logo flies between screens that show it
+  /// (splash → login) during route transitions.
+  static const String heroTag = "sesori-logo";
+
   /// Edge length of the rounded square, in logical pixels. Everything else
   /// (frame, shadow, bevel) scales relative to this.
   final double squareSize;
+
+  /// Rendered frame height for this [squareSize], including the shadow
+  /// space the SVG frame reserves below the squircle.
+  double get frameHeight => _svgHeight * (squareSize / _svgSquare);
 
   static const double _svgSquare = 120;
   static const double _svgWidth = 151;

@@ -85,6 +85,61 @@ void main() {
     });
   });
 
+  group("OpenCodeApi.listAgents", () {
+    test("uses GET /agent and forwards the directory header", () async {
+      late http.BaseRequest capturedRequest;
+
+      final mockClient = MockClient((request) async {
+        capturedRequest = request;
+        return http.Response(
+          jsonEncode([
+            {
+              "name": "build",
+              "description": "The default agent.",
+              "mode": "primary",
+              "model": {"modelID": "gpt-4.1", "providerID": "openai"},
+            },
+          ]),
+          200,
+        );
+      });
+
+      final api = OpenCodeApi(
+        serverURL: "http://localhost:1234",
+        password: "test-pass",
+        client: mockClient,
+      );
+
+      final agents = await api.listAgents(directory: "/repo");
+
+      expect(capturedRequest.method, equals("GET"));
+      expect(capturedRequest.url.toString(), equals("http://localhost:1234/agent"));
+      expect(capturedRequest.headers["x-opencode-directory"], equals("/repo"));
+      expect(agents.single.name, equals("build"));
+    });
+
+    test("includes the upstream response body in the thrown exception", () async {
+      final mockClient = MockClient((request) async {
+        return http.Response('{"name":"UnknownError","data":{"message":"boom"}}', 500);
+      });
+
+      final api = OpenCodeApi(
+        serverURL: "http://localhost:1234",
+        password: "test-pass",
+        client: mockClient,
+      );
+
+      await expectLater(
+        api.listAgents(directory: "/repo"),
+        throwsA(
+          isA<OpenCodeApiException>()
+              .having((e) => e.statusCode, "statusCode", 500)
+              .having((e) => e.responseBody, "responseBody", contains("UnknownError")),
+        ),
+      );
+    });
+  });
+
   group("OpenCodeApi.sendCommand", () {
     test("uses the injected client for POST /session/{id}/command", () async {
       var calls = 0;

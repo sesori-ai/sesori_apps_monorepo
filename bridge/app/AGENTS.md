@@ -42,7 +42,7 @@ modules/
 
 | Task             | Location                           | Notes                                                   |
 | ---------------- | ---------------------------------- | ------------------------------------------------------- |
-| CLI flags        | `bin/bridge.dart`                  | `--relay`, `--port`, `--no-auto-start`, `--login`, etc. |
+| CLI flags        | `bin/bridge.dart`                  | `--relay`, `--port`, `--no-auto-start`, etc. |
 | Auth flow        | `lib/src/auth/`                    | OAuth PKCE with token persistence to disk               |
 | Relay connection | `lib/src/bridge/relay_client.dart` | WebSocket + auth handshake + reconnection               |
 | Key exchange     | `lib/src/bridge/key_exchange.dart` | X25519 → HKDF → room key delivery                       |
@@ -53,7 +53,7 @@ modules/
 
 ## CONVENTIONS
 
-- **Plugin architecture** — all backend-specific code lives in plugin modules under `modules/`. The bridge `lib/src/` is plugin-agnostic — it only imports from `sesori_plugin_interface`, never from concrete plugins.
+- **Plugin architecture** — all backend-specific code lives in plugin modules under `modules/`. The bridge `lib/src/` is plugin-agnostic — it only imports from `sesori_plugin_interface`, never from concrete plugins. *Transitional exception (plugin-lifecycle migration, see `docs/plans/plugin-lifecycle-migration.html`): the legacy OpenCode lifecycle still lives under `lib/src/` (`server/services/open_code_*`, `bridge/runtime/legacy_opencode_descriptor.dart`, which imports `opencode_plugin`) until the real descriptor replaces it at the flip (PR 12) and the deletion sweep removes the rest (PR 13).*
 - **Intercept-first routing** — requests are intercepted by handlers by default. Proxy is the fallback for unhandled routes, not the default path.
 - **Crypto from `sesori_shared`** — all crypto primitives imported from shared package, not duplicated
 - **Linting**: `package:lints/recommended.yaml` (lighter than mobile's `all_lint_rules`)
