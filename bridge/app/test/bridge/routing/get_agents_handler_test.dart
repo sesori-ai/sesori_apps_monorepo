@@ -1,3 +1,5 @@
+import "dart:io" as io;
+
 import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/get_agents_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -22,6 +24,17 @@ void main() {
 
     test("canHandle GET /agent", () {
       expect(handler.canHandle(makeRequest("GET", "/agent")), isTrue);
+    });
+
+    test("falls back to the bridge CWD because the route carries no project", () async {
+      await handler.handle(
+        makeRequest("GET", "/agent"),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastAgentsProjectId, equals(io.Directory.current.path));
     });
 
     test("returns typed list", () async {

@@ -3,20 +3,32 @@ import "dart:convert";
 import "package:http/http.dart" as http;
 import "package:sesori_shared/sesori_shared.dart";
 
-import "token.dart";
+/// Validated (and possibly refreshed) credentials.
+///
+/// Deliberately not a TokenData: validation never knows the bridge id, so
+/// this type cannot be persisted raw — callers merge it with persisted state.
+class TokenValidationResult {
+  final String accessToken;
+  final String refreshToken;
+
+  /// True if the credentials are valid (either original or refreshed);
+  /// false if both access and refresh failed (credentials may be revoked).
+  final bool isValid;
+
+  TokenValidationResult({
+    required this.accessToken,
+    required this.refreshToken,
+    required this.isValid,
+  });
+}
 
 /// Validates an access token and attempts refresh if expired.
 ///
-/// Returns `(TokenData, bool)` where:
-/// - bool is `true` if tokens are valid (either original or refreshed)
-/// - bool is `false` if both access and refresh failed (credentials may be revoked)
-///
 /// Throws on network/parsing errors.
-Future<(TokenData, bool)> validateToken({
+Future<TokenValidationResult> validateToken({
   required String authBackendURL,
   required String accessToken,
   required String refreshToken,
-  required AuthProvider lastProvider,
 }) async {
   // Build /auth/me URL
   final base = authBackendURL.endsWith("/") ? authBackendURL.substring(0, authBackendURL.length - 1) : authBackendURL;
@@ -35,25 +47,19 @@ Future<(TokenData, bool)> validateToken({
 
   // If 200 OK, tokens are valid
   if (meResponse.statusCode == 200) {
-    return (
-      TokenData(
-        accessToken: accessToken,
-        refreshToken: refreshToken,
-        lastProvider: lastProvider,
-      ),
-      true,
+    return TokenValidationResult(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      isValid: true,
     );
   }
 
-  // If not 401, return false (invalid but no error)
+  // If not 401, return invalid (but no error)
   if (meResponse.statusCode != 401) {
-    return (
-      TokenData(
-        accessToken: accessToken,
-        refreshToken: refreshToken,
-        lastProvider: lastProvider,
-      ),
-      false,
+    return TokenValidationResult(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      isValid: false,
     );
   }
 
@@ -72,15 +78,12 @@ Future<(TokenData, bool)> validateToken({
     throw Exception("refresh token: $e");
   }
 
-  // If refresh failed, return original tokens with false
+  // If refresh failed, return original tokens as invalid
   if (refreshResponse.statusCode != 200) {
-    return (
-      TokenData(
-        accessToken: accessToken,
-        refreshToken: refreshToken,
-        lastProvider: lastProvider,
-      ),
-      false,
+    return TokenValidationResult(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      isValid: false,
     );
   }
 
@@ -97,13 +100,10 @@ Future<(TokenData, bool)> validateToken({
     throw Exception("refresh response missing tokens");
   }
 
-  // Return new tokens with true
-  return (
-    TokenData(
-      accessToken: refreshed.accessToken,
-      refreshToken: refreshed.refreshToken,
-      lastProvider: lastProvider,
-    ),
-    true,
+  // Return new tokens as valid
+  return TokenValidationResult(
+    accessToken: refreshed.accessToken,
+    refreshToken: refreshed.refreshToken,
+    isValid: true,
   );
 }

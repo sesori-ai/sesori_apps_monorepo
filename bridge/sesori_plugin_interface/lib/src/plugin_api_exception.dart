@@ -15,7 +15,7 @@ class PluginApiException extends PluginOperationException {
 
   @override
   String toString() {
-    final detail = message == null ? "" : ": $message";
+    final detail = message == null || message!.isEmpty ? "" : ": $message";
     final causeDetail = cause == null ? "" : " (cause: $cause)";
     return "PluginApiException: $endpoint failed with status $statusCode$detail$causeDetail";
   }

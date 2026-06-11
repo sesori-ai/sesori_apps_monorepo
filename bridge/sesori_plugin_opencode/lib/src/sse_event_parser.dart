@@ -193,6 +193,19 @@ const Set<String> _knownEventTypes = {
 
 const Set<String> _ignoredEventTypes = {
   "sync",
+  // plugin lifecycle — internal to the OpenCode server, not useful for mobile UI
+  "plugin.added",
+  // server-internal bookkeeping — not useful for mobile UI
+  "reference.updated",
+  "models-dev.refreshed",
+  "catalog.model.updated",
+  "project.directories.updated",
+  // local account/auth lifecycle on the dev machine — not useful for mobile UI
+  "account.added",
+  "account.removed",
+  "account.switched",
+  // desktop IDE integration — not useful for mobile UI
+  "ide.installed",
   // session.next.* — internal lifecycle events, not useful for mobile UI
   "session.next.agent.switched",
   "session.next.model.switched",

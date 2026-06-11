@@ -21,6 +21,7 @@ void main() {
       final relayClient = RelayClient(
         relayURL: "ws://127.0.0.1:1",
         accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
       );
 
       manager.subscribePath(1, "/global/event", relayClient);
@@ -113,6 +114,7 @@ void main() {
       final relayClient = RelayClient(
         relayURL: "ws://127.0.0.1:1",
         accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
       );
       addTearDown(manager.stop);
 
@@ -133,6 +135,7 @@ void main() {
       final relayClient = RelayClient(
         relayURL: "ws://127.0.0.1:1",
         accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
       );
       addTearDown(manager.stop);
 
@@ -286,6 +289,7 @@ void main() {
       final relayClient = RelayClient(
         relayURL: "ws://127.0.0.1:1",
         accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
       );
 
       manager.subscribePath(1, "/global/event", relayClient);
@@ -372,6 +376,7 @@ class _RecordingRelayClient extends RelayClient {
     : super(
         relayURL: "ws://127.0.0.1:1",
         accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
       );
 
   @override
@@ -386,6 +391,7 @@ class _ThrowingRelayClient extends RelayClient {
     : super(
         relayURL: "ws://127.0.0.1:1",
         accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
       );
 
   @override

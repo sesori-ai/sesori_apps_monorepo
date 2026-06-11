@@ -35,6 +35,7 @@ _DebugServerHarness _createDebugServerHarness({
     httpClient: httpClient,
     accessTokenProvider: FakeAccessTokenProvider(),
     tokenRefresher: _FakeTokenRefresher(),
+    bridgeRegistrationService: createFakeBridgeRegistrationService(),
     database: db,
     processRunner: ProcessRunner(),
     failureReporter: FakeFailureReporter(),
@@ -445,7 +446,7 @@ class _FakeBridgePlugin implements BridgePluginApi {
   Future<void> abortSession({required String sessionId}) async {}
 
   @override
-  Future<List<PluginAgent>> getAgents() async => [];
+  Future<List<PluginAgent>> getAgents({required String projectId}) async => [];
 
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async => [];
@@ -607,7 +608,7 @@ class _TrackingBridgePlugin implements BridgePluginApi {
   Future<void> abortSession({required String sessionId}) async {}
 
   @override
-  Future<List<PluginAgent>> getAgents() async => [];
+  Future<List<PluginAgent>> getAgents({required String projectId}) async => [];
 
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async => [];

@@ -105,6 +105,7 @@ Map<String, dynamic> _$RelayRekeyRequiredToJson(RelayRekeyRequired instance) =>
 AuthRelayMessage _$AuthRelayMessageFromJson(Map json) => AuthRelayMessage(
   token: json['token'] as String,
   role: json['role'] as String,
+  bridgeId: json['bridgeId'] as String?,
   $type: json['type'] as String?,
 );
 
@@ -112,5 +113,6 @@ Map<String, dynamic> _$AuthRelayMessageToJson(AuthRelayMessage instance) =>
     <String, dynamic>{
       'token': instance.token,
       'role': instance.role,
+      'bridgeId': ?instance.bridgeId,
       'type': instance.$type,
     };

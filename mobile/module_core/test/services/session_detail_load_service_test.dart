@@ -100,7 +100,7 @@ void main() {
         (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
       );
       when(
-        () => repository.listAgents(),
+        () => repository.listAgents(projectId: any(named: "projectId")),
       ).thenAnswer((_) async => ApiResponse.success(const Agents(agents: <AgentInfo>[])));
       when(() => repository.listProviders(projectId: any(named: "projectId"))).thenAnswer(
         (_) async => ApiResponse.success(const ProviderListResponse(connectedOnly: false, items: <ProviderInfo>[])),
@@ -168,7 +168,7 @@ void _stubRepositorySnapshot({
   when(() => repository.getSessionStatuses()).thenAnswer(
     (_) async => ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
   );
-  when(() => repository.listAgents()).thenAnswer(
+  when(() => repository.listAgents(projectId: any(named: "projectId"))).thenAnswer(
     (_) async => ApiResponse.success(
       const Agents(
         agents: [

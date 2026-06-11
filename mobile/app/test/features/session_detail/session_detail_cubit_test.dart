@@ -124,7 +124,7 @@ void main() {
         verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
         verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
         verify(() => mockSessionService.getSessionStatuses()).called(1);
-        verify(() => mockSessionService.listAgents()).called(1);
+        verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).called(1);
         verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
         verify(() => mockSessionService.listCommands(projectId: "project-1")).called(1);
         verify(() => mockSessionRepository.getSession(sessionId: sessionId)).called(1);
@@ -182,7 +182,7 @@ void main() {
         verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(2);
         verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(2);
         verify(() => mockSessionService.getSessionStatuses()).called(2);
-        verify(() => mockSessionService.listAgents()).called(2);
+        verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).called(2);
         verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(2);
         verify(() => mockSessionService.listCommands(projectId: "project-1")).called(2);
         verify(() => mockSessionRepository.getSession(sessionId: sessionId)).called(2);
@@ -1776,7 +1776,7 @@ void _stubAllDefaults(
     ),
   );
   when(
-    () => service.listAgents(),
+    () => service.listAgents(projectId: any(named: "projectId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<Agents>>.value(
       ApiResponse.success(Agents(agents: [testAgentInfo()])),

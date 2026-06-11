@@ -7,6 +7,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:web_socket_channel/io.dart";
 
 import "../auth/access_token_provider.dart";
+import "../auth/bridge_id_provider.dart";
 
 const String _bridgeRole = "bridge";
 
@@ -20,6 +21,7 @@ class RelayClientMessage {
 class RelayClient {
   final String _relayURL;
   final AccessTokenProvider _accessTokenProvider;
+  final BridgeIdProvider _bridgeIdProvider;
   final Duration _pingInterval;
   final Duration _connectTimeout;
   IOWebSocketChannel? _channel;
@@ -27,12 +29,18 @@ class RelayClient {
   RelayClient({
     required String relayURL,
     required AccessTokenProvider accessTokenProvider,
+    required BridgeIdProvider bridgeIdProvider,
     Duration pingInterval = const Duration(seconds: 15),
     Duration connectTimeout = const Duration(seconds: 15),
   }) : _relayURL = relayURL,
        _accessTokenProvider = accessTokenProvider,
+       _bridgeIdProvider = bridgeIdProvider,
        _pingInterval = pingInterval,
        _connectTimeout = connectTimeout;
+
+  /// The WebSocket close code of the current connection, available once the
+  /// connection has closed and until [close] or [reconnect] discards it.
+  int? get closeCode => _channel?.closeCode;
 
   Future<void> connect() async {
     final wsURL = _buildWebSocketURL(_relayURL);
@@ -60,6 +68,7 @@ class RelayClient {
       final authMessage = RelayMessage.auth(
         token: token,
         role: _bridgeRole,
+        bridgeId: _bridgeIdProvider.bridgeId,
       );
       channel.sink.add(jsonEncode(authMessage.toJson()));
     }

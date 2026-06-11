@@ -319,7 +319,7 @@ class _FakeBridgePlugin implements BridgePluginApi {
   Future<void> abortSession({required String sessionId}) => throw UnimplementedError();
 
   @override
-  Future<List<PluginAgent>> getAgents() => throw UnimplementedError();
+  Future<List<PluginAgent>> getAgents({required String projectId}) => throw UnimplementedError();
 
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) => throw UnimplementedError();
