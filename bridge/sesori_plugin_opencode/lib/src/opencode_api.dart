@@ -294,6 +294,14 @@ class OpenCodeApi {
     _ensureSuccess(response, "POST /session/$sessionId/prompt_async");
   }
 
+  /// Sends a slash command to a session via `POST /session/:id/command`.
+  ///
+  /// WARNING: this OpenCode endpoint is **synchronous** — the HTTP response
+  /// (and therefore the returned future) does not complete until the
+  /// command's full agent run has finished, which can take minutes. No async
+  /// variant exists upstream (unlike prompts, which have `prompt_async`).
+  /// Callers that must not block on the run (see [OpenCodeService]) are
+  /// responsible for detaching; this Layer 1 method stays a dumb HTTP call.
   Future<void> sendCommand({
     required String sessionId,
     required SendCommandBody body,

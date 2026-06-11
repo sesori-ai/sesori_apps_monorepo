@@ -117,6 +117,7 @@ class FakeBridgePlugin implements BridgePluginApi {
   Object? throwOnDeleteSessionError;
   Object? throwOnArchiveSessionError;
   Completer<void>? archiveSessionCompleter;
+  Completer<void>? sendCommandCompleter;
 
   // ── BridgePlugin implementation ──────────────────────────────────────────
 
@@ -295,6 +296,9 @@ class FakeBridgePlugin implements BridgePluginApi {
     lastSendCommandVariant = variant?.id;
     lastSendCommandAgent = agent;
     lastSendCommandModel = model;
+    if (sendCommandCompleter case final completer?) {
+      await completer.future;
+    }
   }
 
   @override
