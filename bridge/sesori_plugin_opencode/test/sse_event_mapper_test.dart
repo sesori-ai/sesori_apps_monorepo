@@ -1,5 +1,5 @@
-import "package:opencode_plugin/src/models/session.dart";
-import "package:opencode_plugin/src/models/sse_event_data.dart";
+import "package:opencode_plugin/src/models/openapi/session.g.dart";
+import "package:opencode_plugin/src/models/sse_event_data.g.dart";
 import "package:opencode_plugin/src/sse_event_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -10,6 +10,10 @@ void main() {
 
     test("maps session.created using provided canonical projectID", () {
       const session = Session(
+        slug: "slug",
+        title: "title",
+        version: "v",
+        time: SessionTime(created: 0, updated: 0),
         id: "session-1",
         projectID: "/repo",
         directory: "/repo/packages/foo",
@@ -25,6 +29,10 @@ void main() {
 
     test("maps session.updated using provided canonical projectID", () {
       const session = Session(
+        slug: "slug",
+        title: "title",
+        version: "v",
+        time: SessionTime(created: 0, updated: 0),
         id: "session-2",
         projectID: "/repo",
         directory: "/repo/packages/foo",
@@ -40,6 +48,10 @@ void main() {
 
     test("maps session.deleted using provided canonical projectID", () {
       const session = Session(
+        slug: "slug",
+        title: "title",
+        version: "v",
+        time: SessionTime(created: 0, updated: 0),
         id: "session-3",
         projectID: "/repo",
         directory: "/repo/packages/foo",

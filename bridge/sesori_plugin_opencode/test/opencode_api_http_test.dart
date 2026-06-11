@@ -49,7 +49,7 @@ void main() {
       expect(capturedRequest.method, equals("GET"));
       expect(capturedRequest.url.toString(), equals("http://localhost:1234/config/providers"));
       expect(capturedRequest.headers["x-opencode-directory"], equals("/repo"));
-      expect(response.providers.single.models.values.single.variants, equals(["low", "high"]));
+      expect(response.providers.single.models.values.single.variants?.keys, equals(["low", "high"]));
     });
   });
 

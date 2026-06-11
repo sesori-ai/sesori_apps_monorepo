@@ -1,6 +1,6 @@
-import "package:opencode_plugin/opencode_plugin.dart" hide Message, MessageError, MessageErrorData, MessageWithParts;
-import "package:opencode_plugin/src/models/message.dart" as plugin_msg;
-import "package:opencode_plugin/src/models/message_with_parts.dart" as plugin;
+import "package:opencode_plugin/opencode_plugin.dart";
+import "package:opencode_plugin/src/models/openapi/assistant_message.g.dart";
+import "package:opencode_plugin/src/models/openapi/user_message.g.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show ActiveSession, ProjectActivitySummary;
 import "package:test/test.dart";
@@ -10,8 +10,18 @@ void main() {
     test("delegates to repository and returns result", () async {
       final repository = FakeOpenCodeRepository(
         projects: [
-          const Project(id: "p1", worktree: "/repo-a"),
-          const Project(id: "p2", worktree: "/repo-b"),
+          const Project(
+            time: ProjectTime(created: 0, updated: 0),
+            sandboxes: <String>[],
+            id: "p1",
+            worktree: "/repo-a",
+          ),
+          const Project(
+            time: ProjectTime(created: 0, updated: 0),
+            sandboxes: <String>[],
+            id: "p2",
+            worktree: "/repo-b",
+          ),
         ],
       );
       final service = OpenCodeService(repository, FakeActiveSessionTracker());
@@ -27,7 +37,7 @@ void main() {
     test("delegates to repository and returns plugin commands", () async {
       final repository = FakeOpenCodeRepository(
         commands: const [
-          PluginCommand(name: "/review-work", provider: "openai", source: PluginCommandSource.skill),
+          PluginCommand(name: "/review-work", model: "openai", provider: null, source: PluginCommandSource.skill),
         ],
       );
       final service = OpenCodeService(repository, FakeActiveSessionTracker());
@@ -42,10 +52,42 @@ void main() {
 
   group("OpenCodeService.getSessions", () {
     final sessions = [
-      const Session(id: "s1", projectID: "p1", directory: "/repo"),
-      const Session(id: "s2", projectID: "p1", directory: "/repo"),
-      const Session(id: "s3", projectID: "p1", directory: "/repo"),
-      const Session(id: "s4", projectID: "p1", directory: "/repo"),
+      const Session(
+        slug: "slug",
+        title: "title",
+        version: "v",
+        time: SessionTime(created: 0, updated: 0),
+        id: "s1",
+        projectID: "p1",
+        directory: "/repo",
+      ),
+      const Session(
+        slug: "slug",
+        title: "title",
+        version: "v",
+        time: SessionTime(created: 0, updated: 0),
+        id: "s2",
+        projectID: "p1",
+        directory: "/repo",
+      ),
+      const Session(
+        slug: "slug",
+        title: "title",
+        version: "v",
+        time: SessionTime(created: 0, updated: 0),
+        id: "s3",
+        projectID: "p1",
+        directory: "/repo",
+      ),
+      const Session(
+        slug: "slug",
+        title: "title",
+        version: "v",
+        time: SessionTime(created: 0, updated: 0),
+        id: "s4",
+        projectID: "p1",
+        directory: "/repo",
+      ),
     ];
 
     test("returns all sessions when no start/limit", () async {
@@ -348,7 +390,14 @@ void main() {
 
     setUp(() async {
       final repository = FakeOpenCodeRepository(
-        projects: [const Project(id: "p1", worktree: "/repo")],
+        projects: [
+          const Project(
+            time: ProjectTime(created: 0, updated: 0),
+            sandboxes: <String>[],
+            id: "p1",
+            worktree: "/repo",
+          ),
+        ],
       );
       tracker = ActiveSessionTracker(repository);
       await tracker.coldStart();
@@ -358,7 +407,15 @@ void main() {
     test("status change with count delta returns changed=true", () {
       service.handleSseEvent(
         const SseEventData.sessionCreated(
-          info: Session(id: "s1", projectID: "p1", directory: "/repo"),
+          info: Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0),
+            id: "s1",
+            projectID: "p1",
+            directory: "/repo",
+          ),
         ),
         null,
       );
@@ -366,7 +423,7 @@ void main() {
       final changed = service.handleSseEvent(
         const SseEventData.sessionStatus(
           sessionID: "s1",
-          status: SessionStatus.busy(),
+          status: SessionStatusBusy(),
         ),
         null,
       );
@@ -377,14 +434,22 @@ void main() {
     test("status change without count delta returns changed=false", () {
       service.handleSseEvent(
         const SseEventData.sessionCreated(
-          info: Session(id: "s1", projectID: "p1", directory: "/repo"),
+          info: Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0),
+            id: "s1",
+            projectID: "p1",
+            directory: "/repo",
+          ),
         ),
         null,
       );
       service.handleSseEvent(
         const SseEventData.sessionStatus(
           sessionID: "s1",
-          status: SessionStatus.busy(),
+          status: SessionStatusBusy(),
         ),
         null,
       );
@@ -392,7 +457,7 @@ void main() {
       final changed = service.handleSseEvent(
         const SseEventData.sessionStatus(
           sessionID: "s1",
-          status: SessionStatus.busy(),
+          status: SessionStatusBusy(),
         ),
         null,
       );
@@ -411,7 +476,15 @@ void main() {
     test("session created updated and deleted events are handled", () {
       final created = service.handleSseEvent(
         const SseEventData.sessionCreated(
-          info: Session(id: "s1", projectID: "p1", directory: "/repo"),
+          info: Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0),
+            id: "s1",
+            projectID: "p1",
+            directory: "/repo",
+          ),
         ),
         null,
       );
@@ -419,7 +492,15 @@ void main() {
 
       final updated = service.handleSseEvent(
         const SseEventData.sessionUpdated(
-          info: Session(id: "s1", projectID: "p1", directory: "/repo/sub"),
+          info: Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0),
+            id: "s1",
+            projectID: "p1",
+            directory: "/repo/sub",
+          ),
         ),
         null,
       );
@@ -428,13 +509,21 @@ void main() {
       service.handleSseEvent(
         const SseEventData.sessionStatus(
           sessionID: "s1",
-          status: SessionStatus.busy(),
+          status: SessionStatusBusy(),
         ),
         null,
       );
       final deleted = service.handleSseEvent(
         const SseEventData.sessionDeleted(
-          info: Session(id: "s1", projectID: "p1", directory: "/repo/sub"),
+          info: Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0),
+            id: "s1",
+            projectID: "p1",
+            directory: "/repo/sub",
+          ),
         ),
         null,
       );
@@ -485,35 +574,53 @@ void main() {
   });
 }
 
-plugin.MessageWithParts _msg(String role, String id) {
-  return plugin.MessageWithParts(
-    info: plugin_msg.Message(
-      role: role,
-      id: id,
-      sessionID: "ses-1",
-      parentID: null,
-      agent: null,
-      modelID: null,
-      providerID: null,
-      cost: null,
-      tokens: null,
-      time: null,
-      finish: null,
-      error: null,
-    ),
+SessionMessagesResponseItem _msg(String role, String id) {
+  return SessionMessagesResponseItem(
+    info: role == "user"
+        ? UserMessage.fromJson(<String, dynamic>{
+            "role": "user",
+            "id": id,
+            "sessionID": "ses-1",
+            "time": const {"created": 0},
+            "agent": "agent",
+            "model": const {"providerID": "p", "modelID": "m"},
+          })
+        : AssistantMessage.fromJson(<String, dynamic>{
+            "role": "assistant",
+            "id": id,
+            "sessionID": "ses-1",
+            "time": const {"created": 0},
+            "parentID": "parent",
+            "modelID": "m",
+            "providerID": "p",
+            "mode": "primary",
+            "agent": "agent",
+            "path": const {"cwd": "/repo", "root": "/repo"},
+            "cost": 0,
+            "tokens": const {
+              "input": 0,
+              "output": 0,
+              "reasoning": 0,
+              "cache": {"read": 0, "write": 0},
+            },
+          }),
     parts: const [],
   );
 }
 
-String? _messageId(plugin.MessageWithParts message) {
-  return message.info.id;
+String? _messageId(PluginMessageWithParts message) {
+  return switch (message.info) {
+    PluginMessageUser(:final id) => id,
+    PluginMessageAssistant(:final id) => id,
+    PluginMessageError(:final id) => id,
+  };
 }
 
 class FakeOpenCodeApi implements OpenCodeApi {
   @override
   String get serverURL => "http://fake";
 
-  List<plugin.MessageWithParts> messages;
+  List<SessionMessagesResponseItem> messages;
   Object? messagesError;
   String? lastRequestedSessionId;
   String? lastRequestedDirectory;
@@ -524,7 +631,7 @@ class FakeOpenCodeApi implements OpenCodeApi {
   Future<bool> healthCheck() async => true;
 
   @override
-  Future<List<plugin.MessageWithParts>> getMessages({required String sessionId, required String? directory}) async {
+  Future<List<SessionMessagesResponseItem>> getMessages({required String sessionId, required String? directory}) async {
     lastRequestedSessionId = sessionId;
     lastRequestedDirectory = directory;
     if (messagesError != null) throw messagesError!;
@@ -585,13 +692,13 @@ class FakeOpenCodeApi implements OpenCodeApi {
   Future<void> abortSession({required String sessionId, required String? directory}) async {}
 
   @override
-  Future<List<AgentInfo>> listAgents() async => [];
+  Future<List<Agent>> listAgents() async => [];
 
   @override
-  Future<List<PendingQuestion>> getPendingQuestions({required String? directory}) async => [];
+  Future<List<QuestionRequest>> getPendingQuestions({required String? directory}) async => [];
 
   @override
-  Future<List<PendingPermission>> getPendingPermissions({required String? directory}) async => [];
+  Future<List<PermissionRequest>> getPendingPermissions({required String? directory}) async => [];
 
   @override
   Future<void> replyToQuestion({
@@ -636,12 +743,12 @@ class FakeOpenCodeApi implements OpenCodeApi {
   Future<List<Session>> listSessions({String? directory, required bool roots}) async => [];
 
   @override
-  Future<ProviderListResponse> listProviders() async =>
-      const ProviderListResponse(providers: [], defaults: {}, connected: []);
+  Future<ConfigProvidersResponse> listProviders() async =>
+      const ConfigProvidersResponse(providers: [], defaultValue: {});
 
   @override
-  Future<ProviderListResponse> listConfigProviders({required String? directory}) async =>
-      const ProviderListResponse(providers: [], defaults: {}, connected: []);
+  Future<ConfigProvidersResponse> listConfigProviders({required String? directory}) async =>
+      const ConfigProvidersResponse(providers: [], defaultValue: {});
 
   @override
   Future<Session> forkSession({
@@ -681,19 +788,35 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   String? lastDeletedSessionId;
   String? lastDeletedDirectory;
 
-  FakeOpenCodeRepository({
+  factory FakeOpenCodeRepository({
     List<Project> projects = const [],
     List<Session> sessions = const [],
     List<PluginCommand> commands = const [],
     PluginSession? createdSession,
-    List<plugin.MessageWithParts> messages = const [],
+    List<SessionMessagesResponseItem> messages = const [],
     Object? messagesError,
+  }) {
+    final api = FakeOpenCodeApi(messages: messages, messagesError: messagesError);
+    return FakeOpenCodeRepository._(
+      api: api,
+      projects: projects,
+      sessions: sessions,
+      commands: commands,
+      createdSession: createdSession,
+    );
+  }
+
+  FakeOpenCodeRepository._({
+    required this.api,
+    required List<Project> projects,
+    required List<Session> sessions,
+    required List<PluginCommand> commands,
+    required PluginSession? createdSession,
   }) : _projects = projects,
        _sessions = sessions,
        _commands = commands,
        _createdSession = createdSession,
-       api = FakeOpenCodeApi(messages: messages, messagesError: messagesError),
-       super(FakeOpenCodeApi(messages: messages, messagesError: messagesError));
+       super(api);
 
   @override
   Future<List<Project>> getProjects() async {
@@ -712,6 +835,18 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   Future<List<PluginCommand>> getCommands({required String? projectId}) async {
     lastCommandsProjectId = projectId;
     return _commands;
+  }
+
+  @override
+  Future<List<PluginMessageWithParts>> getMessages({
+    required String sessionId,
+    required String? directory,
+  }) async {
+    final messages = await api.getMessages(
+      sessionId: sessionId,
+      directory: directory,
+    );
+    return messages.map(const PluginModelMapper(messagePartMapper: MessagePartMapper()).mapMessageWithParts).toList();
   }
 
   @override

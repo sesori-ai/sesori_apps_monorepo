@@ -7,15 +7,39 @@ void main() {
     test("excludes child sessions (non-null parentID)", () async {
       final api = _FakeApi(
         sessions: [
-          const Session(id: "parent-1", projectID: "p1", directory: "/repo"),
           const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0),
+            id: "parent-1",
+            projectID: "p1",
+            directory: "/repo",
+          ),
+          const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0),
             id: "child-1",
             projectID: "p1",
             directory: "/repo",
             parentID: "parent-1",
           ),
-          const Session(id: "parent-2", projectID: "p1", directory: "/repo"),
           const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0),
+            id: "parent-2",
+            projectID: "p1",
+            directory: "/repo",
+          ),
+          const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0),
             id: "child-2",
             projectID: "p1",
             directory: "/repo",
@@ -36,8 +60,24 @@ void main() {
     test("includes sessions with null parentID", () async {
       final api = _FakeApi(
         sessions: [
-          const Session(id: "s1", projectID: "p1", directory: "/repo"),
-          const Session(id: "s2", projectID: "p1", directory: "/repo"),
+          const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0),
+            id: "s1",
+            projectID: "p1",
+            directory: "/repo",
+          ),
+          const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0),
+            id: "s2",
+            projectID: "p1",
+            directory: "/repo",
+          ),
         ],
       );
       final repository = OpenCodeRepository(api);
@@ -51,11 +91,21 @@ void main() {
       final api = _FakeApi(
         globalSessions: [
           const GlobalSession(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: GlobalSessionTime(created: 0, updated: 0),
+            project: null,
             id: "g-parent",
             projectID: "global",
             directory: "/repo",
           ),
           const GlobalSession(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: GlobalSessionTime(created: 0, updated: 0),
+            project: null,
             id: "g-child",
             projectID: "global",
             directory: "/repo",
@@ -75,8 +125,24 @@ void main() {
     test("filters by worktree directory", () async {
       final api = _FakeApi(
         sessions: [
-          const Session(id: "s1", projectID: "p1", directory: "/repo"),
-          const Session(id: "s2", projectID: "p1", directory: "/other"),
+          const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0),
+            id: "s1",
+            projectID: "p1",
+            directory: "/repo",
+          ),
+          const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0),
+            id: "s2",
+            projectID: "p1",
+            directory: "/other",
+          ),
         ],
       );
       final repository = OpenCodeRepository(api);
@@ -90,12 +156,18 @@ void main() {
       final api = _FakeApi(
         sessions: [
           const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
             id: "old",
             projectID: "p1",
             directory: "/repo",
             time: SessionTime(created: 100, updated: 100),
           ),
           const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
             id: "new",
             projectID: "p1",
             directory: "/repo",
@@ -112,10 +184,38 @@ void main() {
 
     test("deduplicates standard and global sessions", () async {
       final api = _FakeApi(
-        sessions: [const Session(id: "dup", projectID: "p1", directory: "/repo")],
+        sessions: [
+          const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0),
+            id: "dup",
+            projectID: "p1",
+            directory: "/repo",
+          ),
+        ],
         globalSessions: [
-          const GlobalSession(id: "dup", projectID: "global", directory: "/repo"),
-          const GlobalSession(id: "unique", projectID: "global", directory: "/repo"),
+          const GlobalSession(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: GlobalSessionTime(created: 0, updated: 0),
+            project: null,
+            id: "dup",
+            projectID: "global",
+            directory: "/repo",
+          ),
+          const GlobalSession(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: GlobalSessionTime(created: 0, updated: 0),
+            project: null,
+            id: "unique",
+            projectID: "global",
+            directory: "/repo",
+          ),
         ],
       );
       final repository = OpenCodeRepository(api);
@@ -136,6 +236,7 @@ void main() {
       final api = _FakeApi(
         projects: [
           const Project(
+            sandboxes: <String>[],
             id: "my-project",
             worktree: "/repo",
             time: ProjectTime(created: 1000, updated: 1000),
@@ -143,10 +244,14 @@ void main() {
         ],
         globalSessions: [
           const GlobalSession(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            project: null,
             id: "s1",
             projectID: "my-project",
             directory: "/repo",
-            time: SessionTime(created: 1500, updated: 9000),
+            time: GlobalSessionTime(created: 1500, updated: 9000),
           ),
         ],
       );
@@ -155,9 +260,9 @@ void main() {
       final projects = await repository.getProjects();
 
       expect(projects, hasLength(1));
-      expect(projects.first.time?.updated, equals(9000));
+      expect(projects.first.time.updated, equals(9000));
       // created should be the earliest across project and sessions.
-      expect(projects.first.time?.created, equals(1000));
+      expect(projects.first.time.created, equals(1000));
     });
 
     test("merges timestamps from global sessions into matching real project", () async {
@@ -165,6 +270,7 @@ void main() {
       final api = _FakeApi(
         projects: [
           const Project(
+            sandboxes: <String>[],
             id: "my-project",
             worktree: "/repo",
             time: ProjectTime(created: 1000, updated: 2000),
@@ -172,10 +278,14 @@ void main() {
         ],
         globalSessions: [
           const GlobalSession(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            project: null,
             id: "orphan",
             projectID: "global",
             directory: "/repo",
-            time: SessionTime(created: 500, updated: 3000),
+            time: GlobalSessionTime(created: 500, updated: 3000),
           ),
         ],
       );
@@ -185,15 +295,16 @@ void main() {
 
       expect(projects, hasLength(1));
       // updated = max(2000, 3000)
-      expect(projects.first.time?.updated, equals(3000));
+      expect(projects.first.time.updated, equals(3000));
       // created = min(1000, 500)
-      expect(projects.first.time?.created, equals(500));
+      expect(projects.first.time.created, equals(500));
     });
 
     test("uses project's own timestamp when no sessions exist", () async {
       final api = _FakeApi(
         projects: [
           const Project(
+            sandboxes: <String>[],
             id: "my-project",
             worktree: "/repo",
             time: ProjectTime(created: 1000, updated: 2000),
@@ -205,8 +316,8 @@ void main() {
       final projects = await repository.getProjects();
 
       expect(projects, hasLength(1));
-      expect(projects.first.time?.updated, equals(2000));
-      expect(projects.first.time?.created, equals(1000));
+      expect(projects.first.time.updated, equals(2000));
+      expect(projects.first.time.created, equals(1000));
     });
 
     test("merges timestamps from both global and real-project sessions", () async {
@@ -216,6 +327,7 @@ void main() {
       final api = _FakeApi(
         projects: [
           const Project(
+            sandboxes: <String>[],
             id: "my-project",
             worktree: "/repo",
             time: ProjectTime(created: 1000, updated: 1000),
@@ -223,16 +335,24 @@ void main() {
         ],
         globalSessions: [
           const GlobalSession(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            project: null,
             id: "real-session",
             projectID: "my-project",
             directory: "/repo",
-            time: SessionTime(created: 2000, updated: 5000),
+            time: GlobalSessionTime(created: 2000, updated: 5000),
           ),
           const GlobalSession(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            project: null,
             id: "orphan-session",
             projectID: "global",
             directory: "/repo",
-            time: SessionTime(created: 500, updated: 8000),
+            time: GlobalSessionTime(created: 500, updated: 8000),
           ),
         ],
       );
@@ -242,9 +362,9 @@ void main() {
 
       expect(projects, hasLength(1));
       // updated = max(1000, 5000, 8000)
-      expect(projects.first.time?.updated, equals(8000));
+      expect(projects.first.time.updated, equals(8000));
       // created = min(1000, 2000, 500)
-      expect(projects.first.time?.created, equals(500));
+      expect(projects.first.time.created, equals(500));
     });
 
     test("creates virtual projects only from global sessions", () async {
@@ -253,6 +373,7 @@ void main() {
       final api = _FakeApi(
         projects: [
           const Project(
+            sandboxes: <String>[],
             id: "other-project",
             worktree: "/other-repo",
             time: ProjectTime(created: 1000, updated: 1000),
@@ -260,10 +381,14 @@ void main() {
         ],
         globalSessions: [
           const GlobalSession(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            project: null,
             id: "orphan",
             projectID: "global",
             directory: "/no-git-repo",
-            time: SessionTime(created: 500, updated: 3000),
+            time: GlobalSessionTime(created: 500, updated: 3000),
           ),
         ],
       );
@@ -275,7 +400,7 @@ void main() {
       expect(projects, hasLength(2));
       final virtual = projects.where((p) => p.worktree == "/no-git-repo");
       expect(virtual, hasLength(1));
-      expect(virtual.first.time?.updated, equals(3000));
+      expect(virtual.first.time.updated, equals(3000));
     });
 
     test("does not create virtual project for real-project sessions without matching project", () async {
@@ -286,10 +411,14 @@ void main() {
         projects: [],
         globalSessions: [
           const GlobalSession(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            project: null,
             id: "s1",
             projectID: "some-real-project",
             directory: "/repo",
-            time: SessionTime(created: 500, updated: 3000),
+            time: GlobalSessionTime(created: 500, updated: 3000),
           ),
         ],
       );
@@ -309,6 +438,7 @@ void main() {
       final api = _FakeApi(
         projects: [
           const Project(
+            sandboxes: <String>[],
             id: "my-project",
             worktree: "/repo",
             time: ProjectTime(created: 1000, updated: 1000),
@@ -316,10 +446,14 @@ void main() {
         ],
         globalSessions: [
           const GlobalSession(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            project: null,
             id: "sub-session",
             projectID: "my-project",
             directory: "/repo/packages/foo",
-            time: SessionTime(created: 2000, updated: 9000),
+            time: GlobalSessionTime(created: 2000, updated: 9000),
           ),
         ],
       );
@@ -329,19 +463,21 @@ void main() {
 
       expect(projects, hasLength(1));
       // The subdirectory session's updated (9000) should be picked up.
-      expect(projects.first.time?.updated, equals(9000));
-      expect(projects.first.time?.created, equals(1000));
+      expect(projects.first.time.updated, equals(9000));
+      expect(projects.first.time.created, equals(1000));
     });
 
     test("excludes global meta-project from results", () async {
       final api = _FakeApi(
         projects: [
           const Project(
+            sandboxes: <String>[],
             id: "global",
             worktree: "/home/user",
             time: ProjectTime(created: 1000, updated: 1000),
           ),
           const Project(
+            sandboxes: <String>[],
             id: "my-project",
             worktree: "/repo",
             time: ProjectTime(created: 2000, updated: 2000),
@@ -368,8 +504,7 @@ void main() {
             description: "Review current branch changes",
             agent: "review-work",
             model: "gpt-5.4",
-            provider: "openai",
-            source: CommandSource.skill,
+            source: "skill",
             subtask: true,
           ),
         ],
@@ -388,7 +523,7 @@ void main() {
           description: "Review current branch changes",
           agent: "review-work",
           model: "gpt-5.4",
-          provider: "openai",
+          provider: null,
           source: PluginCommandSource.skill,
           subtask: true,
         ),
@@ -400,12 +535,14 @@ void main() {
     test("trims directory before calling api and mapping projectID", () async {
       final api = _FakeApi(
         createdSession: const Session(
+          slug: "slug",
+          version: "v",
           id: "ses-1",
           projectID: "global",
           directory: "/repo",
           parentID: null,
-          title: null,
-          time: null,
+          title: "",
+          time: SessionTime(created: 0, updated: 0),
           summary: null,
         ),
       );
@@ -571,12 +708,14 @@ class _FakeApi implements OpenCodeApi {
     lastCreateParentSessionId = parentSessionId;
     return _createdSession ??
         const Session(
+          slug: "slug",
+          version: "v",
           id: "created",
           projectID: "global",
           directory: "/repo",
           parentID: null,
-          title: null,
-          time: null,
+          title: "",
+          time: SessionTime(created: 0, updated: 0),
           summary: null,
         );
   }
@@ -628,13 +767,13 @@ class _FakeApi implements OpenCodeApi {
   Future<void> abortSession({required String sessionId, required String? directory}) async {}
 
   @override
-  Future<List<AgentInfo>> listAgents() async => [];
+  Future<List<Agent>> listAgents() async => [];
 
   @override
-  Future<List<PendingQuestion>> getPendingQuestions({required String? directory}) async => [];
+  Future<List<QuestionRequest>> getPendingQuestions({required String? directory}) async => [];
 
   @override
-  Future<List<PendingPermission>> getPendingPermissions({required String? directory}) async => [];
+  Future<List<PermissionRequest>> getPendingPermissions({required String? directory}) async => [];
 
   @override
   Future<void> replyToQuestion({
@@ -663,7 +802,7 @@ class _FakeApi implements OpenCodeApi {
   }) async => [];
 
   @override
-  Future<List<MessageWithParts>> getMessages({
+  Future<List<SessionMessagesResponseItem>> getMessages({
     required String sessionId,
     required String? directory,
   }) async => [];
@@ -678,12 +817,12 @@ class _FakeApi implements OpenCodeApi {
   Future<Map<String, SessionStatus>> getSessionStatuses({required String? directory}) async => {};
 
   @override
-  Future<ProviderListResponse> listProviders() async =>
-      const ProviderListResponse(providers: [], defaults: {}, connected: []);
+  Future<ConfigProvidersResponse> listProviders() async =>
+      const ConfigProvidersResponse(providers: [], defaultValue: {});
 
   @override
-  Future<ProviderListResponse> listConfigProviders({required String? directory}) async =>
-      const ProviderListResponse(providers: [], defaults: {}, connected: []);
+  Future<ConfigProvidersResponse> listConfigProviders({required String? directory}) async =>
+      const ConfigProvidersResponse(providers: [], defaultValue: {});
 
   @override
   Future<Project> updateProject({

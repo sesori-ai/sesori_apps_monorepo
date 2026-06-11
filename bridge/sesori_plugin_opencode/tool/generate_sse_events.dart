@@ -2,7 +2,7 @@
 //
 // `tool/generate_sse_events.dart` reads `tool/opencode_events_v1.json`
 // (a hand-curated manifest of v1 OpenCode SSE event shapes) and emits
-// `lib/src/models/sse_event_data.dart` as a hand-written sealed class
+// `lib/src/models/sse_event_data.g.dart` as a hand-written sealed class
 // hierarchy. Marker interface SseSessionEventData is auto-implemented by
 // any variant whose payload has a `sessionID` field, OR for which the
 // manifest sets `session_marker: true` (used for events that carry
@@ -23,17 +23,17 @@ import 'dart:convert';
 import 'dart:io';
 
 // ---------------------------------------------------------------------------
-// v1 model import map. SSE event payload fields reference the hand-written
-// v1 model classes in `lib/src/models/`. Add an entry here when a new event
-// references a type that is not already imported.
+// v1 model import map. SSE event payload fields reference generated OpenAPI
+// v1 model classes in `lib/src/models/openapi/`. Add an entry here when a new
+// event references a type that is not already imported.
 // ---------------------------------------------------------------------------
 const Map<String, String> _v1Imports = {
-  'Session': 'session.dart',
-  'Message': 'message.dart',
-  'MessagePart': 'message_part.dart',
-  'FileDiff': 'file_diff.dart',
-  'SessionStatus': 'session_status.dart',
-  'QuestionInfo': 'question.dart',
+  'Session': 'openapi/session.g.dart',
+  'Message': 'openapi/message.g.dart',
+  'Part': 'openapi/part.g.dart',
+  'SnapshotFileDiff': 'openapi/snapshot_file_diff.g.dart',
+  'SessionStatus': 'openapi/session_status.g.dart',
+  'QuestionInfo': 'openapi/question_info.g.dart',
 };
 
 void main() {
@@ -141,8 +141,7 @@ void main() {
   out.writeln('  factory SseEventData.fromJson(Map<String, dynamic> json) {');
   out.writeln('    final type = json["type"] as String?;');
   out.writeln('    if (type == null) {');
-  out.writeln(
-      '      throw const FormatException("SSE event missing \'type\' field");');
+  out.writeln('      throw const FormatException("SSE event missing \'type\' field");');
   out.writeln('    }');
   out.writeln('    return switch (type) {');
   for (final ev in events) {
@@ -162,7 +161,7 @@ void main() {
     _emitVariant(out, ev);
   }
 
-  const outputPath = 'lib/src/models/sse_event_data.dart';
+  const outputPath = 'lib/src/models/sse_event_data.g.dart';
   File(outputPath).writeAsStringSync(out.toString());
   stdout.writeln('Wrote $outputPath (${events.length} variants, ${usedRefs.length} refs)');
 }
@@ -192,28 +191,24 @@ void _emitVariant(StringBuffer out, Map<String, dynamic> ev) {
     out.writeln('/// Deprecated event. $msg');
     // The ignore comment matches the existing hand-written convention for
     // keeping deprecated events available for backward compatibility.
-    out.writeln(
-        '// ignore: remove_deprecations_in_breaking_versions, keep idle event for backward compatibility');
+    out.writeln('// ignore: remove_deprecations_in_breaking_versions, keep idle event for backward compatibility');
     out.writeln('@Deprecated("$msg")');
   }
-  final implementsClause =
-      isSessionEvent ? ' implements SseSessionEventData' : '';
+  final implementsClause = isSessionEvent ? ' implements SseSessionEventData' : '';
   out.writeln('class $className extends SseEventData$implementsClause {');
 
   // Constructor.
   if (fields.isEmpty) {
     if (isDeprecated) {
       final msg = deprecatedMsg ?? 'Deprecated event.';
-      out.writeln(
-          '  // ignore: remove_deprecations_in_breaking_versions, keep idle event for backward compatibility');
+      out.writeln('  // ignore: remove_deprecations_in_breaking_versions, keep idle event for backward compatibility');
       out.writeln('  @Deprecated("$msg")');
     }
     out.writeln('  const $className();');
   } else {
     if (isDeprecated) {
       final msg = deprecatedMsg ?? 'Deprecated event.';
-      out.writeln(
-          '  // ignore: remove_deprecations_in_breaking_versions, keep idle event for backward compatibility');
+      out.writeln('  // ignore: remove_deprecations_in_breaking_versions, keep idle event for backward compatibility');
       out.writeln('  @Deprecated("$msg")');
     }
     out.writeln('  const $className({');
@@ -263,8 +258,7 @@ void _emitVariant(StringBuffer out, Map<String, dynamic> ev) {
   // fromJson.
   if (isDeprecated) {
     final msg = deprecatedMsg ?? 'Deprecated event.';
-    out.writeln(
-        '  // ignore: remove_deprecations_in_breaking_versions, keep idle event for backward compatibility');
+    out.writeln('  // ignore: remove_deprecations_in_breaking_versions, keep idle event for backward compatibility');
     out.writeln('  @Deprecated("$msg")');
   }
   out.writeln('  factory $className.fromJson(Map<String, dynamic> json) {');

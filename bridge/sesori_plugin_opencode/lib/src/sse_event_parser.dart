@@ -1,6 +1,6 @@
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
-import "models/sse_event_data.dart";
+import "models/sse_event_data.g.dart";
 
 enum SseParseOutcome {
   validKnownEvent,

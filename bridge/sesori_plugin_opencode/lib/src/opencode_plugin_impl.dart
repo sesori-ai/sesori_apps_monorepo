@@ -32,6 +32,7 @@ class OpenCodePlugin implements BridgePluginApi {
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
   final io.HttpClient _httpClient;
   final SseEventMapper _mapper = SseEventMapper();
+  final PluginModelMapper _pluginModelMapper = const PluginModelMapper(messagePartMapper: MessagePartMapper());
   late final SseConnection _sseConnection;
 
   factory OpenCodePlugin({
@@ -126,7 +127,7 @@ class OpenCodePlugin implements BridgePluginApi {
       worktrees: projects.map((p) => p.worktree).toSet(),
     );
     if (changed) _emitProjectsSummary();
-    return projects.map((project) => project.toPlugin()).toList();
+    return projects.map(_pluginModelMapper.mapProject).toList();
   }
 
   @override
@@ -150,7 +151,8 @@ class OpenCodePlugin implements BridgePluginApi {
     }
     return sessions
         .map(
-          (session) => session.toPlugin(projectID: _resolveCanonicalProjectID(session, projectId)),
+          (session) =>
+              _pluginModelMapper.mapSession(session, projectID: _resolveCanonicalProjectID(session, projectId)),
         )
         .toList();
   }
@@ -202,7 +204,7 @@ class OpenCodePlugin implements BridgePluginApi {
         body: {"title": title},
       ),
     );
-    return session.toPlugin(projectID: _resolveCanonicalProjectID(session, session.projectID));
+    return _pluginModelMapper.mapSession(session, projectID: _resolveCanonicalProjectID(session, session.projectID));
   }
 
   @override
@@ -216,7 +218,8 @@ class OpenCodePlugin implements BridgePluginApi {
     );
     return sessions
         .map(
-          (session) => session.toPlugin(
+          (session) => _pluginModelMapper.mapSession(
+            session,
             projectID: _resolveCanonicalProjectID(session, session.projectID),
           ),
         )
@@ -230,7 +233,7 @@ class OpenCodePlugin implements BridgePluginApi {
     );
 
     // Start with the API response as a baseline.
-    final merged = apiStatuses.map((key, value) => MapEntry(key, value.toPlugin()));
+    final merged = apiStatuses.map((key, value) => MapEntry(key, _pluginModelMapper.mapSessionStatus(value)));
 
     // Overlay the tracker's real-time active statuses. The tracker is
     // maintained by SSE events and accurately reflects which sessions are
@@ -238,7 +241,7 @@ class OpenCodePlugin implements BridgePluginApi {
     // context and miss sessions from other projects.
     final activeStatuses = _service.tracker.getActiveStatuses();
     for (final entry in activeStatuses.entries) {
-      merged[entry.key] = entry.value.toPlugin();
+      merged[entry.key] = _pluginModelMapper.mapSessionStatus(entry.value);
     }
 
     return merged;
@@ -253,7 +256,7 @@ class OpenCodePlugin implements BridgePluginApi {
         directory: directory,
       ),
     );
-    return messages.map(_mapMessage).toList();
+    return messages;
   }
 
   @override
@@ -310,7 +313,7 @@ class OpenCodePlugin implements BridgePluginApi {
   @override
   Future<List<PluginAgent>> getAgents() async {
     final agents = await _call(_service.repository.api.listAgents);
-    return agents.map((agent) => agent.toPlugin()).toList();
+    return agents.map(_pluginModelMapper.mapAgent).toList();
   }
 
   @override
@@ -325,7 +328,7 @@ class OpenCodePlugin implements BridgePluginApi {
     );
     return pending //
         .where((e) => e.sessionID == sessionId)
-        .map((question) => question.toPlugin())
+        .map<PluginPendingQuestion>(_pluginModelMapper.mapQuestion)
         .toList();
   }
 
@@ -338,7 +341,7 @@ class OpenCodePlugin implements BridgePluginApi {
         directory: projectId,
       ),
     );
-    return pending.map((question) => question.toPlugin()).toList();
+    return pending.map<PluginPendingQuestion>(_pluginModelMapper.mapQuestion).toList();
   }
 
   @override
@@ -390,7 +393,7 @@ class OpenCodePlugin implements BridgePluginApi {
         directory: projectId,
       ),
     );
-    return project.toPlugin();
+    return _pluginModelMapper.mapProject(project);
   }
 
   @override
@@ -434,7 +437,7 @@ class OpenCodePlugin implements BridgePluginApi {
         body: {"name": name},
       ),
     );
-    return updated.toPlugin();
+    return _pluginModelMapper.mapProject(updated);
   }
 
   void _handleRawSseEvent(String rawData) {
@@ -531,41 +534,6 @@ class OpenCodePlugin implements BridgePluginApi {
       ),
       _ => event,
     };
-  }
-
-  PluginMessageWithParts _mapMessage(MessageWithParts raw) {
-    final info = raw.info;
-    final parts = raw.parts;
-    final pluginInfo = switch (info.error) {
-      final error? => PluginMessage.error(
-        id: info.id,
-        sessionID: info.sessionID,
-        agent: info.agent,
-        modelID: info.modelID,
-        providerID: info.providerID,
-        errorName: error.name,
-        errorMessage: error.data.message,
-      ),
-      null => switch (info.role) {
-        "user" => PluginMessage.user(
-          id: info.id,
-          sessionID: info.sessionID,
-          agent: info.agent,
-        ),
-        "assistant" => PluginMessage.assistant(
-          id: info.id,
-          sessionID: info.sessionID,
-          agent: info.agent,
-          modelID: info.modelID,
-          providerID: info.providerID,
-        ),
-        _ => throw ArgumentError('Unknown message role: ${info.role}'),
-      },
-    };
-    return PluginMessageWithParts(
-      info: pluginInfo,
-      parts: parts.map(_mapper.mapPart).where((p) => p.type.isVisible).toList(),
-    );
   }
 
   @override

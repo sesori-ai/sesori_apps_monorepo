@@ -1,7 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show Log, PluginModel, PluginProvider, PluginProviderAuthType, PluginProvidersResult;
 
-import "models/provider_info.dart";
+import "models/openapi/config_providers_response.g.dart";
 
 enum _ProviderModelStatus {
   active,
@@ -11,10 +11,10 @@ enum _ProviderModelStatus {
   unknown,
 }
 
-/// Maps an OpenCode [ProviderListResponse] to the plugin interface
+/// Maps an OpenCode [ConfigProvidersResponse] to the plugin interface
 /// [PluginProvidersResult], optionally filtering to connected providers only.
 PluginProvidersResult mapProviderResponse({
-  required ProviderListResponse response,
+  required ConfigProvidersResponse response,
 }) {
   final providers = response.providers.map((providerInfo) {
     final models = providerInfo.models.values
@@ -22,15 +22,12 @@ PluginProvidersResult mapProviderResponse({
           (m) => PluginModel(
             id: m.id,
             name: m.name,
-            variants: m.variants,
+            variants: _enabledVariants(variants: m.variants),
             family: m.family,
             isAvailable: _isModelAvailable(
               status: _parseProviderModelStatus(rawStatus: m.status, modelId: m.id),
             ),
-            releaseDate: switch (m.releaseDate) {
-              final dateStr? => DateTime.tryParse(dateStr),
-              null => null,
-            },
+            releaseDate: DateTime.tryParse(m.releaseDate),
           ),
         )
         .toList();
@@ -39,7 +36,7 @@ PluginProvidersResult mapProviderResponse({
       id: providerInfo.id,
       name: providerInfo.name,
       models: models,
-      defaultModels: response.defaults,
+      defaultModels: response.defaultValue,
     );
   }).toList();
 
@@ -60,6 +57,11 @@ _ProviderModelStatus _parseProviderModelStatus({
       return _ProviderModelStatus.unknown;
     }(),
   };
+}
+
+List<String> _enabledVariants({required Map<String, Map<String, dynamic>>? variants}) {
+  if (variants == null) return const <String>[];
+  return variants.entries.where((entry) => entry.value["disabled"] != true).map((entry) => entry.key).toList();
 }
 
 bool _isModelAvailable({required _ProviderModelStatus status}) {

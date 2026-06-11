@@ -1,10 +1,10 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show ActiveSession, ProjectActivitySummary;
 
-import "models/pending_permission.dart";
-import "models/pending_question.dart";
-import "models/session_status.dart";
-import "models/sse_event_data.dart";
+import "models/openapi/permission_request.g.dart";
+import "models/openapi/question_request.g.dart";
+import "models/openapi/session_status.g.dart";
+import "models/sse_event_data.g.dart";
 import "opencode_repository.dart";
 
 class ActiveSessionTracker {
@@ -29,7 +29,7 @@ class ActiveSessionTracker {
   Future<void> coldStart() async {
     final (projects, sessions) = await (
       _repository.getProjects(),
-      _repository.api.listSessions(roots: false),
+      _repository.api.listSessions(directory: null, roots: false),
     ).wait;
 
     _projectWorktrees
@@ -135,6 +135,9 @@ class ActiveSessionTracker {
           case SessionStatusBusy():
           case SessionStatusRetry():
             _sessionStatuses[event.sessionID] = event.status;
+          case SessionStatusUnknown():
+            Log.w("Unknown session status for ${event.sessionID}; treating as inactive");
+            _sessionStatuses.remove(event.sessionID);
         }
       case SseSessionIdle():
         _sessionStatuses.remove(event.sessionID);
@@ -177,14 +180,14 @@ class ActiveSessionTracker {
     _lastEmittedPendingInputSessions = {};
   }
 
-  void populatePendingQuestions({required List<PendingQuestion> questions}) {
+  void populatePendingQuestions({required List<QuestionRequest> questions}) {
     _pendingQuestions
       ..clear()
       ..addEntries(_groupBySessionId(questions.map((q) => (q.sessionID, q.id))).entries);
     _lastEmittedPendingInputSessions = _pendingInputSessions;
   }
 
-  void populatePendingPermissions({required List<PendingPermission> permissions}) {
+  void populatePendingPermissions({required List<PermissionRequest> permissions}) {
     _pendingPermissions
       ..clear()
       ..addEntries(_groupBySessionId(permissions.map((p) => (p.sessionID, p.id))).entries);

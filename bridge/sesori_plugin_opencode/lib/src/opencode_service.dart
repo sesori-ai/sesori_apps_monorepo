@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         Log,
         PluginApiException,
         PluginCommand,
+        PluginMessageWithParts,
         PluginPermissionReply,
         PluginPromptPart,
         PluginProvidersResult,
@@ -44,12 +45,12 @@ class OpenCodeService {
     return _applyLimit(afterStart, limit);
   }
 
-  Future<List<MessageWithParts>> getMessages({
+  Future<List<PluginMessageWithParts>> getMessages({
     required String sessionId,
     required String? directory,
   }) async {
     try {
-      return await repository.api.getMessages(sessionId: sessionId, directory: directory);
+      return await repository.getMessages(sessionId: sessionId, directory: directory);
     } on OpenCodeApiException {
       rethrow;
     } on PluginApiException {

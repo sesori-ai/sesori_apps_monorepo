@@ -4,34 +4,34 @@
 // OpenCode tag, these tests fail loudly if decoding, encoding,
 // equality, or unknown-value fallback behavior regresses.
 
-import "package:opencode_plugin/src/models/openapi/command.dart";
-import "package:opencode_plugin/src/models/openapi/log_level.dart";
-import "package:opencode_plugin/src/models/openapi/part.dart";
-import "package:opencode_plugin/src/models/openapi/permission_ruleset.dart";
-import "package:opencode_plugin/src/models/openapi/project.dart";
-import "package:opencode_plugin/src/models/openapi/session.dart";
-import "package:opencode_plugin/src/models/openapi/session_status.dart";
-import "package:opencode_plugin/src/models/openapi/text_part.dart";
-import "package:opencode_plugin/src/models/openapi/tool_part.dart";
-import "package:opencode_plugin/src/models/openapi/tool_state_pending.dart";
+import "package:opencode_plugin/src/models/openapi/command.g.dart";
+import "package:opencode_plugin/src/models/openapi/part.g.dart";
+import "package:opencode_plugin/src/models/openapi/permission_action.g.dart";
+import "package:opencode_plugin/src/models/openapi/permission_ruleset.g.dart";
+import "package:opencode_plugin/src/models/openapi/project.g.dart";
+import "package:opencode_plugin/src/models/openapi/session.g.dart";
+import "package:opencode_plugin/src/models/openapi/session_status.g.dart";
+import "package:opencode_plugin/src/models/openapi/text_part.g.dart";
+import "package:opencode_plugin/src/models/openapi/tool_part.g.dart";
+import "package:opencode_plugin/src/models/openapi/tool_state_pending.g.dart";
 import "package:test/test.dart";
 
 Map<String, dynamic> sessionJson() => <String, dynamic>{
-      "id": "ses_1",
-      "slug": "fix-auth",
-      "projectID": "prj_1",
-      "directory": "/repo",
-      "title": "Fix auth flow",
-      "version": "1.16.2",
-      "time": <String, dynamic>{"created": 100, "updated": 200},
-    };
+  "id": "ses_1",
+  "slug": "fix-auth",
+  "projectID": "prj_1",
+  "directory": "/repo",
+  "title": "Fix auth flow",
+  "version": "1.16.2",
+  "time": <String, dynamic>{"created": 100, "updated": 200},
+};
 
 Map<String, dynamic> projectJson() => <String, dynamic>{
-      "id": "prj_1",
-      "worktree": "/repo",
-      "time": <String, dynamic>{"created": 10, "updated": 20},
-      "sandboxes": <String>["sb-a", "sb-b"],
-    };
+  "id": "prj_1",
+  "worktree": "/repo",
+  "time": <String, dynamic>{"created": 10, "updated": 20},
+  "sandboxes": <String>["sb-a", "sb-b"],
+};
 
 void main() {
   group("Session", () {
@@ -142,8 +142,7 @@ void main() {
 
   group("SessionStatus union", () {
     test("dispatches known variants", () {
-      final status =
-          SessionStatus.fromJson(const <String, dynamic>{"type": "idle"});
+      final status = SessionStatus.fromJson(const <String, dynamic>{"type": "idle"});
       expect(status.toJson(), equals(<String, dynamic>{"type": "idle"}));
     });
 
@@ -167,15 +166,15 @@ void main() {
 
   group("Generated enums", () {
     test("decode known wire values", () {
-      expect(LogLevel.fromJson("INFO"), LogLevel.iNFO);
+      expect(PermissionAction.fromJson("allow"), PermissionAction.allow);
     });
 
     test("fall back to unknown for new wire values instead of throwing", () {
-      expect(LogLevel.fromJson("TRACE"), LogLevel.unknown);
+      expect(PermissionAction.fromJson("trace"), PermissionAction.unknown);
     });
 
     test("the unknown member encodes as the literal string unknown", () {
-      expect(LogLevel.unknown.toJson(), "unknown");
+      expect(PermissionAction.unknown.toJson(), "unknown");
     });
   });
 

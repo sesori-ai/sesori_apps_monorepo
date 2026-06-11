@@ -44,7 +44,7 @@
       "type": "session.diff",
       "fields": [
         { "name": "sessionID", "type": "string" },
-        { "name": "diff", "ref": "FileDiff", "list": true }
+        { "name": "diff", "ref": "SnapshotFileDiff", "list": true }
       ]
     },
     {
@@ -101,7 +101,7 @@
       "type": "message.part.updated",
       "session_marker": true,
       "fields": [
-        { "name": "part", "ref": "MessagePart" }
+        { "name": "part", "ref": "Part" }
       ]
     },
     {
