@@ -438,6 +438,19 @@ class Codegen {
       log('model $name');
     }
 
+    final selectedParentClasses = sortedSchemas.map(_pascalFromSnake).toSet();
+    final missingParentClasses = <String>{};
+    for (final name in sortedSchemas) {
+      final parent = _unionParents[name];
+      if (parent != null && !selectedParentClasses.contains(parent)) {
+        missingParentClasses.add(parent);
+      }
+    }
+    for (final parent in missingParentClasses.toList()..sort()) {
+      _writeUnionParentStub(parent);
+      log('union parent stub $parent');
+    }
+
     final apiFile = File('$outDir/opencode_client.dart');
     if (withClient) {
       var apiBody = _emitApiClient().trimRight();
@@ -632,6 +645,21 @@ class Codegen {
     body = body.trimRight();
     body = '$body\n';
     File('$outDir/$relPath').writeAsStringSync(body);
+  }
+
+  void _writeUnionParentStub(String className) {
+    final fileName = _snakeFromCamel(className);
+    final relPath = 'models/openapi/$fileName.g.dart';
+    final body = StringBuffer()
+      ..writeln('// GENERATED FILE - DO NOT EDIT BY HAND')
+      ..writeln('// ${sourceHeader()}')
+      ..writeln()
+      ..writeln('abstract interface class $className {')
+      ..writeln('  const $className();')
+      ..writeln()
+      ..writeln('  Object? toJson();')
+      ..writeln('}');
+    File('$outDir/$relPath').writeAsStringSync(body.toString());
   }
 
   String _emitApiClient() {
@@ -2014,6 +2042,18 @@ class ModelWriter {
         ),
       );
     }
+    if (className == 'Command' && !fields.any((field) => field.jsonName == 'provider')) {
+      fields.add(
+        _FieldRecord(
+          jsonName: 'provider',
+          safeName: 'provider',
+          schema: const {'type': 'string'},
+          isRequired: false,
+          dartType: 'String?',
+          context: '${className}Provider',
+        ),
+      );
+    }
 
     _usesImmutable = true;
     b.writeln('@immutable');
@@ -2082,7 +2122,12 @@ class ModelWriter {
       final f = fields.firstWhere((x) => x.jsonName == entry.key);
       final isNullable = _isNullableSchema(f.schema) || !f.isRequired;
       b.writeln(
-        '      ${_encodeField(f.jsonName, f.schema, isNullable: isNullable, context: f.context)},',
+        '      ${_encodeField(f.jsonName, f.schema, isNullable: isNullable, omitWhenNull: !f.isRequired, context: f.context)},',
+      );
+    }
+    for (final f in fields.where((field) => !properties.containsKey(field.jsonName))) {
+      b.writeln(
+        '      ${_encodeField(f.jsonName, f.schema, isNullable: true, omitWhenNull: true, context: f.context)},',
       );
     }
     b.writeln('    };');
@@ -2616,6 +2661,9 @@ class ModelWriter {
     }
     if (type == 'boolean' || type == 'string') {
       final dartType = _dartTypeForInline(sch, context: context);
+      if (context == 'CommandTemplate') {
+        return "$safeName: json[$keyExpr] is String ? json[$keyExpr] as String : ''";
+      }
       if (isNullable) {
         return '$safeName: json[$keyExpr] as $dartType?';
       }
@@ -2671,18 +2719,19 @@ class ModelWriter {
     String name,
     Map<String, dynamic> sch, {
     required bool isNullable,
+    required bool omitWhenNull,
     required String context,
   }) {
     final keyExpr = _safeKey(name);
     final safeName = _safeIdentifier(name);
     final callOp = isNullable ? '?' : '';
-    final entryOp = isNullable ? '?' : '';
+    final entryOp = omitWhenNull ? '?' : '';
     // anyOf [T, null] → T? — delegate to the non-null branch.
     if (sch['anyOf'] is List) {
       final variants = (sch['anyOf'] as List).cast<Map<String, dynamic>>();
       final nonNull = variants.where((v) => v['type'] != 'null').toList();
       if (nonNull.length == 1) {
-        return _encodeField(name, nonNull.first, isNullable: true, context: context);
+        return _encodeField(name, nonNull.first, isNullable: isNullable, omitWhenNull: omitWhenNull, context: context);
       }
     }
     final r = sch[r'$ref'];

@@ -15,6 +15,7 @@ class Command {
     this.template = '',
     this.subtask,
     this.hints = const [],
+    this.provider,
   });
 
   factory Command.fromJson(Map<String, dynamic> json) {
@@ -24,9 +25,10 @@ class Command {
       agent: json["agent"] as String?,
       model: json["model"] as String?,
       source: json["source"] as String?,
-      template: (json["template"] ?? '') as String,
+      template: json["template"] is String ? json["template"] as String : '',
       subtask: json["subtask"] as bool?,
       hints: ((json["hints"] ?? const []) as List<dynamic>).cast<String>(),
+      provider: json["provider"] as String?,
     );
   }
 
@@ -40,6 +42,7 @@ class Command {
       "template": template,
       "subtask": ?subtask,
       "hints": hints,
+      "provider": ?provider,
     };
   }
 
@@ -54,6 +57,7 @@ class Command {
     String? template,
     bool? subtask,
     List<String>? hints,
+    String? provider,
   }) {
     return Command(
       name: name ?? this.name,
@@ -64,6 +68,7 @@ class Command {
       template: template ?? this.template,
       subtask: subtask ?? this.subtask,
       hints: hints ?? this.hints,
+      provider: provider ?? this.provider,
     );
   }
 
@@ -78,10 +83,11 @@ class Command {
           other.source == source &&
           other.template == template &&
           other.subtask == subtask &&
-          const DeepCollectionEquality().equals(other.hints, hints));
+          const DeepCollectionEquality().equals(other.hints, hints) &&
+          other.provider == provider);
 
   @override
-  int get hashCode => Object.hash(name, description, agent, model, source, template, subtask, const DeepCollectionEquality().hash(hints));
+  int get hashCode => Object.hash(name, description, agent, model, source, template, subtask, const DeepCollectionEquality().hash(hints), provider);
 
   final String name;
   final String? description;
@@ -91,4 +97,5 @@ class Command {
   final String template;
   final bool? subtask;
   final List<String> hints;
+  final String? provider;
 }

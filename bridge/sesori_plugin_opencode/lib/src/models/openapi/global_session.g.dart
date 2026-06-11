@@ -78,7 +78,7 @@ class GlobalSession {
       "time": time.toJson(),
       "permission": ?permission?.toJson(),
       "revert": ?revert?.toJson(),
-      "project": ?project?.toJson(),
+      "project": project?.toJson(),
     };
   }
 

@@ -5,6 +5,9 @@
 // equality, or unknown-value fallback behavior regresses.
 
 import "package:opencode_plugin/src/models/openapi/command.g.dart";
+import "package:opencode_plugin/src/models/openapi/event.g.dart";
+import "package:opencode_plugin/src/models/openapi/event_question_rejected.g.dart";
+import "package:opencode_plugin/src/models/openapi/global_session.g.dart";
 import "package:opencode_plugin/src/models/openapi/part.g.dart";
 import "package:opencode_plugin/src/models/openapi/permission_action.g.dart";
 import "package:opencode_plugin/src/models/openapi/permission_ruleset.g.dart";
@@ -96,6 +99,44 @@ void main() {
       expect(command.hints, <String>["target"]);
       expect(command.toJson(), equals(json));
       expect(command, equals(Command.fromJson(json)));
+    });
+
+    test("coerces non-string template payloads to empty template", () {
+      final command = Command.fromJson(const <String, dynamic>{
+        "name": "mcp-tool",
+        "template": <String, dynamic>{},
+      });
+
+      expect(command.template, isEmpty);
+    });
+  });
+
+  group("GlobalSession", () {
+    test("keeps required nullable project key when project is null", () {
+      final session = GlobalSession.fromJson(const <String, dynamic>{
+        "id": "ses_1",
+        "slug": "slug",
+        "projectID": "project",
+        "directory": "/repo",
+        "title": "Title",
+        "version": "1.17.3",
+        "time": <String, dynamic>{"created": 1, "updated": 2},
+        "project": null,
+      });
+
+      expect(session.toJson().containsKey("project"), isTrue);
+      expect(session.toJson()["project"], isNull);
+    });
+  });
+
+  group("Event variants", () {
+    test("implement the generated Event base interface", () {
+      final event = EventQuestionRejected.fromJson(const <String, dynamic>{
+        "id": "event_1",
+        "properties": <String, dynamic>{"sessionID": "ses_1"},
+      });
+
+      expect(event, isA<Event>());
     });
   });
 
