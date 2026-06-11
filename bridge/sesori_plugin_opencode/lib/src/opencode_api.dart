@@ -10,6 +10,7 @@ import "models/openapi/config_providers_response.g.dart";
 import "models/openapi/global_session.g.dart";
 import "models/openapi/permission_request.g.dart";
 import "models/openapi/project.g.dart";
+import "models/openapi/provider_list_response.g.dart";
 import "models/openapi/question_request.g.dart";
 import "models/openapi/session.g.dart";
 import "models/openapi/session_messages_response_item.g.dart";
@@ -471,13 +472,13 @@ class OpenCodeApi {
     return decoded.map(GlobalSession.fromJson).toList();
   }
 
-  Future<ConfigProvidersResponse> listProviders() async {
+  Future<ProviderListResponse> listProviders() async {
     final response = await _client.get(
       Uri.parse("$serverURL/provider"),
       headers: _authHeaders,
     );
     _ensureSuccess(response, "GET /provider");
-    return ConfigProvidersResponse.fromJson(jsonDecodeMap(response.body));
+    return ProviderListResponse.fromJson(jsonDecodeMap(response.body));
   }
 
   Future<ConfigProvidersResponse> listConfigProviders({required String? directory}) async {
