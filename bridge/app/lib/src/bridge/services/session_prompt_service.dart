@@ -64,10 +64,12 @@ class SessionPromptService {
       // holding the phone's relay request open until its client-side timeout
       // misreports an in-flight command as a failed send.
       unawaited(
-        sendFuture.catchError((Object e) {
+        sendFuture.catchError((Object e, StackTrace s) {
           Log.w(
             "command '$normalizedCommand' for session $sessionId "
             "failed after dispatch: $e",
+            e,
+            s,
           );
         }),
       );
