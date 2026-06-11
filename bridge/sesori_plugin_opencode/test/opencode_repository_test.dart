@@ -504,6 +504,7 @@ void main() {
             description: "Review current branch changes",
             agent: "review-work",
             model: "gpt-5.4",
+            provider: "openai",
             source: "skill",
             subtask: true,
           ),
@@ -523,7 +524,7 @@ void main() {
           description: "Review current branch changes",
           agent: "review-work",
           model: "gpt-5.4",
-          provider: null,
+          provider: "openai",
           source: PluginCommandSource.skill,
           subtask: true,
         ),
@@ -817,8 +818,7 @@ class _FakeApi implements OpenCodeApi {
   Future<Map<String, SessionStatus>> getSessionStatuses({required String? directory}) async => {};
 
   @override
-  Future<ConfigProvidersResponse> listProviders() async =>
-      const ConfigProvidersResponse(providers: [], defaultValue: {});
+  Future<ProviderListResponse> listProviders() async => const ProviderListResponse();
 
   @override
   Future<ConfigProvidersResponse> listConfigProviders({required String? directory}) async =>

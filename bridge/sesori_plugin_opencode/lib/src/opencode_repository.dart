@@ -464,7 +464,7 @@ class OpenCodeRepository {
       description: command.description,
       agent: command.agent,
       model: command.model,
-      provider: null,
+      provider: command.provider,
       source: switch (command.source) {
         "command" => PluginCommandSource.command,
         "mcp" => PluginCommandSource.mcp,
