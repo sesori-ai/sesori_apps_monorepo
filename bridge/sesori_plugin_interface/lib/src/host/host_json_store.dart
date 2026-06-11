@@ -34,6 +34,11 @@ abstract class HostJsonStore {
   /// [transform] receives the current contents (`null` when the file does
   /// not exist) and returns the new contents; returning `null` deletes the
   /// file. Returns what was written (or `null` when deleted).
+  ///
+  /// [transform] must not call [update] for the same [name], directly or
+  /// transitively: implementations queue same-name calls within the process
+  /// (the OS advisory lock alone cannot exclude them there), so a reentrant
+  /// call deadlocks behind its caller.
   Future<String?> update({
     required String name,
     required FutureOr<String?> Function(String? current) transform,
