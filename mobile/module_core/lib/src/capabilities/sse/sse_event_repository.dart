@@ -65,6 +65,7 @@ class SseEventRepository with Disposable {
                 mainAgentRunning: session.mainAgentRunning,
                 awaitingInput: session.awaitingInput,
                 backgroundTaskCount: session.childSessionIds.length,
+                isRetrying: session.isRetrying,
               );
             }
             sessionMap[summary.id] = infoMap;

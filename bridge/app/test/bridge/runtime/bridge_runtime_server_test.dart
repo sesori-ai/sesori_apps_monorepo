@@ -1,52 +1,64 @@
-import "package:args/args.dart";
-import "package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart";
+import "dart:io";
+
+import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_server.dart";
+import "package:sesori_bridge/src/bridge/runtime/legacy_opencode_descriptor.dart";
+import "package:sesori_bridge/src/server/api/runtime_file_api.dart";
 import "package:sesori_bridge/src/server/foundation/process_match.dart";
 import "package:sesori_bridge/src/server/models/bridge_startup_lock.dart";
 import "package:sesori_bridge/src/server/models/open_code_ownership_record.dart";
 import "package:sesori_bridge/src/server/repositories/open_code_ownership_repository.dart";
+import "package:sesori_bridge/src/server/repositories/process_repository.dart";
 import "package:sesori_bridge/src/server/repositories/startup_mutex_repository.dart";
 import "package:sesori_bridge/src/server/services/bridge_instance_service.dart";
 import "package:sesori_bridge/src/server/services/open_code_server_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+// The "--no-auto-start requires --port" rule moved to argument-parse time:
+// LegacyOpenCodeDescriptor.validateConfigValues, covered in
+// legacy_opencode_descriptor_test.dart and plugin_cli_binding_test.dart.
 void main() {
-  group("resolveServer", () {
+  group("BridgeRuntimeRunner.startLegacyOpenCodePlugin", () {
     late _FakeStartupMutexRepository startupMutexRepository;
     late _FakeOwnershipRepository ownershipRepository;
     late _FakeBridgeInstanceService bridgeInstanceService;
     late _FakeOpenCodeServerService openCodeServerService;
     late ProcessIdentity currentBridgeIdentity;
+    late Directory runtimeDirectory;
 
-    setUp(() {
+    setUp(() async {
       startupMutexRepository = _FakeStartupMutexRepository();
       ownershipRepository = _FakeOwnershipRepository();
       bridgeInstanceService = _FakeBridgeInstanceService();
       openCodeServerService = _FakeOpenCodeServerService();
       currentBridgeIdentity = _identity(pid: 100, startMarker: "bridge-start");
+      runtimeDirectory = await Directory.systemTemp.createTemp("bridge-runtime-server-test");
     });
 
-    test("no-auto-start without port still fails clearly", () async {
-      await expectLater(
-        resolveServer(
-          options: _options(port: null, noAutoStart: true),
-          currentBridgeIdentity: currentBridgeIdentity,
-          ownerSessionId: "owner-session",
-          startupMutexRepository: startupMutexRepository,
-          ownershipRepository: ownershipRepository,
-          bridgeInstanceService: bridgeInstanceService,
-          openCodeServerService: openCodeServerService,
-        ),
-        throwsA(
-          isA<ArgParserException>().having(
-            (error) => error.message,
-            "message",
-            contains("--no-auto-start"),
-          ),
-        ),
-      );
+    tearDown(() async {
+      await runtimeDirectory.delete(recursive: true);
     });
+
+    Future<LegacyOpenCodeBridgePlugin> startPlugin({required PluginConfig pluginConfig}) {
+      return BridgeRuntimeRunner.startLegacyOpenCodePlugin(
+        pluginConfig: pluginConfig,
+        currentBridgeIdentity: currentBridgeIdentity,
+        ownerSessionId: "owner-session",
+        startupMutexRepository: startupMutexRepository,
+        bridgeInstanceService: bridgeInstanceService,
+        ownershipRepository: ownershipRepository,
+        openCodeServerService: openCodeServerService,
+        processRepository: _FakeProcessRepository(),
+        runtimeFileApi: RuntimeFileApi(runtimeDirectory: runtimeDirectory.path),
+        runtimeDirectory: runtimeDirectory.path,
+        serverClock: const ServerClock(),
+        environment: const <String, String>{},
+        currentUser: ProcessUser.fromRawUser("alex"),
+        startAborted: StartAbortSignal.never,
+        buildPluginApi: ({required String serverUrl, required String? serverPassword}) => _FakePluginApi(),
+      );
+    }
 
     test("auto-start without port uses mutex then singleton resolution then service start", () async {
       final terminatedBridge = _identity(pid: 200, startMarker: "old-bridge-start");
@@ -64,15 +76,7 @@ void main() {
       );
       ownershipRepository.recordByOwnerSessionId["owner-session"] = _ownedRecord();
 
-      final runtime = await resolveServer(
-        options: _options(port: null, noAutoStart: false),
-        currentBridgeIdentity: currentBridgeIdentity,
-        ownerSessionId: "owner-session",
-        startupMutexRepository: startupMutexRepository,
-        ownershipRepository: ownershipRepository,
-        bridgeInstanceService: bridgeInstanceService,
-        openCodeServerService: openCodeServerService,
-      );
+      final plugin = await startPlugin(pluginConfig: _config(port: null, noAutoStart: false));
 
       expect(startupMutexRepository.lockRequests, hasLength(1));
       expect(startupMutexRepository.lockRequests.single, equals((pid: 100, startMarker: "bridge-start")));
@@ -90,9 +94,9 @@ void main() {
         ],
         equals(<String>["mutex.acquire", "singleton.check", "opencode.start"]),
       );
-      expect(runtime.serverUrl, equals("http://127.0.0.1:50123"));
-      expect(runtime.port, equals(50123));
-      expect(runtime.ownedOpenCodeRecord, isNotNull);
+      expect(plugin.serverUrl, equals("http://127.0.0.1:50123"));
+      expect(plugin.port, equals(50123));
+      expect(plugin.describe().details["mode"], equals("managed"));
       expect(ownershipRepository.readOwnerSessionIds, equals(<String>["owner-session"]));
     });
 
@@ -104,15 +108,7 @@ void main() {
       );
 
       await expectLater(
-        resolveServer(
-          options: _options(port: 4096, noAutoStart: false),
-          currentBridgeIdentity: currentBridgeIdentity,
-          ownerSessionId: "owner-session",
-          startupMutexRepository: startupMutexRepository,
-          ownershipRepository: ownershipRepository,
-          bridgeInstanceService: bridgeInstanceService,
-          openCodeServerService: openCodeServerService,
-        ),
+        startPlugin(pluginConfig: _config(port: 4096, noAutoStart: false)),
         throwsA(
           isA<BridgeRuntimeServerException>().having(
             (error) => error.message,
@@ -134,15 +130,7 @@ void main() {
       );
 
       await expectLater(
-        resolveServer(
-          options: _options(port: 4096, noAutoStart: false),
-          currentBridgeIdentity: currentBridgeIdentity,
-          ownerSessionId: "owner-session",
-          startupMutexRepository: startupMutexRepository,
-          ownershipRepository: ownershipRepository,
-          bridgeInstanceService: bridgeInstanceService,
-          openCodeServerService: openCodeServerService,
-        ),
+        startPlugin(pluginConfig: _config(port: 4096, noAutoStart: false)),
         throwsA(
           isA<BridgeRuntimeServerException>().having(
             (error) => error.message,
@@ -162,15 +150,7 @@ void main() {
       bridgeInstanceService.startupLockStatus = BridgeInstanceResolutionStatus.declined;
 
       await expectLater(
-        resolveServer(
-          options: _options(port: null, noAutoStart: false),
-          currentBridgeIdentity: currentBridgeIdentity,
-          ownerSessionId: "owner-session",
-          startupMutexRepository: startupMutexRepository,
-          ownershipRepository: ownershipRepository,
-          bridgeInstanceService: bridgeInstanceService,
-          openCodeServerService: openCodeServerService,
-        ),
+        startPlugin(pluginConfig: _config(port: null, noAutoStart: false)),
         throwsA(
           isA<BridgeRuntimeServerException>().having(
             (error) => error.message,
@@ -194,15 +174,7 @@ void main() {
       );
 
       await expectLater(
-        resolveServer(
-          options: _options(port: null, noAutoStart: false),
-          currentBridgeIdentity: currentBridgeIdentity,
-          ownerSessionId: "owner-session",
-          startupMutexRepository: startupMutexRepository,
-          ownershipRepository: ownershipRepository,
-          bridgeInstanceService: bridgeInstanceService,
-          openCodeServerService: openCodeServerService,
-        ),
+        startPlugin(pluginConfig: _config(port: null, noAutoStart: false)),
         throwsA(
           isA<BridgeRuntimeServerException>().having(
             (error) => error.message,
@@ -220,17 +192,9 @@ void main() {
       startupMutexRepository.rejection = _startupLockRejection();
       bridgeInstanceService.startupLockStatus = BridgeInstanceResolutionStatus.allowed;
 
-      final runtime = await resolveServer(
-        options: _options(port: null, noAutoStart: false),
-        currentBridgeIdentity: currentBridgeIdentity,
-        ownerSessionId: "owner-session",
-        startupMutexRepository: startupMutexRepository,
-        ownershipRepository: ownershipRepository,
-        bridgeInstanceService: bridgeInstanceService,
-        openCodeServerService: openCodeServerService,
-      );
+      final plugin = await startPlugin(pluginConfig: _config(port: null, noAutoStart: false));
 
-      expect(runtime.port, equals(50123));
+      expect(plugin.port, equals(50123));
       expect(startupMutexRepository.lockRequests, hasLength(2));
       expect(bridgeInstanceService.startupLockContentionCalls.single.lock.bridgePid, equals(201));
       expect(bridgeInstanceService.currentPids, equals(<int>[100]));
@@ -242,15 +206,7 @@ void main() {
       bridgeInstanceService.startupLockStatus = BridgeInstanceResolutionStatus.declined;
 
       await expectLater(
-        resolveServer(
-          options: _options(port: null, noAutoStart: false),
-          currentBridgeIdentity: currentBridgeIdentity,
-          ownerSessionId: "owner-session",
-          startupMutexRepository: startupMutexRepository,
-          ownershipRepository: ownershipRepository,
-          bridgeInstanceService: bridgeInstanceService,
-          openCodeServerService: openCodeServerService,
-        ),
+        startPlugin(pluginConfig: _config(port: null, noAutoStart: false)),
         throwsA(
           isA<BridgeRuntimeServerException>().having(
             (error) => error.message,
@@ -267,15 +223,7 @@ void main() {
       bridgeInstanceService.startupLockStatus = BridgeInstanceResolutionStatus.nonInteractive;
 
       await expectLater(
-        resolveServer(
-          options: _options(port: null, noAutoStart: false),
-          currentBridgeIdentity: currentBridgeIdentity,
-          ownerSessionId: "owner-session",
-          startupMutexRepository: startupMutexRepository,
-          ownershipRepository: ownershipRepository,
-          bridgeInstanceService: bridgeInstanceService,
-          openCodeServerService: openCodeServerService,
-        ),
+        startPlugin(pluginConfig: _config(port: null, noAutoStart: false)),
         throwsA(
           isA<BridgeRuntimeServerException>().having(
             (error) => error.message,
@@ -292,15 +240,7 @@ void main() {
       bridgeInstanceService.startupLockStatus = BridgeInstanceResolutionStatus.allowed;
 
       await expectLater(
-        resolveServer(
-          options: _options(port: null, noAutoStart: false),
-          currentBridgeIdentity: currentBridgeIdentity,
-          ownerSessionId: "owner-session",
-          startupMutexRepository: startupMutexRepository,
-          ownershipRepository: ownershipRepository,
-          bridgeInstanceService: bridgeInstanceService,
-          openCodeServerService: openCodeServerService,
-        ),
+        startPlugin(pluginConfig: _config(port: null, noAutoStart: false)),
         throwsA(
           isA<BridgeRuntimeServerException>().having(
             (error) => error.message,
@@ -327,39 +267,30 @@ void main() {
         identity: null,
       );
 
-      final runtime = await resolveServer(
-        options: _options(port: 4096, noAutoStart: true, password: "existing-password"),
-        currentBridgeIdentity: currentBridgeIdentity,
-        ownerSessionId: "owner-session",
-        startupMutexRepository: startupMutexRepository,
-        ownershipRepository: ownershipRepository,
-        bridgeInstanceService: bridgeInstanceService,
-        openCodeServerService: openCodeServerService,
+      final plugin = await startPlugin(
+        pluginConfig: _config(port: 4096, noAutoStart: true, password: "existing-password"),
       );
 
       expect(openCodeServerService.startCalls, isEmpty);
       expect(openCodeServerService.validateCalls.single, equals((port: 4096, password: "existing-password")));
-      expect(runtime.ownedOpenCodeRecord, isNull);
+      expect(plugin.describe().details["mode"], equals("attached"));
       expect(ownershipRepository.readOwnerSessionIds, isEmpty);
     });
   });
 }
 
-BridgeCliOptions _options({
+PluginConfig _config({
   required int? port,
   required bool noAutoStart,
   String password = "",
 }) {
-  return BridgeCliOptions(
-    cliArgs: const <String>["bridge"],
-    relayUrl: "wss://relay.sesori.com",
-    port: port,
-    noAutoStart: noAutoStart,
-    password: password,
-    opencodeBin: "opencode",
-    authBackendUrl: "https://api.sesori.com",
-    debugPort: null,
-    logLevelName: "info",
+  return PluginConfig(
+    values: <String, Object?>{
+      "port": port?.toString(),
+      "no-auto-start": noAutoStart,
+      "password": password,
+      "opencode-bin": "opencode",
+    },
   );
 }
 
@@ -402,6 +333,21 @@ StartupLockRejection _startupLockRejection({String lockFilePath = "/tmp/bridge-s
     ),
     lockFilePath: lockFilePath,
   );
+}
+
+/// Never invoked in these tests: the host's process service is constructed
+/// but the fake OpenCode service short-circuits before any process work.
+class _FakeProcessRepository implements ProcessRepository {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakePluginApi implements BridgePluginApi {
+  @override
+  Future<void> dispose() async {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakeStartupMutexRepository implements StartupMutexRepository {

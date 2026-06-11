@@ -505,6 +505,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListRunning => 'Running';
 
   @override
+  String get sessionListRunningRetrying => 'Running (retrying)';
+
+  @override
   String get sessionListAwaitingInput => 'Awaiting input';
 
   @override

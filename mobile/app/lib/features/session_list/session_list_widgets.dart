@@ -6,6 +6,7 @@ class _SessionTile extends StatelessWidget {
   final bool isArchived;
   final bool isActive;
   final bool awaitingInput;
+  final bool isRetrying;
   final int backgroundTaskCount;
   final VoidCallback onLongPress;
   final VoidCallback onSwipe;
@@ -16,6 +17,7 @@ class _SessionTile extends StatelessWidget {
     required this.isArchived,
     required this.isActive,
     this.awaitingInput = false,
+    this.isRetrying = false,
     this.backgroundTaskCount = 0,
     required this.onLongPress,
     required this.onSwipe,
@@ -77,6 +79,7 @@ class _SessionTile extends StatelessWidget {
                 context: context,
                 loc: loc,
                 awaitingInput: awaitingInput,
+                isRetrying: isRetrying,
                 backgroundTaskCount: backgroundTaskCount,
               ),
           ],
@@ -103,10 +106,19 @@ Widget _buildActivityRow({
   required BuildContext context,
   required AppLocalizations loc,
   required bool awaitingInput,
+  required bool isRetrying,
   required int backgroundTaskCount,
 }) {
-  final color = awaitingInput ? kStatusAmber : context.zyra.colors.bgBrandSolid;
-  final label = awaitingInput ? loc.sessionListAwaitingInput : loc.sessionListRunning;
+  final color = switch ((awaitingInput, isRetrying)) {
+    (true, _) => kStatusAmber,
+    (_, true) => context.zyra.colors.fgErrorPrimary,
+    _ => context.zyra.colors.bgBrandSolid,
+  };
+  final label = switch ((awaitingInput, isRetrying)) {
+    (true, _) => loc.sessionListAwaitingInput,
+    (_, true) => loc.sessionListRunningRetrying,
+    _ => loc.sessionListRunning,
+  };
 
   return Row(
     children: [

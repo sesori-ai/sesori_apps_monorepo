@@ -12,5 +12,6 @@ Map<String, dynamic> _$PluginActiveSessionToJson(
   'id': instance.id,
   'mainAgentRunning': instance.mainAgentRunning,
   'awaitingInput': instance.awaitingInput,
+  'isRetrying': instance.isRetrying,
   'childSessionIds': instance.childSessionIds,
 };

@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:args/args.dart' show ArgParserException;
 import 'package:args/command_runner.dart' as cli;
 import 'package:http/http.dart' as http;
-import 'package:opencode_plugin/opencode_plugin.dart';
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
 import 'package:sesori_bridge/src/api/default_editor_api.dart';
 import 'package:sesori_bridge/src/api/wake_lock_client.dart';
@@ -18,6 +17,8 @@ import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_dispatch.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_logout_runner.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart';
+import 'package:sesori_bridge/src/bridge/runtime/legacy_opencode_descriptor.dart';
+import 'package:sesori_bridge/src/bridge/runtime/plugin_cli_binding.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
 import 'package:sesori_bridge/src/repositories/default_editor_repository.dart';
 import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
@@ -30,17 +31,11 @@ import 'package:sesori_bridge/src/server/services/bridge_instance_service.dart';
 import 'package:sesori_bridge/src/services/bridge_config_service.dart';
 import 'package:sesori_bridge/src/services/sleep_prevention_service.dart';
 import 'package:sesori_bridge/src/version.dart';
-import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log, LogLevel, ProcessUser, ServerClock;
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart'
+    show Log, LogLevel, PluginConfig, PluginConfigException, ProcessUser, ServerClock;
 
 const String _defaultRelayURL = 'wss://relay.sesori.com';
 const String _defaultAuthURL = 'https://api.sesori.com';
-
-OpenCodePlugin _createOpenCodePlugin({
-  required String serverUrl,
-  required String? serverPassword,
-}) {
-  return OpenCodePlugin(serverUrl: serverUrl, password: serverPassword);
-}
 
 class RunCommand extends cli.Command<void> {
   @override
@@ -56,26 +51,11 @@ class RunCommand extends cli.Command<void> {
         negatable: false,
         help: 'Show version and exit',
       )
-      ..addOption('relay', defaultsTo: _defaultRelayURL, help: 'Relay server URL')
-      ..addOption(
-        'port',
-        help: 'Port for opencode server to listen on',
-      )
-      ..addFlag(
-        'no-auto-start',
-        defaultsTo: false,
-        help: 'Skip auto-starting opencode server (use existing localhost server)',
-      )
-      ..addOption(
-        'password',
-        defaultsTo: '',
-        help: 'Override server password (auto-generated if not set)',
-      )
-      ..addOption(
-        'opencode-bin',
-        defaultsTo: 'opencode',
-        help: 'Path to opencode binary',
-      )
+      ..addOption('relay', defaultsTo: _defaultRelayURL, help: 'Relay server URL');
+    // The selected plugin contributes its own CLI options (the four OpenCode
+    // flags, with their historical names, help text, and defaults).
+    registerPluginOptions(parser: argParser, options: LegacyOpenCodeDescriptor.cliOptions);
+    argParser
       ..addOption('auth-backend', defaultsTo: '', help: 'Auth backend URL')
       ..addOption(
         'debug-port',
@@ -100,7 +80,13 @@ class RunCommand extends cli.Command<void> {
     }
 
     final BridgeCliOptions options;
+    final PluginConfig pluginConfig;
     try {
+      // Plugin option validate hooks and config validation run at
+      // argument-parse time — strictly before the startup mutex, so a typo'd
+      // flag can never terminate a healthy resident bridge.
+      pluginConfig = parsePluginConfig(options: LegacyOpenCodeDescriptor.cliOptions, results: results);
+      LegacyOpenCodeDescriptor.validateConfigValues(pluginConfig);
       options = BridgeCliOptions.fromArgResults(
         cliArgs: globalResults!.arguments,
         results: results,
@@ -108,6 +94,8 @@ class RunCommand extends cli.Command<void> {
         defaultAuthUrl: _defaultAuthURL,
       );
     } on ArgParserException catch (e) {
+      usageException(e.message);
+    } on PluginConfigException catch (e) {
       usageException(e.message);
     }
     Log.level = LogLevel.values.byName(options.logLevelName);
@@ -133,7 +121,7 @@ class RunCommand extends cli.Command<void> {
 
     final exitCode = await runBridgeApp(
       options: options,
-      pluginFactory: _createOpenCodePlugin,
+      pluginConfig: pluginConfig,
     );
     await sleepPreventionService.dispose();
     exit(exitCode);
