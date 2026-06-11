@@ -1,5 +1,9 @@
+import "dart:async";
+
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart" show CommandPickerEntry, CommandPickerEntryBuilder, loge;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_zyra/module_zyra.dart";
 
@@ -26,13 +30,16 @@ class CommandPickerSheet extends StatefulWidget {
       builder: (sheetContext) {
         final height = MediaQuery.sizeOf(sheetContext).height * 0.7;
         final zyra = sheetContext.zyra;
-        return Container(
-          height: height,
-          decoration: BoxDecoration(
-            color: zyra.colors.bgPrimary,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        // Material (not a decorated Container) so the ListTiles inside can
+        // paint their ink effects on the sheet surface.
+        return Material(
+          color: zyra.colors.bgPrimary,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+          clipBehavior: Clip.antiAlias,
+          child: SizedBox(
+            height: height,
+            child: CommandPickerSheet(commands: commands),
           ),
-          child: CommandPickerSheet(commands: commands),
         );
       },
     );
@@ -45,16 +52,49 @@ class CommandPickerSheet extends StatefulWidget {
 class _CommandPickerSheetState extends State<CommandPickerSheet> {
   String _query = "";
 
-  List<CommandInfo> get _filteredCommands {
-    final sorted = [...widget.commands]..sort((a, b) => a.name.compareTo(b.name));
+  /// Precomputed picker entries; `null` while the background isolate is
+  /// still preparing them.
+  List<CommandPickerEntry>? _entries;
+
+  /// Entries matching [_query]. Cached so unrelated rebuilds don't re-run
+  /// the filter pass; only recomputed when the entries arrive or the query
+  /// changes. `null` while the entries are still loading.
+  List<CommandPickerEntry>? _filtered;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadEntries());
+  }
+
+  Future<void> _loadEntries() async {
+    List<CommandPickerEntry> entries;
+    try {
+      entries = await compute(_buildEntries, widget.commands);
+    } catch (error, stackTrace) {
+      // Fail soft: show the empty state rather than leaving the sheet stuck
+      // on the spinner with an uncaught async error.
+      loge("Command picker entry build failed", error, stackTrace);
+      entries = const [];
+    }
+    if (!mounted) return;
+    setState(() {
+      _entries = entries;
+      _filtered = _filteredEntries(entries);
+    });
+  }
+
+  /// Entry point for compute() — must be top-level or static.
+  static List<CommandPickerEntry> _buildEntries(List<CommandInfo> commands) =>
+      const CommandPickerEntryBuilder().build(commands: commands);
+
+  /// Cheap single `contains` pass over precomputed lowercase haystacks —
+  /// the sorting and display-string preparation already happened in the
+  /// background isolate.
+  List<CommandPickerEntry> _filteredEntries(List<CommandPickerEntry> entries) {
     final query = _query.trim().toLowerCase();
-    if (query.isEmpty) return sorted;
-    return sorted.where((command) {
-      final hintsText = (command.hints ?? []).join(" ").toLowerCase();
-      return command.name.toLowerCase().contains(query) ||
-          (command.description?.toLowerCase().contains(query) ?? false) ||
-          hintsText.contains(query);
-    }).toList();
+    if (query.isEmpty) return entries;
+    return entries.where((entry) => entry.searchText.contains(query)).toList();
   }
 
   String _sourceLabel(CommandSource? source, {required AppLocalizations loc}) => switch (source) {
@@ -68,7 +108,6 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
   Widget build(BuildContext context) {
     final zyra = context.zyra;
     final loc = context.loc;
-    final commands = _filteredCommands;
 
     return Column(
       children: [
@@ -105,13 +144,18 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
               filled: true,
               fillColor: zyra.colors.bgPrimary,
             ),
-            onChanged: (value) => setState(() => _query = value),
+            onChanged: (value) => setState(() {
+              _query = value;
+              final entries = _entries;
+              if (entries != null) _filtered = _filteredEntries(entries);
+            }),
           ),
         ),
         const SizedBox(height: 8),
         Expanded(
-          child: switch (commands.isEmpty) {
-            true => Center(
+          child: switch (_filtered) {
+            null => const Center(child: CircularProgressIndicator()),
+            final filtered when filtered.isEmpty => Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Text(
@@ -123,30 +167,30 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
                 ),
               ),
             ),
-            false => ListView.separated(
+            final filtered => ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              itemCount: commands.length,
+              itemCount: filtered.length,
               separatorBuilder: (_, _) => Divider(
                 height: 1,
                 color: zyra.colors.borderPrimary,
               ),
               itemBuilder: (context, index) {
-                final command = commands[index];
-                final description = command.description?.trim();
-                final hints = (command.hints ?? []).where((hint) => hint.trim().isNotEmpty).join("  •  ");
+                final entry = filtered[index];
+                final description = entry.displayDescription;
+                final hints = entry.displayHints;
                 return ListTile(
-                  title: Text("/${command.name}"),
+                  title: Text("/${entry.command.name}"),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (description != null && description.isNotEmpty)
+                      if (description != null)
                         Text(
                           description,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                      if (hints.isNotEmpty)
+                      if (hints != null)
                         Padding(
                           padding: const EdgeInsetsDirectional.only(top: 4),
                           child: Text(
@@ -167,14 +211,14 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      _sourceLabel(command.source, loc: loc),
+                      _sourceLabel(entry.command.source, loc: loc),
                       style: zyra.textTheme.textXs.medium.copyWith(
                         color: zyra.colors.textBrandPrimary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
-                  onTap: () => context.pop(command),
+                  onTap: () => context.pop(entry.command),
                 );
               },
             ),
