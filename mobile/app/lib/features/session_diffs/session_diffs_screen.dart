@@ -232,27 +232,53 @@ class _SessionDiffsBodyState extends State<_SessionDiffsBody> {
     } else {
       expanded.add(fileIndex);
     }
+    // Check whether the collapsed file's header is currently pinned at the
+    // top of the viewport BEFORE triggering the rebuild. After the body
+    // shrinks, the layout shifts and a later header can take over the
+    // pinned slot, so the post-collapse check would lie.
+    final headerKey = _headerKeys[fileIndex];
+    final wasPinnedAtTop = wasExpanded && headerKey != null && _isHeaderPinnedAtTop(headerKey);
     setState(() => _expandedFileIndices = expanded);
-    if (wasExpanded) {
+    if (wasExpanded && wasPinnedAtTop) {
       // After the sliver rebuilds with file `fileIndex` collapsed (body
-      // shrunk to zero), jump the viewport so the next file's header sits
-      // at the top — otherwise the user lands several files down for large
-      // collapsed files.
-      _scheduleScrollToNext(collapsedIndex: fileIndex, totalFiles: viewModels.length);
+      // shrunk to zero), realign the viewport so the collapsed header stays
+      // at the top and the next file becomes visible just below it.
+      _scheduleScrollCompensation(collapsedIndex: fileIndex);
     }
   }
 
-  /// Schedules a post-frame jump so the header at `collapsedIndex + 1` is
-  /// aligned to the top of the viewport. No-op if the collapsed file is the
-  /// last one (there is no "next file" to anchor to) or the key has not yet
-  /// been attached to a rendered widget.
-  void _scheduleScrollToNext({required int collapsedIndex, required int totalFiles}) {
-    if (collapsedIndex + 1 >= totalFiles) return;
-    final nextKey = _headerKeys[collapsedIndex + 1];
-    if (nextKey == null) return;
+  /// Returns true if the header identified by [headerKey] is currently
+  /// painted at the top of its enclosing scroll viewport. This is true both
+  /// for headers at their natural position (e.g. the first file with no
+  /// scroll) and for headers held there by a pinned
+  /// [SliverPersistentHeader]. It is false for headers scrolled past the
+  /// top — even if those headers would be pinned in isolation, a later
+  /// pinned header has already taken over the pinned slot.
+  bool _isHeaderPinnedAtTop(GlobalKey headerKey) {
+    final headerContext = headerKey.currentContext;
+    if (headerContext == null) return false;
+    final headerBox = headerContext.findRenderObject();
+    if (headerBox is! RenderBox) return false;
+    final scrollable = Scrollable.maybeOf(headerContext);
+    if (scrollable == null) return false;
+    final scrollableBox = scrollable.context.findRenderObject();
+    if (scrollableBox is! RenderBox) return false;
+    final headerTop = headerBox.localToGlobal(Offset.zero).dy;
+    final scrollableTop = scrollableBox.localToGlobal(Offset.zero).dy;
+    return (headerTop - scrollableTop).abs() < 1.0;
+  }
+
+  /// Schedules a post-frame adjustment that realigns the viewport so the
+  /// collapsed file's own header stays at the top, with the next file
+  /// visible just below it. The caller must have already verified (before
+  /// the rebuild) that the header was pinned at the top — we cannot
+  /// re-check after the collapse because the layout has shifted.
+  void _scheduleScrollCompensation({required int collapsedIndex}) {
+    final currentKey = _headerKeys[collapsedIndex];
+    if (currentKey == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final context = nextKey.currentContext;
+      final context = currentKey.currentContext;
       if (context == null) return;
       Scrollable.ensureVisible(context, alignment: 0.0, duration: Duration.zero);
     });
