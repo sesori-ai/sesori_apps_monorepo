@@ -21,6 +21,3 @@ class SignalResult {
   final bool wasRequested;
   final DateTime attemptedAt;
 }
-
-/// Historical name of [SignalResult]; prefer the new name in new code.
-typedef ShutdownResult = SignalResult;

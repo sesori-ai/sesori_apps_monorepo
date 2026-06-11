@@ -2,17 +2,14 @@ import "dart:async";
 import "dart:convert";
 import "dart:io";
 
-import "package:sesori_bridge/src/server/foundation/process_identity.dart";
 import "package:sesori_bridge/src/server/foundation/process_match.dart";
-import "package:sesori_bridge/src/server/foundation/process_user.dart";
-import "package:sesori_bridge/src/server/foundation/server_clock.dart";
-import "package:sesori_bridge/src/server/foundation/shutdown_result.dart";
 import "package:sesori_bridge/src/server/models/open_code_ownership_record.dart";
 import "package:sesori_bridge/src/server/repositories/open_code_ownership_repository.dart";
 import "package:sesori_bridge/src/server/repositories/open_code_process_repository.dart";
 import "package:sesori_bridge/src/server/repositories/port_repository.dart";
 import "package:sesori_bridge/src/server/repositories/process_repository.dart";
 import "package:sesori_bridge/src/server/services/open_code_server_service.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -1088,21 +1085,21 @@ class _FakeProcessRepository implements ProcessRepository {
   }
 
   @override
-  Future<ShutdownResult> sendForceSignal({required int pid}) async {
+  Future<SignalResult> sendForceSignal({required int pid}) async {
     signalRequests.add("force:$pid");
     forceHooks[pid]?.call();
     return _shutdown(pid: pid, signal: ShutdownSignal.force);
   }
 
   @override
-  Future<ShutdownResult> sendGracefulSignal({required int pid}) async {
+  Future<SignalResult> sendGracefulSignal({required int pid}) async {
     signalRequests.add("graceful:$pid");
     gracefulHooks[pid]?.call();
     return _shutdown(pid: pid, signal: ShutdownSignal.graceful);
   }
 
-  ShutdownResult _shutdown({required int pid, required ShutdownSignal signal}) {
-    return ShutdownResult(
+  SignalResult _shutdown({required int pid, required ShutdownSignal signal}) {
+    return SignalResult(
       pid: pid,
       requestedSignal: signal,
       deliveredSignal: signal == .graceful ? .sigterm : .sigkill,

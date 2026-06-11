@@ -21,16 +21,5 @@ void main() {
       expect(result.wasRequested, isTrue);
       expect(result.attemptedAt, attemptedAt);
     });
-
-    test('ShutdownResult remains usable as an alias during the migration', () {
-      final ShutdownResult result = SignalResult(
-        pid: 7,
-        requestedSignal: ShutdownSignal.force,
-        deliveredSignal: ProcessSignal.sigkill,
-        wasRequested: false,
-        attemptedAt: DateTime.utc(2026, 6, 10),
-      );
-      expect(result, isA<SignalResult>());
-    });
   });
 }

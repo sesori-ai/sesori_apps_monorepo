@@ -155,7 +155,7 @@
   <tr><td>11</td><td>OpenCode plugin absorbs its lifecycle (dormant)</td><td><span class="pill pkg">opencode</span></td><td>~1,400–1,900</td><td><span class="pill s">low</span></td></tr>
   <tr><td>12</td><td>Flip to the real descriptor; new policies activate</td><td><span class="pill pkg">app</span> <span class="pill pkg">opencode</span></td><td>~700–1,000</td><td><span class="pill l">high</span></td></tr>
   <tr><td>13</td><td>Deletion sweep 1: legacy source files</td><td><span class="pill pkg">app</span></td><td>~1,700 (pure del)</td><td><span class="pill s">low</span></td></tr>
-  <tr><td>14</td><td>Deletion sweep 2: legacy tests + PR 1 shims</td><td><span class="pill pkg">app</span></td><td>~2,000 (pure del)</td><td><span class="pill s">low</span></td></tr>
+  <tr><td>14</td><td>Deletion sweep 2: legacy tests</td><td><span class="pill pkg">app</span></td><td>~2,000 (pure del)</td><td><span class="pill s">low</span></td></tr>
   <tr><td>15</td><td>Docs sweep</td><td><span class="pill pkg">docs</span></td><td>~400–700</td><td><span class="pill s">low</span></td></tr>
 </table>
 <p class="meta" style="margin-top:4px">Packages: <b>interface</b> = <code>bridge/sesori_plugin_interface</code> · <b>app</b> = <code>bridge/app</code> · <b>opencode</b> = <code>bridge/sesori_plugin_opencode</code> (pub name <code>opencode_plugin</code>) · <b>runtime</b> = new <code>bridge/sesori_plugin_runtime</code></p>
@@ -171,10 +171,10 @@
   <li>Add <code>PluginOperationException</code> base (<code>operation</code>, optional <code>statusCode</code>/<code>message</code>/<code>cause</code>) in <code>sesori_plugin_interface</code>; make <code>PluginApiException</code> extend it — all existing throw sites compile unchanged.</li>
   <li>Migrate the four catch sites to <code>on PluginOperationException</code> mapping <code>statusCode ?? 502</code>: <code>request_handler.dart:53,112</code>, <code>request_router.dart:169</code>, and <code>delete_session_handler.dart:82</code> (replace the literal <code>404</code> check with a statusCode-aware not-found predicate so delete-idempotency survives non-HTTP plugins). Router test: a statusCode-less <code>PluginOperationException</code> maps to 502, not 500.</li>
   <li>Delete dead <code>server/process.dart</code> (zero importers, verified) and the never-consumed <code>ProcessMatchKind.openCodeServe</code> enum value + its classifier branch (<code>process_repository.dart:83</code>).</li>
-  <li>Move <code>ProcessIdentity</code>, <code>ProcessUser</code>, <code>ServerClock</code>, and <code>ShutdownResult</code> (renamed <code>SignalResult</code>, old name aliased) from <code>bridge/app/lib/src/server/foundation/</code> into <code>sesori_plugin_interface</code>. <b>Note:</b> <code>ShutdownResult</code> moves <i>as-is including its <code>dart:io ProcessSignal</code> field</i> — the interface package already uses <code>dart:io</code> (<code>log.dart</code>) and is CLI-only, so this is accepted rather than churning every construct/read site.</li>
-  <li>Old paths become one-line <code>export</code> shims so existing imports stay untouched (shims removed in PR 14). Move <code>process_identity_test.dart</code> alongside (it is the only existing foundation test; add small new tests for <code>ProcessUser</code>/<code>SignalResult</code>).</li>
+  <li>Move <code>ProcessIdentity</code>, <code>ProcessUser</code>, <code>ServerClock</code>, and <code>SignalResult</code> (renamed from <code>ShutdownResult</code>; the old name is removed outright, per review) from <code>bridge/app/lib/src/server/foundation/</code> into <code>sesori_plugin_interface</code>. <b>Note:</b> <code>SignalResult</code> moves <i>as-is including its <code>dart:io ProcessSignal</code> field</i> — the interface package already uses <code>dart:io</code> (<code>log.dart</code>) and is CLI-only, so this is accepted rather than churning every construct/read site.</li>
+  <li>All importers flip to the interface package in this PR (per review, instead of leaving re-export shims at the old paths until PR 14). Move <code>process_identity_test.dart</code> alongside (it is the only existing foundation test; add small new tests for <code>ProcessUser</code>/<code>SignalResult</code>).</li>
 </ul>
-<div class="safe"><b>Why always-green:</b> subtype relationship keeps every existing throw/catch behavior identical for HTTP errors; deleted code has no references; re-export shims mean no import churn. Behavior delta: zero.</div>
+<div class="safe"><b>Why always-green:</b> subtype relationship keeps every existing throw/catch behavior identical for HTTP errors; deleted code has no references; import flips are mechanical and analyzer-enforced. Behavior delta: zero.</div>
 </div>
 
 <div class="card pr">
@@ -332,12 +332,12 @@
 </div>
 
 <div class="card pr">
-<h3><span class="prnum">PR 14</span> Deletion sweep 2 — legacy tests + shims</h3>
+<h3><span class="prnum">PR 14</span> Deletion sweep 2 — legacy tests</h3>
 <ul>
   <li>Delete <code>open_code_server_service_test.dart</code> (1,224 — its scenarios live on in <code>sesori_plugin_runtime</code> since PRs 7–9), <code>open_code_process_repository_test.dart</code> (134), <code>open_code_ownership_repository_test.dart</code> (224), <code>bridge_runtime_server_test.dart</code> (389, built around <code>_FakeOpenCodeServerService</code>).</li>
-  <li>Remove the PR 1 re-export shims and flip remaining imports to the interface package (mechanical).</li>
+  <li>(The PR 1 re-export shims were removed in PR 1 itself, per review — nothing left to sweep here.)</li>
 </ul>
-<div class="safe"><b>Why always-green:</b> test-only deletions + mechanical import flips. ~2,000 lines but zero-risk by construction.</div>
+<div class="safe"><b>Why always-green:</b> test-only deletions. ~2,000 lines but zero-risk by construction.</div>
 </div>
 
 <div class="card pr">

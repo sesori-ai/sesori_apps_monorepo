@@ -1,4 +1,4 @@
-import "process_identity.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 enum ProcessMatchKind { sesoriBridge, unknown }
 

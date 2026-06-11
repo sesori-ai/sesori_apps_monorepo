@@ -4,12 +4,10 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:sesori_bridge/src/server/api/runtime_file_api.dart';
-import 'package:sesori_bridge/src/server/foundation/process_identity.dart';
 import 'package:sesori_bridge/src/server/foundation/process_match.dart';
-import 'package:sesori_bridge/src/server/foundation/process_user.dart';
-import 'package:sesori_bridge/src/server/foundation/shutdown_result.dart';
 import 'package:sesori_bridge/src/server/repositories/process_repository.dart';
 import 'package:sesori_bridge/src/server/repositories/startup_mutex_repository.dart';
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -278,12 +276,12 @@ class _FakeProcessRepository implements ProcessRepository {
   }
 
   @override
-  Future<ShutdownResult> sendGracefulSignal({required int pid}) {
+  Future<SignalResult> sendGracefulSignal({required int pid}) {
     throw UnimplementedError();
   }
 
   @override
-  Future<ShutdownResult> sendForceSignal({required int pid}) {
+  Future<SignalResult> sendForceSignal({required int pid}) {
     throw UnimplementedError();
   }
 }
