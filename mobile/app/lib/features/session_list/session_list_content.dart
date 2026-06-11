@@ -1,6 +1,5 @@
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
-import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_zyra/module_zyra.dart";
@@ -8,6 +7,7 @@ import "package:theme_zyra/module_zyra.dart";
 import "../../core/constants.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/extensions/remote_failure_x.dart";
+import "../../core/routing/app_router.dart";
 import "../../l10n/app_localizations.dart";
 import "session_tile.dart";
 
@@ -78,7 +78,7 @@ class SessionListContent extends StatelessWidget {
           ),
         ],
       ),
-      SessionListStaleProject() => _StaleProjectView(onBack: () => context.pop()),
+      SessionListStaleProject() => _StaleProjectView(onBack: () => _exitSessionShell(context)),
       SessionListFailed(:final reason) => _ErrorView(
         reason: reason,
         onRetry: () => context.read<SessionListCubit>().retryLoadSessions(),
@@ -96,6 +96,19 @@ class SessionListContent extends StatelessWidget {
         duration: kSnackBarDuration,
       ),
     );
+  }
+
+  void _exitSessionShell(BuildContext context) {
+    // Stale-project UI can render in the left split pane; pop the root stack
+    // so the whole shell exits instead of only the pane navigator. Cold-start
+    // shells have no root ancestor, so fall back to the projects route.
+    // ignore: no_slop_linter/avoid_navigator_of, root navigator pop is required to exit the split shell from left-pane stale state
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
+    if (rootNavigator.canPop()) {
+      rootNavigator.pop();
+    } else {
+      context.goRoute(const AppRoute.projects());
+    }
   }
 }
 

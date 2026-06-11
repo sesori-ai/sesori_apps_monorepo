@@ -17,6 +17,7 @@ import "../../features/settings/settings_screen.dart";
 import "../../features/splash/splash_screen.dart";
 import "../extensions/build_context_x.dart";
 import "../widgets/sesori_logo.dart";
+import "imperative_pane_route.dart";
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _sessionShellNavigatorKey = GlobalKey<NavigatorState>();
@@ -67,8 +68,9 @@ extension AppRouteToGoRoute on AppRouteDef {
         projectId: projectId,
         projectName: projectName,
       ),
-      AppRouteNewSession(:final projectId) => NewSessionScreen(
+      AppRouteNewSession(:final projectId, :final projectName) => NewSessionScreen(
         projectId: projectId,
+        projectName: projectName,
       ),
       AppRouteSessionDetail(
         :final projectId,
@@ -98,6 +100,7 @@ Page<void> buildSessionPaneTransitionPage({
   required Widget child,
 }) {
   final duration = context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220);
+  final isImperative = isImperativePaneState(context: context, state: state);
   return CustomTransitionPage<void>(
     key: state.pageKey,
     transitionDuration: duration,
@@ -122,7 +125,7 @@ Page<void> buildSessionPaneTransitionPage({
         child,
       );
     },
-    child: child,
+    child: ImperativePaneRouteScope(isImperative: isImperative, child: child),
   );
 }
 
@@ -261,7 +264,7 @@ List<RouteBase> _buildAppRoutes({
                     return buildSessionPaneTransitionPage(
                       context: context,
                       state: state,
-                      child: NewSessionScreen(projectId: route.projectId),
+                      child: NewSessionScreen(projectId: route.projectId, projectName: route.projectName),
                     );
                   },
                 ),
@@ -350,7 +353,7 @@ class _SessionListPane extends StatelessWidget {
         // the nested pane navigator and only pop the right-pane route.
         // ignore: unnecessary_lambdas, Navigator.pop is generic and does not match VoidCallback as a tear-off
         onBack: rootNavigator.canPop() ? () => rootNavigator.pop() : null,
-        onNewSession: () => context.pushRoute(AppRoute.newSession(projectId: projectId)),
+        onNewSession: () => context.pushRoute(AppRoute.newSession(projectId: projectId, projectName: projectName)),
         onSessionTap: (session) {
           context.goRoute(
             AppRoute.sessionDetail(

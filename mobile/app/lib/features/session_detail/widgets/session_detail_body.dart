@@ -9,6 +9,7 @@ import "package:theme_zyra/module_zyra.dart";
 import "../../../core/constants.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/routing/app_router.dart";
+import "../../../core/routing/imperative_pane_route.dart";
 import "../../../core/widgets/agent_picker_sheet.dart";
 import "../../../core/widgets/model_picker_sheet.dart";
 import "../../../core/widgets/session_split/session_split_scope.dart";
@@ -63,6 +64,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
     final loc = context.loc;
     final state = context.watch<SessionDetailCubit>().state;
     final isSplit = SessionSplitScope.maybeOf(context)?.isSplit ?? false;
+    final showLeading = !isSplit || isImperativePaneRoute(context);
     final isBusy = switch (state) {
       SessionDetailLoaded(:final sessionStatus, :final childStatuses) => hasActiveWork(
         sessionStatus: sessionStatus,
@@ -74,7 +76,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
 
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: !isSplit,
+        automaticallyImplyLeading: showLeading,
         title: SessionDetailTitle(
           state: state,
           fallbackTitle: widget.sessionTitle ?? loc.sessionDetailTitle,
@@ -84,7 +86,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
             IconButton(
               icon: const Icon(Icons.difference_outlined),
               tooltip: loc.sessionDetailFileChangesTooltip,
-              onPressed: () => context.goRoute(
+              onPressed: () => context.pushRoute(
                 AppRoute.sessionDiffs(
                   projectId: widget.projectId,
                   projectName: widget.projectName,

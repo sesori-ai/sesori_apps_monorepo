@@ -59,7 +59,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(harness.currentLocation, "/projects/p1/sessions/session-1/diffs");
+    expect(harness.router.state.uri.toString(), "/projects/p1/sessions/session-1/diffs");
     expect(harness.router.canPop(), isTrue);
     expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
     expect(find.byKey(const Key("session-split-right-pane")), findsOneWidget);
@@ -101,8 +101,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey("session-detail-child-1")), findsOneWidget);
+    final rightPane = find.byKey(const Key("session-split-right-pane"));
+    expect(find.descendant(of: rightPane, matching: find.byType(BackButton)), findsOneWidget);
+
+    await tester.tap(find.widgetWithIcon(IconButton, Icons.difference_outlined));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey("session-diffs-child-1")), findsOneWidget);
 
     harness.router.pop();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey("session-detail-child-1")), findsOneWidget);
+
+    await tester.tap(find.descendant(of: rightPane, matching: find.byType(BackButton)));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey("session-detail-parent-1")), findsOneWidget);

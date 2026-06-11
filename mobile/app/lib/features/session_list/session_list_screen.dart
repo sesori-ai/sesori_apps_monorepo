@@ -50,7 +50,7 @@ class _SessionListBody extends StatelessWidget {
     return SessionListScaffold(
       projectName: projectName,
       onNewSession: () {
-        context.pushRoute(AppRoute.newSession(projectId: projectId));
+        context.pushRoute(AppRoute.newSession(projectId: projectId, projectName: projectName));
       },
       onSessionTap: (session) {
         context.goRoute(

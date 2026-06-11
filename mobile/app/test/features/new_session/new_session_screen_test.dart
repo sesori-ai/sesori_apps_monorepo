@@ -35,7 +35,7 @@ Widget _buildApp() {
         routes: [
           GoRoute(
             path: "new",
-            builder: (context, state) => const NewSessionScreen(projectId: "project-1"),
+            builder: (context, state) => const NewSessionScreen(projectId: "project-1", projectName: "Project One"),
           ),
         ],
       ),
@@ -43,8 +43,12 @@ Widget _buildApp() {
         path: "/projects/:projectId/sessions/:sessionId",
         builder: (context, state) {
           return Material(
-            child: Text(
-              "session-detail:${state.pathParameters['sessionId']}",
+            child: Column(
+              children: [
+                Text("session-detail:${state.pathParameters['sessionId']}"),
+                Text("uri:${state.uri}"),
+                Text("canPop=${GoRouter.of(context).canPop()}"),
+              ],
             ),
           );
         },
@@ -373,7 +377,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("session-detail:session-1"), findsOneWidget);
+    expect(
+      find.text("uri:/projects/project-1/sessions/session-1?readOnly=false&name=Project+One&title=Created+session"),
+      findsOneWidget,
+    );
     expect(find.byType(NewSessionScreen), findsNothing);
+    expect(find.byType(TextField), findsNothing);
   });
 
   testWidgets("does not show snackbar when auto-navigating after creating a session", (tester) async {

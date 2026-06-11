@@ -83,14 +83,11 @@ void main() {
       await tester.pumpWidget(
         _buildApp(
           child: Scaffold(
-            body: SessionSplitScope(
-              isSplit: true,
-              child: SubtaskPartWidget(
-                projectId: "project-1",
-                part: _subtaskPart(description: "Child Session"),
-                children: [child],
-                childStatuses: const {},
-              ),
+            body: SubtaskPartWidget(
+              projectId: "project-1",
+              part: _subtaskPart(description: "Child Session"),
+              children: [child],
+              childStatuses: const {},
             ),
           ),
         ),
@@ -111,11 +108,14 @@ void main() {
       await tester.pumpWidget(
         _buildApp(
           child: Scaffold(
-            body: SubtaskPartWidget(
-              projectId: "project-1",
-              part: _subtaskPart(description: "Child Session"),
-              children: [child],
-              childStatuses: const {},
+            body: SessionSplitScope(
+              isSplit: true,
+              child: SubtaskPartWidget(
+                projectId: "project-1",
+                part: _subtaskPart(description: "Child Session"),
+                children: [child],
+                childStatuses: const {},
+              ),
             ),
           ),
         ),
@@ -137,13 +137,10 @@ void main() {
       await tester.pumpWidget(
         _buildApp(
           child: Scaffold(
-            body: SessionSplitScope(
-              isSplit: true,
-              child: BackgroundTasksBar(
-                projectId: "project-1",
-                children: [child],
-                childStatuses: const {},
-              ),
+            body: BackgroundTasksBar(
+              projectId: "project-1",
+              children: [child],
+              childStatuses: const {},
             ),
           ),
         ),
@@ -166,10 +163,13 @@ void main() {
       await tester.pumpWidget(
         _buildApp(
           child: Scaffold(
-            body: BackgroundTasksBar(
-              projectId: "project-1",
-              children: [child],
-              childStatuses: const {},
+            body: SessionSplitScope(
+              isSplit: true,
+              child: BackgroundTasksBar(
+                projectId: "project-1",
+                children: [child],
+                childStatuses: const {},
+              ),
             ),
           ),
         ),

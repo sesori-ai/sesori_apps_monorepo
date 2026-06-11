@@ -5,6 +5,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "package:sesori_mobile/core/platform/go_router_route_dispatcher.dart";
 import "package:sesori_mobile/core/routing/app_router.dart";
+import "package:sesori_mobile/core/routing/imperative_pane_route.dart";
 import "package:sesori_mobile/core/widgets/session_split/session_split_shell.dart";
 import "package:sesori_mobile/features/login/login_screen.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
@@ -101,8 +102,13 @@ void main() {
     });
 
     test("substitutes projectId for newSession", () {
-      final result = const AppRoute.newSession(projectId: "proj-42").buildPath();
+      final result = const AppRoute.newSession(projectId: "proj-42", projectName: null).buildPath();
       expect(result, "/projects/proj-42/sessions/new");
+    });
+
+    test("includes projectName as query param for newSession", () {
+      final result = const AppRoute.newSession(projectId: "proj-42", projectName: "Project One").buildPath();
+      expect(result, "/projects/proj-42/sessions/new?name=Project+One");
     });
   });
 
@@ -135,10 +141,11 @@ void main() {
     test("newSession route builds NewSessionScreen", () {
       final widget = AppRouteDef.newSession.toGoRoute().builder!(
         _FakeBuildContext(),
-        _FakeGoRouterState(pathParameters: {"projectId": "proj-42"}),
+        _FakeGoRouterState(pathParameters: {"projectId": "proj-42"}, queryParameters: {"name": "Project One"}),
       );
       expect(widget, isA<NewSessionScreen>());
       expect((widget as NewSessionScreen).projectId, "proj-42");
+      expect(widget.projectName, "Project One");
     });
   });
 
@@ -223,7 +230,8 @@ void main() {
           queryParameters: {"name": "My Project", "title": "Debug session", "readOnly": "true"},
         ),
       );
-      final widget = (page as CustomTransitionPage<void>).child;
+      final scope = (page as CustomTransitionPage<void>).child as ImperativePaneRouteScope;
+      final widget = scope.child;
 
       expect(widget, isA<SessionDetailScreen>());
       final screen = widget as SessionDetailScreen;
@@ -242,7 +250,8 @@ void main() {
         _FakeBuildContext(),
         _FakeGoRouterState(pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"}),
       );
-      final widget = (page as CustomTransitionPage<void>).child;
+      final scope = (page as CustomTransitionPage<void>).child as ImperativePaneRouteScope;
+      final widget = scope.child;
 
       expect(widget, isA<SessionDiffsScreen>());
       final screen = widget as SessionDiffsScreen;
