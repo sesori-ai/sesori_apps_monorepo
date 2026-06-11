@@ -1,6 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.206087Z
 
 import 'package:meta/meta.dart';
 import 'policy_effect.dart';
@@ -20,7 +19,6 @@ class ConfigV2ExperimentalPolicy {
       resource: json["resource"] as String,
     );
   }
-
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{

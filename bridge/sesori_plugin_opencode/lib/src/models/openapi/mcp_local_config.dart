@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.230538Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
 @immutable
@@ -24,7 +24,6 @@ class McpLocalConfig {
     );
   }
 
-
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "type": type,
@@ -40,13 +39,13 @@ class McpLocalConfig {
       identical(this, other) ||
       (other is McpLocalConfig &&
           other.type == type &&
-          other.command == command &&
-          other.environment == environment &&
+          const DeepCollectionEquality().equals(other.command, command) &&
+          const DeepCollectionEquality().equals(other.environment, environment) &&
           other.enabled == enabled &&
           other.timeout == timeout);
 
   @override
-  int get hashCode => Object.hash(type, command, environment, enabled, timeout);
+  int get hashCode => Object.hash(type, const DeepCollectionEquality().hash(command), const DeepCollectionEquality().hash(environment), enabled, timeout);
 
   final String type;
   final List<String> command;

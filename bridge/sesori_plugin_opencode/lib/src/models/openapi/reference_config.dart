@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.244129Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'reference_config_entry.dart';
 
@@ -22,4 +22,13 @@ class ReferenceConfig {
   Map<String, dynamic> toJson() {
     return value.map((k, v) => MapEntry(k, v.toJson()));
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ReferenceConfig &&
+          const DeepCollectionEquality().equals(other.value, value));
+
+  @override
+  int get hashCode => const DeepCollectionEquality().hash(value);
 }

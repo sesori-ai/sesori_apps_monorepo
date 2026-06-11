@@ -1,6 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.234276Z
 
 import 'package:json_annotation/json_annotation.dart';
 
@@ -11,6 +10,10 @@ enum PermissionAction {
   deny,
   @JsonValue("ask")
   ask,
+
+  /// Fallback for values introduced by newer OpenCode servers.
+  /// Encodes back to the literal string `unknown`.
+  unknown,
   ;
 
   static PermissionAction fromJson(String value) {
@@ -22,7 +25,7 @@ enum PermissionAction {
       case "ask":
         return PermissionAction.ask;
       default:
-        throw FormatException('Unknown PermissionAction value: $value');
+        return PermissionAction.unknown;
     }
   }
 
@@ -34,6 +37,8 @@ enum PermissionAction {
         return "deny";
       case PermissionAction.ask:
         return "ask";
+      case PermissionAction.unknown:
+        return 'unknown';
     }
   }
 }

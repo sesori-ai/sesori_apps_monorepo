@@ -1,6 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.262597Z
 
 import 'package:meta/meta.dart';
 
@@ -14,15 +13,14 @@ class WorkspaceCreateError {
   factory WorkspaceCreateError.fromJson(Map<String, dynamic> json) {
     return WorkspaceCreateError(
       name: json["name"] as String,
-      data: json["data"] as Map<String, dynamic>,
+      data: WorkspaceCreateErrorData.fromJson(json["data"] as Map<String, dynamic>),
     );
   }
-
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "name": name,
-      "data": data,
+      "data": data.toJson(),
     };
   }
 
@@ -37,5 +35,35 @@ class WorkspaceCreateError {
   int get hashCode => Object.hash(name, data);
 
   final String name;
-  final Map<String, dynamic> data;
+  final WorkspaceCreateErrorData data;
+}
+
+@immutable
+class WorkspaceCreateErrorData {
+  const WorkspaceCreateErrorData({
+    required this.message,
+  });
+
+  factory WorkspaceCreateErrorData.fromJson(Map<String, dynamic> json) {
+    return WorkspaceCreateErrorData(
+      message: json["message"] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "message": message,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WorkspaceCreateErrorData &&
+          other.message == message);
+
+  @override
+  int get hashCode => message.hashCode;
+
+  final String message;
 }

@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.251015Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
 @immutable
@@ -26,7 +26,6 @@ class SessionNextRetryError {
     );
   }
 
-
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "message": message,
@@ -45,12 +44,12 @@ class SessionNextRetryError {
           other.message == message &&
           other.statusCode == statusCode &&
           other.isRetryable == isRetryable &&
-          other.responseHeaders == responseHeaders &&
+          const DeepCollectionEquality().equals(other.responseHeaders, responseHeaders) &&
           other.responseBody == responseBody &&
-          other.metadata == metadata);
+          const DeepCollectionEquality().equals(other.metadata, metadata));
 
   @override
-  int get hashCode => Object.hash(message, statusCode, isRetryable, responseHeaders, responseBody, metadata);
+  int get hashCode => Object.hash(message, statusCode, isRetryable, const DeepCollectionEquality().hash(responseHeaders), responseBody, const DeepCollectionEquality().hash(metadata));
 
   final String message;
   final double? statusCode;

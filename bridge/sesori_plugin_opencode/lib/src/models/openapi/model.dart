@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.232048Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
 @immutable
@@ -26,12 +26,12 @@ class Model {
     return Model(
       id: json["id"] as String,
       providerID: json["providerID"] as String,
-      api: json["api"] as Map<String, dynamic>,
+      api: ModelApi.fromJson(json["api"] as Map<String, dynamic>),
       name: json["name"] as String,
       family: json["family"] as String?,
-      capabilities: json["capabilities"] as Map<String, dynamic>,
-      cost: json["cost"] as Map<String, dynamic>,
-      limit: json["limit"] as Map<String, dynamic>,
+      capabilities: ModelCapabilities.fromJson(json["capabilities"] as Map<String, dynamic>),
+      cost: ModelCost.fromJson(json["cost"] as Map<String, dynamic>),
+      limit: ModelLimit.fromJson(json["limit"] as Map<String, dynamic>),
       status: json["status"] as String,
       options: json["options"] as Map<String, dynamic>,
       headers: (json["headers"] as Map<String, dynamic>).map((k, v) => MapEntry(k, v as String)),
@@ -40,17 +40,16 @@ class Model {
     );
   }
 
-
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
       "providerID": providerID,
-      "api": api,
+      "api": api.toJson(),
       "name": name,
       "family": ?family,
-      "capabilities": capabilities,
-      "cost": cost,
-      "limit": limit,
+      "capabilities": capabilities.toJson(),
+      "cost": cost.toJson(),
+      "limit": limit.toJson(),
       "status": status,
       "options": options,
       "headers": headers,
@@ -72,25 +71,540 @@ class Model {
           other.cost == cost &&
           other.limit == limit &&
           other.status == status &&
-          other.options == options &&
-          other.headers == headers &&
+          const DeepCollectionEquality().equals(other.options, options) &&
+          const DeepCollectionEquality().equals(other.headers, headers) &&
           other.releaseDate == releaseDate &&
-          other.variants == variants);
+          const DeepCollectionEquality().equals(other.variants, variants));
 
   @override
-  int get hashCode => Object.hash(id, providerID, api, name, family, capabilities, cost, limit, status, options, headers, releaseDate, variants);
+  int get hashCode => Object.hash(id, providerID, api, name, family, capabilities, cost, limit, status, const DeepCollectionEquality().hash(options), const DeepCollectionEquality().hash(headers), releaseDate, const DeepCollectionEquality().hash(variants));
 
   final String id;
   final String providerID;
-  final Map<String, dynamic> api;
+  final ModelApi api;
   final String name;
   final String? family;
-  final Map<String, dynamic> capabilities;
-  final Map<String, dynamic> cost;
-  final Map<String, dynamic> limit;
+  final ModelCapabilities capabilities;
+  final ModelCost cost;
+  final ModelLimit limit;
   final String status;
   final Map<String, dynamic> options;
   final Map<String, String> headers;
   final String releaseDate;
   final Map<String, Map<String, dynamic>>? variants;
+}
+
+@immutable
+class ModelApi {
+  const ModelApi({
+    required this.id,
+    required this.url,
+    required this.npm,
+  });
+
+  factory ModelApi.fromJson(Map<String, dynamic> json) {
+    return ModelApi(
+      id: json["id"] as String,
+      url: json["url"] as String,
+      npm: json["npm"] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "id": id,
+      "url": url,
+      "npm": npm,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ModelApi &&
+          other.id == id &&
+          other.url == url &&
+          other.npm == npm);
+
+  @override
+  int get hashCode => Object.hash(id, url, npm);
+
+  final String id;
+  final String url;
+  final String npm;
+}
+
+@immutable
+class ModelCapabilities {
+  const ModelCapabilities({
+    required this.temperature,
+    required this.reasoning,
+    required this.attachment,
+    required this.toolcall,
+    required this.input,
+    required this.output,
+    required this.interleaved,
+  });
+
+  factory ModelCapabilities.fromJson(Map<String, dynamic> json) {
+    return ModelCapabilities(
+      temperature: json["temperature"] as bool,
+      reasoning: json["reasoning"] as bool,
+      attachment: json["attachment"] as bool,
+      toolcall: json["toolcall"] as bool,
+      input: ModelCapabilitiesInput.fromJson(json["input"] as Map<String, dynamic>),
+      output: ModelCapabilitiesOutput.fromJson(json["output"] as Map<String, dynamic>),
+      interleaved: json["interleaved"] as Object,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "temperature": temperature,
+      "reasoning": reasoning,
+      "attachment": attachment,
+      "toolcall": toolcall,
+      "input": input.toJson(),
+      "output": output.toJson(),
+      "interleaved": interleaved,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ModelCapabilities &&
+          other.temperature == temperature &&
+          other.reasoning == reasoning &&
+          other.attachment == attachment &&
+          other.toolcall == toolcall &&
+          other.input == input &&
+          other.output == output &&
+          const DeepCollectionEquality().equals(other.interleaved, interleaved));
+
+  @override
+  int get hashCode => Object.hash(temperature, reasoning, attachment, toolcall, input, output, const DeepCollectionEquality().hash(interleaved));
+
+  final bool temperature;
+  final bool reasoning;
+  final bool attachment;
+  final bool toolcall;
+  final ModelCapabilitiesInput input;
+  final ModelCapabilitiesOutput output;
+  final Object interleaved;
+}
+
+@immutable
+class ModelCost {
+  const ModelCost({
+    required this.input,
+    required this.output,
+    required this.cache,
+    this.tiers,
+    this.experimentalOver200K,
+  });
+
+  factory ModelCost.fromJson(Map<String, dynamic> json) {
+    return ModelCost(
+      input: (json["input"] as num).toDouble(),
+      output: (json["output"] as num).toDouble(),
+      cache: ModelCostCache.fromJson(json["cache"] as Map<String, dynamic>),
+      tiers: (json["tiers"] as List<dynamic>?)?.map((e) => ModelCostTiersItem.fromJson(e as Map<String, dynamic>)).toList(),
+      experimentalOver200K: json["experimentalOver200K"] == null ? null : ModelCostExperimentalOver200K.fromJson(json["experimentalOver200K"] as Map<String, dynamic>),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "input": input,
+      "output": output,
+      "cache": cache.toJson(),
+      "tiers": ?tiers?.map((e) => e.toJson()).toList(),
+      "experimentalOver200K": ?experimentalOver200K?.toJson(),
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ModelCost &&
+          other.input == input &&
+          other.output == output &&
+          other.cache == cache &&
+          const DeepCollectionEquality().equals(other.tiers, tiers) &&
+          other.experimentalOver200K == experimentalOver200K);
+
+  @override
+  int get hashCode => Object.hash(input, output, cache, const DeepCollectionEquality().hash(tiers), experimentalOver200K);
+
+  final double input;
+  final double output;
+  final ModelCostCache cache;
+  final List<ModelCostTiersItem>? tiers;
+  final ModelCostExperimentalOver200K? experimentalOver200K;
+}
+
+@immutable
+class ModelLimit {
+  const ModelLimit({
+    required this.context,
+    this.input,
+    required this.output,
+  });
+
+  factory ModelLimit.fromJson(Map<String, dynamic> json) {
+    return ModelLimit(
+      context: (json["context"] as num).toDouble(),
+      input: (json["input"] as num?)?.toDouble(),
+      output: (json["output"] as num).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "context": context,
+      "input": ?input,
+      "output": output,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ModelLimit &&
+          other.context == context &&
+          other.input == input &&
+          other.output == output);
+
+  @override
+  int get hashCode => Object.hash(context, input, output);
+
+  final double context;
+  final double? input;
+  final double output;
+}
+
+@immutable
+class ModelCapabilitiesInput {
+  const ModelCapabilitiesInput({
+    required this.text,
+    required this.audio,
+    required this.image,
+    required this.video,
+    required this.pdf,
+  });
+
+  factory ModelCapabilitiesInput.fromJson(Map<String, dynamic> json) {
+    return ModelCapabilitiesInput(
+      text: json["text"] as bool,
+      audio: json["audio"] as bool,
+      image: json["image"] as bool,
+      video: json["video"] as bool,
+      pdf: json["pdf"] as bool,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "text": text,
+      "audio": audio,
+      "image": image,
+      "video": video,
+      "pdf": pdf,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ModelCapabilitiesInput &&
+          other.text == text &&
+          other.audio == audio &&
+          other.image == image &&
+          other.video == video &&
+          other.pdf == pdf);
+
+  @override
+  int get hashCode => Object.hash(text, audio, image, video, pdf);
+
+  final bool text;
+  final bool audio;
+  final bool image;
+  final bool video;
+  final bool pdf;
+}
+
+@immutable
+class ModelCapabilitiesOutput {
+  const ModelCapabilitiesOutput({
+    required this.text,
+    required this.audio,
+    required this.image,
+    required this.video,
+    required this.pdf,
+  });
+
+  factory ModelCapabilitiesOutput.fromJson(Map<String, dynamic> json) {
+    return ModelCapabilitiesOutput(
+      text: json["text"] as bool,
+      audio: json["audio"] as bool,
+      image: json["image"] as bool,
+      video: json["video"] as bool,
+      pdf: json["pdf"] as bool,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "text": text,
+      "audio": audio,
+      "image": image,
+      "video": video,
+      "pdf": pdf,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ModelCapabilitiesOutput &&
+          other.text == text &&
+          other.audio == audio &&
+          other.image == image &&
+          other.video == video &&
+          other.pdf == pdf);
+
+  @override
+  int get hashCode => Object.hash(text, audio, image, video, pdf);
+
+  final bool text;
+  final bool audio;
+  final bool image;
+  final bool video;
+  final bool pdf;
+}
+
+@immutable
+class ModelCostCache {
+  const ModelCostCache({
+    required this.read,
+    required this.write,
+  });
+
+  factory ModelCostCache.fromJson(Map<String, dynamic> json) {
+    return ModelCostCache(
+      read: (json["read"] as num).toDouble(),
+      write: (json["write"] as num).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "read": read,
+      "write": write,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ModelCostCache &&
+          other.read == read &&
+          other.write == write);
+
+  @override
+  int get hashCode => Object.hash(read, write);
+
+  final double read;
+  final double write;
+}
+
+@immutable
+class ModelCostTiersItem {
+  const ModelCostTiersItem({
+    required this.input,
+    required this.output,
+    required this.cache,
+    required this.tier,
+  });
+
+  factory ModelCostTiersItem.fromJson(Map<String, dynamic> json) {
+    return ModelCostTiersItem(
+      input: (json["input"] as num).toDouble(),
+      output: (json["output"] as num).toDouble(),
+      cache: ModelCostTiersItemCache.fromJson(json["cache"] as Map<String, dynamic>),
+      tier: ModelCostTiersItemTier.fromJson(json["tier"] as Map<String, dynamic>),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "input": input,
+      "output": output,
+      "cache": cache.toJson(),
+      "tier": tier.toJson(),
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ModelCostTiersItem &&
+          other.input == input &&
+          other.output == output &&
+          other.cache == cache &&
+          other.tier == tier);
+
+  @override
+  int get hashCode => Object.hash(input, output, cache, tier);
+
+  final double input;
+  final double output;
+  final ModelCostTiersItemCache cache;
+  final ModelCostTiersItemTier tier;
+}
+
+@immutable
+class ModelCostExperimentalOver200K {
+  const ModelCostExperimentalOver200K({
+    required this.input,
+    required this.output,
+    required this.cache,
+  });
+
+  factory ModelCostExperimentalOver200K.fromJson(Map<String, dynamic> json) {
+    return ModelCostExperimentalOver200K(
+      input: (json["input"] as num).toDouble(),
+      output: (json["output"] as num).toDouble(),
+      cache: ModelCostExperimentalOver200KCache.fromJson(json["cache"] as Map<String, dynamic>),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "input": input,
+      "output": output,
+      "cache": cache.toJson(),
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ModelCostExperimentalOver200K &&
+          other.input == input &&
+          other.output == output &&
+          other.cache == cache);
+
+  @override
+  int get hashCode => Object.hash(input, output, cache);
+
+  final double input;
+  final double output;
+  final ModelCostExperimentalOver200KCache cache;
+}
+
+@immutable
+class ModelCostTiersItemCache {
+  const ModelCostTiersItemCache({
+    required this.read,
+    required this.write,
+  });
+
+  factory ModelCostTiersItemCache.fromJson(Map<String, dynamic> json) {
+    return ModelCostTiersItemCache(
+      read: (json["read"] as num).toDouble(),
+      write: (json["write"] as num).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "read": read,
+      "write": write,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ModelCostTiersItemCache &&
+          other.read == read &&
+          other.write == write);
+
+  @override
+  int get hashCode => Object.hash(read, write);
+
+  final double read;
+  final double write;
+}
+
+@immutable
+class ModelCostTiersItemTier {
+  const ModelCostTiersItemTier({
+    required this.type,
+    required this.size,
+  });
+
+  factory ModelCostTiersItemTier.fromJson(Map<String, dynamic> json) {
+    return ModelCostTiersItemTier(
+      type: json["type"] as String,
+      size: (json["size"] as num).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "type": type,
+      "size": size,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ModelCostTiersItemTier &&
+          other.type == type &&
+          other.size == size);
+
+  @override
+  int get hashCode => Object.hash(type, size);
+
+  final String type;
+  final double size;
+}
+
+@immutable
+class ModelCostExperimentalOver200KCache {
+  const ModelCostExperimentalOver200KCache({
+    required this.read,
+    required this.write,
+  });
+
+  factory ModelCostExperimentalOver200KCache.fromJson(Map<String, dynamic> json) {
+    return ModelCostExperimentalOver200KCache(
+      read: (json["read"] as num).toDouble(),
+      write: (json["write"] as num).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "read": read,
+      "write": write,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ModelCostExperimentalOver200KCache &&
+          other.read == read &&
+          other.write == write);
+
+  @override
+  int get hashCode => Object.hash(read, write);
+
+  final double read;
+  final double write;
 }

@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.197820Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'permission_v2_ruleset.dart';
 
@@ -23,8 +23,8 @@ class AgentV2Info {
   factory AgentV2Info.fromJson(Map<String, dynamic> json) {
     return AgentV2Info(
       id: json["id"] as String,
-      model: json["model"] as Map<String, dynamic>?,
-      request: json["request"] as Map<String, dynamic>,
+      model: json["model"] == null ? null : AgentV2InfoModel.fromJson(json["model"] as Map<String, dynamic>),
+      request: AgentV2InfoRequest.fromJson(json["request"] as Map<String, dynamic>),
       system: json["system"] as String?,
       description: json["description"] as String?,
       mode: json["mode"] as String,
@@ -35,12 +35,11 @@ class AgentV2Info {
     );
   }
 
-
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
-      "model": ?model,
-      "request": request,
+      "model": ?model?.toJson(),
+      "request": request.toJson(),
       "system": ?system,
       "description": ?description,
       "mode": mode,
@@ -62,16 +61,16 @@ class AgentV2Info {
           other.description == description &&
           other.mode == mode &&
           other.hidden == hidden &&
-          other.color == color &&
+          const DeepCollectionEquality().equals(other.color, color) &&
           other.steps == steps &&
           other.permissions == permissions);
 
   @override
-  int get hashCode => Object.hash(id, model, request, system, description, mode, hidden, color, steps, permissions);
+  int get hashCode => Object.hash(id, model, request, system, description, mode, hidden, const DeepCollectionEquality().hash(color), steps, permissions);
 
   final String id;
-  final Map<String, dynamic>? model;
-  final Map<String, dynamic> request;
+  final AgentV2InfoModel? model;
+  final AgentV2InfoRequest request;
   final String? system;
   final String? description;
   final String mode;
@@ -79,4 +78,79 @@ class AgentV2Info {
   final Object? color;
   final int? steps;
   final PermissionV2Ruleset permissions;
+}
+
+@immutable
+class AgentV2InfoModel {
+  const AgentV2InfoModel({
+    required this.id,
+    required this.providerID,
+    this.variant,
+  });
+
+  factory AgentV2InfoModel.fromJson(Map<String, dynamic> json) {
+    return AgentV2InfoModel(
+      id: json["id"] as String,
+      providerID: json["providerID"] as String,
+      variant: json["variant"] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "id": id,
+      "providerID": providerID,
+      "variant": ?variant,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AgentV2InfoModel &&
+          other.id == id &&
+          other.providerID == providerID &&
+          other.variant == variant);
+
+  @override
+  int get hashCode => Object.hash(id, providerID, variant);
+
+  final String id;
+  final String providerID;
+  final String? variant;
+}
+
+@immutable
+class AgentV2InfoRequest {
+  const AgentV2InfoRequest({
+    required this.headers,
+    required this.body,
+  });
+
+  factory AgentV2InfoRequest.fromJson(Map<String, dynamic> json) {
+    return AgentV2InfoRequest(
+      headers: (json["headers"] as Map<String, dynamic>).map((k, v) => MapEntry(k, v as String)),
+      body: json["body"] as Map<String, dynamic>,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "headers": headers,
+      "body": body,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AgentV2InfoRequest &&
+          const DeepCollectionEquality().equals(other.headers, headers) &&
+          const DeepCollectionEquality().equals(other.body, body));
+
+  @override
+  int get hashCode => Object.hash(const DeepCollectionEquality().hash(headers), const DeepCollectionEquality().hash(body));
+
+  final Map<String, String> headers;
+  final Map<String, dynamic> body;
 }

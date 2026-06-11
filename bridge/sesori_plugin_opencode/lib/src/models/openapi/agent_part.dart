@@ -1,6 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.196778Z
 
 import 'package:meta/meta.dart';
 import 'part.dart';
@@ -21,10 +20,9 @@ class AgentPart implements Part {
       sessionID: json["sessionID"] as String,
       messageID: json["messageID"] as String,
       name: json["name"] as String,
-      source: json["source"] as Map<String, dynamic>?,
+      source: json["source"] == null ? null : AgentPartSource.fromJson(json["source"] as Map<String, dynamic>),
     );
   }
-
 
   @override
   Map<String, dynamic> toJson() {
@@ -34,7 +32,7 @@ class AgentPart implements Part {
       "messageID": messageID,
       "type": "agent",
       "name": name,
-      "source": ?source,
+      "source": ?source?.toJson(),
     };
   }
 
@@ -55,5 +53,45 @@ class AgentPart implements Part {
   final String sessionID;
   final String messageID;
   final String name;
-  final Map<String, dynamic>? source;
+  final AgentPartSource? source;
+}
+
+@immutable
+class AgentPartSource {
+  const AgentPartSource({
+    required this.value,
+    required this.start,
+    required this.end,
+  });
+
+  factory AgentPartSource.fromJson(Map<String, dynamic> json) {
+    return AgentPartSource(
+      value: json["value"] as String,
+      start: (json["start"] as num).toInt(),
+      end: (json["end"] as num).toInt(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "value": value,
+      "start": start,
+      "end": end,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AgentPartSource &&
+          other.value == value &&
+          other.start == start &&
+          other.end == end);
+
+  @override
+  int get hashCode => Object.hash(value, start, end);
+
+  final String value;
+  final int start;
+  final int end;
 }

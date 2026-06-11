@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.198483Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'auth.dart';
 
@@ -19,7 +19,6 @@ class ApiAuth implements Auth {
     );
   }
 
-
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
@@ -34,10 +33,10 @@ class ApiAuth implements Auth {
       identical(this, other) ||
       (other is ApiAuth &&
           other.key == key &&
-          other.metadata == metadata);
+          const DeepCollectionEquality().equals(other.metadata, metadata));
 
   @override
-  int get hashCode => Object.hash(key, metadata);
+  int get hashCode => Object.hash(key, const DeepCollectionEquality().hash(metadata));
 
   final String key;
   final Map<String, String>? metadata;

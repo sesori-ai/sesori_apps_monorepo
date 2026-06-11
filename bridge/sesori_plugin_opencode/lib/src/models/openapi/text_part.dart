@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.258442Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'part.dart';
 
@@ -26,11 +26,10 @@ class TextPart implements Part {
       text: json["text"] as String,
       synthetic: json["synthetic"] as bool?,
       ignored: json["ignored"] as bool?,
-      time: json["time"] as Map<String, dynamic>?,
+      time: json["time"] == null ? null : TextPartTime.fromJson(json["time"] as Map<String, dynamic>),
       metadata: json["metadata"] as Map<String, dynamic>?,
     );
   }
-
 
   @override
   Map<String, dynamic> toJson() {
@@ -42,7 +41,7 @@ class TextPart implements Part {
       "text": text,
       "synthetic": ?synthetic,
       "ignored": ?ignored,
-      "time": ?time,
+      "time": ?time?.toJson(),
       "metadata": ?metadata,
     };
   }
@@ -58,10 +57,10 @@ class TextPart implements Part {
           other.synthetic == synthetic &&
           other.ignored == ignored &&
           other.time == time &&
-          other.metadata == metadata);
+          const DeepCollectionEquality().equals(other.metadata, metadata));
 
   @override
-  int get hashCode => Object.hash(id, sessionID, messageID, text, synthetic, ignored, time, metadata);
+  int get hashCode => Object.hash(id, sessionID, messageID, text, synthetic, ignored, time, const DeepCollectionEquality().hash(metadata));
 
   final String id;
   final String sessionID;
@@ -69,6 +68,41 @@ class TextPart implements Part {
   final String text;
   final bool? synthetic;
   final bool? ignored;
-  final Map<String, dynamic>? time;
+  final TextPartTime? time;
   final Map<String, dynamic>? metadata;
+}
+
+@immutable
+class TextPartTime {
+  const TextPartTime({
+    required this.start,
+    this.end,
+  });
+
+  factory TextPartTime.fromJson(Map<String, dynamic> json) {
+    return TextPartTime(
+      start: (json["start"] as num).toInt(),
+      end: (json["end"] as num?)?.toInt(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "start": start,
+      "end": ?end,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TextPartTime &&
+          other.start == start &&
+          other.end == end);
+
+  @override
+  int get hashCode => Object.hash(start, end);
+
+  final int start;
+  final int? end;
 }

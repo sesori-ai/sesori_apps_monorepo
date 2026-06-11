@@ -1,6 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.260868Z
 
 import 'package:meta/meta.dart';
 
@@ -14,15 +13,14 @@ class UnknownError {
   factory UnknownError.fromJson(Map<String, dynamic> json) {
     return UnknownError(
       name: json["name"] as String,
-      data: json["data"] as Map<String, dynamic>,
+      data: UnknownErrorData.fromJson(json["data"] as Map<String, dynamic>),
     );
   }
-
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "name": name,
-      "data": data,
+      "data": data.toJson(),
     };
   }
 
@@ -37,5 +35,40 @@ class UnknownError {
   int get hashCode => Object.hash(name, data);
 
   final String name;
-  final Map<String, dynamic> data;
+  final UnknownErrorData data;
+}
+
+@immutable
+class UnknownErrorData {
+  const UnknownErrorData({
+    required this.message,
+    this.ref,
+  });
+
+  factory UnknownErrorData.fromJson(Map<String, dynamic> json) {
+    return UnknownErrorData(
+      message: json["message"] as String,
+      ref: json["ref"] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "message": message,
+      "ref": ?ref,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UnknownErrorData &&
+          other.message == message &&
+          other.ref == ref);
+
+  @override
+  int get hashCode => Object.hash(message, ref);
+
+  final String message;
+  final String? ref;
 }

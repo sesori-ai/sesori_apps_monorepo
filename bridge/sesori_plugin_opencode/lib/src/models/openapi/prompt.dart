@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.239344Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'prompt_agent_attachment.dart';
 import 'prompt_file_attachment.dart';
@@ -25,7 +25,6 @@ class Prompt {
     );
   }
 
-
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "text": text,
@@ -40,12 +39,12 @@ class Prompt {
       identical(this, other) ||
       (other is Prompt &&
           other.text == text &&
-          other.files == files &&
-          other.agents == agents &&
-          other.references == references);
+          const DeepCollectionEquality().equals(other.files, files) &&
+          const DeepCollectionEquality().equals(other.agents, agents) &&
+          const DeepCollectionEquality().equals(other.references, references));
 
   @override
-  int get hashCode => Object.hash(text, files, agents, references);
+  int get hashCode => Object.hash(text, const DeepCollectionEquality().hash(files), const DeepCollectionEquality().hash(agents), const DeepCollectionEquality().hash(references));
 
   final String text;
   final List<PromptFileAttachment>? files;

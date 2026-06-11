@@ -1,9 +1,9 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.213634Z
 
 import 'package:meta/meta.dart';
 import 'event.dart';
+import 'permission_v2_reply.dart';
 
 @immutable
 class EventPermissionV2Replied implements Event {
@@ -15,17 +15,16 @@ class EventPermissionV2Replied implements Event {
   factory EventPermissionV2Replied.fromJson(Map<String, dynamic> json) {
     return EventPermissionV2Replied(
       id: json["id"] as String,
-      properties: json["properties"] as Map<String, dynamic>,
+      properties: EventPermissionV2RepliedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
-
 
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
       "type": "permission.v2.replied",
-      "properties": properties,
+      "properties": properties.toJson(),
     };
   }
 
@@ -40,5 +39,45 @@ class EventPermissionV2Replied implements Event {
   int get hashCode => Object.hash(id, properties);
 
   final String id;
-  final Map<String, dynamic> properties;
+  final EventPermissionV2RepliedProperties properties;
+}
+
+@immutable
+class EventPermissionV2RepliedProperties {
+  const EventPermissionV2RepliedProperties({
+    required this.sessionID,
+    required this.requestID,
+    required this.reply,
+  });
+
+  factory EventPermissionV2RepliedProperties.fromJson(Map<String, dynamic> json) {
+    return EventPermissionV2RepliedProperties(
+      sessionID: json["sessionID"] as String,
+      requestID: json["requestID"] as String,
+      reply: PermissionV2Reply.fromJson(json["reply"] as String),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "sessionID": sessionID,
+      "requestID": requestID,
+      "reply": reply.toJson(),
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EventPermissionV2RepliedProperties &&
+          other.sessionID == sessionID &&
+          other.requestID == requestID &&
+          other.reply == reply);
+
+  @override
+  int get hashCode => Object.hash(sessionID, requestID, reply);
+
+  final String sessionID;
+  final String requestID;
+  final PermissionV2Reply reply;
 }

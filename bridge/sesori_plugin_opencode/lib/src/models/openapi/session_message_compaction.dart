@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.247740Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'session_message.dart';
 
@@ -23,10 +23,9 @@ class SessionMessageCompaction implements SessionMessage {
       include: json["include"] as String?,
       id: json["id"] as String,
       metadata: json["metadata"] as Map<String, dynamic>?,
-      time: json["time"] as Map<String, dynamic>,
+      time: SessionMessageCompactionTime.fromJson(json["time"] as Map<String, dynamic>),
     );
   }
-
 
   @override
   Map<String, dynamic> toJson() {
@@ -37,7 +36,7 @@ class SessionMessageCompaction implements SessionMessage {
       "include": ?include,
       "id": id,
       "metadata": ?metadata,
-      "time": time,
+      "time": time.toJson(),
     };
   }
 
@@ -49,16 +48,46 @@ class SessionMessageCompaction implements SessionMessage {
           other.summary == summary &&
           other.include == include &&
           other.id == id &&
-          other.metadata == metadata &&
+          const DeepCollectionEquality().equals(other.metadata, metadata) &&
           other.time == time);
 
   @override
-  int get hashCode => Object.hash(reason, summary, include, id, metadata, time);
+  int get hashCode => Object.hash(reason, summary, include, id, const DeepCollectionEquality().hash(metadata), time);
 
   final String reason;
   final String summary;
   final String? include;
   final String id;
   final Map<String, dynamic>? metadata;
-  final Map<String, dynamic> time;
+  final SessionMessageCompactionTime time;
+}
+
+@immutable
+class SessionMessageCompactionTime {
+  const SessionMessageCompactionTime({
+    required this.created,
+  });
+
+  factory SessionMessageCompactionTime.fromJson(Map<String, dynamic> json) {
+    return SessionMessageCompactionTime(
+      created: (json["created"] as num).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "created": created,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionMessageCompactionTime &&
+          other.created == created);
+
+  @override
+  int get hashCode => created.hashCode;
+
+  final double created;
 }

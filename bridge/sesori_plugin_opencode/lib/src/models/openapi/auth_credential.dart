@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.202072Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'auth_api_key_credential.dart';
 import 'auth_oauth_credential.dart';
@@ -28,7 +28,29 @@ abstract interface class AuthCredential {
       case "api":
         return AuthApiKeyCredential.fromJson(map);
       default:
-        throw FormatException('Unknown AuthCredential value: $discriminator');
+        return AuthCredentialUnknown(raw: map);
     }
   }
+}
+
+/// Fallback variant for an unrecognized [AuthCredential] payload shape.
+/// Carries the raw JSON so newer OpenCode servers do not break
+/// decoding; `toJson` returns the payload unchanged.
+@immutable
+class AuthCredentialUnknown implements AuthCredential {
+  const AuthCredentialUnknown({required this.raw});
+
+  final Object? raw;
+
+  @override
+  Object? toJson() => raw;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AuthCredentialUnknown &&
+          const DeepCollectionEquality().equals(other.raw, raw));
+
+  @override
+  int get hashCode => const DeepCollectionEquality().hash(raw);
 }

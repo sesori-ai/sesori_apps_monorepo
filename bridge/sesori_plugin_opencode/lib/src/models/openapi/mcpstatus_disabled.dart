@@ -1,6 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.229595Z
 
 import 'package:meta/meta.dart';
 import 'mcpstatus.dart';
@@ -13,7 +12,6 @@ class MCPStatusDisabled implements MCPStatus {
   factory MCPStatusDisabled.fromJson(Map<String, dynamic> json) {
     return const MCPStatusDisabled();
   }
-
 
   @override
   Map<String, dynamic> toJson() {

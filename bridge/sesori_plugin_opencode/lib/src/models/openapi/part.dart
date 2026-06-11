@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.233711Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'agent_part.dart';
 import 'compaction_part.dart';
@@ -58,7 +58,29 @@ abstract interface class Part {
       case "compaction":
         return CompactionPart.fromJson(map);
       default:
-        throw FormatException('Unknown Part value: $discriminator');
+        return PartUnknown(raw: map);
     }
   }
+}
+
+/// Fallback variant for an unrecognized [Part] payload shape.
+/// Carries the raw JSON so newer OpenCode servers do not break
+/// decoding; `toJson` returns the payload unchanged.
+@immutable
+class PartUnknown implements Part {
+  const PartUnknown({required this.raw});
+
+  final Object? raw;
+
+  @override
+  Object? toJson() => raw;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PartUnknown &&
+          const DeepCollectionEquality().equals(other.raw, raw));
+
+  @override
+  int get hashCode => const DeepCollectionEquality().hash(raw);
 }

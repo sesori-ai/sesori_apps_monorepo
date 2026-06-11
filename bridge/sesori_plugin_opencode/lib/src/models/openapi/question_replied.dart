@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.242564Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'question_answer.dart';
 
@@ -21,7 +21,6 @@ class QuestionReplied {
     );
   }
 
-
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "sessionID": sessionID,
@@ -36,10 +35,10 @@ class QuestionReplied {
       (other is QuestionReplied &&
           other.sessionID == sessionID &&
           other.requestID == requestID &&
-          other.answers == answers);
+          const DeepCollectionEquality().equals(other.answers, answers));
 
   @override
-  int get hashCode => Object.hash(sessionID, requestID, answers);
+  int get hashCode => Object.hash(sessionID, requestID, const DeepCollectionEquality().hash(answers));
 
   final String sessionID;
   final String requestID;

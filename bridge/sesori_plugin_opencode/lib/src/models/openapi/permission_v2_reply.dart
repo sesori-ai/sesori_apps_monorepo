@@ -1,6 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.237702Z
 
 import 'package:json_annotation/json_annotation.dart';
 
@@ -11,6 +10,10 @@ enum PermissionV2Reply {
   always,
   @JsonValue("reject")
   reject,
+
+  /// Fallback for values introduced by newer OpenCode servers.
+  /// Encodes back to the literal string `unknown`.
+  unknown,
   ;
 
   static PermissionV2Reply fromJson(String value) {
@@ -22,7 +25,7 @@ enum PermissionV2Reply {
       case "reject":
         return PermissionV2Reply.reject;
       default:
-        throw FormatException('Unknown PermissionV2Reply value: $value');
+        return PermissionV2Reply.unknown;
     }
   }
 
@@ -34,6 +37,8 @@ enum PermissionV2Reply {
         return "always";
       case PermissionV2Reply.reject:
         return "reject";
+      case PermissionV2Reply.unknown:
+        return 'unknown';
     }
   }
 }

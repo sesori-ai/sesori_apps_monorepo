@@ -1,6 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.216853Z
 
 import 'package:meta/meta.dart';
 import 'event.dart';
@@ -15,17 +14,16 @@ class EventSessionCompacted implements Event {
   factory EventSessionCompacted.fromJson(Map<String, dynamic> json) {
     return EventSessionCompacted(
       id: json["id"] as String,
-      properties: json["properties"] as Map<String, dynamic>,
+      properties: EventSessionCompactedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
-
 
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
       "type": "session.compacted",
-      "properties": properties,
+      "properties": properties.toJson(),
     };
   }
 
@@ -40,5 +38,35 @@ class EventSessionCompacted implements Event {
   int get hashCode => Object.hash(id, properties);
 
   final String id;
-  final Map<String, dynamic> properties;
+  final EventSessionCompactedProperties properties;
+}
+
+@immutable
+class EventSessionCompactedProperties {
+  const EventSessionCompactedProperties({
+    required this.sessionID,
+  });
+
+  factory EventSessionCompactedProperties.fromJson(Map<String, dynamic> json) {
+    return EventSessionCompactedProperties(
+      sessionID: json["sessionID"] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "sessionID": sessionID,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EventSessionCompactedProperties &&
+          other.sessionID == sessionID);
+
+  @override
+  int get hashCode => sessionID.hashCode;
+
+  final String sessionID;
 }

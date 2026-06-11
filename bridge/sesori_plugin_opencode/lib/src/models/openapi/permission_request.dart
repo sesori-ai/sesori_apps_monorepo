@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.236660Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
 @immutable
@@ -24,10 +24,9 @@ class PermissionRequest {
       patterns: (json["patterns"] as List<dynamic>).cast<String>(),
       metadata: json["metadata"] as Map<String, dynamic>,
       always: (json["always"] as List<dynamic>).cast<String>(),
-      tool: json["tool"] as Map<String, dynamic>?,
+      tool: json["tool"] == null ? null : PermissionRequestTool.fromJson(json["tool"] as Map<String, dynamic>),
     );
   }
-
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
@@ -37,7 +36,7 @@ class PermissionRequest {
       "patterns": patterns,
       "metadata": metadata,
       "always": always,
-      "tool": ?tool,
+      "tool": ?tool?.toJson(),
     };
   }
 
@@ -48,13 +47,13 @@ class PermissionRequest {
           other.id == id &&
           other.sessionID == sessionID &&
           other.permission == permission &&
-          other.patterns == patterns &&
-          other.metadata == metadata &&
-          other.always == always &&
+          const DeepCollectionEquality().equals(other.patterns, patterns) &&
+          const DeepCollectionEquality().equals(other.metadata, metadata) &&
+          const DeepCollectionEquality().equals(other.always, always) &&
           other.tool == tool);
 
   @override
-  int get hashCode => Object.hash(id, sessionID, permission, patterns, metadata, always, tool);
+  int get hashCode => Object.hash(id, sessionID, permission, const DeepCollectionEquality().hash(patterns), const DeepCollectionEquality().hash(metadata), const DeepCollectionEquality().hash(always), tool);
 
   final String id;
   final String sessionID;
@@ -62,5 +61,40 @@ class PermissionRequest {
   final List<String> patterns;
   final Map<String, dynamic> metadata;
   final List<String> always;
-  final Map<String, dynamic>? tool;
+  final PermissionRequestTool? tool;
+}
+
+@immutable
+class PermissionRequestTool {
+  const PermissionRequestTool({
+    required this.messageID,
+    required this.callID,
+  });
+
+  factory PermissionRequestTool.fromJson(Map<String, dynamic> json) {
+    return PermissionRequestTool(
+      messageID: json["messageID"] as String,
+      callID: json["callID"] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "messageID": messageID,
+      "callID": callID,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PermissionRequestTool &&
+          other.messageID == messageID &&
+          other.callID == callID);
+
+  @override
+  int get hashCode => Object.hash(messageID, callID);
+
+  final String messageID;
+  final String callID;
 }

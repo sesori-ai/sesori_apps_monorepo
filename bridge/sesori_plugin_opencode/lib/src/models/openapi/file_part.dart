@@ -1,6 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.225046Z
 
 import 'package:meta/meta.dart';
 import 'file_part_source.dart';
@@ -29,7 +28,6 @@ class FilePart implements Part {
       source: json["source"] == null ? null : FilePartSource.fromJson(json["source"] as Object),
     );
   }
-
 
   @override
   Map<String, dynamic> toJson() {

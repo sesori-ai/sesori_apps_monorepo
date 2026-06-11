@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.249479Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'session_message.dart';
 
@@ -18,18 +18,17 @@ class SessionMessageSystem implements SessionMessage {
     return SessionMessageSystem(
       id: json["id"] as String,
       metadata: json["metadata"] as Map<String, dynamic>?,
-      time: json["time"] as Map<String, dynamic>,
+      time: SessionMessageSystemTime.fromJson(json["time"] as Map<String, dynamic>),
       text: json["text"] as String,
     );
   }
-
 
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
       "metadata": ?metadata,
-      "time": time,
+      "time": time.toJson(),
       "type": "system",
       "text": text,
     };
@@ -40,15 +39,45 @@ class SessionMessageSystem implements SessionMessage {
       identical(this, other) ||
       (other is SessionMessageSystem &&
           other.id == id &&
-          other.metadata == metadata &&
+          const DeepCollectionEquality().equals(other.metadata, metadata) &&
           other.time == time &&
           other.text == text);
 
   @override
-  int get hashCode => Object.hash(id, metadata, time, text);
+  int get hashCode => Object.hash(id, const DeepCollectionEquality().hash(metadata), time, text);
 
   final String id;
   final Map<String, dynamic>? metadata;
-  final Map<String, dynamic> time;
+  final SessionMessageSystemTime time;
   final String text;
+}
+
+@immutable
+class SessionMessageSystemTime {
+  const SessionMessageSystemTime({
+    required this.created,
+  });
+
+  factory SessionMessageSystemTime.fromJson(Map<String, dynamic> json) {
+    return SessionMessageSystemTime(
+      created: (json["created"] as num).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "created": created,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionMessageSystemTime &&
+          other.created == created);
+
+  @override
+  int get hashCode => created.hashCode;
+
+  final double created;
 }

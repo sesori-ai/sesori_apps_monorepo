@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.245022Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
 @immutable
@@ -24,7 +24,6 @@ class ServerConfig {
     );
   }
 
-
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "port": ?port,
@@ -43,10 +42,10 @@ class ServerConfig {
           other.hostname == hostname &&
           other.mdns == mdns &&
           other.mdnsDomain == mdnsDomain &&
-          other.cors == cors);
+          const DeepCollectionEquality().equals(other.cors, cors));
 
   @override
-  int get hashCode => Object.hash(port, hostname, mdns, mdnsDomain, cors);
+  int get hashCode => Object.hash(port, hostname, mdns, mdnsDomain, const DeepCollectionEquality().hash(cors));
 
   final int? port;
   final String? hostname;

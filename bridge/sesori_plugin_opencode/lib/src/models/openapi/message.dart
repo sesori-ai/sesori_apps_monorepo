@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.231614Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'assistant_message.dart';
 import 'user_message.dart';
@@ -28,7 +28,29 @@ abstract interface class Message {
       case "assistant":
         return AssistantMessage.fromJson(map);
       default:
-        throw FormatException('Unknown Message value: $discriminator');
+        return MessageUnknown(raw: map);
     }
   }
+}
+
+/// Fallback variant for an unrecognized [Message] payload shape.
+/// Carries the raw JSON so newer OpenCode servers do not break
+/// decoding; `toJson` returns the payload unchanged.
+@immutable
+class MessageUnknown implements Message {
+  const MessageUnknown({required this.raw});
+
+  final Object? raw;
+
+  @override
+  Object? toJson() => raw;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MessageUnknown &&
+          const DeepCollectionEquality().equals(other.raw, raw));
+
+  @override
+  int get hashCode => const DeepCollectionEquality().hash(raw);
 }

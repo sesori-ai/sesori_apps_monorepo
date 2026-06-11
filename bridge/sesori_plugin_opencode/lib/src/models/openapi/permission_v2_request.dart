@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.237814Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'permission_v2_source.dart';
 
@@ -29,7 +29,6 @@ class PermissionV2Request {
     );
   }
 
-
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
@@ -49,13 +48,13 @@ class PermissionV2Request {
           other.id == id &&
           other.sessionID == sessionID &&
           other.action == action &&
-          other.resources == resources &&
-          other.save == save &&
-          other.metadata == metadata &&
+          const DeepCollectionEquality().equals(other.resources, resources) &&
+          const DeepCollectionEquality().equals(other.save, save) &&
+          const DeepCollectionEquality().equals(other.metadata, metadata) &&
           other.source == source);
 
   @override
-  int get hashCode => Object.hash(id, sessionID, action, resources, save, metadata, source);
+  int get hashCode => Object.hash(id, sessionID, action, const DeepCollectionEquality().hash(resources), const DeepCollectionEquality().hash(save), const DeepCollectionEquality().hash(metadata), source);
 
   final String id;
   final String sessionID;

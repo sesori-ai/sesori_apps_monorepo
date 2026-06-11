@@ -1,8 +1,8 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.209322Z
 
 import 'package:meta/meta.dart';
+import 'auth_info.dart';
 import 'event.dart';
 
 @immutable
@@ -15,17 +15,16 @@ class EventAccountAdded implements Event {
   factory EventAccountAdded.fromJson(Map<String, dynamic> json) {
     return EventAccountAdded(
       id: json["id"] as String,
-      properties: json["properties"] as Map<String, dynamic>,
+      properties: EventAccountAddedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
-
 
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
       "type": "account.added",
-      "properties": properties,
+      "properties": properties.toJson(),
     };
   }
 
@@ -40,5 +39,35 @@ class EventAccountAdded implements Event {
   int get hashCode => Object.hash(id, properties);
 
   final String id;
-  final Map<String, dynamic> properties;
+  final EventAccountAddedProperties properties;
+}
+
+@immutable
+class EventAccountAddedProperties {
+  const EventAccountAddedProperties({
+    required this.account,
+  });
+
+  factory EventAccountAddedProperties.fromJson(Map<String, dynamic> json) {
+    return EventAccountAddedProperties(
+      account: AuthInfo.fromJson(json["account"] as Map<String, dynamic>),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "account": account.toJson(),
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EventAccountAddedProperties &&
+          other.account == account);
+
+  @override
+  int get hashCode => account.hashCode;
+
+  final AuthInfo account;
 }

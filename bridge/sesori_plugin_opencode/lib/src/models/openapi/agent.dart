@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.194099Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'permission_ruleset.dart';
 
@@ -35,14 +35,13 @@ class Agent {
       temperature: (json["temperature"] as num?)?.toDouble(),
       color: json["color"] as String?,
       permission: PermissionRuleset.fromJson(json["permission"] as List<dynamic>),
-      model: json["model"] as Map<String, dynamic>?,
+      model: json["model"] == null ? null : AgentModel.fromJson(json["model"] as Map<String, dynamic>),
       variant: json["variant"] as String?,
       prompt: json["prompt"] as String?,
       options: json["options"] as Map<String, dynamic>,
       steps: (json["steps"] as num?)?.toDouble(),
     );
   }
-
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
@@ -55,7 +54,7 @@ class Agent {
       "temperature": ?temperature,
       "color": ?color,
       "permission": permission.toJson(),
-      "model": ?model,
+      "model": ?model?.toJson(),
       "variant": ?variant,
       "prompt": ?prompt,
       "options": options,
@@ -79,11 +78,11 @@ class Agent {
           other.model == model &&
           other.variant == variant &&
           other.prompt == prompt &&
-          other.options == options &&
+          const DeepCollectionEquality().equals(other.options, options) &&
           other.steps == steps);
 
   @override
-  int get hashCode => Object.hash(name, description, mode, native, hidden, topP, temperature, color, permission, model, variant, prompt, options, steps);
+  int get hashCode => Object.hash(name, description, mode, native, hidden, topP, temperature, color, permission, model, variant, prompt, const DeepCollectionEquality().hash(options), steps);
 
   final String name;
   final String? description;
@@ -94,9 +93,44 @@ class Agent {
   final double? temperature;
   final String? color;
   final PermissionRuleset permission;
-  final Map<String, dynamic>? model;
+  final AgentModel? model;
   final String? variant;
   final String? prompt;
   final Map<String, dynamic> options;
   final double? steps;
+}
+
+@immutable
+class AgentModel {
+  const AgentModel({
+    required this.modelID,
+    required this.providerID,
+  });
+
+  factory AgentModel.fromJson(Map<String, dynamic> json) {
+    return AgentModel(
+      modelID: json["modelID"] as String,
+      providerID: json["providerID"] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "modelID": modelID,
+      "providerID": providerID,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AgentModel &&
+          other.modelID == modelID &&
+          other.providerID == providerID);
+
+  @override
+  int get hashCode => Object.hash(modelID, providerID);
+
+  final String modelID;
+  final String providerID;
 }

@@ -1,6 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.244792Z
 
 import 'package:meta/meta.dart';
 import 'apierror.dart';
@@ -24,10 +23,9 @@ class RetryPart implements Part {
       messageID: json["messageID"] as String,
       attempt: (json["attempt"] as num).toInt(),
       error: APIError.fromJson(json["error"] as Map<String, dynamic>),
-      time: json["time"] as Map<String, dynamic>,
+      time: RetryPartTime.fromJson(json["time"] as Map<String, dynamic>),
     );
   }
-
 
   @override
   Map<String, dynamic> toJson() {
@@ -38,7 +36,7 @@ class RetryPart implements Part {
       "type": "retry",
       "attempt": attempt,
       "error": error.toJson(),
-      "time": time,
+      "time": time.toJson(),
     };
   }
 
@@ -61,5 +59,35 @@ class RetryPart implements Part {
   final String messageID;
   final int attempt;
   final APIError error;
-  final Map<String, dynamic> time;
+  final RetryPartTime time;
+}
+
+@immutable
+class RetryPartTime {
+  const RetryPartTime({
+    required this.created,
+  });
+
+  factory RetryPartTime.fromJson(Map<String, dynamic> json) {
+    return RetryPartTime(
+      created: (json["created"] as num).toInt(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "created": created,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RetryPartTime &&
+          other.created == created);
+
+  @override
+  int get hashCode => created.hashCode;
+
+  final int created;
 }

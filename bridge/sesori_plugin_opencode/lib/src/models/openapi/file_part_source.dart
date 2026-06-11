@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.225752Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'file_source.dart';
 import 'resource_source.dart';
@@ -31,7 +31,29 @@ abstract interface class FilePartSource {
       case "resource":
         return ResourceSource.fromJson(map);
       default:
-        throw FormatException('Unknown FilePartSource value: $discriminator');
+        return FilePartSourceUnknown(raw: map);
     }
   }
+}
+
+/// Fallback variant for an unrecognized [FilePartSource] payload shape.
+/// Carries the raw JSON so newer OpenCode servers do not break
+/// decoding; `toJson` returns the payload unchanged.
+@immutable
+class FilePartSourceUnknown implements FilePartSource {
+  const FilePartSourceUnknown({required this.raw});
+
+  final Object? raw;
+
+  @override
+  Object? toJson() => raw;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FilePartSourceUnknown &&
+          const DeepCollectionEquality().equals(other.raw, raw));
+
+  @override
+  int get hashCode => const DeepCollectionEquality().hash(raw);
 }

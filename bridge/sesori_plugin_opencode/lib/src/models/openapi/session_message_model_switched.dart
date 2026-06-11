@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.248175Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'session_message.dart';
 
@@ -18,20 +18,19 @@ class SessionMessageModelSwitched implements SessionMessage {
     return SessionMessageModelSwitched(
       id: json["id"] as String,
       metadata: json["metadata"] as Map<String, dynamic>?,
-      time: json["time"] as Map<String, dynamic>,
-      model: json["model"] as Map<String, dynamic>,
+      time: SessionMessageModelSwitchedTime.fromJson(json["time"] as Map<String, dynamic>),
+      model: SessionMessageModelSwitchedModel.fromJson(json["model"] as Map<String, dynamic>),
     );
   }
-
 
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
       "metadata": ?metadata,
-      "time": time,
+      "time": time.toJson(),
       "type": "model-switched",
-      "model": model,
+      "model": model.toJson(),
     };
   }
 
@@ -40,15 +39,85 @@ class SessionMessageModelSwitched implements SessionMessage {
       identical(this, other) ||
       (other is SessionMessageModelSwitched &&
           other.id == id &&
-          other.metadata == metadata &&
+          const DeepCollectionEquality().equals(other.metadata, metadata) &&
           other.time == time &&
           other.model == model);
 
   @override
-  int get hashCode => Object.hash(id, metadata, time, model);
+  int get hashCode => Object.hash(id, const DeepCollectionEquality().hash(metadata), time, model);
 
   final String id;
   final Map<String, dynamic>? metadata;
-  final Map<String, dynamic> time;
-  final Map<String, dynamic> model;
+  final SessionMessageModelSwitchedTime time;
+  final SessionMessageModelSwitchedModel model;
+}
+
+@immutable
+class SessionMessageModelSwitchedTime {
+  const SessionMessageModelSwitchedTime({
+    required this.created,
+  });
+
+  factory SessionMessageModelSwitchedTime.fromJson(Map<String, dynamic> json) {
+    return SessionMessageModelSwitchedTime(
+      created: (json["created"] as num).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "created": created,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionMessageModelSwitchedTime &&
+          other.created == created);
+
+  @override
+  int get hashCode => created.hashCode;
+
+  final double created;
+}
+
+@immutable
+class SessionMessageModelSwitchedModel {
+  const SessionMessageModelSwitchedModel({
+    required this.id,
+    required this.providerID,
+    this.variant,
+  });
+
+  factory SessionMessageModelSwitchedModel.fromJson(Map<String, dynamic> json) {
+    return SessionMessageModelSwitchedModel(
+      id: json["id"] as String,
+      providerID: json["providerID"] as String,
+      variant: json["variant"] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "id": id,
+      "providerID": providerID,
+      "variant": ?variant,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionMessageModelSwitchedModel &&
+          other.id == id &&
+          other.providerID == providerID &&
+          other.variant == variant);
+
+  @override
+  int get hashCode => Object.hash(id, providerID, variant);
+
+  final String id;
+  final String providerID;
+  final String? variant;
 }

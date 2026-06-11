@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.241346Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
 @immutable
@@ -28,7 +28,6 @@ class Pty {
     );
   }
 
-
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
@@ -48,13 +47,13 @@ class Pty {
           other.id == id &&
           other.title == title &&
           other.command == command &&
-          other.args == args &&
+          const DeepCollectionEquality().equals(other.args, args) &&
           other.cwd == cwd &&
           other.status == status &&
           other.pid == pid);
 
   @override
-  int get hashCode => Object.hash(id, title, command, args, cwd, status, pid);
+  int get hashCode => Object.hash(id, title, command, const DeepCollectionEquality().hash(args), cwd, status, pid);
 
   final String id;
   final String title;

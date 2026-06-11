@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.246301Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'session_message.dart';
 
@@ -18,18 +18,17 @@ class SessionMessageAgentSwitched implements SessionMessage {
     return SessionMessageAgentSwitched(
       id: json["id"] as String,
       metadata: json["metadata"] as Map<String, dynamic>?,
-      time: json["time"] as Map<String, dynamic>,
+      time: SessionMessageAgentSwitchedTime.fromJson(json["time"] as Map<String, dynamic>),
       agent: json["agent"] as String,
     );
   }
-
 
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
       "metadata": ?metadata,
-      "time": time,
+      "time": time.toJson(),
       "type": "agent-switched",
       "agent": agent,
     };
@@ -40,15 +39,45 @@ class SessionMessageAgentSwitched implements SessionMessage {
       identical(this, other) ||
       (other is SessionMessageAgentSwitched &&
           other.id == id &&
-          other.metadata == metadata &&
+          const DeepCollectionEquality().equals(other.metadata, metadata) &&
           other.time == time &&
           other.agent == agent);
 
   @override
-  int get hashCode => Object.hash(id, metadata, time, agent);
+  int get hashCode => Object.hash(id, const DeepCollectionEquality().hash(metadata), time, agent);
 
   final String id;
   final Map<String, dynamic>? metadata;
-  final Map<String, dynamic> time;
+  final SessionMessageAgentSwitchedTime time;
   final String agent;
+}
+
+@immutable
+class SessionMessageAgentSwitchedTime {
+  const SessionMessageAgentSwitchedTime({
+    required this.created,
+  });
+
+  factory SessionMessageAgentSwitchedTime.fromJson(Map<String, dynamic> json) {
+    return SessionMessageAgentSwitchedTime(
+      created: (json["created"] as num).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "created": created,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionMessageAgentSwitchedTime &&
+          other.created == created);
+
+  @override
+  int get hashCode => created.hashCode;
+
+  final double created;
 }

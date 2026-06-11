@@ -1,6 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.252305Z
 
 import 'package:meta/meta.dart';
 import 'part.dart';
@@ -25,10 +24,9 @@ class StepFinishPart implements Part {
       reason: json["reason"] as String,
       snapshot: json["snapshot"] as String?,
       cost: (json["cost"] as num).toDouble(),
-      tokens: json["tokens"] as Map<String, dynamic>,
+      tokens: StepFinishPartTokens.fromJson(json["tokens"] as Map<String, dynamic>),
     );
   }
-
 
   @override
   Map<String, dynamic> toJson() {
@@ -40,7 +38,7 @@ class StepFinishPart implements Part {
       "reason": reason,
       "snapshot": ?snapshot,
       "cost": cost,
-      "tokens": tokens,
+      "tokens": tokens.toJson(),
     };
   }
 
@@ -65,5 +63,90 @@ class StepFinishPart implements Part {
   final String reason;
   final String? snapshot;
   final double cost;
-  final Map<String, dynamic> tokens;
+  final StepFinishPartTokens tokens;
+}
+
+@immutable
+class StepFinishPartTokens {
+  const StepFinishPartTokens({
+    this.total,
+    required this.input,
+    required this.output,
+    required this.reasoning,
+    required this.cache,
+  });
+
+  factory StepFinishPartTokens.fromJson(Map<String, dynamic> json) {
+    return StepFinishPartTokens(
+      total: (json["total"] as num?)?.toDouble(),
+      input: (json["input"] as num).toDouble(),
+      output: (json["output"] as num).toDouble(),
+      reasoning: (json["reasoning"] as num).toDouble(),
+      cache: StepFinishPartTokensCache.fromJson(json["cache"] as Map<String, dynamic>),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "total": ?total,
+      "input": input,
+      "output": output,
+      "reasoning": reasoning,
+      "cache": cache.toJson(),
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StepFinishPartTokens &&
+          other.total == total &&
+          other.input == input &&
+          other.output == output &&
+          other.reasoning == reasoning &&
+          other.cache == cache);
+
+  @override
+  int get hashCode => Object.hash(total, input, output, reasoning, cache);
+
+  final double? total;
+  final double input;
+  final double output;
+  final double reasoning;
+  final StepFinishPartTokensCache cache;
+}
+
+@immutable
+class StepFinishPartTokensCache {
+  const StepFinishPartTokensCache({
+    required this.read,
+    required this.write,
+  });
+
+  factory StepFinishPartTokensCache.fromJson(Map<String, dynamic> json) {
+    return StepFinishPartTokensCache(
+      read: (json["read"] as num).toDouble(),
+      write: (json["write"] as num).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "read": read,
+      "write": write,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StepFinishPartTokensCache &&
+          other.read == read &&
+          other.write == write);
+
+  @override
+  int get hashCode => Object.hash(read, write);
+
+  final double read;
+  final double write;
 }

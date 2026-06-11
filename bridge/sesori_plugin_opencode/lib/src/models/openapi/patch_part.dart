@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.233918Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'part.dart';
 
@@ -25,7 +25,6 @@ class PatchPart implements Part {
     );
   }
 
-
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
@@ -46,10 +45,10 @@ class PatchPart implements Part {
           other.sessionID == sessionID &&
           other.messageID == messageID &&
           other.hash == hash &&
-          other.files == files);
+          const DeepCollectionEquality().equals(other.files, files));
 
   @override
-  int get hashCode => Object.hash(id, sessionID, messageID, hash, files);
+  int get hashCode => Object.hash(id, sessionID, messageID, hash, const DeepCollectionEquality().hash(files));
 
   final String id;
   final String sessionID;

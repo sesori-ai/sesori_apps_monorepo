@@ -1,6 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.213792Z
 
 import 'package:meta/meta.dart';
 import 'event.dart';
@@ -15,17 +14,16 @@ class EventPluginAdded implements Event {
   factory EventPluginAdded.fromJson(Map<String, dynamic> json) {
     return EventPluginAdded(
       id: json["id"] as String,
-      properties: json["properties"] as Map<String, dynamic>,
+      properties: EventPluginAddedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
-
 
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
       "type": "plugin.added",
-      "properties": properties,
+      "properties": properties.toJson(),
     };
   }
 
@@ -40,5 +38,35 @@ class EventPluginAdded implements Event {
   int get hashCode => Object.hash(id, properties);
 
   final String id;
-  final Map<String, dynamic> properties;
+  final EventPluginAddedProperties properties;
+}
+
+@immutable
+class EventPluginAddedProperties {
+  const EventPluginAddedProperties({
+    required this.id,
+  });
+
+  factory EventPluginAddedProperties.fromJson(Map<String, dynamic> json) {
+    return EventPluginAddedProperties(
+      id: json["id"] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "id": id,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EventPluginAddedProperties &&
+          other.id == id);
+
+  @override
+  int get hashCode => id.hashCode;
+
+  final String id;
 }

@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.258971Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
 @immutable
@@ -22,7 +22,6 @@ class ToolFileContent {
     );
   }
 
-
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "type": type,
@@ -37,12 +36,12 @@ class ToolFileContent {
       identical(this, other) ||
       (other is ToolFileContent &&
           other.type == type &&
-          other.source == source &&
+          const DeepCollectionEquality().equals(other.source, source) &&
           other.mime == mime &&
           other.name == name);
 
   @override
-  int get hashCode => Object.hash(type, source, mime, name);
+  int get hashCode => Object.hash(type, const DeepCollectionEquality().hash(source), mime, name);
 
   final String type;
   final Object source;

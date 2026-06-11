@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.246109Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'session_message_agent_switched.dart';
 import 'session_message_assistant.dart';
@@ -46,7 +46,29 @@ abstract interface class SessionMessage {
       case "compaction":
         return SessionMessageCompaction.fromJson(map);
       default:
-        throw FormatException('Unknown SessionMessage value: $discriminator');
+        return SessionMessageUnknown(raw: map);
     }
   }
+}
+
+/// Fallback variant for an unrecognized [SessionMessage] payload shape.
+/// Carries the raw JSON so newer OpenCode servers do not break
+/// decoding; `toJson` returns the payload unchanged.
+@immutable
+class SessionMessageUnknown implements SessionMessage {
+  const SessionMessageUnknown({required this.raw});
+
+  final Object? raw;
+
+  @override
+  Object? toJson() => raw;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionMessageUnknown &&
+          const DeepCollectionEquality().equals(other.raw, raw));
+
+  @override
+  int get hashCode => const DeepCollectionEquality().hash(raw);
 }

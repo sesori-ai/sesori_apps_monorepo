@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.231905Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
 @immutable
@@ -18,7 +18,6 @@ class MessageOutputLengthError {
     );
   }
 
-
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "name": name,
@@ -31,10 +30,10 @@ class MessageOutputLengthError {
       identical(this, other) ||
       (other is MessageOutputLengthError &&
           other.name == name &&
-          other.data == data);
+          const DeepCollectionEquality().equals(other.data, data));
 
   @override
-  int get hashCode => Object.hash(name, data);
+  int get hashCode => Object.hash(name, const DeepCollectionEquality().hash(data));
 
   final String name;
   final Map<String, dynamic> data;

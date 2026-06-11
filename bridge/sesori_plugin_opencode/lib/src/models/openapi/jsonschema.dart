@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.228114Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
 @immutable
@@ -11,5 +11,15 @@ class JSONSchema {
     return JSONSchema(json: json);
   }
   Map<String, dynamic> toJson() => json;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is JSONSchema &&
+          const DeepCollectionEquality().equals(other.json, json));
+
+  @override
+  int get hashCode => const DeepCollectionEquality().hash(json);
+
   final Map<String, dynamic> json;
 }

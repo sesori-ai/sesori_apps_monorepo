@@ -1,6 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.228511Z
 
 import 'package:json_annotation/json_annotation.dart';
 
@@ -9,6 +8,10 @@ enum LayoutConfig {
   auto,
   @JsonValue("stretch")
   stretch,
+
+  /// Fallback for values introduced by newer OpenCode servers.
+  /// Encodes back to the literal string `unknown`.
+  unknown,
   ;
 
   static LayoutConfig fromJson(String value) {
@@ -18,7 +21,7 @@ enum LayoutConfig {
       case "stretch":
         return LayoutConfig.stretch;
       default:
-        throw FormatException('Unknown LayoutConfig value: $value');
+        return LayoutConfig.unknown;
     }
   }
 
@@ -28,6 +31,8 @@ enum LayoutConfig {
         return "auto";
       case LayoutConfig.stretch:
         return "stretch";
+      case LayoutConfig.unknown:
+        return 'unknown';
     }
   }
 }

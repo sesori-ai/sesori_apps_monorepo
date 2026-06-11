@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.217594Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'event.dart';
 
@@ -15,17 +15,16 @@ class EventSessionError implements Event {
   factory EventSessionError.fromJson(Map<String, dynamic> json) {
     return EventSessionError(
       id: json["id"] as String,
-      properties: json["properties"] as Map<String, dynamic>,
+      properties: EventSessionErrorProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
-
 
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
       "type": "session.error",
-      "properties": properties,
+      "properties": properties.toJson(),
     };
   }
 
@@ -40,5 +39,40 @@ class EventSessionError implements Event {
   int get hashCode => Object.hash(id, properties);
 
   final String id;
-  final Map<String, dynamic> properties;
+  final EventSessionErrorProperties properties;
+}
+
+@immutable
+class EventSessionErrorProperties {
+  const EventSessionErrorProperties({
+    this.sessionID,
+    this.error,
+  });
+
+  factory EventSessionErrorProperties.fromJson(Map<String, dynamic> json) {
+    return EventSessionErrorProperties(
+      sessionID: json["sessionID"] as String?,
+      error: json["error"] as Object?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "sessionID": ?sessionID,
+      "error": ?error,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EventSessionErrorProperties &&
+          other.sessionID == sessionID &&
+          const DeepCollectionEquality().equals(other.error, error));
+
+  @override
+  int get hashCode => Object.hash(sessionID, const DeepCollectionEquality().hash(error));
+
+  final String? sessionID;
+  final Object? error;
 }

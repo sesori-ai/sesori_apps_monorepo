@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.262387Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
 @immutable
@@ -30,7 +30,6 @@ class Workspace {
     );
   }
 
-
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
@@ -53,12 +52,12 @@ class Workspace {
           other.name == name &&
           other.branch == branch &&
           other.directory == directory &&
-          other.extra == extra &&
+          const DeepCollectionEquality().equals(other.extra, extra) &&
           other.projectID == projectID &&
-          other.timeUsed == timeUsed);
+          const DeepCollectionEquality().equals(other.timeUsed, timeUsed));
 
   @override
-  int get hashCode => Object.hash(id, type, name, branch, directory, extra, projectID, timeUsed);
+  int get hashCode => Object.hash(id, type, name, branch, directory, const DeepCollectionEquality().hash(extra), projectID, const DeepCollectionEquality().hash(timeUsed));
 
   final String id;
   final String type;

@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.206900Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'event.tui.command.execute.dart';
 import 'event.tui.prompt.append.dart';
@@ -283,7 +283,29 @@ abstract interface class Event {
       case "server.instance.disposed":
         return EventServerInstanceDisposed.fromJson(map);
       default:
-        throw FormatException('Unknown Event value: $discriminator');
+        return EventUnknown(raw: map);
     }
   }
+}
+
+/// Fallback variant for an unrecognized [Event] payload shape.
+/// Carries the raw JSON so newer OpenCode servers do not break
+/// decoding; `toJson` returns the payload unchanged.
+@immutable
+class EventUnknown implements Event {
+  const EventUnknown({required this.raw});
+
+  final Object? raw;
+
+  @override
+  Object? toJson() => raw;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EventUnknown &&
+          const DeepCollectionEquality().equals(other.raw, raw));
+
+  @override
+  int get hashCode => const DeepCollectionEquality().hash(raw);
 }

@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.243352Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'question_v2_answer.dart';
 
@@ -17,7 +17,6 @@ class QuestionV2Reply {
     );
   }
 
-
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "answers": answers.map((e) => e.toJson()).toList(),
@@ -28,10 +27,10 @@ class QuestionV2Reply {
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is QuestionV2Reply &&
-          other.answers == answers);
+          const DeepCollectionEquality().equals(other.answers, answers));
 
   @override
-  int get hashCode => answers.hashCode;
+  int get hashCode => const DeepCollectionEquality().hash(answers);
 
   final List<QuestionV2Answer> answers;
 }

@@ -2,7 +2,6 @@
 //
 // Auto-generated OpenCode v2 client generated from the OpenAPI spec.
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.268356Z
 //
 // To regenerate, run:
 //   make opencode-codegen OPENCODE_TAG=<tag>
@@ -60,12 +59,12 @@ import 'models/openapi/worktree_reset_input.dart';
 /// HTTP Basic auth: username `opencode`, password supplied at construction.
 @immutable
 class OpenCodeClient {
-  OpenCodeClient({
+  const OpenCodeClient({
     required this.baseUrl,
     required String password,
-    http.Client? httpClient,
+    required http.Client httpClient,
   })  : _password = password,
-        _http = httpClient ?? http.Client();
+        _http = httpClient;
 
   /// Base URL of the OpenCode server, e.g. `http://127.0.0.1:4096`.
   final String baseUrl;
@@ -75,6 +74,20 @@ class OpenCodeClient {
   Map<String, String> get _authHeaders => {
     'Authorization': 'Basic ${base64Encode(utf8.encode('opencode:$_password'))}',
   };
+
+  /// Builds the request URI for [path], preserving any path prefix
+  /// on [baseUrl] and omitting the query string entirely when
+  /// [query] is empty (avoids a trailing `?`).
+  Uri _uri(String path, Map<String, String> query) {
+    final base = Uri.parse(baseUrl);
+    final basePath = base.path.endsWith('/')
+        ? base.path.substring(0, base.path.length - 1)
+        : base.path;
+    return base.replace(
+      path: '$basePath$path',
+      queryParameters: query.isEmpty ? null : query,
+    );
+  }
 
   void close() => _http.close();
 
@@ -87,14 +100,11 @@ class OpenCodeClient {
 /// Get a list of all available AI agents in the OpenCode system.
 ///
 /// `operationId`: `app.agents`
-Future<List<Agent>> appAgents1w4t5xc({
+Future<List<Agent>> appAgents({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/agent',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/agent', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -116,15 +126,12 @@ Future<List<Agent>> appAgents1w4t5xc({
 /// Write a log entry to the server logs with specified level and metadata.
 ///
 /// `operationId`: `app.log`
-Future<bool> appLog1xnlo30({
+Future<bool> appLog({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/log',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/log', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -146,14 +153,11 @@ Future<bool> appLog1xnlo30({
 /// Get a list of all available skills in the OpenCode system.
 ///
 /// `operationId`: `app.skills`
-Future<List<Object>> appSkills08tc0dg({
+Future<List<Object>> appSkills({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/skill',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/skill', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -175,13 +179,10 @@ Future<List<Object>> appSkills08tc0dg({
 /// Remove authentication credentials
 ///
 /// `operationId`: `auth.remove`
-Future<bool> authRemove035ixzz({
+Future<bool> authRemove({
     required String providerID,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/auth/${Uri.encodeComponent(providerID)}',
-      queryParameters: {},
-    );
+    final uri = _uri('/auth/${Uri.encodeComponent(providerID)}', const <String, String>{});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -202,14 +203,11 @@ Future<bool> authRemove035ixzz({
 /// Set authentication credentials
 ///
 /// `operationId`: `auth.set`
-Future<bool> authSet04dq3o1({
+Future<bool> authSet({
     required String providerID,
     required Auth body,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/auth/${Uri.encodeComponent(providerID)}',
-      queryParameters: {},
-    );
+    final uri = _uri('/auth/${Uri.encodeComponent(providerID)}', const <String, String>{});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -231,14 +229,11 @@ Future<bool> authSet04dq3o1({
 /// Get a list of all available commands in the OpenCode system.
 ///
 /// `operationId`: `command.list`
-Future<List<Command>> commandList1xa0c70({
+Future<List<Command>> commandList({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/command',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/command', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -260,14 +255,11 @@ Future<List<Command>> commandList1xa0c70({
 /// Retrieve the current OpenCode configuration settings and preferences.
 ///
 /// `operationId`: `config.get`
-Future<Config> configGet1032yv9({
+Future<Config> configGet({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/config',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/config', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -289,14 +281,11 @@ Future<Config> configGet1032yv9({
 /// Get a list of all configured AI providers and their default models.
 ///
 /// `operationId`: `config.providers`
-Future<Object> configProviders1oc7hrf({
+Future<Object> configProviders({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/config/providers',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/config/providers', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -317,15 +306,12 @@ Future<Object> configProviders1oc7hrf({
 /// Update OpenCode configuration settings and preferences.
 ///
 /// `operationId`: `config.update`
-Future<Config> configUpdate1pfe7yi({
+Future<Config> configUpdate({
     required Config body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/config',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/config', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -348,14 +334,11 @@ Future<Config> configUpdate1pfe7yi({
 /// Get events
 ///
 /// `operationId`: `event.subscribe`
-Future<Object> eventSubscribe0ggbail({
+Future<Object> eventSubscribe({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/event',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/event', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -376,14 +359,11 @@ Future<Object> eventSubscribe0ggbail({
 /// Get the active Console org name and the set of provider IDs managed by that Console org.
 ///
 /// `operationId`: `experimental.console.get`
-Future<ConsoleState> experimentalConsoleGet1yb75vy({
+Future<ConsoleState> experimentalConsoleGet({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/console',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/experimental/console', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -405,14 +385,11 @@ Future<ConsoleState> experimentalConsoleGet1yb75vy({
 /// Get the available Console orgs across logged-in accounts, including the current active org.
 ///
 /// `operationId`: `experimental.console.listOrgs`
-Future<Object> experimentalConsoleListOrgs08lc08d({
+Future<Object> experimentalConsoleListOrgs({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/console/orgs',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/experimental/console/orgs', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -433,15 +410,12 @@ Future<Object> experimentalConsoleListOrgs08lc08d({
 /// Persist a new active Console account/org selection for the current local OpenCode state.
 ///
 /// `operationId`: `experimental.console.switchOrg`
-Future<bool> experimentalConsoleSwitchOrg1voyi40({
+Future<bool> experimentalConsoleSwitchOrg({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/console/switch',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/experimental/console/switch', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -463,13 +437,10 @@ Future<bool> experimentalConsoleSwitchOrg1voyi40({
 /// Move a session to another project directory, optionally transferring local changes.
 ///
 /// `operationId`: `experimental.controlPlane.moveSession`
-Future<void> experimentalControlPlaneMoveSession1jtwf5z({
+Future<void> experimentalControlPlaneMoveSession({
     required Map<String, dynamic> body,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/control-plane/move-session',
-      queryParameters: {},
-    );
+    final uri = _uri('/experimental/control-plane/move-session', const <String, String>{});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -491,15 +462,12 @@ Future<void> experimentalControlPlaneMoveSession1jtwf5z({
 /// Create a local physical copy of a project using the selected strategy.
 ///
 /// `operationId`: `experimental.projectCopy.create`
-Future<ProjectCopyCopy> experimentalProjectCopyCreate01k04qh({
+Future<ProjectCopyCopy> experimentalProjectCopyCreate({
     required String projectID,
     required Map<String, dynamic> body,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/project/${Uri.encodeComponent(projectID)}/copy',
-      queryParameters: {if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/experimental/project/${Uri.encodeComponent(projectID)}/copy', <String, String>{if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -522,15 +490,12 @@ Future<ProjectCopyCopy> experimentalProjectCopyCreate01k04qh({
 /// Discover local project copies using one or all configured strategies.
 ///
 /// `operationId`: `experimental.projectCopy.refresh`
-Future<void> experimentalProjectCopyRefresh1bcq0rc({
+Future<void> experimentalProjectCopyRefresh({
     required String projectID,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/project/${Uri.encodeComponent(projectID)}/copy/refresh',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/experimental/project/${Uri.encodeComponent(projectID)}/copy/refresh', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -551,16 +516,13 @@ Future<void> experimentalProjectCopyRefresh1bcq0rc({
 /// Remove a local physical copy of a project using the selected strategy.
 ///
 /// `operationId`: `experimental.projectCopy.remove`
-Future<void> experimentalProjectCopyRemove08oftkp({
+Future<void> experimentalProjectCopyRemove({
     required String projectID,
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/project/${Uri.encodeComponent(projectID)}/copy',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/experimental/project/${Uri.encodeComponent(projectID)}/copy', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -582,14 +544,11 @@ Future<void> experimentalProjectCopyRemove08oftkp({
 /// Get all available MCP resources from connected servers. Optionally filter by name.
 ///
 /// `operationId`: `experimental.resource.list`
-Future<Object> experimentalResourceList0u28nzv({
+Future<Object> experimentalResourceList({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/resource',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/experimental/resource', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -610,15 +569,12 @@ Future<Object> experimentalResourceList0u28nzv({
 /// Detach any synchronous subagents currently blocking the session and continue them in the background.
 ///
 /// `operationId`: `experimental.session.background`
-Future<bool> experimentalSessionBackground15z5vah({
+Future<bool> experimentalSessionBackground({
     required String sessionID,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/session/${Uri.encodeComponent(sessionID)}/background',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/experimental/session/${Uri.encodeComponent(sessionID)}/background', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -639,7 +595,7 @@ Future<bool> experimentalSessionBackground15z5vah({
 /// Get a list of all OpenCode sessions across projects, sorted by most recently updated. Archived sessions are excluded by default.
 ///
 /// `operationId`: `experimental.session.list`
-Future<List<GlobalSession>> experimentalSessionList033ard1({
+Future<List<GlobalSession>> experimentalSessionList({
     String? directory,
     String? workspace,
     String? roots,
@@ -649,10 +605,7 @@ Future<List<GlobalSession>> experimentalSessionList033ard1({
     double? limit,
     String? archived,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/session',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), if (roots != null) 'roots': roots.toString(), if (start != null) 'start': start.toString(), if (cursor != null) 'cursor': cursor.toString(), if (search != null) 'search': search.toString(), if (limit != null) 'limit': limit.toString(), if (archived != null) 'archived': archived.toString()},
-    );
+    final uri = _uri('/experimental/session', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), if (roots != null) 'roots': roots.toString(), if (start != null) 'start': start.toString(), if (cursor != null) 'cursor': cursor.toString(), if (search != null) 'search': search.toString(), if (limit != null) 'limit': limit.toString(), if (archived != null) 'archived': archived.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -674,14 +627,11 @@ Future<List<GlobalSession>> experimentalSessionList033ard1({
 /// List all available workspace adapters for the current project.
 ///
 /// `operationId`: `experimental.workspace.adapter.list`
-Future<List<Object>> experimentalWorkspaceAdapterList0q9fsrt({
+Future<List<Object>> experimentalWorkspaceAdapterList({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/workspace/adapter',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/experimental/workspace/adapter', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -703,15 +653,12 @@ Future<List<Object>> experimentalWorkspaceAdapterList0q9fsrt({
 /// Create a workspace for the current project.
 ///
 /// `operationId`: `experimental.workspace.create`
-Future<Workspace> experimentalWorkspaceCreate1judteu({
+Future<Workspace> experimentalWorkspaceCreate({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/workspace',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/experimental/workspace', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -734,14 +681,11 @@ Future<Workspace> experimentalWorkspaceCreate1judteu({
 /// List all workspaces.
 ///
 /// `operationId`: `experimental.workspace.list`
-Future<List<Workspace>> experimentalWorkspaceList1ipa75a({
+Future<List<Workspace>> experimentalWorkspaceList({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/workspace',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/experimental/workspace', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -763,15 +707,12 @@ Future<List<Workspace>> experimentalWorkspaceList1ipa75a({
 /// Remove an existing workspace.
 ///
 /// `operationId`: `experimental.workspace.remove`
-Future<Workspace> experimentalWorkspaceRemove1yjezh2({
+Future<Workspace> experimentalWorkspaceRemove({
     required String id,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/workspace/${Uri.encodeComponent(id)}',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/experimental/workspace/${Uri.encodeComponent(id)}', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -793,14 +734,11 @@ Future<Workspace> experimentalWorkspaceRemove1yjezh2({
 /// Get connection status for workspaces in the current project.
 ///
 /// `operationId`: `experimental.workspace.status`
-Future<List<Object>> experimentalWorkspaceStatus03xz7p8({
+Future<List<Object>> experimentalWorkspaceStatus({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/workspace/status',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/experimental/workspace/status', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -822,14 +760,11 @@ Future<List<Object>> experimentalWorkspaceStatus03xz7p8({
 /// Register missing workspaces returned by workspace adapters.
 ///
 /// `operationId`: `experimental.workspace.syncList`
-Future<void> experimentalWorkspaceSyncList1mkmdth({
+Future<void> experimentalWorkspaceSyncList({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/workspace/sync-list',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/experimental/workspace/sync-list', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -850,15 +785,12 @@ Future<void> experimentalWorkspaceSyncList1mkmdth({
 /// Move a session's sync history into the target workspace, or detach it to the local project.
 ///
 /// `operationId`: `experimental.workspace.warp`
-Future<void> experimentalWorkspaceWarp1qxuxg8({
+Future<void> experimentalWorkspaceWarp({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/workspace/warp',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/experimental/workspace/warp', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -880,15 +812,12 @@ Future<void> experimentalWorkspaceWarp1qxuxg8({
 /// List files and directories in a specified path.
 ///
 /// `operationId`: `file.list`
-Future<List<FileNode>> fileList0mfkv1b({
+Future<List<FileNode>> fileList({
     String? directory,
     String? workspace,
     required String path,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/file',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), 'path': path.toString()},
-    );
+    final uri = _uri('/file', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), 'path': path.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -910,15 +839,12 @@ Future<List<FileNode>> fileList0mfkv1b({
 /// Read the content of a specified file.
 ///
 /// `operationId`: `file.read`
-Future<FileContent> fileRead1qtg4u3({
+Future<FileContent> fileRead({
     String? directory,
     String? workspace,
     required String path,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/file/content',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), 'path': path.toString()},
-    );
+    final uri = _uri('/file/content', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), 'path': path.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -940,14 +866,11 @@ Future<FileContent> fileRead1qtg4u3({
 /// Get the git status of all files in the project.
 ///
 /// `operationId`: `file.status`
-Future<List<File>> fileStatus1ksoc4h({
+Future<List<File>> fileStatus({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/file/status',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/file/status', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -969,7 +892,7 @@ Future<List<File>> fileStatus1ksoc4h({
 /// Search for files or directories by name or pattern in the project directory.
 ///
 /// `operationId`: `find.files`
-Future<List<String>> findFiles16bzypn({
+Future<List<String>> findFiles({
     String? directory,
     String? workspace,
     required String query,
@@ -977,10 +900,7 @@ Future<List<String>> findFiles16bzypn({
     String? type,
     int? limit,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/find/file',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), 'query': query.toString(), if (dirs != null) 'dirs': dirs.toString(), if (type != null) 'type': type.toString(), if (limit != null) 'limit': limit.toString()},
-    );
+    final uri = _uri('/find/file', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), 'query': query.toString(), if (dirs != null) 'dirs': dirs.toString(), if (type != null) 'type': type.toString(), if (limit != null) 'limit': limit.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1002,15 +922,12 @@ Future<List<String>> findFiles16bzypn({
 /// Search for workspace symbols like functions, classes, and variables using LSP.
 ///
 /// `operationId`: `find.symbols`
-Future<List<Symbol>> findSymbols1r7pfgx({
+Future<List<Symbol>> findSymbols({
     String? directory,
     String? workspace,
     required String query,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/find/symbol',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), 'query': query.toString()},
-    );
+    final uri = _uri('/find/symbol', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), 'query': query.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1032,15 +949,12 @@ Future<List<Symbol>> findSymbols1r7pfgx({
 /// Search for text patterns across files in the project using ripgrep.
 ///
 /// `operationId`: `find.text`
-Future<List<Object>> findText0kfx8or({
+Future<List<Object>> findText({
     String? directory,
     String? workspace,
     required String pattern,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/find',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), 'pattern': pattern.toString()},
-    );
+    final uri = _uri('/find', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), 'pattern': pattern.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1060,14 +974,11 @@ Future<List<Object>> findText0kfx8or({
 /// Get formatter status
 ///
 /// `operationId`: `formatter.status`
-Future<List<FormatterStatus>> formatterStatus0t2bk6r({
+Future<List<FormatterStatus>> formatterStatus({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/formatter',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/formatter', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1089,11 +1000,8 @@ Future<List<FormatterStatus>> formatterStatus0t2bk6r({
 /// Retrieve the current global OpenCode configuration settings and preferences.
 ///
 /// `operationId`: `global.config.get`
-Future<Config> globalConfigGet04xw6cc() async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/global/config',
-      queryParameters: {},
-    );
+Future<Config> globalConfigGet() async {
+    final uri = _uri('/global/config', const <String, String>{});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1115,13 +1023,10 @@ Future<Config> globalConfigGet04xw6cc() async {
 /// Update global OpenCode configuration settings and preferences.
 ///
 /// `operationId`: `global.config.update`
-Future<Config> globalConfigUpdate0cs363l({
+Future<Config> globalConfigUpdate({
     required Config body,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/global/config',
-      queryParameters: {},
-    );
+    final uri = _uri('/global/config', const <String, String>{});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1144,11 +1049,8 @@ Future<Config> globalConfigUpdate0cs363l({
 /// Clean up and dispose all OpenCode instances, releasing all resources.
 ///
 /// `operationId`: `global.dispose`
-Future<bool> globalDispose1p539kh() async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/global/dispose',
-      queryParameters: {},
-    );
+Future<bool> globalDispose() async {
+    final uri = _uri('/global/dispose', const <String, String>{});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1169,11 +1071,8 @@ Future<bool> globalDispose1p539kh() async {
 /// Subscribe to global events from the OpenCode system using server-sent events.
 ///
 /// `operationId`: `global.event`
-Future<Object> globalEvent0vipzew() async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/global/event',
-      queryParameters: {},
-    );
+Future<Object> globalEvent() async {
+    final uri = _uri('/global/event', const <String, String>{});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1194,11 +1093,8 @@ Future<Object> globalEvent0vipzew() async {
 /// Get health information about the OpenCode server.
 ///
 /// `operationId`: `global.health`
-Future<Object> globalHealth1gczf2e() async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/global/health',
-      queryParameters: {},
-    );
+Future<Object> globalHealth() async {
+    final uri = _uri('/global/health', const <String, String>{});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1219,13 +1115,10 @@ Future<Object> globalHealth1gczf2e() async {
 /// Upgrade opencode to the specified version or latest if not specified.
 ///
 /// `operationId`: `global.upgrade`
-Future<Object> globalUpgrade09jf9d8({
+Future<Object> globalUpgrade({
     required Map<String, dynamic> body,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/global/upgrade',
-      queryParameters: {},
-    );
+    final uri = _uri('/global/upgrade', const <String, String>{});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1247,14 +1140,11 @@ Future<Object> globalUpgrade09jf9d8({
 /// Clean up and dispose the current OpenCode instance, releasing all resources.
 ///
 /// `operationId`: `instance.dispose`
-Future<bool> instanceDispose1pv67h1({
+Future<bool> instanceDispose({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/instance/dispose',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/instance/dispose', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1275,14 +1165,11 @@ Future<bool> instanceDispose1pv67h1({
 /// Get LSP server status
 ///
 /// `operationId`: `lsp.status`
-Future<List<LSPStatus>> lspStatus1oobkkc({
+Future<List<LSPStatus>> lspStatus({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/lsp',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/lsp', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1304,15 +1191,12 @@ Future<List<LSPStatus>> lspStatus1oobkkc({
 /// Dynamically add a new Model Context Protocol (MCP) server to the system.
 ///
 /// `operationId`: `mcp.add`
-Future<Object> mcpAdd0l0265e({
+Future<Object> mcpAdd({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/mcp',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/mcp', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1334,15 +1218,12 @@ Future<Object> mcpAdd0l0265e({
 /// Start OAuth flow and wait for callback (opens browser).
 ///
 /// `operationId`: `mcp.auth.authenticate`
-Future<MCPStatus> mcpAuthAuthenticate0j2ie1g({
+Future<MCPStatus> mcpAuthAuthenticate({
     required String name,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/mcp/${Uri.encodeComponent(name)}/auth/authenticate',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/mcp/${Uri.encodeComponent(name)}/auth/authenticate', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1364,16 +1245,13 @@ Future<MCPStatus> mcpAuthAuthenticate0j2ie1g({
 /// Complete OAuth authentication for a Model Context Protocol (MCP) server using the authorization code.
 ///
 /// `operationId`: `mcp.auth.callback`
-Future<MCPStatus> mcpAuthCallback0q96uku({
+Future<MCPStatus> mcpAuthCallback({
     required String name,
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/mcp/${Uri.encodeComponent(name)}/auth/callback',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/mcp/${Uri.encodeComponent(name)}/auth/callback', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1396,15 +1274,12 @@ Future<MCPStatus> mcpAuthCallback0q96uku({
 /// Remove OAuth credentials for an MCP server.
 ///
 /// `operationId`: `mcp.auth.remove`
-Future<Object> mcpAuthRemove01qxgz9({
+Future<Object> mcpAuthRemove({
     required String name,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/mcp/${Uri.encodeComponent(name)}/auth',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/mcp/${Uri.encodeComponent(name)}/auth', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1425,15 +1300,12 @@ Future<Object> mcpAuthRemove01qxgz9({
 /// Start OAuth authentication flow for a Model Context Protocol (MCP) server.
 ///
 /// `operationId`: `mcp.auth.start`
-Future<Object> mcpAuthStart0ma1q4n({
+Future<Object> mcpAuthStart({
     required String name,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/mcp/${Uri.encodeComponent(name)}/auth',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/mcp/${Uri.encodeComponent(name)}/auth', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1454,15 +1326,12 @@ Future<Object> mcpAuthStart0ma1q4n({
 /// Connect an MCP server.
 ///
 /// `operationId`: `mcp.connect`
-Future<bool> mcpConnect1nj937f({
+Future<bool> mcpConnect({
     required String name,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/mcp/${Uri.encodeComponent(name)}/connect',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/mcp/${Uri.encodeComponent(name)}/connect', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1483,15 +1352,12 @@ Future<bool> mcpConnect1nj937f({
 /// Disconnect an MCP server.
 ///
 /// `operationId`: `mcp.disconnect`
-Future<bool> mcpDisconnect0dxkxi5({
+Future<bool> mcpDisconnect({
     required String name,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/mcp/${Uri.encodeComponent(name)}/disconnect',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/mcp/${Uri.encodeComponent(name)}/disconnect', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1512,14 +1378,11 @@ Future<bool> mcpDisconnect0dxkxi5({
 /// Get the status of all Model Context Protocol (MCP) servers.
 ///
 /// `operationId`: `mcp.status`
-Future<Object> mcpStatus1f3kikh({
+Future<Object> mcpStatus({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/mcp',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/mcp', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1540,17 +1403,14 @@ Future<Object> mcpStatus1f3kikh({
 /// Delete a part from a message.
 ///
 /// `operationId`: `part.delete`
-Future<bool> partDelete1ine2zd({
+Future<bool> partDelete({
     required String sessionID,
     required String messageID,
     required String partID,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}/message/${Uri.encodeComponent(messageID)}/part/${Uri.encodeComponent(partID)}',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}/message/${Uri.encodeComponent(messageID)}/part/${Uri.encodeComponent(partID)}', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1571,7 +1431,7 @@ Future<bool> partDelete1ine2zd({
 /// Update a part in a message.
 ///
 /// `operationId`: `part.update`
-Future<Part> partUpdate1k6slrr({
+Future<Part> partUpdate({
     required String sessionID,
     required String messageID,
     required String partID,
@@ -1579,10 +1439,7 @@ Future<Part> partUpdate1k6slrr({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}/message/${Uri.encodeComponent(messageID)}/part/${Uri.encodeComponent(partID)}',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}/message/${Uri.encodeComponent(messageID)}/part/${Uri.encodeComponent(partID)}', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1605,14 +1462,11 @@ Future<Part> partUpdate1k6slrr({
 /// Retrieve the current working directory and related path information for the OpenCode instance.
 ///
 /// `operationId`: `path.get`
-Future<Path> pathGet1b1u2no({
+Future<Path> pathGet({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/path',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/path', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1634,14 +1488,11 @@ Future<Path> pathGet1b1u2no({
 /// Get all pending permission requests across all sessions.
 ///
 /// `operationId`: `permission.list`
-Future<List<PermissionRequest>> permissionList0y9746k({
+Future<List<PermissionRequest>> permissionList({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/permission',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/permission', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1663,16 +1514,13 @@ Future<List<PermissionRequest>> permissionList0y9746k({
 /// Approve or deny a permission request from the AI assistant.
 ///
 /// `operationId`: `permission.reply`
-Future<bool> permissionReply1hz42hs({
+Future<bool> permissionReply({
     required String requestID,
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/permission/${Uri.encodeComponent(requestID)}/reply',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/permission/${Uri.encodeComponent(requestID)}/reply', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1694,17 +1542,14 @@ Future<bool> permissionReply1hz42hs({
 /// Approve or deny a permission request from the AI assistant.
 ///
 /// `operationId`: `permission.respond`
-Future<bool> permissionRespond0bacmnl({
+Future<bool> permissionRespond({
     required String sessionID,
     required String permissionID,
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}/permissions/${Uri.encodeComponent(permissionID)}',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}/permissions/${Uri.encodeComponent(permissionID)}', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1726,14 +1571,11 @@ Future<bool> permissionRespond0bacmnl({
 /// Retrieve the currently active project that OpenCode is working with.
 ///
 /// `operationId`: `project.current`
-Future<Project> projectCurrent1gqqtmd({
+Future<Project> projectCurrent({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/project/current',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/project/current', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1755,15 +1597,12 @@ Future<Project> projectCurrent1gqqtmd({
 /// List known local absolute directories for a project.
 ///
 /// `operationId`: `project.directories`
-Future<ProjectDirectories> projectDirectories0yhgr5f({
+Future<ProjectDirectories> projectDirectories({
     required String projectID,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/project/${Uri.encodeComponent(projectID)}/directories',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/project/${Uri.encodeComponent(projectID)}/directories', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1785,14 +1624,11 @@ Future<ProjectDirectories> projectDirectories0yhgr5f({
 /// Create a git repository for the current project and return the refreshed project info.
 ///
 /// `operationId`: `project.initGit`
-Future<Project> projectInitGit0mlbvle({
+Future<Project> projectInitGit({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/project/git/init',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/project/git/init', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1814,14 +1650,11 @@ Future<Project> projectInitGit0mlbvle({
 /// Get a list of projects that have been opened with OpenCode.
 ///
 /// `operationId`: `project.list`
-Future<List<Project>> projectList09typ88({
+Future<List<Project>> projectList({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/project',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/project', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1843,16 +1676,13 @@ Future<List<Project>> projectList09typ88({
 /// Update project properties such as name, icon, and commands.
 ///
 /// `operationId`: `project.update`
-Future<Project> projectUpdate1vsx7n5({
+Future<Project> projectUpdate({
     required String projectID,
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/project/${Uri.encodeComponent(projectID)}',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/project/${Uri.encodeComponent(projectID)}', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1875,14 +1705,11 @@ Future<Project> projectUpdate1vsx7n5({
 /// Retrieve available authentication methods for all AI providers.
 ///
 /// `operationId`: `provider.auth`
-Future<Object> providerAuth0gvddmk({
+Future<Object> providerAuth({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/provider/auth',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/provider/auth', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1903,14 +1730,11 @@ Future<Object> providerAuth0gvddmk({
 /// Get a list of all available AI providers, including both available and connected ones.
 ///
 /// `operationId`: `provider.list`
-Future<Object> providerList1mmuhr6({
+Future<Object> providerList({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/provider',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/provider', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1931,16 +1755,13 @@ Future<Object> providerList1mmuhr6({
 /// Start the OAuth authorization flow for a provider.
 ///
 /// `operationId`: `provider.oauth.authorize`
-Future<ProviderAuthAuthorization> providerOauthAuthorize1h4oaj8({
+Future<ProviderAuthAuthorization> providerOauthAuthorize({
     required String providerID,
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/provider/${Uri.encodeComponent(providerID)}/oauth/authorize',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/provider/${Uri.encodeComponent(providerID)}/oauth/authorize', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1963,16 +1784,13 @@ Future<ProviderAuthAuthorization> providerOauthAuthorize1h4oaj8({
 /// Handle the OAuth callback from a provider after user authorization.
 ///
 /// `operationId`: `provider.oauth.callback`
-Future<bool> providerOauthCallback0wlw36a({
+Future<bool> providerOauthCallback({
     required String providerID,
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/provider/${Uri.encodeComponent(providerID)}/oauth/callback',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/provider/${Uri.encodeComponent(providerID)}/oauth/callback', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -1994,17 +1812,14 @@ Future<bool> providerOauthCallback0wlw36a({
 /// Establish a WebSocket connection to interact with a pseudo-terminal (PTY) session in real-time.
 ///
 /// `operationId`: `pty.connect`
-Future<bool> ptyConnect08baauo({
+Future<bool> ptyConnect({
     required String ptyID,
     String? directory,
     String? workspace,
     String? cursor,
     String? ticket,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/pty/${Uri.encodeComponent(ptyID)}/connect',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), if (cursor != null) 'cursor': cursor.toString(), if (ticket != null) 'ticket': ticket.toString()},
-    );
+    final uri = _uri('/pty/${Uri.encodeComponent(ptyID)}/connect', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), if (cursor != null) 'cursor': cursor.toString(), if (ticket != null) 'ticket': ticket.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2025,15 +1840,12 @@ Future<bool> ptyConnect08baauo({
 /// Create a short-lived ticket for opening a PTY WebSocket connection.
 ///
 /// `operationId`: `pty.connectToken`
-Future<Object> ptyConnectToken0jvig2t({
+Future<Object> ptyConnectToken({
     required String ptyID,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/pty/${Uri.encodeComponent(ptyID)}/connect-token',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/pty/${Uri.encodeComponent(ptyID)}/connect-token', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2054,15 +1866,12 @@ Future<Object> ptyConnectToken0jvig2t({
 /// Create a new pseudo-terminal (PTY) session for running shell commands and processes.
 ///
 /// `operationId`: `pty.create`
-Future<Pty> ptyCreate113tf8m({
+Future<Pty> ptyCreate({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/pty',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/pty', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2085,15 +1894,12 @@ Future<Pty> ptyCreate113tf8m({
 /// Retrieve detailed information about a specific pseudo-terminal (PTY) session.
 ///
 /// `operationId`: `pty.get`
-Future<Pty> ptyGet1l2ksm6({
+Future<Pty> ptyGet({
     required String ptyID,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/pty/${Uri.encodeComponent(ptyID)}',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/pty/${Uri.encodeComponent(ptyID)}', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2115,14 +1921,11 @@ Future<Pty> ptyGet1l2ksm6({
 /// Get a list of all active pseudo-terminal (PTY) sessions managed by OpenCode.
 ///
 /// `operationId`: `pty.list`
-Future<List<Pty>> ptyList1twsm3y({
+Future<List<Pty>> ptyList({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/pty',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/pty', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2144,15 +1947,12 @@ Future<List<Pty>> ptyList1twsm3y({
 /// Remove and terminate a specific pseudo-terminal (PTY) session.
 ///
 /// `operationId`: `pty.remove`
-Future<bool> ptyRemove0an4ifq({
+Future<bool> ptyRemove({
     required String ptyID,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/pty/${Uri.encodeComponent(ptyID)}',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/pty/${Uri.encodeComponent(ptyID)}', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2173,14 +1973,11 @@ Future<bool> ptyRemove0an4ifq({
 /// Get a list of available shells on the system.
 ///
 /// `operationId`: `pty.shells`
-Future<List<Object>> ptyShells1e4qy0l({
+Future<List<Object>> ptyShells({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/pty/shells',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/pty/shells', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2202,16 +1999,13 @@ Future<List<Object>> ptyShells1e4qy0l({
 /// Update properties of an existing pseudo-terminal (PTY) session.
 ///
 /// `operationId`: `pty.update`
-Future<Pty> ptyUpdate0dxxjfv({
+Future<Pty> ptyUpdate({
     required String ptyID,
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/pty/${Uri.encodeComponent(ptyID)}',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/pty/${Uri.encodeComponent(ptyID)}', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2234,14 +2028,11 @@ Future<Pty> ptyUpdate0dxxjfv({
 /// Get all pending question requests across all sessions.
 ///
 /// `operationId`: `question.list`
-Future<List<QuestionRequest>> questionList0tm089p({
+Future<List<QuestionRequest>> questionList({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/question',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/question', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2263,15 +2054,12 @@ Future<List<QuestionRequest>> questionList0tm089p({
 /// Reject a question request from the AI assistant.
 ///
 /// `operationId`: `question.reject`
-Future<bool> questionReject19zsy1m({
+Future<bool> questionReject({
     required String requestID,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/question/${Uri.encodeComponent(requestID)}/reject',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/question/${Uri.encodeComponent(requestID)}/reject', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2292,16 +2080,13 @@ Future<bool> questionReject19zsy1m({
 /// Provide answers to a question request from the AI assistant.
 ///
 /// `operationId`: `question.reply`
-Future<bool> questionReply1kb6y7v({
+Future<bool> questionReply({
     required String requestID,
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/question/${Uri.encodeComponent(requestID)}/reply',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/question/${Uri.encodeComponent(requestID)}/reply', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2323,15 +2108,12 @@ Future<bool> questionReply1kb6y7v({
 /// Abort an active session and stop any ongoing AI processing or command execution.
 ///
 /// `operationId`: `session.abort`
-Future<bool> sessionAbort1lzcp4n({
+Future<bool> sessionAbort({
     required String sessionID,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}/abort',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}/abort', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2352,15 +2134,12 @@ Future<bool> sessionAbort1lzcp4n({
 /// Retrieve all child sessions that were forked from the specified parent session.
 ///
 /// `operationId`: `session.children`
-Future<List<Session>> sessionChildren0vlr0f8({
+Future<List<Session>> sessionChildren({
     required String sessionID,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}/children',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}/children', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2382,16 +2161,13 @@ Future<List<Session>> sessionChildren0vlr0f8({
 /// Send a new command to a session for execution by the AI assistant.
 ///
 /// `operationId`: `session.command`
-Future<Object> sessionCommand1srqry0({
+Future<Object> sessionCommand({
     required String sessionID,
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}/command',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}/command', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2413,15 +2189,12 @@ Future<Object> sessionCommand1srqry0({
 /// Create a new OpenCode session for interacting with AI assistants and managing conversations.
 ///
 /// `operationId`: `session.create`
-Future<Session> sessionCreate10ftnhn({
+Future<Session> sessionCreate({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2444,15 +2217,12 @@ Future<Session> sessionCreate10ftnhn({
 /// Delete a session and permanently remove all associated data, including messages and history.
 ///
 /// `operationId`: `session.delete`
-Future<bool> sessionDelete05dcy94({
+Future<bool> sessionDelete({
     required String sessionID,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2473,16 +2243,13 @@ Future<bool> sessionDelete05dcy94({
 /// Permanently delete a specific message and all of its parts from a session without reverting file changes.
 ///
 /// `operationId`: `session.deleteMessage`
-Future<bool> sessionDeleteMessage08dlgvz({
+Future<bool> sessionDeleteMessage({
     required String sessionID,
     required String messageID,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}/message/${Uri.encodeComponent(messageID)}',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}/message/${Uri.encodeComponent(messageID)}', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2503,16 +2270,13 @@ Future<bool> sessionDeleteMessage08dlgvz({
 /// Get the file changes (diff) that resulted from a specific user message in the session.
 ///
 /// `operationId`: `session.diff`
-Future<List<SnapshotFileDiff>> sessionDiff128f2zs({
+Future<List<SnapshotFileDiff>> sessionDiff({
     required String sessionID,
     String? directory,
     String? workspace,
     String? messageID,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}/diff',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), if (messageID != null) 'messageID': messageID.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}/diff', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), if (messageID != null) 'messageID': messageID.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2534,16 +2298,13 @@ Future<List<SnapshotFileDiff>> sessionDiff128f2zs({
 /// Create a new session by forking an existing session at a specific message point.
 ///
 /// `operationId`: `session.fork`
-Future<Session> sessionFork12yfemn({
+Future<Session> sessionFork({
     required String sessionID,
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}/fork',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}/fork', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2566,15 +2327,12 @@ Future<Session> sessionFork12yfemn({
 /// Retrieve detailed information about a specific OpenCode session.
 ///
 /// `operationId`: `session.get`
-Future<Session> sessionGet02u88yd({
+Future<Session> sessionGet({
     required String sessionID,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2596,16 +2354,13 @@ Future<Session> sessionGet02u88yd({
 /// Analyze the current application and create an AGENTS.md file with project-specific agent configurations.
 ///
 /// `operationId`: `session.init`
-Future<bool> sessionInit1ag7oud({
+Future<bool> sessionInit({
     required String sessionID,
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}/init',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}/init', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2627,7 +2382,7 @@ Future<bool> sessionInit1ag7oud({
 /// Get a list of all OpenCode sessions, sorted by most recently updated.
 ///
 /// `operationId`: `session.list`
-Future<List<Session>> sessionList18c0yn7({
+Future<List<Session>> sessionList({
     String? directory,
     String? workspace,
     String? scope,
@@ -2637,10 +2392,7 @@ Future<List<Session>> sessionList18c0yn7({
     String? search,
     double? limit,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), if (scope != null) 'scope': scope.toString(), if (path != null) 'path': path.toString(), if (roots != null) 'roots': roots.toString(), if (start != null) 'start': start.toString(), if (search != null) 'search': search.toString(), if (limit != null) 'limit': limit.toString()},
-    );
+    final uri = _uri('/session', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), if (scope != null) 'scope': scope.toString(), if (path != null) 'path': path.toString(), if (roots != null) 'roots': roots.toString(), if (start != null) 'start': start.toString(), if (search != null) 'search': search.toString(), if (limit != null) 'limit': limit.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2662,16 +2414,13 @@ Future<List<Session>> sessionList18c0yn7({
 /// Retrieve a specific message from a session by its message ID.
 ///
 /// `operationId`: `session.message`
-Future<Object> sessionMessage1r9z50i({
+Future<Object> sessionMessage({
     required String sessionID,
     required String messageID,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}/message/${Uri.encodeComponent(messageID)}',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}/message/${Uri.encodeComponent(messageID)}', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2692,17 +2441,14 @@ Future<Object> sessionMessage1r9z50i({
 /// Retrieve all messages in a session, including user prompts and AI responses.
 ///
 /// `operationId`: `session.messages`
-Future<List<Object>> sessionMessages0n20y2r({
+Future<List<Object>> sessionMessages({
     required String sessionID,
     String? directory,
     String? workspace,
     int? limit,
     String? before,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}/message',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), if (limit != null) 'limit': limit.toString(), if (before != null) 'before': before.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}/message', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), if (limit != null) 'limit': limit.toString(), if (before != null) 'before': before.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2724,16 +2470,13 @@ Future<List<Object>> sessionMessages0n20y2r({
 /// Create and send a new message to a session, streaming the AI response.
 ///
 /// `operationId`: `session.prompt`
-Future<Object> sessionPrompt1hunqop({
+Future<Object> sessionPrompt({
     required String sessionID,
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}/message',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}/message', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2755,16 +2498,13 @@ Future<Object> sessionPrompt1hunqop({
 /// Create and send a new message to a session asynchronously, starting the session if needed and returning immediately.
 ///
 /// `operationId`: `session.prompt_async`
-Future<void> sessionPromptAsync06mmj9i({
+Future<void> sessionPromptAsync({
     required String sessionID,
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}/prompt_async',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}/prompt_async', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2786,16 +2526,13 @@ Future<void> sessionPromptAsync06mmj9i({
 /// Revert a specific message in a session, undoing its effects and restoring the previous state.
 ///
 /// `operationId`: `session.revert`
-Future<Session> sessionRevert0y3ggt1({
+Future<Session> sessionRevert({
     required String sessionID,
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}/revert',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}/revert', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2818,15 +2555,12 @@ Future<Session> sessionRevert0y3ggt1({
 /// Create a shareable link for a session, allowing others to view the conversation.
 ///
 /// `operationId`: `session.share`
-Future<Session> sessionShare1ymticy({
+Future<Session> sessionShare({
     required String sessionID,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}/share',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}/share', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2848,16 +2582,13 @@ Future<Session> sessionShare1ymticy({
 /// Execute a shell command within the session context and return the AI's response.
 ///
 /// `operationId`: `session.shell`
-Future<Object> sessionShell1nz5n5b({
+Future<Object> sessionShell({
     required String sessionID,
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}/shell',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}/shell', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2879,14 +2610,11 @@ Future<Object> sessionShell1nz5n5b({
 /// Retrieve the current status of all sessions, including active, idle, and completed states.
 ///
 /// `operationId`: `session.status`
-Future<Object> sessionStatus15y01m5({
+Future<Object> sessionStatus({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/status',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session/status', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2907,16 +2635,13 @@ Future<Object> sessionStatus15y01m5({
 /// Generate a concise summary of the session using AI compaction to preserve key information.
 ///
 /// `operationId`: `session.summarize`
-Future<bool> sessionSummarize1aggp6g({
+Future<bool> sessionSummarize({
     required String sessionID,
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}/summarize',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}/summarize', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2938,15 +2663,12 @@ Future<bool> sessionSummarize1aggp6g({
 /// Retrieve the todo list associated with a specific session, showing tasks and action items.
 ///
 /// `operationId`: `session.todo`
-Future<List<Todo>> sessionTodo0y2kdaz({
+Future<List<Todo>> sessionTodo({
     required String sessionID,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}/todo',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}/todo', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2968,15 +2690,12 @@ Future<List<Todo>> sessionTodo0y2kdaz({
 /// Restore all previously reverted messages in a session.
 ///
 /// `operationId`: `session.unrevert`
-Future<Session> sessionUnrevert0lg6g0a({
+Future<Session> sessionUnrevert({
     required String sessionID,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}/unrevert',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}/unrevert', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -2998,15 +2717,12 @@ Future<Session> sessionUnrevert0lg6g0a({
 /// Remove the shareable link for a session, making it private again.
 ///
 /// `operationId`: `session.unshare`
-Future<Session> sessionUnshare1qlnox3({
+Future<Session> sessionUnshare({
     required String sessionID,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}/share',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}/share', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3028,16 +2744,13 @@ Future<Session> sessionUnshare1qlnox3({
 /// Update properties of an existing session, such as title or other metadata.
 ///
 /// `operationId`: `session.update`
-Future<Session> sessionUpdate03pn94q({
+Future<Session> sessionUpdate({
     required String sessionID,
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/session/${Uri.encodeComponent(sessionID)}',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/session/${Uri.encodeComponent(sessionID)}', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3060,15 +2773,12 @@ Future<Session> sessionUpdate03pn94q({
 /// List sync events for all aggregates. Keys are aggregate IDs the client already knows about, values are the last known sequence ID. Events with seq > value are returned for those aggregates. Aggregates not listed in the input get their full history.
 ///
 /// `operationId`: `sync.history.list`
-Future<List<Object>> syncHistoryList1xy9idu({
+Future<List<Object>> syncHistoryList({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/sync/history',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/sync/history', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3091,15 +2801,12 @@ Future<List<Object>> syncHistoryList1xy9idu({
 /// Validate and replay a complete sync event history.
 ///
 /// `operationId`: `sync.replay`
-Future<Object> syncReplay1dpj7p7({
+Future<Object> syncReplay({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/sync/replay',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/sync/replay', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3121,14 +2828,11 @@ Future<Object> syncReplay1dpj7p7({
 /// Start sync loops for workspaces in the current project that have active sessions.
 ///
 /// `operationId`: `sync.start`
-Future<bool> syncStart0y4kx0w({
+Future<bool> syncStart({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/sync/start',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/sync/start', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3149,15 +2853,12 @@ Future<bool> syncStart0y4kx0w({
 /// Update a session to belong to the current workspace through the sync event system.
 ///
 /// `operationId`: `sync.steal`
-Future<Object> syncSteal0kd93hj({
+Future<Object> syncSteal({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/sync/steal',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/sync/steal', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3179,14 +2880,11 @@ Future<Object> syncSteal0kd93hj({
 /// Get a list of all available tool IDs, including both built-in tools and dynamically registered tools.
 ///
 /// `operationId`: `tool.ids`
-Future<ToolIDs> toolIds07vzujz({
+Future<ToolIDs> toolIds({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/tool/ids',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/experimental/tool/ids', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3208,16 +2906,13 @@ Future<ToolIDs> toolIds07vzujz({
 /// Get a list of available tools with their JSON schema parameters for a specific provider and model combination.
 ///
 /// `operationId`: `tool.list`
-Future<ToolList> toolList0u0155f({
+Future<ToolList> toolList({
     String? directory,
     String? workspace,
     required String provider,
     required String model,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/tool',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), 'provider': provider.toString(), 'model': model.toString()},
-    );
+    final uri = _uri('/experimental/tool', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), 'provider': provider.toString(), 'model': model.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3239,15 +2934,12 @@ Future<ToolList> toolList0u0155f({
 /// Append prompt to the TUI.
 ///
 /// `operationId`: `tui.appendPrompt`
-Future<bool> tuiAppendPrompt0769qef({
+Future<bool> tuiAppendPrompt({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/tui/append-prompt',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/tui/append-prompt', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3269,14 +2961,11 @@ Future<bool> tuiAppendPrompt0769qef({
 /// Clear the prompt.
 ///
 /// `operationId`: `tui.clearPrompt`
-Future<bool> tuiClearPrompt18smi0o({
+Future<bool> tuiClearPrompt({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/tui/clear-prompt',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/tui/clear-prompt', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3297,14 +2986,11 @@ Future<bool> tuiClearPrompt18smi0o({
 /// Retrieve the next TUI request from the queue for processing.
 ///
 /// `operationId`: `tui.control.next`
-Future<Object> tuiControlNext0jnwdbt({
+Future<Object> tuiControlNext({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/tui/control/next',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/tui/control/next', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3325,15 +3011,12 @@ Future<Object> tuiControlNext0jnwdbt({
 /// Submit a response to the TUI request queue to complete a pending request.
 ///
 /// `operationId`: `tui.control.response`
-Future<bool> tuiControlResponse0wkw7t3({
+Future<bool> tuiControlResponse({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/tui/control/response',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/tui/control/response', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3355,15 +3038,12 @@ Future<bool> tuiControlResponse0wkw7t3({
 /// Execute a TUI command.
 ///
 /// `operationId`: `tui.executeCommand`
-Future<bool> tuiExecuteCommand01ccfah({
+Future<bool> tuiExecuteCommand({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/tui/execute-command',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/tui/execute-command', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3385,14 +3065,11 @@ Future<bool> tuiExecuteCommand01ccfah({
 /// Open the help dialog in the TUI to display user assistance information.
 ///
 /// `operationId`: `tui.openHelp`
-Future<bool> tuiOpenHelp1o51zme({
+Future<bool> tuiOpenHelp({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/tui/open-help',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/tui/open-help', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3413,14 +3090,11 @@ Future<bool> tuiOpenHelp1o51zme({
 /// Open the model dialog.
 ///
 /// `operationId`: `tui.openModels`
-Future<bool> tuiOpenModels14hvwb3({
+Future<bool> tuiOpenModels({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/tui/open-models',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/tui/open-models', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3441,14 +3115,11 @@ Future<bool> tuiOpenModels14hvwb3({
 /// Open the session dialog.
 ///
 /// `operationId`: `tui.openSessions`
-Future<bool> tuiOpenSessions1o29xr4({
+Future<bool> tuiOpenSessions({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/tui/open-sessions',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/tui/open-sessions', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3469,14 +3140,11 @@ Future<bool> tuiOpenSessions1o29xr4({
 /// Open the theme dialog.
 ///
 /// `operationId`: `tui.openThemes`
-Future<bool> tuiOpenThemes03lisen({
+Future<bool> tuiOpenThemes({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/tui/open-themes',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/tui/open-themes', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3497,15 +3165,12 @@ Future<bool> tuiOpenThemes03lisen({
 /// Publish a TUI event.
 ///
 /// `operationId`: `tui.publish`
-Future<bool> tuiPublish08xcqa8({
+Future<bool> tuiPublish({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/tui/publish',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/tui/publish', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3527,15 +3192,12 @@ Future<bool> tuiPublish08xcqa8({
 /// Navigate the TUI to display the specified session.
 ///
 /// `operationId`: `tui.selectSession`
-Future<bool> tuiSelectSession1qw881j({
+Future<bool> tuiSelectSession({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/tui/select-session',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/tui/select-session', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3557,15 +3219,12 @@ Future<bool> tuiSelectSession1qw881j({
 /// Show a toast notification in the TUI.
 ///
 /// `operationId`: `tui.showToast`
-Future<bool> tuiShowToast1dzfjo3({
+Future<bool> tuiShowToast({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/tui/show-toast',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/tui/show-toast', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3587,14 +3246,11 @@ Future<bool> tuiShowToast1dzfjo3({
 /// Submit the prompt.
 ///
 /// `operationId`: `tui.submitPrompt`
-Future<bool> tuiSubmitPrompt1f9mibn({
+Future<bool> tuiSubmitPrompt({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/tui/submit-prompt',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/tui/submit-prompt', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3615,13 +3271,10 @@ Future<bool> tuiSubmitPrompt1f9mibn({
 /// Retrieve currently registered v2 agents.
 ///
 /// `operationId`: `v2.agent.list`
-Future<Object> v2AgentList04wolh4({
+Future<Object> v2AgentList({
     Map<String, Object>? location,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/agent',
-      queryParameters: {if (location != null) 'location': jsonEncode(location)},
-    );
+    final uri = _uri('/api/agent', <String, String>{if (location != null) 'location': jsonEncode(location)});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3642,13 +3295,10 @@ Future<Object> v2AgentList04wolh4({
 /// Retrieve currently registered v2 commands.
 ///
 /// `operationId`: `v2.command.list`
-Future<Object> v2CommandList0s4856s({
+Future<Object> v2CommandList({
     Map<String, Object>? location,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/command',
-      queryParameters: {if (location != null) 'location': jsonEncode(location)},
-    );
+    final uri = _uri('/api/command', <String, String>{if (location != null) 'location': jsonEncode(location)});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3669,13 +3319,10 @@ Future<Object> v2CommandList0s4856s({
 /// Subscribe to native EventV2 payloads for a location.
 ///
 /// `operationId`: `v2.event.subscribe`
-Future<Object> v2EventSubscribe1kzmned({
+Future<Object> v2EventSubscribe({
     Map<String, Object>? location,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/event',
-      queryParameters: {if (location != null) 'location': jsonEncode(location)},
-    );
+    final uri = _uri('/api/event', <String, String>{if (location != null) 'location': jsonEncode(location)});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3696,15 +3343,12 @@ Future<Object> v2EventSubscribe1kzmned({
 /// List direct children of one directory relative to the requested location.
 ///
 /// `operationId`: `v2.fs.list`
-Future<Object> v2FsList06obgvk({
+Future<Object> v2FsList({
     Map<String, Object>? location,
     String? path,
     String? reference,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/fs/list',
-      queryParameters: {if (location != null) 'location': jsonEncode(location), if (path != null) 'path': path.toString(), if (reference != null) 'reference': reference.toString()},
-    );
+    final uri = _uri('/api/fs/list', <String, String>{if (location != null) 'location': jsonEncode(location), if (path != null) 'path': path.toString(), if (reference != null) 'reference': reference.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3725,15 +3369,12 @@ Future<Object> v2FsList06obgvk({
 /// Read one file relative to the requested location.
 ///
 /// `operationId`: `v2.fs.read`
-Future<Object> v2FsRead19gekbg({
+Future<Object> v2FsRead({
     Map<String, Object>? location,
     required String path,
     String? reference,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/fs/read',
-      queryParameters: {if (location != null) 'location': jsonEncode(location), 'path': path.toString(), if (reference != null) 'reference': reference.toString()},
-    );
+    final uri = _uri('/api/fs/read', <String, String>{if (location != null) 'location': jsonEncode(location), 'path': path.toString(), if (reference != null) 'reference': reference.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3754,11 +3395,8 @@ Future<Object> v2FsRead19gekbg({
 /// Check whether the v2 API server is ready to accept requests.
 ///
 /// `operationId`: `v2.health.get`
-Future<Object> v2HealthGet0r7uj1x() async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/health',
-      queryParameters: {},
-    );
+Future<Object> v2HealthGet() async {
+    final uri = _uri('/api/health', const <String, String>{});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3779,13 +3417,10 @@ Future<Object> v2HealthGet0r7uj1x() async {
 /// Retrieve available v2 models ordered by release date.
 ///
 /// `operationId`: `v2.model.list`
-Future<Object> v2ModelList023wqvw({
+Future<Object> v2ModelList({
     Map<String, Object>? location,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/model',
-      queryParameters: {if (location != null) 'location': jsonEncode(location)},
-    );
+    final uri = _uri('/api/model', <String, String>{if (location != null) 'location': jsonEncode(location)});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3806,13 +3441,10 @@ Future<Object> v2ModelList023wqvw({
 /// Retrieve pending permission requests for a location.
 ///
 /// `operationId`: `v2.permission.request.list`
-Future<Object> v2PermissionRequestList0aqcd9p({
+Future<Object> v2PermissionRequestList({
     Map<String, Object>? location,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/permission/request',
-      queryParameters: {if (location != null) 'location': jsonEncode(location)},
-    );
+    final uri = _uri('/api/permission/request', <String, String>{if (location != null) 'location': jsonEncode(location)});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3833,13 +3465,10 @@ Future<Object> v2PermissionRequestList0aqcd9p({
 /// Retrieve saved permissions, optionally filtered by project.
 ///
 /// `operationId`: `v2.permission.saved.list`
-Future<Object> v2PermissionSavedList1qwvlnn({
+Future<Object> v2PermissionSavedList({
     String? projectID,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/permission/saved',
-      queryParameters: {if (projectID != null) 'projectID': projectID.toString()},
-    );
+    final uri = _uri('/api/permission/saved', <String, String>{if (projectID != null) 'projectID': projectID.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3860,13 +3489,10 @@ Future<Object> v2PermissionSavedList1qwvlnn({
 /// Remove a saved permission by ID.
 ///
 /// `operationId`: `v2.permission.saved.remove`
-Future<void> v2PermissionSavedRemove0fu1grr({
+Future<void> v2PermissionSavedRemove({
     required String id,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/permission/saved/${Uri.encodeComponent(id)}',
-      queryParameters: {},
-    );
+    final uri = _uri('/api/permission/saved/${Uri.encodeComponent(id)}', const <String, String>{});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3887,14 +3513,11 @@ Future<void> v2PermissionSavedRemove0fu1grr({
 /// Retrieve a single v2 AI provider so clients can inspect its availability and endpoint settings.
 ///
 /// `operationId`: `v2.provider.get`
-Future<Object> v2ProviderGet0sn51oa({
+Future<Object> v2ProviderGet({
     required String providerID,
     Map<String, Object>? location,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/provider/${Uri.encodeComponent(providerID)}',
-      queryParameters: {if (location != null) 'location': jsonEncode(location)},
-    );
+    final uri = _uri('/api/provider/${Uri.encodeComponent(providerID)}', <String, String>{if (location != null) 'location': jsonEncode(location)});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3915,13 +3538,10 @@ Future<Object> v2ProviderGet0sn51oa({
 /// Retrieve active v2 AI providers so clients can show provider availability and configuration.
 ///
 /// `operationId`: `v2.provider.list`
-Future<Object> v2ProviderList1iv3bdm({
+Future<Object> v2ProviderList({
     Map<String, Object>? location,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/provider',
-      queryParameters: {if (location != null) 'location': jsonEncode(location)},
-    );
+    final uri = _uri('/api/provider', <String, String>{if (location != null) 'location': jsonEncode(location)});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3942,13 +3562,10 @@ Future<Object> v2ProviderList1iv3bdm({
 /// Retrieve pending question requests for a location.
 ///
 /// `operationId`: `v2.question.request.list`
-Future<Object> v2QuestionRequestList1m7rz6g({
+Future<Object> v2QuestionRequestList({
     Map<String, Object>? location,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/question/request',
-      queryParameters: {if (location != null) 'location': jsonEncode(location)},
-    );
+    final uri = _uri('/api/question/request', <String, String>{if (location != null) 'location': jsonEncode(location)});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3969,13 +3586,10 @@ Future<Object> v2QuestionRequestList1m7rz6g({
 /// Compact a v2 session conversation.
 ///
 /// `operationId`: `v2.session.compact`
-Future<void> v2SessionCompact0bpgkv0({
+Future<void> v2SessionCompact({
     required String sessionID,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/session/${Uri.encodeComponent(sessionID)}/compact',
-      queryParameters: {},
-    );
+    final uri = _uri('/api/session/${Uri.encodeComponent(sessionID)}/compact', const <String, String>{});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -3996,13 +3610,10 @@ Future<void> v2SessionCompact0bpgkv0({
 /// Retrieve the active context messages for a v2 session (all messages after the last compaction).
 ///
 /// `operationId`: `v2.session.context`
-Future<Object> v2SessionContext12eb6ii({
+Future<Object> v2SessionContext({
     required String sessionID,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/session/${Uri.encodeComponent(sessionID)}/context',
-      queryParameters: {},
-    );
+    final uri = _uri('/api/session/${Uri.encodeComponent(sessionID)}/context', const <String, String>{});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -4023,7 +3634,7 @@ Future<Object> v2SessionContext12eb6ii({
 /// Retrieve sessions in the requested order. Items keep that order across pages; use cursor.next or cursor.previous to move through the ordered list.
 ///
 /// `operationId`: `v2.session.list`
-Future<V2SessionsResponse> v2SessionList0lt02e3({
+Future<V2SessionsResponse> v2SessionList({
     String? workspace,
     double? limit,
     String? order,
@@ -4033,10 +3644,7 @@ Future<V2SessionsResponse> v2SessionList0lt02e3({
     String? subpath,
     String? cursor,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/session',
-      queryParameters: {if (workspace != null) 'workspace': workspace.toString(), if (limit != null) 'limit': limit.toString(), if (order != null) 'order': order.toString(), if (search != null) 'search': search.toString(), if (directory != null) 'directory': directory.toString(), if (project != null) 'project': project.toString(), if (subpath != null) 'subpath': subpath.toString(), if (cursor != null) 'cursor': cursor.toString()},
-    );
+    final uri = _uri('/api/session', <String, String>{if (workspace != null) 'workspace': workspace.toString(), if (limit != null) 'limit': limit.toString(), if (order != null) 'order': order.toString(), if (search != null) 'search': search.toString(), if (directory != null) 'directory': directory.toString(), if (project != null) 'project': project.toString(), if (subpath != null) 'subpath': subpath.toString(), if (cursor != null) 'cursor': cursor.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -4058,16 +3666,13 @@ Future<V2SessionsResponse> v2SessionList0lt02e3({
 /// Retrieve projected v2 messages for a session. Items keep the requested order across pages; use cursor.next or cursor.previous to move through the ordered timeline.
 ///
 /// `operationId`: `v2.session.messages`
-Future<V2SessionMessagesResponse> v2SessionMessages10dlr63({
+Future<V2SessionMessagesResponse> v2SessionMessages({
     required String sessionID,
     double? limit,
     String? order,
     String? cursor,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/session/${Uri.encodeComponent(sessionID)}/message',
-      queryParameters: {if (limit != null) 'limit': limit.toString(), if (order != null) 'order': order.toString(), if (cursor != null) 'cursor': cursor.toString()},
-    );
+    final uri = _uri('/api/session/${Uri.encodeComponent(sessionID)}/message', <String, String>{if (limit != null) 'limit': limit.toString(), if (order != null) 'order': order.toString(), if (cursor != null) 'cursor': cursor.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -4089,13 +3694,10 @@ Future<V2SessionMessagesResponse> v2SessionMessages10dlr63({
 /// Retrieve pending permission requests owned by a session.
 ///
 /// `operationId`: `v2.session.permission.list`
-Future<Object> v2SessionPermissionList1rfro1m({
+Future<Object> v2SessionPermissionList({
     required String sessionID,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/session/${Uri.encodeComponent(sessionID)}/permission/request',
-      queryParameters: {},
-    );
+    final uri = _uri('/api/session/${Uri.encodeComponent(sessionID)}/permission/request', const <String, String>{});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -4116,15 +3718,12 @@ Future<Object> v2SessionPermissionList1rfro1m({
 /// Respond to a pending permission request owned by a session.
 ///
 /// `operationId`: `v2.session.permission.reply`
-Future<void> v2SessionPermissionReply0wyople({
+Future<void> v2SessionPermissionReply({
     required String sessionID,
     required String requestID,
     required Map<String, dynamic> body,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/session/${Uri.encodeComponent(sessionID)}/permission/request/${Uri.encodeComponent(requestID)}/reply',
-      queryParameters: {},
-    );
+    final uri = _uri('/api/session/${Uri.encodeComponent(sessionID)}/permission/request/${Uri.encodeComponent(requestID)}/reply', const <String, String>{});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -4146,14 +3745,11 @@ Future<void> v2SessionPermissionReply0wyople({
 /// Durably admit one v2 session input and schedule agent-loop execution unless resume is false.
 ///
 /// `operationId`: `v2.session.prompt`
-Future<Object> v2SessionPrompt1uri19t({
+Future<Object> v2SessionPrompt({
     required String sessionID,
     required Map<String, dynamic> body,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/session/${Uri.encodeComponent(sessionID)}/prompt',
-      queryParameters: {},
-    );
+    final uri = _uri('/api/session/${Uri.encodeComponent(sessionID)}/prompt', const <String, String>{});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -4175,14 +3771,11 @@ Future<Object> v2SessionPrompt1uri19t({
 /// Reject a pending question request owned by a session.
 ///
 /// `operationId`: `v2.session.question.reject`
-Future<void> v2SessionQuestionReject0tg0z0w({
+Future<void> v2SessionQuestionReject({
     required String sessionID,
     required String requestID,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/session/${Uri.encodeComponent(sessionID)}/question/request/${Uri.encodeComponent(requestID)}/reject',
-      queryParameters: {},
-    );
+    final uri = _uri('/api/session/${Uri.encodeComponent(sessionID)}/question/request/${Uri.encodeComponent(requestID)}/reject', const <String, String>{});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -4203,15 +3796,12 @@ Future<void> v2SessionQuestionReject0tg0z0w({
 /// Answer a pending question request owned by a session.
 ///
 /// `operationId`: `v2.session.question.reply`
-Future<void> v2SessionQuestionReply17ib33x({
+Future<void> v2SessionQuestionReply({
     required String sessionID,
     required String requestID,
     required QuestionV2Reply body,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/session/${Uri.encodeComponent(sessionID)}/question/request/${Uri.encodeComponent(requestID)}/reply',
-      queryParameters: {},
-    );
+    final uri = _uri('/api/session/${Uri.encodeComponent(sessionID)}/question/request/${Uri.encodeComponent(requestID)}/reply', const <String, String>{});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -4233,13 +3823,10 @@ Future<void> v2SessionQuestionReply17ib33x({
 /// Wait for a v2 session agent loop to become idle.
 ///
 /// `operationId`: `v2.session.wait`
-Future<void> v2SessionWait1u3afyi({
+Future<void> v2SessionWait({
     required String sessionID,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/session/${Uri.encodeComponent(sessionID)}/wait',
-      queryParameters: {},
-    );
+    final uri = _uri('/api/session/${Uri.encodeComponent(sessionID)}/wait', const <String, String>{});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -4260,13 +3847,10 @@ Future<void> v2SessionWait1u3afyi({
 /// Retrieve currently registered v2 skills.
 ///
 /// `operationId`: `v2.skill.list`
-Future<Object> v2SkillList15ujty0({
+Future<Object> v2SkillList({
     Map<String, Object>? location,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/api/skill',
-      queryParameters: {if (location != null) 'location': jsonEncode(location)},
-    );
+    final uri = _uri('/api/skill', <String, String>{if (location != null) 'location': jsonEncode(location)});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -4287,15 +3871,12 @@ Future<Object> v2SkillList15ujty0({
 /// Apply a raw patch to the current working tree.
 ///
 /// `operationId`: `vcs.apply`
-Future<Object> vcsApply0d74x4t({
+Future<Object> vcsApply({
     required Map<String, dynamic> body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/vcs/apply',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/vcs/apply', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -4317,16 +3898,13 @@ Future<Object> vcsApply0d74x4t({
 /// Retrieve the current git diff for the working tree or against the default branch.
 ///
 /// `operationId`: `vcs.diff`
-Future<List<VcsFileDiff>> vcsDiff0beqeiw({
+Future<List<VcsFileDiff>> vcsDiff({
     String? directory,
     String? workspace,
     required String mode,
     int? context,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/vcs/diff',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), 'mode': mode.toString(), if (context != null) 'context': context.toString()},
-    );
+    final uri = _uri('/vcs/diff', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString(), 'mode': mode.toString(), if (context != null) 'context': context.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -4348,14 +3926,11 @@ Future<List<VcsFileDiff>> vcsDiff0beqeiw({
 /// Retrieve a raw patch for current uncommitted changes.
 ///
 /// `operationId`: `vcs.diff.raw`
-Future<Object> vcsDiffRaw18sym3w({
+Future<Object> vcsDiffRaw({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/vcs/diff/raw',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/vcs/diff/raw', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -4376,14 +3951,11 @@ Future<Object> vcsDiffRaw18sym3w({
 /// Retrieve version control system (VCS) information for the current project, such as git branch.
 ///
 /// `operationId`: `vcs.get`
-Future<VcsInfo> vcsGet16ws8ol({
+Future<VcsInfo> vcsGet({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/vcs',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/vcs', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -4405,14 +3977,11 @@ Future<VcsInfo> vcsGet16ws8ol({
 /// Retrieve changed files in the current working tree without patches.
 ///
 /// `operationId`: `vcs.status`
-Future<List<VcsFileStatus>> vcsStatus1dfz499({
+Future<List<VcsFileStatus>> vcsStatus({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/vcs/status',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/vcs/status', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -4434,15 +4003,12 @@ Future<List<VcsFileStatus>> vcsStatus1dfz499({
 /// Create a new git worktree for the current project and run any configured startup scripts.
 ///
 /// `operationId`: `worktree.create`
-Future<Worktree> worktreeCreate16yygzq({
+Future<Worktree> worktreeCreate({
     required WorktreeCreateInput body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/worktree',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/experimental/worktree', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -4465,14 +4031,11 @@ Future<Worktree> worktreeCreate16yygzq({
 /// List all sandbox worktrees for the current project.
 ///
 /// `operationId`: `worktree.list`
-Future<List<String>> worktreeList0viov7y({
+Future<List<String>> worktreeList({
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/worktree',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/experimental/worktree', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -4494,15 +4057,12 @@ Future<List<String>> worktreeList0viov7y({
 /// Remove a git worktree and delete its branch.
 ///
 /// `operationId`: `worktree.remove`
-Future<bool> worktreeRemove0b92nau({
+Future<bool> worktreeRemove({
     required WorktreeRemoveInput body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/worktree',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/experimental/worktree', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',
@@ -4524,15 +4084,12 @@ Future<bool> worktreeRemove0b92nau({
 /// Reset a worktree branch to the primary default branch.
 ///
 /// `operationId`: `worktree.reset`
-Future<bool> worktreeReset0jwyzk5({
+Future<bool> worktreeReset({
     required WorktreeResetInput body,
     String? directory,
     String? workspace,
   }) async {
-    final uri = Uri.parse(baseUrl).replace(
-      path: '/experimental/worktree/reset',
-      queryParameters: {if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()},
-    );
+    final uri = _uri('/experimental/worktree/reset', <String, String>{if (directory != null) 'directory': directory.toString(), if (workspace != null) 'workspace': workspace.toString()});
     final headers = <String, String>{
       ..._authHeaders,
       'Content-Type': 'application/json',

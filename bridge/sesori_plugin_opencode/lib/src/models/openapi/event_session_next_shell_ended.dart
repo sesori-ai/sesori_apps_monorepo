@@ -1,6 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.220331Z
 
 import 'package:meta/meta.dart';
 import 'event.dart';
@@ -15,17 +14,16 @@ class EventSessionNextShellEnded implements Event {
   factory EventSessionNextShellEnded.fromJson(Map<String, dynamic> json) {
     return EventSessionNextShellEnded(
       id: json["id"] as String,
-      properties: json["properties"] as Map<String, dynamic>,
+      properties: EventSessionNextShellEndedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
-
 
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
       "type": "session.next.shell.ended",
-      "properties": properties,
+      "properties": properties.toJson(),
     };
   }
 
@@ -40,5 +38,50 @@ class EventSessionNextShellEnded implements Event {
   int get hashCode => Object.hash(id, properties);
 
   final String id;
-  final Map<String, dynamic> properties;
+  final EventSessionNextShellEndedProperties properties;
+}
+
+@immutable
+class EventSessionNextShellEndedProperties {
+  const EventSessionNextShellEndedProperties({
+    required this.timestamp,
+    required this.sessionID,
+    required this.callID,
+    required this.output,
+  });
+
+  factory EventSessionNextShellEndedProperties.fromJson(Map<String, dynamic> json) {
+    return EventSessionNextShellEndedProperties(
+      timestamp: (json["timestamp"] as num).toDouble(),
+      sessionID: json["sessionID"] as String,
+      callID: json["callID"] as String,
+      output: json["output"] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "timestamp": timestamp,
+      "sessionID": sessionID,
+      "callID": callID,
+      "output": output,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EventSessionNextShellEndedProperties &&
+          other.timestamp == timestamp &&
+          other.sessionID == sessionID &&
+          other.callID == callID &&
+          other.output == output);
+
+  @override
+  int get hashCode => Object.hash(timestamp, sessionID, callID, output);
+
+  final double timestamp;
+  final String sessionID;
+  final String callID;
+  final String output;
 }

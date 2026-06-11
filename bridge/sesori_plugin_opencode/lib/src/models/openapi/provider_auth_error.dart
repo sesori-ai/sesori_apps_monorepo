@@ -1,6 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.240448Z
 
 import 'package:meta/meta.dart';
 
@@ -14,15 +13,14 @@ class ProviderAuthError {
   factory ProviderAuthError.fromJson(Map<String, dynamic> json) {
     return ProviderAuthError(
       name: json["name"] as String,
-      data: json["data"] as Map<String, dynamic>,
+      data: ProviderAuthErrorData.fromJson(json["data"] as Map<String, dynamic>),
     );
   }
-
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "name": name,
-      "data": data,
+      "data": data.toJson(),
     };
   }
 
@@ -37,5 +35,40 @@ class ProviderAuthError {
   int get hashCode => Object.hash(name, data);
 
   final String name;
-  final Map<String, dynamic> data;
+  final ProviderAuthErrorData data;
+}
+
+@immutable
+class ProviderAuthErrorData {
+  const ProviderAuthErrorData({
+    required this.providerID,
+    required this.message,
+  });
+
+  factory ProviderAuthErrorData.fromJson(Map<String, dynamic> json) {
+    return ProviderAuthErrorData(
+      providerID: json["providerID"] as String,
+      message: json["message"] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "providerID": providerID,
+      "message": message,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ProviderAuthErrorData &&
+          other.providerID == providerID &&
+          other.message == message);
+
+  @override
+  int get hashCode => Object.hash(providerID, message);
+
+  final String providerID;
+  final String message;
 }

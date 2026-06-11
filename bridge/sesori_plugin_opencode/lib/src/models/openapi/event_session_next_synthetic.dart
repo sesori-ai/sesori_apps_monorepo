@@ -1,6 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.221145Z
 
 import 'package:meta/meta.dart';
 import 'event.dart';
@@ -15,17 +14,16 @@ class EventSessionNextSynthetic implements Event {
   factory EventSessionNextSynthetic.fromJson(Map<String, dynamic> json) {
     return EventSessionNextSynthetic(
       id: json["id"] as String,
-      properties: json["properties"] as Map<String, dynamic>,
+      properties: EventSessionNextSyntheticProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
-
 
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
       "type": "session.next.synthetic",
-      "properties": properties,
+      "properties": properties.toJson(),
     };
   }
 
@@ -40,5 +38,50 @@ class EventSessionNextSynthetic implements Event {
   int get hashCode => Object.hash(id, properties);
 
   final String id;
-  final Map<String, dynamic> properties;
+  final EventSessionNextSyntheticProperties properties;
+}
+
+@immutable
+class EventSessionNextSyntheticProperties {
+  const EventSessionNextSyntheticProperties({
+    required this.timestamp,
+    required this.sessionID,
+    required this.messageID,
+    required this.text,
+  });
+
+  factory EventSessionNextSyntheticProperties.fromJson(Map<String, dynamic> json) {
+    return EventSessionNextSyntheticProperties(
+      timestamp: (json["timestamp"] as num).toDouble(),
+      sessionID: json["sessionID"] as String,
+      messageID: json["messageID"] as String,
+      text: json["text"] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "timestamp": timestamp,
+      "sessionID": sessionID,
+      "messageID": messageID,
+      "text": text,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EventSessionNextSyntheticProperties &&
+          other.timestamp == timestamp &&
+          other.sessionID == sessionID &&
+          other.messageID == messageID &&
+          other.text == text);
+
+  @override
+  int get hashCode => Object.hash(timestamp, sessionID, messageID, text);
+
+  final double timestamp;
+  final String sessionID;
+  final String messageID;
+  final String text;
 }

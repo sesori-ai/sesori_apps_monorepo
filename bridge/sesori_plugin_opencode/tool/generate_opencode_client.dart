@@ -318,21 +318,17 @@ class Codegen {
   late final Set<String> _arrayWrapperClassNames = _buildArrayWrapperClassNames();
 
   /// Header block describing the upstream source the code was
-  /// generated from. Always returns at least a one-line comment with
-  /// the generation timestamp; when [sourceRef] is set, also includes
-  /// the upstream ref and resolved commit SHA. Lines are returned
-  /// WITHOUT the `// ` prefix so callers can emit them as comments
-  /// themselves.
+  /// generated from: the upstream ref and resolved commit SHA when
+  /// [sourceRef] is set, or a `local` marker otherwise. Deliberately
+  /// contains NO generation timestamp — regenerating against an
+  /// unchanged spec must produce byte-identical output so diffs show
+  /// only real upstream changes. Lines are returned WITHOUT the `// `
+  /// prefix so callers can emit them as comments themselves.
   String sourceHeader() {
-    final b = StringBuffer();
-    final now = DateTime.now().toUtc().toIso8601String();
     if (sourceRef != null) {
-      b.writeln('Source: ${sourceRef!.display}');
-    } else {
-      b.writeln('Source: local (no upstream ref)');
+      return 'Source: ${sourceRef!.display}';
     }
-    b.writeln('Generated: $now');
-    return b.toString().trimRight();
+    return 'Source: local (no upstream ref)';
   }
 
   Future<void> run() async {
@@ -587,12 +583,12 @@ class Codegen {
     b.writeln('/// HTTP Basic auth: username `opencode`, password supplied at construction.');
     b.writeln('@immutable');
     b.writeln('class OpenCodeClient {');
-    b.writeln('  OpenCodeClient({');
+    b.writeln('  const OpenCodeClient({');
     b.writeln('    required this.baseUrl,');
     b.writeln('    required String password,');
-    b.writeln('    http.Client? httpClient,');
+    b.writeln('    required http.Client httpClient,');
     b.writeln('  })  : _password = password,');
-    b.writeln('        _http = httpClient ?? http.Client();');
+    b.writeln('        _http = httpClient;');
     b.writeln();
     b.writeln('  /// Base URL of the OpenCode server, e.g. `http://127.0.0.1:4096`.');
     b.writeln('  final String baseUrl;');
@@ -603,6 +599,20 @@ class Codegen {
     b.writeln(r"    'Authorization': 'Basic ${base64Encode(utf8.encode('opencode:$_password'))}',");
     b.writeln('  };');
     b.writeln();
+    b.writeln('  /// Builds the request URI for [path], preserving any path prefix');
+    b.writeln('  /// on [baseUrl] and omitting the query string entirely when');
+    b.writeln('  /// [query] is empty (avoids a trailing `?`).');
+    b.writeln('  Uri _uri(String path, Map<String, String> query) {');
+    b.writeln('    final base = Uri.parse(baseUrl);');
+    b.writeln("    final basePath = base.path.endsWith('/')");
+    b.writeln('        ? base.path.substring(0, base.path.length - 1)');
+    b.writeln('        : base.path;');
+    b.writeln('    return base.replace(');
+    b.writeln(r"      path: '$basePath$path',");
+    b.writeln('      queryParameters: query.isEmpty ? null : query,');
+    b.writeln('    );');
+    b.writeln('  }');
+    b.writeln();
     b.writeln('  void close() => _http.close();');
     b.writeln();
     b.writeln('  // -------------------------------------------------------------------');
@@ -610,10 +620,27 @@ class Codegen {
     b.writeln('  // -------------------------------------------------------------------');
     b.writeln();
 
-    final writtenMethods = <String>{};
+    final methodOwners = <String, Operation>{};
     for (final op in operations) {
-      if (writtenMethods.contains(op.methodName)) continue;
-      writtenMethods.add(op.methodName);
+      final existing = methodOwners[op.methodName];
+      if (existing != null) {
+        if (existing.operationId != null &&
+            existing.operationId == op.operationId) {
+          // The same operation exposed on an alias path; first wins.
+          continue;
+        }
+        // Two DIFFERENT operations collapsing onto the same method name
+        // would silently drop one of them. Abort loudly so the naming
+        // logic gets explicit disambiguation instead.
+        throw StateError(
+          'Method name collision: "${op.methodName}" generated from both '
+          '"${existing.method.toUpperCase()} ${existing.path}" '
+          '(operationId: ${existing.operationId}) and '
+          '"${op.method.toUpperCase()} ${op.path}" '
+          '(operationId: ${op.operationId}).',
+        );
+      }
+      methodOwners[op.methodName] = op;
       b.writeln(_emitApiMethod(op));
       b.writeln();
     }
@@ -697,7 +724,6 @@ class Codegen {
     final pathExpr = _buildPathExpression(op.path);
 
     // Build query parameters map
-    final queryBuffer = StringBuffer('{');
     final queryParts = <String>[];
     for (final p in queryParams) {
       // Object-typed query parameters (e.g. `Map<String, dynamic>? location`)
@@ -713,13 +739,11 @@ class Codegen {
         queryParts.add("if (${p.name} != null) '${p.name}': $valueExpr");
       }
     }
-    queryBuffer.write(queryParts.join(', '));
-    queryBuffer.write('}');
+    final queryExpr = queryParts.isEmpty
+        ? 'const <String, String>{}'
+        : '<String, String>{${queryParts.join(', ')}}';
 
-    b.writeln('    final uri = Uri.parse(baseUrl).replace(');
-    b.writeln('      path: $pathExpr,');
-    b.writeln('      queryParameters: $queryBuffer,');
-    b.writeln('    );');
+    b.writeln('    final uri = _uri($pathExpr, $queryExpr);');
 
     b.writeln('    final headers = <String, String>{');
     b.writeln('      ..._authHeaders,');
@@ -971,8 +995,12 @@ class Operation {
   static String _methodNameFromId(String? id, String verb, String path) {
     if (id != null && id.isNotEmpty) {
       // OpenAPI `operationId` like "app.agents" or "event.subscribe" become
-      // `appAgents` / `eventSubscribe` to satisfy `non_constant_identifier_names`.
-      return _camelFromSnake(id.replaceAll('-', '_'));
+      // `appAgents` / `eventSubscribe`. Uses `_camelCore` (NOT
+      // `_camelFromSnake`): the hash suffix that disambiguates dotted
+      // SCHEMA names must not leak into method names. operationIds are
+      // unique by spec; if two ever camelize to the same method name,
+      // `_emitClientClass` aborts generation with a `StateError`.
+      return _camelCore(id);
     }
     final cleaned = path
         .split('/')
@@ -981,7 +1009,7 @@ class Operation {
             ? 'by${s.substring(1, s.length - 1)}'
             : s)
         .join('_');
-    return _camelFromSnake('${verb}_$cleaned');
+    return _camelCore('${verb}_$cleaned');
   }
 }
 
@@ -1082,6 +1110,20 @@ class ModelWriter {
   final List<InlineEnum> _inlineEnums = [];
   final Set<String> _emittedEnumKeys = {};
 
+  /// Synthesized classes for inline `type: object` schemas with
+  /// `properties` (e.g. `Session.time` → `SessionTime`). Registered by
+  /// [_dartTypeForInline] while computing field types; emitted as
+  /// siblings after the main class. Acts as a worklist: emitting one
+  /// synthesized class may register more (nested inline objects).
+  final List<_InlineObjectEntry> _inlineObjects = [];
+  final Set<String> _inlineObjectNames = {};
+
+  /// Usage flags, populated during body emission so the header only
+  /// imports what the body references.
+  bool _usesJsonValue = false;
+  bool _usesImmutable = false;
+  bool _usesDeepEquality = false;
+
   String emit() {
     // First pass: figure out which refs the body will actually use.
     final usedRefs = _computeUsedRefs(schema);
@@ -1123,14 +1165,47 @@ class ModelWriter {
         }
       }
     }
-    final usesAnno = _isEnum(schema) || _inlineEnums.isNotEmpty;
-    final usesImmutable = !_isEnum(schema);
-    final header = _emitHeader(usedRefs, usesJsonAnnotation: usesAnno, usesImmutable: usesImmutable);
-    if (_isEnum(schema)) return header + _emitEnum();
-    if (_isUnion(schema)) return header + _emitUnion();
-    if (_isArray(schema)) return header + _emitArrayAlias();
-    if (_isObject(schema)) return header + _emitObject();
-    return '$header// TODO: unknown schema kind for $name\n';
+
+    // Emit the body FIRST: body emission populates the usage flags and
+    // the inline-enum / inline-object worklists the header and tail
+    // emission depend on.
+    final body = StringBuffer();
+    if (_isEnum(schema)) {
+      body.write(_emitEnum());
+    } else if (_isUnion(schema)) {
+      body.write(_emitUnion());
+    } else if (_isArray(schema)) {
+      body.write(_emitArrayAlias());
+    } else if (_isObject(schema)) {
+      body.write(_emitObject());
+    } else {
+      body.write('// TODO: unknown schema kind for $name\n');
+    }
+
+    // Drain the inline-object worklist. Index-based loop on purpose:
+    // emitting an entry can append new entries (nested inline objects).
+    var i = 0;
+    while (i < _inlineObjects.length) {
+      final entry = _inlineObjects[i];
+      i++;
+      body.writeln();
+      body.write(_emitObjectClass(entry.className, entry.schema));
+    }
+
+    // Emit any inline enums collected during body emission.
+    for (final ie in _inlineEnums) {
+      body.writeln();
+      body.write(ie.emit());
+      _usesJsonValue = true;
+    }
+
+    final header = _emitHeader(
+      usedRefs,
+      usesJsonAnnotation: _usesJsonValue,
+      usesImmutable: _usesImmutable,
+      usesDeepEquality: _usesDeepEquality,
+    );
+    return header + body.toString();
   }
 
   /// Returns the set of raw schema names that the emitted body actually
@@ -1175,13 +1250,18 @@ class ModelWriter {
         if (items is Map) visitField(items);
         return;
       }
-      // Object with additionalProperties as a $ref (map type).
+      // Inline object with properties: a typed sibling class is
+      // synthesized for it, so each property becomes a typed field —
+      // recurse so $refs inside it get imported.
       if (node['type'] == 'object') {
+        final props = node['properties'];
+        if (props is Map && props.isNotEmpty) {
+          props.values.forEach(visitField);
+          return;
+        }
+        // Object with additionalProperties as a $ref (map type).
         final ap = node['additionalProperties'];
         if (ap is Map) visitField(ap);
-        // Otherwise it's an inline object that becomes Map<String, dynamic>
-        // or has its own properties; don't recurse — those properties become
-        // raw map entries, not typed fields.
         return;
       }
       // Otherwise: primitive / inline — no typed refs to follow.
@@ -1236,7 +1316,12 @@ class ModelWriter {
     return refs;
   }
 
-  String _emitHeader(Set<String> refs, {required bool usesJsonAnnotation, required bool usesImmutable}) {
+  String _emitHeader(
+    Set<String> refs, {
+    required bool usesJsonAnnotation,
+    required bool usesImmutable,
+    required bool usesDeepEquality,
+  }) {
     final b = StringBuffer();
     b.writeln('// GENERATED FILE - DO NOT EDIT BY HAND');
     if (sourceHeader != null && sourceHeader!.isNotEmpty) {
@@ -1245,9 +1330,11 @@ class ModelWriter {
       }
     }
     b.writeln();
-    // Only emit the json_annotation import if the body actually uses it
-    // (e.g. enum @JsonValue annotations). Otherwise it triggers
+    // Only emit imports the body actually uses; anything else triggers
     // `unused_import` warnings on every generated file.
+    if (usesDeepEquality) {
+      b.writeln("import 'package:collection/collection.dart';");
+    }
     if (usesJsonAnnotation) {
       b.writeln("import 'package:json_annotation/json_annotation.dart';");
     }
@@ -1284,7 +1371,9 @@ class ModelWriter {
     // `PermissionRuleset` = `List<PermissionRule>`. Implemented as a class
     // with a single static `fromList` factory for JSON compatibility.
     final items = schema['items'] as Map<String, dynamic>?;
-    final innerDart = items != null ? _dartTypeForInline(items) : 'Object';
+    final innerDart = items != null
+        ? _dartTypeForInline(items, context: '${name}Item')
+        : 'Object';
     final innerClass = items != null && items[r'$ref'] is String
         ? _pascalFromSnake(_schemaNameFromRef(items[r'$ref'] as String))
         : innerDart;
@@ -1292,6 +1381,8 @@ class ModelWriter {
     final innerElement = isPrimitiveInner
         ? 'e as $innerDart'
         : '$innerClass.fromJson(e as Map<String, dynamic>)';
+    _usesImmutable = true;
+    _usesDeepEquality = true;
     final b = StringBuffer();
     b.writeln('/// Type alias for `List<$innerClass>` decoded from JSON.');
     b.writeln('@immutable');
@@ -1303,6 +1394,16 @@ class ModelWriter {
     } else {
       b.writeln('  List<dynamic> toJson() => items.map((e) => e.toJson()).toList();');
     }
+    b.writeln();
+    b.writeln('  @override');
+    b.writeln('  bool operator ==(Object other) =>');
+    b.writeln('      identical(this, other) ||');
+    b.writeln('      (other is $name &&');
+    b.writeln('          const DeepCollectionEquality().equals(other.items, items));');
+    b.writeln();
+    b.writeln('  @override');
+    b.writeln('  int get hashCode => const DeepCollectionEquality().hash(items);');
+    b.writeln();
     b.writeln('  final List<$innerClass> items;');
     b.writeln('}');
     return b.toString();
@@ -1319,39 +1420,9 @@ class ModelWriter {
   // -------------------------------------------------------------------------
 
   String _emitEnum() {
-    final b = StringBuffer();
-    b.writeln('enum $name {');
+    _usesJsonValue = true;
     final values = (schema['enum'] as List).cast<String>();
-    for (final v in values) {
-      final memberName = _camelFromSnake(v);
-      b.writeln('  @JsonValue(${jsonEncode(v)})');
-      b.writeln('  $memberName,');
-    }
-    b.writeln('  ;');
-    b.writeln();
-    b.writeln('  static $name fromJson(String value) {');
-    b.writeln('    switch (value) {');
-    for (final v in values) {
-      final memberName = _camelFromSnake(v);
-      b.writeln('      case ${jsonEncode(v)}:');
-      b.writeln('        return $name.$memberName;');
-    }
-    b.writeln('      default:');
-    b.writeln("        throw FormatException('Unknown $name value: \$value');");
-    b.writeln('    }');
-    b.writeln('  }');
-    b.writeln();
-    b.writeln('  String toJson() {');
-    b.writeln('    switch (this) {');
-    for (final v in values) {
-      final memberName = _camelFromSnake(v);
-      b.writeln('      case $name.$memberName:');
-      b.writeln('        return ${jsonEncode(v)};');
-    }
-    b.writeln('    }');
-    b.writeln('  }');
-    b.writeln('}');
-    return b.toString();
+    return _emitEnumBody(name, values);
   }
 
   // -------------------------------------------------------------------------
@@ -1367,6 +1438,7 @@ class ModelWriter {
     final disc = _findDiscriminator(variants);
     final inlineVariantClasses = <_InlineVariantClassEntry>[];
 
+    _usesImmutable = true;
     b.writeln('@immutable');
     b.writeln('abstract interface class $name {');
     b.writeln('  const $name();');
@@ -1402,7 +1474,7 @@ class ModelWriter {
         } else {
           final d = _inlineDiscriminatorValue(v, disc);
           if (d != null) {
-            final inlineName = '${_safeIdentifier(name)}${inlineIndex.toString().padLeft(2, '0')}Inline';
+            final inlineName = '$name${inlineIndex.toString().padLeft(2, '0')}Inline';
             inlineIndex++;
             inlineVariantClasses.add(_InlineVariantClassEntry(
               className: inlineName,
@@ -1414,7 +1486,7 @@ class ModelWriter {
         }
       }
       b.writeln('      default:');
-      b.writeln("        throw FormatException('Unknown $name value: \$discriminator');");
+      b.writeln('        return ${name}Unknown(raw: map);');
       b.writeln('    }');
     } else {
       // No discoverable discriminator: dispatch on JSON shape. We try
@@ -1440,14 +1512,14 @@ class ModelWriter {
           final vName = _schemaNameFromRef(r);
           final sch = schemas[vName] as Map<String, dynamic>?;
           if (sch != null && sch['type'] == 'string' && sch['enum'] is List) {
-            final inlineName = '${_safeIdentifier(name)}${inlineIndex.toString().padLeft(2, '0')}Inline';
+            final inlineName = '$name${inlineIndex.toString().padLeft(2, '0')}Inline';
             inlineVariantClasses.add(_InlineVariantClassEntry(
               className: inlineName,
               schema: v,
             ));
           }
         } else {
-          final inlineName = '${_safeIdentifier(name)}${inlineIndex.toString().padLeft(2, '0')}Inline';
+          final inlineName = '$name${inlineIndex.toString().padLeft(2, '0')}Inline';
           inlineVariantClasses.add(_InlineVariantClassEntry(
             className: inlineName,
             schema: v,
@@ -1455,7 +1527,7 @@ class ModelWriter {
         }
         inlineIndex++;
       }
-      b.writeln("    throw FormatException('Unknown $name value: \$json');");
+      b.writeln('    return ${name}Unknown(raw: json);');
     }
     b.writeln('  }');
     b.writeln('}');
@@ -1468,6 +1540,32 @@ class ModelWriter {
       b.writeln(_emitInlineVariantClass(entry.className, entry.schema, name));
       b.writeln();
     }
+
+    // Fallback variant: preserves the raw JSON of shapes this generator
+    // version doesn't recognize, so payloads from newer OpenCode servers
+    // decode instead of throwing. `toJson` round-trips the raw value.
+    _usesDeepEquality = true;
+    b.writeln('/// Fallback variant for an unrecognized [$name] payload shape.');
+    b.writeln('/// Carries the raw JSON so newer OpenCode servers do not break');
+    b.writeln('/// decoding; `toJson` returns the payload unchanged.');
+    b.writeln('@immutable');
+    b.writeln('class ${name}Unknown implements $name {');
+    b.writeln('  const ${name}Unknown({required this.raw});');
+    b.writeln();
+    b.writeln('  final Object? raw;');
+    b.writeln();
+    b.writeln('  @override');
+    b.writeln('  Object? toJson() => raw;');
+    b.writeln();
+    b.writeln('  @override');
+    b.writeln('  bool operator ==(Object other) =>');
+    b.writeln('      identical(this, other) ||');
+    b.writeln('      (other is ${name}Unknown &&');
+    b.writeln('          const DeepCollectionEquality().equals(other.raw, raw));');
+    b.writeln();
+    b.writeln('  @override');
+    b.writeln('  int get hashCode => const DeepCollectionEquality().hash(raw);');
+    b.writeln('}');
     return b.toString();
   }
 
@@ -1500,6 +1598,7 @@ class ModelWriter {
       final sch = schemas[refName] as Map<String, dynamic>?;
       final isEnum = sch != null && sch['type'] == 'string' && sch['enum'] is List;
       if (isEnum) {
+        _usesImmutable = true;
         b.writeln('@immutable');
         b.writeln('class $className implements $unionName {');
         b.writeln('  const $className({required this.value});');
@@ -1516,6 +1615,15 @@ class ModelWriter {
         // server payload (e.g. 'permission: "ask"' stays 'permission:
         // "ask"', not 'permission: {"value": "ask"}').
         b.writeln('  Object? toJson() => value.toJson();');
+        b.writeln();
+        b.writeln('  @override');
+        b.writeln('  bool operator ==(Object other) =>');
+        b.writeln('      identical(this, other) ||');
+        b.writeln('      (other is $className && other.value == value);');
+        b.writeln();
+        b.writeln('  @override');
+        b.writeln('  int get hashCode => value.hashCode;');
+        b.writeln();
         b.writeln('  final $refType value;');
         b.writeln('}');
         return b.toString();
@@ -1530,34 +1638,10 @@ class ModelWriter {
       // `enum` list, otherwise a simple String wrapper.
       final enumVals = (schema['enum'] as List?)?.cast<String>();
       if (enumVals != null && enumVals.isNotEmpty) {
-        b.writeln('enum $className {');
-        for (final v in enumVals) {
-          b.writeln('  @JsonValue(${jsonEncode(v)})');
-          b.writeln('  ${_camelFromSnake(v)},');
-        }
-        b.writeln('  ;');
-        b.writeln();
-        b.writeln('  static $className fromJson(String value) {');
-        b.writeln('    switch (value) {');
-        for (final v in enumVals) {
-          b.writeln('      case ${jsonEncode(v)}:');
-          b.writeln('        return $className.${_camelFromSnake(v)};');
-        }
-        b.writeln('      default:');
-        b.writeln("        throw FormatException('Unknown $className value: \$value');");
-        b.writeln('    }');
-        b.writeln('  }');
-        b.writeln();
-        b.writeln('  String toJson() {');
-        b.writeln('    switch (this) {');
-        for (final v in enumVals) {
-          b.writeln('      case $className.${_camelFromSnake(v)}:');
-          b.writeln('        return ${jsonEncode(v)};');
-        }
-        b.writeln('    }');
-        b.writeln('  }');
-        b.writeln('}');
+        _usesJsonValue = true;
+        b.write(_emitEnumBody(className, enumVals));
       } else {
+        _usesImmutable = true;
         b.writeln('@immutable');
         b.writeln('class $className implements $unionName {');
         b.writeln('  const $className({required this.value});');
@@ -1571,6 +1655,15 @@ class ModelWriter {
         // server payload (e.g. 'ref: "abc"' stays 'ref: "abc"',
         // not 'ref: {"value": "abc"}').
         b.writeln('  Object? toJson() => value;');
+        b.writeln();
+        b.writeln('  @override');
+        b.writeln('  bool operator ==(Object other) =>');
+        b.writeln('      identical(this, other) ||');
+        b.writeln('      (other is $className && other.value == value);');
+        b.writeln();
+        b.writeln('  @override');
+        b.writeln('  int get hashCode => value.hashCode;');
+        b.writeln();
         b.writeln('  final String value;');
         b.writeln('}');
       }
@@ -1585,11 +1678,13 @@ class ModelWriter {
         if (ir is String) {
           innerDart = _pascalFromSnake(_schemaNameFromRef(ir));
         } else {
-          innerDart = _dartTypeForInline(items);
+          innerDart = _dartTypeForInline(items, context: '${className}Item');
         }
       } else {
         innerDart = 'Object';
       }
+      _usesImmutable = true;
+      _usesDeepEquality = true;
       b.writeln('@immutable');
       b.writeln('class $className implements $unionName {');
       b.writeln('  const $className({required this.items});');
@@ -1597,142 +1692,33 @@ class ModelWriter {
       b.writeln('    return $className(items: json.cast<$innerDart>());');
       b.writeln('  }');
       b.writeln('  @override');
-      b.writeln('  Map<String, dynamic> toJson() {');
-      b.writeln("    return <String, dynamic>{ 'items': items };");
-      b.writeln('  }');
+      // Array shorthand variant — the JSON shape is the scalar list
+      // itself, not a wrapped map. Returning the list keeps the
+      // round-trip identical to the original server payload.
+      b.writeln('  Object? toJson() => items;');
+      b.writeln();
+      b.writeln('  @override');
+      b.writeln('  bool operator ==(Object other) =>');
+      b.writeln('      identical(this, other) ||');
+      b.writeln('      (other is $className &&');
+      b.writeln('          const DeepCollectionEquality().equals(other.items, items));');
+      b.writeln();
+      b.writeln('  @override');
+      b.writeln('  int get hashCode => const DeepCollectionEquality().hash(items);');
+      b.writeln();
       b.writeln('  final List<$innerDart> items;');
       b.writeln('}');
       return b.toString();
     }
     if (type == 'object') {
-      // Inline object variant — render a typed class with the
-      // schema's properties. The class implements the union
-      // interface and exposes a typed `toJson()`.
-      final props = (schema['properties'] as Map<String, dynamic>?) ?? const {};
-      final required =
-          ((schema['required'] as List?) ?? const []).cast<String>();
-      // Same discriminator-literal handling as `_emitObject`:
-      // a required single-value enum property of an inline
-      // variant is the class's own constant and must not be
-      // exposed as a constructor parameter.
-      final literals = <String, String>{};
-      for (final entry in props.entries) {
-        final sch = entry.value as Map<String, dynamic>?;
-        if (sch == null) continue;
-        if (sch['type'] != 'string') continue;
-        final vals = sch['enum'];
-        if (vals is! List || vals.length != 1) continue;
-        literals[entry.key] = vals.first as String;
-      }
-      b.writeln('@immutable');
-      b.writeln('class $className implements $unionName {');
-      final realProps =
-          props.entries.where((e) => !literals.containsKey(e.key)).toList();
-      if (realProps.isEmpty) {
-        b.writeln('  const $className();');
-      } else {
-        b.writeln('  const $className({');
-        for (final entry in realProps) {
-          final fieldName = entry.key;
-          final safeName = _safeIdentifier(fieldName);
-          final isRequired = required.contains(fieldName);
-          if (isRequired) {
-            b.writeln('    required this.$safeName,');
-          } else {
-            b.writeln('    this.$safeName,');
-          }
-        }
-        b.writeln('  });');
-      }
-      b.writeln();
-      if (realProps.isEmpty) {
-        // Empty variant: no fields to decode, the json parameter is
-        // unused. Suppress the lint because the signature is dictated
-        // by the parent union's dispatch, not by the implementation.
-        b.writeln(
-          '  // ignore: avoid_unused_constructor_parameters',
-        );
-      }
-      b.writeln('  factory $className.fromJson(Map<String, dynamic> json) {');
-      if (realProps.isEmpty) {
-        b.writeln('    return const $className();');
-      } else {
-        b.writeln('    return $className(');
-        for (final entry in realProps) {
-          final fieldName = entry.key;
-          final isRequired = required.contains(fieldName);
-          final propSch = entry.value as Map<String, dynamic>;
-          b.writeln('      ${_decodeField(fieldName, propSch, isRequired)},');
-        }
-        b.writeln('    );');
-      }
-      b.writeln('  }');
-      b.writeln();
-      b.writeln('  @override');
-      b.writeln('  Object? toJson() {');
-      b.writeln('    return <String, dynamic>{');
-      for (final entry in props.entries) {
-        final fieldName = entry.key;
-        final literal = literals[fieldName];
-        if (literal != null) {
-          b.writeln('      ${_safeKey(fieldName)}: ${jsonEncode(literal)},');
-          continue;
-        }
-        final isRequired = required.contains(fieldName);
-        final propSch = entry.value as Map<String, dynamic>;
-        // Delegate to _encodeField so that typed model fields
-        // (e.g. `PermissionRuleConfig`) get their `.toJson()` called
-        // — emitting the raw field would leave Dart class instances
-        // in the map and crash `jsonEncode` on the consumer side.
-        b.writeln('      ${_encodeField(fieldName, propSch, isNullable: !isRequired)},');
-      }
-      b.writeln('    };');
-      b.writeln('  }');
-      b.writeln();
-
-      // == / hashCode
-      if (realProps.isNotEmpty) {
-        b.writeln('  @override');
-        b.writeln('  bool operator ==(Object other) =>');
-        b.writeln('      identical(this, other) ||');
-        b.writeln('      (other is $className &&');
-        final fieldChecks = realProps.map((e) {
-          final safeName = _safeIdentifier(e.key);
-          return '          other.$safeName == $safeName';
-        }).join(' &&\n');
-        b.writeln('$fieldChecks);');
-        b.writeln();
-        b.writeln('  @override');
-        final hashArgs = realProps.map((e) => _safeIdentifier(e.key)).join(', ');
-        if (realProps.length == 1) {
-          b.writeln('  int get hashCode => ${_safeIdentifier(realProps.first.key)}.hashCode;');
-        } else if (realProps.length <= 20) {
-          b.writeln('  int get hashCode => Object.hash($hashArgs);');
-        } else {
-          b.writeln('  int get hashCode => Object.hashAll([$hashArgs]);');
-        }
-        b.writeln();
-      }
-
-      for (final entry in props.entries) {
-        if (literals.containsKey(entry.key)) continue;
-        final fieldName = entry.key;
-        final safeName = _safeIdentifier(fieldName);
-        final propSch = entry.value as Map<String, dynamic>;
-        final isRequired = required.contains(fieldName);
-        final isNullable = _isNullableSchema(propSch);
-        final dartType = _dartTypeForInline(propSch);
-        // Optional fields need a `?` so callers can assign `null`
-        // to them — even when the underlying schema does not
-        // explicitly allow null. The required check below is
-        // consistent with the existing `_emitObject` rule.
-        final nullableMark = (isRequired && !isNullable) ? '' : '?';
-        b.writeln('  final $dartType$nullableMark $safeName;');
-      }
-      b.writeln('}');
-      return b.toString();
+      // Inline object variant — same emission as a top-level object
+      // class, with the union interface attached (which also enables
+      // the discriminator-literal handling).
+      return _emitObjectClass(className, schema, implementsClass: unionName);
     }
     // Fallback: emit an opaque Map wrapper.
+    _usesImmutable = true;
+    _usesDeepEquality = true;
     b.writeln('@immutable');
     b.writeln('class $className implements $unionName {');
     b.writeln('  const $className(this.json);');
@@ -1745,12 +1731,10 @@ class ModelWriter {
     b.writeln('  bool operator ==(Object other) =>');
     b.writeln('      identical(this, other) ||');
     b.writeln('      (other is $className &&');
-    b.writeln('          other.json.length == json.length &&');
-    b.writeln('          other.json.entries.every((e) => json[e.key] == e.value));');
+    b.writeln('          const DeepCollectionEquality().equals(other.json, json));');
     b.writeln();
     b.writeln('  @override');
-    b.writeln('  int get hashCode => Object.hashAll(json.entries');
-    b.writeln('      .map((e) => Object.hash(e.key, e.value)));');
+    b.writeln('  int get hashCode => const DeepCollectionEquality().hash(json);');
     b.writeln();
     b.writeln('  final Map<String, dynamic> json;');
     b.writeln('}');
@@ -1758,8 +1742,6 @@ class ModelWriter {
   }
 
   String _emitObject() {
-    final b = StringBuffer();
-
     final properties =
         (schema['properties'] as Map<String, dynamic>?) ?? const {};
 
@@ -1773,17 +1755,31 @@ class ModelWriter {
     if (properties.isEmpty) {
       final ap = schema['additionalProperties'];
       if (ap is Map<String, dynamic>) {
-        return _emitMapWrapper(b, ap);
+        return _emitMapWrapper(StringBuffer(), ap);
       }
       // Free-form object schema with no explicit additionalProperties
       // restriction (e.g. JSONSchema). Preserve the raw JSON map rather
       // than discarding every key in an empty class.
       if (ap == true || ap == null) {
-        return _emitFreeformMapWrapper(b);
+        return _emitFreeformMapWrapper(StringBuffer());
       }
     }
-    final required =
-        ((schema['required'] as List?) ?? const []).cast<String>();
+    return _emitObjectClass(name, schema, implementsClass: implementsClass);
+  }
+
+  /// Emits a complete plain object class [className] for [sch]. Shared
+  /// by top-level object schemas, union inline-object variants (with
+  /// [implementsClass] set), and classes synthesized for inline object
+  /// properties (e.g. `SessionTime`).
+  String _emitObjectClass(
+    String className,
+    Map<String, dynamic> sch, {
+    String? implementsClass,
+  }) {
+    final b = StringBuffer();
+    final properties =
+        (sch['properties'] as Map<String, dynamic>?) ?? const {};
+    final required = ((sch['required'] as List?) ?? const []).cast<String>();
 
     // Discriminator / literal properties: a required single-value enum
     // property on a class that implements a union is a constant that
@@ -1796,41 +1792,61 @@ class ModelWriter {
     final literals = <String, String>{};
     if (implementsClass != null) {
       for (final entry in properties.entries) {
-        final sch = entry.value as Map<String, dynamic>?;
-        if (sch == null) continue;
-        if (sch['type'] != 'string') continue;
-        final vals = sch['enum'];
+        final psch = entry.value as Map<String, dynamic>?;
+        if (psch == null) continue;
+        if (psch['type'] != 'string') continue;
+        final vals = psch['enum'];
         if (vals is! List || vals.length != 1) continue;
         literals[entry.key] = vals.first as String;
       }
     }
 
+    // Field records, computed ONCE so the constructor, fromJson, toJson,
+    // ==, hashCode, and field declarations all agree on each field's
+    // type. Computing the Dart type also registers inline-object /
+    // inline-enum synthesis as a side effect, so this must happen
+    // before any section is emitted.
+    final fields = <_FieldRecord>[];
+    for (final entry in properties.entries) {
+      if (literals.containsKey(entry.key)) continue;
+      final fieldName = entry.key;
+      final psch = entry.value as Map<String, dynamic>;
+      final isRequired = required.contains(fieldName);
+      final isNullable = _isNullableSchema(psch);
+      // Synthesized-class name for this field if it turns out to be an
+      // inline object (e.g. `Session` + `time` -> `SessionTime`).
+      final context = '$className${_pascalCore(fieldName)}';
+      final baseType = _dartTypeForInline(psch, context: context);
+      // A field is a `required` constructor param whenever the schema
+      // marks it as required, even when the type is nullable. Optional
+      // fields need `?` so callers can omit them.
+      final isNonNull = isRequired && !isNullable;
+      fields.add(_FieldRecord(
+        jsonName: fieldName,
+        safeName: _safeIdentifier(fieldName),
+        schema: psch,
+        isRequired: isRequired,
+        dartType: isNonNull ? baseType : '$baseType?',
+        context: context,
+      ));
+    }
+
+    _usesImmutable = true;
     b.writeln('@immutable');
     b.writeln(implementsClass != null
-        ? 'class $name implements $implementsClass {'
-        : 'class $name {');
-    // A class becomes empty (no constructor params) when it has no
-    // properties at all OR every property is a literal discriminator.
-    final realProps =
-        properties.entries.where((e) => !literals.containsKey(e.key)).toList();
-    if (realProps.isEmpty) {
+        ? 'class $className implements $implementsClass {'
+        : 'class $className {');
+    if (fields.isEmpty) {
       // Empty class: `const Name({});` is a Dart parse error (empty `{}`
       // parameter list). Use `()` instead.
-      b.writeln('  const $name();');
+      b.writeln('  const $className();');
     } else {
-      b.writeln('  const $name({');
-      for (final entry in realProps) {
-        final fieldName = entry.key;
-        final safeName = _safeIdentifier(fieldName);
-        final isRequired = required.contains(fieldName);
-        // A field is a `required` constructor param whenever the schema marks
-        // it as required, even when the type is nullable. The `required`
-        // keyword in Dart means the caller must provide the argument; a
-        // nullable type simply allows passing `null`.
-        if (isRequired) {
-          b.writeln('    required this.$safeName,');
+      b.writeln('  const $className({');
+      for (final f in fields) {
+        if (f.isRequired) {
+          b.writeln('    required this.${f.safeName},');
         } else {
-          b.writeln('    this.$safeName,');
+          b.writeln('    this.${f.safeName},');
         }
       }
       b.writeln('  });');
@@ -1838,7 +1854,7 @@ class ModelWriter {
     b.writeln();
 
     // fromJson
-    if (realProps.isEmpty) {
+    if (fields.isEmpty) {
       // Empty object: use `const` to satisfy `prefer_const_constructors`.
       // The OpenAPI spec defines this schema as `{}` with no modeled
       // fields, so the API may legitimately return additional
@@ -1848,25 +1864,20 @@ class ModelWriter {
       b.writeln(
         '  // ignore: avoid_unused_constructor_parameters',
       );
-      b.writeln('  factory $name.fromJson(Map<String, dynamic> json) {');
-      b.writeln('    return const $name();');
+      b.writeln('  factory $className.fromJson(Map<String, dynamic> json) {');
+      b.writeln('    return const $className();');
       b.writeln('  }');
     } else {
-      b.writeln('  factory $name.fromJson(Map<String, dynamic> json) {');
-      b.writeln('    return $name(');
-      for (final entry in properties.entries) {
-        if (literals.containsKey(entry.key)) continue;
-        final fieldName = entry.key;
-        final isRequired = required.contains(fieldName);
-        final sch = entry.value as Map<String, dynamic>;
+      b.writeln('  factory $className.fromJson(Map<String, dynamic> json) {');
+      b.writeln('    return $className(');
+      for (final f in fields) {
         b.writeln(
-          '      ${_decodeField(fieldName, sch, isRequired)},',
+          '      ${_decodeField(f.jsonName, f.schema, f.isRequired, context: f.context)},',
         );
       }
       b.writeln('    );');
       b.writeln('  }');
     }
-    b.writeln();
     b.writeln();
 
     // toJson
@@ -1876,70 +1887,86 @@ class ModelWriter {
     b.writeln('  Map<String, dynamic> toJson() {');
     b.writeln('    return <String, dynamic>{');
     for (final entry in properties.entries) {
-      final fieldName = entry.key;
-      final literal = literals[fieldName];
+      final literal = literals[entry.key];
       if (literal != null) {
         // Discriminator / constant: emit the literal value the class
         // is supposed to carry, not a field reference.
-        b.writeln('      ${_safeKey(fieldName)}: ${jsonEncode(literal)},');
+        b.writeln('      ${_safeKey(entry.key)}: ${jsonEncode(literal)},');
         continue;
       }
-      final sch = entry.value as Map<String, dynamic>;
-      final isRequired = required.contains(fieldName);
-      final isNullable = _isNullableSchema(sch) || !isRequired;
-      b.writeln('      ${_encodeField(fieldName, sch, isNullable: isNullable)},');
+      final f = fields.firstWhere((x) => x.jsonName == entry.key);
+      final isNullable = _isNullableSchema(f.schema) || !f.isRequired;
+      b.writeln(
+        '      ${_encodeField(f.jsonName, f.schema, isNullable: isNullable, context: f.context)},',
+      );
     }
     b.writeln('    };');
     b.writeln('  }');
     b.writeln();
 
-    // == / hashCode
-    if (realProps.isNotEmpty) {
+    // == / hashCode. Collection-typed fields (and `Object` fields,
+    // which may hold decoded JSON maps/lists) use deep structural
+    // equality — Dart's `==` on List/Map compares identity, which
+    // would make two identical decoded payloads unequal.
+    if (fields.isNotEmpty) {
       b.writeln('  @override');
       b.writeln('  bool operator ==(Object other) =>');
       b.writeln('      identical(this, other) ||');
-      b.writeln('      (other is $name &&');
-      final fieldChecks = realProps.map((e) {
-        final safeName = _safeIdentifier(e.key);
-        return '          other.$safeName == $safeName';
+      b.writeln('      (other is $className &&');
+      final fieldChecks = fields.map((f) {
+        if (_needsDeepEquality(f.dartType)) {
+          _usesDeepEquality = true;
+          return '          const DeepCollectionEquality().equals(other.${f.safeName}, ${f.safeName})';
+        }
+        return '          other.${f.safeName} == ${f.safeName}';
       }).join(' &&\n');
       b.writeln('$fieldChecks);');
       b.writeln();
       b.writeln('  @override');
-      final hashArgs = realProps.map((e) => _safeIdentifier(e.key)).join(', ');
-      if (realProps.length == 1) {
-        b.writeln('  int get hashCode => ${_safeIdentifier(realProps.first.key)}.hashCode;');
-      } else if (realProps.length <= 20) {
-        b.writeln('  int get hashCode => Object.hash($hashArgs);');
+      final hashExprs = fields.map((f) {
+        if (_needsDeepEquality(f.dartType)) {
+          _usesDeepEquality = true;
+          return 'const DeepCollectionEquality().hash(${f.safeName})';
+        }
+        return f.safeName;
+      }).toList();
+      if (fields.length == 1) {
+        final f = fields.first;
+        if (_needsDeepEquality(f.dartType)) {
+          b.writeln('  int get hashCode => const DeepCollectionEquality().hash(${f.safeName});');
+        } else {
+          b.writeln('  int get hashCode => ${f.safeName}.hashCode;');
+        }
+      } else if (fields.length <= 20) {
+        b.writeln('  int get hashCode => Object.hash(${hashExprs.join(', ')});');
       } else {
-        b.writeln('  int get hashCode => Object.hashAll([$hashArgs]);');
+        b.writeln('  int get hashCode => Object.hashAll([${hashExprs.join(', ')}]);');
       }
       b.writeln();
     }
 
     // Fields
-    for (final entry in properties.entries) {
-      if (literals.containsKey(entry.key)) continue;
-      final fieldName = entry.key;
-      final safeName = _safeIdentifier(fieldName);
-      final sch = entry.value as Map<String, dynamic>;
-      final isRequired = required.contains(fieldName);
-      final isNullable = _isNullableSchema(sch);
-      final dartType = _dartTypeForInline(sch);
-      // `Object` is non-nullable — optional fields need `?` appended.
-      final isNonNull = isRequired && !isNullable;
-      final finalType = isNonNull ? dartType : '$dartType?';
-      b.writeln('  final $finalType $safeName;');
+    for (final f in fields) {
+      b.writeln('  final ${f.dartType} ${f.safeName};');
     }
     b.writeln('}');
-
-    // Emit any inline enums we collected.
-    for (final ie in _inlineEnums) {
-      b.writeln();
-      b.writeln(ie.emit());
-    }
-
     return b.toString();
+  }
+
+  /// True when [dartType] needs deep structural comparison in `==` /
+  /// `hashCode`: Dart compares `List`/`Map` by identity, and `Object`
+  /// fields may hold decoded JSON collections.
+  static bool _needsDeepEquality(String dartType) {
+    final t = dartType.endsWith('?')
+        ? dartType.substring(0, dartType.length - 1)
+        : dartType;
+    return t.startsWith('List<') || t.startsWith('Map<') || t == 'Object';
+  }
+
+  void _registerInlineObject(String className, Map<String, dynamic> sch) {
+    if (_inlineObjectNames.contains(className)) return;
+    _inlineObjectNames.add(className);
+    _inlineObjects.add(_InlineObjectEntry(className: className, schema: sch));
   }
 
   /// Emit a class for a top-level map-typed schema (no `properties`, but
@@ -1951,11 +1978,18 @@ class ModelWriter {
   /// → `PermissionActionConfig`) and `ReferenceConfig` (typed map of
   /// string → `ReferenceConfigEntry`).
   String _emitMapWrapper(StringBuffer b, Map<String, dynamic> ap) {
-    final valueDart = _dartTypeForInline(ap);
+    final valueDart = _dartTypeForInline(ap, context: '${name}Value');
     final isPrimitive = _isInlinePrimitive(valueDart);
     final isNullable = _isNullableSchema(ap);
     final valueType = isNullable ? '$valueDart?' : valueDart;
+    final apProps = ap['properties'];
+    final isInlineObjectValue = ap[r'$ref'] is! String &&
+        ap['type'] == 'object' &&
+        apProps is Map &&
+        apProps.isNotEmpty;
 
+    _usesImmutable = true;
+    _usesDeepEquality = true;
     b.writeln('@immutable');
     b.writeln(implementsClass != null
         ? 'class $name implements $implementsClass {'
@@ -1992,6 +2026,9 @@ class ModelWriter {
       decodeExpr = cast.isEmpty
           ? '$valueDart.fromJson(v as Object)'
           : '$valueDart.fromJson(v as $cast)';
+    } else if (isInlineObjectValue) {
+      // Inline-object values decode through their synthesized class.
+      decodeExpr = '$valueDart.fromJson(v as Map<String, dynamic>)';
     } else if (isPrimitive) {
       decodeExpr = 'v as $valueDart';
     } else {
@@ -2015,7 +2052,7 @@ class ModelWriter {
     b.writeln('  Map<String, dynamic> toJson() {');
     if (isPrimitive) {
       b.writeln('    return Map<String, dynamic>.from(value);');
-    } else if (ap[r'$ref'] is String) {
+    } else if (ap[r'$ref'] is String || isInlineObjectValue) {
       b.writeln(
         '    return value.map((k, v) => MapEntry(k, v.toJson()));',
       );
@@ -2023,6 +2060,15 @@ class ModelWriter {
       b.writeln('    return Map<String, dynamic>.from(value);');
     }
     b.writeln('  }');
+    b.writeln();
+    b.writeln('  @override');
+    b.writeln('  bool operator ==(Object other) =>');
+    b.writeln('      identical(this, other) ||');
+    b.writeln('      (other is $name &&');
+    b.writeln('          const DeepCollectionEquality().equals(other.value, value));');
+    b.writeln();
+    b.writeln('  @override');
+    b.writeln('  int get hashCode => const DeepCollectionEquality().hash(value);');
     b.writeln('}');
     return b.toString();
   }
@@ -2032,6 +2078,8 @@ class ModelWriter {
   /// raw `Map<String, dynamic>` so arbitrary JSON keys are preserved on
   /// round-trip (e.g. `JSONSchema`).
   String _emitFreeformMapWrapper(StringBuffer b) {
+    _usesImmutable = true;
+    _usesDeepEquality = true;
     b.writeln('@immutable');
     b.writeln(implementsClass != null
         ? 'class $name implements $implementsClass {'
@@ -2044,6 +2092,16 @@ class ModelWriter {
       b.writeln('  @override');
     }
     b.writeln('  Map<String, dynamic> toJson() => json;');
+    b.writeln();
+    b.writeln('  @override');
+    b.writeln('  bool operator ==(Object other) =>');
+    b.writeln('      identical(this, other) ||');
+    b.writeln('      (other is $name &&');
+    b.writeln('          const DeepCollectionEquality().equals(other.json, json));');
+    b.writeln();
+    b.writeln('  @override');
+    b.writeln('  int get hashCode => const DeepCollectionEquality().hash(json);');
+    b.writeln();
     b.writeln('  final Map<String, dynamic> json;');
     b.writeln('}');
     return b.toString();
@@ -2053,7 +2111,13 @@ class ModelWriter {
   // Field encoders / decoders
   // -------------------------------------------------------------------------
 
-  String _dartTypeForInline(Map<String, dynamic> sch) {
+  /// Core inline type emitter. [context] is the class name an inline
+  /// `type: object` schema with `properties` would be synthesized under
+  /// (e.g. `SessionTime` for `Session.time`); computing such a type
+  /// registers the synthesized class as a side effect. Nested contexts
+  /// derive deterministically: array items append `Item`, map values
+  /// append `Value`.
+  String _dartTypeForInline(Map<String, dynamic> sch, {required String context}) {
     final r = sch[r'$ref'];
     if (r is String) {
       return _pascalFromSnake(_schemaNameFromRef(r));
@@ -2073,14 +2137,23 @@ class ModelWriter {
     if (type == 'array') {
       final items = sch['items'];
       if (items is Map<String, dynamic>) {
-        return 'List<${_dartTypeForInline(items)}>';
+        return 'List<${_dartTypeForInline(items, context: '${context}Item')}>';
       }
       return 'List<dynamic>';
     }
     if (type == 'object') {
+      // Inline object with properties: synthesize a typed sibling class
+      // instead of collapsing to `Map<String, dynamic>` — collapsing
+      // would make generated models WEAKER typed than the hand-written
+      // v1 models they are meant to replace.
+      final props = sch['properties'];
+      if (props is Map<String, dynamic> && props.isNotEmpty) {
+        _registerInlineObject(context, sch);
+        return context;
+      }
       final ap = sch['additionalProperties'];
       if (ap is Map<String, dynamic>) {
-        return 'Map<String, ${_dartTypeForInline(ap)}>';
+        return 'Map<String, ${_dartTypeForInline(ap, context: '${context}Value')}>';
       }
       if (ap == true) return 'Map<String, dynamic>';
       return 'Map<String, dynamic>';
@@ -2090,7 +2163,7 @@ class ModelWriter {
       // null + T -> T?
       final nonNull = variants.where((v) => v['type'] != 'null').toList();
       if (nonNull.length == 1) {
-        return _dartTypeForInline(nonNull.first);
+        return _dartTypeForInline(nonNull.first, context: context);
       }
       return 'Object';
     }
@@ -2145,7 +2218,12 @@ class ModelWriter {
     return false;
   }
 
-  String _decodeField(String name, Map<String, dynamic> sch, bool isRequired) {
+  String _decodeField(
+    String name,
+    Map<String, dynamic> sch,
+    bool isRequired, {
+    required String context,
+  }) {
     final keyExpr = _safeKey(name);
     final safeName = _safeIdentifier(name);
     final isNullable = _isNullableSchema(sch) || !isRequired;
@@ -2193,7 +2271,7 @@ class ModelWriter {
       final variants = (sch['anyOf'] as List).cast<Map<String, dynamic>>();
       final nonNull = variants.where((v) => v['type'] != 'null').toList();
       if (nonNull.length == 1) {
-        return _decodeField(name, nonNull.first, false);
+        return _decodeField(name, nonNull.first, false, context: context);
       }
     }
     final type = sch['type'];
@@ -2234,7 +2312,18 @@ class ModelWriter {
           }
           return '$safeName: (json[$keyExpr] as List<dynamic>).map((e) => $refType.fromJson(e as $elementCast)).toList()';
         }
-        final innerDart = _dartTypeForInline(items);
+        // Inline-object items decode through their synthesized class.
+        final itemProps = items['properties'];
+        if (items['type'] == 'object' &&
+            itemProps is Map &&
+            itemProps.isNotEmpty) {
+          final itemClass = '${context}Item';
+          if (isNullable) {
+            return '$safeName: (json[$keyExpr] as List<dynamic>?)?.map((e) => $itemClass.fromJson(e as Map<String, dynamic>)).toList()';
+          }
+          return '$safeName: (json[$keyExpr] as List<dynamic>).map((e) => $itemClass.fromJson(e as Map<String, dynamic>)).toList()';
+        }
+        final innerDart = _dartTypeForInline(items, context: '${context}Item');
         if (isNullable) {
           return '$safeName: (json[$keyExpr] as List<dynamic>?)?.cast<$innerDart>()';
         }
@@ -2242,9 +2331,18 @@ class ModelWriter {
       }
     }
     if (type == 'object') {
+      // Inline object with properties: decode through the synthesized
+      // sibling class instead of exposing the raw map.
+      final props = sch['properties'];
+      if (props is Map && props.isNotEmpty) {
+        if (isNullable) {
+          return '$safeName: json[$keyExpr] == null ? null : $context.fromJson(json[$keyExpr] as Map<String, dynamic>)';
+        }
+        return '$safeName: $context.fromJson(json[$keyExpr] as Map<String, dynamic>)';
+      }
       final ap = sch['additionalProperties'];
       if (ap is Map<String, dynamic>) {
-        final valueDart = _dartTypeForInline(ap);
+        final valueDart = _dartTypeForInline(ap, context: '${context}Value');
         // If the value is a $ref to a top-level schema, the decoding shape
         // depends on whether the ref points to an array wrapper (values
         // decoded via `List.fromJson`) or an object class (values decoded
@@ -2268,6 +2366,14 @@ class ModelWriter {
             return "$safeName: (json[$keyExpr] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, $valueDart.fromJson(v$vCast)))";
           }
           return "$safeName: (json[$keyExpr] as Map<String, dynamic>).map((k, v) => MapEntry(k, $valueDart.fromJson(v$vCast)))";
+        }
+        // Inline-object map values decode through their synthesized class.
+        final apProps = ap['properties'];
+        if (ap['type'] == 'object' && apProps is Map && apProps.isNotEmpty) {
+          if (isNullable) {
+            return "$safeName: (json[$keyExpr] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, $valueDart.fromJson(v as Map<String, dynamic>)))";
+          }
+          return "$safeName: (json[$keyExpr] as Map<String, dynamic>).map((k, v) => MapEntry(k, $valueDart.fromJson(v as Map<String, dynamic>)))";
         }
         if (isNullable) {
           return "$safeName: (json[$keyExpr] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as $valueDart))";
@@ -2297,13 +2403,13 @@ class ModelWriter {
       return '$safeName: (json[$keyExpr] as num).toInt()';
     }
     if (type == 'boolean' || type == 'string') {
-      final dartType = _dartTypeForInline(sch);
+      final dartType = _dartTypeForInline(sch, context: context);
       if (isNullable) {
         return '$safeName: json[$keyExpr] as $dartType?';
       }
       return '$safeName: json[$keyExpr] as $dartType';
     }
-    final fallbackDartType = _dartTypeForInline(sch);
+    final fallbackDartType = _dartTypeForInline(sch, context: context);
     if (fallbackDartType == 'Object') {
       if (isNullable) {
         return '$safeName: json[$keyExpr] as Object?';
@@ -2313,7 +2419,12 @@ class ModelWriter {
     return '$safeName: json[$keyExpr]';
   }
 
-  String _encodeField(String name, Map<String, dynamic> sch, {required bool isNullable}) {
+  String _encodeField(
+    String name,
+    Map<String, dynamic> sch, {
+    required bool isNullable,
+    required String context,
+  }) {
     final keyExpr = _safeKey(name);
     final safeName = _safeIdentifier(name);
     final callOp = isNullable ? '?' : '';
@@ -2323,7 +2434,7 @@ class ModelWriter {
       final variants = (sch['anyOf'] as List).cast<Map<String, dynamic>>();
       final nonNull = variants.where((v) => v['type'] != 'null').toList();
       if (nonNull.length == 1) {
-        return _encodeField(name, nonNull.first, isNullable: true);
+        return _encodeField(name, nonNull.first, isNullable: true, context: context);
       }
     }
     final r = sch[r'$ref'];
@@ -2339,19 +2450,38 @@ class ModelWriter {
     }
     if (type == 'array') {
       final items = sch['items'];
-      if (items is Map<String, dynamic> && items[r'$ref'] is String) {
-        // List of generated model objects. `jsonEncode` cannot encode
-        // Dart class instances directly — map each element through
-        // its `toJson()` so the encoder sees plain maps.
-        return '$keyExpr: $entryOp$safeName$callOp.map((e) => e.toJson()).toList()';
+      if (items is Map<String, dynamic>) {
+        final itemProps = items['properties'];
+        final isModelItem = items[r'$ref'] is String ||
+            (items['type'] == 'object' &&
+                itemProps is Map &&
+                itemProps.isNotEmpty);
+        if (isModelItem) {
+          // List of generated model objects ($ref or synthesized
+          // inline class). `jsonEncode` cannot encode Dart class
+          // instances directly — map each element through its
+          // `toJson()` so the encoder sees plain maps.
+          return '$keyExpr: $entryOp$safeName$callOp.map((e) => e.toJson()).toList()';
+        }
       }
     }
     if (type == 'object') {
+      // Inline object with properties: encode through the synthesized
+      // class's toJson.
+      final props = sch['properties'];
+      if (props is Map && props.isNotEmpty) {
+        return '$keyExpr: $entryOp$safeName$callOp.toJson()';
+      }
       final ap = sch['additionalProperties'];
-      if (ap is Map<String, dynamic> && ap[r'$ref'] is String) {
-        // Map of generated model objects. Same constraint as
-        // arrays: jsonEncode needs plain maps, not model instances.
-        return '$keyExpr: $entryOp$safeName$callOp.map((k, v) => MapEntry(k, v.toJson()))';
+      if (ap is Map<String, dynamic>) {
+        final apProps = ap['properties'];
+        final isModelValue = ap[r'$ref'] is String ||
+            (ap['type'] == 'object' && apProps is Map && apProps.isNotEmpty);
+        if (isModelValue) {
+          // Map of generated model objects. Same constraint as
+          // arrays: jsonEncode needs plain maps, not model instances.
+          return '$keyExpr: $entryOp$safeName$callOp.map((k, v) => MapEntry(k, v.toJson()))';
+        }
       }
     }
     // Inline enums (and any other string fields) just use the raw value.
@@ -2481,7 +2611,7 @@ class ModelWriter {
       final sch = schemas[vName] as Map<String, dynamic>?;
       if (sch == null) return null;
       final t = sch['type'];
-      final inlineName = '${_safeIdentifier(name)}${inlineIndex.toString().padLeft(2, '0')}Inline';
+      final inlineName = '$name${inlineIndex.toString().padLeft(2, '0')}Inline';
       if (t == 'string' && sch['enum'] is List) {
         // Enum ref variant: dispatch into the synthesized wrapper
         // class so the union interface has a non-enum
@@ -2492,7 +2622,7 @@ class ModelWriter {
       return '$refType.fromJson(json as Map<String, dynamic>)';
     }
     final t = variant['type'];
-    final inlineName = '${_safeIdentifier(name)}${inlineIndex.toString().padLeft(2, '0')}Inline';
+    final inlineName = '$name${inlineIndex.toString().padLeft(2, '0')}Inline';
     if (t == 'string') {
       return '$inlineName.fromJson(json)';
     }
@@ -2521,46 +2651,108 @@ class _InlineVariantClassEntry {
   final Map<String, dynamic> schema;
 }
 
+/// A class synthesized for an inline `type: object` property schema
+/// (e.g. `Session.time` → `SessionTime`). Emitted as a sibling of the
+/// owning class by [ModelWriter.emit].
+class _InlineObjectEntry {
+  _InlineObjectEntry({
+    required this.className,
+    required this.schema,
+  });
+  final String className;
+  final Map<String, dynamic> schema;
+}
+
+/// Everything the object-class emitter needs to know about one field,
+/// computed once so the constructor, fromJson, toJson, `==`, hashCode,
+/// and field declaration all agree.
+class _FieldRecord {
+  _FieldRecord({
+    required this.jsonName,
+    required this.safeName,
+    required this.schema,
+    required this.isRequired,
+    required this.dartType,
+    required this.context,
+  });
+
+  /// JSON object key as it appears in the spec.
+  final String jsonName;
+
+  /// Dart-safe identifier for the field.
+  final String safeName;
+
+  /// The field's property schema.
+  final Map<String, dynamic> schema;
+
+  /// Whether the spec lists the field in `required`.
+  final bool isRequired;
+
+  /// Final Dart type INCLUDING nullability marker.
+  final String dartType;
+
+  /// Synthesized-class name context for inline objects under this field.
+  final String context;
+}
+
 /// An enum class synthesized for an inline enum in a property.
 class InlineEnum {
   InlineEnum({required this.className, required this.values});
   final String className;
   final List<String> values;
 
-  String emit() {
-    final b = StringBuffer();
-    b.writeln('enum $className {');
-    for (final v in values) {
-      final memberName = _camelFromSnake(v);
-      b.writeln('  @JsonValue(${jsonEncode(v)})');
-      b.writeln('  $memberName,');
-    }
-    b.writeln('  ;');
-    b.writeln();
-    b.writeln('  static $className fromJson(String value) {');
-    b.writeln('    switch (value) {');
-    for (final v in values) {
-      final memberName = _camelFromSnake(v);
-      b.writeln('      case ${jsonEncode(v)}:');
-      b.writeln('        return $className.$memberName;');
-    }
-    b.writeln('      default:');
-    b.writeln("        throw FormatException('Unknown $className value: \$value');");
-    b.writeln('    }');
-    b.writeln('  }');
-    b.writeln();
-    b.writeln('  String toJson() {');
-    b.writeln('    switch (this) {');
-    for (final v in values) {
-      final memberName = _camelFromSnake(v);
-      b.writeln('      case $className.$memberName:');
-      b.writeln('        return ${jsonEncode(v)};');
-    }
-    b.writeln('    }');
-    b.writeln('  }');
-    b.writeln('}');
-    return b.toString();
+  String emit() => _emitEnumBody(className, values);
+}
+
+/// Emits a complete enum declaration named [enumName] for the spec
+/// [values]. Every generated enum gains an `unknown` fallback member
+/// (unless the spec itself already defines one): `fromJson` returns it
+/// for values introduced by newer OpenCode servers instead of throwing,
+/// and `toJson` encodes the synthetic member as the literal string
+/// `unknown` — mirroring the hand-written `CommandSource.unknown`
+/// convention already used in this package.
+String _emitEnumBody(String enumName, List<String> values) {
+  final memberNames = values.map(_camelFromSnake).toList();
+  final hasNativeUnknown = memberNames.contains('unknown');
+  final b = StringBuffer();
+  b.writeln('enum $enumName {');
+  for (var i = 0; i < values.length; i++) {
+    b.writeln('  @JsonValue(${jsonEncode(values[i])})');
+    b.writeln('  ${memberNames[i]},');
   }
+  if (!hasNativeUnknown) {
+    b.writeln();
+    b.writeln('  /// Fallback for values introduced by newer OpenCode servers.');
+    b.writeln('  /// Encodes back to the literal string `unknown`.');
+    b.writeln('  unknown,');
+  }
+  b.writeln('  ;');
+  b.writeln();
+  b.writeln('  static $enumName fromJson(String value) {');
+  b.writeln('    switch (value) {');
+  for (var i = 0; i < values.length; i++) {
+    b.writeln('      case ${jsonEncode(values[i])}:');
+    b.writeln('        return $enumName.${memberNames[i]};');
+  }
+  b.writeln('      default:');
+  b.writeln('        return $enumName.unknown;');
+  b.writeln('    }');
+  b.writeln('  }');
+  b.writeln();
+  b.writeln('  String toJson() {');
+  b.writeln('    switch (this) {');
+  for (var i = 0; i < values.length; i++) {
+    b.writeln('      case $enumName.${memberNames[i]}:');
+    b.writeln('        return ${jsonEncode(values[i])};');
+  }
+  if (!hasNativeUnknown) {
+    b.writeln('      case $enumName.unknown:');
+    b.writeln("        return 'unknown';");
+  }
+  b.writeln('    }');
+  b.writeln('  }');
+  b.writeln('}');
+  return b.toString();
 }
 
 // ---------------------------------------------------------------------------
@@ -2575,7 +2767,25 @@ String _pascalFromSnake(String name) {
   }
   s = s.replaceAll(RegExp('^[._]+'), '');
 
-  // Split on underscores, dashes, and dots.
+  final pascal = _pascalCore(s);
+  // When the raw SCHEMA name contained a dot, `_pascalFromSnake` collapses
+  // the two sides into the same identifier as a sibling that uses an
+  // underscore (e.g. `Event.tui.command.execute` vs
+  // `EventTuiCommandExecute`). Append a short stable hash of the raw name
+  // so both siblings stay distinct without leaking the original dots into
+  // identifiers (Dart identifiers may not contain `.`).
+  if (name.contains('.')) {
+    return '$pascal${_hashSuffix(name)}';
+  }
+  return pascal;
+}
+
+/// Pascal-cases [s] by splitting on underscores, dashes, and dots —
+/// WITHOUT the dotted-name hash suffix that [_pascalFromSnake] appends.
+/// Used where the input space is known to be collision-free: API method
+/// names (operationIds are unique by spec; collisions abort generation)
+/// and synthesized nested-class names (always parent-prefixed).
+String _pascalCore(String s) {
   final parts = s.split(RegExp(r'[_\-.]+'));
   final out = StringBuffer();
   for (final p in parts) {
@@ -2590,16 +2800,14 @@ String _pascalFromSnake(String name) {
           .join());
     }
   }
-  final pascal = out.toString();
-  // When the raw name contained a dot, `_pascalFromSnake` collapses the
-  // two sides into the same identifier as a sibling that uses an
-  // underscore. Append a short stable hash of the raw name so both
-  // siblings stay distinct without leaking the original dots into
-  // identifiers (Dart identifiers may not contain `.`).
-  if (name.contains('.')) {
-    return '$pascal${_hashSuffix(name)}';
-  }
-  return pascal;
+  return out.toString();
+}
+
+/// lowerCamelCase form of [_pascalCore] (no hash suffix).
+String _camelCore(String name) {
+  final pascal = _pascalCore(name);
+  if (pascal.isEmpty) return pascal;
+  return pascal[0].toLowerCase() + pascal.substring(1);
 }
 
 /// 4-character hash suffix derived from a string, base-36 encoded.
@@ -2644,20 +2852,29 @@ String _snakeFromCamel(String name) {
 }
 
 const _dartReservedWords = {
-  'abstract', 'as', 'assert', 'async', 'await', 'break', 'case', 'catch',
-  'class', 'const', 'continue', 'covariant', 'default', 'deferred', 'do',
-  'dynamic', 'else', 'enum', 'export', 'extends', 'extension', 'external',
-  'factory', 'false', 'final', 'finally', 'for', 'Function', 'get', 'hide',
-  'if', 'implements', 'import', 'in', 'interface', 'is', 'late', 'library',
-  'mixin', 'new', 'null', 'on', 'operator', 'part', 'required', 'rethrow',
-  'return', 'sealed', 'show', 'static', 'super', 'switch', 'sync', 'this',
-  'throw', 'true', 'try', 'typedef', 'var', 'void', 'when', 'while',
-  'with', 'yield',
+  // True reserved words — never usable as identifiers.
+  'assert', 'break', 'case', 'catch', 'class', 'const', 'continue',
+  'default', 'do', 'else', 'enum', 'extends', 'false', 'final', 'finally',
+  'for', 'if', 'in', 'is', 'new', 'null', 'rethrow', 'return', 'super',
+  'switch', 'this', 'throw', 'true', 'try', 'var', 'void', 'while', 'with',
+  // Contextual keywords that can break in the positions generated code
+  // uses them (member declarations, async method bodies). Built-in
+  // identifiers that are unambiguous in those positions (e.g. `part`,
+  // `required`, `when`, `dynamic`) are deliberately NOT escaped — they
+  // are legal field/parameter names.
+  'await', 'yield', 'get', 'set', 'operator', 'factory',
+  // Names that collide with members the generated classes declare, or
+  // that shadow dart:core identifiers the class bodies reference as
+  // annotations (a field named `override` shadows `@override`).
+  'override', 'hashCode', 'runtimeType', 'toString', 'noSuchMethod',
+  'toJson',
 };
 
-/// Returns `name` quoted with backticks if it would otherwise collide with
-/// a Dart reserved word, or stripped of a leading underscore (which would
-/// otherwise require the experimental `private-named-parameters` feature).
+/// Returns a Dart-safe identifier for the JSON key [name]: reserved
+/// words gain a `Value` suffix (backticks are NOT valid Dart), and
+/// leading dollar signs / underscores are stripped (they cause parse
+/// errors in named constructor parameters). The JSON wire key is
+/// unaffected — `_safeKey` always emits the original name.
 String _safeIdentifier(String name) {
   // Convert snake_case JSON keys to lowerCamelCase to match Dart identifier
   // convention. This keeps the generated code free of the
@@ -2671,7 +2888,7 @@ String _safeIdentifier(String name) {
   }
   if (s.isEmpty) s = 'value';
   if (_dartReservedWords.contains(s)) {
-    return '`$s`';
+    return '${s}Value';
   }
   return s;
 }

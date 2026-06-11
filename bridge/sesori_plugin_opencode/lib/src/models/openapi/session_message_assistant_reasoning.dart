@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.247272Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
 @immutable
@@ -22,7 +22,6 @@ class SessionMessageAssistantReasoning {
     );
   }
 
-
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "type": type,
@@ -39,10 +38,10 @@ class SessionMessageAssistantReasoning {
           other.type == type &&
           other.id == id &&
           other.text == text &&
-          other.providerMetadata == providerMetadata);
+          const DeepCollectionEquality().equals(other.providerMetadata, providerMetadata));
 
   @override
-  int get hashCode => Object.hash(type, id, text, providerMetadata);
+  int get hashCode => Object.hash(type, id, text, const DeepCollectionEquality().hash(providerMetadata));
 
   final String type;
   final String id;

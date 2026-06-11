@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.234534Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'permission_action_config.dart';
 import 'permission_rule_config.dart';
@@ -21,30 +21,39 @@ abstract interface class PermissionConfig {
 
   factory PermissionConfig.fromJson(Object json) {
     if (json is String) {
-      return permissionConfig00Inline.fromJson(json);
+      return PermissionConfig00Inline.fromJson(json);
     }
     if (json is Map<String, dynamic>) {
-      return permissionConfig01Inline.fromJson(json);
+      return PermissionConfig01Inline.fromJson(json);
     }
-    throw FormatException('Unknown PermissionConfig value: $json');
+    return PermissionConfigUnknown(raw: json);
   }
 }
 
 @immutable
-class permissionConfig00Inline implements PermissionConfig {
-  const permissionConfig00Inline({required this.value});
-  factory permissionConfig00Inline.fromJson(String json) {
-    return permissionConfig00Inline(value: PermissionActionConfig.fromJson(json));
+class PermissionConfig00Inline implements PermissionConfig {
+  const PermissionConfig00Inline({required this.value});
+  factory PermissionConfig00Inline.fromJson(String json) {
+    return PermissionConfig00Inline(value: PermissionActionConfig.fromJson(json));
   }
   @override
   Object? toJson() => value.toJson();
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PermissionConfig00Inline && other.value == value);
+
+  @override
+  int get hashCode => value.hashCode;
+
   final PermissionActionConfig value;
 }
 
 
 @immutable
-class permissionConfig01Inline implements PermissionConfig {
-  const permissionConfig01Inline({
+class PermissionConfig01Inline implements PermissionConfig {
+  const PermissionConfig01Inline({
     this.read,
     this.edit,
     this.glob,
@@ -62,8 +71,8 @@ class permissionConfig01Inline implements PermissionConfig {
     this.skill,
   });
 
-  factory permissionConfig01Inline.fromJson(Map<String, dynamic> json) {
-    return permissionConfig01Inline(
+  factory PermissionConfig01Inline.fromJson(Map<String, dynamic> json) {
+    return PermissionConfig01Inline(
       read: json["read"] == null ? null : PermissionRuleConfig.fromJson(json["read"] as Object),
       edit: json["edit"] == null ? null : PermissionRuleConfig.fromJson(json["edit"] as Object),
       glob: json["glob"] == null ? null : PermissionRuleConfig.fromJson(json["glob"] as Object),
@@ -83,7 +92,7 @@ class permissionConfig01Inline implements PermissionConfig {
   }
 
   @override
-  Object? toJson() {
+  Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "read": ?read?.toJson(),
       "edit": ?edit?.toJson(),
@@ -106,7 +115,7 @@ class permissionConfig01Inline implements PermissionConfig {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is permissionConfig01Inline &&
+      (other is PermissionConfig01Inline &&
           other.read == read &&
           other.edit == edit &&
           other.glob == glob &&
@@ -141,4 +150,27 @@ class permissionConfig01Inline implements PermissionConfig {
   final PermissionRuleConfig? lsp;
   final PermissionActionConfig? doomLoop;
   final PermissionRuleConfig? skill;
+}
+
+
+/// Fallback variant for an unrecognized [PermissionConfig] payload shape.
+/// Carries the raw JSON so newer OpenCode servers do not break
+/// decoding; `toJson` returns the payload unchanged.
+@immutable
+class PermissionConfigUnknown implements PermissionConfig {
+  const PermissionConfigUnknown({required this.raw});
+
+  final Object? raw;
+
+  @override
+  Object? toJson() => raw;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PermissionConfigUnknown &&
+          const DeepCollectionEquality().equals(other.raw, raw));
+
+  @override
+  int get hashCode => const DeepCollectionEquality().hash(raw);
 }

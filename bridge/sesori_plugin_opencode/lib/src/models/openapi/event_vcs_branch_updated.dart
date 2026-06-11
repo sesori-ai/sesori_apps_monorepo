@@ -1,6 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.223454Z
 
 import 'package:meta/meta.dart';
 import 'event.dart';
@@ -15,17 +14,16 @@ class EventVcsBranchUpdated implements Event {
   factory EventVcsBranchUpdated.fromJson(Map<String, dynamic> json) {
     return EventVcsBranchUpdated(
       id: json["id"] as String,
-      properties: json["properties"] as Map<String, dynamic>,
+      properties: EventVcsBranchUpdatedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
-
 
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
       "type": "vcs.branch.updated",
-      "properties": properties,
+      "properties": properties.toJson(),
     };
   }
 
@@ -40,5 +38,35 @@ class EventVcsBranchUpdated implements Event {
   int get hashCode => Object.hash(id, properties);
 
   final String id;
-  final Map<String, dynamic> properties;
+  final EventVcsBranchUpdatedProperties properties;
+}
+
+@immutable
+class EventVcsBranchUpdatedProperties {
+  const EventVcsBranchUpdatedProperties({
+    this.branch,
+  });
+
+  factory EventVcsBranchUpdatedProperties.fromJson(Map<String, dynamic> json) {
+    return EventVcsBranchUpdatedProperties(
+      branch: json["branch"] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "branch": ?branch,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EventVcsBranchUpdatedProperties &&
+          other.branch == branch);
+
+  @override
+  int get hashCode => branch.hashCode;
+
+  final String? branch;
 }

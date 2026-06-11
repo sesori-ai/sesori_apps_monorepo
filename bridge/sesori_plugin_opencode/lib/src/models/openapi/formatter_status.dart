@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.226827Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
 @immutable
@@ -20,7 +20,6 @@ class FormatterStatus {
     );
   }
 
-
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "name": name,
@@ -34,11 +33,11 @@ class FormatterStatus {
       identical(this, other) ||
       (other is FormatterStatus &&
           other.name == name &&
-          other.extensions == extensions &&
+          const DeepCollectionEquality().equals(other.extensions, extensions) &&
           other.enabled == enabled);
 
   @override
-  int get hashCode => Object.hash(name, extensions, enabled);
+  int get hashCode => Object.hash(name, const DeepCollectionEquality().hash(extensions), enabled);
 
   final String name;
   final List<String> extensions;

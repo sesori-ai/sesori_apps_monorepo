@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.211388Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'event.dart';
 
@@ -19,7 +19,6 @@ class EventLspUpdated implements Event {
     );
   }
 
-
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
@@ -34,10 +33,10 @@ class EventLspUpdated implements Event {
       identical(this, other) ||
       (other is EventLspUpdated &&
           other.id == id &&
-          other.properties == properties);
+          const DeepCollectionEquality().equals(other.properties, properties));
 
   @override
-  int get hashCode => Object.hash(id, properties);
+  int get hashCode => Object.hash(id, const DeepCollectionEquality().hash(properties));
 
   final String id;
   final Map<String, dynamic> properties;

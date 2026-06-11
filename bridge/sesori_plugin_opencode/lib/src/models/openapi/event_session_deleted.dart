@@ -1,9 +1,9 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.217296Z
 
 import 'package:meta/meta.dart';
 import 'event.dart';
+import 'session.dart';
 
 @immutable
 class EventSessionDeleted implements Event {
@@ -15,17 +15,16 @@ class EventSessionDeleted implements Event {
   factory EventSessionDeleted.fromJson(Map<String, dynamic> json) {
     return EventSessionDeleted(
       id: json["id"] as String,
-      properties: json["properties"] as Map<String, dynamic>,
+      properties: EventSessionDeletedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
-
 
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
       "type": "session.deleted",
-      "properties": properties,
+      "properties": properties.toJson(),
     };
   }
 
@@ -40,5 +39,40 @@ class EventSessionDeleted implements Event {
   int get hashCode => Object.hash(id, properties);
 
   final String id;
-  final Map<String, dynamic> properties;
+  final EventSessionDeletedProperties properties;
+}
+
+@immutable
+class EventSessionDeletedProperties {
+  const EventSessionDeletedProperties({
+    required this.sessionID,
+    required this.info,
+  });
+
+  factory EventSessionDeletedProperties.fromJson(Map<String, dynamic> json) {
+    return EventSessionDeletedProperties(
+      sessionID: json["sessionID"] as String,
+      info: Session.fromJson(json["info"] as Map<String, dynamic>),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "sessionID": sessionID,
+      "info": info.toJson(),
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EventSessionDeletedProperties &&
+          other.sessionID == sessionID &&
+          other.info == info);
+
+  @override
+  int get hashCode => Object.hash(sessionID, info);
+
+  final String sessionID;
+  final Session info;
 }

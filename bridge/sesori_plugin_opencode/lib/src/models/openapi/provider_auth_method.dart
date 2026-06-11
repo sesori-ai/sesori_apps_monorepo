@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.240693Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
 @immutable
@@ -20,7 +20,6 @@ class ProviderAuthMethod {
     );
   }
 
-
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "type": type,
@@ -35,10 +34,10 @@ class ProviderAuthMethod {
       (other is ProviderAuthMethod &&
           other.type == type &&
           other.label == label &&
-          other.prompts == prompts);
+          const DeepCollectionEquality().equals(other.prompts, prompts));
 
   @override
-  int get hashCode => Object.hash(type, label, prompts);
+  int get hashCode => Object.hash(type, label, const DeepCollectionEquality().hash(prompts));
 
   final String type;
   final String label;

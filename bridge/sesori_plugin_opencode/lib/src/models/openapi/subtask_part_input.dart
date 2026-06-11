@@ -1,6 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.253065Z
 
 import 'package:meta/meta.dart';
 
@@ -23,11 +22,10 @@ class SubtaskPartInput {
       prompt: json["prompt"] as String,
       description: json["description"] as String,
       agent: json["agent"] as String,
-      model: json["model"] as Map<String, dynamic>?,
+      model: json["model"] == null ? null : SubtaskPartInputModel.fromJson(json["model"] as Map<String, dynamic>),
       command: json["command"] as String?,
     );
   }
-
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
@@ -36,7 +34,7 @@ class SubtaskPartInput {
       "prompt": prompt,
       "description": description,
       "agent": agent,
-      "model": ?model,
+      "model": ?model?.toJson(),
       "command": ?command,
     };
   }
@@ -61,6 +59,41 @@ class SubtaskPartInput {
   final String prompt;
   final String description;
   final String agent;
-  final Map<String, dynamic>? model;
+  final SubtaskPartInputModel? model;
   final String? command;
+}
+
+@immutable
+class SubtaskPartInputModel {
+  const SubtaskPartInputModel({
+    required this.providerID,
+    required this.modelID,
+  });
+
+  factory SubtaskPartInputModel.fromJson(Map<String, dynamic> json) {
+    return SubtaskPartInputModel(
+      providerID: json["providerID"] as String,
+      modelID: json["modelID"] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "providerID": providerID,
+      "modelID": modelID,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SubtaskPartInputModel &&
+          other.providerID == providerID &&
+          other.modelID == modelID);
+
+  @override
+  int get hashCode => Object.hash(providerID, modelID);
+
+  final String providerID;
+  final String modelID;
 }

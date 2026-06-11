@@ -27,17 +27,31 @@ MODULES := sesori_plugin_interface sesori_plugin_opencode app
 #   make opencode-codegen OPENCODE_SPEC=/path/to/openapi.json
 #
 # Exactly one of OPENCODE_TAG, OPENCODE_BRANCH, OPENCODE_COMMIT, or
-# OPENCODE_SPEC is required. There is no default.
+# OPENCODE_SPEC is required. There is no default. A relative OPENCODE_SPEC
+# path is resolved against this directory (bridge/) before the generator
+# runs from sesori_plugin_opencode/.
+#
+# Generator arguments are accumulated as shell positional parameters
+# (`set -- "$$@" ...`) rather than a flat string: embedding quotes in a
+# string variable does NOT survive unquoted expansion (the quotes become
+# literal characters and spaces still word-split), so paths with spaces
+# would break.
 #
 # Reads `tool/opencode_events_v1.json` (hand-curated v1 SSE event manifest)
 # and the OpenAPI spec.
 opencode-codegen:
 	@count=0; \
-	GEN_FLAGS=""; \
-	if [ -n "$(OPENCODE_TAG)" ]; then GEN_FLAGS="$$GEN_FLAGS --tag $(OPENCODE_TAG)"; count=$$((count+1)); fi; \
-	if [ -n "$(OPENCODE_BRANCH)" ]; then GEN_FLAGS="$$GEN_FLAGS --branch $(OPENCODE_BRANCH)"; count=$$((count+1)); fi; \
-	if [ -n "$(OPENCODE_COMMIT)" ]; then GEN_FLAGS="$$GEN_FLAGS --commit $(OPENCODE_COMMIT)"; count=$$((count+1)); fi; \
-	if [ -n "$(OPENCODE_SPEC)" ]; then GEN_FLAGS="$$GEN_FLAGS --local '$(OPENCODE_SPEC)'"; count=$$((count+1)); fi; \
+	set --; \
+	if [ -n "$(OPENCODE_TAG)" ]; then set -- "$$@" --tag "$(OPENCODE_TAG)"; count=$$((count+1)); fi; \
+	if [ -n "$(OPENCODE_BRANCH)" ]; then set -- "$$@" --branch "$(OPENCODE_BRANCH)"; count=$$((count+1)); fi; \
+	if [ -n "$(OPENCODE_COMMIT)" ]; then set -- "$$@" --commit "$(OPENCODE_COMMIT)"; count=$$((count+1)); fi; \
+	if [ -n "$(OPENCODE_SPEC)" ]; then \
+		case "$(OPENCODE_SPEC)" in \
+			/*) spec_path="$(OPENCODE_SPEC)";; \
+			*) spec_path="$$PWD/$(OPENCODE_SPEC)";; \
+		esac; \
+		set -- "$$@" --local "$$spec_path"; count=$$((count+1)); \
+	fi; \
 	if [ $$count -eq 0 ]; then \
 		echo "error: one of OPENCODE_TAG, OPENCODE_BRANCH, OPENCODE_COMMIT, or OPENCODE_SPEC is required."; \
 		echo "  examples:"; \
@@ -51,7 +65,7 @@ opencode-codegen:
 		echo "error: OPENCODE_TAG, OPENCODE_BRANCH, OPENCODE_COMMIT, and OPENCODE_SPEC are mutually exclusive."; \
 		exit 1; \
 	fi; \
-	(cd sesori_plugin_opencode && $(DART) run tool/generate_opencode_client.dart $$GEN_FLAGS) && \
+	(cd sesori_plugin_opencode && $(DART) run tool/generate_opencode_client.dart "$$@") && \
 	(cd sesori_plugin_opencode && $(DART) run tool/generate_sse_events.dart)
 
 codegen:

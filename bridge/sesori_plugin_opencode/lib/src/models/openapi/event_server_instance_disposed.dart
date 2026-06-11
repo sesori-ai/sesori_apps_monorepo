@@ -1,6 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.216676Z
 
 import 'package:meta/meta.dart';
 import 'event.dart';
@@ -15,17 +14,16 @@ class EventServerInstanceDisposed implements Event {
   factory EventServerInstanceDisposed.fromJson(Map<String, dynamic> json) {
     return EventServerInstanceDisposed(
       id: json["id"] as String,
-      properties: json["properties"] as Map<String, dynamic>,
+      properties: EventServerInstanceDisposedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
-
 
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
       "type": "server.instance.disposed",
-      "properties": properties,
+      "properties": properties.toJson(),
     };
   }
 
@@ -40,5 +38,35 @@ class EventServerInstanceDisposed implements Event {
   int get hashCode => Object.hash(id, properties);
 
   final String id;
-  final Map<String, dynamic> properties;
+  final EventServerInstanceDisposedProperties properties;
+}
+
+@immutable
+class EventServerInstanceDisposedProperties {
+  const EventServerInstanceDisposedProperties({
+    required this.directory,
+  });
+
+  factory EventServerInstanceDisposedProperties.fromJson(Map<String, dynamic> json) {
+    return EventServerInstanceDisposedProperties(
+      directory: json["directory"] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "directory": directory,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EventServerInstanceDisposedProperties &&
+          other.directory == directory);
+
+  @override
+  int get hashCode => directory.hashCode;
+
+  final String directory;
 }

@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.195019Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'permission_config.dart';
 
@@ -45,7 +45,6 @@ class AgentConfig {
     );
   }
 
-
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "model": ?model,
@@ -75,19 +74,19 @@ class AgentConfig {
           other.temperature == temperature &&
           other.topP == topP &&
           other.prompt == prompt &&
-          other.tools == tools &&
+          const DeepCollectionEquality().equals(other.tools, tools) &&
           other.disable == disable &&
           other.description == description &&
           other.mode == mode &&
           other.hidden == hidden &&
-          other.options == options &&
-          other.color == color &&
+          const DeepCollectionEquality().equals(other.options, options) &&
+          const DeepCollectionEquality().equals(other.color, color) &&
           other.steps == steps &&
           other.maxSteps == maxSteps &&
           other.permission == permission);
 
   @override
-  int get hashCode => Object.hash(model, variant, temperature, topP, prompt, tools, disable, description, mode, hidden, options, color, steps, maxSteps, permission);
+  int get hashCode => Object.hash(model, variant, temperature, topP, prompt, const DeepCollectionEquality().hash(tools), disable, description, mode, hidden, const DeepCollectionEquality().hash(options), const DeepCollectionEquality().hash(color), steps, maxSteps, permission);
 
   final String? model;
   final String? variant;

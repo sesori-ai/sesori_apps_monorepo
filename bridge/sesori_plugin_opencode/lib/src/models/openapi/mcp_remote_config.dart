@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.230879Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
 @immutable
@@ -26,7 +26,6 @@ class McpRemoteConfig {
     );
   }
 
-
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "type": type,
@@ -45,12 +44,12 @@ class McpRemoteConfig {
           other.type == type &&
           other.url == url &&
           other.enabled == enabled &&
-          other.headers == headers &&
-          other.oauth == oauth &&
+          const DeepCollectionEquality().equals(other.headers, headers) &&
+          const DeepCollectionEquality().equals(other.oauth, oauth) &&
           other.timeout == timeout);
 
   @override
-  int get hashCode => Object.hash(type, url, enabled, headers, oauth, timeout);
+  int get hashCode => Object.hash(type, url, enabled, const DeepCollectionEquality().hash(headers), const DeepCollectionEquality().hash(oauth), timeout);
 
   final String type;
   final String url;

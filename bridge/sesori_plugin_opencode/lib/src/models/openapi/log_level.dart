@@ -1,6 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.229081Z
 
 import 'package:json_annotation/json_annotation.dart';
 
@@ -13,6 +12,10 @@ enum LogLevel {
   wARN,
   @JsonValue("ERROR")
   eRROR,
+
+  /// Fallback for values introduced by newer OpenCode servers.
+  /// Encodes back to the literal string `unknown`.
+  unknown,
   ;
 
   static LogLevel fromJson(String value) {
@@ -26,7 +29,7 @@ enum LogLevel {
       case "ERROR":
         return LogLevel.eRROR;
       default:
-        throw FormatException('Unknown LogLevel value: $value');
+        return LogLevel.unknown;
     }
   }
 
@@ -40,6 +43,8 @@ enum LogLevel {
         return "WARN";
       case LogLevel.eRROR:
         return "ERROR";
+      case LogLevel.unknown:
+        return 'unknown';
     }
   }
 }

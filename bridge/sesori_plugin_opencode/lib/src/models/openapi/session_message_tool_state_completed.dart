@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.249889Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'prompt_file_attachment.dart';
 
@@ -27,7 +27,6 @@ class SessionMessageToolStateCompleted {
     );
   }
 
-
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "status": status,
@@ -44,14 +43,14 @@ class SessionMessageToolStateCompleted {
       identical(this, other) ||
       (other is SessionMessageToolStateCompleted &&
           other.status == status &&
-          other.input == input &&
-          other.attachments == attachments &&
-          other.content == content &&
-          other.structured == structured &&
-          other.result == result);
+          const DeepCollectionEquality().equals(other.input, input) &&
+          const DeepCollectionEquality().equals(other.attachments, attachments) &&
+          const DeepCollectionEquality().equals(other.content, content) &&
+          const DeepCollectionEquality().equals(other.structured, structured) &&
+          const DeepCollectionEquality().equals(other.result, result));
 
   @override
-  int get hashCode => Object.hash(status, input, attachments, content, structured, result);
+  int get hashCode => Object.hash(status, const DeepCollectionEquality().hash(input), const DeepCollectionEquality().hash(attachments), const DeepCollectionEquality().hash(content), const DeepCollectionEquality().hash(structured), const DeepCollectionEquality().hash(result));
 
   final String status;
   final Map<String, dynamic> input;

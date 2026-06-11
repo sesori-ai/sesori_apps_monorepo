@@ -1,9 +1,9 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.212679Z
 
 import 'package:meta/meta.dart';
 import 'event.dart';
+import 'message.dart';
 
 @immutable
 class EventMessageUpdated implements Event {
@@ -15,17 +15,16 @@ class EventMessageUpdated implements Event {
   factory EventMessageUpdated.fromJson(Map<String, dynamic> json) {
     return EventMessageUpdated(
       id: json["id"] as String,
-      properties: json["properties"] as Map<String, dynamic>,
+      properties: EventMessageUpdatedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
-
 
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
       "type": "message.updated",
-      "properties": properties,
+      "properties": properties.toJson(),
     };
   }
 
@@ -40,5 +39,40 @@ class EventMessageUpdated implements Event {
   int get hashCode => Object.hash(id, properties);
 
   final String id;
-  final Map<String, dynamic> properties;
+  final EventMessageUpdatedProperties properties;
+}
+
+@immutable
+class EventMessageUpdatedProperties {
+  const EventMessageUpdatedProperties({
+    required this.sessionID,
+    required this.info,
+  });
+
+  factory EventMessageUpdatedProperties.fromJson(Map<String, dynamic> json) {
+    return EventMessageUpdatedProperties(
+      sessionID: json["sessionID"] as String,
+      info: Message.fromJson(json["info"] as Object),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "sessionID": sessionID,
+      "info": info.toJson(),
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EventMessageUpdatedProperties &&
+          other.sessionID == sessionID &&
+          other.info == info);
+
+  @override
+  int get hashCode => Object.hash(sessionID, info);
+
+  final String sessionID;
+  final Message info;
 }

@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.203450Z
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
 @immutable
@@ -30,7 +30,6 @@ class Command {
     );
   }
 
-
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "name": name,
@@ -55,10 +54,10 @@ class Command {
           other.source == source &&
           other.template == template &&
           other.subtask == subtask &&
-          other.hints == hints);
+          const DeepCollectionEquality().equals(other.hints, hints));
 
   @override
-  int get hashCode => Object.hash(name, description, agent, model, source, template, subtask, hints);
+  int get hashCode => Object.hash(name, description, agent, model, source, template, subtask, const DeepCollectionEquality().hash(hints));
 
   final String name;
   final String? description;

@@ -1,6 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.228795Z
 
 import 'package:meta/meta.dart';
 
@@ -16,16 +15,15 @@ class LocationInfo {
     return LocationInfo(
       directory: json["directory"] as String,
       workspaceID: json["workspaceID"] as String?,
-      project: json["project"] as Map<String, dynamic>,
+      project: LocationInfoProject.fromJson(json["project"] as Map<String, dynamic>),
     );
   }
-
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "directory": directory,
       "workspaceID": ?workspaceID,
-      "project": project,
+      "project": project.toJson(),
     };
   }
 
@@ -42,5 +40,40 @@ class LocationInfo {
 
   final String directory;
   final String? workspaceID;
-  final Map<String, dynamic> project;
+  final LocationInfoProject project;
+}
+
+@immutable
+class LocationInfoProject {
+  const LocationInfoProject({
+    required this.id,
+    required this.directory,
+  });
+
+  factory LocationInfoProject.fromJson(Map<String, dynamic> json) {
+    return LocationInfoProject(
+      id: json["id"] as String,
+      directory: json["directory"] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "id": id,
+      "directory": directory,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocationInfoProject &&
+          other.id == id &&
+          other.directory == directory);
+
+  @override
+  int get hashCode => Object.hash(id, directory);
+
+  final String id;
+  final String directory;
 }

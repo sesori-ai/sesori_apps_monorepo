@@ -1,6 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.16.2 (76c631d198f9ff620e15468e45f3457d50481b57)
-// Generated: 2026-06-08T14:24:06.223750Z
 
 import 'package:meta/meta.dart';
 import 'event.dart';
@@ -15,17 +14,16 @@ class EventWorkspaceReady implements Event {
   factory EventWorkspaceReady.fromJson(Map<String, dynamic> json) {
     return EventWorkspaceReady(
       id: json["id"] as String,
-      properties: json["properties"] as Map<String, dynamic>,
+      properties: EventWorkspaceReadyProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
-
 
   @override
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "id": id,
       "type": "workspace.ready",
-      "properties": properties,
+      "properties": properties.toJson(),
     };
   }
 
@@ -40,5 +38,35 @@ class EventWorkspaceReady implements Event {
   int get hashCode => Object.hash(id, properties);
 
   final String id;
-  final Map<String, dynamic> properties;
+  final EventWorkspaceReadyProperties properties;
+}
+
+@immutable
+class EventWorkspaceReadyProperties {
+  const EventWorkspaceReadyProperties({
+    required this.name,
+  });
+
+  factory EventWorkspaceReadyProperties.fromJson(Map<String, dynamic> json) {
+    return EventWorkspaceReadyProperties(
+      name: json["name"] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "name": name,
+    };
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EventWorkspaceReadyProperties &&
+          other.name == name);
+
+  @override
+  int get hashCode => name.hashCode;
+
+  final String name;
 }
