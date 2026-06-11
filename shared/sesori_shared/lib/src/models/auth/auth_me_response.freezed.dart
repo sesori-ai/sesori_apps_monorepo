@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AuthMeResponse {
 
- AuthUser get user; List<BridgeSummary> get bridges;
+ AuthUser get user;
 /// Create a copy of AuthMeResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -26,16 +26,16 @@ $AuthMeResponseCopyWith<AuthMeResponse> get copyWith => _$AuthMeResponseCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthMeResponse&&(identical(other.user, user) || other.user == user)&&const DeepCollectionEquality().equals(other.bridges, bridges));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthMeResponse&&(identical(other.user, user) || other.user == user));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,user,const DeepCollectionEquality().hash(bridges));
+int get hashCode => Object.hash(runtimeType,user);
 
 @override
 String toString() {
-  return 'AuthMeResponse(user: $user, bridges: $bridges)';
+  return 'AuthMeResponse(user: $user)';
 }
 
 
@@ -46,7 +46,7 @@ abstract mixin class $AuthMeResponseCopyWith<$Res>  {
   factory $AuthMeResponseCopyWith(AuthMeResponse value, $Res Function(AuthMeResponse) _then) = _$AuthMeResponseCopyWithImpl;
 @useResult
 $Res call({
- AuthUser user, List<BridgeSummary> bridges
+ AuthUser user
 });
 
 
@@ -63,11 +63,10 @@ class _$AuthMeResponseCopyWithImpl<$Res>
 
 /// Create a copy of AuthMeResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? user = null,Object? bridges = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? user = null,}) {
   return _then(_self.copyWith(
 user: null == user ? _self.user : user // ignore: cast_nullable_to_non_nullable
-as AuthUser,bridges: null == bridges ? _self.bridges : bridges // ignore: cast_nullable_to_non_nullable
-as List<BridgeSummary>,
+as AuthUser,
   ));
 }
 /// Create a copy of AuthMeResponse
@@ -88,17 +87,10 @@ $AuthUserCopyWith<$Res> get user {
 @JsonSerializable(createToJson: false)
 
 class _AuthMeResponse implements AuthMeResponse {
-  const _AuthMeResponse({required this.user, required final  List<BridgeSummary> bridges}): _bridges = bridges;
+  const _AuthMeResponse({required this.user});
   factory _AuthMeResponse.fromJson(Map<String, dynamic> json) => _$AuthMeResponseFromJson(json);
 
 @override final  AuthUser user;
- final  List<BridgeSummary> _bridges;
-@override List<BridgeSummary> get bridges {
-  if (_bridges is EqualUnmodifiableListView) return _bridges;
-  // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_bridges);
-}
-
 
 /// Create a copy of AuthMeResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -110,16 +102,16 @@ _$AuthMeResponseCopyWith<_AuthMeResponse> get copyWith => __$AuthMeResponseCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AuthMeResponse&&(identical(other.user, user) || other.user == user)&&const DeepCollectionEquality().equals(other._bridges, _bridges));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AuthMeResponse&&(identical(other.user, user) || other.user == user));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,user,const DeepCollectionEquality().hash(_bridges));
+int get hashCode => Object.hash(runtimeType,user);
 
 @override
 String toString() {
-  return 'AuthMeResponse(user: $user, bridges: $bridges)';
+  return 'AuthMeResponse(user: $user)';
 }
 
 
@@ -130,7 +122,7 @@ abstract mixin class _$AuthMeResponseCopyWith<$Res> implements $AuthMeResponseCo
   factory _$AuthMeResponseCopyWith(_AuthMeResponse value, $Res Function(_AuthMeResponse) _then) = __$AuthMeResponseCopyWithImpl;
 @override @useResult
 $Res call({
- AuthUser user, List<BridgeSummary> bridges
+ AuthUser user
 });
 
 
@@ -147,11 +139,10 @@ class __$AuthMeResponseCopyWithImpl<$Res>
 
 /// Create a copy of AuthMeResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? user = null,Object? bridges = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? user = null,}) {
   return _then(_AuthMeResponse(
 user: null == user ? _self.user : user // ignore: cast_nullable_to_non_nullable
-as AuthUser,bridges: null == bridges ? _self._bridges : bridges // ignore: cast_nullable_to_non_nullable
-as List<BridgeSummary>,
+as AuthUser,
   ));
 }
 

@@ -22,6 +22,7 @@ import "rename_project_dialog.dart";
 part "onboarding/command_block.dart";
 part "onboarding/onboarding_hero.dart";
 part "onboarding/onboarding_view.dart";
+part "widgets/bridge_offline_view.dart";
 part "widgets/connected_empty_view.dart";
 part "widgets/error_view.dart";
 part "widgets/project_tile.dart";
@@ -37,6 +38,7 @@ class ProjectListScreen extends StatelessWidget {
         getIt<ConnectionService>(),
         getIt<SseEventRepository>(),
         getIt<RouteSource>(),
+        bridgeRepository: getIt<BridgeRepository>(),
         failureReporter: getIt<FailureReporter>(),
       ),
       child: const _ProjectListBody(),
@@ -162,7 +164,10 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
         ProjectListLoading() => const Center(
           child: CircularProgressIndicator(),
         ),
-        ProjectListBridgeDisconnected() => const _BridgeOnboardingView(),
+        // No bridge has ever been registered → walk through the setup
+        // onboarding; a bridge exists but isn't running → ask to turn it on.
+        ProjectListBridgeDisconnected(:final hasRegisteredBridges) =>
+          hasRegisteredBridges ? const _BridgeOfflineView() : const _BridgeOnboardingView(),
         ProjectListLoaded(:final projects, :final activityById, :final isRefreshing) => Column(
           children: [
             if (isRefreshing) const LinearProgressIndicator(),
