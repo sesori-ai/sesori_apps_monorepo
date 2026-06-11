@@ -34,6 +34,28 @@ class BridgeSettingsRepository {
     }
   }
 
+  /// Reads settings without [loadSettings]'s create-with-defaults side
+  /// effect: a missing or invalid config yields in-memory defaults and the
+  /// file is left untouched.
+  ///
+  /// For parse-time reads — plugin selection runs before the CLI parser is
+  /// even built, where `--help` or `logout` must not create the config file.
+  /// Deliberately silent for the same reason: a corruption warning here
+  /// would land on stdout of `--version`/`--help` before any `--log-level`
+  /// is parsed; the run path reports corruption through [loadSettings].
+  Future<BridgeSettings> peekSettings() async {
+    final storedConfig = await _api.readConfig();
+    if (storedConfig == null) {
+      return const BridgeSettings();
+    }
+
+    try {
+      return BridgeSettings.fromJson(jsonDecodeMap(storedConfig));
+    } catch (_) {
+      return const BridgeSettings();
+    }
+  }
+
   Future<void> saveSettings({required BridgeSettings settings}) {
     return _api.writeConfig(_jsonEncoder.convert(settings.toJson()));
   }

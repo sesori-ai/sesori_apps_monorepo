@@ -65,6 +65,40 @@ void main() {
       expect(api.lastWrittenConfig, equals(_defaultJson));
     });
 
+    test('peekSettings returns defaults without writing when config is missing', () async {
+      final api = FakeBridgeSettingsApi(readResult: null);
+      final repository = BridgeSettingsRepository(api: api);
+
+      final settings = await repository.peekSettings();
+
+      expect(settings.sleepPrevention, SleepPreventionMode.always);
+      expect(settings.enabledPlugins, isNull);
+      expect(api.writeCount, equals(0));
+    });
+
+    test('peekSettings parses a valid config', () async {
+      final api = FakeBridgeSettingsApi(
+        readResult: '{"sleepPrevention":"off","enabledPlugins":["opencode"]}',
+      );
+      final repository = BridgeSettingsRepository(api: api);
+
+      final settings = await repository.peekSettings();
+
+      expect(settings.sleepPrevention, SleepPreventionMode.off);
+      expect(settings.enabledPlugins, equals(['opencode']));
+      expect(api.writeCount, equals(0));
+    });
+
+    test('peekSettings returns defaults without rewriting a corrupted config', () async {
+      final api = FakeBridgeSettingsApi(readResult: '{');
+      final repository = BridgeSettingsRepository(api: api);
+
+      final settings = await repository.peekSettings();
+
+      expect(settings.sleepPrevention, SleepPreventionMode.always);
+      expect(api.writeCount, equals(0));
+    });
+
     test('saveSettings pretty prints JSON through the api', () async {
       final api = FakeBridgeSettingsApi(readResult: null);
       final repository = BridgeSettingsRepository(api: api);

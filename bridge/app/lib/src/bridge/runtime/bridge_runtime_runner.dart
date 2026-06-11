@@ -36,6 +36,7 @@ import "../../server/host/bridge_host_json_store.dart";
 import "../../server/host/bridge_host_port_service.dart";
 import "../../server/host/bridge_host_process_service.dart";
 import "../../server/host/bridge_plugin_host_impl.dart";
+import "../../server/host/plugin_state_directory.dart" show openCodePluginId;
 import "../../server/models/open_code_ownership_record.dart";
 import "../../server/repositories/bridge_instance_repository.dart";
 import "../../server/repositories/open_code_ownership_repository.dart";
@@ -81,14 +82,17 @@ import "bridge_runtime_server.dart";
 import "bridge_shutdown_coordinator.dart";
 import "legacy_opencode_descriptor.dart";
 import "plugin_failure_latch.dart";
+import "plugin_manager.dart";
 
 Future<int> runBridgeApp({
   required BridgeCliOptions options,
   required PluginConfig pluginConfig,
+  required String pluginId,
 }) {
   return BridgeRuntimeRunner.run(
     options: options,
     pluginConfig: pluginConfig,
+    pluginId: pluginId,
   );
 }
 
@@ -102,6 +106,7 @@ class BridgeRuntimeRunner {
   static Future<int> run({
     required BridgeCliOptions options,
     required PluginConfig pluginConfig,
+    required String pluginId,
   }) async {
     final failureLatch = PluginFailureLatch();
     final shutdownCoordinator = BridgeShutdownCoordinator(
@@ -230,24 +235,33 @@ class BridgeRuntimeRunner {
       );
 
       final startAbortController = StartAbortController();
-      final plugin = await startLegacyOpenCodePlugin(
-        pluginConfig: pluginConfig,
-        currentBridgeIdentity: currentBridgeIdentity,
-        ownerSessionId: ownerSessionId,
-        startupMutexRepository: startupMutexRepository,
-        bridgeInstanceService: bridgeInstanceService,
-        ownershipRepository: ownershipRepository,
-        openCodeServerService: openCodeServerService,
-        processRepository: processRepository,
-        runtimeFileApi: runtimeFileApi,
-        runtimeDirectory: runtimeDirectory,
-        serverClock: serverClock,
-        environment: environment,
-        currentUser: currentUser,
-        startAborted: startAbortController.signal,
+      final pluginManager = PluginManager();
+      pluginManager.register(
+        id: openCodePluginId,
+        shutdownBudget: _pluginShutdownBudget,
+        starter: () => startLegacyOpenCodePlugin(
+          pluginConfig: pluginConfig,
+          currentBridgeIdentity: currentBridgeIdentity,
+          ownerSessionId: ownerSessionId,
+          startupMutexRepository: startupMutexRepository,
+          bridgeInstanceService: bridgeInstanceService,
+          ownershipRepository: ownershipRepository,
+          openCodeServerService: openCodeServerService,
+          processRepository: processRepository,
+          runtimeFileApi: runtimeFileApi,
+          runtimeDirectory: runtimeDirectory,
+          serverClock: serverClock,
+          environment: environment,
+          currentUser: currentUser,
+          startAborted: startAbortController.signal,
+        ),
       );
+      // The registry holds only the legacy OpenCode starter until the real
+      // descriptor lands (PR 12), and BridgeConfig below still needs the
+      // legacy-only serverUrl/serverPassword — hence the downcast.
+      final plugin = await pluginManager.startPlugin(id: pluginId) as LegacyOpenCodeBridgePlugin;
       shutdownCoordinator.addOrdered(
-        action: () => plugin.shutdown(budget: _pluginShutdownBudget),
+        action: () => pluginManager.stopPlugin(id: pluginId),
         budget: _pluginShutdownBudget,
       );
       plugin.status
@@ -298,6 +312,11 @@ class BridgeRuntimeRunner {
         failureReporter: LogFailureReporter(),
       );
       shutdownCoordinator.add(disposable: runtime.close);
+      // Defined stop semantics: stopping the active plugin cancels the
+      // session first, so the bridge never keeps serving requests against a
+      // stopped plugin. cancel() is idempotent and safe after run() returns,
+      // which covers the ordinary post-session stop during shutdown.
+      pluginManager.bindActiveSession(cancel: runtime.session.cancel);
 
       await BridgeDiagnostics().runAll();
       await startDebugServerIfRequested(
