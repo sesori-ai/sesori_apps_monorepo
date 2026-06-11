@@ -197,7 +197,7 @@ void main() {
       expect(processRepository.signalRequests, isEmpty);
     });
 
-    test('startup lock identity mismatch declines and sends no kill signals', () async {
+    test('startup lock identity mismatch treats lock as stale and sends no kill signals', () async {
       const lock = BridgeStartupLock(bridgePid: 302, bridgeStartMarker: 'original-start');
       final holder = _match(pid: 302, startMarker: 'original-start');
       processRepository.matchSnapshots[302] = <ProcessMatch?>[_match(pid: 302, startMarker: 'reused-start')];
@@ -209,7 +209,7 @@ void main() {
         currentPid: 100,
       );
 
-      expect(status, equals(BridgeInstanceResolutionStatus.declined));
+      expect(status, equals(BridgeInstanceResolutionStatus.allowed));
       expect(processRepository.signalRequests, isEmpty);
     });
 

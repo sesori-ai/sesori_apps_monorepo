@@ -98,9 +98,9 @@ class BridgeInstanceService {
         }
         if (!_matchesLockedBridge(lock: lock, match: revalidated)) {
           Log.w(
-            'Startup lock holder pid ${lock.bridgePid} no longer matches the recorded Sesori bridge; refusing to kill it.',
+            'Startup lock holder pid ${lock.bridgePid} no longer matches the recorded Sesori bridge; treating the lock as stale without signaling.',
           );
-          return BridgeInstanceResolutionStatus.declined;
+          return BridgeInstanceResolutionStatus.allowed;
         }
 
         try {
