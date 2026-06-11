@@ -1,5 +1,6 @@
 const bundleId = "com.sesori.app";
 const redirectUri = "$bundleId://auth/callback";
+const projectNameQueryParam = "name";
 
 String _appendQuery({required String path, required Map<String, String> queryParameters}) {
   if (queryParameters.isEmpty) return path;
@@ -147,7 +148,7 @@ class AppRouteSettings extends AppRoute {
 
 class AppRouteSessions extends AppRoute {
   static const _projectIdPathParam = "projectId";
-  static const _nameQueryParam = "name";
+  static const _nameQueryParam = projectNameQueryParam;
 
   final String projectId;
   final String? projectName;
@@ -180,7 +181,7 @@ class AppRouteSessions extends AppRoute {
 
 class AppRouteNewSession extends AppRoute {
   static const _projectIdPathParam = "projectId";
-  static const _nameQueryParam = "name";
+  static const _nameQueryParam = projectNameQueryParam;
 
   final String projectId;
   final String? projectName;
@@ -214,7 +215,7 @@ class AppRouteNewSession extends AppRoute {
 class AppRouteSessionDetail extends AppRoute {
   static const _projectIdPathParam = "projectId";
   static const _sessionIdPathParam = "sessionId";
-  static const _nameQueryParam = "name";
+  static const _nameQueryParam = projectNameQueryParam;
   static const _titleQueryParam = "title";
   static const _readOnlyQueryParam = "readOnly";
 
@@ -264,7 +265,7 @@ class AppRouteSessionDetail extends AppRoute {
 class AppRouteSessionDiffs extends AppRoute {
   static const _projectIdPathParam = "projectId";
   static const _sessionIdPathParam = "sessionId";
-  static const _nameQueryParam = "name";
+  static const _nameQueryParam = projectNameQueryParam;
 
   final String projectId;
   final String? projectName;

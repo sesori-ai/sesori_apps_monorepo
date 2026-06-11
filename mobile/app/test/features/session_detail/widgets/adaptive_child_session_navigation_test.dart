@@ -10,8 +10,10 @@ import "package:theme_zyra/module_zyra.dart";
 
 Widget _buildApp({
   required Widget child,
+  String initialLocation = "/",
 }) {
   final router = GoRouter(
+    initialLocation: initialLocation,
     routes: [
       GoRoute(
         path: "/",
@@ -20,12 +22,17 @@ Widget _buildApp({
       GoRoute(
         path: "/projects/:projectId/sessions/:sessionId",
         builder: (context, state) {
+          if (state.pathParameters["sessionId"] == "session-parent") {
+            return child;
+          }
           final readOnly = state.uri.queryParameters["readOnly"];
+          final projectName = state.uri.queryParameters["name"];
           return Scaffold(
             body: Column(
               children: [
                 Text('sessionId=${state.pathParameters["sessionId"]}'),
                 Text('readOnly=$readOnly'),
+                Text('name=$projectName'),
                 if (GoRouter.of(context).canPop()) const Text('canPop=true'),
               ],
             ),
@@ -107,6 +114,7 @@ void main() {
       final child = _childSession(id: "child-1", title: "Child Session");
       await tester.pumpWidget(
         _buildApp(
+          initialLocation: "/projects/project-1/sessions/session-parent?name=Project+One&readOnly=false",
           child: Scaffold(
             body: SessionSplitScope(
               isSplit: true,
@@ -128,6 +136,7 @@ void main() {
       expect(find.text("canPop=true"), findsOneWidget);
       expect(find.text("sessionId=child-1"), findsOneWidget);
       expect(find.text("readOnly=true"), findsOneWidget);
+      expect(find.text("name=Project One"), findsOneWidget);
     });
   });
 
@@ -162,6 +171,7 @@ void main() {
       final child = _childSession(id: "task-1", title: "Task One");
       await tester.pumpWidget(
         _buildApp(
+          initialLocation: "/projects/project-1/sessions/session-parent?name=Project+One&readOnly=false",
           child: Scaffold(
             body: SessionSplitScope(
               isSplit: true,
@@ -185,6 +195,7 @@ void main() {
       expect(find.text("canPop=true"), findsOneWidget);
       expect(find.text("sessionId=task-1"), findsOneWidget);
       expect(find.text("readOnly=true"), findsOneWidget);
+      expect(find.text("name=Project One"), findsOneWidget);
     });
   });
 }

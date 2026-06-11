@@ -4,6 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_zyra/module_zyra.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/routing/app_router.dart";
+import "../../../core/routing/current_project_name.dart";
 
 class SubtaskPartWidget extends StatelessWidget {
   final String? projectId;
@@ -43,7 +44,7 @@ class SubtaskPartWidget extends StatelessWidget {
               ? () => context.pushRoute(
                   AppRoute.sessionDetail(
                     projectId: projectId ?? childSession.projectID,
-                    projectName: null,
+                    projectName: currentProjectName(context),
                     sessionId: childSession.id,
                     readOnly: true,
                     sessionTitle: childSession.title,

@@ -211,7 +211,7 @@ List<RouteBase> _buildAppRoutes({
           navigatorKey: sessionShellNavigatorKey,
           builder: (context, state, child) {
             final projectId = state.pathParameters["projectId"] ?? "";
-            final projectName = state.uri.queryParameters["name"];
+            final projectName = state.uri.queryParameters[projectNameQueryParam];
             final selectedSessionId = state.pathParameters["sessionId"];
 
             return SessionListCubitProvider(

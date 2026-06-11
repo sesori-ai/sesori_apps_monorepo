@@ -4,6 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_zyra/module_zyra.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/routing/app_router.dart";
+import "../../../core/routing/current_project_name.dart";
 import "../../../l10n/app_localizations.dart";
 
 class BackgroundTaskRow extends StatelessWidget {
@@ -28,7 +29,7 @@ class BackgroundTaskRow extends StatelessWidget {
       onTap: () => context.pushRoute(
         AppRoute.sessionDetail(
           projectId: projectId ?? session.projectID,
-          projectName: null,
+          projectName: currentProjectName(context),
           sessionId: session.id,
           readOnly: true,
           sessionTitle: session.title,
