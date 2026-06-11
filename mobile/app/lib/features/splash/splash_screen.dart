@@ -48,7 +48,10 @@ class _SplashScreenBody extends StatelessWidget {
       listener: (context, state) async {
         if (state is! SplashReady) return;
         final animation = ModalRoute.of(context)?.animation;
-        if (animation != null && !animation.isCompleted) {
+        // Only wait when the entrance transition is actively running forward.
+        // A static `dismissed` animation (disabled transitions, test fakes)
+        // never fires a status change, so `_settled` would hang.
+        if (animation != null && animation.status == AnimationStatus.forward) {
           await _settled(animation);
           if (!context.mounted) return;
         }

@@ -264,6 +264,9 @@ void main() {
 class _FakeBuildContext extends Fake implements BuildContext {
   // No inherited widgets in this synthetic context: MediaQuery lookups in
   // page builders (reduced-motion checks) resolve to null → defaults.
+  // MediaQuery is an InheritedModel, so InheritedModel.inheritFrom resolves
+  // it via getElementForInheritedWidgetOfExactType (not the plain
+  // dependOnInheritedWidgetOfExactType), so that is the method to stub.
   @override
   InheritedElement? getElementForInheritedWidgetOfExactType<T extends InheritedWidget>() => null;
 }
