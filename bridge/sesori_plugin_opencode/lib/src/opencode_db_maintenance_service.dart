@@ -1,6 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
-import "../repositories/opencode_db_repository.dart";
+import "opencode_db_repository.dart";
 
 /// Opportunistically enables `auto_vacuum = FULL` on the OpenCode SQLite
 /// database during bridge startup.
@@ -9,6 +9,9 @@ import "../repositories/opencode_db_repository.dart";
 /// future DELETE operations by OpenCode automatically reclaim disk space.
 /// If the database is in use, the operation is silently skipped and retried
 /// on the next bridge startup.
+///
+/// The underlying sqlite3 work runs in a worker isolate (see
+/// `OpenCodeDbApi`), so awaiting this service never blocks the event loop.
 class OpenCodeDbMaintenanceService {
   /// Conservative estimate of VACUUM throughput on modern SSDs (MB/s).
   static const _estimatedVacuumMbPerSecond = 75;
@@ -21,8 +24,8 @@ class OpenCodeDbMaintenanceService {
   /// and if so, attempts to enable it.
   ///
   /// This method never throws — all errors are handled by the repository.
-  void optimizeIfNeeded({required String dbPath}) {
-    final mode = _repository.getAutoVacuumMode(dbPath: dbPath);
+  Future<void> optimizeIfNeeded({required String dbPath}) async {
+    final mode = await _repository.getAutoVacuumMode(dbPath: dbPath);
     if (mode == null) return;
     if (mode != 0) {
       Log.d(
@@ -42,7 +45,7 @@ class OpenCodeDbMaintenanceService {
       "~${_formatDuration(estimatedSeconds)}",
     );
 
-    final result = _repository.enableAutoVacuumAndVacuum(dbPath: dbPath);
+    final result = await _repository.enableAutoVacuumAndVacuum(dbPath: dbPath);
     if (result == null) return;
 
     final (sizeBefore, sizeAfter) = result;

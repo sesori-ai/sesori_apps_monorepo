@@ -1,6 +1,6 @@
 import "dart:io";
 
-import "package:sesori_bridge/src/bridge/api/opencode_db_api.dart";
+import "package:opencode_plugin/opencode_plugin.dart";
 import "package:sqlite3/sqlite3.dart";
 import "package:test/test.dart";
 
@@ -18,16 +18,16 @@ void main() {
   });
 
   group("getAutoVacuumMode", () {
-    test("returns 0 for a new database", () {
+    test("returns 0 for a new database", () async {
       final db = sqlite3.open(dbPath);
       db.execute("CREATE TABLE test (id INTEGER)");
       db.close();
 
       final api = OpenCodeDbApi();
-      expect(api.getAutoVacuumMode(dbPath: dbPath), 0);
+      expect(await api.getAutoVacuumMode(dbPath: dbPath), 0);
     });
 
-    test("returns 1 when auto_vacuum is FULL", () {
+    test("returns 1 when auto_vacuum is FULL", () async {
       final db = sqlite3.open(dbPath);
       db.execute("PRAGMA auto_vacuum = FULL");
       db.execute("VACUUM");
@@ -35,7 +35,7 @@ void main() {
       db.close();
 
       final api = OpenCodeDbApi();
-      expect(api.getAutoVacuumMode(dbPath: dbPath), 1);
+      expect(await api.getAutoVacuumMode(dbPath: dbPath), 1);
     });
 
     test("throws when database file does not exist", () {
@@ -50,17 +50,17 @@ void main() {
   });
 
   group("enableAutoVacuumAndVacuum", () {
-    test("sets auto_vacuum to FULL", () {
+    test("sets auto_vacuum to FULL", () async {
       final db = sqlite3.open(dbPath);
       db.execute("CREATE TABLE test (id INTEGER, data TEXT)");
       db.close();
 
       final api = OpenCodeDbApi();
-      api.enableAutoVacuumAndVacuum(dbPath: dbPath);
-      expect(api.getAutoVacuumMode(dbPath: dbPath), 1);
+      await api.enableAutoVacuumAndVacuum(dbPath: dbPath);
+      expect(await api.getAutoVacuumMode(dbPath: dbPath), 1);
     });
 
-    test("returns size before and after", () {
+    test("returns size before and after", () async {
       final db = sqlite3.open(dbPath);
       db.execute("CREATE TABLE test (id INTEGER, data TEXT)");
       // Insert data to grow the file
@@ -72,7 +72,7 @@ void main() {
       db.close();
 
       final api = OpenCodeDbApi();
-      final (sizeBefore, sizeAfter) = api.enableAutoVacuumAndVacuum(
+      final (sizeBefore, sizeAfter) = await api.enableAutoVacuumAndVacuum(
         dbPath: dbPath,
       );
 
@@ -81,13 +81,13 @@ void main() {
       expect(sizeAfter, lessThanOrEqualTo(sizeBefore));
     });
 
-    test("throws SqliteException when database is locked", () {
+    test("throws SqliteException when database is locked", () async {
       final db = sqlite3.open(dbPath);
       db.execute("CREATE TABLE test (id INTEGER)");
       db.execute("BEGIN EXCLUSIVE");
 
       final api = OpenCodeDbApi();
-      expect(
+      await expectLater(
         () => api.enableAutoVacuumAndVacuum(dbPath: dbPath),
         throwsA(isA<SqliteException>()),
       );
@@ -96,7 +96,7 @@ void main() {
       db.close();
     });
 
-    test("reclaims space from deleted rows", () {
+    test("reclaims space from deleted rows", () async {
       final db = sqlite3.open(dbPath);
       db.execute("CREATE TABLE test (id INTEGER, data TEXT)");
       for (var i = 0; i < 500; i++) {
@@ -107,7 +107,7 @@ void main() {
 
       final sizeBefore = File(dbPath).lengthSync();
       final api = OpenCodeDbApi();
-      final (_, sizeAfter) = api.enableAutoVacuumAndVacuum(dbPath: dbPath);
+      final (_, sizeAfter) = await api.enableAutoVacuumAndVacuum(dbPath: dbPath);
 
       // After VACUUM with deleted data, file should be significantly smaller
       expect(sizeAfter, lessThan(sizeBefore));
