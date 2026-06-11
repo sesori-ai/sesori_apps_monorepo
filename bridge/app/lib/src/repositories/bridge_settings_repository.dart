@@ -43,6 +43,11 @@ class BridgeSettingsRepository {
   /// Deliberately silent for the same reason: a corruption warning here
   /// would land on stdout of `--version`/`--help` before any `--log-level`
   /// is parsed; the run path reports corruption through [loadSettings].
+  ///
+  /// Only *content* problems are absorbed here. An I/O failure from the
+  /// read itself propagates, like it does from [loadSettings]: whether that
+  /// is fatal is the caller's policy (the parse-time caller maps it to
+  /// "unset" with a stderr diagnostic).
   Future<BridgeSettings> peekSettings() async {
     final storedConfig = await _api.readConfig();
     if (storedConfig == null) {
