@@ -62,7 +62,7 @@ class StartupMutexRepository {
       }
     }
 
-    final holder = await _inspectLiveHolder();
+    final holder = await _inspectLiveHolder(currentBridgePid: bridgePid);
     if (holder == null) {
       final retryAcquired = await _runtimeFileApi.acquireStartupLock(
         contents: jsonEncode(lock.toJson()),
@@ -75,7 +75,7 @@ class StartupMutexRepository {
         }
       }
 
-      final retryHolder = await _inspectLiveHolder();
+      final retryHolder = await _inspectLiveHolder(currentBridgePid: bridgePid);
       return onLockRejected(
         StartupLockRejection(
           lock: retryHolder?.lock,
@@ -94,7 +94,7 @@ class StartupMutexRepository {
     );
   }
 
-  Future<_LiveStartupLockHolder?> _inspectLiveHolder() async {
+  Future<_LiveStartupLockHolder?> _inspectLiveHolder({required int currentBridgePid}) async {
     final lockContents = await _runtimeFileApi.readStartupLock();
     if (lockContents == null) {
       return null;
@@ -116,29 +116,21 @@ class StartupMutexRepository {
       return null;
     }
 
+    if (lock.bridgePid == currentBridgePid) {
+      Log.w('Startup lock records this process pid $currentBridgePid; treating it as stale.');
+      await _runtimeFileApi.releaseStartupLock();
+      return null;
+    }
+
     final match = await _processRepository.inspectProcessMatch(pid: lock.bridgePid);
     if (match == null ||
         match.kind != ProcessMatchKind.sesoriBridge ||
         !match.isCurrentUserProcess ||
-        !_lockMatchesProcess(lock: lock, match: match)) {
+        !lock.matchesStartMarkerOf(identity: match.identity)) {
       await _runtimeFileApi.releaseStartupLock();
       return null;
     }
 
     return _LiveStartupLockHolder(lock: lock, match: match);
-  }
-
-  bool _lockMatchesProcess({
-    required BridgeStartupLock lock,
-    required ProcessMatch match,
-  }) {
-    final identity = match.identity;
-    if (identity.startMarker != null || lock.bridgeStartMarker != null) {
-      return identity.startMarker == lock.bridgeStartMarker;
-    }
-    // Both markers are null (e.g. Windows). We cannot distinguish a recycled
-    // PID from the original owner without additional heuristics, so we
-    // conservatively treat the lock as active.
-    return true;
   }
 }

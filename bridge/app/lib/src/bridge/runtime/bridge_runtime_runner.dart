@@ -174,6 +174,7 @@ class BridgeRuntimeRunner {
         ),
         browserLauncher: openOAuthBrowser,
       ),
+      environment: environment,
     );
 
     try {

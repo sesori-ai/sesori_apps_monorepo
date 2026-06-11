@@ -81,6 +81,10 @@ class BridgeInstanceService {
     required ProcessMatch holder,
     required int currentPid,
   }) async {
+    if (lock.bridgePid == currentPid) {
+      return BridgeInstanceResolutionStatus.allowed;
+    }
+
     final decision = await _terminalPromptRepository.askReplaceStartingBridge(holderPid: holder.identity.pid);
     switch (decision) {
       case TerminalPromptDecision.nonInteractive:
@@ -99,7 +103,11 @@ class BridgeInstanceService {
           return BridgeInstanceResolutionStatus.declined;
         }
 
-        await _processRepository.sendGracefulSignal(pid: lock.bridgePid);
+        try {
+          await _processRepository.sendGracefulSignal(pid: lock.bridgePid);
+        } on Object catch (err, st) {
+          Log.w('Failed to send graceful signal to startup lock holder pid ${lock.bridgePid}', err, st);
+        }
         await _clock.delay(duration: _bridgeShutdownWait);
 
         final afterGraceful = await _processRepository.inspectProcessMatch(pid: lock.bridgePid);
@@ -107,7 +115,11 @@ class BridgeInstanceService {
           return BridgeInstanceResolutionStatus.allowed;
         }
 
-        await _processRepository.sendForceSignal(pid: lock.bridgePid);
+        try {
+          await _processRepository.sendForceSignal(pid: lock.bridgePid);
+        } on Object catch (err, st) {
+          Log.w('Failed to send force signal to startup lock holder pid ${lock.bridgePid}', err, st);
+        }
         await _clock.delay(duration: const Duration(seconds: 1));
 
         final afterForce = await _processRepository.inspectProcessMatch(pid: lock.bridgePid);
@@ -205,10 +217,6 @@ class BridgeInstanceService {
       return false;
     }
 
-    final identity = match.identity;
-    if (identity.startMarker != null || lock.bridgeStartMarker != null) {
-      return identity.startMarker == lock.bridgeStartMarker;
-    }
-    return true;
+    return lock.matchesStartMarkerOf(identity: match.identity);
   }
 }

@@ -125,6 +125,39 @@ void main() {
       expect(File(runtimeFileApi.startupLockFilePath).existsSync(), isFalse);
     });
 
+    test('withLock clears stale lock recording caller pid and retry succeeds', () async {
+      await runtimeFileApi.acquireStartupLock(
+        contents: jsonEncode(<String, dynamic>{
+          'bridgePid': 123,
+          'bridgeStartMarker': null,
+        }),
+      );
+
+      processRepository.matchResults[123] = ProcessMatch(
+        identity: ProcessIdentity(
+          pid: 123,
+          startMarker: null,
+          executablePath: '/usr/local/bin/sesori-bridge',
+          commandLine: 'sesori-bridge',
+          ownerUser: ProcessUser.fromRawUser('user'),
+          platform: 'windows',
+          capturedAt: DateTime.utc(2026, 5, 15),
+        ),
+        kind: ProcessMatchKind.sesoriBridge,
+        isCurrentUserProcess: true,
+      );
+
+      final result = await repository.withLock<int>(
+        bridgePid: 123,
+        bridgeStartMarker: null,
+        onLockAcquired: () async => 42,
+        onLockRejected: (_) async => -1,
+      );
+
+      expect(result, equals(42));
+      expect(File(runtimeFileApi.startupLockFilePath).existsSync(), isFalse);
+    });
+
     test('withLock steals stale lock when recorded bridge process is not a bridge', () async {
       await runtimeFileApi.acquireStartupLock(
         contents: jsonEncode(<String, dynamic>{'bridgePid': 999}),
