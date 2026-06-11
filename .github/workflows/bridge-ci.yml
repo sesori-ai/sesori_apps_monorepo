@@ -38,6 +38,10 @@ jobs:
         run: dart analyze --fatal-infos
         working-directory: bridge/sesori_plugin_interface
 
+      - name: Analyze sesori_plugin_runtime
+        run: dart analyze --fatal-infos
+        working-directory: bridge/sesori_plugin_runtime
+
       - name: Analyze sesori_plugin_opencode
         run: dart analyze --fatal-infos
         working-directory: bridge/sesori_plugin_opencode
@@ -49,6 +53,10 @@ jobs:
       - name: Run tests for sesori_plugin_interface
         run: dart test
         working-directory: bridge/sesori_plugin_interface
+
+      - name: Run tests for sesori_plugin_runtime
+        run: dart test
+        working-directory: bridge/sesori_plugin_runtime
 
       - name: Run tests for sesori_plugin_opencode
         run: dart test
