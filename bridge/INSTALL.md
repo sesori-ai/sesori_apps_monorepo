@@ -87,6 +87,7 @@ sesori-bridge
 - Release checksum manifests use archive basenames such as `sesori-bridge-macos-arm64.tar.gz`; installers match that basename instead of a temp download path
 - Startup auto-update only applies to managed installs under the Sesori install root (`~/.local/share/sesori/bin` on macOS/Linux, `%LOCALAPPDATA%\sesori\bin` on Windows)
 - Runtime auto-update also performs periodic polling every 4 hours while the managed bridge is running, and it is skipped in CI and when `SESORI_NO_UPDATE=1` is set
+- Periodic polling only notifies that an update is available — the update is applied at the next startup. For a bridge running under a service manager (e.g. systemd), restart the service to apply updates (see [`docs/SETUP_HEADLESS_VM.md`](../docs/SETUP_HEADLESS_VM.md))
 - Direct execution of package binaries from npm-owned `node_modules` locations is unsupported
 
 ## Uninstall
