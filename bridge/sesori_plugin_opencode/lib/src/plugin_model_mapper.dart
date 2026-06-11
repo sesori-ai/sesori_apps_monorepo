@@ -101,7 +101,7 @@ class PluginModelMapper {
                   .map((option) => PluginQuestionOption(label: option.label, description: option.description))
                   .toList(),
               multiple: info.multiple ?? false,
-              custom: info.custom ?? false,
+              custom: info.custom ?? true,
             ),
           )
           .toList(),
@@ -125,8 +125,8 @@ class PluginModelMapper {
           providerID: providerID,
           error: error,
         ),
-      MessageUnknown(:final raw) => throw ArgumentError("Unknown message role: $raw"),
-      _ => throw ArgumentError("Unknown message role: $info"),
+      MessageUnknown(:final raw) => throw FormatException("Unknown message role: $raw"),
+      _ => throw FormatException("Unknown message role: $info"),
     };
     return PluginMessageWithParts(
       info: pluginInfo,

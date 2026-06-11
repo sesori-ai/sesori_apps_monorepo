@@ -1720,8 +1720,7 @@ class _FakeApi implements OpenCodeApi {
   }
 
   @override
-  Future<ConfigProvidersResponse> listProviders() async =>
-      const ConfigProvidersResponse(providers: [], defaultValue: {});
+  Future<ProviderListResponse> listProviders() async => const ProviderListResponse();
 
   @override
   Future<ConfigProvidersResponse> listConfigProviders({required String? directory}) async =>
