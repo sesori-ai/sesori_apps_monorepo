@@ -99,6 +99,8 @@ export "src/services/foreground_notification_dispatcher.dart";
 export "src/services/notification_registration_service.dart";
 export "src/services/session_detail_load_service.dart";
 // Utils
+export "src/utils/command_filter/command_picker_entry_builder.dart";
 export "src/utils/diff/diff_engine.dart";
 export "src/utils/diff/language_detector.dart";
 export "src/utils/model_filter/default_model_selector.dart";
+export "src/utils/model_filter/model_picker_section_builder.dart";

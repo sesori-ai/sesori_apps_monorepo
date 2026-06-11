@@ -1,14 +1,23 @@
+import "dart:async";
+
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart" show DefaultModelSelector;
+import "package:sesori_dart_core/sesori_dart_core.dart"
+    show ModelPickerModelEntry, ModelPickerSection, ModelPickerSectionBuilder, loge;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_zyra/module_zyra.dart";
 
 import "../extensions/build_context_x.dart";
 import "app_modal_bottom_sheet.dart";
+import "model_picker_list_items.dart";
 
 /// Bottom sheet for selecting a model, grouped by provider.
 /// Includes a search field for filtering. Unavailable models are excluded.
+///
+/// The sheet opens immediately with a progress indicator: the provider and
+/// model grouping/sorting runs in a background isolate once the sheet is up,
+/// so opening never blocks the UI thread on the size of the model catalog.
 class ModelPickerSheet extends StatefulWidget {
   final List<ProviderInfo> providers;
   final String selectedProviderID;
@@ -41,20 +50,23 @@ class ModelPickerSheet extends StatefulWidget {
       builder: (sheetContext) {
         final height = MediaQuery.sizeOf(sheetContext).height * 0.7;
         final zyra = sheetContext.zyra;
-        return Container(
-          height: height,
-          decoration: BoxDecoration(
-            color: zyra.colors.bgPrimary,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-          ),
-          child: ModelPickerSheet(
-            providers: providers,
-            selectedProviderID: selectedProviderID,
-            selectedModelID: selectedModelID,
-            onModelChanged: ({required String providerID, required String modelID}) {
-              onModelChanged(providerID: providerID, modelID: modelID);
-              context.pop();
-            },
+        // Material (not a decorated Container) so the ListTiles inside can
+        // paint their ink and selection effects on the sheet surface.
+        return Material(
+          color: zyra.colors.bgPrimary,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+          clipBehavior: Clip.antiAlias,
+          child: SizedBox(
+            height: height,
+            child: ModelPickerSheet(
+              providers: providers,
+              selectedProviderID: selectedProviderID,
+              selectedModelID: selectedModelID,
+              onModelChanged: ({required String providerID, required String modelID}) {
+                onModelChanged(providerID: providerID, modelID: modelID);
+                context.pop();
+              },
+            ),
           ),
         );
       },
@@ -68,51 +80,71 @@ class ModelPickerSheet extends StatefulWidget {
 class _ModelPickerSheetState extends State<ModelPickerSheet> {
   String _query = "";
 
-  static const _defaultModelSelector = DefaultModelSelector();
+  /// Precomputed provider sections; `null` while the background isolate is
+  /// still preparing them.
+  List<ModelPickerSection>? _sections;
 
-  late final _sortedProviders = widget.providers.toList()..sort((a, b) => a.name.compareTo(b.name));
+  /// Rows currently visible for [_query]. Cached so unrelated rebuilds
+  /// (keyboard animation, focus changes) don't re-run the filter pass; only
+  /// recomputed when the sections arrive or the query changes. `null` while
+  /// the sections are still loading.
+  List<_PickerRow>? _rows;
 
-  bool _matchesQuery({required ProviderModel model, required String providerName}) {
-    if (_query.isEmpty) return true;
-    final q = _query.toLowerCase();
-    return model.name.toLowerCase().contains(q) ||
-        (model.family?.toLowerCase().contains(q) ?? false) ||
-        model.id.toLowerCase().contains(q) ||
-        providerName.toLowerCase().contains(q);
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadSections());
   }
 
-  /// Builds the set of model IDs that should be visible by default.
-  ///
-  /// For each family of available models we pick a single representative
-  /// (the user can always reveal the rest by typing in the search field).
-  /// The selection priority lives in [DefaultModelSelector] — same priority
-  /// used by the cubits that pick the initial model when no prior
-  /// selection exists — so the picker's "default per family" matches the
-  /// cubit's "default for the whole provider".
-  Set<String> _defaultVisibleIds(ProviderInfo provider) {
-    final visible = <String>{};
-
-    // Group available models by family.
-    final byFamily = <String, List<ProviderModel>>{};
-    for (final m in provider.models.values) {
-      if (!m.isAvailable) continue;
-      final family = m.family ?? m.id;
-      (byFamily[family] ??= []).add(m);
+  Future<void> _loadSections() async {
+    List<ModelPickerSection> sections;
+    try {
+      sections = await compute(_buildSections, (
+        providers: widget.providers,
+        selectedProviderID: widget.selectedProviderID,
+        selectedModelID: widget.selectedModelID,
+      ));
+    } catch (error, stackTrace) {
+      // Fail soft: show an empty list rather than leaving the sheet stuck
+      // on the spinner with an uncaught async error.
+      loge("Model picker section build failed", error, stackTrace);
+      sections = const [];
     }
+    if (!mounted) return;
+    setState(() {
+      _sections = sections;
+      _rows = _visibleRows(sections);
+    });
+  }
 
-    for (final group in byFamily.values) {
-      final chosen = _defaultModelSelector.pickFromFamily(
-        group: group,
-        defaultModelId: provider.defaultModelID,
-      );
-      if (chosen != null) visible.add(chosen.id);
+  /// Entry point for compute() — must be top-level or static.
+  static List<ModelPickerSection> _buildSections(
+    ({List<ProviderInfo> providers, String selectedProviderID, String selectedModelID}) args,
+  ) {
+    return const ModelPickerSectionBuilder().build(
+      providers: args.providers,
+      selectedProviderID: args.selectedProviderID,
+      selectedModelID: args.selectedModelID,
+    );
+  }
+
+  /// Flattens the precomputed sections into the rows currently visible,
+  /// applying the search query. Cheap: a single `contains` pass over
+  /// precomputed lowercase haystacks — no sorting or grouping.
+  List<_PickerRow> _visibleRows(List<ModelPickerSection> sections) {
+    final query = _query.toLowerCase();
+    final rows = <_PickerRow>[];
+    for (final section in sections) {
+      final models = section.models
+          .where((m) => query.isEmpty ? m.visibleByDefault : m.searchText.contains(query))
+          .toList();
+      if (models.isEmpty) continue;
+      rows.add(_ProviderHeaderRow(providerName: section.providerName));
+      for (final model in models) {
+        rows.add(_ModelRow(providerID: section.providerID, entry: model));
+      }
     }
-
-    if (provider.id == widget.selectedProviderID) {
-      visible.add(widget.selectedModelID);
-    }
-
-    return visible;
+    return rows;
   }
 
   @override
@@ -156,104 +188,56 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
               filled: true,
               fillColor: zyra.colors.bgPrimary,
             ),
-            onChanged: (value) => setState(() => _query = value.trim()),
+            onChanged: (value) => setState(() {
+              _query = value.trim();
+              final sections = _sections;
+              if (sections != null) _rows = _visibleRows(sections);
+            }),
           ),
         ),
         const SizedBox(height: 4),
         Expanded(
-          child: ListView(
-            // Extend the scrollable area underneath the home indicator: the
-            // bottom inset is added as scroll padding so the last model can
-            // scroll clear of the indicator instead of being clipped above it.
-            padding: EdgeInsetsDirectional.only(bottom: MediaQuery.paddingOf(context).bottom),
-            children: [
-              for (final provider in _sortedProviders) ..._buildProviderSection(provider: provider, context: context),
-            ],
-          ),
+          child: switch (_rows) {
+            null => const Center(child: CircularProgressIndicator()),
+            final rows => _buildModelList(context: context, rows: rows),
+          },
         ),
       ],
     );
   }
 
-  List<Widget> _buildProviderSection({required ProviderInfo provider, required BuildContext context}) {
-    final zyra = context.zyra;
-    final isSearching = _query.isNotEmpty;
-    final visibleIds = isSearching ? null : _defaultVisibleIds(provider);
-
-    final models =
-        provider.models.values
-            .where((m) => m.isAvailable)
-            .where((m) => _matchesQuery(model: m, providerName: provider.name))
-            .where((m) {
-              if (isSearching) {
-                return true;
-              }
-              return visibleIds?.contains(m.id) ?? false;
-            })
-            .toList()
-          ..sort((a, b) {
-            final aDate = a.releaseDate;
-            final bDate = b.releaseDate;
-            if (aDate != bDate) {
-              if (bDate == null) return -1;
-              if (aDate == null) return 1;
-              return bDate.compareTo(aDate);
-            }
-            return a.name.compareTo(b.name);
-          });
-
-    if (models.isEmpty) return const [];
-
-    return [
-      Padding(
-        padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 4),
-        child: Text(
-          provider.name,
-          style: zyra.textTheme.textXs.medium.copyWith(
-            color: zyra.colors.bgBrandSolid,
-            fontWeight: FontWeight.w600,
-          ),
+  Widget _buildModelList({required BuildContext context, required List<_PickerRow> rows}) {
+    return ListView.builder(
+      // Extend the scrollable area underneath the home indicator: the
+      // bottom inset is added as scroll padding so the last model can
+      // scroll clear of the indicator instead of being clipped above it.
+      padding: EdgeInsetsDirectional.only(bottom: MediaQuery.paddingOf(context).bottom),
+      itemCount: rows.length,
+      itemBuilder: (context, index) => switch (rows[index]) {
+        _ProviderHeaderRow(:final providerName) => ModelPickerProviderHeader(name: providerName),
+        _ModelRow(:final providerID, :final entry) => ModelPickerModelTile(
+          name: entry.displayName,
+          subtitle: entry.family,
+          isSelected: widget.selectedProviderID == providerID && widget.selectedModelID == entry.modelID,
+          onTap: () => widget.onModelChanged(providerID: providerID, modelID: entry.modelID),
         ),
-      ),
-      for (final model in models)
-        _ModelTile(
-          name: model.name.replaceAll("(latest)", "").trim(),
-          subtitle: model.family,
-          isSelected: widget.selectedProviderID == provider.id && widget.selectedModelID == model.id,
-          onTap: () => widget.onModelChanged(providerID: provider.id, modelID: model.id),
-        ),
-    ];
+      },
+    );
   }
 }
 
-class _ModelTile extends StatelessWidget {
-  final String name;
-  final String? subtitle;
-  final bool isSelected;
-  final VoidCallback onTap;
+/// A row in the flattened picker list: either a provider header or a model.
+sealed class _PickerRow {
+  const _PickerRow();
+}
 
-  const _ModelTile({
-    required this.name,
-    required this.subtitle,
-    required this.isSelected,
-    required this.onTap,
-  });
+class _ProviderHeaderRow extends _PickerRow {
+  final String providerName;
+  const _ProviderHeaderRow({required this.providerName});
+}
 
-  @override
-  Widget build(BuildContext context) {
-    final zyra = context.zyra;
-
-    return ListTile(
-      dense: true,
-      title: Text(name),
-      subtitle: switch (subtitle) {
-        final text? => Text(text),
-        null => null,
-      },
-      leading: isSelected
-          ? Icon(Icons.radio_button_checked, color: zyra.colors.bgBrandSolid)
-          : Icon(Icons.radio_button_unchecked, color: zyra.colors.borderPrimary),
-      onTap: onTap,
-    );
-  }
+class _ModelRow extends _PickerRow {
+  final String providerID;
+  final ModelPickerModelEntry entry;
+  const _ModelRow({required this.providerID, required this.entry});
 }
