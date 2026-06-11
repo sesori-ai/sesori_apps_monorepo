@@ -13,6 +13,7 @@ import "../../capabilities/sse/sse_event_repository.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
+import "../../repositories/bridge_repository.dart";
 import "../../routing/app_routes.dart";
 import "project_list_state.dart";
 
@@ -28,6 +29,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   final ProjectService _projectService;
   final ConnectionService _connectionService;
   final SseEventRepository _sseEventRepository;
+  final BridgeRepository _bridgeRepository;
   final FailureReporter _failureReporter;
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
@@ -37,10 +39,12 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     ConnectionService connectionService,
     SseEventRepository sseEventRepository,
     RouteSource routeSource, {
+    required BridgeRepository bridgeRepository,
     required FailureReporter failureReporter,
   }) : _projectService = projectService,
        _connectionService = connectionService,
        _sseEventRepository = sseEventRepository,
+       _bridgeRepository = bridgeRepository,
        _failureReporter = failureReporter,
        super(const ProjectListState.loading()) {
     unawaited(_loadInitialProjects());
@@ -129,7 +133,8 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   }
 
   /// Whether the bridge (the user's computer) is currently unreachable, in
-  /// which case there are no projects to show and the onboarding is surfaced.
+  /// which case there are no projects to show and the bridge-disconnected
+  /// flow (setup onboarding or "turn on your bridge") is surfaced.
   /// `ConnectionLost` is excluded — it has its own app-wide reconnect overlay.
   bool get _isBridgeUnavailable => switch (_connectionService.currentStatus) {
     ConnectionDisconnected() || ConnectionBridgeOffline() => true,
@@ -157,17 +162,57 @@ class ProjectListCubit extends Cubit<ProjectListState> {
             break; // Load already in progress.
         }
       // The user's computer is offline / not yet connected — surface the
-      // onboarding instead of an error or stale list.
+      // bridge-disconnected flow instead of an error or stale list.
       case ConnectionDisconnected():
       case ConnectionBridgeOffline():
-        if (state is! ProjectListBridgeDisconnected) {
-          emit(const ProjectListState.bridgeDisconnected());
-        }
+        unawaited(_emitBridgeDisconnected());
       // Transient states: keep the current UI. ConnectionLost is handled by
       // the app-wide reconnect overlay; ConnectionReconnecting is brief.
       case ConnectionReconnecting():
       case ConnectionLost():
         break;
+    }
+  }
+
+  /// Emits [ProjectListBridgeDisconnected], resolving whether the account has
+  /// any registered bridges so the UI can pick the right recovery flow (set
+  /// up a bridge vs. turn the existing one on).
+  ///
+  /// The lookup is async, so the bridge may have come back while it was in
+  /// flight — in that case the connected transition owns the next state and
+  /// this emit is skipped. Re-emitting an unchanged state is harmless (bloc
+  /// dedupes equal states).
+  Future<void> _emitBridgeDisconnected() async {
+    final hasRegisteredBridges = await _fetchHasRegisteredBridges();
+    if (isClosed) return;
+    if (!_isBridgeUnavailable) return;
+    emit(ProjectListState.bridgeDisconnected(hasRegisteredBridges: hasRegisteredBridges));
+  }
+
+  /// In-flight registered-bridges lookup, used for coalescing.
+  Future<bool>? _activeBridgesLookup;
+
+  /// Last successfully fetched answer, used when the auth server is
+  /// unreachable. Defaults to `false` (the setup onboarding) — the safer
+  /// guess for a user we know nothing about.
+  bool _hasRegisteredBridgesFallback = false;
+
+  /// Whether the account has any bridges registered with the auth server.
+  /// Concurrent calls are coalesced into a single request; failures fall back
+  /// to the last known answer rather than surfacing an error.
+  Future<bool> _fetchHasRegisteredBridges() {
+    return _activeBridgesLookup ??= _lookupHasRegisteredBridges().whenComplete(() => _activeBridgesLookup = null);
+  }
+
+  Future<bool> _lookupHasRegisteredBridges() async {
+    final response = await _bridgeRepository.getRegisteredBridges();
+    switch (response) {
+      case SuccessResponse(:final data):
+        _hasRegisteredBridgesFallback = data.isNotEmpty;
+        return _hasRegisteredBridgesFallback;
+      case ErrorResponse(:final error):
+        logw("Failed to fetch registered bridges: ${error.toString()}");
+        return _hasRegisteredBridgesFallback;
     }
   }
 
@@ -196,7 +241,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     await _prepareInitialConnection();
     if (isClosed) return;
     if (_isBridgeUnavailable) {
-      emit(const ProjectListState.bridgeDisconnected());
+      await _emitBridgeDisconnected();
       return;
     }
     await _fetchProjects();
@@ -308,9 +353,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
       }
       if (isClosed) return;
       if (_isBridgeUnavailable) {
-        if (state is! ProjectListBridgeDisconnected) {
-          emit(const ProjectListState.bridgeDisconnected());
-        }
+        await _emitBridgeDisconnected();
         return;
       }
       await _fetchProjects();
@@ -406,8 +449,8 @@ class ProjectListCubit extends Cubit<ProjectListState> {
           logw("Failed to refresh projects: ${error.toString()}");
         } else if (_isBridgeUnavailable) {
           // The fetch failed because the bridge isn't connected — show the
-          // onboarding rather than a generic error.
-          emit(const ProjectListState.bridgeDisconnected());
+          // bridge-disconnected flow rather than a generic error.
+          await _emitBridgeDisconnected();
         } else {
           loge("Project list load failed", error);
           emit(ProjectListState.failed(reason: error.remoteFailureReason));

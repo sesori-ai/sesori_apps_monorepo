@@ -12,6 +12,7 @@ import "package:sesori_dart_core/src/capabilities/session/session_service.dart";
 import "package:sesori_dart_core/src/capabilities/sse/session_activity_info.dart";
 import "package:sesori_dart_core/src/capabilities/sse/sse_event_repository.dart";
 import "package:sesori_dart_core/src/platform/route_source.dart";
+import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/routing/app_routes.dart";
@@ -28,6 +29,8 @@ class MockSessionApi extends Mock implements SessionApi {}
 class MockSessionService extends Mock implements SessionService {}
 
 class MockSessionRepository extends Mock implements SessionRepository {}
+
+class MockBridgeRepository extends Mock implements BridgeRepository {}
 
 class MockFailureReporter extends Mock implements FailureReporter {}
 
@@ -212,6 +215,16 @@ Session testSession({String? id, String? title, DateTime? archivedAt}) {
 
 HealthResponse testHealthResponse() {
   return const HealthResponse(healthy: true, version: "0.1.200");
+}
+
+BridgeSummary testBridgeSummary({String? id, String? name}) {
+  return BridgeSummary(
+    id: id ?? "br_test1234",
+    name: name ?? "test-macbook",
+    platform: "macos",
+    addedAt: DateTime.utc(2026, 1, 1),
+    lastSeenAt: null,
+  );
 }
 
 CommandInfo testCommandInfo({

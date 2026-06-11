@@ -301,6 +301,24 @@ abstract class AppLocalizations {
   /// **'Open a folder'**
   String get projectsOnboardingOpenFolder;
 
+  /// No description provided for @projectsBridgeOfflineTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridge disconnected'**
+  String get projectsBridgeOfflineTitle;
+
+  /// No description provided for @projectsBridgeOfflineReconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect'**
+  String get projectsBridgeOfflineReconnect;
+
+  /// Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands.
+  ///
+  /// In en, this message translates to:
+  /// **'Install commands'**
+  String get projectsBridgeOfflineInstallCommands;
+
   /// No description provided for @connectionLostTitle.
   ///
   /// In en, this message translates to:
