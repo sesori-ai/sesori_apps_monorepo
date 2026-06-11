@@ -48,6 +48,17 @@ void main() {
       expect(operations, ["ordered.2", "parallel"]);
     });
 
+    test("a synchronously throwing disposable does not prevent the others from running", () async {
+      final coordinator = BridgeShutdownCoordinator(exitProcess: (_) {});
+      final operations = <String>[];
+
+      coordinator.add(disposable: () => throw StateError("sync disposable failure"));
+      coordinator.add(disposable: () => operations.add("parallel.b"));
+
+      await expectLater(coordinator.shutdown(), throwsA(isA<StateError>()));
+      expect(operations, ["parallel.b"]);
+    });
+
     test("repeated shutdown calls share one run", () async {
       final coordinator = BridgeShutdownCoordinator(exitProcess: (_) {});
       var disposals = 0;

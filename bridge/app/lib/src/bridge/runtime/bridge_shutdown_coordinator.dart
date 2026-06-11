@@ -76,8 +76,11 @@ class BridgeShutdownCoordinator {
           firstOrderedStackTrace ??= stackTrace;
         }
       }
+      // Future.sync (not Future.value(disposable())): a synchronously
+      // throwing disposable must become a failed future, not abort the lazy
+      // map iteration inside Future.wait and skip the disposables after it.
       await Future.wait(
-        _disposables.map((disposable) => Future.value(disposable())),
+        _disposables.map(Future.sync),
       );
       if (firstOrderedError != null) {
         Error.throwWithStackTrace(firstOrderedError, firstOrderedStackTrace!);
