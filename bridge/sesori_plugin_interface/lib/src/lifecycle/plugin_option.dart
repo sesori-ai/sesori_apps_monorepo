@@ -81,10 +81,10 @@ final class PluginValueOption extends PluginOption {
   /// the user got wrong can never terminate a healthy resident bridge.
   final PluginOptionValueValidator? validate;
 
-  /// Built-in [validate] hook requiring an integer value.
+  /// Built-in [validate] hook requiring an integer value. Delegates to
+  /// [PluginConfig.parseIntegerOption] so the parse rule and error message
+  /// have a single source of truth.
   static void validateInteger(String name, String value) {
-    if (int.tryParse(value) == null) {
-      throw PluginConfigException("The --$name option expects an integer, got '$value'.");
-    }
+    PluginConfig.parseIntegerOption(name, value);
   }
 }

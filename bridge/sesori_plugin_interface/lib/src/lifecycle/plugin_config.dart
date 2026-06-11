@@ -29,12 +29,31 @@ class PluginConfigException implements Exception {
 /// [PluginConfigException] instead, so plugins don't re-implement the
 /// "`int.parse` + usage error" dance.
 class PluginConfig {
+  /// [values] is held by reference (the constructor is const, so a defensive
+  /// copy is impossible) and must not be mutated after construction.
   const PluginConfig({required Map<String, Object?> values}) : _values = values;
 
   /// A config with no options, for plugins that declare none.
   const PluginConfig.empty() : _values = const {};
 
   final Map<String, Object?> _values;
+
+  /// Parses [raw] as the integer value of option [name] — the single source
+  /// of truth shared by [intValue] and `PluginValueOption.validateInteger`.
+  ///
+  /// `null` or empty [raw] returns `null` (absent). A non-numeric value
+  /// throws [PluginConfigException] with a usage-style message naming the
+  /// flag.
+  static int? parseIntegerOption(String name, String? raw) {
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    final parsed = int.tryParse(raw);
+    if (parsed == null) {
+      throw PluginConfigException("The --$name option expects an integer, got '$raw'.");
+    }
+    return parsed;
+  }
 
   /// The value of the flag [name].
   ///
@@ -66,17 +85,7 @@ class PluginConfig {
   /// though for options declared with `PluginValueOption.integer` the bridge
   /// has already rejected such values at argument-parse time, so this never
   /// throws for them.
-  int? intValue(String name) {
-    final raw = value(name);
-    if (raw == null || raw.isEmpty) {
-      return null;
-    }
-    final parsed = int.tryParse(raw);
-    if (parsed == null) {
-      throw PluginConfigException("The --$name option expects an integer, got '$raw'.");
-    }
-    return parsed;
-  }
+  int? intValue(String name) => parseIntegerOption(name, value(name));
 
   Object? _require(String name) {
     if (!_values.containsKey(name)) {

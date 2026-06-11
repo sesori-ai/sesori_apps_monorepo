@@ -1,3 +1,5 @@
+import "package:meta/meta.dart";
+
 import "../host/plugin_host.dart";
 import "bridge_plugin.dart";
 import "plugin_config.dart";
@@ -9,6 +11,7 @@ import "plugin_option.dart";
 /// side effects. **Registered is not started** — the bridge starts only the
 /// selected/enabled subset of registered descriptors, and registers only the
 /// selected descriptor's [options] into its CLI parser.
+@immutable
 abstract class BridgePluginDescriptor {
   const BridgePluginDescriptor();
 

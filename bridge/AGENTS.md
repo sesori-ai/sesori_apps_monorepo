@@ -27,13 +27,12 @@ When changing shared types, update in this order.
 
 ## Testing
 
-- `dart test` from `app/` and `sesori_plugin_opencode/`
-- `sesori_plugin_interface` has no tests (it's a contract package)
+- `dart test` from `app/`, `sesori_plugin_opencode/`, and `sesori_plugin_interface/`
 
 ## Conventions
 
 - Freezed models use `build.yaml` options: `format: false`, `map: false`, `when: false`
-- Plugin implementations must implement all 8 `BridgePlugin` methods — no partial implementations
+- Plugin implementations must implement the full `BridgePluginApi` surface — no partial implementations
 - SSE events use sealed classes (see `bridge_sse_event.dart`)
 - Pure Dart only — no Flutter dependencies anywhere in this workspace
 

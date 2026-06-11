@@ -21,6 +21,10 @@ class PluginDiagnostics {
   final String? endpoint;
 
   /// Free-form additional facts (version, mode, state directory).
+  ///
+  /// Held by reference (the constructor is const, so a defensive copy is
+  /// impossible); pass a const or unshared map and do not mutate it after
+  /// construction.
   final Map<String, String> details;
 
   @override

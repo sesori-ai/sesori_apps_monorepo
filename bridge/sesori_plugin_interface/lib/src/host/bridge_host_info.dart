@@ -20,9 +20,14 @@ abstract class BridgeHostInfo {
   ///
   /// Exposed as a capability rather than data on purpose — the strings and
   /// heuristics that classify a bridge process stay inside the bridge, free
-  /// to evolve without breaking plugins. Marker matching follows the
-  /// platform rules of [ProcessIdentity.hasSameIdentityAs]: when either side
-  /// has a start marker they must match; when both are absent (Windows) the
-  /// match is conservatively accepted.
+  /// to evolve without breaking plugins. Marker matching: when either side
+  /// has a start marker they must match; when both are absent (Windows
+  /// records carry none) the marker check is conservatively accepted and the
+  /// decision rests on the bridge-process classification alone — the caller
+  /// supplies only a pid and marker, so unlike
+  /// [ProcessIdentity.hasSameIdentityAs] there is no command line to fall
+  /// back on. Conservative direction: a reused pid that happens to be
+  /// another live bridge is spared (a possible orphan, which stale cleanup
+  /// self-heals later) rather than killed.
   Future<bool> isLiveBridgeProcess({required int pid, String? startMarker});
 }

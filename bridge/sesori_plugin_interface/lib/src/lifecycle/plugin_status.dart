@@ -94,7 +94,10 @@ final class PluginDegraded extends PluginStatus {
     this.recoverable = true,
     this.requiresUserAction = false,
     this.userActionHint,
-  });
+  }) : assert(
+         !requiresUserAction || userActionHint != null,
+         "userActionHint should explain what to do when requiresUserAction is true",
+       );
 
   /// When the degradation was first observed (not when it was reported —
   /// debounced reporters keep the earliest observation time).
@@ -112,15 +115,17 @@ final class PluginDegraded extends PluginStatus {
 
   @override
   bool operator ==(Object other) {
+    // isAtSameMomentAs, not DateTime.==: the same instant in different time
+    // zones must compare equal.
     return other is PluginDegraded &&
-        other.since == since &&
+        other.since.isAtSameMomentAs(since) &&
         other.recoverable == recoverable &&
         other.requiresUserAction == requiresUserAction &&
         other.userActionHint == userActionHint;
   }
 
   @override
-  int get hashCode => Object.hash(since, recoverable, requiresUserAction, userActionHint);
+  int get hashCode => Object.hash(since.microsecondsSinceEpoch, recoverable, requiresUserAction, userActionHint);
 
   @override
   String toString() {
@@ -131,7 +136,8 @@ final class PluginDegraded extends PluginStatus {
 
 /// The plugin is restarting its managed runtime after an unexpected exit.
 final class PluginRestarting extends PluginStatus {
-  const PluginRestarting({required this.attempt, this.reason});
+  const PluginRestarting({required this.attempt, this.reason})
+    : assert(attempt >= 1, "attempt is 1-based: the first restart is attempt 1");
 
   /// 1-based restart attempt within the current failure episode.
   final int attempt;

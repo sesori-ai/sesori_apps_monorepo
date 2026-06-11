@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:meta/meta.dart";
 
+import "../log.dart";
 import "../process/server_clock.dart";
 import "bridge_plugin.dart";
 import "plugin_status.dart";
@@ -108,25 +109,32 @@ mixin SteadyPluginLifecycle implements BridgePlugin {
     _pendingDegradedSince = since;
     final generation = _degradedGeneration;
     unawaited(
-      statusClock.delay(duration: degradedDebounce).then((_) {
-        if (generation != _degradedGeneration) {
-          return;
-        }
-        final details = _pendingDegradedDetails;
-        _pendingDegradedSince = null;
-        _pendingDegradedDetails = null;
-        if (details == null) {
-          return;
-        }
-        _statusMachine.trySet(
-          PluginDegraded(
-            since: since,
-            recoverable: details.recoverable,
-            requiresUserAction: details.requiresUserAction,
-            userActionHint: details.userActionHint,
-          ),
-        );
-      }),
+      statusClock
+          .delay(duration: degradedDebounce)
+          .then((_) {
+            if (generation != _degradedGeneration) {
+              return;
+            }
+            final details = _pendingDegradedDetails;
+            _pendingDegradedSince = null;
+            _pendingDegradedDetails = null;
+            if (details == null) {
+              return;
+            }
+            _statusMachine.trySet(
+              PluginDegraded(
+                since: since,
+                recoverable: details.recoverable,
+                requiresUserAction: details.requiresUserAction,
+                userActionHint: details.userActionHint,
+              ),
+            );
+          })
+          // An unhandled async error here would take down the whole isolate
+          // over a status report; log it instead.
+          .catchError((Object error, StackTrace stackTrace) {
+            Log.w("SteadyPluginLifecycle: degraded debounce failed: $error\n$stackTrace");
+          }),
     );
   }
 
@@ -141,6 +149,11 @@ mixin SteadyPluginLifecycle implements BridgePlugin {
   /// Releases the plugin's resources. Override point for the mixed-in class;
   /// the default does nothing. Must be safe to run before or after
   /// `BridgePluginApi.dispose()`.
+  ///
+  /// If this throws, the plugin still reaches `Stopped`, and the same error
+  /// is rethrown to *every* `shutdown()` caller — the failure is part of the
+  /// memoized teardown, so no caller can mistake a failed teardown for a
+  /// clean one.
   @protected
   Future<void> onShutdown({Duration? budget}) async {}
 

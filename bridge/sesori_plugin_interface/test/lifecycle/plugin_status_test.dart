@@ -84,6 +84,25 @@ void main() {
           PluginDegraded(since: DateTime.utc(2026, 6, 12), requiresUserAction: true, userActionHint: 're-authenticate'),
         ),
       );
+      expect(PluginDegraded(since: since, recoverable: false), isNot(PluginDegraded(since: since)));
+      expect(
+        PluginDegraded(since: since, recoverable: false).hashCode,
+        isNot(PluginDegraded(since: since).hashCode),
+      );
+    });
+
+    test('Degraded treats the same moment in different time zones as equal', () {
+      final utc = DateTime.utc(2026, 6, 11, 10);
+      final local = utc.toLocal();
+      expect(PluginDegraded(since: utc), PluginDegraded(since: local));
+      expect(PluginDegraded(since: utc).hashCode, PluginDegraded(since: local).hashCode);
+    });
+
+    test('Degraded asserts a hint accompanies requiresUserAction', () {
+      expect(
+        () => PluginDegraded(since: DateTime.utc(2026, 6, 11), requiresUserAction: true),
+        throwsA(isA<AssertionError>()),
+      );
     });
 
     test('Restarting compares by attempt and reason', () {
@@ -92,6 +111,10 @@ void main() {
         const PluginRestarting(attempt: 2, reason: 'exit 1'),
       );
       expect(const PluginRestarting(attempt: 2), isNot(const PluginRestarting(attempt: 3)));
+    });
+
+    test('Restarting asserts attempt is 1-based', () {
+      expect(() => PluginRestarting(attempt: 0), throwsA(isA<AssertionError>()));
     });
 
     test('Failed compares by reason and cause', () {
