@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -7,12 +9,15 @@ import "../sse/sse_manager.dart";
 class SessionPromptService {
   final SessionRepository _sessionRepository;
   final SSEManager _sseManager;
+  final Duration _commandDispatchFastFailWindow;
 
   SessionPromptService({
     required SessionRepository sessionRepository,
     required SSEManager sseManager,
+    Duration commandDispatchFastFailWindow = const Duration(seconds: 3),
   })  : _sessionRepository = sessionRepository,
-        _sseManager = sseManager;
+        _sseManager = sseManager,
+        _commandDispatchFastFailWindow = commandDispatchFastFailWindow;
 
   Future<void> sendPrompt({
     required String sessionId,
@@ -41,7 +46,7 @@ class SessionPromptService {
     }
 
     final textPart = parts.whereType<PromptPartText>().firstOrNull;
-    await _sessionRepository.sendCommand(
+    final sendFuture = _sessionRepository.sendCommand(
       sessionId: sessionId,
       command: normalizedCommand,
       arguments: textPart?.text ?? '',
@@ -49,6 +54,24 @@ class SessionPromptService {
       agent: agent,
       model: model,
     );
+    try {
+      await sendFuture.timeout(_commandDispatchFastFailWindow);
+    } on TimeoutException {
+      // OpenCode's /command endpoint is synchronous — it responds only after
+      // the full agent run completes, and no async variant exists upstream.
+      // Surviving the fast-fail window means OpenCode accepted the command and
+      // the run is in progress (progress streams over SSE). Detach instead of
+      // holding the phone's relay request open until its client-side timeout
+      // misreports an in-flight command as a failed send.
+      unawaited(
+        sendFuture.catchError((Object e) {
+          Log.w(
+            "command '$normalizedCommand' for session $sessionId "
+            "failed after dispatch: $e",
+          );
+        }),
+      );
+    }
     await _updatePromptDefaults(
       sessionId: sessionId,
       variant: variant,
