@@ -7,6 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Bridg
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../auth/access_token_provider.dart";
+import "../../auth/bridge_registration_service.dart";
 import "../../auth/token_refresher.dart";
 import "../../push/completion_notifier.dart";
 import "../../push/completion_push_listener.dart";
@@ -63,6 +64,7 @@ class BridgeRuntime {
     required http.Client httpClient,
     required AccessTokenProvider accessTokenProvider,
     required TokenRefresher tokenRefresher,
+    required BridgeRegistrationService bridgeRegistrationService,
     required AppDatabase database,
     required ProcessRunner processRunner,
     required FailureReporter failureReporter,
@@ -110,7 +112,11 @@ class BridgeRuntime {
       sessionEventEnrichmentService: sessionEventEnrichmentService,
       session: Orchestrator(
         config: config,
-        client: RelayClient(relayURL: config.relayURL, accessTokenProvider: accessTokenProvider),
+        client: RelayClient(
+          relayURL: config.relayURL,
+          accessTokenProvider: accessTokenProvider,
+          bridgeIdProvider: bridgeRegistrationService,
+        ),
         plugin: plugin,
         metadataService: MetadataService(
           client: httpClient,
@@ -131,6 +137,7 @@ class BridgeRuntime {
           telemetryBuilder: telemetryBuilder,
         ),
         tokenRefresher: tokenRefresher,
+        bridgeRegistrationService: bridgeRegistrationService,
         failureReporter: failureReporter,
         prSyncService: PrSyncService(
           prSource: PrSourceRepository(

@@ -15,16 +15,23 @@ abstract final class RelayCloseCodes {
   /// Account full — too many devices connected (>5) — do NOT reconnect.
   static const accountFull = 4005;
 
+  /// Bridge revoked — the bridge's registration was deleted on the auth
+  /// server. The bridge must re-register before connecting again — do NOT
+  /// reconnect with the same bridge id.
+  static const bridgeRevoked = 4006;
+
   static const noReconnectCodes = {
     authFailure,
     authRequired,
     roomFull,
     roomNotFound,
     accountFull,
+    bridgeRevoked,
   };
 
   /// Returns true if the close code indicates the client should attempt reconnection.
-  /// Returns false for terminal errors (auth failure, auth required, room full, room not found, account full).
+  /// Returns false for terminal errors (auth failure, auth required, room full, room not found, account full,
+  /// bridge revoked).
   static bool shouldReconnect(int? closeCode) {
     if (closeCode == null) return true;
     return !noReconnectCodes.contains(closeCode);

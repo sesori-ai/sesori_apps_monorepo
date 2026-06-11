@@ -1,11 +1,9 @@
 import "dart:convert";
 import "dart:io";
 
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+
 import "../../bridge/foundation/process_runner.dart";
-import "../foundation/process_identity.dart";
-import "../foundation/process_user.dart";
-import "../foundation/server_clock.dart";
-import "../foundation/shutdown_result.dart";
 
 class SystemProcessApi {
   SystemProcessApi({
@@ -37,25 +35,25 @@ class SystemProcessApi {
     return null;
   }
 
-  Future<ShutdownResult> sendGracefulSignal({required int pid}) => _sendSignal(
+  Future<SignalResult> sendGracefulSignal({required int pid}) => _sendSignal(
     pid: pid,
     requestedSignal: .graceful,
     deliveredSignal: _isWindows ? .sigkill : .sigterm,
   );
 
-  Future<ShutdownResult> sendForceSignal({required int pid}) => _sendSignal(
+  Future<SignalResult> sendForceSignal({required int pid}) => _sendSignal(
     pid: pid,
     requestedSignal: .force,
     deliveredSignal: .sigkill,
   );
 
-  Future<ShutdownResult> _sendSignal({
+  Future<SignalResult> _sendSignal({
     required int pid,
     required ShutdownSignal requestedSignal,
     required ProcessSignal deliveredSignal,
   }) async {
     final wasRequested = pid > 0 && Process.killPid(pid, deliveredSignal);
-    return ShutdownResult(
+    return SignalResult(
       pid: pid,
       requestedSignal: requestedSignal,
       deliveredSignal: deliveredSignal,

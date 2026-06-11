@@ -1,13 +1,12 @@
 import "package:args/args.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_server.dart";
-import "package:sesori_bridge/src/server/foundation/process_identity.dart";
-import "package:sesori_bridge/src/server/foundation/process_user.dart";
 import "package:sesori_bridge/src/server/models/open_code_ownership_record.dart";
 import "package:sesori_bridge/src/server/repositories/open_code_ownership_repository.dart";
 import "package:sesori_bridge/src/server/repositories/startup_mutex_repository.dart";
 import "package:sesori_bridge/src/server/services/bridge_instance_service.dart";
 import "package:sesori_bridge/src/server/services/open_code_server_service.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {

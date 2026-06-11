@@ -1,10 +1,8 @@
 import "package:path/path.dart" as path;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../api/system_process_api.dart";
-import "../foundation/process_identity.dart";
 import "../foundation/process_match.dart";
-import "../foundation/process_user.dart";
-import "../foundation/shutdown_result.dart";
 
 class ProcessRepository {
   ProcessRepository({
@@ -49,11 +47,11 @@ class ProcessRepository {
     return identities.map((ProcessIdentity identity) => _toMatch(identity: identity)).toList();
   }
 
-  Future<ShutdownResult> sendGracefulSignal({required int pid}) {
+  Future<SignalResult> sendGracefulSignal({required int pid}) {
     return _api.sendGracefulSignal(pid: pid);
   }
 
-  Future<ShutdownResult> sendForceSignal({required int pid}) {
+  Future<SignalResult> sendForceSignal({required int pid}) {
     return _api.sendForceSignal(pid: pid);
   }
 
@@ -75,12 +73,6 @@ class ProcessRepository {
         executableBasename == "sesori-bridge.exe" ||
         commandLine.contains("bridge/app/bin/bridge.dart")) {
       return ProcessMatchKind.sesoriBridge;
-    }
-
-    if (executableBasename == "opencode" ||
-        executableBasename == "opencode.exe" ||
-        commandLine.contains("opencode serve")) {
-      return ProcessMatchKind.openCodeServe;
     }
 
     return ProcessMatchKind.unknown;

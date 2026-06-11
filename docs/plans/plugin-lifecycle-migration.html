@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plugin Lifecycle Migration Plan — OpenCode out of the bridge core</title>
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --card: #ffffff;
+    --ink: #1a1d21;
+    --muted: #5c6470;
+    --line: #e3e1dc;
+    --accent: #0f6b54;
+    --accent-soft: #e3f1ec;
+    --risk-high: #b3422e;
+    --risk-high-soft: #f8e9e5;
+    --risk-med: #9a6b15;
+    --risk-med-soft: #f7efdd;
+    --risk-low: #3a6b35;
+    --risk-low-soft: #e8f0e6;
+    --code-bg: #f0efec;
+    --mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.55;
+  }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 48px 28px 96px; }
+  header.doc { border-bottom: 3px solid var(--ink); padding-bottom: 24px; margin-bottom: 36px; }
+  header.doc h1 { font-size: 2rem; margin: 0 0 6px; letter-spacing: -0.02em; }
+  header.doc .sub { color: var(--muted); font-size: 1.02rem; max-width: 70ch; }
+  .meta { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 14px; font-size: 0.85rem; color: var(--muted); }
+  .meta b { color: var(--ink); font-weight: 600; }
+  h2 { font-size: 1.35rem; margin: 48px 0 12px; padding-top: 10px; letter-spacing: -0.01em; }
+  h2 .num { color: var(--accent); margin-right: 8px; font-variant-numeric: tabular-nums; }
+  h3 { font-size: 1.02rem; margin: 22px 0 6px; }
+  h4.phase { font-size: 0.82rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 34px 0 4px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+  p { max-width: 76ch; }
+  code { font-family: var(--mono); font-size: 0.84em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+  pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; font-family: var(--mono); font-size: 0.8rem; line-height: 1.5; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.88rem; margin: 14px 0; background: var(--card); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  th { text-align: left; padding: 9px 12px; background: var(--ink); color: #fff; font-weight: 600; font-size: 0.8rem; letter-spacing: 0.02em; }
+  td { padding: 9px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+  tr:nth-child(even) td { background: #fbfaf8; }
+  .pill { display: inline-block; padding: 1px 9px; border-radius: 99px; font-size: 0.74rem; font-weight: 600; white-space: nowrap; }
+  .pill.s  { background: var(--risk-low-soft);  color: var(--risk-low); }
+  .pill.m  { background: var(--risk-med-soft);  color: var(--risk-med); }
+  .pill.l  { background: var(--risk-high-soft); color: var(--risk-high); }
+  .pill.pkg { background: var(--accent-soft); color: var(--accent); font-family: var(--mono); font-weight: 500; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 20px 24px; margin: 18px 0;
+  }
+  .card.pr { border-left: 4px solid var(--accent); }
+  .card.pr.risky { border-left-color: var(--risk-high); }
+  .card.pr h3 { margin-top: 0; font-size: 1.08rem; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .card.pr h3 .prnum { font-family: var(--mono); color: var(--accent); font-size: 0.85em; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; }
+  @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+  ul { padding-left: 20px; margin: 6px 0 12px; }
+  li { margin: 3px 0; }
+  .safe {
+    background: var(--accent-soft); border-radius: 8px; padding: 10px 14px;
+    font-size: 0.86rem; margin-top: 10px;
+  }
+  .safe b { color: var(--accent); }
+  .check { list-style: none; padding-left: 4px; }
+  .check li::before { content: "☐ "; color: var(--accent); font-weight: 700; }
+  .callout { border-left: 4px solid var(--risk-med); background: var(--risk-med-soft); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 16px 0; font-size: 0.92rem; }
+  .callout.green { border-left-color: var(--accent); background: var(--accent-soft); }
+  .flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 0.82rem; font-family: var(--mono); margin: 14px 0; }
+  .flow .node { background: var(--card); border: 1.5px solid var(--ink); border-radius: 6px; padding: 4px 10px; }
+  .flow .arrow { color: var(--muted); }
+  footer { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.82rem; }
+  @media print { body { background: #fff; } .card { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc">
+  <h1>Plugin Lifecycle Migration Plan</h1>
+  <div class="sub">Move all OpenCode runtime ownership (spawn, ports, health, ownership records, DB maintenance) out of <code>bridge/app</code> and into the OpenCode plugin, behind a plugin interface that supports managed-runtime, direct-CLI, and remote-server plugins — with per-plugin enable/start/stop. Delivered as a ladder of small, always-green PRs.</div>
+  <div class="meta">
+    <span><b>Status:</b> proposed (rev 2 — adversarially verified against the repo)</span>
+    <span><b>Date:</b> 2026-06-10</span>
+    <span><b>PRs:</b> 15, strictly sequential</span>
+    <span><b>Max PR size:</b> ~2,000 changed lines (hard)</span>
+    <span><b>Branch base:</b> main</span>
+  </div>
+</header>
+
+<h2><span class="num">0</span>Ground rules</h2>
+<div class="card">
+  <ul>
+    <li><b>Always green.</b> After every PR: <code>dart analyze --fatal-infos</code> clean in every touched package (this is what <code>bridge-ci.yml</code> runs — note: a cross-package <code>@Deprecated</code> fails it, see PR 2), all tests pass, and the bridge runs end-to-end exactly as before (start, login, OpenCode spawn, mobile session flow, <code>--no-auto-start</code> attach mode, clean shutdown). No PR depends on a future PR to compile or behave.</li>
+    <li><b>No breaking changes.</b> CLI flags (<code>--port</code>, <code>--no-auto-start</code>, <code>--password</code>, <code>--opencode-bin</code>) keep their exact names and semantics throughout — headless/systemd units (<code>docs/SETUP_HEADLESS_VM.md</code>) must never need editing. The on-disk ownership file <code>&lt;cacheDir&gt;/runtime/opencode-processes.json</code> keeps its exact schema and steady-state bytes <i>forever</i> (frozen contract — self-updating fleets mix bridge versions). Anything new the supervisor needs to persist goes in <b>separate, new files</b> that old bridges never read.</li>
+    <li><b>≤ ~2,000 changed lines per PR, as <code>git diff --stat</code> counts them</b> — moves count on both sides, generated files count, deletions count. Pure-deletion PRs get their own rungs rather than a leniency clause.</li>
+    <li><b>No codegen in new contract types.</b> All new interface/runtime types are hand-written Dart 3 sealed classes and records — no freezed, no json_serializable. (The interface package's freezed convention has a measured ~10× generated-line multiplier that would blow PR budgets.)</li>
+    <li><b>Duplication between phases is fine.</b> Old and new implementations may coexist; the old path keeps running production until a single, small "flip" PR switches it.</li>
+    <li><b>Fidelity gate.</b> The 1,224-line <code>open_code_server_service_test.dart</code> is the behavioral spec for process lifecycle. The extraction is proven by those scenarios passing against the new code (PR 10) — not by review alone. To make that possible, all behavioral changes (health pacing, record timing, restart) are <b>explicit policy knobs</b> that default to legacy behavior until the flip (PR 12).</li>
+  </ul>
+</div>
+
+<h2><span class="num">1</span>Target architecture (recap)</h2>
+<p>Full analysis lives in the session report; the contract in one breath:</p>
+<div class="flow">
+  <span class="node">BridgePluginDescriptor (const, inert)</span><span class="arrow">— start(PluginHost) →</span>
+  <span class="node">BridgePlugin { api, status, describe(), shutdown(budget) }</span>
+</div>
+<div class="grid2">
+<div>
+<h3>The three pieces</h3>
+<ul>
+  <li><b>Descriptor</b> — registration unit. Declares <code>id</code>, CLI <code>options</code>, <code>validateConfig</code> (runs <i>before</i> the startup mutex and before any bridge gets replaced), and <code>start(host)</code>. Replaces the <code>BridgePluginFactory</code> typedef (<code>bridge_runtime_runner.dart:67</code>).</li>
+  <li><b>BridgePlugin</b> — a live instance: the existing <code>BridgePluginApi</code> (unchanged, must stay the same object for the plugin's lifetime), a replay-latest sealed <code>PluginStatus</code> stream with a legal-transition state machine (no <code>Failed</code> after <code>Stopping</code>), <code>describe()</code> diagnostics, and ordered <code>shutdown(budget)</code>. <code>dispose()</code> and <code>shutdown()</code> are contractually idempotent (the orchestrator keeps calling <code>dispose()</code> until PR 12, so double-dispose is a supported state during migration).</li>
+  <li><b>PluginHost</b> — opt-in services: config, per-plugin state dir, bridge identity facts (incl. <code>isLiveBridgeProcess</code> capability for stale-kill authorization), process spawn <i>with stdin</i> (ACP needs it), port probing, atomic JSON store with locked <code>update()</code>, clock + environment seams for tests.</li>
+</ul>
+</div>
+<div>
+<h3>Archetype fit &amp; selective start</h3>
+<ul>
+  <li><b>Managed runtime</b> (OpenCode): uses the new <code>ManagedProcessSupervisor</code> from <code>bridge/sesori_plugin_runtime</code> — extracted, reusable lifecycle skeleton (stale cleanup, port selection, spawn, health, ownership, stop).</li>
+  <li><b>Direct CLI / remote server</b>: a <code>SteadyPluginLifecycle</code> mixin reduces lifecycle to ~5 lines; no process machinery, no ceremony.</li>
+  <li><b>Registered ≠ started.</b> Descriptors are const and side-effect free. The bridge starts <i>only the enabled subset</i> (CLI <code>--plugin</code> / settings), never "all registered". Every started plugin is individually stoppable via <code>shutdown()</code> — the <code>PluginManager</code> (PR&nbsp;5) owns start/stop per id. <b>Honest scope:</b> the <i>manager API</i> is N-ready, but today's orchestrator bakes a single <code>BridgePluginApi</code> into ~10 constructor-injected components (<code>bridge_runtime.dart:60-162</code>) — running N plugins concurrently, or stopping/starting a plugin mid-session, requires an orchestrator/DI rebind that belongs to the protocol-portability track, not this ladder. <code>stopPlugin</code> on the active plugin while a session runs therefore has <i>defined</i> semantics now (PR 5): it cancels the session first.</li>
+</ul>
+</div>
+</div>
+<div class="callout">
+  <b>Out of scope (separate track):</b> protocol portability — the untyped <code>Map&lt;String,dynamic&gt;</code> payloads in <code>BridgeSseEvent</code>, the <code>SSEManager._toOpenCodeFormat</code> mobile wire envelope, the <code>projectId == projectPath</code> assumption in <code>worktree_cleanup.dart</code>, and the orchestrator/DI rebind needed for multiple <i>concurrently active</i> plugins. Lifecycle alone does <i>not</i> make a second plugin shippable end-to-end; that track needs mobile coordination and is deliberately not in this ladder.
+</div>
+
+<h2><span class="num">2</span>The PR ladder at a glance</h2>
+<table>
+  <tr><th>#</th><th>Title</th><th>Packages touched</th><th>Est. diff</th><th>Risk</th></tr>
+  <tr><td colspan="5" style="background:#efeeea;font-weight:600;font-size:0.8rem;letter-spacing:0.05em">PHASE A — FOUNDATIONS (nothing consumes the new code yet)</td></tr>
+  <tr><td>1</td><td>Interface prep: exceptions, dead code, value-type promotion</td><td><span class="pill pkg">interface</span> <span class="pill pkg">app</span></td><td>~800–1,100</td><td><span class="pill s">low</span></td></tr>
+  <tr><td>2</td><td>Lifecycle contract types (pure additions, hand-written)</td><td><span class="pill pkg">interface</span></td><td>~1,200–1,800</td><td><span class="pill s">low</span></td></tr>
+  <tr><td>3</td><td>PluginHost implementation in the bridge</td><td><span class="pill pkg">app</span></td><td>~1,000–1,500</td><td><span class="pill s">low</span></td></tr>
+  <tr><td colspan="5" style="background:#efeeea;font-weight:600;font-size:0.8rem;letter-spacing:0.05em">PHASE B — SEAM FLIP (runner consumes the contract; zero OpenCode code moves)</td></tr>
+  <tr><td>4</td><td>Seam flip via LegacyOpenCodeDescriptor</td><td><span class="pill pkg">app</span></td><td>~800–1,200</td><td><span class="pill l">high</span></td></tr>
+  <tr><td>5</td><td>Plugin selection, enablement &amp; PluginManager</td><td><span class="pill pkg">app</span></td><td>~400–700</td><td><span class="pill m">med</span></td></tr>
+  <tr><td>6</td><td>OpenCode DB maintenance moves into the plugin</td><td><span class="pill pkg">opencode</span> <span class="pill pkg">app</span></td><td>~900–1,100</td><td><span class="pill s">low</span></td></tr>
+  <tr><td colspan="5" style="background:#efeeea;font-weight:600;font-size:0.8rem;letter-spacing:0.05em">PHASE C — SUPERVISOR EXTRACTION (new package; legacy behavior proven by the old test suite)</td></tr>
+  <tr><td>7</td><td>New package <code>sesori_plugin_runtime</code>: ownership store + stale cleanup + stop</td><td><span class="pill pkg">runtime (new)</span></td><td>~1,500–2,000</td><td><span class="pill m">med</span></td></tr>
+  <tr><td>8</td><td>Supervisor start / attach with legacy-default policy knobs</td><td><span class="pill pkg">runtime</span></td><td>~1,200–1,600</td><td><span class="pill m">med</span></td></tr>
+  <tr><td>9</td><td>Supervisor restart, exit monitoring, port pinning, intent side-file (all default-off)</td><td><span class="pill pkg">runtime</span></td><td>~1,000–1,400</td><td><span class="pill m">med</span></td></tr>
+  <tr><td>10</td><td><code>OpenCodeServerService</code> delegates to the supervisor (fidelity gate)</td><td><span class="pill pkg">app</span></td><td>~900–1,400</td><td><span class="pill m">med</span></td></tr>
+  <tr><td colspan="5" style="background:#efeeea;font-weight:600;font-size:0.8rem;letter-spacing:0.05em">PHASE D — ABSORB &amp; FLIP (plugin owns its lifecycle; legacy path deleted)</td></tr>
+  <tr><td>11</td><td>OpenCode plugin absorbs its lifecycle (dormant)</td><td><span class="pill pkg">opencode</span></td><td>~1,400–1,900</td><td><span class="pill s">low</span></td></tr>
+  <tr><td>12</td><td>Flip to the real descriptor; new policies activate</td><td><span class="pill pkg">app</span> <span class="pill pkg">opencode</span></td><td>~700–1,000</td><td><span class="pill l">high</span></td></tr>
+  <tr><td>13</td><td>Deletion sweep 1: legacy source files</td><td><span class="pill pkg">app</span></td><td>~1,700 (pure del)</td><td><span class="pill s">low</span></td></tr>
+  <tr><td>14</td><td>Deletion sweep 2: legacy tests</td><td><span class="pill pkg">app</span></td><td>~2,000 (pure del)</td><td><span class="pill s">low</span></td></tr>
+  <tr><td>15</td><td>Docs sweep</td><td><span class="pill pkg">docs</span></td><td>~400–700</td><td><span class="pill s">low</span></td></tr>
+</table>
+<p class="meta" style="margin-top:4px">Packages: <b>interface</b> = <code>bridge/sesori_plugin_interface</code> · <b>app</b> = <code>bridge/app</code> · <b>opencode</b> = <code>bridge/sesori_plugin_opencode</code> (pub name <code>opencode_plugin</code>) · <b>runtime</b> = new <code>bridge/sesori_plugin_runtime</code></p>
+
+<h2><span class="num">3</span>PR details</h2>
+
+<h4 class="phase">Phase A — Foundations</h4>
+
+<div class="card pr">
+<h3><span class="prnum">PR 1</span> Interface prep: exceptions, dead code, value-type promotion</h3>
+<p><b>Goal:</b> let non-HTTP plugins signal failures without faking HTTP codes; clear confirmed-dead code; give the future host services their vocabulary.</p>
+<ul>
+  <li>Add <code>PluginOperationException</code> base (<code>operation</code>, optional <code>statusCode</code>/<code>message</code>/<code>cause</code>) in <code>sesori_plugin_interface</code>; make <code>PluginApiException</code> extend it — all existing throw sites compile unchanged.</li>
+  <li>Migrate the four catch sites to <code>on PluginOperationException</code> mapping <code>statusCode ?? 502</code>: <code>request_handler.dart:53,112</code>, <code>request_router.dart:169</code>, and <code>delete_session_handler.dart:82</code> (replace the literal <code>404</code> check with a statusCode-aware not-found predicate so delete-idempotency survives non-HTTP plugins). Router test: a statusCode-less <code>PluginOperationException</code> maps to 502, not 500.</li>
+  <li>Delete dead <code>server/process.dart</code> (zero importers, verified) and the never-consumed <code>ProcessMatchKind.openCodeServe</code> enum value + its classifier branch (<code>process_repository.dart:83</code>).</li>
+  <li>Move <code>ProcessIdentity</code>, <code>ProcessUser</code>, <code>ServerClock</code>, and <code>SignalResult</code> (renamed from <code>ShutdownResult</code>; the old name is removed outright, per review) from <code>bridge/app/lib/src/server/foundation/</code> into <code>sesori_plugin_interface</code>. <b>Note:</b> <code>SignalResult</code> moves <i>as-is including its <code>dart:io ProcessSignal</code> field</i> — the interface package already uses <code>dart:io</code> (<code>log.dart</code>) and is CLI-only, so this is accepted rather than churning every construct/read site.</li>
+  <li>All importers flip to the interface package in this PR (per review, instead of leaving re-export shims at the old paths until PR 14). Move <code>process_identity_test.dart</code> alongside (it is the only existing foundation test; add small new tests for <code>ProcessUser</code>/<code>SignalResult</code>).</li>
+</ul>
+<div class="safe"><b>Why always-green:</b> subtype relationship keeps every existing throw/catch behavior identical for HTTP errors; deleted code has no references; import flips are mechanical and analyzer-enforced. Behavior delta: zero.</div>
+</div>
+
+<div class="card pr">
+<h3><span class="prnum">PR 2</span> Lifecycle contract types (pure additions)</h3>
+<p><b>Goal:</b> land the entire new contract in <code>sesori_plugin_interface</code> with nothing consuming it yet, so the contract itself gets a focused review.</p>
+<ul>
+  <li><code>BridgePluginDescriptor</code> (<code>id</code>, <code>displayName</code>, <code>options</code>, <code>validateConfig</code>, <code>start(PluginHost)</code>), <code>PluginOption</code> (with a typed-parse hook so plugins don't re-implement "<code>int.parse</code> + usage error"), <code>PluginConfig</code>.</li>
+  <li><code>BridgePlugin</code> (<code>api</code>, <code>status</code>, <code>currentStatus</code>, <code>describe()</code>, <code>shutdown({budget})</code>) and the sealed <code>PluginStatus</code> family: <code>Starting / Ready / Degraded / Restarting / Failed / Stopping / Stopped</code>. <code>Degraded</code> carries <code>since</code>, <code>recoverable</code>, and <code>requiresUserAction</code> + hint (remote-plugin auth expiry). The legal-transition state machine is documented on the type and enforced by the mixin: <b>no <code>Failed</code> after <code>Stopping</code></b>; stream closes after <code>Stopped</code>.</li>
+  <li><code>PluginHost</code> + service interfaces: <code>HostProcessService</code> (spawn returns <code>SpawnedProcess</code> with <code>stdin</code>, identity capture, <code>exitCode</code>; <code>inspect/list/signalGraceful/signalForce</code>; <code>isLiveBridgeProcess</code> classification via <code>BridgeHostInfo</code>), <code>HostPortService.isBindable</code>, <code>HostJsonStore</code> (atomic read/write/delete/quarantine <b>plus locked <code>update()</code></b>), <code>clock</code>, <code>environment</code>, <code>startAborted</code> (cooperative abort signal).</li>
+  <li><code>SteadyPluginLifecycle</code> mixin (CLI/remote archetypes: lifecycle in ~5 lines, with debounced <code>markDegraded/markReady</code> helpers), <code>PluginStartException</code> (contract: <code>start()</code> MUST release everything it acquired before throwing), <code>PluginDiagnostics</code>.</li>
+  <li>Contract docs: <code>start()</code> runs under the bridge's cross-instance startup mutex with the abort signal — <i>never</i> an abandoning <code>Future.timeout</code>; <code>healthCheck()</code> = instantaneous probe (mobile-facing) vs <code>status</code> = debounced lifecycle signal; <b><code>dispose()</code> and <code>shutdown()</code> MUST be idempotent and safe in either order</b> (the orchestrator double-disposes during the migration window).</li>
+  <li><b>Deprecation is doc-comment only</b> ("Prefer <code>shutdown()</code>; will be removed") — <i>no</i> <code>@Deprecated</code> annotation on <code>BridgePluginApi.dispose()</code>: <code>orchestrator.dart:359</code> keeps calling it until PR 12 and CI runs <code>dart analyze --fatal-infos</code>, which a cross-package deprecation would fail.</li>
+  <li><b>All types hand-written</b> (sealed classes/records) — no freezed/json_serializable, no generated files. Unit tests for the mixin, status machine, option parsing. Rewrite the stale interface README ("8 methods") in the same PR.</li>
+</ul>
+<div class="safe"><b>Why always-green:</b> 100% additive — no production code references any of it yet.</div>
+</div>
+
+<div class="card pr">
+<h3><span class="prnum">PR 3</span> PluginHost implementation in the bridge</h3>
+<p><b>Goal:</b> a production-quality <code>BridgePluginHostImpl</code> in <code>bridge/app</code>, fully tested, still unused.</p>
+<ul>
+  <li><code>HostProcessService</code> over <code>SystemProcessApi</code>/<code>ProcessRepository</code>: spawn with identity capture (POSIX <code>ps lstart</code> start-marker, Windows fallbacks), stdin/stdout/stderr/exitCode, graceful/force signals; expose the sesori-bridge process classifier as <code>BridgeHostInfo.isLiveBridgeProcess</code> (capability, not data — classifier strings stay bridge-side). Validate the spawn surface with a throwaway stdio echo-child test (ACP rehearsal).</li>
+  <li><code>HostPortService</code> over <code>LoopbackPortApi</code>; <code>HostJsonStore</code> over <code>RuntimeFileApi</code> (filenames parameterized — currently hardcoded; locked <code>update()</code> via an OS-level advisory lock; name validation rejects path separators and the reserved <code>bridge-startup.*</code> prefix).</li>
+  <li>Per-plugin state directories <code>&lt;installRoot&gt;/plugins/&lt;id&gt;/</code> derived from <code>ManagedRuntimePaths</code> — <b>except</b> OpenCode, which will be handed <code>&lt;cacheDir&gt;/runtime</code> to honor the frozen ownership-file location.</li>
+  <li>Unit tests against the existing server-layer test doubles.</li>
+</ul>
+<div class="safe"><b>Why always-green:</b> new classes + tests only; production wiring untouched.</div>
+</div>
+
+<h4 class="phase">Phase B — Seam flip</h4>
+
+<div class="card pr risky">
+<h3><span class="prnum">PR 4</span> Seam flip via <code>LegacyOpenCodeDescriptor</code> <span class="pill l">riskiest PR — keep it surgical</span></h3>
+<p><b>Goal:</b> the runner consumes the new contract while <i>zero OpenCode code moves</i>. A bridge-app-internal descriptor wraps today's exact flow.</p>
+<ul>
+  <li><code>LegacyOpenCodeDescriptor</code> (in <code>bridge/app</code>): <code>options</code> = the four existing flags (identical names/help/defaults); <code>validateConfig</code> = the <code>--no-auto-start</code>-requires-<code>--port</code> rule; <code>start(host)</code> = today's <code>resolveServer</code> + <code>OpenCodeServerService</code> flow + <code>OpenCodePlugin(serverUrl, password)</code> construction, returning a <code>BridgePlugin</code> wrapper whose <code>shutdown()</code> runs dispose-then-<code>stopOwnedServer</code> in order and whose <code>describe()</code> reports the endpoint.</li>
+  <li>The wrapper's <code>shutdown()</code> is guarded/idempotent, and a test covers the <b>double-dispose path</b>: the orchestrator's <code>finally</code> still calls <code>_plugin.dispose()</code> (<code>orchestrator.dart:359</code>) until PR 12, so dispose-then-shutdown must be safe by contract, not by accident.</li>
+  <li>Runner changes (<code>bridge_runtime_runner.dart</code>): <code>validateConfig</code> runs at arg-parse time, strictly before the mutex and before <code>enforceSingleLiveBridge</code> (a typo'd flag must never terminate a healthy resident bridge); mutex → enforce-single-bridge → build host → <code>descriptor.start(host)</code>; the mutex is held until <code>start()</code> settles — no <code>Future.timeout</code>.</li>
+  <li>Ordered shutdown: <code>await plugin.shutdown(budget)</code> as an ordered step before <code>BridgeShutdownCoordinator</code>'s parallel phase; the coordinator's process-wide backstop timer is armed <i>before</i> the ordered phase, sized <code>budget + slack</code> (no window with no timer running), and its exit code is <b>derived from the terminal-failure latch</b> (exit 1 if <code>PluginFailed</code> was recorded — a hung shutdown after failure must not exit 0). <code>registerOwnedOpenCodeShutdown</code> folds into the wrapper's <code>shutdown()</code>.</li>
+  <li>Failure surfacing: terminal-failure latch — first <code>PluginFailed</code> recorded immediately after <code>start()</code> returns, checked right before <code>session.run()</code>, late-bound to <code>session.cancel()</code> after. <b>Honest delta note:</b> the latch machinery lands here, but nothing can emit <code>PluginFailed</code> after a successful start until the exit monitor activates in PR 12 — start-time failures already exit 1 today.</li>
+  <li>Delete the <code>BridgePluginFactory</code> typedef and <code>_createOpenCodePlugin</code>. <code>BridgeConfig.serverURL/serverPassword</code> stay for now (fed from the legacy flow) so the orchestrator is untouched. Update <code>bridge_runtime_runner_test.dart</code> / <code>bridge_runtime_server_test.dart</code> to the new seam.</li>
+</ul>
+<div class="safe"><b>Why always-green:</b> the descriptor delegates to byte-identical existing services; CLI surface and ownership file are unchanged. Deliberate deltas: shutdown becomes ordered (was: parallel race between SSE teardown and OpenCode kill) and the backstop exit code becomes latch-aware. Manual smoke: normal start, <code>--no-auto-start</code> attach, second-bridge replacement prompt, Ctrl-C shutdown, kill-opencode-mid-session.</div>
+</div>
+
+<div class="card pr">
+<h3><span class="prnum">PR 5</span> Plugin selection, enablement &amp; PluginManager</h3>
+<p><b>Goal:</b> the capability you asked for explicitly — registered plugins are <i>not</i> auto-started; each is independently startable/stoppable.</p>
+<ul>
+  <li><code>PluginManager</code> in <code>bridge/app</code>: holds the descriptor registry, <code>startPlugin(id)</code> / <code>stopPlugin(id)</code> (per-id, idempotent, each stop honoring that plugin's <code>shutdown(budget)</code>), <code>activePlugins</code> view. Runner uses it for startup/shutdown.</li>
+  <li><b>Defined stop semantics:</b> <code>stopPlugin</code> on the active plugin while a session is live first cancels the session (<code>session.cancel()</code>), then runs <code>shutdown()</code> — never leaves a zombie bridge serving requests against a stopped plugin. (The orchestrator subscription today only logs "plugin event stream closed"; that is not an acceptable end state.)</li>
+  <li>Selection policy: <code>--plugin &lt;id&gt;</code> CLI flag + <code>enabledPlugins</code> in bridge settings (<code>BridgeSettingsRepository</code>); default = <code>opencode</code> when unset, so existing installs see zero change. Only the <i>selected</i> descriptor's options are registered into the ArgParser (two-pass parse: <code>--plugin</code> first, then full parser; documented <code>--help</code> behavior).</li>
+  <li>Current constraint enforced with a clear error: exactly one active plugin. <b>Scope honesty:</b> the manager API is N-ready, but multi-active (and mid-session start/stop without cancel) needs the orchestrator/DI rebind tracked in the companion protocol-portability work — a single <code>BridgePluginApi</code> is constructor-baked into ~10 components today.</li>
+</ul>
+<div class="safe"><b>Why always-green:</b> defaults reproduce today's behavior exactly; new flags are additive.</div>
+</div>
+
+<div class="card pr">
+<h3><span class="prnum">PR 6</span> OpenCode DB maintenance moves into the plugin</h3>
+<p><b>Goal:</b> the smallest self-contained code move, done early to de-risk the pattern: <code>opencode_db_api.dart</code> + <code>opencode_db_repository.dart</code> + <code>opencode_db_maintenance_service.dart</code> (+ their tests) relocate to <code>sesori_plugin_opencode</code>.</p>
+<ul>
+  <li><code>opencode_plugin/pubspec.yaml</code> gains the <code>sqlite3</code> dependency <i>in this PR</i> (it has none today); the moved API is exported from the plugin's public barrel <code>lib/opencode_plugin.dart</code> (the <code>implementation_imports</code> lint is enabled under <code>--fatal-infos</code>, so the app may not deep-import plugin internals).</li>
+  <li>The maintenance now runs via <code>Isolate.run</code> — the synchronous multi-minute VACUUM must never block the event loop (later it runs under the startup mutex, where a blocked loop would make the cooperative abort unable to fire). <b>Stated behavior delta:</b> "DB maintenance runs in an isolate".</li>
+  <li>The runner's <code>_optimizeOpenCodeDbIfNeeded</code> keeps its call site but imports from the plugin package (app already path-depends on <code>opencode_plugin</code> — verified); the call moves inside <code>descriptor.start()</code> at PR 12. App's direct <code>sqlite3</code> dependency line is removed (drift retains it transitively).</li>
+</ul>
+<div class="safe"><b>Why always-green:</b> same maintenance logic, same trigger point; only the package boundary and execution isolate change. ~900 lines because a move counts on both sides.</div>
+</div>
+
+<h4 class="phase">Phase C — Supervisor extraction</h4>
+
+<div class="card pr">
+<h3><span class="prnum">PR 7</span> New package <code>sesori_plugin_runtime</code> — ownership store, stale cleanup, stop</h3>
+<p><b>Goal:</b> first half of the reusable managed-runtime skeleton, extracted from <code>OpenCodeServerService</code>'s generic parts.</p>
+<ul>
+  <li>Package scaffolding: <code>bridge/pubspec.yaml</code> workspace list, <code>bridge/Makefile</code> MODULES, <code>bridge-ci.yml</code>. Depends only on <code>sesori_plugin_interface</code>.</li>
+  <li><b>Seam design (so the PR 10 fidelity gate can hold):</b> the supervisor depends on a <i>record-level</i> <code>RuntimeOwnershipStore</code> interface (the <code>HostJsonStore</code>-backed implementation, with locked <code>update()</code>, ships in the same PR as the production default) and on spawn/probe/port <i>functions</i> supplied via <code>ManagedRuntimeSpec</code>. This is what lets PR 10 adapt the legacy repositories with thin adapters instead of rewriting the old test suite.</li>
+  <li>Plugin-supplied <b>record codec</b> (<code>toJson/fromJson</code> + identity-field accessors): OpenCode will supply its existing freezed model verbatim, writing <i>byte-compatible</i> JSON to the legacy path — the generic record shape is only the supervisor's in-memory view. Byte-compat codec round-trip tests live <i>here</i>, not PR 10. Corrupt-file quarantine preserved.</li>
+  <li>5-phase stale-owned-runtime cleanup (authorize via owner-liveness + <code>isLiveBridgeProcess</code> — live other-owner bridges spared; parallel graceful; wait; force survivors; delete records only when gone) and <code>stop()</code> (graceful → wait → identity recheck → force → record delete). Injected clock/random seams.</li>
+  <li>Port the cleanup/stop/authorization scenarios from <code>open_code_server_service_test.dart</code> (incl. the Windows missing-start-marker and basename fallbacks); fakes are rewritten against the new seams (~300–400 lines — budgeted, not incidental).</li>
+  <li><b>Contingency split:</b> if the diff approaches 2,000, <code>stop()</code> + its scenarios move to PR 8 (they share fakes with start), or scaffolding lands as a trivial PR 6.5.</li>
+</ul>
+<div class="safe"><b>Why always-green:</b> new package, no production consumer yet.</div>
+</div>
+
+<div class="card pr">
+<h3><span class="prnum">PR 8</span> Supervisor start / attach — with legacy-default policy knobs</h3>
+<p><b>Goal:</b> the start path, hardened semantics available but <i>defaulting to legacy behavior</i>.</p>
+<ul>
+  <li><code>ManagedRuntimeSpec</code> (executable, args/env builders, structured <code>probeHealth</code> returning <code>{healthy, version, detail}</code>, optional <code>validateRuntime</code>, port policy, budgets) with two explicit <b>policy knobs</b>:
+    <ul>
+      <li><code>healthPolicy</code>: <code>attemptCount(n, delay)</code> (legacy: 5 × 500 ms) <i>or</i> <code>deadline(d)</code> (new default at flip: 30 s) — the old test suite hard-asserts exact delay sequences, so pacing must be configurable, not replaced;</li>
+      <li><code>recordTiming</code>: <code>afterSpawn</code> (legacy: record written only once a real pid exists — the frozen schema's <code>openCodePid</code> is required non-null, so there is <i>no representable</i> pre-spawn state) <i>or</i> <code>intentSideFile</code> (new: see PR 9).</li>
+    </ul>
+  </li>
+  <li>Start sequence: explicit-port path pre-probes bindability and diagnoses the occupant via <code>host.processes</code> ("port 4096 held by pid N: …"); spawn-failure (ENOENT) fails fast and skips port retries; child-exit-before-first-healthy-probe is authoritative failure regardless of probe success (squatter defense).</li>
+  <li>Cooperative abort: supervisor checks <code>host.startAborted</code> at every phase boundary and rolls back (kill child, delete record) before completing — pairs with the runner holding the mutex until settlement.</li>
+  <li><code>attach()</code> mode (today's <code>--no-auto-start</code>): probe, never own, never kill; degraded-until-reachable semantics. Port the start/attach/port/health scenarios from the legacy suite.</li>
+</ul>
+<div class="safe"><b>Why always-green:</b> still no production consumer. Restart/exit-monitoring deliberately NOT in this PR (see PR 9) to keep it under budget.</div>
+</div>
+
+<div class="card pr">
+<h3><span class="prnum">PR 9</span> Supervisor restart, exit monitoring, port pinning, intent side-file <span class="pill m">all default-off</span></h3>
+<ul>
+  <li>Exit monitoring + stderr logging with a <code>[runtimeId]</code> prefix (reinstates what dead <code>server/process.dart</code> dropped); bounded restart-with-backoff emitting <code>PluginRestarting</code>; <b>port pinned across restarts</b> (the plugin's HTTP/SSE stack is address-frozen; if the port never frees → <code>PluginFailed</code>); restarts disarmed during <code>stop()</code> so clean shutdowns can't emit <code>Failed</code>.</li>
+  <li><b>Intent record goes to a bridge-private side file</b> (e.g. <code>&lt;stateDir&gt;/&lt;runtimeId&gt;-start-intent.json</code>), written before spawn and resolved after — <i>never</i> into the frozen <code>opencode-processes.json</code>, whose required non-null <code>openCodePid</code> cannot represent "no pid yet" and whose readers in old bridges must never see a placeholder. A dedicated <b>mixed-version test</b> proves a pre-migration bridge reading the runtime directory is unaffected by the side file's presence.</li>
+  <li>All features here are <b>off by default</b> and activate only when the real descriptor opts in at PR 12 — PR 10's wrapper keeps them off.</li>
+</ul>
+<div class="safe"><b>Why always-green:</b> no production consumer; everything default-off.</div>
+</div>
+
+<div class="card pr">
+<h3><span class="prnum">PR 10</span> <code>OpenCodeServerService</code> delegates to the supervisor <span class="pill m">fidelity gate</span></h3>
+<p><b>Goal:</b> production exercises the extracted code <i>before</i> any seam moves, behind the unchanged public API.</p>
+<ul>
+  <li><code>OpenCodeServerService</code> keeps its exact public surface (<code>start</code>, <code>validateExistingServer</code>, <code>stopOwnedServer</code>, …) but internally builds a <code>ManagedRuntimeSpec</code> + supervisor configured with <b>exact legacy policies</b>: <code>attemptCount(5, 500ms)</code>, <code>recordTiming: afterSpawn</code>, per-port-exhaustion → next candidate, restart/exit-monitor/intent-file off.</li>
+  <li>Thin, named adapters bridge the legacy constructor injection to the supervisor seams — <code>OpenCodeProcessRepository → spawn/probe functions</code>, <code>OpenCodeOwnershipRepository → RuntimeOwnershipStore</code>, <code>PortRepository → port availability</code> — this adapter layer (~200–400 lines) is a planned deliverable, and is what "constructor seams only" means for the test suite.</li>
+  <li><b>Acceptance:</b> the existing 1,224-line <code>open_code_server_service_test.dart</code> passes with constructor/adapter seams only — its assertions on write/delete call counts, <code>[starting, ready]</code> upsert sequences, and exact 500 ms delay sequences hold because the wrapper runs legacy policies. Byte-compare an ownership file written before/after on macOS + Windows (CI if practical).</li>
+</ul>
+<div class="safe"><b>Why always-green:</b> same public API, same on-disk bytes, same observable behavior — proven by the unmodified test suite.</div>
+</div>
+
+<h4 class="phase">Phase D — Absorb &amp; flip</h4>
+
+<div class="card pr">
+<h3><span class="prnum">PR 11</span> OpenCode plugin absorbs its lifecycle (dormant)</h3>
+<p><b>Goal:</b> everything OpenCode-specific lands in <code>sesori_plugin_opencode</code>, compiled and tested but not yet wired into <code>bin/bridge.dart</code>.</p>
+<ul>
+  <li><code>opencode_plugin/pubspec.yaml</code> gains <code>sesori_plugin_runtime</code> <i>in this PR</i> (sqlite3 already arrived in PR 6) — the dormant code must compile from day one.</li>
+  <li><code>OpenCodePluginDescriptor</code>: the four options, validation, <code>start(host)</code> → stale cleanup → start-or-attach via supervisor → construct <code>OpenCodePlugin</code> → await first health → return. Handed <code>&lt;cacheDir&gt;/runtime</code> as its state directory (frozen contract). Supplies the legacy freezed ownership model as the record codec.</li>
+  <li>OpenCode runtime policy moves in: spawn args/env (<code>OPENCODE_SERVER_PASSWORD</code>), <code>/global/health</code> probe + Basic-auth username, password generation, port constants — re-expressed over <code>HostProcessService</code> (interim duplication with the bridge-side copies is accepted; they die in PR 13).</li>
+  <li>Status wiring: <code>SseConnection</code> gains <code>onConnected/onDisconnected</code> callbacks → <code>Ready/Degraded</code> transitions (fixes attach-mode never reporting ready); <code>api</code> becomes a stable facade over swappable transport; supervisor restart re-targets it (same pinned port). <code>await</code> the formerly fire-and-forget <code>_initialize()</code> in <code>start()</code>, mapping failures to <code>PluginDegraded</code>.</li>
+</ul>
+<div class="safe"><b>Why always-green:</b> <code>bin/bridge.dart</code> still uses the legacy descriptor; nothing here executes in production. Duplication is deliberate and temporary.</div>
+</div>
+
+<div class="card pr risky">
+<h3><span class="prnum">PR 12</span> Flip to the real descriptor <span class="pill l">second risky PR</span></h3>
+<p><b>Goal:</b> the swap — wiring only, deletions deferred to PRs 13/14 so this PR stays reviewable.</p>
+<ul>
+  <li><code>bin/bridge.dart</code>: registry becomes <code>[OpenCodePluginDescriptor()]</code>. Delete <code>LegacyOpenCodeDescriptor</code> + its tests. New supervisor policies activate here: deadline health, intent side-file, exit monitoring, bounded restart with port pinning.</li>
+  <li><b>BridgeConfig loses <code>serverURL</code>/<code>serverPassword</code> in this PR</b> (not later — after the legacy flow is gone there is no source to feed the required constructor params): the orchestrator's <code>Target:</code> log switches to <code>plugin.describe()</code>, and the orchestrator's <code>finally</code> stops calling the deprecated <code>_plugin.dispose()</code> (shutdown owns teardown). <b>Stated behavior delta:</b> the Target log line derives from diagnostics; post-start runtime death now surfaces as <code>PluginFailed</code> → orderly shutdown, exit 1.</li>
+  <li><code>_optimizeOpenCodeDbIfNeeded</code> call site moves inside <code>descriptor.start()</code>.</li>
+  <li><b>Acceptance matrix:</b> normal start (spawns, owns, stops on exit); <code>--no-auto-start --port</code> attach (never kills); stale-runtime cleanup after <code>kill -9</code> of a previous bridge; second-bridge replacement; crash-restart with pinned port; headless systemd unit unchanged; upgrade-in-place from a pre-flip bridge (frozen ownership file read correctly); <b>crashed-mid-intent upgrade case</b> (side file present, old bridge unaffected; new bridge resolves it).</li>
+</ul>
+<div class="safe"><b>Why always-green:</b> PR 10 already proved the supervisor against the legacy spec in production; PR 11 landed the descriptor fully tested. This PR is a wiring swap whose new-code surface was reviewed earlier.</div>
+</div>
+
+<div class="card pr">
+<h3><span class="prnum">PR 13</span> Deletion sweep 1 — legacy source files</h3>
+<ul>
+  <li>Pure deletions, now-unreferenced (compiler-verified): <code>open_code_server_service.dart</code> (662), <code>open_code_process_api.dart</code> (146), <code>open_code_process_repository.dart</code> (82), <code>open_code_ownership_repository.dart</code> (117), ownership record trio incl. generated files (~260), the OpenCode parts of <code>bridge_runtime_server.dart</code> (<code>resolveServer</code>, <code>BridgeServerRuntime</code>), <code>registerOwnedOpenCodeShutdown</code>, <code>BridgeCliOptions</code>' four OpenCode fields + duplicated validation.</li>
+</ul>
+<div class="safe"><b>Why always-green:</b> nothing references these after PR 12; <code>dart analyze</code> enforces it. ~1,700 lines, all deletions.</div>
+</div>
+
+<div class="card pr">
+<h3><span class="prnum">PR 14</span> Deletion sweep 2 — legacy tests</h3>
+<ul>
+  <li>Delete <code>open_code_server_service_test.dart</code> (1,224 — its scenarios live on in <code>sesori_plugin_runtime</code> since PRs 7–9), <code>open_code_process_repository_test.dart</code> (134), <code>open_code_ownership_repository_test.dart</code> (224), <code>bridge_runtime_server_test.dart</code> (389, built around <code>_FakeOpenCodeServerService</code>).</li>
+  <li>(The PR 1 re-export shims were removed in PR 1 itself, per review — nothing left to sweep here.)</li>
+</ul>
+<div class="safe"><b>Why always-green:</b> test-only deletions. ~2,000 lines but zero-risk by construction.</div>
+</div>
+
+<div class="card pr">
+<h3><span class="prnum">PR 15</span> Docs sweep</h3>
+<ul>
+  <li><code>bridge/README.md</code> plugin-authoring guide (descriptor-based), <code>bridge/app/README.md</code> process-management sections → plugin docs, both <code>AGENTS.md</code>, root <code>AGENTS.md</code> server-subsystem description, <code>docs/SETUP_HEADLESS_VM.md</code> (flags unchanged; ownership story updated), scrub OpenCode references from <code>sesori_shared</code> doc comments.</li>
+</ul>
+<div class="safe"><b>Why always-green:</b> docs only.</div>
+</div>
+
+<h2><span class="num">4</span>Risk register → where each is retired</h2>
+<table>
+  <tr><th>Risk (from adversarial review)</th><th>Mitigation</th><th>PR</th></tr>
+  <tr><td>Abandoning <code>Future.timeout</code> on <code>start()</code> releases the startup mutex while the un-cancellable start keeps mutating shared state</td><td>Cooperative abort signal; mutex held until <code>start()</code> settles</td><td>2 (contract), 4, 8</td></tr>
+  <tr><td>Mixed-version bridges quarantine a reshaped ownership file → orphaned <code>opencode serve</code></td><td><code>opencode-processes.json</code> schema + steady-state bytes frozen forever; plugin-supplied codec; new state in separate side files only, proven inert to old readers</td><td>7, 9, 10 (byte-compare gate)</td></tr>
+  <tr><td>Intent record unrepresentable in the frozen schema (required non-null <code>openCodePid</code>)</td><td>Intent goes to a bridge-private <i>side file</i>, never the frozen file; mixed-version inertness test</td><td>9</td></tr>
+  <tr><td>Hardened semantics break the legacy test suite (exact delay sequences, write counts, upsert ordering)</td><td>Policy knobs (<code>healthPolicy</code>, <code>recordTiming</code>) default to legacy; new defaults activate only at the flip</td><td>8, 10, 12</td></tr>
+  <tr><td>Restart onto a new port strands the address-frozen HTTP/SSE stack</td><td>Port pinned across restarts; <code>PluginFailed</code> if it never frees; <code>api</code> contractually a stable facade</td><td>9, 11</td></tr>
+  <tr><td>Crash between spawn and record write → untrackable orphan</td><td>Intent side-file written before spawn; <code>start()</code> contractually cleans up before throwing</td><td>2 (contract), 9</td></tr>
+  <tr><td>Clean shutdown emits spurious <code>PluginFailed</code> via exit monitor → re-entrant cancel</td><td>Status state machine: no <code>Failed</code> after <code>Stopping</code>; monitor disarmed in <code>stop()</code></td><td>2, 9</td></tr>
+  <tr><td>Fatal plugin death exits 0; failure before <code>session.run()</code> unhandled; hung shutdown after failure exits 0 via the backstop</td><td>Terminal-failure latch; latch-aware backstop exit code</td><td>4</td></tr>
+  <tr><td>Config typo kills the user's healthy resident bridge</td><td><code>validateConfig</code> strictly before mutex/replacement</td><td>2 (contract), 4</td></tr>
+  <tr><td>Sync sqlite VACUUM blocks the event loop under the mutex (abort can never fire)</td><td><code>Isolate.run</code> for DB maintenance</td><td>6</td></tr>
+  <tr><td>Concurrent ownership-file writes (restart vs cleanup) drop records</td><td>Locked <code>HostJsonStore.update()</code>; store mutations routed through it</td><td>2, 3, 7</td></tr>
+  <tr><td>ACP/stdio plugins can't use host spawn (no stdin)</td><td><code>SpawnedProcess.stdin</code> in the contract; stdio echo-child test</td><td>2, 3</td></tr>
+  <tr><td>Supervisor can't express stale-kill authorization ("live other-owner bridge spared")</td><td><code>BridgeHostInfo.isLiveBridgeProcess</code> capability</td><td>2, 3, 7</td></tr>
+  <tr><td>Extracted code drifts from the 1,224-line behavioral spec</td><td>Delegate-in-place PR with legacy policies whose acceptance is that suite passing unmodified (adapters named and budgeted)</td><td>10</td></tr>
+  <tr><td>Cross-package <code>@Deprecated</code> fails <code>dart analyze --fatal-infos</code> CI</td><td>Doc-comment-only deprecation until the call site dies at the flip</td><td>2, 12</td></tr>
+  <tr><td>Double-dispose during the migration window (orchestrator <code>finally</code> + wrapper shutdown)</td><td>Idempotency required by contract; guarded wrapper + dedicated test</td><td>2, 4</td></tr>
+  <tr><td>All registered plugins auto-start; stopping the active plugin leaves a zombie bridge</td><td>Registered ≠ started: descriptors inert; <code>PluginManager</code> starts only the enabled subset; <code>stopPlugin</code> cancels the live session first</td><td>5</td></tr>
+</table>
+
+<h2><span class="num">5</span>Per-PR acceptance checklist</h2>
+<div class="card">
+<ul class="check">
+  <li><code>dart analyze --fatal-infos</code> clean in every touched package; <code>dart test</code> green across the bridge workspace.</li>
+  <li>Bridge smoke test: start → OpenCode spawns → mobile can create a session and stream a reply → Ctrl-C → clean exit, no orphaned <code>opencode serve</code> (check <code>ps</code>), ownership file consistent.</li>
+  <li><code>--no-auto-start --port &lt;p&gt;</code> attach mode works against a manually started server.</li>
+  <li>Diff ≤ ~2,000 changed lines as <code>git diff --stat</code> counts them (split the PR if a test suite or codegen pushes it over).</li>
+  <li>No change to CLI flag names/semantics. No change to <i>steady-state</i> <code>opencode-processes.json</code> bytes (PRs 7–12: verify explicitly); any new persisted state lives in separate files proven inert to pre-migration bridges (mixed-version test).</li>
+  <li>PR description states its behavior delta (expected: "none", except the deliberate deltas in PRs 4, 6, and 12).</li>
+</ul>
+</div>
+
+<footer>
+  Source analysis: multi-agent exposure map + interface design + adversarial verification (3 lenses, 33 findings), session of 2026-06-10.
+  Plan rev 2 incorporates a second adversarial pass (3 lenses, 21 findings) that verified every PR against the actual repo: fixed the intent-record/frozen-schema contradiction, the PR-size blowouts (old PR 11 measured ~4,500 lines), the <code>--fatal-infos</code> deprecation trap, the pubspec dependency ordering, and the <code>BridgeConfig.serverURL</code> source gap.
+  Companion follow-up track (not in this ladder): protocol portability — typed SSE payloads, retire <code>_toOpenCodeFormat</code>, opaque project IDs, orchestrator/DI rebind for multi-active plugins.
+</footer>
+
+</div>
+</body>
+</html>

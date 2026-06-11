@@ -30,7 +30,7 @@ class BridgeCliOptions {
     required String defaultAuthUrl,
   }) {
     final authBackendFlag = results["auth-backend"] as String;
-    final authBackendUrl = _resolveAuthBackendUrl(
+    final authBackendUrl = resolveAuthBackendUrl(
       authBackendFlag: authBackendFlag,
       environment: environment,
       defaultAuthUrl: defaultAuthUrl,
@@ -58,7 +58,9 @@ class BridgeCliOptions {
     );
   }
 
-  static String _resolveAuthBackendUrl({
+  /// Resolves the auth backend URL from the CLI flag, the
+  /// `AUTH_BACKEND_URL` environment variable, or the default, in that order.
+  static String resolveAuthBackendUrl({
     required String authBackendFlag,
     required Map<String, String> environment,
     required String defaultAuthUrl,

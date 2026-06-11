@@ -278,7 +278,7 @@ void main() {
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
-      verify(() => mockSessionService.listAgents()).called(1);
+      verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).called(1);
       verify(() => mockSessionService.listProviders(projectId: any(named: "projectId"))).called(1);
     });
 
@@ -376,7 +376,7 @@ void _stubLoadApis(MockSessionService service, {required String sessionId}) {
       ApiResponse.success(const SessionStatusResponse(statuses: <String, SessionStatus>{})),
     ),
   );
-  when(() => service.listAgents()).thenAnswer(
+  when(() => service.listAgents(projectId: any(named: "projectId"))).thenAnswer(
     (_) => Future<ApiResponse<Agents>>.value(ApiResponse.success(Agents(agents: _agents()))),
   );
   when(() => service.listProviders(projectId: any(named: "projectId"))).thenAnswer(

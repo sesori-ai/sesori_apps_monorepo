@@ -4,8 +4,12 @@ import "package:clock/clock.dart";
 import "package:http/http.dart" as http;
 import "package:path/path.dart" as path;
 import "package:rxdart/rxdart.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginApi, Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show BridgePluginApi, Log, ProcessIdentity, ProcessUser, ServerClock;
 
+import "../../auth/bridge_registration_api.dart";
+import "../../auth/bridge_registration_repository.dart";
+import "../../auth/bridge_registration_service.dart";
 import "../../auth/login_email_api.dart";
 import "../../auth/login_email_repository.dart";
 import "../../auth/login_oauth_api.dart";
@@ -17,9 +21,6 @@ import "../../server/api/open_code_process_api.dart";
 import "../../server/api/runtime_file_api.dart";
 import "../../server/api/system_process_api.dart";
 import "../../server/api/terminal_prompt_api.dart";
-import "../../server/foundation/process_identity.dart";
-import "../../server/foundation/process_user.dart";
-import "../../server/foundation/server_clock.dart";
 import "../../server/models/open_code_ownership_record.dart";
 import "../../server/repositories/bridge_instance_repository.dart";
 import "../../server/repositories/open_code_ownership_repository.dart";
@@ -230,6 +231,20 @@ class BridgeRuntimeRunner {
       );
       shutdownCoordinator.add(disposable: tokenManager.dispose);
 
+      final bridgeRegistrationService = BridgeRegistrationService(
+        repository: BridgeRegistrationRepository(
+          api: BridgeRegistrationApi(
+            authBackendUrl: options.authBackendUrl,
+            client: httpClient,
+          ),
+        ),
+        tokenRefresher: tokenManager,
+        loadTokens: loadTokens,
+        saveTokens: saveTokens,
+        hostName: io.Platform.localHostname,
+        platform: BridgeRegistrationService.currentPlatformName(),
+      );
+
       final runtime = BridgeRuntime.create(
         config: BridgeConfig(
           relayURL: options.relayUrl,
@@ -245,6 +260,7 @@ class BridgeRuntimeRunner {
         httpClient: httpClient,
         accessTokenProvider: tokenManager,
         tokenRefresher: tokenManager,
+        bridgeRegistrationService: bridgeRegistrationService,
         database: AppDatabase.create(),
         processRunner: processRunner,
         failureReporter: LogFailureReporter(),

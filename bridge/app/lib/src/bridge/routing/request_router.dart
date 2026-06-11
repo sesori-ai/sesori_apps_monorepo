@@ -32,6 +32,7 @@ import "get_sessions_handler.dart";
 import "health_check_handler.dart";
 import "hide_project_handler.dart";
 import "open_project_handler.dart";
+import "post_agents_handler.dart";
 import "reject_question_handler.dart";
 import "rename_project_handler.dart";
 import "rename_session_handler.dart";
@@ -68,6 +69,7 @@ class RequestRouter {
     required WorktreeService worktreeService,
     required GetSessionDiffsHandler sessionDiffsHandler,
     required GetAgentsHandler getAgentsHandler,
+    required PostAgentsHandler postAgentsHandler,
   }) : _handlers = _buildHandlers(
          plugin: plugin,
          getCommandsHandler: getCommandsHandler,
@@ -84,6 +86,7 @@ class RequestRouter {
          worktreeService: worktreeService,
          sessionDiffsHandler: sessionDiffsHandler,
          getAgentsHandler: getAgentsHandler,
+         postAgentsHandler: postAgentsHandler,
        );
 
   static List<RequestHandlerBase> _buildHandlers({
@@ -102,6 +105,7 @@ class RequestRouter {
     required WorktreeService worktreeService,
     required GetSessionDiffsHandler sessionDiffsHandler,
     required GetAgentsHandler getAgentsHandler,
+    required PostAgentsHandler postAgentsHandler,
   }) {
     return [
       HealthCheckHandler(plugin),
@@ -130,6 +134,7 @@ class RequestRouter {
       abortSessionHandler,
       GetProvidersHandler(providerRepository),
       getAgentsHandler,
+      postAgentsHandler,
       GetSessionQuestionsHandler(plugin),
       GetProjectQuestionsHandler(plugin),
       ReplyToQuestionHandler(plugin),
@@ -166,11 +171,11 @@ class RequestRouter {
         headers: {},
         body: "no handler found for ${request.method} ${request.path}",
       );
-    } on PluginApiException catch (e) {
+    } on PluginOperationException catch (e) {
       Log.w("upstream error: $e");
       return RelayResponse(
         id: request.id,
-        status: e.statusCode,
+        status: e.statusCode ?? 502,
         headers: {},
         body: e.toString(),
       );

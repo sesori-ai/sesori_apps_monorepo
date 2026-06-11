@@ -17,10 +17,11 @@ class SessionApi {
 
   SessionApi({required RelayHttpApiClient client}) : _client = client;
 
-  Future<ApiResponse<Agents>> listAgents() {
-    return _client.get(
+  Future<ApiResponse<Agents>> listAgents({required String projectId}) {
+    return _client.post(
       "/agent",
       fromJson: Agents.fromJson,
+      body: ProjectIdRequest(projectId: projectId),
     );
   }
 

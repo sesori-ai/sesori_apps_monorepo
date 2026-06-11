@@ -1,12 +1,11 @@
 import 'dart:io';
 
 import 'package:sesori_bridge/src/bridge/runtime/bridge_logout_runner.dart';
-import 'package:sesori_bridge/src/server/foundation/process_identity.dart';
-import 'package:sesori_bridge/src/server/foundation/process_user.dart';
 import 'package:sesori_bridge/src/server/foundation/terminal_prompt_decision.dart';
 import 'package:sesori_bridge/src/server/repositories/bridge_instance_repository.dart';
 import 'package:sesori_bridge/src/server/repositories/terminal_prompt_repository.dart';
 import 'package:sesori_bridge/src/server/services/bridge_instance_service.dart';
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -14,7 +13,10 @@ void main() {
     late _FakeBridgeInstanceRepository bridgeInstanceRepository;
     late _FakeBridgeInstanceService bridgeInstanceService;
     late _FakeTerminalPromptRepository terminalPromptRepository;
+    late int unregisterBridgeCalls;
+    late Object? unregisterBridgeError;
     late int clearTokensCalls;
+    late int clearTokensCallsAtLastUnregister;
     late Object? clearTokensError;
     late BridgeLogoutRunner service;
 
@@ -22,12 +24,22 @@ void main() {
       bridgeInstanceRepository = _FakeBridgeInstanceRepository();
       bridgeInstanceService = _FakeBridgeInstanceService();
       terminalPromptRepository = _FakeTerminalPromptRepository();
+      unregisterBridgeCalls = 0;
+      unregisterBridgeError = null;
       clearTokensCalls = 0;
+      clearTokensCallsAtLastUnregister = -1;
       clearTokensError = null;
       service = BridgeLogoutRunner(
         bridgeInstanceRepository: bridgeInstanceRepository,
         bridgeInstanceService: bridgeInstanceService,
         terminalPromptRepository: terminalPromptRepository,
+        unregisterBridge: () async {
+          unregisterBridgeCalls += 1;
+          clearTokensCallsAtLastUnregister = clearTokensCalls;
+          if (unregisterBridgeError != null) {
+            throw unregisterBridgeError!;
+          }
+        },
         clearTokens: () async {
           clearTokensCalls += 1;
           if (clearTokensError != null) {
@@ -110,6 +122,36 @@ void main() {
 
       expect(result.status, equals(BridgeLogoutStatus.failed));
       expect(result.error, equals(clearTokensError));
+    });
+
+    test('unregisters the bridge before clearing tokens', () async {
+      final result = await service.logout(currentPid: 100);
+
+      expect(result.status, equals(BridgeLogoutStatus.loggedOut));
+      expect(unregisterBridgeCalls, equals(1));
+      expect(clearTokensCallsAtLastUnregister, equals(0));
+      expect(clearTokensCalls, equals(1));
+    });
+
+    test('still clears tokens when unregistering the bridge fails', () async {
+      unregisterBridgeError = Exception('auth server unreachable');
+
+      final result = await service.logout(currentPid: 100);
+
+      expect(result.status, equals(BridgeLogoutStatus.loggedOut));
+      expect(unregisterBridgeCalls, equals(1));
+      expect(clearTokensCalls, equals(1));
+    });
+
+    test('does not unregister the bridge when logout is declined', () async {
+      bridgeInstanceRepository.liveBridges = <ProcessIdentity>[_candidate(pid: 200)];
+      terminalPromptRepository.decision = TerminalPromptDecision.decline;
+
+      final result = await service.logout(currentPid: 100);
+
+      expect(result.status, equals(BridgeLogoutStatus.cancelled));
+      expect(unregisterBridgeCalls, equals(0));
+      expect(clearTokensCalls, equals(0));
     });
   });
 }

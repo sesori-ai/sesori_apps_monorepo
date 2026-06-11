@@ -11,7 +11,7 @@ import "login_oauth_api.dart";
 import "token.dart";
 
 const int _totalLoginTimeoutSeconds = 300; // 5 minutes, matching server session expiry
-const int _perRequestTimeoutSeconds = 35;  // Slightly longer than server's 30s long poll
+const int _perRequestTimeoutSeconds = 35; // Slightly longer than server's 30s long poll
 const Duration _defaultPollInterval = Duration(milliseconds: 250);
 const Duration _defaultPollTimeout = Duration(seconds: _totalLoginTimeoutSeconds);
 const Duration _defaultPerRequestTimeout = Duration(seconds: _perRequestTimeoutSeconds);
@@ -117,6 +117,7 @@ class LoginOAuthService {
             return TokenData(
               accessToken: accessToken,
               refreshToken: refreshToken,
+              bridgeId: null,
               lastProvider: provider,
             );
           case AuthSessionStatusResponseDenied():
@@ -145,7 +146,8 @@ class LoginOAuthService {
 
     const confirmText = "Confirm this code on the web page";
     final confirmPadding = " " * ((contentWidth - confirmText.length) ~/ 2);
-    final confirmLine = "│$confirmPadding$confirmText${" " * (contentWidth - confirmPadding.length - confirmText.length)}│";
+    final confirmLine =
+        "│$confirmPadding$confirmText${" " * (contentWidth - confirmPadding.length - confirmText.length)}│";
 
     const beforeText = "before approving the login request.";
     final beforePadding = " " * ((contentWidth - beforeText.length) ~/ 2);

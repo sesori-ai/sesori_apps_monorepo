@@ -2,10 +2,16 @@ import 'dart:io';
 
 import 'package:args/args.dart' show ArgParserException;
 import 'package:args/command_runner.dart' as cli;
+import 'package:http/http.dart' as http;
 import 'package:opencode_plugin/opencode_plugin.dart';
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
 import 'package:sesori_bridge/src/api/default_editor_api.dart';
 import 'package:sesori_bridge/src/api/wake_lock_client.dart';
+import 'package:sesori_bridge/src/auth/bridge_registration_api.dart';
+import 'package:sesori_bridge/src/auth/bridge_registration_repository.dart';
+import 'package:sesori_bridge/src/auth/bridge_registration_service.dart';
+import 'package:sesori_bridge/src/auth/token.dart';
+import 'package:sesori_bridge/src/auth/token_manager.dart';
 import 'package:sesori_bridge/src/bridge/foundation/device_type_detector.dart';
 import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_dispatch.dart';
@@ -17,8 +23,6 @@ import 'package:sesori_bridge/src/repositories/default_editor_repository.dart';
 import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
 import 'package:sesori_bridge/src/server/api/system_process_api.dart';
 import 'package:sesori_bridge/src/server/api/terminal_prompt_api.dart';
-import 'package:sesori_bridge/src/server/foundation/process_user.dart';
-import 'package:sesori_bridge/src/server/foundation/server_clock.dart';
 import 'package:sesori_bridge/src/server/repositories/bridge_instance_repository.dart';
 import 'package:sesori_bridge/src/server/repositories/process_repository.dart';
 import 'package:sesori_bridge/src/server/repositories/terminal_prompt_repository.dart';
@@ -26,7 +30,7 @@ import 'package:sesori_bridge/src/server/services/bridge_instance_service.dart';
 import 'package:sesori_bridge/src/services/bridge_config_service.dart';
 import 'package:sesori_bridge/src/services/sleep_prevention_service.dart';
 import 'package:sesori_bridge/src/version.dart';
-import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log, LogLevel;
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log, LogLevel, ProcessUser, ServerClock;
 
 const String _defaultRelayURL = 'wss://relay.sesori.com';
 const String _defaultAuthURL = 'https://api.sesori.com';
@@ -143,8 +147,17 @@ class LogoutCommand extends cli.Command<void> {
   @override
   final description = 'Clear stored authentication tokens';
 
+  LogoutCommand() {
+    argParser.addOption('auth-backend', defaultsTo: '', help: 'Auth backend URL');
+  }
+
   @override
   Future<void> run() async {
+    final authBackendUrl = BridgeCliOptions.resolveAuthBackendUrl(
+      authBackendFlag: argResults!['auth-backend'] as String,
+      environment: Platform.environment,
+      defaultAuthUrl: _defaultAuthURL,
+    );
     final systemProcessApi = SystemProcessApi(
       processRunner: ProcessRunner(),
       clock: const ServerClock(),
@@ -173,6 +186,7 @@ class LogoutCommand extends cli.Command<void> {
         clock: const ServerClock(),
       ),
       terminalPromptRepository: terminalPromptRepository,
+      unregisterBridge: () => _unregisterBridgeRegistration(authBackendUrl: authBackendUrl),
     );
 
     final result = await logoutRunner.logout(currentPid: pid);
@@ -192,6 +206,47 @@ class LogoutCommand extends cli.Command<void> {
         stderr.writeln('Error: Failed to clear authentication tokens: ${result.error}');
         exitCode = 1;
     }
+  }
+}
+
+/// Removes this bridge's registration on the auth server before the token
+/// file is deleted. Callers treat any failure as non-fatal.
+Future<void> _unregisterBridgeRegistration({required String authBackendUrl}) async {
+  final TokenData tokens;
+  try {
+    tokens = await loadTokens();
+  } on Object catch (e) {
+    // No stored tokens — nothing registered to remove. A corrupt token file
+    // also lands here; logout still proceeds, but leave a trace.
+    Log.w('Skipping bridge unregistration; could not load tokens: $e');
+    return;
+  }
+  if (tokens.bridgeId == null) {
+    return;
+  }
+
+  final httpClient = http.Client();
+  final tokenManager = TokenManager(
+    initialToken: tokens.accessToken,
+    authBackendUrl: authBackendUrl,
+    loadTokens: loadTokens,
+    saveTokens: saveTokens,
+  );
+  try {
+    final registrationService = BridgeRegistrationService(
+      repository: BridgeRegistrationRepository(
+        api: BridgeRegistrationApi(authBackendUrl: authBackendUrl, client: httpClient),
+      ),
+      tokenRefresher: tokenManager,
+      loadTokens: loadTokens,
+      saveTokens: saveTokens,
+      hostName: Platform.localHostname,
+      platform: BridgeRegistrationService.currentPlatformName(),
+    );
+    await registrationService.unregister().timeout(const Duration(seconds: 10));
+  } finally {
+    tokenManager.dispose();
+    httpClient.close();
   }
 }
 

@@ -1,10 +1,9 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
-import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log, ProcessIdentity;
 import 'package:sesori_shared/sesori_shared.dart';
 
-import '../../server/foundation/process_identity.dart';
 import '../../server/models/open_code_ownership_record.dart';
 import '../../server/repositories/open_code_ownership_repository.dart';
 import '../../server/repositories/startup_mutex_repository.dart';

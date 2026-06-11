@@ -1,7 +1,8 @@
 import "dart:io";
 
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+
 import "../api/open_code_process_api.dart";
-import "../foundation/process_identity.dart";
 
 class OpenCodeProcessRepository {
   OpenCodeProcessRepository({required OpenCodeProcessApi api}) : _api = api;

@@ -1,9 +1,13 @@
-import 'dart:io';
+import "dart:io";
 
 enum ShutdownSignal { graceful, force }
 
-class ShutdownResult {
-  const ShutdownResult({
+/// Outcome of delivering a shutdown signal to a process.
+///
+/// Carries the platform [ProcessSignal] that was actually sent — the
+/// interface package is CLI-only, so depending on `dart:io` here is accepted.
+class SignalResult {
+  const SignalResult({
     required this.pid,
     required this.requestedSignal,
     required this.deliveredSignal,
