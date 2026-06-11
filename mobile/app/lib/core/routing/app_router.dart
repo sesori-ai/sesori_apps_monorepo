@@ -22,19 +22,21 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _sessionShellNavigatorKey = GlobalKey<NavigatorState>();
 
 const _newSessionRouteSegment = "new";
+const _sessionsRouteSegment = ":projectId/sessions";
 const _sessionDetailRouteSegment = ":sessionId";
 const _sessionDiffsRouteSegment = "diffs";
 
 extension AppRouteToGoRoute on AppRouteDef {
   /// Returns the [GoRoute] for this route definition with an exhaustive
   /// builder switch over decoded [AppRoute] values.
-  GoRoute toGoRoute() {
+  GoRoute toGoRoute({List<RouteBase> routes = const []}) {
     // The login screen gets a fade-in page instead of the platform slide so
     // the splash → login hand-off reads as one continuous motion — see
     // _loginTransitionPage.
     if (this == AppRouteDef.login) {
       return GoRoute(
         path: path,
+        routes: routes,
         pageBuilder: (context, state) => _loginTransitionPage(
           context: context,
           state: state,
@@ -44,6 +46,7 @@ extension AppRouteToGoRoute on AppRouteDef {
     }
     return GoRoute(
       path: path,
+      routes: routes,
       builder: (context, state) => _buildScreen(context: context, state: state),
     );
   }
@@ -158,99 +161,101 @@ List<RouteBase> _buildAppRoutes({
   return [
     AppRouteDef.splash.toGoRoute(),
     AppRouteDef.login.toGoRoute(),
-    AppRouteDef.projects.toGoRoute(),
-    AppRouteDef.settings.toGoRoute(),
-    ShellRoute(
-      navigatorKey: sessionShellNavigatorKey,
-      builder: (context, state, child) {
-        final projectId = state.pathParameters["projectId"] ?? "";
-        final projectName = state.uri.queryParameters["name"];
-        final selectedSessionId = state.pathParameters["sessionId"];
-
-        return SessionListCubitProvider(
-          key: ValueKey("session-list-cubit-$projectId"),
-          projectId: projectId,
-          child: SessionSplitShell(
-            list: _SessionListPane(
-              projectId: projectId,
-              projectName: projectName,
-              selectedSessionId: selectedSessionId,
-            ),
-            child: child,
-          ),
-        );
-      },
+    AppRouteDef.projects.toGoRoute(
       routes: [
-        GoRoute(
-          path: AppRouteDef.sessions.path,
-          builder: (context, state) => Builder(
-            builder: (context) {
-              final route = switch (AppRoute.fromDef(
-                def: AppRouteDef.sessions,
-                pathParams: state.pathParameters,
-                queryParams: state.uri.queryParameters,
-              )) {
-                final AppRouteSessions route => route,
-                final route => throw StateError("Route ${route.def.name} is not a sessions route"),
-              };
-              return SessionSplitScope.of(context).isSplit
-                  ? const EmptySessionDetailPanel()
-                  : SessionListScreen(projectId: route.projectId, projectName: route.projectName);
-            },
-          ),
+        ShellRoute(
+          navigatorKey: sessionShellNavigatorKey,
+          builder: (context, state, child) {
+            final projectId = state.pathParameters["projectId"] ?? "";
+            final projectName = state.uri.queryParameters["name"];
+            final selectedSessionId = state.pathParameters["sessionId"];
+
+            return SessionListCubitProvider(
+              key: ValueKey("session-list-cubit-$projectId"),
+              projectId: projectId,
+              child: SessionSplitShell(
+                list: _SessionListPane(
+                  projectId: projectId,
+                  projectName: projectName,
+                  selectedSessionId: selectedSessionId,
+                ),
+                child: child,
+              ),
+            );
+          },
           routes: [
             GoRoute(
-              path: _newSessionRouteSegment,
-              parentNavigatorKey: rootNavigatorKey,
-              builder: (context, state) {
-                final route = switch (AppRoute.fromDef(
-                  def: AppRouteDef.newSession,
-                  pathParams: state.pathParameters,
-                  queryParams: state.uri.queryParameters,
-                )) {
-                  final AppRouteNewSession route => route,
-                  final route => throw StateError("Route ${route.def.name} is not a new-session route"),
-                };
-                return NewSessionScreen(projectId: route.projectId);
-              },
-            ),
-            GoRoute(
-              path: _sessionDetailRouteSegment,
-              builder: (context, state) {
-                final route = switch (AppRoute.fromDef(
-                  def: AppRouteDef.sessionDetail,
-                  pathParams: state.pathParameters,
-                  queryParams: state.uri.queryParameters,
-                )) {
-                  final AppRouteSessionDetail route => route,
-                  final route => throw StateError("Route ${route.def.name} is not a session-detail route"),
-                };
-                return SessionDetailScreen(
-                  key: ValueKey("session-detail-${route.sessionId}"),
-                  projectId: route.projectId,
-                  sessionId: route.sessionId,
-                  sessionTitle: route.sessionTitle,
-                  readOnly: route.readOnly,
-                );
-              },
+              path: _sessionsRouteSegment,
+              builder: (context, state) => Builder(
+                builder: (context) {
+                  final route = switch (AppRoute.fromDef(
+                    def: AppRouteDef.sessions,
+                    pathParams: state.pathParameters,
+                    queryParams: state.uri.queryParameters,
+                  )) {
+                    final AppRouteSessions route => route,
+                    final route => throw StateError("Route ${route.def.name} is not a sessions route"),
+                  };
+                  return SessionSplitScope.of(context).isSplit
+                      ? const EmptySessionDetailPanel()
+                      : SessionListScreen(projectId: route.projectId, projectName: route.projectName);
+                },
+              ),
               routes: [
                 GoRoute(
-                  path: _sessionDiffsRouteSegment,
+                  path: _newSessionRouteSegment,
+                  parentNavigatorKey: rootNavigatorKey,
                   builder: (context, state) {
                     final route = switch (AppRoute.fromDef(
-                      def: AppRouteDef.sessionDiffs,
+                      def: AppRouteDef.newSession,
                       pathParams: state.pathParameters,
                       queryParams: state.uri.queryParameters,
                     )) {
-                      final AppRouteSessionDiffs route => route,
-                      final route => throw StateError("Route ${route.def.name} is not a session-diffs route"),
+                      final AppRouteNewSession route => route,
+                      final route => throw StateError("Route ${route.def.name} is not a new-session route"),
                     };
-                    return SessionDiffsScreen(
-                      key: ValueKey("session-diffs-${route.sessionId}"),
+                    return NewSessionScreen(projectId: route.projectId);
+                  },
+                ),
+                GoRoute(
+                  path: _sessionDetailRouteSegment,
+                  builder: (context, state) {
+                    final route = switch (AppRoute.fromDef(
+                      def: AppRouteDef.sessionDetail,
+                      pathParams: state.pathParameters,
+                      queryParams: state.uri.queryParameters,
+                    )) {
+                      final AppRouteSessionDetail route => route,
+                      final route => throw StateError("Route ${route.def.name} is not a session-detail route"),
+                    };
+                    return SessionDetailScreen(
+                      key: ValueKey("session-detail-${route.sessionId}"),
                       projectId: route.projectId,
                       sessionId: route.sessionId,
+                      sessionTitle: route.sessionTitle,
+                      readOnly: route.readOnly,
                     );
                   },
+                  routes: [
+                    GoRoute(
+                      path: _sessionDiffsRouteSegment,
+                      builder: (context, state) {
+                        final route = switch (AppRoute.fromDef(
+                          def: AppRouteDef.sessionDiffs,
+                          pathParams: state.pathParameters,
+                          queryParams: state.uri.queryParameters,
+                        )) {
+                          final AppRouteSessionDiffs route => route,
+                          final route => throw StateError("Route ${route.def.name} is not a session-diffs route"),
+                        };
+                        return SessionDiffsScreen(
+                          key: ValueKey("session-diffs-${route.sessionId}"),
+                          projectId: route.projectId,
+                          sessionId: route.sessionId,
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -258,6 +263,7 @@ List<RouteBase> _buildAppRoutes({
         ),
       ],
     ),
+    AppRouteDef.settings.toGoRoute(),
   ];
 }
 

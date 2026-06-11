@@ -150,6 +150,7 @@ void main() {
     });
 
     test("nested session route segments compose to AppRouteDef templates", () {
+      expect("${AppRouteDef.projects.path}/:projectId/sessions", AppRouteDef.sessions.path);
       expect("${AppRouteDef.sessions.path}/new", AppRouteDef.newSession.path);
       expect("${AppRouteDef.sessions.path}/:sessionId", AppRouteDef.sessionDetail.path);
       expect("${AppRouteDef.sessionDetail.path}/diffs", AppRouteDef.sessionDiffs.path);
@@ -158,7 +159,7 @@ void main() {
     test("keeps non-session routes flat and session routes nested under a ShellRoute", () {
       final routes = buildAppRoutes();
       final flatPaths = routes.whereType<GoRoute>().map((route) => route.path).toList();
-      final shell = routes.whereType<ShellRoute>().single;
+      final shell = _sessionShellRoute();
       final allPaths = _collectAbsoluteRoutePaths(routes: routes);
 
       expect(
@@ -172,17 +173,17 @@ void main() {
           AppRouteDef.splash.path,
           AppRouteDef.login.path,
           AppRouteDef.projects.path,
-          AppRouteDef.settings.path,
           AppRouteDef.sessions.path,
           AppRouteDef.newSession.path,
           AppRouteDef.sessionDetail.path,
           AppRouteDef.sessionDiffs.path,
+          AppRouteDef.settings.path,
         ]),
       );
     });
 
     test("registers newSession before dynamic session route inside the shell", () {
-      final shell = buildAppRoutes().whereType<ShellRoute>().single;
+      final shell = _sessionShellRoute();
       final sessionsRoute = shell.routes.whereType<GoRoute>().single;
       final childPaths = sessionsRoute.routes.whereType<GoRoute>().map((route) => route.path).toList();
 
@@ -190,7 +191,7 @@ void main() {
     });
 
     test("session shell builder hoists cubit provider above split shell", () {
-      final shell = buildAppRoutes().whereType<ShellRoute>().single;
+      final shell = _sessionShellRoute();
       final widget = shell.builder!(
         _FakeBuildContext(),
         _FakeGoRouterState(
@@ -244,26 +245,31 @@ void main() {
 
     group("nested route tree invariants", () {
       test("registers exactly one shell route", () {
-        expect(buildAppRoutes().whereType<ShellRoute>(), hasLength(1));
+        expect(_collectShellRoutes(routes: buildAppRoutes()), hasLength(1));
       });
 
       test("shell owns exactly one first-level session route", () {
-        final shell = buildAppRoutes().whereType<ShellRoute>().single;
+        final shell = _sessionShellRoute();
         expect(shell.routes.whereType<GoRoute>(), hasLength(1));
       });
 
-      test("first-level shell route is the sessions path", () {
-        final shell = buildAppRoutes().whereType<ShellRoute>().single;
-        expect(shell.routes.whereType<GoRoute>().single.path, AppRouteDef.sessions.path);
+      test("first-level shell route is the relative sessions segment", () {
+        final shell = _sessionShellRoute();
+        final sessionsRoute = shell.routes.whereType<GoRoute>().single;
+        expect(sessionsRoute.path, ":projectId/sessions");
+        expect(
+          _composeRoutePath(parentPath: AppRouteDef.projects.path, path: sessionsRoute.path),
+          AppRouteDef.sessions.path,
+        );
       });
 
       test("new-session child uses a relative segment", () {
-        final sessionsRoute = buildAppRoutes().whereType<ShellRoute>().single.routes.whereType<GoRoute>().single;
+        final sessionsRoute = _sessionShellRoute().routes.whereType<GoRoute>().single;
         expect(sessionsRoute.routes.whereType<GoRoute>().first.path, "new");
       });
 
       test("detail child uses a relative dynamic segment", () {
-        final sessionsRoute = buildAppRoutes().whereType<ShellRoute>().single.routes.whereType<GoRoute>().single;
+        final sessionsRoute = _sessionShellRoute().routes.whereType<GoRoute>().single;
         expect(sessionsRoute.routes.whereType<GoRoute>().last.path, ":sessionId");
       });
 
@@ -272,7 +278,7 @@ void main() {
       });
 
       test("new-session child is declared before dynamic detail", () {
-        final sessionsRoute = buildAppRoutes().whereType<ShellRoute>().single.routes.whereType<GoRoute>().single;
+        final sessionsRoute = _sessionShellRoute().routes.whereType<GoRoute>().single;
         expect(sessionsRoute.routes.whereType<GoRoute>().map((route) => route.path), equals(["new", ":sessionId"]));
       });
 
@@ -290,9 +296,12 @@ void main() {
       });
 
       test("composed new-session path remains absolute", () {
-        final sessionsRoute = buildAppRoutes().whereType<ShellRoute>().single.routes.whereType<GoRoute>().single;
+        final sessionsRoute = _sessionShellRoute().routes.whereType<GoRoute>().single;
         final newRoute = sessionsRoute.routes.whereType<GoRoute>().first;
-        expect(_composeRoutePath(parentPath: sessionsRoute.path, path: newRoute.path), AppRouteDef.newSession.path);
+        expect(
+          _composeRoutePath(parentPath: AppRouteDef.sessions.path, path: newRoute.path),
+          AppRouteDef.newSession.path,
+        );
       });
 
       test("composed diffs path remains absolute", () {
@@ -386,6 +395,24 @@ List<String> _collectAbsoluteRoutePaths({required List<RouteBase> routes, String
   return paths;
 }
 
+List<ShellRoute> _collectShellRoutes({required List<RouteBase> routes}) {
+  final shells = <ShellRoute>[];
+  for (final route in routes) {
+    switch (route) {
+      case GoRoute(:final routes):
+        shells.addAll(_collectShellRoutes(routes: routes));
+      case ShellRoute(:final routes):
+        shells.add(route);
+        shells.addAll(_collectShellRoutes(routes: routes));
+      default:
+        throw StateError("Unsupported route type ${route.runtimeType}");
+    }
+  }
+  return shells;
+}
+
+ShellRoute _sessionShellRoute() => _collectShellRoutes(routes: buildAppRoutes()).single;
+
 String _composeRoutePath({required String parentPath, required String path}) {
   if (path.startsWith("/")) return path;
   if (parentPath.endsWith("/")) return "$parentPath$path";
@@ -393,7 +420,7 @@ String _composeRoutePath({required String parentPath, required String path}) {
 }
 
 GoRoute _sessionDetailRoute() {
-  final shell = buildAppRoutes().whereType<ShellRoute>().single;
+  final shell = _sessionShellRoute();
   final sessionsRoute = shell.routes.whereType<GoRoute>().single;
   return sessionsRoute.routes.whereType<GoRoute>().singleWhere((route) => route.path == ":sessionId");
 }

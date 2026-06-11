@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
+import "package:sesori_mobile/core/widgets/session_split/session_split_scope.dart";
 import "package:sesori_mobile/features/session_detail/widgets/background_tasks_bar.dart";
 import "package:sesori_mobile/features/session_detail/widgets/subtask_part_widget.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
@@ -82,11 +83,14 @@ void main() {
       await tester.pumpWidget(
         _buildApp(
           child: Scaffold(
-            body: SubtaskPartWidget(
-              projectId: "project-1",
-              part: _subtaskPart(description: "Child Session"),
-              children: [child],
-              childStatuses: const {},
+            body: SessionSplitScope(
+              isSplit: true,
+              child: SubtaskPartWidget(
+                projectId: "project-1",
+                part: _subtaskPart(description: "Child Session"),
+                children: [child],
+                childStatuses: const {},
+              ),
             ),
           ),
         ),
@@ -133,10 +137,13 @@ void main() {
       await tester.pumpWidget(
         _buildApp(
           child: Scaffold(
-            body: BackgroundTasksBar(
-              projectId: "project-1",
-              children: [child],
-              childStatuses: const {},
+            body: SessionSplitScope(
+              isSplit: true,
+              child: BackgroundTasksBar(
+                projectId: "project-1",
+                children: [child],
+                childStatuses: const {},
+              ),
             ),
           ),
         ),

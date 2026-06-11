@@ -31,7 +31,9 @@ class AdaptiveSessionRouterTestHarness {
   late final MockSessionDetailLoadService sessionDetailLoadService;
   late final MockNotificationCanceller notificationCanceller;
   late final MockVoiceTranscriptionService voiceTranscriptionService;
+  late final MockAuthSession authSession;
   late final BehaviorSubject<ConnectionStatus> statusController;
+  late final BehaviorSubject<AuthState> authStateController;
   late final StreamController<void> maxDurationReachedController;
   late final GoRouter router;
   late final GlobalKey<NavigatorState> rootNavigatorKey;
@@ -57,7 +59,9 @@ class AdaptiveSessionRouterTestHarness {
     sessionDetailLoadService = MockSessionDetailLoadService();
     notificationCanceller = MockNotificationCanceller();
     voiceTranscriptionService = MockVoiceTranscriptionService();
+    authSession = MockAuthSession();
     statusController = BehaviorSubject<ConnectionStatus>.seeded(_connectedStatus);
+    authStateController = BehaviorSubject<AuthState>.seeded(const AuthState.unauthenticated());
     maxDurationReachedController = StreamController<void>.broadcast();
     rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -65,6 +69,8 @@ class AdaptiveSessionRouterTestHarness {
     when(() => connectionService.status).thenAnswer((_) => statusController.stream);
     when(() => connectionService.currentStatus).thenReturn(_connectedStatus);
     when(() => connectionService.sessionEvents(any())).thenAnswer((_) => const Stream<SesoriSessionEvent>.empty());
+
+    when(() => projectService.listProjects()).thenAnswer((_) async => ApiResponse.success(const Projects(data: [])));
 
     when(
       () => projectService.listSessions(
@@ -129,6 +135,8 @@ class AdaptiveSessionRouterTestHarness {
     when(() => voiceTranscriptionService.onMaxDurationReached).thenAnswer(
       (_) => maxDurationReachedController.stream,
     );
+    when(() => authSession.authStateStream).thenAnswer((_) => authStateController.stream);
+    when(() => authSession.currentState).thenAnswer((_) => authStateController.value);
 
     final getIt = GetIt.instance;
     getIt.registerSingleton<ProjectService>(projectService);
@@ -142,6 +150,7 @@ class AdaptiveSessionRouterTestHarness {
     getIt.registerSingleton<SessionDetailLoadService>(sessionDetailLoadService);
     getIt.registerSingleton<NotificationCanceller>(notificationCanceller);
     getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
+    getIt.registerSingleton<AuthSession>(authSession);
 
     router = GoRouter(
       navigatorKey: rootNavigatorKey,
@@ -175,6 +184,7 @@ class AdaptiveSessionRouterTestHarness {
 
   Future<void> tearDown() async {
     await statusController.close();
+    await authStateController.close();
     await maxDurationReachedController.close();
     await GetIt.instance.reset();
   }

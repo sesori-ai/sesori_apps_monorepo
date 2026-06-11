@@ -107,7 +107,7 @@ void main() {
     expect(find.byKey(const ValueKey("session-detail-session-1")), findsNothing);
   });
 
-  testWidgets("direct wide /projects/p1/sessions entry shows no BackButton in left pane", (tester) async {
+  testWidgets("direct wide /projects/p1/sessions entry shows BackButton to projects", (tester) async {
     const location = "/projects/p1/sessions";
     final harness = AdaptiveSessionRouterTestHarness();
     await tester.binding.setSurfaceSize(const Size(1024, 800));
@@ -125,7 +125,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
-    expect(find.byType(BackButton), findsNothing);
+    expect(find.byType(BackButton), findsOneWidget);
+    expect(harness.router.canPop(), isTrue);
+
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+
+    expect(Uri.parse(harness.currentLocation).path, "/projects");
+    expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
   });
 
   testWidgets("pushed wide /projects/p1/sessions from /projects shows BackButton in left pane", (tester) async {
@@ -163,19 +170,25 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
-    expect(find.byType(BackButton), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key("session-split-left-pane")),
+        matching: find.byType(BackButton),
+      ),
+      findsOneWidget,
+    );
 
     // Tapping BackButton should pop back to /projects and remove split panes.
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
 
     expect(harness.router.canPop(), isFalse);
-    expect(harness.currentLocation, "/projects");
+    expect(Uri.parse(harness.currentLocation).path, "/projects");
     expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
     expect(find.byKey(const Key("session-split-right-pane")), findsNothing);
   });
 
-  testWidgets("pushed wide list then selected detail uses declarative detail URL", (tester) async {
+  testWidgets("pushed wide list then selected detail keeps projects underneath", (tester) async {
     final harness = AdaptiveSessionRouterTestHarness();
     await tester.binding.setSurfaceSize(const Size(1024, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -210,22 +223,67 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
-    expect(find.byType(BackButton), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key("session-split-left-pane")),
+        matching: find.byType(BackButton),
+      ),
+      findsOneWidget,
+    );
 
     // Select a session through the nested shell route.
     await tester.tap(find.text("Session One"));
     await tester.pumpAndSettle();
 
-    // goRoute to the detail URL declaratively rebuilds the shell at that URL.
+    // goRoute to the detail URL preserves /projects underneath because the shell is nested there.
     expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
     expect(
       find.descendant(
         of: find.byKey(const Key("session-split-left-pane")),
         matching: find.byType(BackButton),
       ),
-      findsNothing,
+      findsOneWidget,
     );
     expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key("session-split-left-pane")),
+        matching: find.byType(BackButton),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(Uri.parse(harness.currentLocation).path, "/projects");
+    expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
+  });
+
+  testWidgets("cold-start wide detail has projects underneath", (tester) async {
+    final harness = AdaptiveSessionRouterTestHarness();
+    await tester.binding.setSurfaceSize(const Size(1024, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    addTearDown(harness.tearDown);
+    await harness.setUp(
+      initialLocation: "/projects/p1/sessions/session-1?title=Session+One&readOnly=false",
+      currentRouteDef: AppRouteDef.sessionDetail,
+      sessionsByProject: {
+        "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
+      },
+    );
+
+    await tester.pumpWidget(harness.buildApp());
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
+    expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
+    expect(harness.router.canPop(), isTrue);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key("session-split-left-pane")),
+        matching: find.byType(BackButton),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets("wide shell preserves the left-list cubit for same-project routes and resets it for a new project", (
