@@ -59,10 +59,11 @@ class RemotePlugin with SteadyPluginLifecycle implements BridgePlugin {
   BridgePluginApi get api => _api;
 
   @override
-  PluginDiagnostics describe() => PluginDiagnostics(pluginId: api.id, endpoint: _url);
+  PluginDiagnostics describe() =>
+      PluginDiagnostics(pluginId: api.id, endpoint: _url, details: const {});
 
   @override
-  Future<void> onShutdown({Duration? budget}) => _api.dispose();
+  Future<void> onShutdown({required Duration? budget}) => _api.dispose();
 }
 ```
 

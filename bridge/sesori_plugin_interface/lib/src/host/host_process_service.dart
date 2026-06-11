@@ -19,9 +19,9 @@ abstract class HostProcessService {
   Future<SpawnedProcess> spawn({
     required String executable,
     required List<String> arguments,
-    Map<String, String>? environment,
-    String? workingDirectory,
-    bool runInShell = false,
+    required Map<String, String>? environment,
+    required String? workingDirectory,
+    required bool runInShell,
   });
 
   /// Captures the identity of the process [pid], or `null` when no such
@@ -29,8 +29,8 @@ abstract class HostProcessService {
   Future<ProcessIdentity?> inspect({required int pid});
 
   /// Lists the identities of all visible processes, optionally excluding
-  /// [excludePid] (typically the caller's own pid).
-  Future<List<ProcessIdentity>> list({int? excludePid});
+  /// [excludePid] (typically the caller's own pid; pass `null` to list all).
+  Future<List<ProcessIdentity>> list({required int? excludePid});
 
   /// Sends the platform's graceful-stop signal to [pid] (SIGTERM on POSIX;
   /// Windows has no graceful signal and delivers a kill instead — the

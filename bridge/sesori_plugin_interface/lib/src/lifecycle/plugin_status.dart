@@ -91,9 +91,9 @@ final class PluginReady extends PluginStatus {
 final class PluginDegraded extends PluginStatus {
   const PluginDegraded({
     required this.since,
-    this.recoverable = true,
-    this.requiresUserAction = false,
-    this.userActionHint,
+    required this.recoverable,
+    required this.requiresUserAction,
+    required this.userActionHint,
   }) : assert(
          !requiresUserAction || userActionHint != null,
          "userActionHint should explain what to do when requiresUserAction is true",
@@ -136,7 +136,7 @@ final class PluginDegraded extends PluginStatus {
 
 /// The plugin is restarting its managed runtime after an unexpected exit.
 final class PluginRestarting extends PluginStatus {
-  const PluginRestarting({required this.attempt, this.reason})
+  const PluginRestarting({required this.attempt, required this.reason})
     : assert(attempt >= 1, "attempt is 1-based: the first restart is attempt 1");
 
   /// 1-based restart attempt within the current failure episode.
@@ -164,7 +164,7 @@ final class PluginRestarting extends PluginStatus {
 /// being stopped deliberately must never emit this — the state machine
 /// forbids `Failed` after `Stopping`.
 final class PluginFailed extends PluginStatus {
-  const PluginFailed({required this.reason, this.cause});
+  const PluginFailed({required this.reason, required this.cause});
 
   /// Human-readable description of the terminal failure.
   final String reason;

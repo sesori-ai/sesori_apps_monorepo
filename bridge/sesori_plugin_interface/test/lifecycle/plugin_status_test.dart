@@ -5,9 +5,14 @@ void main() {
   group('PluginStatus.canTransitionTo', () {
     const starting = PluginStarting();
     const ready = PluginReady();
-    final degraded = PluginDegraded(since: DateTime.utc(2026, 6, 11));
-    const restarting = PluginRestarting(attempt: 1);
-    const failed = PluginFailed(reason: 'runtime exited');
+    final degraded = PluginDegraded(
+      since: DateTime.utc(2026, 6, 11),
+      recoverable: true,
+      requiresUserAction: false,
+      userActionHint: null,
+    );
+    const restarting = PluginRestarting(attempt: 1, reason: null);
+    const failed = PluginFailed(reason: 'runtime exited', cause: null);
     const stopping = PluginStopping();
     const stopped = PluginStopped();
 
@@ -73,34 +78,68 @@ void main() {
 
     test('Degraded compares by all fields', () {
       final since = DateTime.utc(2026, 6, 11, 10);
-      final a = PluginDegraded(since: since, requiresUserAction: true, userActionHint: 're-authenticate');
-      final b = PluginDegraded(since: since, requiresUserAction: true, userActionHint: 're-authenticate');
+      final a = PluginDegraded(
+        since: since,
+        recoverable: true,
+        requiresUserAction: true,
+        userActionHint: 're-authenticate',
+      );
+      final b = PluginDegraded(
+        since: since,
+        recoverable: true,
+        requiresUserAction: true,
+        userActionHint: 're-authenticate',
+      );
       expect(a, b);
       expect(a.hashCode, b.hashCode);
-      expect(a, isNot(PluginDegraded(since: since)));
+      expect(
+        a,
+        isNot(PluginDegraded(since: since, recoverable: true, requiresUserAction: false, userActionHint: null)),
+      );
       expect(
         a,
         isNot(
-          PluginDegraded(since: DateTime.utc(2026, 6, 12), requiresUserAction: true, userActionHint: 're-authenticate'),
+          PluginDegraded(
+            since: DateTime.utc(2026, 6, 12),
+            recoverable: true,
+            requiresUserAction: true,
+            userActionHint: 're-authenticate',
+          ),
         ),
       );
-      expect(PluginDegraded(since: since, recoverable: false), isNot(PluginDegraded(since: since)));
       expect(
-        PluginDegraded(since: since, recoverable: false).hashCode,
-        isNot(PluginDegraded(since: since).hashCode),
+        PluginDegraded(since: since, recoverable: false, requiresUserAction: false, userActionHint: null),
+        isNot(PluginDegraded(since: since, recoverable: true, requiresUserAction: false, userActionHint: null)),
+      );
+      expect(
+        PluginDegraded(since: since, recoverable: false, requiresUserAction: false, userActionHint: null).hashCode,
+        isNot(
+          PluginDegraded(since: since, recoverable: true, requiresUserAction: false, userActionHint: null).hashCode,
+        ),
       );
     });
 
     test('Degraded treats the same moment in different time zones as equal', () {
       final utc = DateTime.utc(2026, 6, 11, 10);
       final local = utc.toLocal();
-      expect(PluginDegraded(since: utc), PluginDegraded(since: local));
-      expect(PluginDegraded(since: utc).hashCode, PluginDegraded(since: local).hashCode);
+      expect(
+        PluginDegraded(since: utc, recoverable: true, requiresUserAction: false, userActionHint: null),
+        PluginDegraded(since: local, recoverable: true, requiresUserAction: false, userActionHint: null),
+      );
+      expect(
+        PluginDegraded(since: utc, recoverable: true, requiresUserAction: false, userActionHint: null).hashCode,
+        PluginDegraded(since: local, recoverable: true, requiresUserAction: false, userActionHint: null).hashCode,
+      );
     });
 
     test('Degraded asserts a hint accompanies requiresUserAction', () {
       expect(
-        () => PluginDegraded(since: DateTime.utc(2026, 6, 11), requiresUserAction: true),
+        () => PluginDegraded(
+          since: DateTime.utc(2026, 6, 11),
+          recoverable: true,
+          requiresUserAction: true,
+          userActionHint: null,
+        ),
         throwsA(isA<AssertionError>()),
       );
     });
@@ -110,16 +149,19 @@ void main() {
         const PluginRestarting(attempt: 2, reason: 'exit 1'),
         const PluginRestarting(attempt: 2, reason: 'exit 1'),
       );
-      expect(const PluginRestarting(attempt: 2), isNot(const PluginRestarting(attempt: 3)));
+      expect(const PluginRestarting(attempt: 2, reason: null), isNot(const PluginRestarting(attempt: 3, reason: null)));
     });
 
     test('Restarting asserts attempt is 1-based', () {
-      expect(() => PluginRestarting(attempt: 0), throwsA(isA<AssertionError>()));
+      expect(() => PluginRestarting(attempt: 0, reason: null), throwsA(isA<AssertionError>()));
     });
 
     test('Failed compares by reason and cause', () {
-      expect(const PluginFailed(reason: 'gone'), const PluginFailed(reason: 'gone'));
-      expect(const PluginFailed(reason: 'gone'), isNot(const PluginFailed(reason: 'gone', cause: 'socket')));
+      expect(const PluginFailed(reason: 'gone', cause: null), const PluginFailed(reason: 'gone', cause: null));
+      expect(
+        const PluginFailed(reason: 'gone', cause: null),
+        isNot(const PluginFailed(reason: 'gone', cause: 'socket')),
+      );
     });
   });
 }

@@ -21,10 +21,11 @@ import "plugin_status_controller.dart";
 ///   BridgePluginApi get api => _api;
 ///
 ///   @override
-///   PluginDiagnostics describe() => PluginDiagnostics(pluginId: api.id, endpoint: _url);
+///   PluginDiagnostics describe() =>
+///       PluginDiagnostics(pluginId: api.id, endpoint: _url, details: const {});
 ///
 ///   @override
-///   Future<void> onShutdown({Duration? budget}) => _api.dispose();
+///   Future<void> onShutdown({required Duration? budget}) => _api.dispose();
 /// }
 /// ```
 ///
@@ -46,7 +47,8 @@ mixin SteadyPluginLifecycle implements BridgePlugin {
   DateTime? _pendingDegradedSince;
   ({bool recoverable, bool requiresUserAction, String? userActionHint})? _pendingDegradedDetails;
 
-  PluginStatusController get _statusMachine => _statusController ??= PluginStatusController();
+  PluginStatusController get _statusMachine =>
+      _statusController ??= PluginStatusController(initial: const PluginStarting());
 
   /// Clock seam for the debounce timing; override in tests (or wire to
   /// `PluginHost.clock`).
@@ -81,7 +83,7 @@ mixin SteadyPluginLifecycle implements BridgePlugin {
   /// `since`). A no-op once the plugin is failed or stopping: those states
   /// can never legally reach `Degraded`.
   @protected
-  void markDegraded({bool recoverable = true, bool requiresUserAction = false, String? userActionHint}) {
+  void markDegraded({required bool recoverable, required bool requiresUserAction, required String? userActionHint}) {
     final current = _statusMachine.current;
     if (current is PluginFailed || current is PluginStopping || current is PluginStopped) {
       return;
@@ -141,7 +143,7 @@ mixin SteadyPluginLifecycle implements BridgePlugin {
   /// Reports a terminal failure. Dropped silently once [shutdown] has
   /// started (no `Failed` after `Stopping`).
   @protected
-  void markFailed(String reason, {Object? cause}) {
+  void markFailed(String reason, {required Object? cause}) {
     _cancelPendingDegraded();
     _statusMachine.trySet(PluginFailed(reason: reason, cause: cause));
   }
@@ -155,10 +157,10 @@ mixin SteadyPluginLifecycle implements BridgePlugin {
   /// memoized teardown, so no caller can mistake a failed teardown for a
   /// clean one.
   @protected
-  Future<void> onShutdown({Duration? budget}) async {}
+  Future<void> onShutdown({required Duration? budget}) async {}
 
   @override
-  Future<void> shutdown({Duration? budget}) {
+  Future<void> shutdown({required Duration? budget}) {
     return _shutdownFuture ??= _runShutdown(budget: budget);
   }
 

@@ -4,13 +4,13 @@ import 'package:test/test.dart';
 void main() {
   group('PluginStatusController', () {
     test('starts as Starting by default', () {
-      final controller = PluginStatusController();
+      final controller = PluginStatusController(initial: const PluginStarting());
       expect(controller.current, const PluginStarting());
       expect(controller.isClosed, isFalse);
     });
 
     test('replays the current status to every new listener', () async {
-      final controller = PluginStatusController();
+      final controller = PluginStatusController(initial: const PluginStarting());
       controller.set(const PluginReady());
 
       expect(await controller.stream.first, const PluginReady());
@@ -18,7 +18,7 @@ void main() {
     });
 
     test('delivers replay followed by live updates, in order', () async {
-      final controller = PluginStatusController();
+      final controller = PluginStatusController(initial: const PluginStarting());
       final seen = <PluginStatus>[];
       final subscription = controller.stream.listen(seen.add);
 
@@ -31,7 +31,7 @@ void main() {
     });
 
     test('supports multiple simultaneous listeners', () async {
-      final controller = PluginStatusController();
+      final controller = PluginStatusController(initial: const PluginStarting());
       final first = <PluginStatus>[];
       final second = <PluginStatus>[];
       final subscriptionA = controller.stream.listen(first.add);
@@ -47,7 +47,7 @@ void main() {
     });
 
     test('set throws StateError on an illegal transition and keeps the current status', () {
-      final controller = PluginStatusController();
+      final controller = PluginStatusController(initial: const PluginStarting());
       controller.set(const PluginStopping());
 
       expect(() => controller.set(const PluginReady()), throwsStateError);
@@ -55,12 +55,12 @@ void main() {
     });
 
     test('trySet drops an illegal transition silently', () async {
-      final controller = PluginStatusController();
+      final controller = PluginStatusController(initial: const PluginStarting());
       controller.set(const PluginStopping());
       final seen = <PluginStatus>[];
       final subscription = controller.stream.listen(seen.add);
 
-      final accepted = controller.trySet(const PluginFailed(reason: 'exit monitor fired during stop'));
+      final accepted = controller.trySet(const PluginFailed(reason: 'exit monitor fired during stop', cause: null));
       await pumpEventQueue();
 
       expect(accepted, isFalse);
@@ -70,15 +70,15 @@ void main() {
     });
 
     test('no Failed after Stopping', () {
-      final controller = PluginStatusController();
+      final controller = PluginStatusController(initial: const PluginStarting());
       controller.set(const PluginStopping());
 
-      expect(controller.trySet(const PluginFailed(reason: 'late')), isFalse);
+      expect(controller.trySet(const PluginFailed(reason: 'late', cause: null)), isFalse);
       expect(controller.current, const PluginStopping());
     });
 
     test('setting a status equal to the current one is a silent no-op', () async {
-      final controller = PluginStatusController();
+      final controller = PluginStatusController(initial: const PluginStarting());
       controller.set(const PluginReady());
       final seen = <PluginStatus>[];
       final subscription = controller.stream.listen(seen.add);
@@ -91,11 +91,13 @@ void main() {
     });
 
     test('Degraded can be refreshed with new details', () async {
-      final controller = PluginStatusController();
+      final controller = PluginStatusController(initial: const PluginStarting());
       final since = DateTime.utc(2026, 6, 11);
-      controller.set(PluginDegraded(since: since));
+      controller.set(PluginDegraded(since: since, recoverable: true, requiresUserAction: false, userActionHint: null));
 
-      controller.set(PluginDegraded(since: since, requiresUserAction: true, userActionHint: 'log in again'));
+      controller.set(
+        PluginDegraded(since: since, recoverable: true, requiresUserAction: true, userActionHint: 'log in again'),
+      );
 
       final current = controller.current;
       expect(current, isA<PluginDegraded>());
@@ -103,7 +105,7 @@ void main() {
     });
 
     test('closes active listeners after Stopped', () async {
-      final controller = PluginStatusController();
+      final controller = PluginStatusController(initial: const PluginStarting());
       final seen = <PluginStatus>[];
       var done = false;
       controller.stream.listen(seen.add, onDone: () => done = true);
@@ -118,7 +120,7 @@ void main() {
     });
 
     test('a late listener still receives Stopped followed by done', () async {
-      final controller = PluginStatusController();
+      final controller = PluginStatusController(initial: const PluginStarting());
       controller.set(const PluginStopping());
       controller.set(const PluginStopped());
 
@@ -127,7 +129,7 @@ void main() {
     });
 
     test('trySet after Stopped accepts only the equal value no-op', () {
-      final controller = PluginStatusController();
+      final controller = PluginStatusController(initial: const PluginStarting());
       controller.set(const PluginStopping());
       controller.set(const PluginStopped());
 

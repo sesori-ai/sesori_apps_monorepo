@@ -4,12 +4,12 @@ import 'package:test/test.dart';
 void main() {
   group('PluginDiagnostics', () {
     test('toString is just the plugin id without an endpoint', () {
-      const diagnostics = PluginDiagnostics(pluginId: 'opencode');
+      const diagnostics = PluginDiagnostics(pluginId: 'opencode', endpoint: null, details: {});
       expect(diagnostics.toString(), 'opencode');
     });
 
     test('toString includes the endpoint when present', () {
-      const diagnostics = PluginDiagnostics(pluginId: 'opencode', endpoint: 'http://127.0.0.1:4096');
+      const diagnostics = PluginDiagnostics(pluginId: 'opencode', endpoint: 'http://127.0.0.1:4096', details: {});
       expect(diagnostics.toString(), 'opencode @ http://127.0.0.1:4096');
     });
 

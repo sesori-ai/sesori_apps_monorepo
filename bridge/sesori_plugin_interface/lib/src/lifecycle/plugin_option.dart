@@ -32,8 +32,8 @@ final class PluginFlagOption extends PluginOption {
   const PluginFlagOption({
     required super.name,
     required super.help,
-    this.defaultsTo = false,
-    this.negatable = false,
+    required this.defaultsTo,
+    required this.negatable,
   });
 
   /// Value when the flag is not passed.
@@ -48,10 +48,10 @@ final class PluginValueOption extends PluginOption {
   const PluginValueOption({
     required super.name,
     required super.help,
-    this.defaultsTo,
-    this.allowedValues,
-    this.valueHelp,
-    this.validate,
+    required this.defaultsTo,
+    required this.allowedValues,
+    required this.valueHelp,
+    required this.validate,
   });
 
   /// An option whose value must parse as an integer (e.g. `--port`).
@@ -63,9 +63,16 @@ final class PluginValueOption extends PluginOption {
   const PluginValueOption.integer({
     required String name,
     required String help,
-    String? defaultsTo,
-    String? valueHelp,
-  }) : this(name: name, help: help, defaultsTo: defaultsTo, valueHelp: valueHelp, validate: validateInteger);
+    required String? defaultsTo,
+    required String? valueHelp,
+  }) : this(
+         name: name,
+         help: help,
+         defaultsTo: defaultsTo,
+         allowedValues: null,
+         valueHelp: valueHelp,
+         validate: validateInteger,
+       );
 
   /// Value when the option is not passed; `null` means "absent".
   final String? defaultsTo;

@@ -22,7 +22,7 @@ import "plugin_status.dart";
 /// Setting a status equal to the current one is a no-op (no emission) and
 /// reports success.
 class PluginStatusController {
-  PluginStatusController({PluginStatus initial = const PluginStarting()}) : _current = initial;
+  PluginStatusController({required PluginStatus initial}) : _current = initial;
 
   final StreamController<PluginStatus> _updates = StreamController<PluginStatus>.broadcast();
   PluginStatus _current;

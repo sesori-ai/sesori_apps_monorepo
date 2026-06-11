@@ -29,5 +29,5 @@ abstract class BridgeHostInfo {
   /// back on. Conservative direction: a reused pid that happens to be
   /// another live bridge is spared (a possible orphan, which stale cleanup
   /// self-heals later) rather than killed.
-  Future<bool> isLiveBridgeProcess({required int pid, String? startMarker});
+  Future<bool> isLiveBridgeProcess({required int pid, required String? startMarker});
 }

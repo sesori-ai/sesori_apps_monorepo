@@ -27,7 +27,12 @@ void main() {
 
   group('PluginOption', () {
     test('a flag option carries its defaults', () {
-      const option = PluginFlagOption(name: 'no-auto-start', help: 'Skip auto-starting the server');
+      const option = PluginFlagOption(
+        name: 'no-auto-start',
+        help: 'Skip auto-starting the server',
+        defaultsTo: false,
+        negatable: false,
+      );
       expect(option.defaultsTo, isFalse);
       expect(option.negatable, isFalse);
     });
@@ -37,7 +42,9 @@ void main() {
         name: 'opencode-bin',
         help: 'Path to opencode binary',
         defaultsTo: 'opencode',
+        allowedValues: null,
         valueHelp: 'path',
+        validate: null,
       );
       expect(option.defaultsTo, 'opencode');
       expect(option.allowedValues, isNull);
@@ -46,16 +53,40 @@ void main() {
 
     test('the legacy OpenCode option set is expressible', () {
       const options = <PluginOption>[
-        PluginValueOption.integer(name: 'port', help: 'Port for opencode server to listen on'),
-        PluginFlagOption(name: 'no-auto-start', help: 'Skip auto-starting opencode server'),
-        PluginValueOption(name: 'password', help: 'Override server password', defaultsTo: ''),
-        PluginValueOption(name: 'opencode-bin', help: 'Path to opencode binary', defaultsTo: 'opencode'),
+        PluginValueOption.integer(
+          name: 'port',
+          help: 'Port for opencode server to listen on',
+          defaultsTo: null,
+          valueHelp: null,
+        ),
+        PluginFlagOption(
+          name: 'no-auto-start',
+          help: 'Skip auto-starting opencode server',
+          defaultsTo: false,
+          negatable: false,
+        ),
+        PluginValueOption(
+          name: 'password',
+          help: 'Override server password',
+          defaultsTo: '',
+          allowedValues: null,
+          valueHelp: null,
+          validate: null,
+        ),
+        PluginValueOption(
+          name: 'opencode-bin',
+          help: 'Path to opencode binary',
+          defaultsTo: 'opencode',
+          allowedValues: null,
+          valueHelp: null,
+          validate: null,
+        ),
       ];
       expect(options.map((option) => option.name), ['port', 'no-auto-start', 'password', 'opencode-bin']);
     });
 
     test('an integer option validates its raw value at parse time', () {
-      const option = PluginValueOption.integer(name: 'port', help: 'Port');
+      const option = PluginValueOption.integer(name: 'port', help: 'Port', defaultsTo: null, valueHelp: null);
 
       expect(() => option.validate!('port', '4096'), returnsNormally);
       expect(
@@ -71,7 +102,14 @@ void main() {
     });
 
     test('a plain value option has no validate hook', () {
-      const option = PluginValueOption(name: 'password', help: 'Password');
+      const option = PluginValueOption(
+        name: 'password',
+        help: 'Password',
+        defaultsTo: null,
+        allowedValues: null,
+        valueHelp: null,
+        validate: null,
+      );
       expect(option.validate, isNull);
     });
   });
@@ -106,8 +144,15 @@ class _ValidatingDescriptor extends BridgePluginDescriptor {
 
   @override
   List<PluginOption> get options => const [
-    PluginValueOption(name: 'port', help: 'Port'),
-    PluginFlagOption(name: 'no-auto-start', help: 'Attach to an existing server'),
+    PluginValueOption(
+      name: 'port',
+      help: 'Port',
+      defaultsTo: null,
+      allowedValues: null,
+      valueHelp: null,
+      validate: null,
+    ),
+    PluginFlagOption(name: 'no-auto-start', help: 'Attach to an existing server', defaultsTo: false, negatable: false),
   ];
 
   @override

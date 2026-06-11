@@ -6,7 +6,7 @@
 /// until `start()` settles, so a throw that leaks resources would leak them
 /// under the lock with no owner left to clean up.
 class PluginStartException implements Exception {
-  const PluginStartException(this.message, {this.cause});
+  const PluginStartException(this.message, {required this.cause});
 
   /// Human-readable description of why the plugin could not start.
   final String message;
@@ -28,7 +28,7 @@ class PluginStartException implements Exception {
 /// requested" (expected — the bridge asked for it) apart from "failed to
 /// start" (an error worth surfacing loudly).
 class PluginStartAbortedException extends PluginStartException {
-  const PluginStartAbortedException({String message = "Plugin start aborted by the bridge."}) : super(message);
+  const PluginStartAbortedException() : super("Plugin start aborted by the bridge.", cause: null);
 
   @override
   String toString() => "PluginStartAbortedException: $message";

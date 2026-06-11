@@ -9,8 +9,8 @@ import "package:meta/meta.dart";
 class PluginDiagnostics {
   const PluginDiagnostics({
     required this.pluginId,
-    this.endpoint,
-    this.details = const {},
+    required this.endpoint,
+    required this.details,
   });
 
   /// The plugin's stable identifier (e.g. `"opencode"`).

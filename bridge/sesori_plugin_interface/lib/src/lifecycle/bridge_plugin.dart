@@ -48,5 +48,5 @@ abstract class BridgePlugin {
   ///   should degrade to forceful termination rather than overrun it.
   ///   `null` means the caller imposes no deadline.
   /// - Emits `Stopping` then `Stopped` on [status]; never `Failed`.
-  Future<void> shutdown({Duration? budget});
+  Future<void> shutdown({required Duration? budget});
 }

@@ -147,8 +147,8 @@ void main() {
         final plugin = _SteadyPlugin();
         plugin.reportReady();
 
-        await plugin.shutdown();
-        await plugin.shutdown();
+        await plugin.shutdown(budget: null);
+        await plugin.shutdown(budget: null);
 
         expect(plugin.onShutdownCalls, 1);
         expect(plugin.currentStatus, const PluginStopped());
@@ -159,7 +159,7 @@ void main() {
         plugin.reportReady();
         plugin.reportFailed('backend gone');
 
-        await plugin.shutdown();
+        await plugin.shutdown(budget: null);
 
         expect(plugin.currentStatus, const PluginStopped());
       });
@@ -168,7 +168,7 @@ void main() {
         final plugin = _SteadyPlugin();
         plugin.reportReady();
 
-        await plugin.shutdown();
+        await plugin.shutdown(budget: null);
         plugin.reportFailed('exit monitor fired late');
 
         expect(plugin.currentStatus, const PluginStopped());
@@ -179,7 +179,7 @@ void main() {
         plugin.reportReady();
         plugin.reportDegraded();
 
-        await plugin.shutdown();
+        await plugin.shutdown(budget: null);
         await plugin.clock.firePendingDelays();
 
         expect(plugin.currentStatus, const PluginStopped());
@@ -189,7 +189,7 @@ void main() {
         final plugin = _SteadyPlugin();
         plugin.reportReady();
 
-        await plugin.shutdown();
+        await plugin.shutdown(budget: null);
         plugin.reportDegraded();
 
         expect(plugin.clock.pendingDelayDurations, isEmpty);
@@ -204,14 +204,14 @@ void main() {
         plugin.reportDegraded();
 
         expect(plugin.clock.pendingDelayDurations, isEmpty);
-        expect(plugin.currentStatus, const PluginFailed(reason: 'backend gone'));
+        expect(plugin.currentStatus, const PluginFailed(reason: 'backend gone', cause: null));
       });
 
       test('reaches Stopped even when onShutdown throws', () async {
         final plugin = _SteadyPlugin(throwOnShutdown: true);
         plugin.reportReady();
 
-        await expectLater(plugin.shutdown(), throwsStateError);
+        await expectLater(plugin.shutdown(budget: null), throwsStateError);
         expect(plugin.currentStatus, const PluginStopped());
       });
     });
@@ -243,10 +243,10 @@ class _SteadyPlugin with SteadyPluginLifecycle {
   BridgePluginApi get api => throw UnsupportedError('api is not exercised in this test');
 
   @override
-  PluginDiagnostics describe() => const PluginDiagnostics(pluginId: 'steady-test');
+  PluginDiagnostics describe() => const PluginDiagnostics(pluginId: 'steady-test', endpoint: null, details: {});
 
   @override
-  Future<void> onShutdown({Duration? budget}) async {
+  Future<void> onShutdown({required Duration? budget}) async {
     onShutdownCalls++;
     lastBudget = budget;
     if (throwOnShutdown) {
