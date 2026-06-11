@@ -119,7 +119,18 @@ class PluginSelector {
     return surface;
   }
 
-  PluginCliSurface get _fallback => _surfaceById(_defaultPluginId)!;
+  PluginCliSurface get _fallback {
+    final fallback = _surfaceById(_defaultPluginId);
+    if (fallback == null) {
+      // Only reachable by miswiring the selector itself — fail with a
+      // diagnosis rather than a bare null-check error.
+      throw StateError(
+        'Default plugin "$_defaultPluginId" is not among the known plugins: '
+        '${_knownPlugins.map((plugin) => plugin.id).join(", ")}.',
+      );
+    }
+    return fallback;
+  }
 
   PluginCliSurface? _surfaceById(String id) {
     for (final plugin in _knownPlugins) {

@@ -156,6 +156,25 @@ void main() {
       );
     });
 
+    test("a default id missing from the known plugins is a descriptive wiring error", () async {
+      final selector = PluginSelector(
+        knownPlugins: _surfaces,
+        defaultPluginId: "miswired",
+        loadEnabledPlugins: () async => null,
+      );
+
+      await expectLater(
+        selector.resolve(args: []),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            "message",
+            allOf(contains('"miswired"'), contains("opencode, cursor")),
+          ),
+        ),
+      );
+    });
+
     test("an unknown enabledPlugins id throws a selection error naming the known plugins", () async {
       final selector = _selector(enabledPlugins: ["bogus"]);
 
