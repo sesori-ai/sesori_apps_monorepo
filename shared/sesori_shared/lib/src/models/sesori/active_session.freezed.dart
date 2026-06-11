@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ActiveSession {
 
- String get id; bool get mainAgentRunning; bool get awaitingInput; List<String> get childSessionIds;
+ String get id; bool get mainAgentRunning; bool get awaitingInput; List<String> get childSessionIds; bool get isRetrying;
 /// Create a copy of ActiveSession
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $ActiveSessionCopyWith<ActiveSession> get copyWith => _$ActiveSessionCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ActiveSession&&(identical(other.id, id) || other.id == id)&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.awaitingInput, awaitingInput) || other.awaitingInput == awaitingInput)&&const DeepCollectionEquality().equals(other.childSessionIds, childSessionIds));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ActiveSession&&(identical(other.id, id) || other.id == id)&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.awaitingInput, awaitingInput) || other.awaitingInput == awaitingInput)&&const DeepCollectionEquality().equals(other.childSessionIds, childSessionIds)&&(identical(other.isRetrying, isRetrying) || other.isRetrying == isRetrying));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,mainAgentRunning,awaitingInput,const DeepCollectionEquality().hash(childSessionIds));
+int get hashCode => Object.hash(runtimeType,id,mainAgentRunning,awaitingInput,const DeepCollectionEquality().hash(childSessionIds),isRetrying);
 
 @override
 String toString() {
-  return 'ActiveSession(id: $id, mainAgentRunning: $mainAgentRunning, awaitingInput: $awaitingInput, childSessionIds: $childSessionIds)';
+  return 'ActiveSession(id: $id, mainAgentRunning: $mainAgentRunning, awaitingInput: $awaitingInput, childSessionIds: $childSessionIds, isRetrying: $isRetrying)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $ActiveSessionCopyWith<$Res>  {
   factory $ActiveSessionCopyWith(ActiveSession value, $Res Function(ActiveSession) _then) = _$ActiveSessionCopyWithImpl;
 @useResult
 $Res call({
- String id, bool mainAgentRunning, bool awaitingInput, List<String> childSessionIds
+ String id, bool mainAgentRunning, bool awaitingInput, List<String> childSessionIds, bool isRetrying
 });
 
 
@@ -65,13 +65,14 @@ class _$ActiveSessionCopyWithImpl<$Res>
 
 /// Create a copy of ActiveSession
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? mainAgentRunning = null,Object? awaitingInput = null,Object? childSessionIds = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? mainAgentRunning = null,Object? awaitingInput = null,Object? childSessionIds = null,Object? isRetrying = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,mainAgentRunning: null == mainAgentRunning ? _self.mainAgentRunning : mainAgentRunning // ignore: cast_nullable_to_non_nullable
 as bool,awaitingInput: null == awaitingInput ? _self.awaitingInput : awaitingInput // ignore: cast_nullable_to_non_nullable
 as bool,childSessionIds: null == childSessionIds ? _self.childSessionIds : childSessionIds // ignore: cast_nullable_to_non_nullable
-as List<String>,
+as List<String>,isRetrying: null == isRetrying ? _self.isRetrying : isRetrying // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -83,7 +84,7 @@ as List<String>,
 @JsonSerializable()
 
 class _ActiveSession implements ActiveSession {
-  const _ActiveSession({required this.id, this.mainAgentRunning = false, this.awaitingInput = false, final  List<String> childSessionIds = const []}): _childSessionIds = childSessionIds;
+  const _ActiveSession({required this.id, this.mainAgentRunning = false, this.awaitingInput = false, final  List<String> childSessionIds = const [], this.isRetrying = false}): _childSessionIds = childSessionIds;
   factory _ActiveSession.fromJson(Map<String, dynamic> json) => _$ActiveSessionFromJson(json);
 
 @override final  String id;
@@ -96,6 +97,7 @@ class _ActiveSession implements ActiveSession {
   return EqualUnmodifiableListView(_childSessionIds);
 }
 
+@override@JsonKey() final  bool isRetrying;
 
 /// Create a copy of ActiveSession
 /// with the given fields replaced by the non-null parameter values.
@@ -110,16 +112,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ActiveSession&&(identical(other.id, id) || other.id == id)&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.awaitingInput, awaitingInput) || other.awaitingInput == awaitingInput)&&const DeepCollectionEquality().equals(other._childSessionIds, _childSessionIds));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ActiveSession&&(identical(other.id, id) || other.id == id)&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.awaitingInput, awaitingInput) || other.awaitingInput == awaitingInput)&&const DeepCollectionEquality().equals(other._childSessionIds, _childSessionIds)&&(identical(other.isRetrying, isRetrying) || other.isRetrying == isRetrying));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,mainAgentRunning,awaitingInput,const DeepCollectionEquality().hash(_childSessionIds));
+int get hashCode => Object.hash(runtimeType,id,mainAgentRunning,awaitingInput,const DeepCollectionEquality().hash(_childSessionIds),isRetrying);
 
 @override
 String toString() {
-  return 'ActiveSession(id: $id, mainAgentRunning: $mainAgentRunning, awaitingInput: $awaitingInput, childSessionIds: $childSessionIds)';
+  return 'ActiveSession(id: $id, mainAgentRunning: $mainAgentRunning, awaitingInput: $awaitingInput, childSessionIds: $childSessionIds, isRetrying: $isRetrying)';
 }
 
 
@@ -130,7 +132,7 @@ abstract mixin class _$ActiveSessionCopyWith<$Res> implements $ActiveSessionCopy
   factory _$ActiveSessionCopyWith(_ActiveSession value, $Res Function(_ActiveSession) _then) = __$ActiveSessionCopyWithImpl;
 @override @useResult
 $Res call({
- String id, bool mainAgentRunning, bool awaitingInput, List<String> childSessionIds
+ String id, bool mainAgentRunning, bool awaitingInput, List<String> childSessionIds, bool isRetrying
 });
 
 
@@ -147,13 +149,14 @@ class __$ActiveSessionCopyWithImpl<$Res>
 
 /// Create a copy of ActiveSession
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? mainAgentRunning = null,Object? awaitingInput = null,Object? childSessionIds = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? mainAgentRunning = null,Object? awaitingInput = null,Object? childSessionIds = null,Object? isRetrying = null,}) {
   return _then(_ActiveSession(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,mainAgentRunning: null == mainAgentRunning ? _self.mainAgentRunning : mainAgentRunning // ignore: cast_nullable_to_non_nullable
 as bool,awaitingInput: null == awaitingInput ? _self.awaitingInput : awaitingInput // ignore: cast_nullable_to_non_nullable
 as bool,childSessionIds: null == childSessionIds ? _self._childSessionIds : childSessionIds // ignore: cast_nullable_to_non_nullable
-as List<String>,
+as List<String>,isRetrying: null == isRetrying ? _self.isRetrying : isRetrying // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
