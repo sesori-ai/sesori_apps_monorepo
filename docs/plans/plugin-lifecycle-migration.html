@@ -87,8 +87,8 @@
   <h1>Plugin Lifecycle Migration Plan</h1>
   <div class="sub">Move all OpenCode runtime ownership (spawn, ports, health, ownership records, DB maintenance) out of <code>bridge/app</code> and into the OpenCode plugin, behind a plugin interface that supports managed-runtime, direct-CLI, and remote-server plugins — with per-plugin enable/start/stop. Delivered as a ladder of small, always-green PRs.</div>
   <div class="meta">
-    <span><b>Status:</b> proposed (rev 2 — adversarially verified against the repo)</span>
-    <span><b>Date:</b> 2026-06-10</span>
+    <span><b>Status:</b> in progress (rev 3 — PR 1 merged #210, PR 2 shipped #223; their cards carry shipped-delta callouts binding on later PRs)</span>
+    <span><b>Date:</b> 2026-06-10 (rev 3: 2026-06-11)</span>
     <span><b>PRs:</b> 15, strictly sequential</span>
     <span><b>Max PR size:</b> ~2,000 changed lines (hard)</span>
     <span><b>Branch base:</b> main</span>
@@ -175,6 +175,7 @@
   <li>All importers flip to the interface package in this PR (per review, instead of leaving re-export shims at the old paths until PR 14). Move <code>process_identity_test.dart</code> alongside (it is the only existing foundation test; add small new tests for <code>ProcessUser</code>/<code>SignalResult</code>).</li>
 </ul>
 <div class="safe"><b>Why always-green:</b> subtype relationship keeps every existing throw/catch behavior identical for HTTP errors; deleted code has no references; import flips are mechanical and analyzer-enforced. Behavior delta: zero.</div>
+<div class="callout green"><b>Merged as #210 (2026-06-11).</b> No deltas vs this card.</div>
 </div>
 
 <div class="card pr">
@@ -190,6 +191,16 @@
   <li><b>All types hand-written</b> (sealed classes/records) — no freezed/json_serializable, no generated files. Unit tests for the mixin, status machine, option parsing. Rewrite the stale interface README ("8 methods") in the same PR.</li>
 </ul>
 <div class="safe"><b>Why always-green:</b> 100% additive — no production code references any of it yet.</div>
+<div class="callout green">
+  <b>Shipped as #223 (2026-06-11).</b> Contract deltas vs this card, <b>binding on later PRs</b>:
+  <ul>
+    <li><b>Typed-parse hook is option-level.</b> <code>PluginValueOption.validate</code> hooks (built-in <code>PluginValueOption.integer</code>) are run by the bridge at argument-parse time — structurally pre-mutex — with <code>PluginConfig.intValue</code> as the typed accessor; single parse source is <code>PluginConfig.parseIntegerOption</code>. <b>PR 4's runner MUST run the selected descriptor's validate hooks (on present, non-empty values) before the mutex</b>, alongside <code>validateConfig</code>, and map <code>PluginConfigException</code> to the usage-error flow.</li>
+    <li><b>Abort settlement is named.</b> An aborted <code>start()</code> settles by throwing <code>PluginStartAbortedException</code> (subclass of <code>PluginStartException</code>) after rollback. PR 4's runner treats it as "aborted as requested" (not the error-exit path); PR 8's supervisor throws it from the cooperative-abort rollback.</li>
+    <li><b>Mixin debounce semantics pinned:</b> degraded details are latest-wins at fire time while <code>since</code> keeps the first observation; <code>markDegraded</code> is a hard no-op (schedules no timer) once Failed/Stopping/Stopped; the unawaited debounce chain is catchError-guarded.</li>
+    <li><b>Value-type guards:</b> <code>PluginDegraded</code> asserts a hint accompanies <code>requiresUserAction</code> and its equality is timezone-robust (<code>isAtSameMomentAs</code>); <code>PluginRestarting.attempt</code> asserts 1-based. Emitters in PRs 9/11 must satisfy these.</li>
+    <li><b>Docs touched early:</b> the factually wrong claims in <code>bridge/README.md</code>/<code>bridge/AGENTS.md</code> (8-method interface, "interface has no tests") were fixed during PR 2 review — PR 15's sweep shrinks accordingly (plugin-authoring guide rewrite still pending there).</li>
+  </ul>
+</div>
 </div>
 
 <div class="card pr">
@@ -197,6 +208,7 @@
 <p><b>Goal:</b> a production-quality <code>BridgePluginHostImpl</code> in <code>bridge/app</code>, fully tested, still unused.</p>
 <ul>
   <li><code>HostProcessService</code> over <code>SystemProcessApi</code>/<code>ProcessRepository</code>: spawn with identity capture (POSIX <code>ps lstart</code> start-marker, Windows fallbacks), stdin/stdout/stderr/exitCode, graceful/force signals; expose the sesori-bridge process classifier as <code>BridgeHostInfo.isLiveBridgeProcess</code> (capability, not data — classifier strings stay bridge-side). Validate the spawn surface with a throwaway stdio echo-child test (ACP rehearsal).</li>
+  <li><b>Identity-capture ownership (pinned during PR 2 review):</b> the spawn-function provider owns the best-effort post-spawn identity re-inspection — the host's <code>spawn()</code> does it here, falling back to the partial spawn-time identity when the child exits (or <code>ps</code> races) first; <code>SpawnedProcess.identity</code> is documented best-effort, partial possibly on POSIX too. The supervisor (PRs 7–10) consumes the identity its spawn seam returns and <b>never re-inspects</b> — in PR 10 the legacy adapters own capture, in PR 11 the host does. One implementation, no double <code>ps</code> listing per spawn.</li>
   <li><code>HostPortService</code> over <code>LoopbackPortApi</code>; <code>HostJsonStore</code> over <code>RuntimeFileApi</code> (filenames parameterized — currently hardcoded; locked <code>update()</code> via an OS-level advisory lock; name validation rejects path separators and the reserved <code>bridge-startup.*</code> prefix).</li>
   <li>Per-plugin state directories <code>&lt;installRoot&gt;/plugins/&lt;id&gt;/</code> derived from <code>ManagedRuntimePaths</code> — <b>except</b> OpenCode, which will be handed <code>&lt;cacheDir&gt;/runtime</code> to honor the frozen ownership-file location.</li>
   <li>Unit tests against the existing server-layer test doubles.</li>
@@ -212,7 +224,7 @@
 <ul>
   <li><code>LegacyOpenCodeDescriptor</code> (in <code>bridge/app</code>): <code>options</code> = the four existing flags (identical names/help/defaults); <code>validateConfig</code> = the <code>--no-auto-start</code>-requires-<code>--port</code> rule; <code>start(host)</code> = today's <code>resolveServer</code> + <code>OpenCodeServerService</code> flow + <code>OpenCodePlugin(serverUrl, password)</code> construction, returning a <code>BridgePlugin</code> wrapper whose <code>shutdown()</code> runs dispose-then-<code>stopOwnedServer</code> in order and whose <code>describe()</code> reports the endpoint.</li>
   <li>The wrapper's <code>shutdown()</code> is guarded/idempotent, and a test covers the <b>double-dispose path</b>: the orchestrator's <code>finally</code> still calls <code>_plugin.dispose()</code> (<code>orchestrator.dart:359</code>) until PR 12, so dispose-then-shutdown must be safe by contract, not by accident.</li>
-  <li>Runner changes (<code>bridge_runtime_runner.dart</code>): <code>validateConfig</code> runs at arg-parse time, strictly before the mutex and before <code>enforceSingleLiveBridge</code> (a typo'd flag must never terminate a healthy resident bridge); mutex → enforce-single-bridge → build host → <code>descriptor.start(host)</code>; the mutex is held until <code>start()</code> settles — no <code>Future.timeout</code>.</li>
+  <li>Runner changes (<code>bridge_runtime_runner.dart</code>): the selected descriptor's <b>option-level <code>validate</code> hooks</b> (on present, non-empty values) and <code>validateConfig</code> both run at arg-parse time, strictly before the mutex and before <code>enforceSingleLiveBridge</code> (a typo'd flag must never terminate a healthy resident bridge); <code>PluginConfigException</code> maps to the usage-error flow; mutex → enforce-single-bridge → build host → <code>descriptor.start(host)</code>; the mutex is held until <code>start()</code> settles — no <code>Future.timeout</code>. A runner-initiated abort surfaces as <code>PluginStartAbortedException</code> from <code>start()</code> and is handled as "aborted as requested", not as the error-exit path.</li>
   <li>Ordered shutdown: <code>await plugin.shutdown(budget)</code> as an ordered step before <code>BridgeShutdownCoordinator</code>'s parallel phase; the coordinator's process-wide backstop timer is armed <i>before</i> the ordered phase, sized <code>budget + slack</code> (no window with no timer running), and its exit code is <b>derived from the terminal-failure latch</b> (exit 1 if <code>PluginFailed</code> was recorded — a hung shutdown after failure must not exit 0). <code>registerOwnedOpenCodeShutdown</code> folds into the wrapper's <code>shutdown()</code>.</li>
   <li>Failure surfacing: terminal-failure latch — first <code>PluginFailed</code> recorded immediately after <code>start()</code> returns, checked right before <code>session.run()</code>, late-bound to <code>session.cancel()</code> after. <b>Honest delta note:</b> the latch machinery lands here, but nothing can emit <code>PluginFailed</code> after a successful start until the exit monitor activates in PR 12 — start-time failures already exit 1 today.</li>
   <li>Delete the <code>BridgePluginFactory</code> typedef and <code>_createOpenCodePlugin</code>. <code>BridgeConfig.serverURL/serverPassword</code> stay for now (fed from the legacy flow) so the orchestrator is untouched. Update <code>bridge_runtime_runner_test.dart</code> / <code>bridge_runtime_server_test.dart</code> to the new seam.</li>
@@ -270,7 +282,7 @@
     </ul>
   </li>
   <li>Start sequence: explicit-port path pre-probes bindability and diagnoses the occupant via <code>host.processes</code> ("port 4096 held by pid N: …"); spawn-failure (ENOENT) fails fast and skips port retries; child-exit-before-first-healthy-probe is authoritative failure regardless of probe success (squatter defense).</li>
-  <li>Cooperative abort: supervisor checks <code>host.startAborted</code> at every phase boundary and rolls back (kill child, delete record) before completing — pairs with the runner holding the mutex until settlement.</li>
+  <li>Cooperative abort: supervisor checks <code>host.startAborted</code> at every phase boundary and rolls back (kill child, delete record), then settles by throwing <code>PluginStartAbortedException</code> — pairs with the runner holding the mutex until settlement and distinguishing abort from start failure by type.</li>
   <li><code>attach()</code> mode (today's <code>--no-auto-start</code>): probe, never own, never kill; degraded-until-reachable semantics. Port the start/attach/port/health scenarios from the legacy suite.</li>
 </ul>
 <div class="safe"><b>Why always-green:</b> still no production consumer. Restart/exit-monitoring deliberately NOT in this PR (see PR 9) to keep it under budget.</div>
