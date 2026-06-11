@@ -12,6 +12,7 @@
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:sesori_auth/sesori_auth.dart' as _i442;
+import 'package:sesori_dart_core/src/api/bridge_api.dart' as _i384;
 import 'package:sesori_dart_core/src/api/client/relay_http_client.dart'
     as _i857;
 import 'package:sesori_dart_core/src/api/notification_api.dart' as _i400;
@@ -38,6 +39,8 @@ import 'package:sesori_dart_core/src/platform/local_notification_client.dart'
 import 'package:sesori_dart_core/src/platform/push_messaging_source.dart'
     as _i330;
 import 'package:sesori_dart_core/src/platform/route_dispatcher.dart' as _i951;
+import 'package:sesori_dart_core/src/repositories/bridge_repository.dart'
+    as _i205;
 import 'package:sesori_dart_core/src/repositories/notification_preferences_repository.dart'
     as _i458;
 import 'package:sesori_dart_core/src/repositories/notification_repository.dart'
@@ -72,6 +75,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i895.RoomKeyStorage>(
       () => _i895.RoomKeyStorage(gh<_i442.SecureStorage>()),
     );
+    gh.lazySingleton<_i384.BridgeApi>(
+      () => _i384.BridgeApi(client: gh<_i442.AuthenticatedHttpApiClient>()),
+    );
     gh.lazySingleton<_i400.NotificationApi>(
       () =>
           _i400.NotificationApi(client: gh<_i442.AuthenticatedHttpApiClient>()),
@@ -90,6 +96,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i396.NotificationPreferencesApi>(
       () =>
           _i396.NotificationPreferencesApi(storage: gh<_i442.SecureStorage>()),
+    );
+    gh.lazySingleton<_i205.BridgeRepository>(
+      () => _i205.BridgeRepository(api: gh<_i384.BridgeApi>()),
     );
     gh.lazySingleton<_i369.ConnectionService>(
       () => _i369.ConnectionService(

@@ -48,6 +48,7 @@ void main() {
     late MockConnectionService mockConnectionService;
     late MockSseEventRepository mockSseEventRepository;
     late MockRouteSource mockRouteSource;
+    late MockBridgeRepository mockBridgeRepository;
     late MockFailureReporter mockFailureReporter;
     late BehaviorSubject<ConnectionStatus> statusController;
 
@@ -56,6 +57,7 @@ void main() {
       mockConnectionService = MockConnectionService();
       mockSseEventRepository = MockSseEventRepository();
       mockRouteSource = MockRouteSource();
+      mockBridgeRepository = MockBridgeRepository();
       mockFailureReporter = MockFailureReporter();
       statusController = BehaviorSubject<ConnectionStatus>.seeded(
         _connectedStatus,
@@ -65,6 +67,10 @@ void main() {
       when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
       when(() => mockConnectionService.currentStatus).thenAnswer((_) => statusController.value);
       when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => true);
+      // Default: a fresh account with no registered bridges (setup onboarding).
+      when(() => mockBridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success(const <BridgeSummary>[]),
+      );
       when(
         () => mockFailureReporter.recordFailure(
           error: any(named: "error"),
@@ -89,6 +95,7 @@ void main() {
       mockConnectionService,
       mockSseEventRepository,
       mockRouteSource,
+      bridgeRepository: mockBridgeRepository,
       failureReporter: mockFailureReporter,
     );
 
@@ -394,6 +401,136 @@ void main() {
           verify(() => mockConnectionService.connectWithFreshAuthToken()).called(2);
           verifyNever(() => mockProjectService.listProjects());
         },
+      );
+    });
+
+    // -------------------------------------------------------------------------
+    // Registered-bridges decision: which bridge-disconnected flow to show
+    // -------------------------------------------------------------------------
+
+    group("registered bridges decision", () {
+      late Completer<ApiResponse<List<BridgeSummary>>> pendingLookupGate;
+
+      blocTest<ProjectListCubit, ProjectListState>(
+        "no registered bridges: bridgeDisconnected carries hasRegisteredBridges=false (setup onboarding)",
+        build: () {
+          statusController.add(const ConnectionStatus.disconnected());
+          when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => false);
+          return buildCubit();
+        },
+        expect: () => [
+          isA<ProjectListBridgeDisconnected>().having(
+            (s) => s.hasRegisteredBridges,
+            "hasRegisteredBridges",
+            isFalse,
+          ),
+        ],
+      );
+
+      blocTest<ProjectListCubit, ProjectListState>(
+        "registered bridges exist: bridgeDisconnected carries hasRegisteredBridges=true (turn-on view)",
+        build: () {
+          statusController.add(const ConnectionStatus.disconnected());
+          when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => false);
+          when(() => mockBridgeRepository.getRegisteredBridges()).thenAnswer(
+            (_) async => ApiResponse.success([testBridgeSummary()]),
+          );
+          return buildCubit();
+        },
+        expect: () => [
+          isA<ProjectListBridgeDisconnected>().having(
+            (s) => s.hasRegisteredBridges,
+            "hasRegisteredBridges",
+            isTrue,
+          ),
+        ],
+      );
+
+      blocTest<ProjectListCubit, ProjectListState>(
+        "bridges lookup failure defaults to the setup onboarding (hasRegisteredBridges=false)",
+        build: () {
+          statusController.add(const ConnectionStatus.disconnected());
+          when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => false);
+          when(() => mockBridgeRepository.getRegisteredBridges()).thenAnswer(
+            (_) async => ApiResponse.error(ApiError.generic()),
+          );
+          return buildCubit();
+        },
+        expect: () => [
+          isA<ProjectListBridgeDisconnected>().having(
+            (s) => s.hasRegisteredBridges,
+            "hasRegisteredBridges",
+            isFalse,
+          ),
+        ],
+      );
+
+      blocTest<ProjectListCubit, ProjectListState>(
+        "bridges lookup failure falls back to the last successful answer",
+        build: () {
+          statusController.add(const ConnectionStatus.disconnected());
+          when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => false);
+          // First lookup succeeds: the account has a bridge.
+          when(() => mockBridgeRepository.getRegisteredBridges()).thenAnswer(
+            (_) async => ApiResponse.success([testBridgeSummary()]),
+          );
+          when(() => mockProjectService.listProjects()).thenAnswer(
+            (_) async => ApiResponse.success(Projects(data: [testProject()])),
+          );
+          return buildCubit();
+        },
+        act: (cubit) async {
+          await Future<void>.delayed(Duration.zero); // initial -> bridgeDisconnected(true)
+          // Bridge comes online and projects load…
+          statusController.add(_connectedStatus);
+          await Future<void>.delayed(Duration.zero);
+          // …then drops again while the auth server is unreachable.
+          when(() => mockBridgeRepository.getRegisteredBridges()).thenAnswer(
+            (_) async => ApiResponse.error(ApiError.generic()),
+          );
+          statusController.add(_bridgeOfflineStatus);
+          await Future<void>.delayed(Duration.zero);
+        },
+        skip: 1, // initial bridgeDisconnected(hasRegisteredBridges: true)
+        expect: () => [
+          isA<ProjectListLoading>(),
+          isA<ProjectListLoaded>(),
+          // The failed re-lookup reuses the known answer instead of regressing
+          // to the setup onboarding.
+          isA<ProjectListBridgeDisconnected>().having(
+            (s) => s.hasRegisteredBridges,
+            "hasRegisteredBridges after failed re-lookup",
+            isTrue,
+          ),
+        ],
+      );
+
+      blocTest<ProjectListCubit, ProjectListState>(
+        "connection recovery during the lookup suppresses the stale bridgeDisconnected emit",
+        build: () {
+          statusController.add(const ConnectionStatus.disconnected());
+          when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => false);
+          pendingLookupGate = Completer<ApiResponse<List<BridgeSummary>>>();
+          when(() => mockBridgeRepository.getRegisteredBridges()).thenAnswer((_) => pendingLookupGate.future);
+          addTearDown(() {
+            if (!pendingLookupGate.isCompleted) {
+              pendingLookupGate.complete(ApiResponse.success(const <BridgeSummary>[]));
+            }
+          });
+          return buildCubit();
+        },
+        act: (cubit) async {
+          await Future<void>.delayed(Duration.zero); // lookup now in flight
+          // The bridge connects while the lookup is pending. Mutate
+          // currentStatus directly (no stream event) so only the post-lookup
+          // guard is exercised, not the status listener.
+          when(() => mockConnectionService.currentStatus).thenReturn(_connectedStatus);
+          pendingLookupGate.complete(ApiResponse.success(const <BridgeSummary>[]));
+          await Future<void>.delayed(Duration.zero);
+        },
+        // No bridgeDisconnected over the recovered connection — the loading
+        // state stays until the connected transition drives the next fetch.
+        expect: () => <ProjectListState>[],
       );
     });
 
