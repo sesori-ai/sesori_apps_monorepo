@@ -140,6 +140,10 @@ abstract class BridgePluginApi {
 
   /// Health check — returns `true` when the backend is healthy, `false`
   /// otherwise.
+  ///
+  /// This is an *instantaneous*, mobile-facing probe: it reflects backend
+  /// reachability right now and is not debounced. The debounced lifecycle
+  /// signal used for orchestration decisions is `BridgePlugin.status`.
   Future<bool> healthCheck();
 
   /// Get connected providers and their models from the backend.
@@ -151,5 +155,11 @@ abstract class BridgePluginApi {
   List<PluginProjectActivitySummary> getActiveSessionsSummary();
 
   /// Stop the plugin and release resources (SSE connections, HTTP clients, etc.).
+  ///
+  /// Prefer `BridgePlugin.shutdown()`, which owns the plugin's ordered
+  /// teardown; this method will be removed once the bridge core stops
+  /// calling it directly. Until then the core may call `dispose()` before or
+  /// after `shutdown()`, so implementations MUST be idempotent and safe in
+  /// either order.
   Future<void> dispose();
 }

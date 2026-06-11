@@ -6,7 +6,7 @@ Dart workspace containing the Sesori Bridge CLI and its plugin system. The bridg
 
 Plugin-based design with three modules:
 
-- **`sesori_plugin_interface`** defines the abstract `BridgePlugin` contract. All plugins implement its 8 methods: `getProjects`, `getSessions`, `getSessionMessages`, `healthCheck`, `getProviders`, `getActiveSessionsSummary`, `proxyRequest`, `dispose`.
+- **`sesori_plugin_interface`** defines the plugin contract: the `BridgePluginApi` request surface (sessions, prompts, questions, permissions, projects, providers, events) and the lifecycle contract (`BridgePluginDescriptor` → `start(PluginHost)` → `BridgePlugin`). See its [README](sesori_plugin_interface/README.md).
 - **`sesori_plugin_opencode`** implements that contract for the OpenCode backend.
 - **`app`** orchestrates everything: auth (OAuth PKCE), relay connection, encryption, and request routing. It depends only on the plugin interface, not on any specific implementation.
 
@@ -18,8 +18,8 @@ Phone <--(E2E encrypted)--> Relay Server <--(E2E encrypted)--> Bridge CLI -> [Pl
 
 | Module | Description |
 |--------|-------------|
-| `sesori_plugin_interface` | Abstract `BridgePlugin` contract and shared model types |
-| `sesori_plugin_opencode` | OpenCode backend implementation of `BridgePlugin` |
+| `sesori_plugin_interface` | Plugin contract (`BridgePluginApi`, lifecycle types) and shared model types |
+| `sesori_plugin_opencode` | OpenCode backend implementation of the plugin contract |
 | `app` | CLI entry point: auth, relay, encryption, request routing |
 
 ## Quick Start
@@ -117,5 +117,5 @@ See `app/README.md` for the full security and protocol details.
 
 1. Create a new Dart package in `bridge/`.
 2. Add `sesori_plugin_interface` as a dependency.
-3. Implement the `BridgePlugin` abstract class — all 8 methods are required.
+3. Implement the contract — see the [plugin interface README](sesori_plugin_interface/README.md) for the full guide.
 4. Register the plugin in the `app` orchestrator (`bin/bridge.dart`).
