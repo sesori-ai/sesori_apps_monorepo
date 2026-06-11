@@ -66,6 +66,7 @@ class SessionListContent extends StatelessWidget {
                           isActive: activityInfo != null,
                           selected: selectedSessionId == session.id,
                           awaitingInput: activityInfo?.awaitingInput ?? false,
+                          isRetrying: activityInfo?.isRetrying ?? false,
                           backgroundTaskCount: activityInfo?.backgroundTaskCount ?? 0,
                           onTap: () => onSessionTap(session),
                           onLongPress: () => onSessionLongPress(session),

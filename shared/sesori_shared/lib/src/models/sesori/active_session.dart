@@ -16,6 +16,7 @@ sealed class ActiveSession with _$ActiveSession {
     @Default(false) bool mainAgentRunning,
     @Default(false) bool awaitingInput,
     @Default([]) List<String> childSessionIds,
+    @Default(false) bool isRetrying,
   }) = _ActiveSession;
 
   factory ActiveSession.fromJson(Map<String, dynamic> json) => _$ActiveSessionFromJson(json);

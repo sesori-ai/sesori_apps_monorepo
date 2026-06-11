@@ -997,6 +997,12 @@ abstract class AppLocalizations {
   /// **'Running'**
   String get sessionListRunning;
 
+  /// Label shown next to the red dot for sessions that are active but in a retry/error state
+  ///
+  /// In en, this message translates to:
+  /// **'Running (retrying)'**
+  String get sessionListRunningRetrying;
+
   /// Label shown next to the amber dot for sessions that are waiting for user input (question or permission)
   ///
   /// In en, this message translates to:

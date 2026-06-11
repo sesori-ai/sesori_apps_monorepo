@@ -13,6 +13,7 @@ sealed class PluginActiveSession with _$PluginActiveSession {
     required String id,
     @Default(false) bool mainAgentRunning,
     @Default(false) bool awaitingInput,
+    @Default(false) bool isRetrying,
     @Default([]) List<String> childSessionIds,
   }) = _PluginActiveSession;
 }
