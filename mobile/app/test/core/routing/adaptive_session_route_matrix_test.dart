@@ -132,8 +132,13 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
     });
 
-    testWidgets("/projects/:projectId/sessions/new stays flat and wins over dynamic session matching", (tester) async {
+    testWidgets("/projects/:projectId/sessions/new renders in the session pane and wins over dynamic matching", (
+      tester,
+    ) async {
       const location = "/projects/p1/sessions/new";
+      final sessions = {
+        "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
+      };
 
       for (final width in [390.0, 1024.0]) {
         final harness = AdaptiveSessionRouterTestHarness();
@@ -142,7 +147,7 @@ void main() {
           await harness.setUp(
             initialLocation: location,
             currentRouteDef: AppRouteDef.newSession,
-            sessionsByProject: const {"p1": []},
+            sessionsByProject: sessions,
           );
 
           await tester.pumpWidget(harness.buildApp());
@@ -151,7 +156,15 @@ void main() {
           expect(find.byType(NewSessionScreen), findsOneWidget);
           expect(find.byKey(const ValueKey("session-detail-new")), findsNothing);
           expect(find.byType(EmptySessionDetailPanel), findsNothing);
-          expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
+          if (width == 390) {
+            expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
+            expect(find.byKey(const Key("session-split-right-pane")), findsNothing);
+          } else {
+            expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
+            expect(find.byKey(const Key("session-split-right-pane")), findsOneWidget);
+            final tile = tester.widget<ListTile>(find.widgetWithText(ListTile, "Session One"));
+            expect(tile.selected, isFalse);
+          }
         } finally {
           await harness.tearDown();
         }

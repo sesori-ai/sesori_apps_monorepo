@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/core/widgets/sesori_background_widget.dart";
 import "package:sesori_mobile/core/widgets/session_split/empty_session_detail_panel.dart";
 import "package:sesori_mobile/core/widgets/session_split/session_split_breakpoints.dart";
 import "package:sesori_mobile/core/widgets/session_split/session_split_scope.dart";
@@ -140,6 +141,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key("empty-session-detail-panel")), findsOneWidget);
+      expect(find.byType(Material), findsWidgets);
+      expect(find.byType(SesoriBackgroundWidget), findsOneWidget);
       expect(find.text("Select a session"), findsOneWidget);
       expect(find.text("Choose a session from the list to view details"), findsOneWidget);
     });

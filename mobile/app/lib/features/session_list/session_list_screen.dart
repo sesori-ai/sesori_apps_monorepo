@@ -56,6 +56,7 @@ class _SessionListBody extends StatelessWidget {
         context.goRoute(
           AppRoute.sessionDetail(
             projectId: projectId,
+            projectName: projectName,
             sessionId: session.id,
             sessionTitle: session.title ?? "",
             readOnly: false,

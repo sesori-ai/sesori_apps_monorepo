@@ -21,7 +21,7 @@ void main() {
   setUpAll(registerAllFallbackValues);
 
   testWidgets("list tile tap navigates to detail on narrow layouts", (tester) async {
-    const location = "/projects/p1/sessions";
+    const location = "/projects/p1/sessions?name=Project+One";
     final harness = AdaptiveSessionRouterTestHarness();
     await tester.binding.setSurfaceSize(const Size(390, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -46,7 +46,7 @@ void main() {
   });
 
   testWidgets("list tile tap opens detail in the wide split shell", (tester) async {
-    const location = "/projects/p1/sessions";
+    const location = "/projects/p1/sessions?name=Project+One";
     final harness = AdaptiveSessionRouterTestHarness();
     await tester.binding.setSurfaceSize(const Size(1024, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -67,11 +67,13 @@ void main() {
 
     final uri = Uri.parse(harness.currentLocation);
     expect(uri.path, "/projects/p1/sessions/session-1");
+    expect(uri.queryParameters["name"], "Project One");
     expect(uri.queryParameters["title"], "Session One");
     expect(uri.queryParameters["readOnly"], "false");
     expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
     expect(find.byKey(const Key("session-split-right-pane")), findsOneWidget);
     expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
+    expect(find.text("Project One — Sessions"), findsOneWidget);
 
     final tile = tester.widget<ListTile>(find.widgetWithText(ListTile, "Session One"));
     expect(tile.selected, isTrue);
@@ -105,6 +107,38 @@ void main() {
     expect(Uri.parse(harness.currentLocation).path, "/projects/p1/sessions");
     expect(find.byType(SessionListPanel), findsOneWidget);
     expect(find.byKey(const ValueKey("session-detail-session-1")), findsNothing);
+  });
+
+  testWidgets("wide detail navigation crossfades inside the right pane", (tester) async {
+    const location = "/projects/p1/sessions";
+    final harness = AdaptiveSessionRouterTestHarness();
+    await tester.binding.setSurfaceSize(const Size(1024, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    addTearDown(harness.tearDown);
+    await harness.setUp(
+      initialLocation: location,
+      currentRouteDef: AppRouteDef.sessions,
+      sessionsByProject: {
+        "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
+      },
+    );
+
+    await tester.pumpWidget(harness.buildApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Session One"));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 60));
+
+    final detail = find.byKey(const ValueKey("session-detail-session-1"));
+    expect(detail, findsOneWidget);
+    expect(
+      find.ancestor(of: detail, matching: find.byType(FadeTransition)),
+      findsWidgets,
+    );
+
+    await tester.pumpAndSettle();
+    expect(Uri.parse(harness.currentLocation).path, "/projects/p1/sessions/session-1");
   });
 
   testWidgets("direct wide /projects/p1/sessions entry shows BackButton to projects", (tester) async {

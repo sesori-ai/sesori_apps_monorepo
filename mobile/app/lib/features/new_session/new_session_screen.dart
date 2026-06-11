@@ -154,6 +154,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
           context.pushRoute(
             AppRoute.sessionDetail(
               projectId: widget.projectId,
+              projectName: null,
               sessionId: session.id,
               sessionTitle: session.title ?? "",
               readOnly: false,

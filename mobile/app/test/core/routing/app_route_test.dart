@@ -41,6 +41,7 @@ void main() {
     test("substitutes path params for sessionDetail", () {
       final result = const AppRoute.sessionDetail(
         projectId: "proj-123",
+        projectName: null,
         sessionId: "ses-456",
         sessionTitle: null,
         readOnly: false,
@@ -63,18 +64,21 @@ void main() {
     test("includes title and readOnly as query params for sessionDetail", () {
       final result = const AppRoute.sessionDetail(
         projectId: "proj-1",
+        projectName: "Project One",
         sessionId: "ses-1",
         sessionTitle: "hello world & more",
         readOnly: true,
       ).buildPath();
       expect(result, contains("/projects/proj-1/sessions/ses-1?"));
       expect(result, isNot(contains("& more")));
+      expect(result, contains("name=Project+One"));
       expect(result, contains("readOnly=true"));
     });
 
     test("always includes readOnly in query when false", () {
       final result = const AppRoute.sessionDetail(
         projectId: "proj-1",
+        projectName: null,
         sessionId: "ses-1",
         sessionTitle: null,
         readOnly: false,
@@ -85,6 +89,7 @@ void main() {
     test("encodes path params with special characters", () {
       final result = const AppRoute.sessionDetail(
         projectId: "project/with?special&chars",
+        projectName: null,
         sessionId: "id/with?special&chars",
         sessionTitle: null,
         readOnly: false,
@@ -211,18 +216,20 @@ void main() {
     test("detail route preserves typed route decoding and stable key", () {
       final detailRoute = _sessionDetailRoute();
 
-      final widget = detailRoute.builder!(
+      final page = detailRoute.pageBuilder!(
         _FakeBuildContext(),
         _FakeGoRouterState(
           pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"},
-          queryParameters: {"title": "Debug session", "readOnly": "true"},
+          queryParameters: {"name": "My Project", "title": "Debug session", "readOnly": "true"},
         ),
       );
+      final widget = (page as CustomTransitionPage<void>).child;
 
       expect(widget, isA<SessionDetailScreen>());
       final screen = widget as SessionDetailScreen;
       expect(screen.key, const ValueKey("session-detail-ses-99"));
       expect(screen.projectId, "proj-42");
+      expect(screen.projectName, "My Project");
       expect(screen.sessionId, "ses-99");
       expect(screen.sessionTitle, "Debug session");
       expect(screen.readOnly, isTrue);
@@ -231,10 +238,11 @@ void main() {
     test("diffs route preserves typed route decoding and stable key", () {
       final diffsRoute = _sessionDiffsRoute();
 
-      final widget = diffsRoute.builder!(
+      final page = diffsRoute.pageBuilder!(
         _FakeBuildContext(),
         _FakeGoRouterState(pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"}),
       );
+      final widget = (page as CustomTransitionPage<void>).child;
 
       expect(widget, isA<SessionDiffsScreen>());
       final screen = widget as SessionDiffsScreen;
@@ -331,6 +339,7 @@ void main() {
             const AppRoute.sessions(projectId: "proj_1", projectName: null).buildPath(),
             const AppRoute.sessionDetail(
               projectId: "proj_1",
+              projectName: null,
               sessionId: "ses_1",
               sessionTitle: "Session Title",
               readOnly: false,
@@ -347,6 +356,7 @@ void main() {
           const AppRoute.sessions(projectId: "proj_1", projectName: null).buildPath(),
           const AppRoute.sessionDetail(
             projectId: "proj_1",
+            projectName: null,
             sessionId: "ses_1",
             sessionTitle: "Session Title",
             readOnly: false,

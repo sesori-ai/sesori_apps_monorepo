@@ -29,6 +29,7 @@ Widget _buildApp({required SessionDetailCubit cubit}) {
           value: cubit,
           child: const SessionDetailBody(
             projectId: "project-1",
+            projectName: null,
             sessionId: "session-1",
             sessionTitle: "Session",
             readOnly: false,

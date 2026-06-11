@@ -94,6 +94,15 @@ class AdaptiveSessionRouterTestHarness {
       final sessionId = invocation.namedArguments[#sessionId]! as String;
       return ApiResponse.success(SessionDiffsResponse(diffs: diffsBySession[sessionId] ?? const []));
     });
+    when(
+      () => sessionRepository.listAgents(projectId: any(named: "projectId")),
+    ).thenAnswer((_) async => ApiResponse.success(Agents(agents: [testAgentInfo()])));
+    when(
+      () => sessionRepository.listProviders(projectId: any(named: "projectId")),
+    ).thenAnswer((_) async => ApiResponse.success(testProviderListResponse()));
+    when(
+      () => sessionRepository.listCommands(projectId: any(named: "projectId")),
+    ).thenAnswer((_) async => ApiResponse.success(const CommandListResponse(items: [])));
 
     Future<SessionDetailLoadResult> loadSnapshot(Invocation invocation) async {
       final projectId = invocation.namedArguments[#projectId]! as String;

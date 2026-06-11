@@ -28,6 +28,7 @@ void main() {
 
       final rightPane = find.byKey(const Key("session-split-right-pane"));
       expect(find.descendant(of: rightPane, matching: find.byType(AppBar)), findsOneWidget);
+      expect(find.descendant(of: rightPane, matching: find.byType(BackButton)), findsNothing);
     });
 
     testWidgets("shows exactly one app bar in right panel for diffs", (tester) async {
@@ -52,6 +53,7 @@ void main() {
 
       final rightPane = find.byKey(const Key("session-split-right-pane"));
       expect(find.descendant(of: rightPane, matching: find.byType(AppBar)), findsOneWidget);
+      expect(find.descendant(of: rightPane, matching: find.byType(BackButton)), findsOneWidget);
       expect(find.descendant(of: rightPane, matching: find.text("File Changes")), findsOneWidget);
     });
   });

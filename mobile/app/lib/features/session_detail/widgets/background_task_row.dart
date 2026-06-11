@@ -28,6 +28,7 @@ class BackgroundTaskRow extends StatelessWidget {
       onTap: () => context.pushRoute(
         AppRoute.sessionDetail(
           projectId: projectId ?? session.projectID,
+          projectName: null,
           sessionId: session.id,
           readOnly: true,
           sessionTitle: session.title,

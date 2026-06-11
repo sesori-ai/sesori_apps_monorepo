@@ -1,4 +1,4 @@
-import "package:flutter/widgets.dart";
+import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
@@ -70,9 +70,16 @@ extension AppRouteToGoRoute on AppRouteDef {
       AppRouteNewSession(:final projectId) => NewSessionScreen(
         projectId: projectId,
       ),
-      AppRouteSessionDetail(:final projectId, :final sessionId, :final sessionTitle, :final readOnly) =>
+      AppRouteSessionDetail(
+        :final projectId,
+        :final projectName,
+        :final sessionId,
+        :final sessionTitle,
+        :final readOnly,
+      ) =>
         SessionDetailScreen(
           projectId: projectId,
+          projectName: projectName,
           sessionId: sessionId,
           sessionTitle: sessionTitle,
           readOnly: readOnly,
@@ -83,6 +90,40 @@ extension AppRouteToGoRoute on AppRouteDef {
       ),
     };
   }
+}
+
+Page<void> buildSessionPaneTransitionPage({
+  required BuildContext context,
+  required GoRouterState state,
+  required Widget child,
+}) {
+  final duration = context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220);
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    transitionDuration: duration,
+    reverseTransitionDuration: duration,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final isSplit = SessionSplitScope.maybeOf(context)?.isSplit ?? false;
+      if (isSplit) {
+        return FadeTransition(
+          opacity: CurveTween(curve: Curves.easeInOut).animate(animation),
+          child: child,
+        );
+      }
+      final modalRoute = ModalRoute.of(context);
+      if (modalRoute is! PageRoute<void>) {
+        throw StateError("Session pane transitions require a PageRoute");
+      }
+      return Theme.of(context).pageTransitionsTheme.buildTransitions<void>(
+        modalRoute,
+        context,
+        animation,
+        secondaryAnimation,
+        child,
+      );
+    },
+    child: child,
+  );
 }
 
 /// Fade-only page transition for every navigation into the login screen.
@@ -186,26 +227,29 @@ List<RouteBase> _buildAppRoutes({
           routes: [
             GoRoute(
               path: _sessionsRouteSegment,
-              builder: (context, state) => Builder(
-                builder: (context) {
-                  final route = switch (AppRoute.fromDef(
-                    def: AppRouteDef.sessions,
-                    pathParams: state.pathParameters,
-                    queryParams: state.uri.queryParameters,
-                  )) {
-                    final AppRouteSessions route => route,
-                    final route => throw StateError("Route ${route.def.name} is not a sessions route"),
-                  };
-                  return SessionSplitScope.of(context).isSplit
-                      ? const EmptySessionDetailPanel()
-                      : SessionListScreen(projectId: route.projectId, projectName: route.projectName);
-                },
+              pageBuilder: (context, state) => buildSessionPaneTransitionPage(
+                context: context,
+                state: state,
+                child: Builder(
+                  builder: (context) {
+                    final route = switch (AppRoute.fromDef(
+                      def: AppRouteDef.sessions,
+                      pathParams: state.pathParameters,
+                      queryParams: state.uri.queryParameters,
+                    )) {
+                      final AppRouteSessions route => route,
+                      final route => throw StateError("Route ${route.def.name} is not a sessions route"),
+                    };
+                    return SessionSplitScope.of(context).isSplit
+                        ? const EmptySessionDetailPanel()
+                        : SessionListScreen(projectId: route.projectId, projectName: route.projectName);
+                  },
+                ),
               ),
               routes: [
                 GoRoute(
                   path: _newSessionRouteSegment,
-                  parentNavigatorKey: rootNavigatorKey,
-                  builder: (context, state) {
+                  pageBuilder: (context, state) {
                     final route = switch (AppRoute.fromDef(
                       def: AppRouteDef.newSession,
                       pathParams: state.pathParameters,
@@ -214,12 +258,16 @@ List<RouteBase> _buildAppRoutes({
                       final AppRouteNewSession route => route,
                       final route => throw StateError("Route ${route.def.name} is not a new-session route"),
                     };
-                    return NewSessionScreen(projectId: route.projectId);
+                    return buildSessionPaneTransitionPage(
+                      context: context,
+                      state: state,
+                      child: NewSessionScreen(projectId: route.projectId),
+                    );
                   },
                 ),
                 GoRoute(
                   path: _sessionDetailRouteSegment,
-                  builder: (context, state) {
+                  pageBuilder: (context, state) {
                     final route = switch (AppRoute.fromDef(
                       def: AppRouteDef.sessionDetail,
                       pathParams: state.pathParameters,
@@ -228,18 +276,23 @@ List<RouteBase> _buildAppRoutes({
                       final AppRouteSessionDetail route => route,
                       final route => throw StateError("Route ${route.def.name} is not a session-detail route"),
                     };
-                    return SessionDetailScreen(
-                      key: ValueKey("session-detail-${route.sessionId}"),
-                      projectId: route.projectId,
-                      sessionId: route.sessionId,
-                      sessionTitle: route.sessionTitle,
-                      readOnly: route.readOnly,
+                    return buildSessionPaneTransitionPage(
+                      context: context,
+                      state: state,
+                      child: SessionDetailScreen(
+                        key: ValueKey("session-detail-${route.sessionId}"),
+                        projectId: route.projectId,
+                        projectName: route.projectName,
+                        sessionId: route.sessionId,
+                        sessionTitle: route.sessionTitle,
+                        readOnly: route.readOnly,
+                      ),
                     );
                   },
                   routes: [
                     GoRoute(
                       path: _sessionDiffsRouteSegment,
-                      builder: (context, state) {
+                      pageBuilder: (context, state) {
                         final route = switch (AppRoute.fromDef(
                           def: AppRouteDef.sessionDiffs,
                           pathParams: state.pathParameters,
@@ -248,10 +301,14 @@ List<RouteBase> _buildAppRoutes({
                           final AppRouteSessionDiffs route => route,
                           final route => throw StateError("Route ${route.def.name} is not a session-diffs route"),
                         };
-                        return SessionDiffsScreen(
-                          key: ValueKey("session-diffs-${route.sessionId}"),
-                          projectId: route.projectId,
-                          sessionId: route.sessionId,
+                        return buildSessionPaneTransitionPage(
+                          context: context,
+                          state: state,
+                          child: SessionDiffsScreen(
+                            key: ValueKey("session-diffs-${route.sessionId}"),
+                            projectId: route.projectId,
+                            sessionId: route.sessionId,
+                          ),
                         );
                       },
                     ),
@@ -298,6 +355,7 @@ class _SessionListPane extends StatelessWidget {
           context.goRoute(
             AppRoute.sessionDetail(
               projectId: projectId,
+              projectName: projectName,
               sessionId: session.id,
               sessionTitle: session.title ?? "",
               readOnly: false,
