@@ -11,7 +11,6 @@ import "../../core/routing/app_router.dart";
 import "../../core/widgets/app_modal_bottom_sheet.dart";
 import "../../l10n/app_localizations.dart";
 import "rename_session_dialog.dart";
-import "session_list_cubit_provider.dart";
 import "session_list_scaffold.dart";
 
 part "session_list_actions.dart";
@@ -31,12 +30,9 @@ class SessionListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SessionListCubitProvider(
+    return _SessionListBody(
       projectId: projectId,
-      child: _SessionListBody(
-        projectId: projectId,
-        projectName: projectName,
-      ),
+      projectName: projectName,
     );
   }
 }
@@ -57,7 +53,7 @@ class _SessionListBody extends StatelessWidget {
         context.pushRoute(AppRoute.newSession(projectId: projectId));
       },
       onSessionTap: (session) {
-        context.pushRoute(
+        context.goRoute(
           AppRoute.sessionDetail(
             projectId: projectId,
             sessionId: session.id,

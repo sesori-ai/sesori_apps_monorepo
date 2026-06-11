@@ -1,9 +1,10 @@
 import "package:flutter/material.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_zyra/module_zyra.dart";
 import "../../../core/extensions/build_context_x.dart";
+import "../../../core/routing/app_router.dart";
 import "../../../l10n/app_localizations.dart";
-import "adaptive_session_detail_navigation.dart";
 
 class BackgroundTaskRow extends StatelessWidget {
   final String? projectId;
@@ -24,12 +25,13 @@ class BackgroundTaskRow extends StatelessWidget {
     final title = session.title ?? loc.sessionDetailSubtaskUnnamed;
 
     return InkWell(
-      onTap: () => openAdaptiveSessionDetail(
-        context: context,
-        projectId: projectId ?? session.projectID,
-        sessionId: session.id,
-        readOnly: true,
-        sessionTitle: session.title,
+      onTap: () => context.pushRoute(
+        AppRoute.sessionDetail(
+          projectId: projectId ?? session.projectID,
+          sessionId: session.id,
+          readOnly: true,
+          sessionTitle: session.title,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),

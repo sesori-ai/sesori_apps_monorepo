@@ -1,7 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
-import "package:sesori_mobile/core/widgets/session_split/session_split_scope.dart";
 import "package:sesori_mobile/features/session_detail/widgets/background_tasks_bar.dart";
 import "package:sesori_mobile/features/session_detail/widgets/subtask_part_widget.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
@@ -10,8 +9,6 @@ import "package:theme_zyra/module_zyra.dart";
 
 Widget _buildApp({
   required Widget child,
-  bool wrapInSplitScope = false,
-  String projectId = "project-1",
 }) {
   final router = GoRouter(
     routes: [
@@ -37,24 +34,13 @@ Widget _buildApp({
     ],
   );
 
-  Widget widget = MaterialApp.router(
+  return MaterialApp.router(
     routerConfig: router,
     theme: ThemeData(extensions: [ZyraDesignSystem.light]),
     darkTheme: ThemeData(extensions: [ZyraDesignSystem.dark]),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
   );
-
-  if (wrapInSplitScope) {
-    widget = SessionSplitScope(
-      isSplit: true,
-      projectId: projectId,
-      selectedSessionId: "session-parent",
-      child: widget,
-    );
-  }
-
-  return widget;
 }
 
 Session _childSession({required String id, String? title}) {
@@ -93,16 +79,18 @@ void main() {
   group("SubtaskPartWidget", () {
     testWidgets("tapping child session pushes route with readOnly=true outside split scope", (tester) async {
       final child = _childSession(id: "child-1", title: "Child Session");
-      await tester.pumpWidget(_buildApp(
-        child: Scaffold(
-          body: SubtaskPartWidget(
-            projectId: "project-1",
-            part: _subtaskPart(description: "Child Session"),
-            children: [child],
-            childStatuses: const {},
+      await tester.pumpWidget(
+        _buildApp(
+          child: Scaffold(
+            body: SubtaskPartWidget(
+              projectId: "project-1",
+              part: _subtaskPart(description: "Child Session"),
+              children: [child],
+              childStatuses: const {},
+            ),
           ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text("Child Session"));
@@ -114,27 +102,26 @@ void main() {
       expect(find.text("readOnly=true"), findsOneWidget);
     });
 
-    testWidgets("tapping child session uses replaceRoute with readOnly=true in split scope", (tester) async {
+    testWidgets("tapping child session pushes route with readOnly=true from split context", (tester) async {
       final child = _childSession(id: "child-1", title: "Child Session");
-      await tester.pumpWidget(_buildApp(
-        wrapInSplitScope: true,
-        child: Scaffold(
-          body: SubtaskPartWidget(
-            projectId: "project-1",
-            part: _subtaskPart(description: "Child Session"),
-            children: [child],
-            childStatuses: const {},
+      await tester.pumpWidget(
+        _buildApp(
+          child: Scaffold(
+            body: SubtaskPartWidget(
+              projectId: "project-1",
+              part: _subtaskPart(description: "Child Session"),
+              children: [child],
+              childStatuses: const {},
+            ),
           ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text("Child Session"));
       await tester.pumpAndSettle();
 
-      // replaceRoute replaces the current route, so canPop should be absent
-      // when the test router started with only one route.
-      expect(find.text("canPop=true"), findsNothing);
+      expect(find.text("canPop=true"), findsOneWidget);
       expect(find.text("sessionId=child-1"), findsOneWidget);
       expect(find.text("readOnly=true"), findsOneWidget);
     });
@@ -143,15 +130,17 @@ void main() {
   group("BackgroundTasksBar", () {
     testWidgets("tapping task row pushes route with readOnly=true outside split scope", (tester) async {
       final child = _childSession(id: "task-1", title: "Task One");
-      await tester.pumpWidget(_buildApp(
-        child: Scaffold(
-          body: BackgroundTasksBar(
-            projectId: "project-1",
-            children: [child],
-            childStatuses: const {},
+      await tester.pumpWidget(
+        _buildApp(
+          child: Scaffold(
+            body: BackgroundTasksBar(
+              projectId: "project-1",
+              children: [child],
+              childStatuses: const {},
+            ),
           ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text("All tasks completed"));
@@ -165,18 +154,19 @@ void main() {
       expect(find.text("readOnly=true"), findsOneWidget);
     });
 
-    testWidgets("tapping task row uses replaceRoute with readOnly=true in split scope", (tester) async {
+    testWidgets("tapping task row pushes route with readOnly=true from split context", (tester) async {
       final child = _childSession(id: "task-1", title: "Task One");
-      await tester.pumpWidget(_buildApp(
-        wrapInSplitScope: true,
-        child: Scaffold(
-          body: BackgroundTasksBar(
-            projectId: "project-1",
-            children: [child],
-            childStatuses: const {},
+      await tester.pumpWidget(
+        _buildApp(
+          child: Scaffold(
+            body: BackgroundTasksBar(
+              projectId: "project-1",
+              children: [child],
+              childStatuses: const {},
+            ),
           ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text("All tasks completed"));
@@ -185,7 +175,7 @@ void main() {
       await tester.tap(find.text("Task One"));
       await tester.pumpAndSettle();
 
-      expect(find.text("canPop=true"), findsNothing);
+      expect(find.text("canPop=true"), findsOneWidget);
       expect(find.text("sessionId=task-1"), findsOneWidget);
       expect(find.text("readOnly=true"), findsOneWidget);
     });

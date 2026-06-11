@@ -189,7 +189,9 @@ void main() {
       expect(find.byKey(const Key("session-split-right-pane")), findsNothing);
     });
 
-    testWidgets("expanding from narrow diffs to 1024 keeps the same route and shows split list plus diffs", (tester) async {
+    testWidgets("expanding from narrow diffs to 1024 keeps the same route and shows split list plus diffs", (
+      tester,
+    ) async {
       const location = "/projects/p1/sessions/session-1/diffs";
       final harness = AdaptiveSessionRouterTestHarness();
       await tester.binding.setSurfaceSize(const Size(390, 800));

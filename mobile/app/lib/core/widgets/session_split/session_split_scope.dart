@@ -3,17 +3,13 @@ import "package:flutter/material.dart";
 /// Inherited widget that exposes adaptive split state to descendants.
 ///
 /// Widgets in the session split shell can query whether they are rendering
-/// inside a wide split layout and access the current project/session context.
+/// inside a wide split layout.
 class SessionSplitScope extends InheritedWidget {
   final bool isSplit;
-  final String projectId;
-  final String? selectedSessionId;
 
   const SessionSplitScope({
     super.key,
     required this.isSplit,
-    required this.projectId,
-    this.selectedSessionId,
     required super.child,
   });
 
@@ -31,8 +27,6 @@ class SessionSplitScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(SessionSplitScope oldWidget) {
-    return isSplit != oldWidget.isSplit ||
-        projectId != oldWidget.projectId ||
-        selectedSessionId != oldWidget.selectedSessionId;
+    return isSplit != oldWidget.isSplit;
   }
 }

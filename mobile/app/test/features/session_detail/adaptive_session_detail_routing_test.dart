@@ -36,7 +36,7 @@ void main() {
     expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
   });
 
-  testWidgets("diff button replaces the right pane on wide layouts", (tester) async {
+  testWidgets("diff button pushes diffs in the right pane on wide layouts", (tester) async {
     final harness = AdaptiveSessionRouterTestHarness();
     await tester.binding.setSurfaceSize(const Size(1024, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -60,10 +60,52 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(harness.currentLocation, "/projects/p1/sessions/session-1/diffs");
-    expect(harness.router.canPop(), isFalse);
+    expect(harness.router.canPop(), isTrue);
     expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
     expect(find.byKey(const Key("session-split-right-pane")), findsOneWidget);
     expect(find.byKey(const ValueKey("session-diffs-session-1")), findsOneWidget);
     expect(find.text("Session One"), findsOneWidget);
+
+    harness.router.pop();
+    await tester.pumpAndSettle();
+
+    expect(Uri.parse(harness.currentLocation).path, "/projects/p1/sessions/session-1");
+    expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
+    expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
+  });
+
+  testWidgets("child-session push from wide detail returns to parent detail on back", (tester) async {
+    final harness = AdaptiveSessionRouterTestHarness();
+    await tester.binding.setSurfaceSize(const Size(1024, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    addTearDown(harness.tearDown);
+    final parent = adaptiveTestSession(projectId: "p1", id: "parent-1", title: "Parent Session");
+    final child = adaptiveTestSession(projectId: "p1", id: "child-1", title: "Child Session");
+    await harness.setUp(
+      initialLocation: "/projects/p1/sessions/parent-1?title=Parent+Session&readOnly=false",
+      currentRouteDef: AppRouteDef.sessionDetail,
+      sessionsByProject: {
+        "p1": [parent, child],
+      },
+      childSessionsBySession: {
+        "parent-1": [child],
+      },
+    );
+
+    await tester.pumpWidget(harness.buildApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("All tasks completed"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Child Session").last);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey("session-detail-child-1")), findsOneWidget);
+
+    harness.router.pop();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey("session-detail-parent-1")), findsOneWidget);
+    expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
   });
 }

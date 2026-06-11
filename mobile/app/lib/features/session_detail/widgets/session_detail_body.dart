@@ -22,7 +22,6 @@ class SessionDetailBody extends StatefulWidget {
   final String sessionId;
   final String? sessionTitle;
   final bool readOnly;
-  final VoidCallback? onOpenDiffs;
 
   const SessionDetailBody({
     super.key,
@@ -30,7 +29,6 @@ class SessionDetailBody extends StatefulWidget {
     required this.sessionId,
     required this.sessionTitle,
     required this.readOnly,
-    this.onOpenDiffs,
   });
 
   @override
@@ -81,14 +79,12 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
             IconButton(
               icon: const Icon(Icons.difference_outlined),
               tooltip: loc.sessionDetailFileChangesTooltip,
-              onPressed:
-                  widget.onOpenDiffs ??
-                  () => context.pushRoute(
-                    AppRoute.sessionDiffs(
-                      projectId: widget.projectId,
-                      sessionId: widget.sessionId,
-                    ),
-                  ),
+              onPressed: () => context.goRoute(
+                AppRoute.sessionDiffs(
+                  projectId: widget.projectId,
+                  sessionId: widget.sessionId,
+                ),
+              ),
             ),
           if (isBusy)
             Padding(

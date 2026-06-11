@@ -34,6 +34,7 @@ class AdaptiveSessionRouterTestHarness {
   late final BehaviorSubject<ConnectionStatus> statusController;
   late final StreamController<void> maxDurationReachedController;
   late final GoRouter router;
+  late final GlobalKey<NavigatorState> rootNavigatorKey;
 
   Future<void> setUp({
     required String initialLocation,
@@ -41,6 +42,7 @@ class AdaptiveSessionRouterTestHarness {
     required Map<String, List<Session>> sessionsByProject,
     Map<String, String?> baseBranchByProject = const {},
     Map<String, List<FileDiff>> diffsBySession = const {},
+    Map<String, List<Session>> childSessionsBySession = const {},
     List<RouteBase> extraRoutes = const [],
   }) async {
     await GetIt.instance.reset();
@@ -57,6 +59,7 @@ class AdaptiveSessionRouterTestHarness {
     voiceTranscriptionService = MockVoiceTranscriptionService();
     statusController = BehaviorSubject<ConnectionStatus>.seeded(_connectedStatus);
     maxDurationReachedController = StreamController<void>.broadcast();
+    rootNavigatorKey = GlobalKey<NavigatorState>();
 
     when(() => connectionService.events).thenAnswer((_) => const Stream<SseEvent>.empty());
     when(() => connectionService.status).thenAnswer((_) => statusController.stream);
@@ -94,6 +97,7 @@ class AdaptiveSessionRouterTestHarness {
           projectId: projectId,
           sessionId: sessionId,
           sessionsByProject: sessionsByProject,
+          childSessionsBySession: childSessionsBySession,
         ),
         isBridgeConnected: true,
       );
@@ -139,7 +143,14 @@ class AdaptiveSessionRouterTestHarness {
     getIt.registerSingleton<NotificationCanceller>(notificationCanceller);
     getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
 
-    router = GoRouter(initialLocation: initialLocation, routes: [...extraRoutes, ..._buildHarnessRoutes()]);
+    router = GoRouter(
+      navigatorKey: rootNavigatorKey,
+      initialLocation: initialLocation,
+      routes: [
+        ...extraRoutes,
+        ..._buildHarnessRoutes(rootNavigatorKey: rootNavigatorKey),
+      ],
+    );
   }
 
   Widget buildApp() {
@@ -174,7 +185,9 @@ class AdaptiveSessionRouterTestHarness {
   );
 }
 
-List<RouteBase> _buildHarnessRoutes() => buildAppRoutes();
+List<RouteBase> _buildHarnessRoutes({required GlobalKey<NavigatorState> rootNavigatorKey}) {
+  return buildAppRoutesForTesting(rootNavigatorKey: rootNavigatorKey);
+}
 
 Session adaptiveTestSession({
   required String projectId,
@@ -209,6 +222,7 @@ SessionDetailSnapshot _buildDetailSnapshot({
   required String projectId,
   required String sessionId,
   required Map<String, List<Session>> sessionsByProject,
+  required Map<String, List<Session>> childSessionsBySession,
 }) {
   final matchingSession = sessionsByProject[projectId]?.firstWhere(
     (session) => session.id == sessionId,
@@ -220,7 +234,7 @@ SessionDetailSnapshot _buildDetailSnapshot({
     messages: const [],
     pendingQuestions: const [],
     pendingPermissions: const [],
-    childSessions: const [],
+    childSessions: childSessionsBySession[sessionId] ?? const [],
     statuses: {sessionId: const SessionStatus.idle()},
     agents: [testAgentInfo()],
     providerData: testProviderListResponse(),

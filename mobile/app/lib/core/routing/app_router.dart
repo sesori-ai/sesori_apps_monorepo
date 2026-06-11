@@ -10,13 +10,18 @@ import "../../features/new_session/new_session_screen.dart";
 import "../../features/project_list/project_list_screen.dart";
 import "../../features/session_detail/session_detail_screen.dart";
 import "../../features/session_diffs/session_diffs_screen.dart";
-import "../../features/session_list/session_list_cubit_provider.dart";
-import "../../features/session_list/session_list_panel.dart";
 import "../../features/session_list/session_list_screen.dart";
 import "../../features/settings/settings_screen.dart";
 import "../../features/splash/splash_screen.dart";
 import "../extensions/build_context_x.dart";
 import "../widgets/sesori_logo.dart";
+
+final _rootNavigatorKey = GlobalKey<NavigatorState>();
+final _sessionShellNavigatorKey = GlobalKey<NavigatorState>();
+
+const _newSessionRouteSegment = "new";
+const _sessionDetailRouteSegment = ":sessionId";
+const _sessionDiffsRouteSegment = "diffs";
 
 extension AppRouteToGoRoute on AppRouteDef {
   /// Returns the [GoRoute] for this route definition with an exhaustive
@@ -137,155 +142,113 @@ extension GoRouterNavigation on GoRouter {
 }
 
 List<RouteBase> buildAppRoutes() {
+  return _buildAppRoutes(rootNavigatorKey: _rootNavigatorKey, sessionShellNavigatorKey: _sessionShellNavigatorKey);
+}
+
+List<RouteBase> buildAppRoutesForTesting({required GlobalKey<NavigatorState> rootNavigatorKey}) {
+  return _buildAppRoutes(rootNavigatorKey: rootNavigatorKey, sessionShellNavigatorKey: GlobalKey<NavigatorState>());
+}
+
+List<RouteBase> _buildAppRoutes({
+  required GlobalKey<NavigatorState> rootNavigatorKey,
+  required GlobalKey<NavigatorState> sessionShellNavigatorKey,
+}) {
   return [
-    for (final def in AppRouteDef.values)
-      if (_isFlatRoute(def)) def.toGoRoute(),
-    AppRouteDef.newSession.toGoRoute(),
-    _buildSessionSplitRoute(def: AppRouteDef.sessions, routeKind: SessionSplitRouteKind.list),
-    _buildSessionSplitRoute(def: AppRouteDef.sessionDetail, routeKind: SessionSplitRouteKind.detail),
-    _buildSessionSplitRoute(def: AppRouteDef.sessionDiffs, routeKind: SessionSplitRouteKind.diffs),
+    AppRouteDef.splash.toGoRoute(),
+    AppRouteDef.login.toGoRoute(),
+    AppRouteDef.projects.toGoRoute(),
+    AppRouteDef.settings.toGoRoute(),
+    ShellRoute(
+      navigatorKey: sessionShellNavigatorKey,
+      builder: (context, state, child) => SessionSplitShell(
+        projectId: state.pathParameters["projectId"] ?? "",
+        projectName: state.uri.queryParameters["name"],
+        selectedSessionId: state.pathParameters["sessionId"],
+        child: child,
+      ),
+      routes: [
+        GoRoute(
+          path: AppRouteDef.sessions.path,
+          builder: (context, state) => Builder(
+            builder: (context) {
+              final route = switch (AppRoute.fromDef(
+                def: AppRouteDef.sessions,
+                pathParams: state.pathParameters,
+                queryParams: state.uri.queryParameters,
+              )) {
+                final AppRouteSessions route => route,
+                final route => throw StateError("Route ${route.def.name} is not a sessions route"),
+              };
+              return SessionSplitScope.of(context).isSplit
+                  ? const EmptySessionDetailPanel()
+                  : SessionListScreen(projectId: route.projectId, projectName: route.projectName);
+            },
+          ),
+          routes: [
+            GoRoute(
+              path: _newSessionRouteSegment,
+              parentNavigatorKey: rootNavigatorKey,
+              builder: (context, state) {
+                final route = switch (AppRoute.fromDef(
+                  def: AppRouteDef.newSession,
+                  pathParams: state.pathParameters,
+                  queryParams: state.uri.queryParameters,
+                )) {
+                  final AppRouteNewSession route => route,
+                  final route => throw StateError("Route ${route.def.name} is not a new-session route"),
+                };
+                return NewSessionScreen(projectId: route.projectId);
+              },
+            ),
+            GoRoute(
+              path: _sessionDetailRouteSegment,
+              builder: (context, state) {
+                final route = switch (AppRoute.fromDef(
+                  def: AppRouteDef.sessionDetail,
+                  pathParams: state.pathParameters,
+                  queryParams: state.uri.queryParameters,
+                )) {
+                  final AppRouteSessionDetail route => route,
+                  final route => throw StateError("Route ${route.def.name} is not a session-detail route"),
+                };
+                return SessionDetailScreen(
+                  key: ValueKey("session-detail-${route.sessionId}"),
+                  projectId: route.projectId,
+                  sessionId: route.sessionId,
+                  sessionTitle: route.sessionTitle,
+                  readOnly: route.readOnly,
+                );
+              },
+              routes: [
+                GoRoute(
+                  path: _sessionDiffsRouteSegment,
+                  builder: (context, state) {
+                    final route = switch (AppRoute.fromDef(
+                      def: AppRouteDef.sessionDiffs,
+                      pathParams: state.pathParameters,
+                      queryParams: state.uri.queryParameters,
+                    )) {
+                      final AppRouteSessionDiffs route => route,
+                      final route => throw StateError("Route ${route.def.name} is not a session-diffs route"),
+                    };
+                    return SessionDiffsScreen(
+                      key: ValueKey("session-diffs-${route.sessionId}"),
+                      projectId: route.projectId,
+                      sessionId: route.sessionId,
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    ),
   ];
 }
 
-bool _isFlatRoute(AppRouteDef def) {
-  return switch (def) {
-    AppRouteDef.splash || AppRouteDef.login || AppRouteDef.projects || AppRouteDef.settings => true,
-    AppRouteDef.sessions || AppRouteDef.newSession || AppRouteDef.sessionDetail || AppRouteDef.sessionDiffs => false,
-  };
-}
-
-GoRoute _buildSessionSplitRoute({required AppRouteDef def, required SessionSplitRouteKind routeKind}) {
-  return GoRoute(
-    path: def.path,
-    builder: (context, state) {
-      final route = AppRoute.fromDef(
-        def: def,
-        pathParams: state.pathParameters,
-        queryParams: state.uri.queryParameters,
-      );
-
-      return _SessionSplitShellHost(route: route, routeKind: routeKind);
-    },
-  );
-}
-
-class _SessionSplitShellHost extends StatelessWidget {
-  final AppRoute route;
-  final SessionSplitRouteKind routeKind;
-
-  const _SessionSplitShellHost({required this.route, required this.routeKind});
-
-  @override
-  Widget build(BuildContext context) {
-    final (projectId, selectedSessionId, projectName) = switch (route) {
-      AppRouteSessions(:final projectId, :final projectName) => (projectId, null, projectName),
-      AppRouteSessionDetail(:final projectId, :final sessionId) ||
-      AppRouteSessionDiffs(:final projectId, :final sessionId) => (projectId, sessionId, null),
-      AppRouteSplash() ||
-      AppRouteLogin() ||
-      AppRouteProjects() ||
-      AppRouteSettings() ||
-      AppRouteNewSession() => throw StateError("Route ${route.def.name} is not a session split child"),
-    };
-
-    final fullScreenChild = switch (route) {
-      AppRouteSessions(:final projectId, :final projectName) => SessionListScreen(
-        projectId: projectId,
-        projectName: projectName,
-      ),
-      AppRouteSessionDetail(:final projectId, :final sessionId, :final sessionTitle, :final readOnly) => Builder(
-        builder: (context) {
-          final splitScope = SessionSplitScope.maybeOf(context);
-          return SessionDetailScreen(
-            key: ValueKey("session-detail-$sessionId"),
-            projectId: projectId,
-            sessionId: sessionId,
-            sessionTitle: sessionTitle,
-            readOnly: readOnly,
-            onOpenDiffs: splitScope != null && splitScope.isSplit
-                ? () => context.replaceRoute(AppRoute.sessionDiffs(projectId: projectId, sessionId: sessionId))
-                : null,
-          );
-        },
-      ),
-      AppRouteSessionDiffs(:final projectId, :final sessionId) => SessionDiffsScreen(
-        key: ValueKey("session-diffs-$sessionId"),
-        projectId: projectId,
-        sessionId: sessionId,
-      ),
-      AppRouteSplash() ||
-      AppRouteLogin() ||
-      AppRouteProjects() ||
-      AppRouteSettings() ||
-      AppRouteNewSession() => throw StateError("Route ${route.def.name} is not a session split child"),
-    };
-
-    return SessionSplitShell(
-      projectId: projectId,
-      selectedSessionId: selectedSessionId,
-      routeKind: routeKind,
-      list: _SessionListPane(
-        projectId: projectId,
-        projectName: projectName,
-        selectedSessionId: selectedSessionId,
-        fullScreenChild: fullScreenChild,
-      ),
-      detail: switch (routeKind) {
-        SessionSplitRouteKind.list => const EmptySessionDetailPanel(),
-        SessionSplitRouteKind.detail || SessionSplitRouteKind.diffs => fullScreenChild,
-      },
-    );
-  }
-}
-
-class _SessionListPane extends StatelessWidget {
-  final String projectId;
-  final String? projectName;
-  final String? selectedSessionId;
-  final Widget fullScreenChild;
-
-  const _SessionListPane({
-    required this.projectId,
-    required this.projectName,
-    required this.selectedSessionId,
-    required this.fullScreenChild,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scope = SessionSplitScope.of(context);
-    if (!scope.isSplit) return fullScreenChild;
-    const actionDispatcher = SessionListActionDispatcher();
-
-    return KeyedSubtree(
-      key: ValueKey("session-list-$projectId"),
-      child: SessionListCubitProvider(
-        key: ValueKey("session-list-cubit-$projectId"),
-        projectId: projectId,
-        child: SessionListPanel(
-          projectName: projectName,
-          selectedSessionId: selectedSessionId,
-          onBack: ModalRoute.of(context)?.canPop ?? false ? () => context.pop() : null,
-          onNewSession: () => context.pushRoute(AppRoute.newSession(projectId: projectId)),
-          onSessionTap: (session) {
-            context.replaceRoute(
-              AppRoute.sessionDetail(
-                projectId: projectId,
-                sessionId: session.id,
-                sessionTitle: session.title ?? "",
-                readOnly: false,
-              ),
-            );
-          },
-          onSessionLongPress: (session) => actionDispatcher.showSessionActions(context: context, session: session),
-          onSessionSwipe: (session) => actionDispatcher.handleSessionSwipe(context: context, session: session),
-        ),
-      ),
-    );
-  }
-}
-
 final appRouter = GoRouter(
+  navigatorKey: _rootNavigatorKey,
   initialLocation: AppRouteDef.splash.path,
   onException: (context, state, router) {
     final uri = state.uri;
