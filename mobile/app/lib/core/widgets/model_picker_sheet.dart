@@ -4,7 +4,7 @@ import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart"
-    show ModelPickerModelEntry, ModelPickerSection, ModelPickerSectionBuilder;
+    show ModelPickerModelEntry, ModelPickerSection, ModelPickerSectionBuilder, loge;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_zyra/module_zyra.dart";
 
@@ -84,6 +84,12 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
   /// still preparing them.
   List<ModelPickerSection>? _sections;
 
+  /// Rows currently visible for [_query]. Cached so unrelated rebuilds
+  /// (keyboard animation, focus changes) don't re-run the filter pass; only
+  /// recomputed when the sections arrive or the query changes. `null` while
+  /// the sections are still loading.
+  List<_PickerRow>? _rows;
+
   @override
   void initState() {
     super.initState();
@@ -91,13 +97,24 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
   }
 
   Future<void> _loadSections() async {
-    final sections = await compute(_buildSections, (
-      providers: widget.providers,
-      selectedProviderID: widget.selectedProviderID,
-      selectedModelID: widget.selectedModelID,
-    ));
+    List<ModelPickerSection> sections;
+    try {
+      sections = await compute(_buildSections, (
+        providers: widget.providers,
+        selectedProviderID: widget.selectedProviderID,
+        selectedModelID: widget.selectedModelID,
+      ));
+    } catch (error, stackTrace) {
+      // Fail soft: show an empty list rather than leaving the sheet stuck
+      // on the spinner with an uncaught async error.
+      loge("Model picker section build failed", error, stackTrace);
+      sections = const [];
+    }
     if (!mounted) return;
-    setState(() => _sections = sections);
+    setState(() {
+      _sections = sections;
+      _rows = _visibleRows(sections);
+    });
   }
 
   /// Entry point for compute() — must be top-level or static.
@@ -171,22 +188,25 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
               filled: true,
               fillColor: zyra.colors.bgPrimary,
             ),
-            onChanged: (value) => setState(() => _query = value.trim()),
+            onChanged: (value) => setState(() {
+              _query = value.trim();
+              final sections = _sections;
+              if (sections != null) _rows = _visibleRows(sections);
+            }),
           ),
         ),
         const SizedBox(height: 4),
         Expanded(
-          child: switch (_sections) {
+          child: switch (_rows) {
             null => const Center(child: CircularProgressIndicator()),
-            final sections => _buildModelList(context: context, sections: sections),
+            final rows => _buildModelList(context: context, rows: rows),
           },
         ),
       ],
     );
   }
 
-  Widget _buildModelList({required BuildContext context, required List<ModelPickerSection> sections}) {
-    final rows = _visibleRows(sections);
+  Widget _buildModelList({required BuildContext context, required List<_PickerRow> rows}) {
     return ListView.builder(
       // Extend the scrollable area underneath the home indicator: the
       // bottom inset is added as scroll padding so the last model can

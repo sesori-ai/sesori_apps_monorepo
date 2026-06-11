@@ -44,6 +44,9 @@ class ModelPickerModelTile extends StatelessWidget {
 
     return ListTile(
       dense: true,
+      // Exposes the selection state to assistive technology (TalkBack /
+      // VoiceOver); the radio icon below only communicates it visually.
+      selected: isSelected,
       title: Text(name),
       subtitle: switch (subtitle) {
         final text? => Text(text),
