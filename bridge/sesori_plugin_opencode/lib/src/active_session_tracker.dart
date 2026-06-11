@@ -22,7 +22,7 @@ class ActiveSessionTracker {
   final Map<String, String?> _sessionParentIds = {};
 
   Map<String, int> _lastEmittedActiveSessions = {};
-  Map<String, int> _lastEmittedRetrySessions = {};
+  Set<String> _lastEmittedRetrySessions = {};
   Set<String> _lastEmittedPendingInputSessions = {};
 
   ActiveSessionTracker(this._repository);
@@ -94,7 +94,7 @@ class ActiveSessionTracker {
     }
 
     _lastEmittedActiveSessions = _activeSessionCounts;
-    _lastEmittedRetrySessions = _retrySessionCounts;
+    _lastEmittedRetrySessions = _retryingSessionIds;
     _lastEmittedPendingInputSessions = _pendingInputSessions;
   }
 
@@ -156,11 +156,11 @@ class ActiveSessionTracker {
     }
 
     final next = _activeSessionCounts;
-    final nextRetry = _retrySessionCounts;
+    final nextRetry = _retryingSessionIds;
     final nextPendingInputSessions = _pendingInputSessions;
     if (!forceReemit &&
         _mapsEqual(_lastEmittedActiveSessions, next) &&
-        _mapsEqual(_lastEmittedRetrySessions, nextRetry) &&
+        _setsEqual(_lastEmittedRetrySessions, nextRetry) &&
         _setsEqual(_lastEmittedPendingInputSessions, nextPendingInputSessions)) {
       return false;
     }
@@ -222,11 +222,11 @@ class ActiveSessionTracker {
     }
 
     final nextActive = _activeSessionCounts;
-    final nextRetry = _retrySessionCounts;
+    final nextRetry = _retryingSessionIds;
     final nextPending = _pendingInputSessions;
 
     if (_mapsEqual(_lastEmittedActiveSessions, nextActive) &&
-        _mapsEqual(_lastEmittedRetrySessions, nextRetry) &&
+        _setsEqual(_lastEmittedRetrySessions, nextRetry) &&
         _setsEqual(_lastEmittedPendingInputSessions, nextPending)) {
       return false;
     }
@@ -348,19 +348,17 @@ class ActiveSessionTracker {
     return counts;
   }
 
-  /// Count of retrying sessions per worktree.
+  /// Set of session IDs that are currently in retry state.
   ///
   /// Used for change detection so that a busy→retry transition (where the
   /// per-worktree active count does not change) still triggers a re-emit.
-  Map<String, int> get _retrySessionCounts {
-    final counts = <String, int>{};
-    for (final entry in _sessionStatuses.entries) {
-      if (entry.value is! SessionStatusRetry) continue;
-      final worktree = _sessionWorktrees[entry.key];
-      if (worktree == null) continue;
-      counts[worktree] = (counts[worktree] ?? 0) + 1;
-    }
-    return counts;
+  /// Tracking individual IDs rather than counts ensures session-level swaps
+  /// (A stops retrying while B starts) are also detected.
+  Set<String> get _retryingSessionIds {
+    return _sessionStatuses.entries
+        .where((e) => e.value is SessionStatusRetry)
+        .map((e) => e.key)
+        .toSet();
   }
 
   /// Exposed for testing: raw count of all busy/retry sessions per worktree.
