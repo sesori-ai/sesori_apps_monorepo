@@ -10,6 +10,8 @@ import "../../features/new_session/new_session_screen.dart";
 import "../../features/project_list/project_list_screen.dart";
 import "../../features/session_detail/session_detail_screen.dart";
 import "../../features/session_diffs/session_diffs_screen.dart";
+import "../../features/session_list/session_list_cubit_provider.dart";
+import "../../features/session_list/session_list_panel.dart";
 import "../../features/session_list/session_list_screen.dart";
 import "../../features/settings/settings_screen.dart";
 import "../../features/splash/splash_screen.dart";
@@ -160,12 +162,24 @@ List<RouteBase> _buildAppRoutes({
     AppRouteDef.settings.toGoRoute(),
     ShellRoute(
       navigatorKey: sessionShellNavigatorKey,
-      builder: (context, state, child) => SessionSplitShell(
-        projectId: state.pathParameters["projectId"] ?? "",
-        projectName: state.uri.queryParameters["name"],
-        selectedSessionId: state.pathParameters["sessionId"],
-        child: child,
-      ),
+      builder: (context, state, child) {
+        final projectId = state.pathParameters["projectId"] ?? "";
+        final projectName = state.uri.queryParameters["name"];
+        final selectedSessionId = state.pathParameters["sessionId"];
+
+        return SessionListCubitProvider(
+          key: ValueKey("session-list-cubit-$projectId"),
+          projectId: projectId,
+          child: SessionSplitShell(
+            list: _SessionListPane(
+              projectId: projectId,
+              projectName: projectName,
+              selectedSessionId: selectedSessionId,
+            ),
+            child: child,
+          ),
+        );
+      },
       routes: [
         GoRoute(
           path: AppRouteDef.sessions.path,
@@ -245,6 +259,50 @@ List<RouteBase> _buildAppRoutes({
       ],
     ),
   ];
+}
+
+class _SessionListPane extends StatelessWidget {
+  final String projectId;
+  final String? projectName;
+  final String? selectedSessionId;
+
+  const _SessionListPane({
+    required this.projectId,
+    required this.projectName,
+    required this.selectedSessionId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const actionDispatcher = SessionListActionDispatcher();
+    // ignore: no_slop_linter/avoid_navigator_of, root navigator pop is required here so shell chrome exits the whole shell instead of the nested pane route
+    final rootNavigator = Navigator.of(context);
+
+    return KeyedSubtree(
+      key: ValueKey("session-list-$projectId"),
+      child: SessionListPanel(
+        projectName: projectName,
+        selectedSessionId: selectedSessionId,
+        // Use the root navigator from shell chrome; GoRouter pop would target
+        // the nested pane navigator and only pop the right-pane route.
+        // ignore: unnecessary_lambdas, Navigator.pop is generic and does not match VoidCallback as a tear-off
+        onBack: rootNavigator.canPop() ? () => rootNavigator.pop() : null,
+        onNewSession: () => context.pushRoute(AppRoute.newSession(projectId: projectId)),
+        onSessionTap: (session) {
+          context.goRoute(
+            AppRoute.sessionDetail(
+              projectId: projectId,
+              sessionId: session.id,
+              sessionTitle: session.title ?? "",
+              readOnly: false,
+            ),
+          );
+        },
+        onSessionLongPress: (session) => actionDispatcher.showSessionActions(context: context, session: session),
+        onSessionSwipe: (session) => actionDispatcher.handleSessionSwipe(context: context, session: session),
+      ),
+    );
+  }
 }
 
 final appRouter = GoRouter(

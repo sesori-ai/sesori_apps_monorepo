@@ -11,6 +11,7 @@ import "package:sesori_mobile/features/new_session/new_session_screen.dart";
 import "package:sesori_mobile/features/project_list/project_list_screen.dart";
 import "package:sesori_mobile/features/session_detail/session_detail_screen.dart";
 import "package:sesori_mobile/features/session_diffs/session_diffs_screen.dart";
+import "package:sesori_mobile/features/session_list/session_list_cubit_provider.dart";
 import "package:sesori_mobile/features/settings/settings_screen.dart";
 import "package:sesori_mobile/features/splash/splash_screen.dart";
 
@@ -188,7 +189,7 @@ void main() {
       expect(childPaths, equals(["new", ":sessionId"]));
     });
 
-    test("session shell builder decodes project and selected session params", () {
+    test("session shell builder hoists cubit provider above split shell", () {
       final shell = buildAppRoutes().whereType<ShellRoute>().single;
       final widget = shell.builder!(
         _FakeBuildContext(),
@@ -199,11 +200,11 @@ void main() {
         const SizedBox(),
       );
 
-      expect(widget, isA<SessionSplitShell>());
-      final splitShell = widget as SessionSplitShell;
-      expect(splitShell.projectId, "proj-42");
-      expect(splitShell.projectName, "My Project");
-      expect(splitShell.selectedSessionId, "ses-99");
+      expect(widget, isA<SessionListCubitProvider>());
+      final provider = widget as SessionListCubitProvider;
+      expect(provider.key, const ValueKey("session-list-cubit-proj-42"));
+      expect(provider.projectId, "proj-42");
+      expect(provider.child, isA<SessionSplitShell>());
     });
 
     test("detail route preserves typed route decoding and stable key", () {
