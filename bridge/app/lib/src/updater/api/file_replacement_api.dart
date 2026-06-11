@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-import '../../bridge/foundation/process_runner.dart';
 import '../../bridge/foundation/post_update_restart_flag.dart';
+import '../../bridge/foundation/process_runner.dart';
 import '../models/file_replacement_result.dart';
 import '../models/pending_windows_update.dart';
 

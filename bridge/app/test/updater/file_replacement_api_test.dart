@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/bridge/foundation/post_update_restart_flag.dart';
+import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/updater/api/file_replacement_api.dart';
 import 'package:sesori_bridge/src/updater/models/pending_windows_update.dart';
 import 'package:test/test.dart';
