@@ -61,16 +61,17 @@ void main() {
 
     expect(harness.router.state.uri.toString(), "/projects/p1/sessions/session-1/diffs");
     expect(harness.router.canPop(), isTrue);
+    final rightPane = find.byKey(const Key("session-split-right-pane"));
     expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
-    expect(find.byKey(const Key("session-split-right-pane")), findsOneWidget);
-    expect(find.byKey(const ValueKey("session-diffs-session-1")), findsOneWidget);
+    expect(rightPane, findsOneWidget);
+    expect(find.descendant(of: rightPane, matching: find.byKey(const ValueKey("session-diffs-session-1"))), findsOneWidget);
     expect(find.text("Session One"), findsOneWidget);
 
     harness.router.pop();
     await tester.pumpAndSettle();
 
     expect(Uri.parse(harness.currentLocation).path, "/projects/p1/sessions/session-1");
-    expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
+    expect(find.descendant(of: rightPane, matching: find.byKey(const ValueKey("session-detail-session-1"))), findsOneWidget);
     expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
   });
 
@@ -100,19 +101,19 @@ void main() {
     await tester.tap(find.text("Child Session").last);
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey("session-detail-child-1")), findsOneWidget);
     final rightPane = find.byKey(const Key("session-split-right-pane"));
+    expect(find.descendant(of: rightPane, matching: find.byKey(const ValueKey("session-detail-child-1"))), findsOneWidget);
     expect(find.descendant(of: rightPane, matching: find.byType(BackButton)), findsOneWidget);
 
     await tester.tap(find.widgetWithIcon(IconButton, Icons.difference_outlined));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey("session-diffs-child-1")), findsOneWidget);
+    expect(find.descendant(of: rightPane, matching: find.byKey(const ValueKey("session-diffs-child-1"))), findsOneWidget);
 
     harness.router.pop();
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey("session-detail-child-1")), findsOneWidget);
+    expect(find.descendant(of: rightPane, matching: find.byKey(const ValueKey("session-detail-child-1"))), findsOneWidget);
 
     await tester.tap(find.descendant(of: rightPane, matching: find.byType(BackButton)));
     await tester.pumpAndSettle();
