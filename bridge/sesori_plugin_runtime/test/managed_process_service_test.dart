@@ -469,7 +469,7 @@ class _TestRecordMapper implements RuntimeRecordMapper<_TestRecord> {
   String? runtimeExecutablePathOf({required _TestRecord record}) => record.openCodeExecutablePath;
 
   @override
-  String? runtimeCommandLineOf({required _TestRecord record}) {
+  String runtimeCommandLineOf({required _TestRecord record}) {
     return <String>[record.openCodeCommand, ...record.openCodeArgs].join(" ");
   }
 

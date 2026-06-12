@@ -66,6 +66,18 @@ void main() {
       expect(store.files["opencode-processes.json"], equals(contents));
     });
 
+    test("deleteByOwnerSessionId preserves non-canonical bytes when record is absent", () async {
+      final record = _record(ownerSessionId: "owner-a", pid: 401, status: _TestStatus.ready);
+      final prettyContents = const JsonEncoder.withIndent(
+        "  ",
+      ).convert(<String, dynamic>{"owner-a": record.toJson()});
+      store.files["opencode-processes.json"] = prettyContents;
+
+      await repository.deleteByOwnerSessionId(ownerSessionId: "missing");
+
+      expect(store.files["opencode-processes.json"], equals(prettyContents));
+    });
+
     test("corrupt file is quarantined with legacy-compatible name and treated as empty", () async {
       store.files["opencode-processes.json"] = "{";
 
@@ -240,7 +252,7 @@ class _TestRecordMapper implements RuntimeRecordMapper<_TestRecord> {
   String? runtimeExecutablePathOf({required _TestRecord record}) => record.openCodeExecutablePath;
 
   @override
-  String? runtimeCommandLineOf({required _TestRecord record}) {
+  String runtimeCommandLineOf({required _TestRecord record}) {
     return <String>[record.openCodeCommand, ...record.openCodeArgs].join(" ");
   }
 

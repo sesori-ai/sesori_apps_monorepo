@@ -38,9 +38,9 @@ class HostJsonRuntimeOwnershipRepository<R> implements RuntimeOwnershipRepositor
     await _store.update(
       name: _fileName,
       transform: (current) async {
-        final records = await _loadRecordsFromContents(contents: current);
-        records[_mapper.ownerSessionIdOf(record: record)] = record;
-        return jsonEncode(_recordsToJson(records: records));
+        final loaded = await _loadRecordsFromContents(contents: current);
+        loaded.records[_mapper.ownerSessionIdOf(record: record)] = record;
+        return jsonEncode(_recordsToJson(records: loaded.records));
       },
     );
   }
@@ -50,12 +50,19 @@ class HostJsonRuntimeOwnershipRepository<R> implements RuntimeOwnershipRepositor
     await _store.update(
       name: _fileName,
       transform: (current) async {
-        final records = await _loadRecordsFromContents(contents: current);
-        records.remove(ownerSessionId);
-        if (records.isEmpty) {
+        final loaded = await _loadRecordsFromContents(contents: current);
+        final removedRecord = loaded.records.remove(ownerSessionId);
+        if (removedRecord == null) {
+          // Nothing to delete: leave a valid file byte-for-byte untouched
+          // (legacy early-returns without writing). If the contents were just
+          // quarantined, returning null keeps the original name absent instead
+          // of resurrecting the corrupt bytes.
+          return loaded.wasInvalid ? null : current;
+        }
+        if (loaded.records.isEmpty) {
           return null;
         }
-        return jsonEncode(_recordsToJson(records: records));
+        return jsonEncode(_recordsToJson(records: loaded.records));
       },
     );
   }
@@ -68,12 +75,13 @@ class HostJsonRuntimeOwnershipRepository<R> implements RuntimeOwnershipRepositor
       await _handleInvalidRuntimeFile(reason: "unreadable runtime ownership file", error: error);
       return <String, R>{};
     }
-    return _loadRecordsFromContents(contents: contents);
+    final loaded = await _loadRecordsFromContents(contents: contents);
+    return loaded.records;
   }
 
-  Future<Map<String, R>> _loadRecordsFromContents({required String? contents}) async {
+  Future<({Map<String, R> records, bool wasInvalid})> _loadRecordsFromContents({required String? contents}) async {
     if (contents == null || contents.trim().isEmpty) {
-      return <String, R>{};
+      return (records: <String, R>{}, wasInvalid: false);
     }
 
     try {
@@ -82,13 +90,16 @@ class HostJsonRuntimeOwnershipRepository<R> implements RuntimeOwnershipRepositor
         throw const FormatException("Runtime ownership root must be an object");
       }
       final rootJson = Map<String, dynamic>.from(decoded);
-      return <String, R>{
-        for (final MapEntry<String, dynamic> entry in rootJson.entries)
-          entry.key: _mapper.fromJson(json: Map<String, dynamic>.from(entry.value as Map)),
-      };
+      return (
+        records: <String, R>{
+          for (final MapEntry<String, dynamic> entry in rootJson.entries)
+            entry.key: _mapper.fromJson(json: Map<String, dynamic>.from(entry.value as Map)),
+        },
+        wasInvalid: false,
+      );
     } on Object catch (error) {
       await _handleInvalidRuntimeFile(reason: "invalid runtime ownership file", error: error);
-      return <String, R>{};
+      return (records: <String, R>{}, wasInvalid: true);
     }
   }
 

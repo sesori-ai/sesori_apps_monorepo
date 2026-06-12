@@ -19,7 +19,13 @@ abstract class RuntimeRecordMapper<R> {
   /// Full command line the runtime was spawned with, for example command plus
   /// args joined with single spaces. Used for identity matching when process
   /// start markers are present.
-  String? runtimeCommandLineOf({required R record});
+  ///
+  /// Non-null by contract: a managed-runtime record must persist enough to
+  /// reconstruct its spawn command line (the frozen OpenCode schema requires
+  /// command and args). A nullable surface here would force the matcher to
+  /// choose between leaking a live child (null never matches) or killing a
+  /// recycled pid (null always matches).
+  String runtimeCommandLineOf({required R record});
 
   int bridgePidOf({required R record});
 

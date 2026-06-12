@@ -315,8 +315,7 @@ class ManagedProcessService<R> {
   }
 
   bool _matchesRuntimeCommandLine({required ProcessIdentity identity, required R record}) {
-    final runtimeCommandLine = _mapper.runtimeCommandLineOf(record: record);
-    return runtimeCommandLine != null && identity.commandLine == runtimeCommandLine;
+    return identity.commandLine == _mapper.runtimeCommandLineOf(record: record);
   }
 
   String _ownerSessionIdOf({required R record}) => _mapper.ownerSessionIdOf(record: record);
