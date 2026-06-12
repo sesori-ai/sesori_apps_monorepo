@@ -40,15 +40,17 @@ class BridgeSettingsRepository {
   ///
   /// For parse-time reads — plugin selection runs before the CLI parser is
   /// even built, where `--help` or `logout` must not create the config file.
-  /// Deliberately silent for the same reason: a corruption warning here
-  /// would land on stdout of `--version`/`--help` before any `--log-level`
-  /// is parsed; the run path reports corruption through [loadSettings].
   ///
-  /// Only *content* problems are absorbed here. An I/O failure from the
-  /// read itself propagates, like it does from [loadSettings]: whether that
-  /// is fatal is the caller's policy (the parse-time caller maps it to
-  /// "unset" with a stderr diagnostic).
-  Future<BridgeSettings> peekSettings() async {
+  /// Only *content* problems are absorbed here; an invalid config is
+  /// reported through [onInvalidConfig] rather than [Log] because `Log.w`
+  /// writes to *stdout*, which must stay machine-clean for
+  /// `--version`/`--help` (the parse-time caller routes the warning to
+  /// stderr). An I/O failure from the read itself propagates, like it does
+  /// from [loadSettings]: whether that is fatal is the caller's policy (the
+  /// parse-time caller maps it to "unset" with a stderr diagnostic).
+  Future<BridgeSettings> peekSettings({
+    void Function(String message)? onInvalidConfig,
+  }) async {
     final storedConfig = await _api.readConfig();
     if (storedConfig == null) {
       return const BridgeSettings();
@@ -56,7 +58,8 @@ class BridgeSettingsRepository {
 
     try {
       return BridgeSettings.fromJson(jsonDecodeMap(storedConfig));
-    } catch (_) {
+    } catch (error) {
+      onInvalidConfig?.call('[bridge-settings] invalid config at $configFilePath: $error');
       return const BridgeSettings();
     }
   }

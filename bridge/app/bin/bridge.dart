@@ -294,7 +294,9 @@ class ConfigCommand extends cli.Command<void> {
 /// stderr: stdout of `--version`/`--help` must stay machine-consumable.
 Future<List<String>?> _loadEnabledPluginsFromSettings() async {
   try {
-    final settings = await BridgeSettingsRepository(api: BridgeSettingsApi()).peekSettings();
+    final settings = await BridgeSettingsRepository(
+      api: BridgeSettingsApi(),
+    ).peekSettings(onInvalidConfig: stderr.writeln);
     return settings.enabledPlugins;
   } on Object catch (error) {
     stderr.writeln('Could not read bridge settings for plugin selection: $error');

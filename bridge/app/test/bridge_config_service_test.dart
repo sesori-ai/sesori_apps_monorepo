@@ -40,7 +40,9 @@ class _FakeBridgeSettingsRepository implements BridgeSettingsRepository {
   }
 
   @override
-  Future<BridgeSettings> peekSettings() async => const BridgeSettings();
+  Future<BridgeSettings> peekSettings({
+    void Function(String message)? onInvalidConfig,
+  }) async => const BridgeSettings();
 
   @override
   Future<void> saveSettings({required BridgeSettings settings}) async {}

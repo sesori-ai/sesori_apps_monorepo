@@ -99,6 +99,30 @@ void main() {
       expect(api.writeCount, equals(0));
     });
 
+    test('peekSettings reports a corrupted config through onInvalidConfig', () async {
+      final api = FakeBridgeSettingsApi(readResult: '{');
+      final repository = BridgeSettingsRepository(api: api);
+      final warnings = <String>[];
+
+      await repository.peekSettings(onInvalidConfig: warnings.add);
+
+      expect(warnings, hasLength(1));
+      expect(warnings.single, contains('invalid config at /tmp/config.json'));
+    });
+
+    test('peekSettings does not invoke onInvalidConfig for a valid or missing config', () async {
+      final warnings = <String>[];
+
+      await BridgeSettingsRepository(
+        api: FakeBridgeSettingsApi(readResult: null),
+      ).peekSettings(onInvalidConfig: warnings.add);
+      await BridgeSettingsRepository(
+        api: FakeBridgeSettingsApi(readResult: '{"sleepPrevention":"off"}'),
+      ).peekSettings(onInvalidConfig: warnings.add);
+
+      expect(warnings, isEmpty);
+    });
+
     test('saveSettings pretty prints JSON through the api', () async {
       final api = FakeBridgeSettingsApi(readResult: null);
       final repository = BridgeSettingsRepository(api: api);
