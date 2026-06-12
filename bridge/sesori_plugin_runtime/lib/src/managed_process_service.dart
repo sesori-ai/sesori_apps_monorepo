@@ -1,5 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "managed_runtime_spec.dart";
 import "runtime_ownership_repository.dart";
 import "runtime_record_mapper.dart";
 
@@ -29,6 +30,285 @@ class ManagedProcessService<R> {
   final Duration _gracefulShutdownWait;
   final Map<String, _CurrentOwnedRuntimeProcess> _currentOwnedProcessesBySessionId =
       <String, _CurrentOwnedRuntimeProcess>{};
+
+  /// Starts a freshly owned runtime per [spec], after first cleaning up any
+  /// stale runtimes this bridge is authorized to reclaim.
+  ///
+  /// Honors the cooperative abort [startAborted] at every phase boundary: an
+  /// aborted start rolls back everything it acquired (kills the child, deletes
+  /// the record) and settles by throwing [PluginStartAbortedException] — never
+  /// by abandonment, because the bridge holds its startup mutex until this
+  /// settles. A spawn that cannot even launch propagates from the explicit
+  /// path and is retried on the dynamic path; any other start failure rolls
+  /// back and throws [PluginStartException].
+  Future<ManagedRuntimeHandle<R>> start({
+    required ManagedRuntimeSpec<R> spec,
+    required List<ProcessIdentity> terminatedBridgeIdentities,
+    StartAbortSignal? startAborted,
+  }) async {
+    final abort = startAborted ?? StartAbortSignal.never;
+
+    await cleanupStaleOwnedRuntimes(terminatedBridgeIdentities: terminatedBridgeIdentities);
+    _throwIfAborted(abort);
+
+    final portPolicy = spec.portPolicy;
+    switch (portPolicy) {
+      case ExplicitPortPolicy():
+        return _startOnExplicitPort(spec: spec, policy: portPolicy, abort: abort);
+      case DynamicPortPolicy():
+        return _startOnDynamicPort(spec: spec, policy: portPolicy, abort: abort);
+    }
+  }
+
+  /// Attaches to a runtime already listening on [port] (the `--no-auto-start`
+  /// path): a single health probe, no ownership, no process to kill. Returns
+  /// an un-owned handle on success; throws [PluginStartException] when the
+  /// existing server is unreachable.
+  Future<ManagedRuntimeHandle<R>> attach({
+    required ManagedRuntimeSpec<R> spec,
+    required int port,
+    StartAbortSignal? startAborted,
+  }) async {
+    final abort = startAborted ?? StartAbortSignal.never;
+    _throwIfAborted(abort);
+
+    final probe = await _probeTolerant(spec: spec, port: port);
+    if (!probe.healthy) {
+      throw PluginStartException(
+        "[$_runtimeId] existing runtime health check failed on port $port",
+        cause: probe.error,
+      );
+    }
+
+    return ManagedRuntimeHandle<R>(
+      port: port,
+      record: null,
+      process: null,
+      identity: null,
+      health: probe,
+    );
+  }
+
+  Future<ManagedRuntimeHandle<R>> _startOnExplicitPort({
+    required ManagedRuntimeSpec<R> spec,
+    required ExplicitPortPolicy policy,
+    required StartAbortSignal abort,
+  }) async {
+    if (policy.preProbeBindable) {
+      final bindable = await spec.probePortBindable(port: policy.port);
+      if (!bindable) {
+        throw PluginStartException(
+          "[$_runtimeId] explicit port ${policy.port} is already in use",
+          cause: null,
+        );
+      }
+      _throwIfAborted(abort);
+    }
+    return _startAndConfirmHealthy(spec: spec, port: policy.port, abort: abort);
+  }
+
+  Future<ManagedRuntimeHandle<R>> _startOnDynamicPort({
+    required ManagedRuntimeSpec<R> spec,
+    required DynamicPortPolicy policy,
+    required StartAbortSignal abort,
+  }) async {
+    Object? lastError;
+    var attempts = 0;
+
+    for (final port in _dynamicCandidates(policy: policy)) {
+      if (attempts >= policy.maxAttempts) {
+        break;
+      }
+      attempts += 1;
+
+      _throwIfAborted(abort);
+
+      final bindable = await spec.probePortBindable(port: port);
+      if (!bindable) {
+        continue;
+      }
+
+      try {
+        return await _startAndConfirmHealthy(spec: spec, port: port, abort: abort);
+      } on PluginStartAbortedException {
+        rethrow;
+      } on PluginStartException catch (error) {
+        // A failure after a successful spawn (health/validation): try the
+        // next candidate, as the legacy path does.
+        lastError = error;
+      } on Object catch (error) {
+        // A spawn that could not launch: retry the next candidate unless the
+        // policy opts into failing fast.
+        if (policy.failFastOnSpawnError) {
+          rethrow;
+        }
+        Log.w("[$_runtimeId] Failed to start runtime on port $port", error);
+        lastError = error;
+      }
+    }
+
+    throw PluginStartException(
+      "[$_runtimeId] unable to start runtime on an available dynamic port after $attempts attempt(s)",
+      cause: lastError,
+    );
+  }
+
+  Iterable<int> _dynamicCandidates({required DynamicPortPolicy policy}) sync* {
+    for (final port in policy.candidates) {
+      if (port != policy.reservedPort && port >= policy.minPort && port <= policy.maxPort) {
+        yield port;
+      }
+    }
+  }
+
+  Future<ManagedRuntimeHandle<R>> _startAndConfirmHealthy({
+    required ManagedRuntimeSpec<R> spec,
+    required int port,
+    required StartAbortSignal abort,
+  }) async {
+    if (spec.recordTiming == RuntimeRecordTiming.intentSideFile) {
+      // The bridge-private intent side file is introduced in a later step;
+      // until then only the legacy after-spawn timing is representable.
+      throw UnsupportedError("[$_runtimeId] intent side-file record timing is not available yet");
+    }
+
+    // Spawn errors propagate before any ownership state is acquired: the
+    // explicit-port caller surfaces them raw, the dynamic caller retries.
+    final spawned = await spec.spawn(port: port);
+
+    final record = spec.buildRecord(
+      RuntimeRecordDraft(
+        ownerSessionId: _bridge.ownerSessionId,
+        runtimeIdentity: spawned.identity,
+        port: port,
+        bridgeIdentity: _bridge.identity,
+        startedAt: _clock.now(),
+      ),
+    );
+    trackOwnedRuntime(ownerSessionId: _ownerSessionIdOf(record: record), process: spawned);
+
+    try {
+      await _ownershipRepository.upsert(record: record);
+      _throwIfAborted(abort);
+
+      final health = await _confirmHealthy(spec: spec, port: port, spawned: spawned, abort: abort);
+
+      final validate = spec.validateRuntime;
+      if (validate != null) {
+        try {
+          await validate(port: port);
+        } on PluginStartAbortedException {
+          rethrow;
+        } on Object catch (error) {
+          // Surface validation failures as a (retryable) start failure rather
+          // than a raw error the dynamic path would mistake for a spawn error.
+          throw PluginStartException("[$_runtimeId] runtime validation failed on port $port", cause: error);
+        }
+      }
+      _throwIfAborted(abort);
+
+      final readyRecord = _mapper.markReady(record: record);
+      await _ownershipRepository.upsert(record: readyRecord);
+
+      return ManagedRuntimeHandle<R>(
+        port: port,
+        record: readyRecord,
+        process: spawned,
+        identity: spawned.identity,
+        health: health,
+      );
+    } on Object {
+      await _cleanupFailedStart(record: record);
+      rethrow;
+    }
+  }
+
+  Future<RuntimeHealthProbe> _confirmHealthy({
+    required ManagedRuntimeSpec<R> spec,
+    required int port,
+    required SpawnedProcess spawned,
+    required StartAbortSignal abort,
+  }) async {
+    final policy = spec.healthPolicy;
+    switch (policy) {
+      case HealthAttemptCountPolicy():
+        RuntimeHealthProbe? last;
+        for (var attempt = 1; attempt <= policy.attempts; attempt += 1) {
+          await _clock.delay(duration: policy.delay);
+          final probe = await _probeOnce(spec: spec, port: port, spawned: spawned, abort: abort);
+          last = probe;
+          if (probe.healthy) {
+            return probe;
+          }
+        }
+        throw PluginStartException(
+          "[$_runtimeId] health check failed on port $port after ${policy.attempts} attempt(s)",
+          cause: last?.error,
+        );
+      case HealthDeadlinePolicy():
+        final deadline = _clock.now().add(policy.deadline);
+        RuntimeHealthProbe? last;
+        while (true) {
+          await _clock.delay(duration: policy.pollInterval);
+          final probe = await _probeOnce(spec: spec, port: port, spawned: spawned, abort: abort);
+          last = probe;
+          if (probe.healthy) {
+            return probe;
+          }
+          if (!_clock.now().isBefore(deadline)) {
+            throw PluginStartException(
+              "[$_runtimeId] health check failed on port $port within ${policy.deadline.inMilliseconds}ms",
+              cause: last.error,
+            );
+          }
+        }
+    }
+  }
+
+  Future<RuntimeHealthProbe> _probeOnce({
+    required ManagedRuntimeSpec<R> spec,
+    required int port,
+    required SpawnedProcess spawned,
+    required StartAbortSignal abort,
+  }) async {
+    _throwIfAborted(abort);
+
+    if (spec.failOnEarlyChildExit && await _spawnedProcessExited(process: spawned)) {
+      // The child we launched is gone; a healthy probe now would be answered
+      // by an unrelated process holding the port. Fail authoritatively.
+      throw PluginStartException(
+        "[$_runtimeId] runtime exited before becoming healthy on port $port",
+        cause: null,
+      );
+    }
+
+    return _probeTolerant(spec: spec, port: port);
+  }
+
+  /// Probes health, treating a thrown probe as unhealthy — the [ManagedRuntimeSpec.probeHealth]
+  /// contract lets a transient connection error simply read as "not ready yet".
+  Future<RuntimeHealthProbe> _probeTolerant({required ManagedRuntimeSpec<R> spec, required int port}) async {
+    try {
+      return await spec.probeHealth(port: port);
+    } on Object catch (error) {
+      return RuntimeHealthProbe.unhealthy(error: error);
+    }
+  }
+
+  Future<bool> _spawnedProcessExited({required SpawnedProcess process}) async {
+    final exitCode = await process.exitCode.then<int?>((code) => code).timeout(Duration.zero, onTimeout: () => null);
+    return exitCode != null;
+  }
+
+  Future<void> _cleanupFailedStart({required R record}) async {
+    await _stopRecord(record: record, removeOwnership: true);
+  }
+
+  void _throwIfAborted(StartAbortSignal abort) {
+    if (abort.isAborted) {
+      throw const PluginStartAbortedException();
+    }
+  }
 
   void trackOwnedRuntime({required String ownerSessionId, required SpawnedProcess process}) {
     _currentOwnedProcessesBySessionId[ownerSessionId] = _CurrentOwnedRuntimeProcess(
