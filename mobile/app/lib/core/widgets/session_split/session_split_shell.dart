@@ -30,30 +30,38 @@ class SessionSplitShell extends StatelessWidget {
 
         final listWidth = (constraints.maxWidth * maxListPanelRatio).clamp(minListPanelWidth, maxListPanelWidth);
 
-        return Row(
-          children: [
-            SizedBox(
-              key: const Key("session-split-left-pane"),
-              width: listWidth,
-              child: Material(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                child: SafeArea(
-                  child: list,
+        // The shell-level Scaffold is the single root Scaffold registered
+        // with the root ScaffoldMessenger in split mode. Snackbars therefore
+        // present once, spanning both panes, instead of attaching to the
+        // right pane's transient route Scaffolds (which also breaks when a
+        // snackbar is shown mid pane-transition).
+        return Scaffold(
+          key: const Key("session-split-scaffold"),
+          body: Row(
+            children: [
+              SizedBox(
+                key: const Key("session-split-left-pane"),
+                width: listWidth,
+                child: Material(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  child: SafeArea(
+                    child: list,
+                  ),
                 ),
               ),
-            ),
-            const VerticalDivider(
-              key: Key("session-split-divider"),
-              width: 1,
-            ),
-            Expanded(
-              key: const Key("session-split-right-pane"),
-              child: SessionSplitScope(
-                isSplit: true,
-                child: child,
+              const VerticalDivider(
+                key: Key("session-split-divider"),
+                width: 1,
               ),
-            ),
-          ],
+              Expanded(
+                key: const Key("session-split-right-pane"),
+                child: SessionSplitScope(
+                  isSplit: true,
+                  child: child,
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
