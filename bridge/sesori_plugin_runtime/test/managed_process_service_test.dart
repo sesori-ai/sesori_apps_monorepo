@@ -480,6 +480,23 @@ class _TestRecordMapper implements RuntimeRecordMapper<_TestRecord> {
   String? bridgeStartMarkerOf({required _TestRecord record}) => record.bridgeStartMarker;
 
   @override
+  _TestRecord markReady({required _TestRecord record}) {
+    return _TestRecord(
+      ownerSessionId: record.ownerSessionId,
+      openCodePid: record.openCodePid,
+      openCodeStartMarker: record.openCodeStartMarker,
+      openCodeExecutablePath: record.openCodeExecutablePath,
+      openCodeCommand: record.openCodeCommand,
+      openCodeArgs: record.openCodeArgs,
+      port: record.port,
+      bridgePid: record.bridgePid,
+      bridgeStartMarker: record.bridgeStartMarker,
+      startedAt: record.startedAt,
+      status: _TestStatus.ready,
+    );
+  }
+
+  @override
   _TestRecord markStopping({required _TestRecord record}) {
     return _TestRecord(
       ownerSessionId: record.ownerSessionId,

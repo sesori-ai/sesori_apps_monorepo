@@ -31,5 +31,11 @@ abstract class RuntimeRecordMapper<R> {
 
   String? bridgeStartMarkerOf({required R record});
 
+  /// Returns a copy of [record] whose persisted lifecycle status is "ready".
+  ///
+  /// Written by the supervisor once a freshly spawned runtime has passed its
+  /// first health probe. Symmetric with [markStopping].
+  R markReady({required R record});
+
   R markStopping({required R record});
 }
