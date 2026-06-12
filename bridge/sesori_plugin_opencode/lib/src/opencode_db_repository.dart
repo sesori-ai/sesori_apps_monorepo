@@ -3,7 +3,7 @@ import "dart:io";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sqlite3/sqlite3.dart";
 
-import "../api/opencode_db_api.dart";
+import "opencode_db_api.dart";
 
 /// Layer 2 Repository wrapping [OpenCodeDbApi].
 ///
@@ -17,14 +17,14 @@ class OpenCodeDbRepository {
 
   /// Returns the current auto_vacuum mode, or `null` if the database
   /// file does not exist or cannot be read.
-  int? getAutoVacuumMode({required String dbPath}) {
+  Future<int?> getAutoVacuumMode({required String dbPath}) async {
     if (!File(dbPath).existsSync()) {
       Log.d("OpenCode database not found — skipping");
       return null;
     }
 
     try {
-      return _api.getAutoVacuumMode(dbPath: dbPath);
+      return await _api.getAutoVacuumMode(dbPath: dbPath);
     } on SqliteException catch (e) {
       _logError(error: e);
       return null;
@@ -43,9 +43,9 @@ class OpenCodeDbRepository {
   ///
   /// Returns `(sizeBefore, sizeAfter)` in bytes on success, or `null`
   /// if the operation failed (database locked, corrupted, etc.).
-  (int, int)? enableAutoVacuumAndVacuum({required String dbPath}) {
+  Future<(int, int)?> enableAutoVacuumAndVacuum({required String dbPath}) async {
     try {
-      return _api.enableAutoVacuumAndVacuum(dbPath: dbPath);
+      return await _api.enableAutoVacuumAndVacuum(dbPath: dbPath);
     } on SqliteException catch (e) {
       _logError(error: e);
       return null;

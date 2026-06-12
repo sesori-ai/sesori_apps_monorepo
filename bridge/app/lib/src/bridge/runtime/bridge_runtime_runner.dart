@@ -3,6 +3,8 @@ import "dart:io" as io;
 
 import "package:clock/clock.dart";
 import "package:http/http.dart" as http;
+import "package:opencode_plugin/opencode_plugin.dart"
+    show OpenCodeDbApi, OpenCodeDbMaintenanceService, OpenCodeDbRepository;
 import "package:path/path.dart" as path;
 import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
@@ -66,14 +68,11 @@ import "../../updater/services/managed_runtime_path_service.dart";
 import "../../updater/services/update_install_service.dart";
 import "../../updater/services/update_service.dart";
 import "../../version.dart";
-import "../api/opencode_db_api.dart";
 import "../foundation/process_runner.dart";
 import "../log_failure_reporter.dart";
 import "../models/bridge_config.dart";
 import "../persistence/bridge_diagnostics.dart";
 import "../persistence/database.dart";
-import "../repositories/opencode_db_repository.dart";
-import "../services/opencode_db_maintenance_service.dart";
 import "../sse/sse_manager.dart";
 import "bridge_cli_options.dart";
 import "bridge_runtime.dart";
@@ -204,7 +203,7 @@ class BridgeRuntimeRunner {
         authBackendUrl: options.authBackendUrl,
         accessToken: authTokens.accessToken,
       );
-      _optimizeOpenCodeDbIfNeeded(environment: environment);
+      await _optimizeOpenCodeDbIfNeeded(environment: environment);
 
       final currentBridgeIdentity =
           await processRepository.inspectProcess(pid: io.pid) ??
@@ -517,13 +516,13 @@ class BridgeRuntimeRunner {
     );
   }
 
-  static void _optimizeOpenCodeDbIfNeeded({required Map<String, String> environment}) {
+  static Future<void> _optimizeOpenCodeDbIfNeeded({required Map<String, String> environment}) async {
     final homeDir = environment["HOME"] ?? environment["USERPROFILE"];
     if (homeDir == null) {
       return;
     }
 
-    OpenCodeDbMaintenanceService(
+    await OpenCodeDbMaintenanceService(
       repository: OpenCodeDbRepository(api: OpenCodeDbApi()),
     ).optimizeIfNeeded(
       dbPath: '${environment["XDG_DATA_HOME"] ?? "$homeDir/.local/share"}/opencode/opencode.db',
