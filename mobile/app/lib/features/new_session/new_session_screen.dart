@@ -147,11 +147,13 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     final loc = context.loc;
     final zyra = context.zyra;
     final isSending = state is NewSessionSending;
-    // Captured at build time: the pop callback below runs while this route is
+    // Captured at build time: the callbacks below can run while this route is
     // being torn down, where an ancestor lookup on a deactivated context
-    // throws. The root messenger outlives this route, so the reference stays
-    // valid.
+    // throws. Both references stay valid — the root messenger outlives this
+    // route, and the route object is stable (`isCurrent` is still read at
+    // event time).
     final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final modalRoute = ModalRoute.of(context);
 
     return BlocListener<NewSessionCubit, NewSessionState>(
       listenWhen: (_, current) => current is NewSessionCreated,
@@ -161,7 +163,6 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
           // session from the split-view list) while creation was in flight.
           // Replacing the route then would hijack their navigation — the
           // pop-time snackbar already told them the session continues.
-          final modalRoute = ModalRoute.of(context);
           if (modalRoute != null && !modalRoute.isCurrent) return;
           _navigatingToCreatedSession = true;
           context.replaceRoute(
