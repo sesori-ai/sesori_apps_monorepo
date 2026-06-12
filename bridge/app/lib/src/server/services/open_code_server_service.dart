@@ -2,13 +2,14 @@ import "dart:io";
 import "dart:math";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
-import "../foundation/process_match.dart";
 import "../models/open_code_ownership_record.dart";
 import "../repositories/open_code_ownership_repository.dart";
 import "../repositories/open_code_process_repository.dart";
 import "../repositories/port_repository.dart";
 import "../repositories/process_repository.dart";
+import "open_code_supervisor_adapters.dart";
 
 const int openCodeDefaultPort = 4096;
 const int dynamicOpenCodePortMin = 49152;
@@ -16,6 +17,20 @@ const int dynamicOpenCodePortMax = 65535;
 const int dynamicOpenCodeMaxAttempts = 5;
 const Duration openCodeGracefulShutdownWait = Duration(seconds: 5);
 
+/// Owns the OpenCode runtime lifecycle behind an unchanged public surface,
+/// delegating to the extracted [ManagedProcessService] supervisor.
+///
+/// PR 10 of the plugin-lifecycle migration: production now exercises the
+/// reusable supervisor *before* any OpenCode-specific code moves out of the
+/// bridge. The supervisor is configured with the exact legacy policies —
+/// five 500 ms health attempts, the ownership record written after spawn, the
+/// next-candidate retry on port exhaustion, and the restart / exit-monitor /
+/// intent-side-file features all off — so the byte-for-byte ownership file and
+/// the observable behavior the 1,224-line fidelity suite pins stay identical.
+/// The legacy repositories are reached through thin adapters
+/// ([OpenCodeOwnershipStoreAdapter], [OpenCodeHostProcessAdapter],
+/// [OpenCodeBridgeHostInfo], [OpenCodeRecordMapper]); identity capture and the
+/// dynamic-candidate selection stay here, on the spawn/port seams.
 class OpenCodeServerService {
   OpenCodeServerService({
     required OpenCodeProcessRepository openCodeProcessRepository,
@@ -30,24 +45,28 @@ class OpenCodeServerService {
   }) : _openCodeProcessRepository = openCodeProcessRepository,
        _processRepository = processRepository,
        _portRepository = portRepository,
-       _ownershipRepository = ownershipRepository,
-       _clock = clock,
-       _currentBridgeIdentity = currentBridgeIdentity,
-       _ownerSessionId = ownerSessionId,
        _candidatePorts = candidatePorts == null ? null : List<int>.from(candidatePorts),
-       _random = random ?? Random.secure();
+       _random = random ?? Random.secure(),
+       _supervisor = ManagedProcessService<OpenCodeOwnershipRecord>(
+         ownershipRepository: OpenCodeOwnershipStoreAdapter(repository: ownershipRepository),
+         mapper: const OpenCodeRecordMapper(),
+         processes: OpenCodeHostProcessAdapter(processRepository: processRepository),
+         bridge: OpenCodeBridgeHostInfo(
+           processRepository: processRepository,
+           identity: currentBridgeIdentity,
+           ownerSessionId: ownerSessionId,
+         ),
+         clock: clock,
+         runtimeId: "opencode",
+         gracefulShutdownWait: openCodeGracefulShutdownWait,
+       );
 
   final OpenCodeProcessRepository _openCodeProcessRepository;
   final ProcessRepository _processRepository;
   final PortRepository _portRepository;
-  final OpenCodeOwnershipRepository _ownershipRepository;
-  final ServerClock _clock;
-  final ProcessIdentity _currentBridgeIdentity;
-  final String _ownerSessionId;
   final List<int>? _candidatePorts;
   final Random _random;
-  final Map<String, _CurrentOwnedOpenCodeProcess> _currentOwnedProcessesBySessionId =
-      <String, _CurrentOwnedOpenCodeProcess>{};
+  final ManagedProcessService<OpenCodeOwnershipRecord> _supervisor;
 
   Future<OpenCodeServerRuntime> start({
     required String executablePath,
@@ -55,138 +74,77 @@ class OpenCodeServerService {
     required String? password,
     required Iterable<ProcessIdentity> terminatedBridgeIdentities,
   }) async {
-    await cleanupStaleOwnedServers(
-      terminatedBridgeIdentities: terminatedBridgeIdentities,
-    );
-
     final serverPassword = password == null || password.isEmpty
         ? _openCodeProcessRepository.generatePassword()
         : password;
+
+    final RuntimePortPolicy portPolicy;
     if (requestedPort != null) {
       Log.d("[OPENCODE] Starting on port $requestedPort");
-
-      return _startOnExplicitPort(
-        executablePath: executablePath,
-        port: requestedPort,
-        password: serverPassword,
-      );
+      // Legacy explicit-port behavior: spawn straight onto the port, no
+      // pre-probe (preProbeBindable stays off).
+      portPolicy = ExplicitPortPolicy(port: requestedPort);
     } else {
       Log.d("[OPENCODE] Starting on dynamic port");
-      return _startOnDynamicPort(
-        executablePath: executablePath,
-        password: serverPassword,
+      portPolicy = DynamicPortPolicy(
+        // Candidates are pre-filtered here exactly as before (reserved default
+        // port and out-of-range values dropped) so the supervisor — which
+        // counts every examined candidate toward maxAttempts — sees the same
+        // sequence the legacy five-candidate cap did.
+        candidates: _dynamicCandidates(),
+        maxAttempts: dynamicOpenCodeMaxAttempts,
+        reservedPort: openCodeDefaultPort,
+        minPort: dynamicOpenCodePortMin,
+        maxPort: dynamicOpenCodePortMax,
       );
+    }
+
+    final spec = _buildSpec(executablePath: executablePath, password: serverPassword, portPolicy: portPolicy);
+
+    try {
+      final handle = await _supervisor.start(
+        spec: spec,
+        terminatedBridgeIdentities: terminatedBridgeIdentities.toList(growable: false),
+      );
+      Log.d("[OPENCODE] Started on port ${handle.port}");
+      return _toRuntime(handle: handle, password: serverPassword);
+    } on PluginStartException catch (error) {
+      // Preserve the legacy failure type for expected start failures (health /
+      // dynamic exhaustion / validation). A raw spawn error on the explicit
+      // path propagates unwrapped, as it always has.
+      throw OpenCodeServerStartException(error.message, cause: error.cause);
     }
   }
 
   Future<void> cleanupStaleOwnedServers({
     required Iterable<ProcessIdentity> terminatedBridgeIdentities,
-  }) async {
-    final records = await _ownershipRepository.readAll();
-
-    // Phase 1: Authorize and pre-check records.
-    final recordsToTerminate = <OpenCodeOwnershipRecord>[];
-    for (final record in records) {
-      if (!await _isStaleKillAuthorized(
-        record: record,
-        terminatedBridgeIdentities: terminatedBridgeIdentities,
-      )) {
-        continue;
-      }
-
-      final shouldTerminate = await _shouldTerminateRecord(record: record);
-      if (shouldTerminate) {
-        recordsToTerminate.add(record);
-      }
-    }
-
-    if (recordsToTerminate.isEmpty) {
-      return;
-    }
-
-    // Phase 2: Send all graceful signals in parallel.
-    try {
-      await Future.wait(
-        recordsToTerminate.map((record) => _processRepository.sendGracefulSignal(pid: record.openCodePid)),
-      ).timeout(openCodeGracefulShutdownWait);
-    } catch (err, st) {
-      Log.w("Failed to gracefully stop some opencode instance(s)", err, st);
-    }
-
-    // Always wait, even if some signals failed.
-    await _clock.delay(duration: openCodeGracefulShutdownWait);
-
-    // Phase 3: Check which records survived graceful shutdown.
-    final survivors = <OpenCodeOwnershipRecord>[];
-    for (final record in recordsToTerminate) {
-      final currentOwned = _currentOwnedProcessFor(record: record);
-      final currentOwnedStillRunning = currentOwned != null && await _isCurrentOwnedProcessRunning(process: currentOwned);
-      final remainingIdentity = await _processRepository.inspectProcess(pid: record.openCodePid);
-      final matchesRemaining = remainingIdentity != null && _matchesOpenCodeRecord(identity: remainingIdentity, record: record);
-
-      if (currentOwnedStillRunning || matchesRemaining) {
-        survivors.add(record);
-      } else {
-        _currentOwnedProcessesBySessionId.remove(record.ownerSessionId);
-      }
-    }
-
-    // Phase 4: Send force signals to survivors.
-    try {
-      await Future.wait(
-        survivors.map((record) => _processRepository.sendForceSignal(pid: record.openCodePid)),
-      ).timeout(openCodeGracefulShutdownWait);
-    } catch (err, st) {
-      Log.w("Failed to force kill some opencode instance(s)", err, st);
-    }
-
-    // Phase 5: Final cleanup for all terminated records.
-    for (final record in recordsToTerminate) {
-      final currentOwned = _currentOwnedProcessFor(record: record);
-      final currentOwnedStillRunning = currentOwned != null && await _isCurrentOwnedProcessRunning(process: currentOwned);
-
-      if (!currentOwnedStillRunning) {
-        _currentOwnedProcessesBySessionId.remove(record.ownerSessionId);
-      }
-
-      if (currentOwnedStillRunning) {
-        continue;
-      }
-
-      final finalIdentity = await _processRepository.inspectProcess(pid: record.openCodePid);
-      if (finalIdentity == null || !_matchesOpenCodeRecord(identity: finalIdentity, record: record)) {
-        await _ownershipRepository.deleteByOwnerSessionId(ownerSessionId: record.ownerSessionId);
-      }
-    }
+  }) {
+    return _supervisor.cleanupStaleOwnedRuntimes(
+      terminatedBridgeIdentities: terminatedBridgeIdentities.toList(growable: false),
+    );
   }
 
-  Future<void> stopOwnedServer({required OpenCodeOwnershipRecord record}) async {
-    await _ownershipRepository.upsert(
-      record: _copyRecord(record: record, status: OpenCodeOwnershipStatus.stopping),
-    );
-    await _stopRecord(record: record, removeOwnership: true);
+  Future<void> stopOwnedServer({required OpenCodeOwnershipRecord record}) {
+    return _supervisor.stopOwnedRuntime(record: record);
   }
 
   Future<OpenCodeServerRuntime> validateExistingServer({
     required int port,
     required String? password,
   }) async {
-    final serverPassword = password == null || password.isEmpty ? "" : password;
-    final serverUri = Uri.parse("http://$loopbackPortHost:$port");
-    final probe = await _openCodeProcessRepository.probeHealth(
-      // TODO: decide here what to do. This shouldn't stop sesori from starting
-      serverUri: serverUri,
-      password: serverPassword,
-    );
-    if (!probe.isHealthy) {
-      throw OpenCodeServerStartException(
-        "existing opencode server health check failed on port $port.",
-        cause: probe.error,
-      );
+    final probePassword = password == null || password.isEmpty ? "" : password;
+    // Attach mode only ever uses the spec's health probe; the spawn / record /
+    // port seams are inert here, so an unused explicit port policy is fine.
+    final spec = _buildSpec(executablePath: "", password: probePassword, portPolicy: ExplicitPortPolicy(port: port));
+
+    try {
+      await _supervisor.attach(spec: spec, port: port);
+    } on PluginStartException catch (error) {
+      throw OpenCodeServerStartException(error.message, cause: error.cause);
     }
 
     return OpenCodeServerRuntime(
-      serverUri: serverUri,
+      serverUri: Uri.parse("http://$loopbackPortHost:$port"),
       serverPassword: password == null || password.isEmpty ? null : password,
       process: null,
       port: port,
@@ -194,60 +152,23 @@ class OpenCodeServerService {
     );
   }
 
-  Future<OpenCodeServerRuntime> _startOnExplicitPort({
-    required String executablePath,
-    required int port,
-    required String password,
-  }) async {
-    try {
-      return await _startAndConfirmHealthy(
-        executablePath: executablePath,
-        port: port,
-        password: password,
-      );
-    } on Object {
-      rethrow;
-    }
-  }
-
-  Future<OpenCodeServerRuntime> _startOnDynamicPort({
+  ManagedRuntimeSpec<OpenCodeOwnershipRecord> _buildSpec({
     required String executablePath,
     required String password,
-  }) async {
-    Object? lastError;
-    var attempts = 0;
-
-    for (final port in _dynamicCandidates()) {
-      if (attempts >= dynamicOpenCodeMaxAttempts) {
-        break;
-      }
-      attempts += 1;
-
-      final fact = await _portRepository.getAvailabilityFact(port: port);
-      if (!fact.isAvailable) {
-        continue;
-      }
-
-      try {
-        Log.d("[OPENCODE] Found available port $port. Attempting to start");
-        return await _startAndConfirmHealthy(
-          executablePath: executablePath,
-          port: port,
-          password: password,
-        );
-      } on Object catch (error) {
-        Log.e("[OPENCODE] Failed to start on port $port. $error");
-        lastError = error;
-      }
-    }
-
-    throw OpenCodeServerStartException(
-      "Unable to start opencode on an available dynamic port after $attempts attempts.",
-      cause: lastError,
+    required RuntimePortPolicy portPolicy,
+  }) {
+    return ManagedRuntimeSpec<OpenCodeOwnershipRecord>(
+      spawn: ({required int port}) => _spawn(executablePath: executablePath, port: port, password: password),
+      probeHealth: ({required int port}) => _probeHealth(port: port, password: password),
+      probePortBindable: _probePortBindable,
+      buildRecord: _buildRecord,
+      portPolicy: portPolicy,
+      // Legacy pacing: up to five probes, each preceded by a 500 ms delay.
+      healthPolicy: const RuntimeHealthPolicy.attemptCount(attempts: 5, delay: Duration(milliseconds: 500)),
     );
   }
 
-  Future<OpenCodeServerRuntime> _startAndConfirmHealthy({
+  Future<SpawnedProcess> _spawn({
     required String executablePath,
     required int port,
     required String password,
@@ -258,84 +179,49 @@ class OpenCodeServerService {
       password: password,
     );
     final identity = await _resolveSpawnedIdentity(startIdentity: startResult.identity);
-
-    final record = OpenCodeOwnershipRecord(
-      ownerSessionId: _ownerSessionId,
-      openCodePid: identity.pid,
-      openCodeStartMarker: identity.startMarker,
-      openCodeExecutablePath: identity.executablePath ?? "",
-      openCodeCommand: identity.executablePath ?? "opencode",
-      openCodeArgs: <String>["serve", "--port", "$port", "--hostname", loopbackPortHost],
-      port: port,
-      bridgePid: _currentBridgeIdentity.pid,
-      bridgeStartMarker: _currentBridgeIdentity.startMarker,
-      startedAt: _clock.now(),
-      status: OpenCodeOwnershipStatus.starting,
-    );
-    _currentOwnedProcessesBySessionId[record.ownerSessionId] = _CurrentOwnedOpenCodeProcess(
-      process: startResult.process,
-      identity: identity,
-    );
-
-    try {
-      await _ownershipRepository.upsert(record: record);
-
-      Log.d("[OPENCODE] Started on port $port. Preparing alive check");
-      const maxAttempts = 5;
-      for (int i = 1; i <= maxAttempts; i++) {
-        await _clock.delay(duration: const Duration(milliseconds: 500));
-        try {
-          return await _confirmHealthyRuntime(
-            port: port,
-            password: password,
-            startResult: startResult,
-            identity: identity,
-            record: record,
-          );
-        } catch (err) {
-          // no-op
-        }
-
-        Log.d("[OPENCODE] Alive check attempt $i/$maxAttempts FAILED.${i < maxAttempts ? " Retrying..." : ""}");
-      }
-      throw OpenCodeServerStartException(
-        "opencode health check failed on port $port after $maxAttempts attempts.",
-        cause: null,
-      );
-    } on Object {
-      await _cleanupFailedStart(record: record);
-      rethrow;
-    }
+    return SpawnedOpenCodeProcess(process: startResult.process, identity: identity);
   }
 
-  Future<OpenCodeServerRuntime> _confirmHealthyRuntime({
-    required int port,
-    required String password,
-    required OpenCodeStartResult startResult,
-    required ProcessIdentity identity,
-    required OpenCodeOwnershipRecord record,
-  }) async {
+  Future<RuntimeHealthProbe> _probeHealth({required int port, required String password}) async {
     final serverUri = Uri.parse("http://$loopbackPortHost:$port");
-    final probe = await _openCodeProcessRepository.probeHealth(
-      serverUri: serverUri,
-      password: password,
-    );
-    if (!probe.isHealthy) {
-      throw OpenCodeServerStartException(
-        "opencode health check failed on port $port.",
-        cause: probe.error,
-      );
-    }
+    final probe = await _openCodeProcessRepository.probeHealth(serverUri: serverUri, password: password);
+    return RuntimeHealthProbe(healthy: probe.isHealthy, error: probe.error);
+  }
 
-    await _ownershipRepository.upsert(
-      record: _copyRecord(record: record, status: OpenCodeOwnershipStatus.ready),
+  Future<bool> _probePortBindable({required int port}) async {
+    final fact = await _portRepository.getAvailabilityFact(port: port);
+    return fact.isAvailable;
+  }
+
+  OpenCodeOwnershipRecord _buildRecord(RuntimeRecordDraft draft) {
+    return OpenCodeOwnershipRecord(
+      ownerSessionId: draft.ownerSessionId,
+      openCodePid: draft.runtimeIdentity.pid,
+      openCodeStartMarker: draft.runtimeIdentity.startMarker,
+      openCodeExecutablePath: draft.runtimeIdentity.executablePath ?? "",
+      openCodeCommand: draft.runtimeIdentity.executablePath ?? "opencode",
+      openCodeArgs: <String>["serve", "--port", "${draft.port}", "--hostname", loopbackPortHost],
+      port: draft.port,
+      bridgePid: draft.bridgeIdentity.pid,
+      bridgeStartMarker: draft.bridgeIdentity.startMarker,
+      startedAt: draft.startedAt,
+      status: OpenCodeOwnershipStatus.starting,
     );
+  }
+
+  OpenCodeServerRuntime _toRuntime({
+    required ManagedRuntimeHandle<OpenCodeOwnershipRecord> handle,
+    required String password,
+  }) {
+    final spawned = handle.process;
     return OpenCodeServerRuntime(
-      serverUri: serverUri,
+      serverUri: Uri.parse("http://$loopbackPortHost:${handle.port}"),
       serverPassword: password,
-      process: startResult.process,
-      port: port,
-      identity: identity,
+      // The supervisor tracks our own SpawnedOpenCodeProcess, so the raw
+      // dart:io process is always recoverable for the public runtime.
+      process: spawned == null ? null : (spawned as SpawnedOpenCodeProcess).rawProcess,
+      port: handle.port,
+      identity: handle.identity,
     );
   }
 
@@ -361,182 +247,6 @@ class OpenCodeServerService {
     }
 
     return inspectedIdentity.commandLine == startIdentity.commandLine;
-  }
-
-  Future<void> _cleanupFailedStart({required OpenCodeOwnershipRecord record}) async {
-    await _stopRecord(record: record, removeOwnership: true);
-  }
-
-  Future<void> _stopRecord({
-    required OpenCodeOwnershipRecord record,
-    required bool removeOwnership,
-  }) async {
-    final currentOwnedProcess = _currentOwnedProcessFor(record: record);
-    final initialIdentity = await _processRepository.inspectProcess(pid: record.openCodePid);
-    final matchesInitialIdentity =
-        initialIdentity != null && _matchesOpenCodeRecord(identity: initialIdentity, record: record);
-    if (!matchesInitialIdentity && currentOwnedProcess == null) {
-      if (removeOwnership) {
-        await _ownershipRepository.deleteByOwnerSessionId(ownerSessionId: record.ownerSessionId);
-      }
-      return;
-    }
-
-    if (!matchesInitialIdentity && currentOwnedProcess != null) {
-      final currentOwnedStillRunningBeforeGraceful = await _isCurrentOwnedProcessRunning(process: currentOwnedProcess);
-      if (!currentOwnedStillRunningBeforeGraceful) {
-        _currentOwnedProcessesBySessionId.remove(record.ownerSessionId);
-        if (removeOwnership) {
-          await _ownershipRepository.deleteByOwnerSessionId(ownerSessionId: record.ownerSessionId);
-        }
-        return;
-      }
-    }
-
-    await _processRepository.sendGracefulSignal(pid: record.openCodePid);
-    await _clock.delay(duration: openCodeGracefulShutdownWait);
-
-    final currentOwnedStillRunningAfterGraceful =
-        currentOwnedProcess != null && await _isCurrentOwnedProcessRunning(process: currentOwnedProcess);
-    final remainingIdentity = await _processRepository.inspectProcess(pid: record.openCodePid);
-    final matchesRemainingIdentity =
-        remainingIdentity != null && _matchesOpenCodeRecord(identity: remainingIdentity, record: record);
-    if (currentOwnedStillRunningAfterGraceful || matchesRemainingIdentity) {
-      await _processRepository.sendForceSignal(pid: record.openCodePid);
-    }
-
-    final finalIdentity = await _processRepository.inspectProcess(pid: record.openCodePid);
-    final currentOwnedStillRunningAfterForce =
-        currentOwnedProcess != null && await _isCurrentOwnedProcessRunning(process: currentOwnedProcess);
-    if (!currentOwnedStillRunningAfterForce) {
-      _currentOwnedProcessesBySessionId.remove(record.ownerSessionId);
-    }
-    if (currentOwnedStillRunningAfterForce) {
-      return;
-    }
-
-    if (finalIdentity == null || !_matchesOpenCodeRecord(identity: finalIdentity, record: record)) {
-      if (removeOwnership) {
-        await _ownershipRepository.deleteByOwnerSessionId(ownerSessionId: record.ownerSessionId);
-      }
-    }
-  }
-
-  Future<bool> _shouldTerminateRecord({required OpenCodeOwnershipRecord record}) async {
-    final currentOwnedProcess = _currentOwnedProcessFor(record: record);
-    final initialIdentity = await _processRepository.inspectProcess(pid: record.openCodePid);
-    final matchesInitialIdentity =
-        initialIdentity != null && _matchesOpenCodeRecord(identity: initialIdentity, record: record);
-
-    if (!matchesInitialIdentity && currentOwnedProcess == null) {
-      await _ownershipRepository.deleteByOwnerSessionId(ownerSessionId: record.ownerSessionId);
-      return false;
-    }
-
-    if (!matchesInitialIdentity && currentOwnedProcess != null) {
-      final currentOwnedStillRunningBeforeGraceful = await _isCurrentOwnedProcessRunning(process: currentOwnedProcess);
-      if (!currentOwnedStillRunningBeforeGraceful) {
-        _currentOwnedProcessesBySessionId.remove(record.ownerSessionId);
-        await _ownershipRepository.deleteByOwnerSessionId(ownerSessionId: record.ownerSessionId);
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  _CurrentOwnedOpenCodeProcess? _currentOwnedProcessFor({required OpenCodeOwnershipRecord record}) {
-    final currentOwnedProcess = _currentOwnedProcessesBySessionId[record.ownerSessionId];
-    if (currentOwnedProcess == null || !_matchesCurrentOwnedRecord(process: currentOwnedProcess, record: record)) {
-      return null;
-    }
-    return currentOwnedProcess;
-  }
-
-  bool _matchesCurrentOwnedRecord({
-    required _CurrentOwnedOpenCodeProcess process,
-    required OpenCodeOwnershipRecord record,
-  }) {
-    return process.identity.pid == record.openCodePid &&
-        (record.openCodeStartMarker == null || process.identity.startMarker == record.openCodeStartMarker) &&
-        _samePath(process.identity.executablePath, record.openCodeExecutablePath) &&
-        process.identity.commandLine == [record.openCodeCommand, ...record.openCodeArgs].join(" ");
-  }
-
-  Future<bool> _isCurrentOwnedProcessRunning({required _CurrentOwnedOpenCodeProcess process}) async {
-    final exitCode = await process.process.exitCode
-        .then<int?>((int code) => code)
-        .timeout(
-          Duration.zero,
-          onTimeout: () => null,
-        );
-    return exitCode == null;
-  }
-
-  Future<bool> _isStaleKillAuthorized({
-    required OpenCodeOwnershipRecord record,
-    required Iterable<ProcessIdentity> terminatedBridgeIdentities,
-  }) async {
-    final openCodeIdentity = await _processRepository.inspectProcess(pid: record.openCodePid);
-    if (openCodeIdentity == null || !_matchesOpenCodeRecord(identity: openCodeIdentity, record: record)) {
-      await _ownershipRepository.deleteByOwnerSessionId(ownerSessionId: record.ownerSessionId);
-      return false;
-    }
-
-    if (_matchesBridgeRecord(identity: _currentBridgeIdentity, record: record)) {
-      return true;
-    }
-
-    for (final identity in terminatedBridgeIdentities) {
-      if (_matchesBridgeRecord(identity: identity, record: record)) {
-        return true;
-      }
-    }
-
-    final ownerBridge = await _processRepository.inspectProcessMatch(pid: record.bridgePid);
-    if (ownerBridge != null &&
-        ownerBridge.kind == ProcessMatchKind.sesoriBridge &&
-        _matchesBridgeRecord(identity: ownerBridge.identity, record: record)) {
-      return false;
-    }
-
-    return true;
-  }
-
-  bool _matchesOpenCodeRecord({
-    required ProcessIdentity identity,
-    required OpenCodeOwnershipRecord record,
-  }) {
-    if (identity.pid != record.openCodePid) {
-      return false;
-    }
-    if (record.openCodeStartMarker != null || identity.startMarker != null) {
-      return identity.startMarker == record.openCodeStartMarker &&
-          _samePath(identity.executablePath, record.openCodeExecutablePath) &&
-          identity.commandLine == [record.openCodeCommand, ...record.openCodeArgs].join(" ");
-    }
-    // Both markers are null (e.g. Windows via tasklist). We can't reliably
-    // compare full command lines because tasklist only returns the image name.
-    // Fall back to executablePath match only; this accepts a small risk of
-    // false positives on PID reuse, but it's the best we can do without
-    // process start markers or full argv access on Windows.
-    return _samePath(identity.executablePath, record.openCodeExecutablePath);
-  }
-
-  bool _matchesBridgeRecord({
-    required ProcessIdentity identity,
-    required OpenCodeOwnershipRecord record,
-  }) {
-    if (identity.pid != record.bridgePid) {
-      return false;
-    }
-    if (record.bridgeStartMarker != null || identity.startMarker != null) {
-      return identity.startMarker == record.bridgeStartMarker;
-    }
-    // Both markers are null (e.g. Windows). We can't distinguish a recycled
-    // PID from the original owner without additional heuristics, so we
-    // conservatively treat the match as valid.
-    return true;
   }
 
   bool _samePath(String? actual, String expected) {
@@ -597,35 +307,6 @@ class OpenCodeServerService {
   bool _isDynamicCandidate({required int port}) {
     return port != openCodeDefaultPort && port >= dynamicOpenCodePortMin && port <= dynamicOpenCodePortMax;
   }
-
-  OpenCodeOwnershipRecord _copyRecord({
-    required OpenCodeOwnershipRecord record,
-    required OpenCodeOwnershipStatus status,
-  }) {
-    return OpenCodeOwnershipRecord(
-      ownerSessionId: record.ownerSessionId,
-      openCodePid: record.openCodePid,
-      openCodeStartMarker: record.openCodeStartMarker,
-      openCodeExecutablePath: record.openCodeExecutablePath,
-      openCodeCommand: record.openCodeCommand,
-      openCodeArgs: record.openCodeArgs,
-      port: record.port,
-      bridgePid: record.bridgePid,
-      bridgeStartMarker: record.bridgeStartMarker,
-      startedAt: record.startedAt,
-      status: status,
-    );
-  }
-}
-
-class _CurrentOwnedOpenCodeProcess {
-  const _CurrentOwnedOpenCodeProcess({
-    required this.process,
-    required this.identity,
-  });
-
-  final Process process;
-  final ProcessIdentity identity;
 }
 
 class OpenCodeServerRuntime {
