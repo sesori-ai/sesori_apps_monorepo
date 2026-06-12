@@ -1,6 +1,7 @@
 import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:sesori_mobile/features/session_detail/widgets/retry_error_message_card.dart";
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_message_list.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -9,11 +10,13 @@ import "package:theme_zyra/module_zyra.dart";
 class _SessionDetailMessageListHarness extends StatefulWidget {
   final List<MessageWithParts> initialMessages;
   final Map<String, String> initialStreamingText;
+  final String? initialRetryErrorMessage;
 
   const _SessionDetailMessageListHarness({
     super.key,
     required this.initialMessages,
     required this.initialStreamingText,
+    this.initialRetryErrorMessage,
   });
 
   @override
@@ -23,20 +26,30 @@ class _SessionDetailMessageListHarness extends StatefulWidget {
 class _SessionDetailMessageListHarnessState extends State<_SessionDetailMessageListHarness> {
   late List<MessageWithParts> _messages;
   late Map<String, String> _streamingText;
+  late String? _retryErrorMessage;
 
   @override
   void initState() {
     super.initState();
     _messages = widget.initialMessages;
     _streamingText = widget.initialStreamingText;
+    _retryErrorMessage = widget.initialRetryErrorMessage;
   }
 
   void appendNewestMessage(MessageWithParts message) {
     setState(() => _messages = [..._messages, message]);
   }
 
+  void removeMessage(String messageId) {
+    setState(() => _messages = [..._messages.where((m) => m.info.id != messageId)]);
+  }
+
   void updateStreamingText({required String partId, required String text}) {
     setState(() => _streamingText = {..._streamingText, partId: text});
+  }
+
+  void setRetryErrorMessage(String? message) {
+    setState(() => _retryErrorMessage = message);
   }
 
   @override
@@ -53,6 +66,7 @@ class _SessionDetailMessageListHarnessState extends State<_SessionDetailMessageL
           streamingText: _streamingText,
           children: const <Session>[],
           childStatuses: const <String, SessionStatus>{},
+          retryErrorMessage: _retryErrorMessage,
         ),
       ),
     );
@@ -113,7 +127,13 @@ const _jumpToLatestKey = Key("session-detail-jump-to-latest");
 Finder _messageKey(String messageId) => find.byKey(ValueKey(messageId));
 
 ScrollPosition _position(WidgetTester tester) {
-  return tester.widget<ListView>(find.byKey(_listViewKey)).controller!.position;
+  // The list key sits on the flutter_chat_ui `Chat` widget; the actual
+  // scrollable is the `CustomScrollView` built by `ChatAnimatedListReversed`,
+  // wired to the feature's own follow/detach scroll controller.
+  final scrollView = tester.widget<CustomScrollView>(
+    find.descendant(of: find.byKey(_listViewKey), matching: find.byType(CustomScrollView)),
+  );
+  return scrollView.controller!.position;
 }
 
 Future<void> _pumpListUpdate(WidgetTester tester) async {
@@ -421,5 +441,141 @@ void main() {
     // not snapped to the newest message.
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
     expect(_position(tester).pixels, greaterThan(20));
+  });
+
+  // --- New-architecture coverage: chat-controller resync and content paths ---
+
+  testWidgets("reattach catches up on messages that arrived while detached", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _detachViewport(tester);
+
+    // Arrives while frozen: neither the snapshot nor the suspended
+    // chat-controller sync may surface it yet.
+    harnessKey.currentState!.appendNewestMessage(
+      _message(
+        messageId: "user-while-detached",
+        role: "user",
+        text: _multilineText(label: "Arrived while detached", lines: 6),
+      ),
+    );
+    await _pumpListUpdate(tester);
+    expect(_messageKey("user-while-detached"), findsNothing);
+
+    // Reattaching must resync the controller and reveal the message at
+    // the newest edge.
+    await tester.tap(find.byKey(_jumpToLatestKey));
+    await tester.pumpAndSettle();
+
+    expect(_position(tester).pixels, 0);
+    expect(find.byKey(_jumpToLatestKey), findsNothing);
+    expect(_messageKey("user-while-detached"), findsOneWidget);
+  });
+
+  testWidgets("retry error renders as the newest row and disappears when cleared", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    // NOTE: RetryErrorMessageCard runs a repeating shimmer animation, so
+    // this test must never call pumpAndSettle while the card is visible.
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 3),
+        initialStreamingText: const {},
+        initialRetryErrorMessage: "Provider is overloaded",
+      ),
+    );
+    await tester.pump();
+
+    final retryCard = find.byType(RetryErrorMessageCard);
+    expect(retryCard, findsOneWidget);
+
+    // The synthetic row must sit at the visual bottom — below the
+    // newest real message — exactly like the old reverse-list index 0.
+    final newestMessageBottom = tester.getBottomLeft(_messageKey("user-2")).dy;
+    expect(tester.getCenter(retryCard).dy, greaterThan(newestMessageBottom));
+
+    harnessKey.currentState!.setRetryErrorMessage(null);
+    await _pumpListUpdate(tester);
+
+    expect(find.byType(RetryErrorMessageCard), findsNothing);
+    expect(_messageKey("user-2"), findsOneWidget);
+  });
+
+  testWidgets("removing a message while following drops its row and stays pinned", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(_messageKey("user-10"), findsOneWidget);
+
+    harnessKey.currentState!.removeMessage("user-10");
+    await _pumpListUpdate(tester);
+
+    expect(_messageKey("user-10"), findsNothing);
+    expect(_messageKey("user-11"), findsOneWidget);
+    expect(_position(tester).pixels, 0);
+    expect(find.byKey(_jumpToLatestKey), findsNothing);
+  });
+
+  testWidgets("streaming text growth is visible while following", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    const streamingPartId = "assistant-stream-part";
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [
+          _message(
+            messageId: "assistant-newest",
+            role: "assistant",
+            text: "",
+            partId: streamingPartId,
+          ),
+        ],
+        initialStreamingText: const {streamingPartId: "Streaming start"},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining("Streaming start", findRichText: true), findsOneWidget);
+    expect(find.textContaining("freshly streamed token", findRichText: true), findsNothing);
+
+    // Content updates bypass the chat controller entirely — they must
+    // reach the visible row through the rebuilt builders on the very
+    // next frame while the list stays pinned to the newest edge.
+    harnessKey.currentState!.updateStreamingText(
+      partId: streamingPartId,
+      text: "Streaming start with a freshly streamed token",
+    );
+    await tester.pump();
+
+    expect(find.textContaining("freshly streamed token", findRichText: true), findsOneWidget);
+    expect(_position(tester).pixels, 0);
+    expect(find.byKey(_jumpToLatestKey), findsNothing);
   });
 }

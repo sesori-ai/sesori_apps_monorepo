@@ -78,6 +78,8 @@ dependencies:
   sign_in_with_apple: ^8.0.0
   crypto: ^3.0.6
   vector_graphics: ^1.2.2
+  flutter_chat_ui: ^2.11.1
+  flutter_chat_core: ^2.9.0
 
 dev_dependencies:
   flutter_test:
