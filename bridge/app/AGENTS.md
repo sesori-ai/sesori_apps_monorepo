@@ -53,7 +53,7 @@ modules/
 
 ## CONVENTIONS
 
-- **Plugin architecture** — all backend-specific code lives in plugin modules under `modules/`. The bridge `lib/src/` is plugin-agnostic — it only imports from `sesori_plugin_interface`, never from concrete plugins. *Transitional exception (plugin-lifecycle migration, see `docs/plans/plugin-lifecycle-migration.html`): the flip (PR 12) registers the real `OpenCodePluginDescriptor`, but the now-unreferenced legacy OpenCode lifecycle sources still live under `lib/src/server/services/open_code_*` until the deletion sweep removes them (PR 13). `bin/bridge.dart`'s registry (`plugin_registry.dart`) imports `opencode_plugin` for the const descriptor — that is the supported descriptor registration point, not a layering exception.*
+- **Plugin architecture** — all backend-specific code lives in plugin modules under `modules/`. The bridge `lib/src/` is plugin-agnostic — it only imports from `sesori_plugin_interface`, never from concrete plugins. `bin/bridge.dart`'s registry (`plugin_registry.dart`) imports `opencode_plugin` for the const descriptor — that is the supported descriptor registration point.
 - **Intercept-first routing** — requests are intercepted by handlers by default. Proxy is the fallback for unhandled routes, not the default path.
 - **Crypto from `sesori_shared`** — all crypto primitives imported from shared package, not duplicated
 - **Linting**: `package:lints/recommended.yaml` (lighter than mobile's `all_lint_rules`)

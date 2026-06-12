@@ -154,8 +154,8 @@
   <tr><td colspan="5" style="background:#efeeea;font-weight:600;font-size:0.8rem;letter-spacing:0.05em">PHASE D — ABSORB &amp; FLIP (plugin owns its lifecycle; legacy path deleted)</td></tr>
   <tr><td>11</td><td>OpenCode plugin absorbs its lifecycle (dormant)</td><td><span class="pill pkg">opencode</span></td><td>~1,400–1,900</td><td><span class="pill s">low</span></td></tr>
   <tr><td>12</td><td>Flip to the real descriptor; new policies activate</td><td><span class="pill pkg">app</span> <span class="pill pkg">opencode</span></td><td>~700–1,000</td><td><span class="pill l">high</span></td></tr>
-  <tr><td>13</td><td>Deletion sweep 1: legacy source files</td><td><span class="pill pkg">app</span></td><td>~1,700 (pure del)</td><td><span class="pill s">low</span></td></tr>
-  <tr><td>14</td><td>Deletion sweep 2: legacy tests</td><td><span class="pill pkg">app</span></td><td>~2,000 (pure del)</td><td><span class="pill s">low</span></td></tr>
+  <tr><td>13</td><td>Deletion sweep 1: legacy source files and their direct tests</td><td><span class="pill pkg">app</span></td><td>~2,000 (pure del)</td><td><span class="pill s">low</span></td></tr>
+  <tr><td>14</td><td>Deletion sweep 2: remaining legacy tests (if any)</td><td><span class="pill pkg">app</span></td><td>~small / 0</td><td><span class="pill s">low</span></td></tr>
   <tr><td>15</td><td>Docs sweep</td><td><span class="pill pkg">docs</span></td><td>~400–700</td><td><span class="pill s">low</span></td></tr>
 </table>
 <p class="meta" style="margin-top:4px">Packages: <b>interface</b> = <code>bridge/sesori_plugin_interface</code> · <b>app</b> = <code>bridge/app</code> · <b>opencode</b> = <code>bridge/sesori_plugin_opencode</code> (pub name <code>opencode_plugin</code>) · <b>runtime</b> = new <code>bridge/sesori_plugin_runtime</code></p>
@@ -366,20 +366,22 @@
 </div>
 
 <div class="card pr">
-<h3><span class="prnum">PR 13</span> Deletion sweep 1 — legacy source files</h3>
+<h3><span class="prnum">PR 13</span> Deletion sweep 1 — legacy source files and their direct tests</h3>
 <ul>
   <li>Pure deletions, now-unreferenced (compiler-verified): <code>open_code_server_service.dart</code> (662), <code>open_code_process_api.dart</code> (146), <code>open_code_process_repository.dart</code> (82), <code>open_code_ownership_repository.dart</code> (117), ownership record trio incl. generated files (~260), the OpenCode parts of <code>bridge_runtime_server.dart</code> (<code>resolveServer</code>, <code>BridgeServerRuntime</code>), <code>registerOwnedOpenCodeShutdown</code>, <code>BridgeCliOptions</code>' four OpenCode fields + duplicated validation.</li>
+  <li>Their directly-dependent tests are deleted in the same PR so the analyzer stays green: <code>open_code_server_service_test.dart</code>, <code>open_code_process_repository_test.dart</code>, <code>open_code_ownership_repository_test.dart</code>, <code>open_code_process_api_test.dart</code>, and <code>bridge_runtime_runner_test.dart</code> (covered the deleted <code>registerOwnedOpenCodeShutdown</code> helper). <code>bridge_cli_options_test.dart</code> is rewritten to cover the remaining generic CLI fields (port, auth backend, debug port) instead of the removed OpenCode-specific validation.</li>
+  <li><code>BridgeRuntimeServerException</code> moves to its own file (<code>bridge_runtime_server_exception.dart</code>) because the runner still throws it for startup-mutex/singleton failures; <code>bridge_runtime_server_test.dart</code> is updated to import the new file and remains alive per the PR 12 binding note.</li>
+  <li>Clean up the stale transitional exception note in <code>bridge/app/AGENTS.md</code> that claimed legacy OpenCode sources still lived in <code>lib/src/server/services/open_code_*</code>.</li>
 </ul>
-<div class="safe"><b>Why always-green:</b> nothing references these after PR 12; <code>dart analyze</code> enforces it. ~1,700 lines, all deletions.</div>
+<div class="safe"><b>Why always-green:</b> nothing references the deleted sources after PR 12; the directly-dependent tests are removed with them so <code>dart analyze</code> stays clean. ~2,000 lines, all deletions.</div>
 </div>
 
 <div class="card pr">
-<h3><span class="prnum">PR 14</span> Deletion sweep 2 — legacy tests</h3>
+<h3><span class="prnum">PR 14</span> Deletion sweep 2 — remaining legacy tests</h3>
 <ul>
-  <li>Delete <code>open_code_server_service_test.dart</code> (1,224 — its scenarios live on in <code>sesori_plugin_runtime</code> since PRs 7–9), <code>open_code_process_repository_test.dart</code> (134), <code>open_code_ownership_repository_test.dart</code> (224), <code>bridge_runtime_server_test.dart</code> (389, built around <code>_FakeOpenCodeServerService</code>).</li>
-  <li>(The PR 1 re-export shims were removed in PR 1 itself, per review — nothing left to sweep here.)</li>
+  <li>Delete any leftover legacy tests not already removed in PR 13. (The PR 1 re-export shims were removed in PR 1 itself, per review — nothing left to sweep here.)</li>
 </ul>
-<div class="safe"><b>Why always-green:</b> test-only deletions. ~2,000 lines but zero-risk by construction.</div>
+<div class="safe"><b>Why always-green:</b> test-only deletions. Small/zero-risk by construction.</div>
 </div>
 
 <div class="card pr">
