@@ -112,13 +112,19 @@ function resolveConfig(raw: unknown): MonitorConfig {
   return cfg
 }
 
-async function loadConfig(dirs: string[]): Promise<MonitorConfig> {
+async function loadConfig(dirs: string[], log: (message: string) => void): Promise<MonitorConfig> {
   for (const dir of dirs) {
+    const path = join(dir, ".opencode", CONFIG_FILE)
+    let text: string
     try {
-      const text = await readFile(join(dir, ".opencode", CONFIG_FILE), "utf8")
-      return resolveConfig(JSON.parse(text))
+      text = await readFile(path, "utf8")
     } catch {
-      // missing/unreadable/invalid file in this dir -> try next, else defaults
+      continue // missing/unreadable file in this dir -> try next, else defaults
+    }
+    try {
+      return resolveConfig(JSON.parse(text))
+    } catch (error) {
+      log(`config file ${path} is not valid JSON, ignoring it: ${(error as Error).message}`)
     }
   }
   return resolveConfig(undefined)
@@ -406,6 +412,8 @@ class PrWatch {
       }
       this.snapshot = next
       this.maybeAutoFlush()
+    } catch (error) {
+      this.deps.log(`unexpected tick error for ${targetKey(this.target)}: ${error}`)
     } finally {
       this.ticking = false
     }
@@ -418,9 +426,10 @@ class PrWatch {
       this.consecutiveFailures = 0
     } catch (error) {
       if (this.snapshot === undefined) return `${targetKey(this.target)}: flush failed — ${(error as Error).message}`
-      // fall through with last known snapshot, stated factually
-      const report = this.flush(undefined)
-      return `${report}\n(note: refresh failed — ${(error as Error).message}; data is from the previous poll)`
+      // Refresh failed: report from the stale snapshot WITHOUT advancing the
+      // baseline, so activity newer than that snapshot is not silently skipped.
+      const report = buildReport(this.target, this.snapshot, { baselineMs: this.lastFlushAt })
+      return `${report}\n(note: refresh failed — ${(error as Error).message}; data is from the previous poll; baseline NOT reset)`
     }
     const report = this.flush(undefined)
     this.stopIfTerminal()
@@ -540,7 +549,7 @@ export const PrMonitorPlugin: Plugin = async ({ client, directory, worktree, $ }
     const existing = watches.get(key)
     if (existing) return `Already monitoring ${targetKey(target)} in this session.\n${existing.watch.statusLine()}`
 
-    const config = await loadConfig([directory, worktree])
+    const config = await loadConfig([directory, worktree], log)
     if (config.ignoreCommentTag !== undefined && selfLogin === undefined) {
       try {
         selfLogin = (await runGh(["api", "user", "--jq", ".login"])).trim()

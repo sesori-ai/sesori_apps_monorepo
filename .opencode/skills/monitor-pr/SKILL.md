@@ -32,7 +32,7 @@ act as follows, addressing everything in the report in one batch:
 | Report says | Do this |
 | --- | --- |
 | `CI: failing (…)` | Inspect the failures (`gh pr checks <pr> --repo owner/repo`, `gh run view <run-id> --log-failed --repo owner/repo`), fix the root cause, commit and push. Never delete or weaken tests to go green. |
-| `Mergeable: CONFLICTING` | Merge the latest base branch INTO the PR branch: `git fetch origin && git merge origin/main`. **NEVER rebase.** Resolve conflicts conservatively so functionality from both sides is preserved — when unsure, read the full context of both changes before choosing. Run the relevant tests, then push the merge commit. |
+| `Mergeable: CONFLICTING` | Merge the latest base branch INTO the PR branch. First resolve the PR's actual base ref: `gh pr view <number> --repo owner/repo --json baseRefName -q .baseRefName`, then `git fetch origin && git merge origin/<baseRefName>`. **NEVER rebase.** Resolve conflicts conservatively so functionality from both sides is preserved — when unsure, read the full context of both changes before choosing. Run the relevant tests, then push the merge commit. |
 | New inline comments / `changes_requested` | Follow the `address-pr-comments` skill: fetch unresolved threads, assess validity, implement fixes, reply to every thread. |
 | New issue comments | Read them (`gh pr view <number> --repo owner/repo --comments`) and act only if they request something. |
 | Approved + CI passing + 0 unresolved threads | Nothing to fix — summarize the PR state to the user. |
