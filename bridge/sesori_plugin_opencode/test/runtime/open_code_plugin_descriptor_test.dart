@@ -147,6 +147,25 @@ void main() {
       await plugin.shutdown(budget: null);
     });
 
+    test("a throwing DB maintenance seam never fails the start", () async {
+      host.ports.defaultBindable = true;
+      final throwingDescriptor = OpenCodePluginDescriptor(
+        buildApi: apiRecorder.build,
+        probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
+        candidatePorts: const <int>[51000],
+        random: Random(1),
+        optimizeDb: ({required Map<String, String> environment}) async {
+          throw StateError("maintenance exploded");
+        },
+      );
+
+      final plugin = await throwingDescriptor.start(host);
+
+      expect(plugin.currentStatus, isA<PluginReady>());
+
+      await plugin.shutdown(budget: null);
+    });
+
     test("records the start intent before spawn and clears it once the record exists", () async {
       host.ports.defaultBindable = true;
       String? intentDuringSpawn;

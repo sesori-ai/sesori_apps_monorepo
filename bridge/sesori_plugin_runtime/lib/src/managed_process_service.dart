@@ -157,7 +157,7 @@ class ManagedProcessService<R> {
     final deadline = _clock.now().add(timeout);
     // A hard backstop independent of the clock: a misconfigured (e.g.
     // non-advancing) clock must fail loud, never hang the supervisor.
-    final maxPolls = _portReleaseMaxPolls(timeout: timeout, pollInterval: pollInterval);
+    final maxPolls = _boundedMaxPolls(timeout: timeout, pollInterval: pollInterval);
     var polls = 0;
     while (true) {
       _throwIfAborted(abort);
@@ -175,7 +175,7 @@ class ManagedProcessService<R> {
     }
   }
 
-  int _portReleaseMaxPolls({required Duration timeout, required Duration pollInterval}) {
+  int _boundedMaxPolls({required Duration timeout, required Duration pollInterval}) {
     if (pollInterval <= Duration.zero) {
       return 1;
     }
@@ -409,6 +409,12 @@ class ManagedProcessService<R> {
         );
       case HealthDeadlinePolicy():
         final deadline = _clock.now().add(policy.deadline);
+        // The same clock-independent backstop as the port-release wait: a
+        // non-advancing clock can never reach the deadline, so only a poll
+        // cap keeps an unhealthy runtime from spinning this loop forever
+        // under the startup mutex.
+        final maxPolls = _boundedMaxPolls(timeout: policy.deadline, pollInterval: policy.pollInterval);
+        var polls = 0;
         RuntimeHealthProbe? last;
         while (true) {
           await _clock.delay(duration: policy.pollInterval);
@@ -417,7 +423,8 @@ class ManagedProcessService<R> {
           if (probe.healthy) {
             return probe;
           }
-          if (!_clock.now().isBefore(deadline)) {
+          polls += 1;
+          if (polls >= maxPolls || !_clock.now().isBefore(deadline)) {
             throw PluginStartException(
               "[$_runtimeId] health check failed on port $port within ${policy.deadline.inMilliseconds}ms",
               cause: last.error,

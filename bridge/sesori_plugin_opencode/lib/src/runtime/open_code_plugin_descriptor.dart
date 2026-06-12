@@ -158,11 +158,16 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   @override
   Future<OpenCodeBridgePlugin> start(PluginHost host) async {
     // Opportunistic database maintenance runs first, before any runtime state
-    // is acquired (it moved here from the runner at the flip). It never
-    // throws, and the underlying sqlite3 work runs in a worker isolate, so
-    // awaiting it under the startup mutex keeps the event loop — and the
-    // cooperative abort below — responsive.
-    await (_optimizeDb ?? _defaultOptimizeDb)(environment: host.environment);
+    // is acquired (it moved here from the runner at the flip). The service is
+    // documented never-throwing and the sqlite3 work runs in a worker isolate,
+    // so awaiting it under the startup mutex keeps the event loop — and the
+    // cooperative abort below — responsive. The catch is belt-and-suspenders:
+    // best-effort maintenance must never be able to fail the bridge start.
+    try {
+      await (_optimizeDb ?? _defaultOptimizeDb)(environment: host.environment);
+    } on Object catch (error, stackTrace) {
+      Log.w("[opencode] database maintenance failed; continuing startup", error, stackTrace);
+    }
     if (host.startAborted.isAborted) {
       throw const PluginStartAbortedException();
     }

@@ -214,12 +214,23 @@ void main() {
       monitor.arm(_handle(port: 4096, process: child));
       child.completeExit(1);
       await reached.future; // the restart has reached the (blocked) spawn
-      await monitor.disarm(); // disarm mid-restart -> aborts the in-flight start
-      gate.complete();
+      final disarm = monitor.disarm(); // disarm mid-restart -> aborts the in-flight start
+      var disarmSettled = false;
+      unawaited(disarm.whenComplete(() => disarmSettled = true));
       await pumpEventQueue();
+      expect(
+        disarmSettled,
+        isFalse,
+        reason: "disarm must wait the in-flight restart episode out, or the owner's "
+            "shutdown reads a stale handle while the respawn is still in flight",
+      );
+      gate.complete();
+      await disarm;
 
-      // No terminal failure surfaced; the aborted restart stopped its freshly
-      // spawned child (the post-spawn abort checkpoint) and wrote no record.
+      // By the time disarm returns the rollback has already happened: the
+      // aborted restart stopped its freshly spawned child (the post-spawn
+      // abort checkpoint) and wrote no record — the owner's shutdown can
+      // never race the respawn.
       expect(tags, isNot(contains("failed")));
       expect(fakes.processes.signalRequests, equals(<String>["graceful:102", "force:102"]));
       expect(fakes.ownership.records, isEmpty);
@@ -245,14 +256,39 @@ void main() {
       monitor.arm(_handle(port: 4096, process: child));
       child.completeExit(1);
       await reached.future; // the restart has passed health and is committing
-      await monitor.disarm(); // disarm races the commit (after the last abort checkpoint)
-      gate.complete();
+      final disarm = monitor.disarm(); // disarm races the commit (after the last abort checkpoint)
+      var disarmSettled = false;
+      unawaited(disarm.whenComplete(() => disarmSettled = true));
       await pumpEventQueue();
+      expect(disarmSettled, isFalse, reason: "disarm must wait for the committing restart to settle");
+      gate.complete();
+      await disarm;
 
-      // The committed child is adopted so the owner stops the *live* child, not
-      // the dead one — and no terminal failure surfaced.
+      // By the time disarm returns the committed child has already been
+      // adopted, so the owner stops the *live* child, not the dead one — and
+      // no terminal failure surfaced.
       expect(monitor.currentHandle!.process, same(restarted));
       expect(tags, isNot(contains("failed")));
+    });
+
+    test("a disarm during the restart backoff settles without waiting the backoff out", () async {
+      final clock = _NeverElapsingServerClock();
+      final parkedFakes = _Fakes(clock: clock);
+      final status = PluginStatusController(initial: const PluginReady());
+      final monitor = parkedFakes.monitor(status: status, restartPolicy: _bounded());
+      final child = _child(pid: 101);
+
+      monitor.arm(_handle(port: 4096, process: child));
+      child.completeExit(1);
+      await pumpEventQueue(); // the episode is parked in its backoff sleep
+      expect(clock.pendingDelays, equals(1));
+
+      // The backoff sleep races the abort signal: disarm settles promptly even
+      // though the backoff delay itself never completes, instead of stalling
+      // the owner's shutdown for up to maxBackoff.
+      await monitor.disarm().timeout(const Duration(seconds: 5));
+
+      expect(parkedFakes.spawn.spawnedPorts, isEmpty);
     });
 
     test("consumes the child's stderr so a full pipe cannot block it", () async {
@@ -640,6 +676,21 @@ class _StuckServerClock implements ServerClock {
   @override
   Future<void> delay({required Duration duration}) async {
     delays += 1;
+  }
+
+  @override
+  DateTime now() => DateTime.utc(2026, 5, 15, 12, 30);
+}
+
+/// A clock whose `delay()` never completes — used to prove a disarm during the
+/// restart backoff settles via the abort race instead of waiting the sleep out.
+class _NeverElapsingServerClock implements ServerClock {
+  int pendingDelays = 0;
+
+  @override
+  Future<void> delay({required Duration duration}) {
+    pendingDelays += 1;
+    return Completer<void>().future;
   }
 
   @override

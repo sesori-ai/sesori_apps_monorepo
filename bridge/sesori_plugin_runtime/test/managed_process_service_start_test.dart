@@ -515,6 +515,34 @@ void main() {
         throwsA(isA<AssertionError>()),
       );
     });
+
+    test("the deadline confirmation terminates on its maxPolls backstop under a stuck clock", () async {
+      // The default _FakeServerClock never advances, so the deadline can never
+      // be reached: only the poll cap can terminate the health loop.
+      final stuck = _Fakes();
+      stuck.spawn.results.add(_spawned(pid: 903, port: 50152));
+      // No probe results configured: every probe reports unhealthy.
+      stuck.processes.inspectResults[903] = <ProcessIdentity?>[null];
+
+      await expectLater(
+        stuck.service().start(
+          spec: stuck.spec(
+            portPolicy: const ExplicitPortPolicy(port: 50152),
+            healthPolicy: RuntimeHealthPolicy.deadline(
+              deadline: const Duration(seconds: 2),
+              pollInterval: const Duration(seconds: 1),
+            ),
+          ),
+          terminatedBridgeIdentities: const <ProcessIdentity>[],
+        ),
+        throwsA(isA<PluginStartException>()),
+      );
+
+      // ceil(2s / 1s) + 2 probes were attempted, then the loop terminated
+      // instead of spinning forever under the startup mutex.
+      expect(stuck.probe.probedPorts, hasLength(4));
+      expect(stuck.ownership.records, isEmpty);
+    });
   });
 
   group("ManagedProcessService.start (cooperative abort)", () {
