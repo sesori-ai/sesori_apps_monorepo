@@ -444,6 +444,12 @@ class PrWatch {
     this.deps.onStopped()
   }
 
+  stopWithNotice(reason: string): void {
+    if (this.stopped) return
+    this.deliverOrLog(`[PR Monitor] ${targetKey(this.target)} — ${reason}`)
+    this.stop()
+  }
+
   private handlePollFailure(error: unknown): void {
     const message = error instanceof Error ? error.message : String(error)
     if (error instanceof PollError && error.notFound) {
@@ -522,12 +528,20 @@ export const PrMonitorPlugin: Plugin = async ({ client, directory, worktree, $ }
   // Plugin reloads can re-instantiate this plugin without finalizing the
   // previous instance, leaving its setInterval timers polling as invisible
   // zombies that deliver duplicate reports (observed live). Each instance
-  // registers a killer on globalThis; the next instance invokes it on init.
-  const globalState = globalThis as { __sesoriPrMonitorTakeover?: () => void }
-  globalState.__sesoriPrMonitorTakeover?.()
-  globalState.__sesoriPrMonitorTakeover = () => {
-    for (const entry of [...watches.values()]) entry.watch.stop()
-  }
+  // registers a killer on globalThis, keyed by project directory (instances
+  // are per-directory; a process can host several projects); the next
+  // same-directory instance invokes it on init. Killed watches send one
+  // factual stop notice so owning sessions can re-start monitoring.
+  const globalState = globalThis as { __sesoriPrMonitorTakeovers?: Map<string, () => void> }
+  const takeovers = (globalState.__sesoriPrMonitorTakeovers ??= new Map())
+  takeovers.get(directory)?.()
+  takeovers.set(directory, () => {
+    for (const entry of [...watches.values()]) {
+      entry.watch.stopWithNotice(
+        "monitor stopped: the pr-monitor plugin was reloaded. Re-start monitoring if still needed.",
+      )
+    }
+  })
   let selfLogin: string | undefined
 
   const log = (message: string): void => {
