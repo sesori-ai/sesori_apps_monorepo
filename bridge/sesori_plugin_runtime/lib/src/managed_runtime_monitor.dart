@@ -113,7 +113,11 @@ class ManagedRuntimeMonitor<R> {
     // an await before being consumed. Both subscriptions are long-lived and
     // cancelled in _cancelStdioSubscriptions (on restart) and disarm (on stop).
     _stdoutSubscription = process.stdout.listen((_) {}, onError: (Object _) {}, cancelOnError: false);
-    final stderrLines = process.stderr.transform(utf8.decoder).transform(const LineSplitter());
+    // allowMalformed: a crashing runtime can emit non-UTF-8 bytes on stderr; a
+    // strict decoder would throw and tear down the drain, so substitute instead.
+    final stderrLines = process.stderr
+        .transform(const Utf8Decoder(allowMalformed: true))
+        .transform(const LineSplitter());
     _stderrSubscription = stderrLines.listen(
       (line) => Log.d("[$_runtimeId] $line"),
       onError: (Object _) {},
@@ -191,7 +195,10 @@ class ManagedRuntimeMonitor<R> {
           // Disarmed mid-restart: restartOnPort already rolled back the child
           // and record. Nothing to fail; the shutdown owns the outcome.
           return;
-        } on Object catch (error) {
+        } on Object catch (error, stackTrace) {
+          // Log every failed attempt: PluginFailed only carries the last error,
+          // so without this an early failure in a multi-attempt episode is silent.
+          Log.w("[$_runtimeId] restart attempt $attempt failed", error, stackTrace);
           lastError = error;
         }
       }
@@ -231,7 +238,17 @@ class ManagedRuntimeMonitor<R> {
     final stderrSubscription = _stderrSubscription;
     _stdoutSubscription = null;
     _stderrSubscription = null;
-    await stdoutSubscription?.cancel();
-    await stderrSubscription?.cancel();
+    // This runs unawaited from _adoptRestartedHandle, so a throwing cancel would
+    // surface as an unhandled async error; swallow (logged) to keep teardown safe.
+    try {
+      await stdoutSubscription?.cancel();
+    } on Object catch (error, stackTrace) {
+      Log.w("[$_runtimeId] Failed to cancel the runtime stdout drain", error, stackTrace);
+    }
+    try {
+      await stderrSubscription?.cancel();
+    } on Object catch (error, stackTrace) {
+      Log.w("[$_runtimeId] Failed to cancel the runtime stderr drain", error, stackTrace);
+    }
   }
 }

@@ -403,6 +403,25 @@ void main() {
       expect(fakes.spawn.spawnedPorts, isEmpty);
     });
 
+    test("restartOnPort rejects a storeless intent timing before waiting on the port", () async {
+      await expectLater(
+        fakes.service().restartOnPort(
+          spec: fakes.spec(
+            portPolicy: const ExplicitPortPolicy(port: 4096),
+            recordTiming: RuntimeRecordTiming.intentSideFile,
+          ),
+          port: 4096,
+          portReleaseTimeout: const Duration(seconds: 2),
+          portReleasePollInterval: const Duration(milliseconds: 250),
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+
+      // Fails fast: the port-release wait never runs and nothing is spawned.
+      expect(fakes.bindable.probedPorts, isEmpty);
+      expect(fakes.spawn.spawnedPorts, isEmpty);
+    });
+
     test("stops the spawned child when the record factory throws", () async {
       final spawned = _spawned(pid: 230, port: 50143, exitImmediately: false);
       fakes.spawn.results.add(spawned);

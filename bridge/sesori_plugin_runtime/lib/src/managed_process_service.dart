@@ -58,9 +58,7 @@ class ManagedProcessService<R> {
 
     // A deterministic configuration error: reject it once, up front, before
     // cleanup and before the dynamic path can retry it candidate by candidate.
-    if (spec.recordTiming == RuntimeRecordTiming.intentSideFile && _intentStore == null) {
-      throw ArgumentError("[$_runtimeId] intent side-file record timing requires an intent store");
-    }
+    _requireIntentStoreFor(spec);
 
     await cleanupStaleOwnedRuntimes(terminatedBridgeIdentities: terminatedBridgeIdentities);
     _throwIfAborted(abort);
@@ -124,6 +122,10 @@ class ManagedProcessService<R> {
     required Duration portReleasePollInterval,
     StartAbortSignal? startAborted,
   }) async {
+    // Reject a misconfigured intent timing up front, before waiting on the port,
+    // so a direct caller fails fast and clearly instead of crashing on a null
+    // intent store deep inside the spawn path.
+    _requireIntentStoreFor(spec);
     final abort = startAborted ?? StartAbortSignal.never;
     _throwIfAborted(abort);
     await _waitForPortRelease(
@@ -134,6 +136,15 @@ class ManagedProcessService<R> {
       abort: abort,
     );
     return _startAndConfirmHealthy(spec: spec, port: port, abort: abort);
+  }
+
+  /// A managed runtime that opts into intent side-file timing must be given an
+  /// intent store; selecting the timing without one is a deterministic
+  /// configuration error, surfaced before any side effects.
+  void _requireIntentStoreFor(ManagedRuntimeSpec<R> spec) {
+    if (spec.recordTiming == RuntimeRecordTiming.intentSideFile && _intentStore == null) {
+      throw ArgumentError("[$_runtimeId] intent side-file record timing requires an intent store");
+    }
   }
 
   Future<void> _waitForPortRelease({
