@@ -217,9 +217,9 @@ Future<void> _deleteSession({
 /// already current when deleting from the list, so this is a no-op there.
 void _closeDeletedSessionRoute({required BuildContext context, required String sessionId}) {
   final routeState = GoRouterState.of(context);
-  if (routeState.pathParameters["sessionId"] != sessionId) return;
+  if (routeState.pathParameters[sessionIdPathParam] != sessionId) return;
 
-  final projectId = routeState.pathParameters["projectId"];
+  final projectId = routeState.pathParameters[projectIdPathParam];
   if (projectId == null) return;
 
   context.goRoute(

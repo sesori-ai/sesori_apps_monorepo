@@ -23,8 +23,8 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _sessionShellNavigatorKey = GlobalKey<NavigatorState>();
 
 const _newSessionRouteSegment = "new";
-const _sessionsRouteSegment = ":projectId/sessions";
-const _sessionDetailRouteSegment = ":sessionId";
+const _sessionsRouteSegment = ":$projectIdPathParam/sessions";
+const _sessionDetailRouteSegment = ":$sessionIdPathParam";
 const _sessionDiffsRouteSegment = "diffs";
 
 extension AppRouteToGoRoute on AppRouteDef {
@@ -210,9 +210,9 @@ List<RouteBase> _buildAppRoutes({
         ShellRoute(
           navigatorKey: sessionShellNavigatorKey,
           builder: (context, state, child) {
-            final projectId = state.pathParameters["projectId"] ?? "";
+            final projectId = state.pathParameters[projectIdPathParam] ?? "";
             final projectName = state.uri.queryParameters[projectNameQueryParam];
-            final selectedSessionId = state.pathParameters["sessionId"];
+            final selectedSessionId = state.pathParameters[sessionIdPathParam];
 
             return SessionListCubitProvider(
               key: ValueKey("session-list-cubit-$projectId"),
