@@ -349,6 +349,48 @@ void main() {
     expect(find.byType(NewSessionScreen), findsNothing);
   });
 
+  testWidgets("does not hijack navigation when creation completes after the user navigated away", (tester) async {
+    final createCompleter = Completer<ApiResponse<Session>>();
+    when(
+      () => sessionService.createSessionWithMessage(
+        projectId: any(named: "projectId"),
+        text: any(named: "text"),
+        agent: any(named: "agent"),
+        providerID: any(named: "providerID"),
+        modelID: any(named: "modelID"),
+        variant: any(named: "variant"),
+        command: any(named: "command"),
+        dedicatedWorktree: any(named: "dedicatedWorktree"),
+      ),
+    ).thenAnswer((_) => createCompleter.future);
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
+
+    await tester.enterText(find.byType(TextField), "test message");
+    await tester.tap(find.byIcon(Icons.send), warnIfMissed: false);
+    await tester.pump();
+
+    expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
+
+    // User leaves while the creation request is still in flight.
+    await tester.pageBack();
+    await tester.pump();
+    expect(find.text(loc.newSessionLaunchingInBackground), findsOneWidget);
+
+    // Creation completes while the screen is still animating out.
+    createCompleter.complete(ApiResponse.success(testSession(id: "session-1", title: "Created session")));
+    await tester.pumpAndSettle();
+
+    // The user's chosen location must be preserved — no redirect to the
+    // created session's detail route.
+    expect(find.text("session-detail:session-1"), findsNothing);
+    expect(find.byType(NewSessionScreen), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets("still navigates to session detail after creating a session", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(

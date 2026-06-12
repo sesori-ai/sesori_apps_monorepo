@@ -103,6 +103,43 @@ void main() {
       expect(leftPane.width, lessThanOrEqualTo(maxListPanelWidth));
     });
 
+    testWidgets("wide mode presents snackbars on the shell scaffold spanning both panes", (tester) async {
+      final harness = AdaptiveSessionRouterTestHarness();
+      await tester.binding.setSurfaceSize(const Size(1024, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      addTearDown(harness.tearDown);
+      await harness.setUp(
+        initialLocation: "/projects/p1/sessions",
+        currentRouteDef: AppRouteDef.sessions,
+        sessionsByProject: {
+          "p1": [adaptiveTestSession(projectId: "p1", id: "s1", title: "Session One")],
+        },
+      );
+
+      await tester.pumpWidget(harness.buildApp());
+      await tester.pumpAndSettle();
+
+      // Trigger a snackbar from a left-pane context, like the "session
+      // deleted" snackbar shown after deleting a session from the list.
+      final leftPaneContext = tester.element(find.text("Session One"));
+      ScaffoldMessenger.of(leftPaneContext).showSnackBar(
+        const SnackBar(content: Text("Session deleted")),
+      );
+      await tester.pumpAndSettle();
+
+      // Exactly one snackbar, attached to the shell scaffold — spanning the
+      // full shell width instead of being confined to the right pane.
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(
+        find.ancestor(
+          of: find.byType(SnackBar),
+          matching: find.byKey(const Key("session-split-scaffold")),
+        ),
+        findsOneWidget,
+      );
+      expect(tester.getSize(find.byType(SnackBar)).width, 1024);
+    });
+
     testWidgets("wide to narrow resize preserves the same SessionListCubit instance", (tester) async {
       final harness = AdaptiveSessionRouterTestHarness();
       await tester.binding.setSurfaceSize(const Size(1024, 800));
