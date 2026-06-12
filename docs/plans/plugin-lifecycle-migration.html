@@ -330,6 +330,14 @@
   <li>Status wiring: <code>SseConnection</code> gains <code>onConnected/onDisconnected</code> callbacks → <code>Ready/Degraded</code> transitions (fixes attach-mode never reporting ready); <code>api</code> becomes a stable facade over swappable transport; supervisor restart re-targets it (same pinned port). <code>await</code> the formerly fire-and-forget <code>_initialize()</code> in <code>start()</code>, mapping failures to <code>PluginDegraded</code>.</li>
 </ul>
 <div class="safe"><b>Why always-green:</b> <code>bin/bridge.dart</code> still uses the legacy descriptor; nothing here executes in production. Duplication is deliberate and temporary.</div>
+<div class="callout">
+  <b>Deferred from PR 11 review (do after the PR 12 flip)</b> — SSE robustness items that would change the still-live legacy <code>OpenCodePlugin</code> path, which shares <code>SseConnection</code> until the flip; PR 11 must stay behavior-preserving:
+  <ul>
+    <li><b>Cold-start retry-on-connect.</b> When the initial cold-start (<code>initialize()</code>) fails but the SSE transport later connects, the plugin should retry the cold-start so hydration and status recover instead of relying on the next reconnect cycle. The visible symptom (status stuck <code>Ready</code> on a dead event stream) was fixed in PR 11 by firing <code>onDisconnected</code> on a failed initial connect.</li>
+    <li><b>Initial SSE handshake timeout.</b> <code>SseConnection</code>'s <code>client.send()</code> has no timeout: a server that accepts the TCP connection but never sends response headers parks the connect attempt forever without firing either lifecycle callback, so the status can stay <code>Ready</code> off a successful REST cold-start while the event stream is silently dead. Bound the handshake (and let the reconnect loop retry) once the legacy path no longer shares the class.</li>
+  </ul>
+  Implement once PRs 12/13 remove the legacy path.
+</div>
 </div>
 
 <div class="card pr risky">
@@ -339,6 +347,7 @@
   <li><code>bin/bridge.dart</code>: registry becomes <code>[OpenCodePluginDescriptor()]</code>. Delete <code>LegacyOpenCodeDescriptor</code> + its tests. New supervisor policies activate here: deadline health, intent side-file, exit monitoring, bounded restart with port pinning.</li>
   <li><b>BridgeConfig loses <code>serverURL</code>/<code>serverPassword</code> in this PR</b> (not later — after the legacy flow is gone there is no source to feed the required constructor params): the orchestrator's <code>Target:</code> log switches to <code>plugin.describe()</code>, and the orchestrator's <code>finally</code> stops calling the deprecated <code>_plugin.dispose()</code> (shutdown owns teardown). <b>Stated behavior delta:</b> the Target log line derives from diagnostics; post-start runtime death now surfaces as <code>PluginFailed</code> → orderly shutdown, exit 1.</li>
   <li><code>_optimizeOpenCodeDbIfNeeded</code> call site moves inside <code>descriptor.start()</code>.</li>
+  <li><b>Wire terminated-bridge identities through the host (from PR 11 review).</b> The dormant descriptor hardcodes <code>terminatedBridgeIdentities: const []</code> because <code>PluginHost</code> has no way to carry them — but the legacy flow passes <code>resolution.terminatedBridges</code> so stale cleanup is explicitly authorized to reclaim records owned by a bridge that was just replaced, even when its PID still looks live or was reused without start markers (the Windows path). The flip must extend the host contract (e.g. on <code>BridgeHostInfo</code>) with the replaced-bridge identities and pass them to <code>ManagedProcessService.start</code>, or the new bridge can spare — and orphan — the old <code>opencode serve</code>.</li>
   <li><b>Acceptance matrix:</b> normal start (spawns, owns, stops on exit); <code>--no-auto-start --port</code> attach (never kills); stale-runtime cleanup after <code>kill -9</code> of a previous bridge; second-bridge replacement; crash-restart with pinned port; headless systemd unit unchanged; upgrade-in-place from a pre-flip bridge (frozen ownership file read correctly); <b>crashed-mid-intent upgrade case</b> (side file present, old bridge unaffected; new bridge resolves it).</li>
 </ul>
 <div class="safe"><b>Why always-green:</b> PR 10 already proved the supervisor against the legacy spec in production; PR 11 landed the descriptor fully tested. This PR is a wiring swap whose new-code surface was reviewed earlier.</div>

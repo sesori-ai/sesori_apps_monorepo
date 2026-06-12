@@ -9,6 +9,8 @@ environment:
 dependencies:
   sesori_plugin_interface:
     path: ../sesori_plugin_interface
+  sesori_plugin_runtime:
+    path: ../sesori_plugin_runtime
   sesori_shared:
     path: ../../shared/sesori_shared
   http: ^1.3.0

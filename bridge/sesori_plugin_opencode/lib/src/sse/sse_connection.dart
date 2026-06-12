@@ -9,6 +9,8 @@ class SseConnection {
   final String? _password;
   final void Function(String rawData) _onEvent;
   final Future<void> Function()? _onReconnect;
+  final void Function()? _onConnected;
+  final void Function()? _onDisconnected;
 
   bool _active = false;
   int _generation = 0;
@@ -19,10 +21,14 @@ class SseConnection {
     required String? password,
     required void Function(String rawData) onEvent,
     Future<void> Function()? onReconnect,
+    void Function()? onConnected,
+    void Function()? onDisconnected,
   }) : _targetUrl = targetUrl,
        _password = password,
        _onEvent = onEvent,
-       _onReconnect = onReconnect;
+       _onReconnect = onReconnect,
+       _onConnected = onConnected,
+       _onDisconnected = onDisconnected;
 
   void start() {
     if (_active) return;
@@ -65,6 +71,10 @@ class SseConnection {
           throw StateError("Unexpected SSE content type: $contentType");
         }
 
+        // The transport is live: signal connected on the first connect and on
+        // every reconnect (the lifecycle status follows the live stream).
+        _onConnected?.call();
+
         if (!isFirstConnect) {
           await _onReconnect?.call();
         }
@@ -80,6 +90,14 @@ class SseConnection {
       }
 
       if (!_active || _generation != generation) return;
+
+      // The stream is not live right now — it either dropped after connecting or
+      // the connection attempt failed (including the very first attempt, after
+      // the descriptor already reported Ready off a successful cold-start). Fire
+      // onDisconnected so the lifecycle status can debounce to degraded; a
+      // deliberate stop() returns above and never reports disconnect. The status
+      // reporter debounces, so a quick reconnect cancels it before it surfaces.
+      _onDisconnected?.call();
 
       await Future<void>.delayed(reconnectDelay);
       final doubled = reconnectDelay.inSeconds * 2;
