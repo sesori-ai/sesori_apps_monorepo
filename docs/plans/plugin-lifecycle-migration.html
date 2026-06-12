@@ -87,10 +87,10 @@
   <h1>Plugin Lifecycle Migration Plan</h1>
   <div class="sub">Move all OpenCode runtime ownership (spawn, ports, health, ownership records, DB maintenance) out of <code>bridge/app</code> and into the OpenCode plugin, behind a plugin interface that supports managed-runtime, direct-CLI, and remote-server plugins — with per-plugin enable/start/stop. Delivered as a ladder of small, always-green PRs.</div>
   <div class="meta">
-    <span><b>Status:</b> in progress (rev 4 — PRs 1–8 merged (PR 8 = #239), PR 9 shipped #243; shipped cards carry delta callouts binding on later PRs)</span>
-    <span><b>Date:</b> 2026-06-10 (rev 3: 2026-06-11; rev 4: 2026-06-12)</span>
+    <span><b>Status:</b> in progress (rev 5 — PRs 1–8 merged (PR 8 = #239), PR 9 shipped #243; codegen / line-budget rule revised per maintainer review; shipped cards carry delta callouts binding on later PRs)</span>
+    <span><b>Date:</b> 2026-06-10 (rev 3: 2026-06-11; rev 4–5: 2026-06-12)</span>
     <span><b>PRs:</b> 15, strictly sequential</span>
-    <span><b>Max PR size:</b> ~2,000 changed lines (hard)</span>
+    <span><b>Max PR size:</b> ~2,000 hand-written changed lines (soft target; generated code excluded)</span>
     <span><b>Branch base:</b> main</span>
   </div>
 </header>
@@ -100,8 +100,8 @@
   <ul>
     <li><b>Always green.</b> After every PR: <code>dart analyze --fatal-infos</code> clean in every touched package (this is what <code>bridge-ci.yml</code> runs — note: a cross-package <code>@Deprecated</code> fails it, see PR 2), all tests pass, and the bridge runs end-to-end exactly as before (start, login, OpenCode spawn, mobile session flow, <code>--no-auto-start</code> attach mode, clean shutdown). No PR depends on a future PR to compile or behave.</li>
     <li><b>No breaking changes.</b> CLI flags (<code>--port</code>, <code>--no-auto-start</code>, <code>--password</code>, <code>--opencode-bin</code>) keep their exact names and semantics throughout — headless/systemd units (<code>docs/SETUP_HEADLESS_VM.md</code>) must never need editing. The on-disk ownership file <code>&lt;cacheDir&gt;/runtime/opencode-processes.json</code> keeps its exact schema and steady-state bytes <i>forever</i> (frozen contract — self-updating fleets mix bridge versions). Anything new the supervisor needs to persist goes in <b>separate, new files</b> that old bridges never read.</li>
-    <li><b>≤ ~2,000 changed lines per PR, as <code>git diff --stat</code> counts them</b> — moves count on both sides, generated files count, deletions count. Pure-deletion PRs get their own rungs rather than a leniency clause.</li>
-    <li><b>No codegen in new contract types.</b> All new interface/runtime types are hand-written Dart 3 sealed classes and records — no freezed, no json_serializable. (The interface package's freezed convention has a measured ~10× generated-line multiplier that would blow PR budgets.)</li>
+    <li><b>~2,000 changed lines per PR — a soft target, not a hard cap.</b> Counted as <code>git diff --stat</code> does, <i>except generated code (<code>.freezed.dart</code>/<code>.g.dart</code>) is excluded</i>; hand-written source, moves (both sides), and deletions count. Pure-deletion PRs still get their own rungs rather than a leniency clause.</li>
+    <li><b>Generated code is fine for data models.</b> New serialized data types use <b>freezed + json_serializable</b> like the rest of the bridge (generated <code>.freezed.dart</code>/<code>.g.dart</code>, committed, excluded from the line target) — the budget never drives a hand-rolled-JSON decision. Behavioral types (policy/strategy sealed classes with logic, e.g. <code>RuntimeRestartPolicy</code>) may stay hand-written where freezed adds no value. <i>(Revised in PR 9 per maintainer review; supersedes the earlier no-codegen rule, which the now-removed ~2,000-line hard cap had motivated. Already-merged hand-written types are not retrofitted; this applies going forward — e.g. PR 9's <code>RuntimeStartIntent</code> is freezed.)</i></li>
     <li><b>Duplication between phases is fine.</b> Old and new implementations may coexist; the old path keeps running production until a single, small "flip" PR switches it.</li>
     <li><b>Fidelity gate.</b> The 1,224-line <code>open_code_server_service_test.dart</code> is the behavioral spec for process lifecycle. The extraction is proven by those scenarios passing against the new code (PR 10) — not by review alone. To make that possible, all behavioral changes (health pacing, record timing, restart) are <b>explicit policy knobs</b> that default to legacy behavior until the flip (PR 12).</li>
   </ul>

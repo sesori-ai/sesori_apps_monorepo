@@ -1,6 +1,10 @@
 import "dart:convert";
 
+import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+
+part "runtime_start_intent.freezed.dart";
+part "runtime_start_intent.g.dart";
 
 /// A record that a managed-runtime spawn is *about to happen*, persisted to a
 /// bridge-private side file before the child is launched and removed once the
@@ -14,54 +18,26 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 /// `opencode-processes.json` (whose schema requires a non-null runtime pid and
 /// is read verbatim by older bridge versions). Its shape is bridge-private and
 /// may evolve freely.
-class RuntimeStartIntent {
-  const RuntimeStartIntent({
-    required this.ownerSessionId,
-    required this.port,
-    required this.bridgePid,
-    required this.bridgeStartMarker,
-    required this.recordedAt,
-  });
+@freezed
+sealed class RuntimeStartIntent with _$RuntimeStartIntent {
+  const factory RuntimeStartIntent({
+    /// Stable identifier of the bridge run that is about to spawn the runtime.
+    required String ownerSessionId,
 
-  /// Stable identifier of the bridge run that is about to spawn the runtime.
-  final String ownerSessionId;
+    /// The port the spawn is targeting.
+    required int port,
 
-  /// The port the spawn is targeting.
-  final int port;
+    /// Pid of the hosting bridge process.
+    required int bridgePid,
 
-  /// Pid of the hosting bridge process.
-  final int bridgePid;
+    /// Start marker of the hosting bridge process (absent on Windows).
+    required String? bridgeStartMarker,
 
-  /// Start marker of the hosting bridge process (absent on Windows).
-  final String? bridgeStartMarker;
+    /// When the intent was recorded (host clock).
+    required DateTime recordedAt,
+  }) = _RuntimeStartIntent;
 
-  /// When the intent was recorded (host clock).
-  final DateTime recordedAt;
-
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      "ownerSessionId": ownerSessionId,
-      "port": port,
-      "bridgePid": bridgePid,
-      "bridgeStartMarker": bridgeStartMarker,
-      "recordedAt": recordedAt.toUtc().toIso8601String(),
-    };
-  }
-
-  static RuntimeStartIntent fromJson(Map<String, dynamic> json) {
-    return RuntimeStartIntent(
-      ownerSessionId: json["ownerSessionId"] as String,
-      port: json["port"] as int,
-      bridgePid: json["bridgePid"] as int,
-      bridgeStartMarker: json["bridgeStartMarker"] as String?,
-      recordedAt: DateTime.parse(json["recordedAt"] as String),
-    );
-  }
-
-  @override
-  String toString() {
-    return "RuntimeStartIntent(ownerSessionId: $ownerSessionId, port: $port, bridgePid: $bridgePid)";
-  }
+  factory RuntimeStartIntent.fromJson(Map<String, dynamic> json) => _$RuntimeStartIntentFromJson(json);
 }
 
 /// Reads and writes the single in-flight [RuntimeStartIntent] to a bridge-private
