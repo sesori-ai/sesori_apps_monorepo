@@ -38,11 +38,11 @@ void main() {
       expect(await api.getAutoVacuumMode(dbPath: dbPath), 1);
     });
 
-    test("throws when database file does not exist", () {
+    test("throws when database file does not exist", () async {
       final api = OpenCodeDbApi();
       // sqlite3.open on a nonexistent path creates the file,
       // but we test a truly invalid path
-      expect(
+      await expectLater(
         () => api.getAutoVacuumMode(dbPath: "/nonexistent/dir/test.db"),
         throwsA(isA<SqliteException>()),
       );
