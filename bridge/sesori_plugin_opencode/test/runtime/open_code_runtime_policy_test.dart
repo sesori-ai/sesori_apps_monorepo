@@ -187,7 +187,7 @@ void main() {
   });
 
   group("buildOpenCodeManagedRuntimeSpec", () {
-    test("uses the legacy five-attempt 500 ms health policy and afterSpawn timing", () {
+    test("uses the hardened policy knobs active since the flip", () {
       final spec = buildOpenCodeManagedRuntimeSpec(
         host: _SpawnFakeHost(processes: _RecordingHostProcessService(), environment: const <String, String>{}),
         executablePath: "/bin/opencode",
@@ -196,13 +196,27 @@ void main() {
         probeClientFactory: () => MockClient((request) async => http.Response("", 200)),
       );
 
-      expect(spec.recordTiming, equals(RuntimeRecordTiming.afterSpawn));
+      expect(spec.recordTiming, equals(RuntimeRecordTiming.intentSideFile));
       expect(spec.validateRuntime, isNull);
-      expect(spec.failOnEarlyChildExit, isFalse);
+      expect(spec.failOnEarlyChildExit, isTrue);
       final health = spec.healthPolicy;
-      expect(health, isA<HealthAttemptCountPolicy>());
-      expect((health as HealthAttemptCountPolicy).attempts, equals(5));
-      expect(health.delay, equals(const Duration(milliseconds: 500)));
+      expect(health, isA<HealthDeadlinePolicy>());
+      expect((health as HealthDeadlinePolicy).deadline, equals(const Duration(seconds: 30)));
+      expect(health.pollInterval, equals(const Duration(milliseconds: 500)));
+    });
+  });
+
+  group("buildOpenCodeRestartPolicy", () {
+    test("builds the bounded pinned-port restart pacing", () {
+      final policy = buildOpenCodeRestartPolicy();
+
+      expect(policy, isA<BoundedRestartPolicy>());
+      final bounded = policy as BoundedRestartPolicy;
+      expect(bounded.maxAttempts, equals(3));
+      expect(bounded.initialBackoff, equals(const Duration(seconds: 1)));
+      expect(bounded.maxBackoff, equals(const Duration(seconds: 15)));
+      expect(bounded.portReleaseTimeout, equals(const Duration(seconds: 10)));
+      expect(bounded.portReleasePollInterval, equals(const Duration(milliseconds: 500)));
     });
   });
 }

@@ -55,6 +55,7 @@ class BridgePluginHostImpl implements PluginHost {
     required StartAbortSignal startAborted,
     required ProcessIdentity bridgeIdentity,
     required String ownerSessionId,
+    required List<ProcessIdentity> terminatedBridgeIdentities,
     required ProcessRepository processRepository,
     required LoopbackPortApi loopbackPortApi,
     required HostProcessStarter processStarter,
@@ -76,6 +77,7 @@ class BridgePluginHostImpl implements PluginHost {
       bridge: BridgeHostInfoImpl(
         identity: bridgeIdentity,
         ownerSessionId: ownerSessionId,
+        terminatedBridgeIdentities: terminatedBridgeIdentities,
         processRepository: processRepository,
       ),
       processes: BridgeHostProcessService(

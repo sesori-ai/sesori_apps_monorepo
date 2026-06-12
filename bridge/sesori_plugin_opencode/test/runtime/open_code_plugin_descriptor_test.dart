@@ -6,6 +6,7 @@ import "dart:math";
 import "package:http/http.dart" as http;
 import "package:http/testing.dart";
 import "package:opencode_plugin/src/runtime/open_code_managed_api.dart";
+import "package:opencode_plugin/src/runtime/open_code_ownership_record.dart";
 import "package:opencode_plugin/src/runtime/open_code_plugin_descriptor.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -48,6 +49,7 @@ void main() {
   group("OpenCodePluginDescriptor.start (managed)", () {
     late _FakeHost host;
     late _FakeApiRecorder apiRecorder;
+    late List<Map<String, String>> optimizeCalls;
 
     setUp(() {
       host = _FakeHost(
@@ -56,6 +58,7 @@ void main() {
         ),
       );
       apiRecorder = _FakeApiRecorder();
+      optimizeCalls = <Map<String, String>>[];
     });
 
     OpenCodePluginDescriptor descriptor({Object? initializeError}) {
@@ -65,6 +68,9 @@ void main() {
         probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
         candidatePorts: const <int>[51000],
         random: Random(1),
+        optimizeDb: ({required Map<String, String> environment}) async {
+          optimizeCalls.add(environment);
+        },
       );
     }
 
@@ -100,7 +106,7 @@ void main() {
       await plugin.shutdown(budget: null);
     });
 
-    test("an unexpected child exit surfaces as Failed (restart disabled in PR 11)", () async {
+    test("an unexpected child exit restarts on the pinned port and recovers", () async {
       host.ports.defaultBindable = true;
       final plugin = await descriptor().start(host);
       expect(plugin.currentStatus, isA<PluginReady>());
@@ -108,7 +114,117 @@ void main() {
       host.processes.spawnedProcesses.single.completeExit(1);
       await pumpEventQueue();
 
+      expect(host.processes.spawnedProcesses, hasLength(2), reason: "the monitor must respawn the child");
+      expect(plugin.currentStatus, isA<PluginReady>());
+      final record = host.ownershipRecord("owner-current");
+      expect(record!["port"], equals(51000), reason: "restart is pinned to the original port");
+      expect(record["status"], equals("ready"));
+
+      await plugin.shutdown(budget: null);
+    });
+
+    test("an unexpected exit surfaces as Failed when the pinned port never frees", () async {
+      host.ports.defaultBindable = true;
+      final plugin = await descriptor().start(host);
+      expect(plugin.currentStatus, isA<PluginReady>());
+
+      host.ports.byPort[51000] = false;
+      host.processes.spawnedProcesses.single.completeExit(1);
+      await pumpEventQueue();
+
       expect(plugin.currentStatus, isA<PluginFailed>());
+      expect(host.processes.spawnedProcesses, hasLength(1), reason: "no child can spawn while the port is held");
+    });
+
+    test("runs the DB maintenance seam with the host environment before starting", () async {
+      host.ports.defaultBindable = true;
+
+      final plugin = await descriptor().start(host);
+
+      expect(optimizeCalls, hasLength(1));
+      expect(optimizeCalls.single, same(host.environment));
+
+      await plugin.shutdown(budget: null);
+    });
+
+    test("a throwing DB maintenance seam never fails the start", () async {
+      host.ports.defaultBindable = true;
+      final throwingDescriptor = OpenCodePluginDescriptor(
+        buildApi: apiRecorder.build,
+        probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
+        candidatePorts: const <int>[51000],
+        random: Random(1),
+        optimizeDb: ({required Map<String, String> environment}) async {
+          throw StateError("maintenance exploded");
+        },
+      );
+
+      final plugin = await throwingDescriptor.start(host);
+
+      expect(plugin.currentStatus, isA<PluginReady>());
+
+      await plugin.shutdown(budget: null);
+    });
+
+    test("records the start intent before spawn and clears it once the record exists", () async {
+      host.ports.defaultBindable = true;
+      String? intentDuringSpawn;
+      host.processes.onSpawn = () {
+        intentDuringSpawn = host.store.files["opencode-start-intent.json"];
+      };
+
+      final plugin = await descriptor().start(host);
+
+      expect(intentDuringSpawn, isNotNull, reason: "the intent side file must exist before the child does");
+      expect(jsonDecode(intentDuringSpawn!), containsPair("port", 51000));
+      expect(
+        host.store.files["opencode-start-intent.json"],
+        isNull,
+        reason: "the intent is resolved once the ownership record is written",
+      );
+
+      await plugin.shutdown(budget: null);
+    });
+
+    test("stale cleanup reclaims a runtime owned by a replaced bridge that still looks live", () async {
+      host.ports.defaultBindable = true;
+      _seedStaleRecord(host);
+      // The replaced bridge's pid still classifies as a live bridge (pid reuse,
+      // or the Windows no-start-marker path) — only the terminated-bridge
+      // identities from the host authorize reclaiming its runtime.
+      host.bridge.liveBridgePids.add(200);
+      host.bridge.terminatedBridgeIdentitiesValue = <ProcessIdentity>[
+        ProcessIdentity(
+          pid: 200,
+          startMarker: "old-bridge-start",
+          executablePath: "/bin/sesori-bridge",
+          commandLine: "sesori-bridge",
+          ownerUser: null,
+          platform: "macos",
+          capturedAt: DateTime.utc(2026, 6, 1),
+        ),
+      ];
+
+      final plugin = await descriptor().start(host);
+
+      expect(host.processes.signals, contains("graceful:7777"));
+      expect(host.ownershipRecord("owner-old"), isNull, reason: "the reclaimed record is deleted");
+      expect(host.ownershipRecord("owner-current"), isNotNull);
+
+      await plugin.shutdown(budget: null);
+    });
+
+    test("stale cleanup spares a live other-owner bridge when it was not replaced", () async {
+      host.ports.defaultBindable = true;
+      _seedStaleRecord(host);
+      host.bridge.liveBridgePids.add(200);
+
+      final plugin = await descriptor().start(host);
+
+      expect(host.processes.signals, isNot(contains("graceful:7777")));
+      expect(host.ownershipRecord("owner-old"), isNotNull, reason: "a live owner's runtime must be spared");
+
+      await plugin.shutdown(budget: null);
     });
 
     test("shutdown disposes the api, stops the owned runtime, and is idempotent", () async {
@@ -174,6 +290,7 @@ void main() {
       final host = attachHost();
       final descriptor = OpenCodePluginDescriptor(
         buildApi: apiRecorder.build,
+        optimizeDb: _noopOptimizeDb,
         probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
       );
 
@@ -193,6 +310,7 @@ void main() {
       apiRecorder.initializeError = const SocketException("connection refused");
       final descriptor = OpenCodePluginDescriptor(
         buildApi: apiRecorder.build,
+        optimizeDb: _noopOptimizeDb,
         probeClientFactory: () => MockClient((_) async => http.Response("nope", 503)),
       );
 
@@ -208,6 +326,7 @@ void main() {
     test("normalizes the password option like the legacy flow (trim, blank to null)", () async {
       final descriptor = OpenCodePluginDescriptor(
         buildApi: apiRecorder.build,
+        optimizeDb: _noopOptimizeDb,
         probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
       );
 
@@ -238,6 +357,7 @@ void main() {
       apiRecorder.neverCompleteInitialize = true;
       final descriptor = OpenCodePluginDescriptor(
         buildApi: apiRecorder.build,
+        optimizeDb: _noopOptimizeDb,
         probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
         coldStartBudget: const Duration(milliseconds: 200),
       );
@@ -258,6 +378,7 @@ void main() {
       apiRecorder.neverCompleteInitialize = true;
       final descriptor = OpenCodePluginDescriptor(
         buildApi: apiRecorder.build,
+        optimizeDb: _noopOptimizeDb,
         probeClientFactory: () => MockClient((_) async => http.Response("nope", 503)),
       );
 
@@ -269,6 +390,37 @@ void main() {
       await plugin.shutdown(budget: null);
     });
   });
+}
+
+Future<void> _noopOptimizeDb({required Map<String, String> environment}) async {}
+
+/// Seeds the ownership file with a ready record owned by a *previous* bridge
+/// (pid 200) whose `opencode serve` child (pid 7777) is still running and
+/// matches the record identity.
+void _seedStaleRecord(_FakeHost host) {
+  final record = OpenCodeOwnershipRecord(
+    ownerSessionId: "owner-old",
+    openCodePid: 7777,
+    openCodeStartMarker: "old-run",
+    openCodeExecutablePath: "/bin/opencode",
+    openCodeCommand: "/bin/opencode",
+    openCodeArgs: const <String>["serve", "--port", "50999", "--hostname", "127.0.0.1"],
+    port: 50999,
+    bridgePid: 200,
+    bridgeStartMarker: "old-bridge-start",
+    startedAt: DateTime.utc(2026, 5, 1),
+    status: OpenCodeOwnershipStatus.ready,
+  );
+  host.store.files["opencode-processes.json"] = jsonEncode(<String, dynamic>{"owner-old": record.toJson()});
+  host.processes.inspectResults[7777] = ProcessIdentity(
+    pid: 7777,
+    startMarker: "old-run",
+    executablePath: "/bin/opencode",
+    commandLine: "/bin/opencode serve --port 50999 --hostname 127.0.0.1",
+    ownerUser: null,
+    platform: "macos",
+    capturedAt: DateTime.utc(2026, 6, 1),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -403,6 +555,9 @@ class _ImmediateClock implements ServerClock {
 }
 
 class _FakeBridgeHostInfo implements BridgeHostInfo {
+  List<ProcessIdentity> terminatedBridgeIdentitiesValue = <ProcessIdentity>[];
+  final Set<int> liveBridgePids = <int>{};
+
   @override
   ProcessIdentity get identity => ProcessIdentity(
     pid: 900,
@@ -418,7 +573,11 @@ class _FakeBridgeHostInfo implements BridgeHostInfo {
   String get ownerSessionId => "owner-current";
 
   @override
-  Future<bool> isLiveBridgeProcess({required int pid, required String? startMarker}) async => false;
+  List<ProcessIdentity> get terminatedBridgeIdentities => terminatedBridgeIdentitiesValue;
+
+  @override
+  Future<bool> isLiveBridgeProcess({required int pid, required String? startMarker}) async =>
+      liveBridgePids.contains(pid);
 }
 
 class _FakePortService implements HostPortService {
@@ -432,6 +591,8 @@ class _FakePortService implements HostPortService {
 class _FakeHostProcessService implements HostProcessService {
   final List<_FakeSpawnedProcess> spawnedProcesses = <_FakeSpawnedProcess>[];
   final List<String> signals = <String>[];
+  final Map<int, ProcessIdentity> inspectResults = <int, ProcessIdentity>{};
+  void Function()? onSpawn;
   int nextPid = 4242;
 
   @override
@@ -442,13 +603,14 @@ class _FakeHostProcessService implements HostProcessService {
     required String? workingDirectory,
     required bool runInShell,
   }) async {
-    final process = _FakeSpawnedProcess(pid: nextPid, executablePath: executable);
+    onSpawn?.call();
+    final process = _FakeSpawnedProcess(pid: nextPid++, executablePath: executable);
     spawnedProcesses.add(process);
     return process;
   }
 
   @override
-  Future<ProcessIdentity?> inspect({required int pid}) async => null;
+  Future<ProcessIdentity?> inspect({required int pid}) async => inspectResults[pid];
 
   @override
   Future<List<ProcessIdentity>> list({required int? excludePid}) async => const <ProcessIdentity>[];
@@ -456,6 +618,7 @@ class _FakeHostProcessService implements HostProcessService {
   @override
   Future<SignalResult> signalGraceful({required int pid}) async {
     signals.add("graceful:$pid");
+    inspectResults.remove(pid);
     for (final process in spawnedProcesses) {
       if (process.pid == pid) {
         process.completeExit(0);
@@ -467,6 +630,7 @@ class _FakeHostProcessService implements HostProcessService {
   @override
   Future<SignalResult> signalForce({required int pid}) async {
     signals.add("force:$pid");
+    inspectResults.remove(pid);
     return _signal(pid: pid, signal: ShutdownSignal.force);
   }
 

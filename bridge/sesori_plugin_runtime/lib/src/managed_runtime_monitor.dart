@@ -56,6 +56,7 @@ class ManagedRuntimeMonitor<R> {
   ManagedRuntimeHandle<R>? _currentHandle;
   int? _pinnedPort;
   bool _disarmed = false;
+  Future<void>? _activeRestartEpisode;
   // Long-lived stdio drains, cancelled in _cancelStdioSubscriptions (on restart)
   // and disarm (on stop) rather than where they are created.
   // ignore: cancel_subscriptions
@@ -94,7 +95,16 @@ class ManagedRuntimeMonitor<R> {
   }
 
   /// Stops supervising: aborts any in-flight restart (so its freshly spawned
-  /// child is rolled back, not leaked), and cancels the stdio subscriptions.
+  /// child is rolled back, not leaked), **waits for that restart episode to
+  /// settle**, and cancels the stdio subscriptions.
+  ///
+  /// The settle-wait is what makes the owner's shutdown safe: when this
+  /// returns, an aborted restart has already rolled its fresh child back, and
+  /// a restart that had committed past its last abort checkpoint has already
+  /// been adopted into [currentHandle] — so the owner stops the *live* child
+  /// and never reads a stale handle while a respawn is still in flight. The
+  /// wait is bounded: the episode observes the abort at its next checkpoint,
+  /// and the backoff sleep itself races the abort signal.
   ///
   /// The owner calls this *before* signaling the child during shutdown, so the
   /// child's deliberate exit is never mistaken for a crash. Idempotent.
@@ -104,6 +114,16 @@ class ManagedRuntimeMonitor<R> {
     }
     _disarmed = true;
     _restartAbort?.abort();
+    final episode = _activeRestartEpisode;
+    if (episode != null) {
+      // The episode handles its own errors; a throw here must never leave the
+      // stdio subscriptions dangling or mask the owner's shutdown.
+      try {
+        await episode;
+      } on Object catch (error, stackTrace) {
+        Log.w("[$_runtimeId] restart episode failed while disarming", error, stackTrace);
+      }
+    }
     await _cancelStdioSubscriptions();
   }
 
@@ -142,7 +162,18 @@ class ManagedRuntimeMonitor<R> {
           PluginFailed(reason: "[$_runtimeId] runtime exited unexpectedly with code $exitCode", cause: null),
         );
       case BoundedRestartPolicy():
-        await _runRestartEpisode(policy: policy, exitCode: exitCode);
+        // Tracked so disarm() can wait the episode out: returning from disarm
+        // while a respawn is mid-flight would let the owner's shutdown stop a
+        // stale record while this episode commits a child nobody ever stops.
+        final episode = _runRestartEpisode(policy: policy, exitCode: exitCode);
+        _activeRestartEpisode = episode;
+        try {
+          await episode;
+        } finally {
+          if (identical(_activeRestartEpisode, episode)) {
+            _activeRestartEpisode = null;
+          }
+        }
     }
   }
 
@@ -167,7 +198,13 @@ class ManagedRuntimeMonitor<R> {
           // child into a terminal/shutdown state.
           return;
         }
-        await _clock.delay(duration: policy.backoffFor(attempt));
+        // The backoff sleep races the abort signal: disarm() waits this episode
+        // out, so an un-raced sleep would stall shutdown for up to maxBackoff.
+        // The losing delay future is sunk — a throwing clock seam must not
+        // surface as an unhandled async error after an abort won the race.
+        final backoff = _clock.delay(duration: policy.backoffFor(attempt));
+        unawaited(backoff.catchError((Object _) {}));
+        await Future.any(<Future<void>>[backoff, abort.signal.whenAborted]);
         if (_disarmed) {
           return;
         }

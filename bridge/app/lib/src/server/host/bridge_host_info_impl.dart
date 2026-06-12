@@ -7,14 +7,22 @@ class BridgeHostInfoImpl implements BridgeHostInfo {
   BridgeHostInfoImpl({
     required this.identity,
     required this.ownerSessionId,
+    required List<ProcessIdentity> terminatedBridgeIdentities,
     required ProcessRepository processRepository,
-  }) : _processRepository = processRepository;
+  }) : terminatedBridgeIdentities = List<ProcessIdentity>.unmodifiable(terminatedBridgeIdentities),
+       _processRepository = processRepository;
 
   @override
   final ProcessIdentity identity;
 
   @override
   final String ownerSessionId;
+
+  /// An unmodifiable snapshot: the replaced-bridge identities are a fixed
+  /// fact of this startup, and cleanup authorization must not be alterable
+  /// through a retained caller-side list reference.
+  @override
+  final List<ProcessIdentity> terminatedBridgeIdentities;
 
   final ProcessRepository _processRepository;
 

@@ -4,12 +4,10 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Bridg
 
 /// Builds and starts a registered plugin instance.
 ///
-/// Transitional seam (plugin-lifecycle migration, PR 5): the contract's
-/// descriptors are meant to be const and registered directly, but
-/// `LegacyOpenCodeDescriptor` can only be constructed inside the startup
-/// mutex with the legacy services injected, so the runner registers a bound
-/// start delegate instead. Collapses to `descriptor.start(host)` when the
-/// real descriptor lands at the flip (PR 12).
+/// The runner binds `descriptor.start(host)` behind this delegate because the
+/// `PluginHost` can only be assembled inside the cross-instance startup mutex
+/// (the terminated-bridge identities it carries come from the single-bridge
+/// resolution that runs under the lock).
 typedef PluginStarter = Future<BridgePlugin> Function();
 
 /// Owns which plugins are running: registered plugins are *not* auto-started;

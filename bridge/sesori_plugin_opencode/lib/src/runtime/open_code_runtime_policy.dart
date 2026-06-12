@@ -36,6 +36,15 @@ const int dynamicOpenCodeMaxAttempts = 5;
 /// How long a graceful (SIGTERM) stop waits before escalating to SIGKILL.
 const Duration openCodeGracefulShutdownWait = Duration(seconds: 5);
 
+/// Total budget for the post-spawn health confirmation (the flip's deadline
+/// pacing, replacing the legacy five 500 ms attempts), probed every
+/// [openCodeHealthPollInterval].
+const Duration openCodeHealthDeadline = Duration(seconds: 30);
+
+/// How often the supervisor re-probes `/global/health` within
+/// [openCodeHealthDeadline].
+const Duration openCodeHealthPollInterval = Duration(milliseconds: 500);
+
 /// Budget for the awaited cold-start in `descriptor.start()`: a service that
 /// passed the health probe but stalls a REST call must surface as degraded,
 /// not hang `start()` under the bridge's cross-instance startup mutex. The
@@ -44,6 +53,39 @@ const Duration openCodeColdStartBudget = Duration(seconds: 15);
 
 /// The loopback host OpenCode binds to and is probed on.
 const String openCodeLoopbackHost = "127.0.0.1";
+
+/// Maximum crash-restarts attempted within one failure episode before the
+/// monitor reports `PluginFailed`.
+const int openCodeRestartMaxAttempts = 3;
+
+/// Backoff before the first restart attempt; grows geometrically (capped at
+/// [openCodeRestartMaxBackoff]) on subsequent attempts.
+const Duration openCodeRestartInitialBackoff = Duration(seconds: 1);
+
+/// Upper bound on the restart backoff.
+const Duration openCodeRestartMaxBackoff = Duration(seconds: 15);
+
+/// How long a restart waits for the address-frozen port to free before the
+/// episode is treated as terminal (the HTTP/SSE stack is pinned to the port,
+/// so a restart must reclaim that exact address).
+const Duration openCodeRestartPortReleaseTimeout = Duration(seconds: 10);
+
+/// How often the pinned port is re-probed while waiting for it to free.
+const Duration openCodeRestartPortReleasePollInterval = Duration(milliseconds: 500);
+
+/// Bounded crash-restart pacing for the exit monitor, active since the flip
+/// (PR 12): restart on the pinned port with exponential backoff, surfacing
+/// `PluginFailed` only when the attempts are exhausted or the port never
+/// frees. Clean shutdowns disarm the monitor first and never restart.
+RuntimeRestartPolicy buildOpenCodeRestartPolicy() {
+  return RuntimeRestartPolicy.bounded(
+    maxAttempts: openCodeRestartMaxAttempts,
+    initialBackoff: openCodeRestartInitialBackoff,
+    maxBackoff: openCodeRestartMaxBackoff,
+    portReleaseTimeout: openCodeRestartPortReleaseTimeout,
+    portReleasePollInterval: openCodeRestartPortReleasePollInterval,
+  );
+}
 
 /// Number of random bytes in a generated server password (hex-encoded).
 const int openCodePasswordLength = 32;
@@ -236,13 +278,13 @@ OpenCodeOwnershipRecord buildOpenCodeOwnershipRecord(RuntimeRecordDraft draft) {
   );
 }
 
-/// Assembles the [ManagedRuntimeSpec] for OpenCode with the **legacy** policy
-/// knobs: five 500 ms health attempts, the ownership record written after spawn,
-/// next-candidate retry on port exhaustion, and no extra runtime validation.
-///
-/// The hardened pacing (deadline health, intent side-file, pre-probe
-/// bindability, early-exit detection) becomes the default only when the real
-/// descriptor opts in at the flip (PR 12); PR 11 stays byte-for-byte legacy.
+/// Assembles the [ManagedRuntimeSpec] for OpenCode with the **hardened** policy
+/// knobs active since the flip (PR 12): deadline-paced health confirmation
+/// ([openCodeHealthDeadline] probed every [openCodeHealthPollInterval]), the
+/// start intent recorded to a bridge-private side file before spawn (the frozen
+/// ownership file is untouched), and a child exit before the first healthy
+/// probe treated as authoritative failure (a healthy response after our child
+/// died would be an unrelated process squatting the port).
 ManagedRuntimeSpec<OpenCodeOwnershipRecord> buildOpenCodeManagedRuntimeSpec({
   required PluginHost host,
   required String executablePath,
@@ -258,6 +300,11 @@ ManagedRuntimeSpec<OpenCodeOwnershipRecord> buildOpenCodeManagedRuntimeSpec({
     probePortBindable: ({required int port}) => host.ports.isBindable(host: openCodeLoopbackHost, port: port),
     buildRecord: buildOpenCodeOwnershipRecord,
     portPolicy: portPolicy,
-    healthPolicy: const RuntimeHealthPolicy.attemptCount(attempts: 5, delay: Duration(milliseconds: 500)),
+    healthPolicy: RuntimeHealthPolicy.deadline(
+      deadline: openCodeHealthDeadline,
+      pollInterval: openCodeHealthPollInterval,
+    ),
+    recordTiming: RuntimeRecordTiming.intentSideFile,
+    failOnEarlyChildExit: true,
   );
 }

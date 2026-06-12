@@ -419,6 +419,9 @@ class _FakeHostProcessService implements HostProcessService {
 
 class _FakeBridgeHostInfo implements BridgeHostInfo {
   @override
+  List<ProcessIdentity> get terminatedBridgeIdentities => const [];
+
+  @override
   ProcessIdentity get identity => ProcessIdentity(
     pid: 900,
     startMarker: "bridge-start",

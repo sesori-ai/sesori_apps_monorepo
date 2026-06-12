@@ -41,6 +41,7 @@ void main() {
         startAborted: StartAbortSignal.never,
         bridgeIdentity: bridgeIdentity,
         ownerSessionId: '100:bridge-start-marker',
+        terminatedBridgeIdentities: const [],
         processRepository: _UnusedProcessRepository(),
         loopbackPortApi: const LoopbackPortApi(),
         processStarter: _failingStarter,

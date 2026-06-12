@@ -1,7 +1,11 @@
 class BridgeConfig {
   final String relayURL;
-  final String serverURL;
-  final String? serverPassword;
+
+  /// The active plugin's endpoint, from `BridgePlugin.describe()` — purely
+  /// informational (the `Target:` startup log). All plugin traffic flows
+  /// through the injected `BridgePluginApi`, never through this value.
+  final String pluginEndpoint;
+
   final String authBackendURL;
 
   /// How long a disconnected phone's SSE replay cursor stays valid.
@@ -9,8 +13,7 @@ class BridgeConfig {
 
   const BridgeConfig({
     required this.relayURL,
-    required this.serverURL,
-    required this.serverPassword,
+    required this.pluginEndpoint,
     required this.authBackendURL,
     required this.sseReplayWindow,
   });
