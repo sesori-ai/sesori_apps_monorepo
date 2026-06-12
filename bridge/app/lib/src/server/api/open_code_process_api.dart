@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 import "dart:io";
 import "dart:math";
@@ -22,13 +23,15 @@ class OpenCodeProcessApi {
     required ProcessUser? currentUser,
     required bool isWindows,
     required String platform,
+    required Duration probeTimeout,
   }) : _processStarter = processStarter,
        _httpClient = httpClient,
        _clock = clock,
        _environment = Map<String, String>.from(environment),
        _currentUser = currentUser,
        _isWindows = isWindows,
-       _platform = platform;
+       _platform = platform,
+       _probeTimeout = probeTimeout;
 
   static const int passwordLength = 32;
 
@@ -39,6 +42,7 @@ class OpenCodeProcessApi {
   final ProcessUser? _currentUser;
   final bool _isWindows;
   final String _platform;
+  final Duration _probeTimeout;
 
   String generatePassword() {
     final random = Random.secure();
@@ -86,8 +90,7 @@ class OpenCodeProcessApi {
     request.headers["Authorization"] = "Basic ${base64Encode(utf8.encode("opencode:$password"))}";
 
     try {
-      final response = await _httpClient.send(request);
-      await response.stream.drain<void>();
+      final response = await _sendAndDrain(request: request).timeout(_probeTimeout);
       return OpenCodeHealthProbeFact(
         uri: healthUri,
         statusCode: response.statusCode,
@@ -102,6 +105,12 @@ class OpenCodeProcessApi {
         checkedAt: _clock.now(),
       );
     }
+  }
+
+  Future<http.StreamedResponse> _sendAndDrain({required http.Request request}) async {
+    final response = await _httpClient.send(request);
+    await response.stream.drain<void>();
+    return response;
   }
 }
 

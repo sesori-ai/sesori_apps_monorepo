@@ -160,7 +160,11 @@ class LogoutCommand extends cli.Command<void> {
       currentUser: currentUser,
     );
     final terminalPromptRepository = TerminalPromptRepository(
-      api: TerminalPromptApi(stdin: stdin, stdout: stdout),
+      api: TerminalPromptApi(
+        stdin: stdin,
+        stdout: stdout,
+        environment: Platform.environment,
+      ),
     );
     final logoutRunner = BridgeLogoutRunner(
       bridgeInstanceRepository: bridgeInstanceRepository,

@@ -146,6 +146,7 @@ class BridgeRuntimeRunner {
     final terminalPromptApi = TerminalPromptApi(
       stdin: io.stdin,
       stdout: io.stdout,
+      environment: environment,
     );
     final terminalPromptRepository = TerminalPromptRepository(
       api: terminalPromptApi,
@@ -173,6 +174,7 @@ class BridgeRuntimeRunner {
         ),
         browserLauncher: openOAuthBrowser,
       ),
+      environment: environment,
     );
 
     try {
@@ -217,6 +219,7 @@ class BridgeRuntimeRunner {
             currentUser: currentUser,
             isWindows: io.Platform.isWindows,
             platform: io.Platform.operatingSystem,
+            probeTimeout: const Duration(seconds: 5),
           ),
         ),
         processRepository: processRepository,
@@ -363,70 +366,98 @@ class BridgeRuntimeRunner {
     required StartAbortSignal startAborted,
     LegacyPluginApiBuilder? buildPluginApi,
   }) {
-    return startupMutexRepository.withLock<LegacyOpenCodeBridgePlugin>(
-      bridgePid: currentBridgeIdentity.pid,
-      bridgeStartMarker: currentBridgeIdentity.startMarker,
-      onLockAcquired: () async {
-        Log.d("acquired startup lock");
-        final resolution = await bridgeInstanceService.enforceSingleLiveBridge(
-          currentPid: currentBridgeIdentity.pid,
-        );
-        switch (resolution.status) {
-          case BridgeInstanceResolutionStatus.allowed:
-            // The host contract promises the state directory exists before
-            // start() runs. The store shares the runner's RuntimeFileApi:
-            // its locked update() is only mutually exclusive within one
-            // instance per directory.
-            await io.Directory(runtimeDirectory).create(recursive: true);
-            final host = BridgePluginHostImpl(
-              config: pluginConfig,
-              stateDirectory: runtimeDirectory,
-              environment: Map<String, String>.unmodifiable(environment),
-              clock: serverClock,
-              startAborted: startAborted,
-              bridge: BridgeHostInfoImpl(
-                identity: currentBridgeIdentity,
-                ownerSessionId: ownerSessionId,
-                processRepository: processRepository,
-              ),
-              processes: BridgeHostProcessService(
-                processStarter: io.Process.start,
-                processRepository: processRepository,
+    Future<LegacyOpenCodeBridgePlugin> attemptStart({required int attempt}) {
+      return startupMutexRepository.withLock<LegacyOpenCodeBridgePlugin>(
+        bridgePid: currentBridgeIdentity.pid,
+        bridgeStartMarker: currentBridgeIdentity.startMarker,
+        onLockAcquired: () async {
+          Log.d("acquired startup lock");
+          final resolution = await bridgeInstanceService.enforceSingleLiveBridge(
+            currentPid: currentBridgeIdentity.pid,
+          );
+          switch (resolution.status) {
+            case BridgeInstanceResolutionStatus.allowed:
+              // The host contract promises the state directory exists before
+              // start() runs. The store shares the runner's RuntimeFileApi:
+              // its locked update() is only mutually exclusive within one
+              // instance per directory.
+              await io.Directory(runtimeDirectory).create(recursive: true);
+              final host = BridgePluginHostImpl(
+                config: pluginConfig,
+                stateDirectory: runtimeDirectory,
+                environment: Map<String, String>.unmodifiable(environment),
                 clock: serverClock,
-                currentUser: currentUser,
-                isWindows: io.Platform.isWindows,
-                platform: io.Platform.operatingSystem,
-              ),
-              ports: const BridgeHostPortService(loopbackPortApi: LoopbackPortApi()),
-              store: BridgeHostJsonStore(fileApi: runtimeFileApi),
+                startAborted: startAborted,
+                bridge: BridgeHostInfoImpl(
+                  identity: currentBridgeIdentity,
+                  ownerSessionId: ownerSessionId,
+                  processRepository: processRepository,
+                ),
+                processes: BridgeHostProcessService(
+                  processStarter: io.Process.start,
+                  processRepository: processRepository,
+                  clock: serverClock,
+                  currentUser: currentUser,
+                  isWindows: io.Platform.isWindows,
+                  platform: io.Platform.operatingSystem,
+                ),
+                ports: const BridgeHostPortService(loopbackPortApi: LoopbackPortApi()),
+                store: BridgeHostJsonStore(fileApi: runtimeFileApi),
+              );
+              final descriptor = LegacyOpenCodeDescriptor(
+                openCodeServerService: openCodeServerService,
+                ownershipRepository: ownershipRepository,
+                ownerSessionId: ownerSessionId,
+                terminatedBridgeIdentities: resolution.terminatedBridges,
+                buildPluginApi: buildPluginApi,
+              );
+              return descriptor.start(host);
+            case BridgeInstanceResolutionStatus.declined:
+              throw const BridgeRuntimeServerException(
+                "Startup aborted because another Sesori bridge is already running and replacement was declined.",
+              );
+            case BridgeInstanceResolutionStatus.nonInteractive:
+              throw const BridgeRuntimeServerException(
+                "Startup aborted because another Sesori bridge is already running and this session is non-interactive.",
+              );
+          }
+        },
+        onLockRejected: (rejection) async {
+          final lock = rejection.lock;
+          final holderMatch = rejection.holderMatch;
+          if (lock == null || holderMatch == null) {
+            throw BridgeRuntimeServerException(
+              "Startup aborted because another Sesori bridge startup is already in progress. If this persists, delete ${rejection.lockFilePath} and retry.",
             );
-            final descriptor = LegacyOpenCodeDescriptor(
-              openCodeServerService: openCodeServerService,
-              ownershipRepository: ownershipRepository,
-              ownerSessionId: ownerSessionId,
-              terminatedBridgeIdentities: resolution.terminatedBridges,
-              buildPluginApi: buildPluginApi,
-            );
-            return descriptor.start(host);
-          case BridgeInstanceResolutionStatus.declined:
-            throw const BridgeRuntimeServerException(
-              "Startup aborted because another Sesori bridge is already running and replacement was declined.",
-            );
-          case BridgeInstanceResolutionStatus.nonInteractive:
-            throw const BridgeRuntimeServerException(
-              "Startup aborted because another Sesori bridge is already running and this session is non-interactive.",
-            );
-        }
-      },
-      onLockRejected: (result) async {
-        switch (result) {
-          case StartupMutexAcquireResult.alreadyLocked:
-            throw const BridgeRuntimeServerException(
-              "Startup aborted because another Sesori bridge startup is already in progress.",
-            );
-        }
-      },
-    );
+          }
+
+          final status = await bridgeInstanceService.resolveStartupLockContention(
+            lock: lock,
+            holder: holderMatch,
+            currentPid: currentBridgeIdentity.pid,
+          );
+          switch (status) {
+            case BridgeInstanceResolutionStatus.allowed:
+              if (attempt < 2) {
+                return attemptStart(attempt: attempt + 1);
+              }
+              throw const BridgeRuntimeServerException(
+                "Startup aborted because another Sesori bridge startup is still in progress after attempting replacement.",
+              );
+            case BridgeInstanceResolutionStatus.declined:
+              throw const BridgeRuntimeServerException(
+                "Startup aborted because another Sesori bridge startup is already in progress and replacement was declined.",
+              );
+            case BridgeInstanceResolutionStatus.nonInteractive:
+              throw BridgeRuntimeServerException(
+                "Startup aborted because another Sesori bridge startup is already in progress and this session is non-interactive. Bridge pid ${holderMatch.identity.pid} holds ${rejection.lockFilePath}; kill that process or delete the file to recover.",
+              );
+          }
+        },
+      );
+    }
+
+    return attemptStart(attempt: 1);
   }
 
   static UpdateService _createUpdateService({
@@ -459,7 +490,7 @@ class BridgeRuntimeRunner {
       ),
       installedFileRepository: installedFileRepository,
       updateLock: UpdateLock(currentPid: io.pid, processRunner: processRunner),
-      updateRelaunchClient: UpdateRelaunchClient(),
+      updateRelaunchClient: UpdateRelaunchClient(processStarter: io.Process.start),
       installRoot: managedRuntimePaths.installRoot,
       executablePath: io.Platform.resolvedExecutable,
       managedExecutablePath: managedRuntimePaths.binaryPath,

@@ -1,7 +1,9 @@
 import 'dart:io';
 
 import 'package:sesori_bridge/src/bridge/runtime/bridge_logout_runner.dart';
+import 'package:sesori_bridge/src/server/foundation/process_match.dart';
 import 'package:sesori_bridge/src/server/foundation/terminal_prompt_decision.dart';
+import 'package:sesori_bridge/src/server/models/bridge_startup_lock.dart';
 import 'package:sesori_bridge/src/server/repositories/bridge_instance_repository.dart';
 import 'package:sesori_bridge/src/server/repositories/terminal_prompt_repository.dart';
 import 'package:sesori_bridge/src/server/services/bridge_instance_service.dart';
@@ -194,6 +196,15 @@ class _FakeBridgeInstanceService implements BridgeInstanceService {
     terminateRequests.add(existingBridges);
     return terminatedBridges;
   }
+
+  @override
+  Future<BridgeInstanceResolutionStatus> resolveStartupLockContention({
+    required BridgeStartupLock lock,
+    required ProcessMatch holder,
+    required int currentPid,
+  }) async {
+    throw UnimplementedError('not used by logout');
+  }
 }
 
 class _FakeTerminalPromptRepository implements TerminalPromptRepository {
@@ -203,6 +214,11 @@ class _FakeTerminalPromptRepository implements TerminalPromptRepository {
 
   @override
   Future<TerminalPromptDecision> askReplaceExistingBridge({required int bridgeCount}) async {
+    throw UnimplementedError('not used by logout');
+  }
+
+  @override
+  Future<TerminalPromptDecision> askReplaceStartingBridge({required int holderPid}) async {
     throw UnimplementedError('not used by logout');
   }
 

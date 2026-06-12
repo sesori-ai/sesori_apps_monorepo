@@ -8,8 +8,26 @@ import '../foundation/process_match.dart';
 import '../models/bridge_startup_lock.dart';
 import 'process_repository.dart';
 
-enum StartupMutexAcquireResult {
-  alreadyLocked,
+class StartupLockRejection {
+  const StartupLockRejection({
+    required this.lock,
+    required this.holderMatch,
+    required this.lockFilePath,
+  });
+
+  final BridgeStartupLock? lock;
+  final ProcessMatch? holderMatch;
+  final String lockFilePath;
+}
+
+class _LiveStartupLockHolder {
+  const _LiveStartupLockHolder({
+    required this.lock,
+    required this.match,
+  });
+
+  final BridgeStartupLock lock;
+  final ProcessMatch match;
 }
 
 class StartupMutexRepository {
@@ -26,7 +44,7 @@ class StartupMutexRepository {
     required int bridgePid,
     required String? bridgeStartMarker,
     required Future<T> Function() onLockAcquired,
-    required Future<T> Function(StartupMutexAcquireResult result) onLockRejected,
+    required Future<T> Function(StartupLockRejection rejection) onLockRejected,
   }) async {
     final lock = BridgeStartupLock(
       bridgePid: bridgePid,
@@ -44,8 +62,8 @@ class StartupMutexRepository {
       }
     }
 
-    final staleLockCleared = await _clearStaleLockIfAny();
-    if (staleLockCleared) {
+    final holder = await _inspectLiveHolder(currentBridgePid: bridgePid);
+    if (holder == null) {
       final retryAcquired = await _runtimeFileApi.acquireStartupLock(
         contents: jsonEncode(lock.toJson()),
       );
@@ -56,20 +74,35 @@ class StartupMutexRepository {
           await _runtimeFileApi.releaseStartupLock();
         }
       }
+
+      final retryHolder = await _inspectLiveHolder(currentBridgePid: bridgePid);
+      return onLockRejected(
+        StartupLockRejection(
+          lock: retryHolder?.lock,
+          holderMatch: retryHolder?.match,
+          lockFilePath: _runtimeFileApi.startupLockFilePath,
+        ),
+      );
     }
 
-    return onLockRejected(StartupMutexAcquireResult.alreadyLocked);
+    return onLockRejected(
+      StartupLockRejection(
+        lock: holder.lock,
+        holderMatch: holder.match,
+        lockFilePath: _runtimeFileApi.startupLockFilePath,
+      ),
+    );
   }
 
-  Future<bool> _clearStaleLockIfAny() async {
+  Future<_LiveStartupLockHolder?> _inspectLiveHolder({required int currentBridgePid}) async {
     final lockContents = await _runtimeFileApi.readStartupLock();
     if (lockContents == null) {
-      return true;
+      return null;
     }
 
     if (lockContents.isEmpty) {
       await _runtimeFileApi.releaseStartupLock();
-      return true;
+      return null;
     }
 
     final BridgeStartupLock lock;
@@ -80,32 +113,24 @@ class StartupMutexRepository {
     } catch (err, st) {
       Log.w("Failed to parse lockfile to `BridgeStartupLock`", err, st);
       await _runtimeFileApi.releaseStartupLock();
-      return true;
+      return null;
+    }
+
+    if (lock.bridgePid == currentBridgePid) {
+      Log.w('Startup lock records this process pid $currentBridgePid; treating it as stale.');
+      await _runtimeFileApi.releaseStartupLock();
+      return null;
     }
 
     final match = await _processRepository.inspectProcessMatch(pid: lock.bridgePid);
     if (match == null ||
         match.kind != ProcessMatchKind.sesoriBridge ||
         !match.isCurrentUserProcess ||
-        !_lockMatchesProcess(lock: lock, match: match)) {
+        !lock.matchesStartMarkerOf(identity: match.identity)) {
       await _runtimeFileApi.releaseStartupLock();
-      return true;
+      return null;
     }
 
-    return false;
-  }
-
-  bool _lockMatchesProcess({
-    required BridgeStartupLock lock,
-    required ProcessMatch match,
-  }) {
-    final identity = match.identity;
-    if (identity.startMarker != null || lock.bridgeStartMarker != null) {
-      return identity.startMarker == lock.bridgeStartMarker;
-    }
-    // Both markers are null (e.g. Windows). We cannot distinguish a recycled
-    // PID from the original owner without additional heuristics, so we
-    // conservatively treat the lock as active.
-    return true;
+    return _LiveStartupLockHolder(lock: lock, match: match);
   }
 }
