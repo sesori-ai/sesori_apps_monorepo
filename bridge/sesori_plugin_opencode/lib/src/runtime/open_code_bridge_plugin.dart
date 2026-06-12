@@ -170,24 +170,26 @@ class OpenCodeBridgePlugin implements BridgePlugin {
       // skips the others — in particular, a `disarm()` throw must not leave the
       // owned `opencode serve` child running (orphaned). `on Object` so a
       // thrown `Error` (not just `Exception`) can't short-circuit cleanup.
-      try {
-        // Disarm before signaling the child so its deliberate exit is not
-        // mistaken for a crash (no spurious restart / PluginFailed).
-        await _monitor.disarm();
-      } on Object catch (error) {
-        Log.e("[opencode] monitor disarm failed: $error");
-      }
-
       // Preserve the first meaningful teardown error and rethrow it after all
       // steps have run, so a hung/failed shutdown still surfaces.
       Object? primaryError;
       StackTrace? primaryStackTrace;
 
       try {
-        await api.dispose();
+        // Disarm before signaling the child so its deliberate exit is not
+        // mistaken for a crash (no spurious restart / PluginFailed).
+        await _monitor.disarm();
       } on Object catch (error, stackTrace) {
+        Log.e("[opencode] monitor disarm failed: $error");
         primaryError = error;
         primaryStackTrace = stackTrace;
+      }
+
+      try {
+        await api.dispose();
+      } on Object catch (error, stackTrace) {
+        primaryError ??= error;
+        primaryStackTrace ??= stackTrace;
         Log.e("[opencode] plugin api dispose failed: $error");
       }
 

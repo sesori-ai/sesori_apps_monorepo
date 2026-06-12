@@ -330,6 +330,9 @@
   <li>Status wiring: <code>SseConnection</code> gains <code>onConnected/onDisconnected</code> callbacks → <code>Ready/Degraded</code> transitions (fixes attach-mode never reporting ready); <code>api</code> becomes a stable facade over swappable transport; supervisor restart re-targets it (same pinned port). <code>await</code> the formerly fire-and-forget <code>_initialize()</code> in <code>start()</code>, mapping failures to <code>PluginDegraded</code>.</li>
 </ul>
 <div class="safe"><b>Why always-green:</b> <code>bin/bridge.dart</code> still uses the legacy descriptor; nothing here executes in production. Duplication is deliberate and temporary.</div>
+<div class="callout">
+  <b>Deferred from PR 11 review (do after the PR 12 flip):</b> cold-start retry-on-connect. When the initial cold-start (<code>initialize()</code>) fails but the SSE transport later connects, the plugin should retry the cold-start so hydration and status recover instead of relying on the next reconnect cycle. Deferred because the still-live legacy <code>OpenCodePlugin</code> path shares this code until the flip and PR 11 must stay behavior-preserving; the visible symptom (status stuck <code>Ready</code> on a dead event stream) was fixed in PR 11 by firing <code>onDisconnected</code> on a failed initial connect. Implement once PRs 12/13 remove the legacy path.
+</div>
 </div>
 
 <div class="card pr risky">
