@@ -45,6 +45,76 @@ void main() {
     expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
   });
 
+  testWidgets("narrow /projects/p1/sessions entry shows BackButton to projects", (tester) async {
+    const location = "/projects/p1/sessions?name=Project+One";
+    final harness = AdaptiveSessionRouterTestHarness();
+    await tester.binding.setSurfaceSize(const Size(390, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    addTearDown(harness.tearDown);
+    await harness.setUp(
+      initialLocation: location,
+      currentRouteDef: AppRouteDef.sessions,
+      sessionsByProject: {
+        "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
+      },
+    );
+
+    await tester.pumpWidget(harness.buildApp());
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
+    expect(find.byType(BackButton), findsOneWidget);
+    expect(harness.router.canPop(), isTrue);
+
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+
+    expect(Uri.parse(harness.currentLocation).path, "/projects");
+  });
+
+  testWidgets("narrow sessions pushed from /projects pops back to the project list", (tester) async {
+    final harness = AdaptiveSessionRouterTestHarness();
+    await tester.binding.setSurfaceSize(const Size(390, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    addTearDown(harness.tearDown);
+    await harness.setUp(
+      initialLocation: "/projects",
+      currentRouteDef: AppRouteDef.projects,
+      sessionsByProject: {
+        "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
+      },
+    );
+
+    when(() => harness.projectService.listProjects()).thenAnswer(
+      (_) async => ApiResponse.success(
+        const Projects(
+          data: [
+            Project(
+              id: "p1",
+              name: "Project One",
+              time: ProjectTime(created: 1700000000000, updated: 1700000000000, initialized: null),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(harness.buildApp());
+    await tester.pumpAndSettle();
+
+    unawaited(harness.router.push("/projects/p1/sessions?name=Project+One"));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BackButton), findsOneWidget);
+
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+
+    expect(harness.router.canPop(), isFalse);
+    expect(Uri.parse(harness.currentLocation).path, "/projects");
+    expect(find.text("Project One"), findsOneWidget);
+  });
+
   testWidgets("list tile tap opens detail in the wide split shell", (tester) async {
     const location = "/projects/p1/sessions?name=Project+One";
     final harness = AdaptiveSessionRouterTestHarness();

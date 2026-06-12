@@ -46,9 +46,16 @@ class _SessionListBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const actionDispatcher = SessionListActionDispatcher();
+    // The sessions route is the base of the nested pane navigator, so the
+    // pane navigator can never pop it; the poppable session shell route (with
+    // /projects underneath) lives on the root navigator.
+    // ignore: no_slop_linter/avoid_navigator_of, root navigator pop is required so back exits the session shell to the projects list instead of targeting the nested pane navigator
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
 
     return SessionListScaffold(
       projectName: projectName,
+      // ignore: unnecessary_lambdas, Navigator.pop is generic and does not match VoidCallback as a tear-off
+      onBack: rootNavigator.canPop() ? () => rootNavigator.pop() : null,
       onNewSession: () {
         context.pushRoute(AppRoute.newSession(projectId: projectId, projectName: projectName));
       },

@@ -15,6 +15,7 @@ class SessionListScaffold extends StatelessWidget {
   final ValueChanged<Session> onSessionLongPress;
   final ValueChanged<Session> onSessionSwipe;
   final VoidCallback onNewSession;
+  final VoidCallback? onBack;
 
   const SessionListScaffold({
     super.key,
@@ -24,6 +25,7 @@ class SessionListScaffold extends StatelessWidget {
     required this.onSessionLongPress,
     required this.onSessionSwipe,
     required this.onNewSession,
+    required this.onBack,
   });
 
   @override
@@ -35,6 +37,10 @@ class SessionListScaffold extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+        // The sessions route sits at the base of the nested pane navigator,
+        // so AppBar cannot imply a back button — the poppable route lives on
+        // the root navigator. Render it explicitly from the injected callback.
+        leading: onBack != null ? BackButton(onPressed: onBack) : null,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
