@@ -357,7 +357,7 @@ Conventional commits: `fix:`, `feat:`, `ci:`, `docs:`, `chore:`.
 
 ## PR Monitoring
 
-A `pr_monitor` tool (provided by `.opencode/plugins/pr-monitor.ts`) watches GitHub PRs in the background and delivers factual `[PR Monitor]` reports into the owning session. Usage and report-handling policy live in the `monitor-pr` skill — load it after raising a PR and whenever a `[PR Monitor]` message arrives. Monitors are per-session, configured via `.opencode/pr-monitor.json`, and do not survive opencode restarts.
+A `pr_monitor` tool (provided by the [sesori-ai/opencode-pr-monitor](https://github.com/sesori-ai/opencode-pr-monitor) plugin, referenced from `opencode.json`) watches GitHub PRs in the background and delivers factual `[PR Monitor]` reports into the owning session. Usage and report-handling policy live in the `monitor-pr` skill — load it after raising a PR and whenever a `[PR Monitor]` message arrives. Monitors are per-session, configured via `.opencode/pr-monitor.json`, and do not survive opencode restarts.
 
 ## Testing
 

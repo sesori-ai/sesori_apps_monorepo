@@ -10,6 +10,16 @@ class BridgeInstanceRepository {
   }) : _api = api,
        _currentUser = currentUser;
 
+  static const Set<String> _dartExecutableNames = <String>{
+    'dart',
+    'dart.exe',
+    'dartvm',
+    'dartvm.exe',
+    'dartaotruntime',
+    'dartaotruntime.exe',
+    'bridge.dart',
+  };
+
   final SystemProcessApi _api;
   final ProcessUser? _currentUser;
 
@@ -37,6 +47,6 @@ class BridgeInstanceRepository {
       return false;
     }
 
-    return executableBasename == 'dart' || executableBasename == 'dart.exe' || executableBasename == 'bridge.dart';
+    return executableBasename != null && _dartExecutableNames.contains(executableBasename);
   }
 }
