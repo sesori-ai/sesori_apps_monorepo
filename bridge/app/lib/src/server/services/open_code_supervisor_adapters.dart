@@ -55,30 +55,11 @@ class OpenCodeRecordMapper implements RuntimeRecordMapper<OpenCodeOwnershipRecor
 
   @override
   OpenCodeOwnershipRecord markReady({required OpenCodeOwnershipRecord record}) =>
-      _withStatus(record: record, status: OpenCodeOwnershipStatus.ready);
+      record.copyWith(status: OpenCodeOwnershipStatus.ready);
 
   @override
   OpenCodeOwnershipRecord markStopping({required OpenCodeOwnershipRecord record}) =>
-      _withStatus(record: record, status: OpenCodeOwnershipStatus.stopping);
-
-  static OpenCodeOwnershipRecord _withStatus({
-    required OpenCodeOwnershipRecord record,
-    required OpenCodeOwnershipStatus status,
-  }) {
-    return OpenCodeOwnershipRecord(
-      ownerSessionId: record.ownerSessionId,
-      openCodePid: record.openCodePid,
-      openCodeStartMarker: record.openCodeStartMarker,
-      openCodeExecutablePath: record.openCodeExecutablePath,
-      openCodeCommand: record.openCodeCommand,
-      openCodeArgs: record.openCodeArgs,
-      port: record.port,
-      bridgePid: record.bridgePid,
-      bridgeStartMarker: record.bridgeStartMarker,
-      startedAt: record.startedAt,
-      status: status,
-    );
-  }
+      record.copyWith(status: OpenCodeOwnershipStatus.stopping);
 }
 
 /// Routes the supervisor's record-level ownership operations straight through
