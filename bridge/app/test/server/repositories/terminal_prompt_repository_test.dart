@@ -39,6 +39,18 @@ void main() {
       expect(decision, equals(TerminalPromptDecision.decline));
       expect(api.messages.single, equals('Another Sesori bridge is already running. Kill it and start fresh? [y/N]'));
     });
+
+    test('askReplaceStartingBridge uses startup contention prompt message', () async {
+      api.answer = 'yes';
+
+      final decision = await repository.askReplaceStartingBridge(holderPid: 1234);
+
+      expect(decision, equals(TerminalPromptDecision.replace));
+      expect(
+        api.messages.single,
+        equals('Another Sesori bridge is still starting up (pid 1234). Kill it and start fresh? [y/N]'),
+      );
+    });
   });
 }
 

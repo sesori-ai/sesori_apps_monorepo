@@ -10,6 +10,8 @@ From `bridge/`:
 - `make test` — run tests in all modules that have a `test/` directory
 - `make analyze` — static analysis across all modules
 
+Bridge CI runs `dart analyze --fatal-infos`, which is stricter than `make analyze` — info-level lints (e.g. `directives_ordering` import sorting) fail CI. Before pushing, run `dart analyze --fatal-infos` from each changed module dir (e.g. `bridge/app/`).
+
 From `bridge/app/`:
 - `make build` — build all targets (host-native + Linux cross-compiled)
 - `make build-host` — native binary only
