@@ -8,19 +8,29 @@ import '../../auth/login_oauth_service.dart';
 import '../../auth/profile.dart';
 import '../../auth/token.dart';
 import '../../auth/validate.dart';
+import '../foundation/post_update_restart_flag.dart';
 import 'bridge_cli_options.dart';
 
 class BridgeRuntimeAuthService {
   final LoginEmailRepository _loginEmailRepository;
   final LoginOAuthService _loginOAuthService;
+  final Map<String, String> _environment;
 
   const BridgeRuntimeAuthService({
     required LoginEmailRepository loginEmailRepository,
     required LoginOAuthService loginOAuthService,
+    required Map<String, String> environment,
   }) : _loginEmailRepository = loginEmailRepository,
-       _loginOAuthService = loginOAuthService;
+       _loginOAuthService = loginOAuthService,
+       _environment = environment;
 
   Future<AuthProvider> promptForProvider() async {
+    if (_environment[sesoriPostUpdateRestartEnvVar] == '1') {
+      throw Exception(
+        'Login required, but this bridge was relaunched non-interactively after an auto-update. Run sesori-bridge again from a terminal to log in.',
+      );
+    }
+
     while (true) {
       stdout.writeln('Select login method: [1] GitHub [2] Google [3] Apple [4] Email');
       stdout.write('Enter choice (1-4): ');

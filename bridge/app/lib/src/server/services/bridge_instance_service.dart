@@ -1,6 +1,8 @@
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 
+import '../foundation/process_match.dart';
 import '../foundation/terminal_prompt_decision.dart';
+import '../models/bridge_startup_lock.dart';
 import '../repositories/bridge_instance_repository.dart';
 import '../repositories/process_repository.dart';
 import '../repositories/terminal_prompt_repository.dart';
@@ -71,6 +73,62 @@ class BridgeInstanceService {
           existingBridges: existingBridges,
           terminatedBridges: terminatedBridges,
         );
+    }
+  }
+
+  Future<BridgeInstanceResolutionStatus> resolveStartupLockContention({
+    required BridgeStartupLock lock,
+    required ProcessMatch holder,
+    required int currentPid,
+  }) async {
+    if (lock.bridgePid == currentPid) {
+      return BridgeInstanceResolutionStatus.allowed;
+    }
+
+    final decision = await _terminalPromptRepository.askReplaceStartingBridge(holderPid: holder.identity.pid);
+    switch (decision) {
+      case TerminalPromptDecision.nonInteractive:
+        return BridgeInstanceResolutionStatus.nonInteractive;
+      case TerminalPromptDecision.decline:
+        return BridgeInstanceResolutionStatus.declined;
+      case TerminalPromptDecision.replace:
+        final revalidated = await _processRepository.inspectProcessMatch(pid: lock.bridgePid);
+        if (revalidated == null) {
+          return BridgeInstanceResolutionStatus.allowed;
+        }
+        if (!_matchesLockedBridge(lock: lock, match: revalidated)) {
+          Log.w(
+            'Startup lock holder pid ${lock.bridgePid} no longer matches the recorded Sesori bridge; treating the lock as stale without signaling.',
+          );
+          return BridgeInstanceResolutionStatus.allowed;
+        }
+
+        try {
+          await _processRepository.sendGracefulSignal(pid: lock.bridgePid);
+        } on Object catch (err, st) {
+          Log.w('Failed to send graceful signal to startup lock holder pid ${lock.bridgePid}', err, st);
+        }
+        await _clock.delay(duration: _bridgeShutdownWait);
+
+        final afterGraceful = await _processRepository.inspectProcessMatch(pid: lock.bridgePid);
+        if (afterGraceful == null || !_matchesLockedBridge(lock: lock, match: afterGraceful)) {
+          return BridgeInstanceResolutionStatus.allowed;
+        }
+
+        try {
+          await _processRepository.sendForceSignal(pid: lock.bridgePid);
+        } on Object catch (err, st) {
+          Log.w('Failed to send force signal to startup lock holder pid ${lock.bridgePid}', err, st);
+        }
+        await _clock.delay(duration: const Duration(seconds: 1));
+
+        final afterForce = await _processRepository.inspectProcessMatch(pid: lock.bridgePid);
+        if (afterForce == null || !_matchesLockedBridge(lock: lock, match: afterForce)) {
+          return BridgeInstanceResolutionStatus.allowed;
+        }
+
+        Log.e('Failed to kill Sesori bridge startup lock holder pid ${lock.bridgePid}');
+        return BridgeInstanceResolutionStatus.declined;
     }
   }
 
@@ -149,5 +207,16 @@ class BridgeInstanceService {
     required int pid,
   }) {
     return candidates.any((candidate) => candidate.pid == pid);
+  }
+
+  bool _matchesLockedBridge({
+    required BridgeStartupLock lock,
+    required ProcessMatch match,
+  }) {
+    if (match.kind != ProcessMatchKind.sesoriBridge || !match.isCurrentUserProcess) {
+      return false;
+    }
+
+    return lock.matchesStartMarkerOf(identity: match.identity);
   }
 }

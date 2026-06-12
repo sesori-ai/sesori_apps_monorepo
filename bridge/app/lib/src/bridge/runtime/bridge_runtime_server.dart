@@ -27,79 +27,107 @@ Future<BridgeServerRuntime> resolveServer({
     throw ArgParserException('The --no-auto-start flag requires --port to be set.');
   }
 
-  return startupMutexRepository.withLock<BridgeServerRuntime>(
-    bridgePid: currentBridgeIdentity.pid,
-    bridgeStartMarker: currentBridgeIdentity.startMarker,
-    onLockAcquired: () async {
-      Log.d("acquired startup lock");
-      final resolution = await bridgeInstanceService.enforceSingleLiveBridge(
-        currentPid: currentBridgeIdentity.pid,
-      );
-      switch (resolution.status) {
-        case BridgeInstanceResolutionStatus.allowed:
-          if (options.noAutoStart) {
-            try {
-              final runtime = await openCodeServerService.validateExistingServer(
-                port: requestedPort!,
-                password: options.password.normalize(),
-              );
-              Log.i('Using existing server at ${runtime.serverUri} (auto-start disabled)');
-              return BridgeServerRuntime.fromOpenCodeRuntime(
-                runtime: runtime,
-                ownedOpenCodeRecord: null,
-              );
-            } on OpenCodeServerStartException catch (error) {
-              Log.w(
-                'Cannot reach OpenCode at port $requestedPort (auto-start disabled): $error. Bridge will start anyway; start OpenCode manually to enable proxying.',
-              );
-              return BridgeServerRuntime(
-                serverUrl: '$defaultTargetHost:$requestedPort',
-                serverPassword: options.password.normalize(),
-                process: null,
-                ownedOpenCodeRecord: null,
-                port: requestedPort!,
-              );
+  Future<BridgeServerRuntime> attemptResolve({required int attempt}) {
+    return startupMutexRepository.withLock<BridgeServerRuntime>(
+      bridgePid: currentBridgeIdentity.pid,
+      bridgeStartMarker: currentBridgeIdentity.startMarker,
+      onLockAcquired: () async {
+        Log.d("acquired startup lock");
+        final resolution = await bridgeInstanceService.enforceSingleLiveBridge(
+          currentPid: currentBridgeIdentity.pid,
+        );
+        switch (resolution.status) {
+          case BridgeInstanceResolutionStatus.allowed:
+            if (options.noAutoStart) {
+              try {
+                final runtime = await openCodeServerService.validateExistingServer(
+                  port: requestedPort!,
+                  password: options.password.normalize(),
+                );
+                Log.i('Using existing server at ${runtime.serverUri} (auto-start disabled)');
+                return BridgeServerRuntime.fromOpenCodeRuntime(
+                  runtime: runtime,
+                  ownedOpenCodeRecord: null,
+                );
+              } on OpenCodeServerStartException catch (error) {
+                Log.w(
+                  'Cannot reach OpenCode at port $requestedPort (auto-start disabled): $error. Bridge will start anyway; start OpenCode manually to enable proxying.',
+                );
+                return BridgeServerRuntime(
+                  serverUrl: '$defaultTargetHost:$requestedPort',
+                  serverPassword: options.password.normalize(),
+                  process: null,
+                  ownedOpenCodeRecord: null,
+                  port: requestedPort!,
+                );
+              }
             }
-          }
 
-          Log.d("[OPENCODE] Starting new instance");
-          final runtime = await openCodeServerService.start(
-            executablePath: options.opencodeBin,
-            requestedPort: requestedPort,
-            password: options.password.normalize(),
-            terminatedBridgeIdentities: resolution.terminatedBridges,
-          );
+            Log.d("[OPENCODE] Starting new instance");
+            final runtime = await openCodeServerService.start(
+              executablePath: options.opencodeBin,
+              requestedPort: requestedPort,
+              password: options.password.normalize(),
+              terminatedBridgeIdentities: resolution.terminatedBridges,
+            );
 
-          Log.d("[OPENCODE] Started on port ${runtime.port}");
-          final ownedOpenCodeRecord = await ownershipRepository.readByOwnerSessionId(
-            ownerSessionId: ownerSessionId,
-          );
+            Log.d("[OPENCODE] Started on port ${runtime.port}");
+            final ownedOpenCodeRecord = await ownershipRepository.readByOwnerSessionId(
+              ownerSessionId: ownerSessionId,
+            );
 
-          return BridgeServerRuntime.fromOpenCodeRuntime(
-            runtime: runtime,
-            ownedOpenCodeRecord: ownedOpenCodeRecord?.status == OpenCodeOwnershipStatus.ready
-                ? ownedOpenCodeRecord
-                : null,
+            return BridgeServerRuntime.fromOpenCodeRuntime(
+              runtime: runtime,
+              ownedOpenCodeRecord: ownedOpenCodeRecord?.status == OpenCodeOwnershipStatus.ready
+                  ? ownedOpenCodeRecord
+                  : null,
+            );
+          case BridgeInstanceResolutionStatus.declined:
+            throw const BridgeRuntimeServerException(
+              'Startup aborted because another Sesori bridge is already running and replacement was declined.',
+            );
+          case BridgeInstanceResolutionStatus.nonInteractive:
+            throw const BridgeRuntimeServerException(
+              'Startup aborted because another Sesori bridge is already running and this session is non-interactive.',
+            );
+        }
+      },
+      onLockRejected: (rejection) async {
+        final lock = rejection.lock;
+        final holderMatch = rejection.holderMatch;
+        if (lock == null || holderMatch == null) {
+          throw BridgeRuntimeServerException(
+            'Startup aborted because another Sesori bridge startup is already in progress. If this persists, delete ${rejection.lockFilePath} and retry.',
           );
-        case BridgeInstanceResolutionStatus.declined:
-          throw const BridgeRuntimeServerException(
-            'Startup aborted because another Sesori bridge is already running and replacement was declined.',
-          );
-        case BridgeInstanceResolutionStatus.nonInteractive:
-          throw const BridgeRuntimeServerException(
-            'Startup aborted because another Sesori bridge is already running and this session is non-interactive.',
-          );
-      }
-    },
-    onLockRejected: (result) async {
-      switch (result) {
-        case StartupMutexAcquireResult.alreadyLocked:
-          throw const BridgeRuntimeServerException(
-            'Startup aborted because another Sesori bridge startup is already in progress.',
-          );
-      }
-    },
-  );
+        }
+
+        final status = await bridgeInstanceService.resolveStartupLockContention(
+          lock: lock,
+          holder: holderMatch,
+          currentPid: currentBridgeIdentity.pid,
+        );
+        switch (status) {
+          case BridgeInstanceResolutionStatus.allowed:
+            if (attempt < 2) {
+              return attemptResolve(attempt: attempt + 1);
+            }
+            throw const BridgeRuntimeServerException(
+              'Startup aborted because another Sesori bridge startup is still in progress after attempting replacement.',
+            );
+          case BridgeInstanceResolutionStatus.declined:
+            throw const BridgeRuntimeServerException(
+              'Startup aborted because another Sesori bridge startup is already in progress and replacement was declined.',
+            );
+          case BridgeInstanceResolutionStatus.nonInteractive:
+            throw BridgeRuntimeServerException(
+              'Startup aborted because another Sesori bridge startup is already in progress and this session is non-interactive. Bridge pid ${holderMatch.identity.pid} holds ${rejection.lockFilePath}; kill that process or delete the file to recover.',
+            );
+        }
+      },
+    );
+  }
+
+  return attemptResolve(attempt: 1);
 }
 
 class BridgeServerRuntime {

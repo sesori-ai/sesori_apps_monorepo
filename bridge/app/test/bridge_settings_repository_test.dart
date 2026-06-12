@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
@@ -99,6 +101,44 @@ void main() {
       expect(api.writeCount, equals(0));
     });
 
+    test('peekSettings reports a corrupted config on stderr, never stdout', () async {
+      final api = FakeBridgeSettingsApi(readResult: '{');
+      final repository = BridgeSettingsRepository(api: api);
+      final stderrLines = <String>[];
+      final stdoutLines = <String>[];
+
+      await IOOverrides.runZoned(
+        repository.peekSettings,
+        stderr: () => _CapturingStdout(stderrLines),
+        stdout: () => _CapturingStdout(stdoutLines),
+      );
+
+      expect(stderrLines, hasLength(1));
+      expect(stderrLines.single, contains('invalid config at /tmp/config.json'));
+      expect(stdoutLines, isEmpty, reason: 'stdout must stay machine-clean for --version/--help');
+    });
+
+    test('peekSettings logs nothing for a valid or missing config', () async {
+      final stderrLines = <String>[];
+      final stdoutLines = <String>[];
+
+      await IOOverrides.runZoned(
+        () async {
+          await BridgeSettingsRepository(
+            api: FakeBridgeSettingsApi(readResult: null),
+          ).peekSettings();
+          await BridgeSettingsRepository(
+            api: FakeBridgeSettingsApi(readResult: '{"sleepPrevention":"off"}'),
+          ).peekSettings();
+        },
+        stderr: () => _CapturingStdout(stderrLines),
+        stdout: () => _CapturingStdout(stdoutLines),
+      );
+
+      expect(stderrLines, isEmpty);
+      expect(stdoutLines, isEmpty);
+    });
+
     test('saveSettings pretty prints JSON through the api', () async {
       final api = FakeBridgeSettingsApi(readResult: null);
       final repository = BridgeSettingsRepository(api: api);
@@ -126,6 +166,21 @@ void main() {
 }
 
 const _defaultJson = '{\n  "sleepPrevention": "always"\n}';
+
+/// Captures [writeln] calls; [IOOverrides] swaps it in for stdout/stderr.
+class _CapturingStdout implements Stdout {
+  _CapturingStdout(this.lines);
+
+  final List<String> lines;
+
+  @override
+  void writeln([Object? object = '']) {
+    lines.add(object.toString());
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 class FakeBridgeSettingsApi implements BridgeSettingsApi {
   @override

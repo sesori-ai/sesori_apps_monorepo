@@ -184,7 +184,11 @@ class LogoutCommand extends cli.Command<void> {
       currentUser: currentUser,
     );
     final terminalPromptRepository = TerminalPromptRepository(
-      api: TerminalPromptApi(stdin: stdin, stdout: stdout),
+      api: TerminalPromptApi(
+        stdin: stdin,
+        stdout: stdout,
+        environment: Platform.environment,
+      ),
     );
     final logoutRunner = BridgeLogoutRunner(
       bridgeInstanceRepository: bridgeInstanceRepository,
@@ -290,14 +294,15 @@ class ConfigCommand extends cli.Command<void> {
 
 /// Best-effort `enabledPlugins` read for plugin selection. Selection also
 /// runs for `--help` and `logout`, so it must never crash on (or create)
-/// a missing/broken config — failures resolve to "unset". Diagnostics go to
-/// stderr: stdout of `--version`/`--help` must stay machine-consumable.
+/// a missing/broken config — failures resolve to "unset". Diagnostics go
+/// through [Log.e] (the stderr level): stdout of `--version`/`--help` must
+/// stay machine-consumable.
 Future<List<String>?> _loadEnabledPluginsFromSettings() async {
   try {
     final settings = await BridgeSettingsRepository(api: BridgeSettingsApi()).peekSettings();
     return settings.enabledPlugins;
   } on Object catch (error) {
-    stderr.writeln('Could not read bridge settings for plugin selection: $error');
+    Log.e('Could not read bridge settings for plugin selection: $error');
     return null;
   }
 }

@@ -8,6 +8,7 @@ import "widgets/session_detail_body.dart";
 
 class SessionDetailScreen extends StatelessWidget {
   final String projectId;
+  final String? projectName;
   final String sessionId;
   final String? sessionTitle;
   final bool readOnly;
@@ -15,6 +16,7 @@ class SessionDetailScreen extends StatelessWidget {
   const SessionDetailScreen({
     super.key,
     required this.projectId,
+    required this.projectName,
     required this.sessionId,
     this.sessionTitle,
     this.readOnly = false,
@@ -35,6 +37,7 @@ class SessionDetailScreen extends StatelessWidget {
       ),
       child: SessionDetailBody(
         projectId: projectId,
+        projectName: projectName,
         sessionId: sessionId,
         sessionTitle: sessionTitle,
         readOnly: readOnly,

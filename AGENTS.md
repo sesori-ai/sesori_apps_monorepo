@@ -353,6 +353,8 @@ The bridge uses Drift (SQLite) for local persistence. Schema changes require a s
 
 Conventional commits: `fix:`, `feat:`, `ci:`, `docs:`, `chore:`.
 
+`.gitattributes` marks generated code and test directories as `linguist-generated` so GitHub collapses their diffs. Lockfiles (`pubspec.lock`, `Gemfile.lock`, `Podfile.lock`) must NEVER be marked as generated — the user always reviews lockfile diffs.
+
 ## Testing
 
 | Location                 | Command        |

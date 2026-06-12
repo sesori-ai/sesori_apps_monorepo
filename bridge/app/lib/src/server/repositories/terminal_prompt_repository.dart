@@ -12,6 +12,12 @@ class TerminalPromptRepository {
     );
   }
 
+  Future<TerminalPromptDecision> askReplaceStartingBridge({required int holderPid}) async {
+    return _askYesNo(
+      message: 'Another Sesori bridge is still starting up (pid $holderPid). Kill it and start fresh? [y/N]',
+    );
+  }
+
   Future<TerminalPromptDecision> askStopBridgesBeforeLogout({required int bridgeCount}) async {
     return _askYesNo(
       message: '$bridgeCount bridge instance(s) are currently running. Stop them before logging out? [y/N]',
