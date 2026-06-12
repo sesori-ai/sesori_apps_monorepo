@@ -94,9 +94,14 @@ class OpenCodePlugin implements OpenCodeManagedApi {
       onDisconnected: onDisconnected,
     );
     if (autoInitialize) {
-      // Legacy behavior: cold-start fire-and-forget and swallow its failure so
-      // direct construction never throws (the descriptor awaits initialize()).
-      unawaited(initialize().catchError((Object _) {}));
+      // Legacy behavior: cold-start fire-and-forget so direct construction never
+      // throws (the descriptor awaits initialize() instead). The failure is
+      // swallowed to keep startup fail-soft, but logged so it stays diagnosable.
+      unawaited(
+        initialize().catchError((Object error, StackTrace stackTrace) {
+          Log.e("[opencode] auto-initialize cold-start failed: $error\n$stackTrace");
+        }),
+      );
     }
   }
 

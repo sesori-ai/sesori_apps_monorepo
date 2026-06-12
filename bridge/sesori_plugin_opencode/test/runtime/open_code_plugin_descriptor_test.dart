@@ -419,10 +419,10 @@ class _FakeSpawnedProcess implements SpawnedProcess {
   IOSink get stdin => throw UnimplementedError();
 
   @override
-  Stream<List<int>> get stdout => const Stream<List<int>>.empty();
+  Stream<List<int>> get stdout => Stream<List<int>>.value(const <int>[]);
 
   @override
-  Stream<List<int>> get stderr => const Stream<List<int>>.empty();
+  Stream<List<int>> get stderr => Stream<List<int>>.value(const <int>[]);
 }
 
 class _MemoryJsonStore implements HostJsonStore {

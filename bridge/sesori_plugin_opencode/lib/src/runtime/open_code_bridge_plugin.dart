@@ -166,30 +166,47 @@ class OpenCodeBridgePlugin implements BridgePlugin {
       _status.trySet(const PluginStopping());
     }
     try {
-      // Disarm before signaling the child so its deliberate exit is not
-      // mistaken for a crash (no spurious restart / PluginFailed).
-      await _monitor.disarm();
+      // Each teardown step is independently guarded so a failure in one never
+      // skips the others — in particular, a `disarm()` throw must not leave the
+      // owned `opencode serve` child running (orphaned). `on Object` so a
+      // thrown `Error` (not just `Exception`) can't short-circuit cleanup.
+      try {
+        // Disarm before signaling the child so its deliberate exit is not
+        // mistaken for a crash (no spurious restart / PluginFailed).
+        await _monitor.disarm();
+      } on Object catch (error) {
+        Log.e("[opencode] monitor disarm failed: $error");
+      }
 
-      Object? disposeError;
-      StackTrace? disposeStackTrace;
+      // Preserve the first meaningful teardown error and rethrow it after all
+      // steps have run, so a hung/failed shutdown still surfaces.
+      Object? primaryError;
+      StackTrace? primaryStackTrace;
+
       try {
         await api.dispose();
-      } catch (error, stackTrace) {
-        // The owned server must still be stopped when api teardown fails.
-        disposeError = error;
-        disposeStackTrace = stackTrace;
+      } on Object catch (error, stackTrace) {
+        primaryError = error;
+        primaryStackTrace = stackTrace;
         Log.e("[opencode] plugin api dispose failed: $error");
       }
 
       // The monitor's current handle reflects any restart-adopted child;
-      // fall back to the record captured at start.
+      // fall back to the record captured at start. The owned server must be
+      // stopped even when api teardown failed above.
       final record = _monitor.currentHandle?.record ?? _ownedRecord;
       if (record != null) {
-        await _service.stopOwnedRuntime(record: record);
+        try {
+          await _service.stopOwnedRuntime(record: record);
+        } on Object catch (error, stackTrace) {
+          Log.e("[opencode] stop owned runtime failed: $error");
+          primaryError ??= error;
+          primaryStackTrace ??= stackTrace;
+        }
       }
 
-      if (disposeError != null) {
-        Error.throwWithStackTrace(disposeError, disposeStackTrace!);
+      if (primaryError != null) {
+        Error.throwWithStackTrace(primaryError, primaryStackTrace!);
       }
     } finally {
       if (!_status.isClosed) {

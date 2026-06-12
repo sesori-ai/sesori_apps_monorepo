@@ -42,6 +42,27 @@ void main() {
       ).toList();
       expect(ports, equals(<int>[49152, 49153]));
     });
+
+    test("bounds a lazy all-invalid supplied source instead of spinning forever", () {
+      Iterable<int> infiniteInvalid() sync* {
+        while (true) {
+          yield openCodeDefaultPort; // reserved → always filtered out
+        }
+      }
+
+      // Would hang (and fail via the test timeout) if the supplied path were not
+      // capped at dynamicOpenCodeMaxAttempts.
+      final ports = openCodeDynamicCandidates(candidates: infiniteInvalid()).toList();
+      expect(ports, isEmpty);
+    });
+
+    test("caps the supplied candidates examined at dynamicOpenCodeMaxAttempts", () {
+      final ports = openCodeDynamicCandidates(
+        candidates: <int>[49152, 49153, 49154, 49155, 49156, 49157, 49158],
+      ).toList();
+      expect(ports, hasLength(dynamicOpenCodeMaxAttempts));
+      expect(ports, equals(<int>[49152, 49153, 49154, 49155, 49156]));
+    });
   });
 
   group("buildOpenCodeOwnershipRecord", () {
@@ -255,8 +276,8 @@ class _FakeSpawnedProcess implements SpawnedProcess {
   IOSink get stdin => throw UnimplementedError();
 
   @override
-  Stream<List<int>> get stdout => const Stream<List<int>>.empty();
+  Stream<List<int>> get stdout => Stream<List<int>>.value(const <int>[]);
 
   @override
-  Stream<List<int>> get stderr => const Stream<List<int>>.empty();
+  Stream<List<int>> get stderr => Stream<List<int>>.value(const <int>[]);
 }

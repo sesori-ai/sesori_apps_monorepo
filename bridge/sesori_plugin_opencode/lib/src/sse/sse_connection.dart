@@ -51,9 +51,6 @@ class SseConnection {
     while (_active && _generation == generation) {
       final client = http.Client();
       _currentClient = client;
-      // Whether this iteration reached a live SSE stream, so a drop only fires
-      // onDisconnected after a matching onConnected.
-      var connected = false;
 
       try {
         final request = http.Request(
@@ -76,7 +73,6 @@ class SseConnection {
 
         // The transport is live: signal connected on the first connect and on
         // every reconnect (the lifecycle status follows the live stream).
-        connected = true;
         _onConnected?.call();
 
         if (!isFirstConnect) {
@@ -95,11 +91,13 @@ class SseConnection {
 
       if (!_active || _generation != generation) return;
 
-      // A live stream that ended/errored while still active is a transient
-      // drop; a deliberate stop() returns above and never reports disconnect.
-      if (connected) {
-        _onDisconnected?.call();
-      }
+      // The stream is not live right now — it either dropped after connecting or
+      // the connection attempt failed (including the very first attempt, after
+      // the descriptor already reported Ready off a successful cold-start). Fire
+      // onDisconnected so the lifecycle status can debounce to degraded; a
+      // deliberate stop() returns above and never reports disconnect. The status
+      // reporter debounces, so a quick reconnect cancels it before it surfaces.
+      _onDisconnected?.call();
 
       await Future<void>.delayed(reconnectDelay);
       final doubled = reconnectDelay.inSeconds * 2;

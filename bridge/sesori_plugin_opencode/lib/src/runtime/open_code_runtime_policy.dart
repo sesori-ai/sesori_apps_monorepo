@@ -1,9 +1,10 @@
+import "dart:async";
 import "dart:convert";
 import "dart:io" as io;
 import "dart:math";
 
 import "package:http/http.dart" as http;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginHost, SpawnedProcess;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginHost, ProcessIdentity, SpawnedProcess;
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
 import "open_code_ownership_record.dart";
@@ -62,10 +63,20 @@ bool _isDynamicCandidate(int port) =>
 /// candidates have been yielded — matching the legacy generator so the
 /// supervisor, which counts every examined candidate against `maxAttempts`,
 /// sees the same sequence.
+///
+/// Both paths examine at most [dynamicOpenCodeMaxAttempts] candidates: the
+/// pre-filtering here happens before [DynamicPortPolicy.maxAttempts] is applied,
+/// so without this cap a supplied lazy/infinite all-invalid source could spin
+/// forever before the policy ever bounds it.
 Iterable<int> openCodeDynamicCandidates({Iterable<int>? candidates, Random? random}) sync* {
   final supplied = candidates;
   if (supplied != null) {
+    var examined = 0;
     for (final port in supplied) {
+      if (examined >= dynamicOpenCodeMaxAttempts) {
+        return;
+      }
+      examined++;
       if (_isDynamicCandidate(port)) {
         yield port;
       }
@@ -86,23 +97,84 @@ Iterable<int> openCodeDynamicCandidates({Iterable<int>? candidates, Random? rand
 /// Spawns `opencode serve` on [port] through the host's process service, which
 /// captures the child's identity. The supervisor trusts the returned
 /// [SpawnedProcess.identity] and never re-inspects it.
+///
+/// The returned process is wrapped so its stdout/stderr are drained from the
+/// moment of spawn (see [_DrainingOpenCodeProcess]): the supervisor's exit
+/// monitor only attaches *after* `start()` has confirmed health, so without an
+/// immediate drain a verbose `opencode serve` could fill the OS pipe buffer and
+/// block before it ever answers the health probe. The legacy path drained both
+/// streams immediately after spawning; this preserves that.
 Future<SpawnedProcess> spawnOpenCodeProcess({
   required PluginHost host,
   required String executablePath,
   required int port,
   required String password,
-}) {
+}) async {
   final environment = <String, String>{
     ...host.environment,
     "OPENCODE_SERVER_PASSWORD": password,
   };
-  return host.processes.spawn(
+  final process = await host.processes.spawn(
     executable: executablePath,
     arguments: <String>["serve", "--port", "$port", "--hostname", openCodeLoopbackHost],
     environment: environment,
     workingDirectory: null,
     runInShell: io.Platform.isWindows,
   );
+  return _DrainingOpenCodeProcess(process);
+}
+
+/// Wraps a [SpawnedProcess] so its stdout/stderr are drained from the moment of
+/// spawn, for the child's whole lifetime, so the OS pipe can never fill (which
+/// would otherwise block a verbose `opencode serve` before the first health
+/// probe — the exit monitor only arms after `start()` returns).
+///
+/// The streams are exposed as broadcast, so the exit monitor can still attach
+/// once armed (e.g. to log stderr); output produced before that is consumed by
+/// the always-present internal drain. Everything else delegates to the wrapped
+/// process.
+class _DrainingOpenCodeProcess implements SpawnedProcess {
+  _DrainingOpenCodeProcess(this._inner)
+    : _stdout = _inner.stdout.asBroadcastStream(),
+      _stderr = _inner.stderr.asBroadcastStream() {
+    _stdoutDrain = _stdout.listen((_) {}, onError: (Object _) {}, cancelOnError: false);
+    _stderrDrain = _stderr.listen((_) {}, onError: (Object _) {}, cancelOnError: false);
+    unawaited(_releaseDrainsOnExit());
+  }
+
+  final SpawnedProcess _inner;
+  final Stream<List<int>> _stdout;
+  final Stream<List<int>> _stderr;
+  late final StreamSubscription<List<int>> _stdoutDrain;
+  late final StreamSubscription<List<int>> _stderrDrain;
+
+  Future<void> _releaseDrainsOnExit() async {
+    try {
+      await _inner.exitCode;
+    } on Object {
+      // Ignore: the only purpose here is to release the drains after exit.
+    }
+    await _stdoutDrain.cancel();
+    await _stderrDrain.cancel();
+  }
+
+  @override
+  int get pid => _inner.pid;
+
+  @override
+  ProcessIdentity get identity => _inner.identity;
+
+  @override
+  io.IOSink get stdin => _inner.stdin;
+
+  @override
+  Stream<List<int>> get stdout => _stdout;
+
+  @override
+  Stream<List<int>> get stderr => _stderr;
+
+  @override
+  Future<int> get exitCode => _inner.exitCode;
 }
 
 /// Probes OpenCode health on [port]: `GET /global/health` with Basic auth
