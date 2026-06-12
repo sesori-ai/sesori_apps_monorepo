@@ -62,7 +62,9 @@ class ManagedProcessService<R> {
 
     try {
       await Future.wait(
-        recordsToTerminate.map((record) => _processes.signalGraceful(pid: _runtimePidOf(record: record))),
+        recordsToTerminate.map(
+          (record) => Future.sync(() => _processes.signalGraceful(pid: _runtimePidOf(record: record))),
+        ),
       ).timeout(_gracefulShutdownWait);
     } catch (error, stackTrace) {
       Log.w("[$_runtimeId] Failed to gracefully stop some runtime instance(s)", error, stackTrace);
@@ -88,7 +90,9 @@ class ManagedProcessService<R> {
 
     try {
       await Future.wait(
-        survivors.map((record) => _processes.signalForce(pid: _runtimePidOf(record: record))),
+        survivors.map(
+          (record) => Future.sync(() => _processes.signalForce(pid: _runtimePidOf(record: record))),
+        ),
       ).timeout(_gracefulShutdownWait);
     } catch (error, stackTrace) {
       Log.w("[$_runtimeId] Failed to force kill some runtime instance(s)", error, stackTrace);
