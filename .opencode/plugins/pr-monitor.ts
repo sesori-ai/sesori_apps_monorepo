@@ -37,7 +37,7 @@ type CommentMeta = { author: string; isBot: boolean; createdAt: string }
 
 type CheckInfo = { name: string; outcome: "pending" | "success" | "failure" }
 
-type ReviewInfo = { login: string; state: string }
+type ReviewInfo = { login: string; state: string; submittedAt: string }
 
 type PrSnapshot = {
   title: string
@@ -149,10 +149,10 @@ query($owner: String!, $repo: String!, $number: Int!) {
         ... on Team { slug }
         ... on Bot { login }
       } } }
-      latestReviews(first: 50) { nodes { author { login __typename } state } }
+      latestReviews(first: 50) { nodes { author { login __typename } state submittedAt } }
       reviewThreads(first: 100) { nodes {
         isResolved
-        comments(first: 100) { nodes { author { login __typename } body createdAt } }
+        comments(last: 100) { nodes { author { login __typename } body createdAt } }
       } }
       comments(last: 100) { totalCount nodes { author { login __typename } body createdAt } }
     }
@@ -201,7 +201,7 @@ function normalizeSnapshot(
 
   const reviews: ReviewInfo[] = (pr.latestReviews?.nodes ?? [])
     .filter((node: any) => node.author?.login && node.state !== "PENDING")
-    .map((node: any) => ({ login: node.author.login, state: node.state }))
+    .map((node: any) => ({ login: node.author.login, state: node.state, submittedAt: node.submittedAt ?? "" }))
 
   const pendingReviewers: string[] = (pr.reviewRequests?.nodes ?? [])
     .map((node: any) => node.requestedReviewer?.login ?? node.requestedReviewer?.slug)
@@ -249,7 +249,7 @@ function commentSig(comments: CommentMeta[]): string {
 }
 
 function reviewSig(snapshot: PrSnapshot): string {
-  const states = snapshot.reviews.map((review) => `${review.login}=${review.state}`).sort()
+  const states = snapshot.reviews.map((review) => `${review.login}=${review.state}@${review.submittedAt}`).sort()
   const pending = [...snapshot.pendingReviewers].sort()
   return `${states.join(",")}|${pending.join(",")}`
 }
@@ -329,12 +329,13 @@ function buildReport(
   opts: { baselineMs: number; forcedHoldMinutes?: number },
 ): string {
   const stateSuffix = snapshot.state !== "OPEN" ? ` — ${snapshot.state}` : ""
+  const title = snapshot.title.replace(/\s+/g, " ").trim()
   const newInline = newSince(snapshot.inlineComments, opts.baselineMs)
   const newIssue = newSince(snapshot.issueComments, opts.baselineMs)
   const newPart = (fresh: CommentMeta[]): string =>
     fresh.length > 0 ? `${fresh.length} new since last flush: ${authorBreakdown(fresh)}` : "0 new since last flush"
   return [
-    `[PR Monitor] ${targetKey(target)} — "${snapshot.title}"${stateSuffix} (${snapshot.url})`,
+    `[PR Monitor] ${targetKey(target)} — "${title}"${stateSuffix} (${snapshot.url})`,
     ciLine(snapshot, opts.forcedHoldMinutes),
     `- Mergeable: ${snapshot.mergeable}`,
     reviewLine(snapshot),
@@ -347,7 +348,7 @@ function buildReport(
 type WatchDeps = {
   now: () => number
   fetchSnapshot: () => Promise<PrSnapshot>
-  deliver: (report: string) => void
+  deliver: (report: string) => Promise<void>
   log: (message: string) => void
   onStopped: () => void
 }
@@ -445,14 +446,14 @@ class PrWatch {
   private handlePollFailure(error: unknown): void {
     const message = error instanceof Error ? error.message : String(error)
     if (error instanceof PollError && error.notFound) {
-      this.deps.deliver(`[PR Monitor] ${targetKey(this.target)} — monitor stopped: PR not found (deleted or inaccessible). Last error: ${message}`)
+      this.deliverOrLog(`[PR Monitor] ${targetKey(this.target)} — monitor stopped: PR not found (deleted or inaccessible). Last error: ${message}`)
       this.stop()
       return
     }
     this.consecutiveFailures += 1
     this.deps.log(`poll failed for ${targetKey(this.target)} (${this.consecutiveFailures}/${MAX_CONSECUTIVE_FAILURES}): ${message}`)
     if (this.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-      this.deps.deliver(`[PR Monitor] ${targetKey(this.target)} — monitor stopped: ${MAX_CONSECUTIVE_FAILURES} consecutive poll failures. Last error: ${message}`)
+      this.deliverOrLog(`[PR Monitor] ${targetKey(this.target)} — monitor stopped: ${MAX_CONSECUTIVE_FAILURES} consecutive poll failures. Last error: ${message}`)
       this.stop()
     }
   }
@@ -469,8 +470,22 @@ class PrWatch {
       if (heldMs < this.config.maxCiWaitMinutes * 60_000) return
       forcedHoldMinutes = Math.round(heldMs / 60_000)
     }
-    this.deps.deliver(this.flush(forcedHoldMinutes))
-    this.stopIfTerminal()
+    const previousFlushAt = this.lastFlushAt
+    const report = this.flush(forcedHoldMinutes)
+    void this.deps.deliver(report).then(
+      () => this.stopIfTerminal(),
+      (error: unknown) => {
+        // Delivery failed: restore the baseline and dirty flag so the same
+        // activity is re-reported on a later tick instead of silently lost.
+        this.lastFlushAt = previousFlushAt
+        this.dirty = true
+        this.deps.log(`report delivery failed for ${targetKey(this.target)}, will retry: ${error}`)
+      },
+    )
+  }
+
+  private deliverOrLog(message: string): void {
+    void this.deps.deliver(message).catch((error: unknown) => this.deps.log(`report delivery failed for ${targetKey(this.target)}: ${error}`))
   }
 
   private flush(forcedHoldMinutes: number | undefined): string {
@@ -501,7 +516,7 @@ export const PrMonitorPlugin: Plugin = async ({ client, directory, worktree, $ }
     const result = await $`gh ${args}`.quiet().nothrow()
     if (result.exitCode !== 0) {
       const stderr = result.stderr.toString().trim()
-      const notFound = /could not resolve|not found|404/i.test(stderr)
+      const notFound = /could not resolve to|not found|404/i.test(stderr) && !/could not resolve host/i.test(stderr)
       throw new PollError(stderr || `gh exited with code ${result.exitCode}`, { notFound })
     }
     return result.stdout.toString()
@@ -527,10 +542,8 @@ export const PrMonitorPlugin: Plugin = async ({ client, directory, worktree, $ }
   // `agent` must be sent explicitly: agent-less prompts resolve to the server's
   // default agent, which fails when that default is configured as a subagent
   // (observed live: 'default agent "build" is a subagent').
-  const deliver = (sessionID: string, agent: string) => (report: string) => {
-    void client.session
-      .promptAsync({ path: { id: sessionID }, body: { agent, parts: [{ type: "text", text: report }] } })
-      .catch((error: unknown) => log(`failed to deliver report to session ${sessionID}: ${error}`))
+  const deliver = (sessionID: string, agent: string) => async (report: string): Promise<void> => {
+    await client.session.promptAsync({ path: { id: sessionID }, body: { agent, parts: [{ type: "text", text: report }] } })
   }
 
   const sessionWatches = (sessionID: string): PrWatch[] =>
