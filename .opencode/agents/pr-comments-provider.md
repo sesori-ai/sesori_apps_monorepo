@@ -2,7 +2,7 @@
 name: pr-comments-provider
 description: Fetches inline PR review comments. Delegate when the user asks about PR comments, code review feedback, unresolved review threads, or recent reviewer activity on a PR. Returns just the JSON result.
 mode: subagent
-model: openrouter/minimax/minimax-m2.7
+model: minimax/MiniMax-M3
 tools:
   bash: true
   read: false
