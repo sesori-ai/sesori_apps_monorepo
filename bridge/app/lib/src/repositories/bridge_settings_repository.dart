@@ -42,15 +42,13 @@ class BridgeSettingsRepository {
   /// even built, where `--help` or `logout` must not create the config file.
   ///
   /// Only *content* problems are absorbed here; an invalid config is
-  /// reported through [onInvalidConfig] rather than [Log] because `Log.w`
-  /// writes to *stdout*, which must stay machine-clean for
-  /// `--version`/`--help` (the parse-time caller routes the warning to
-  /// stderr). An I/O failure from the read itself propagates, like it does
-  /// from [loadSettings]: whether that is fatal is the caller's policy (the
-  /// parse-time caller maps it to "unset" with a stderr diagnostic).
-  Future<BridgeSettings> peekSettings({
-    void Function(String message)? onInvalidConfig,
-  }) async {
+  /// reported via [Log.e] — the one level that writes to stderr — because
+  /// selection also runs for `--version`/`--help`, whose stdout must stay
+  /// machine-clean ([Log.w] writes to stdout). An I/O failure from the
+  /// read itself propagates, like it does from [loadSettings]: whether that
+  /// is fatal is the caller's policy (the parse-time caller maps it to
+  /// "unset" with a stderr diagnostic).
+  Future<BridgeSettings> peekSettings() async {
     final storedConfig = await _api.readConfig();
     if (storedConfig == null) {
       return const BridgeSettings();
@@ -59,7 +57,7 @@ class BridgeSettingsRepository {
     try {
       return BridgeSettings.fromJson(jsonDecodeMap(storedConfig));
     } catch (error) {
-      onInvalidConfig?.call('[bridge-settings] invalid config at $configFilePath: $error');
+      Log.e('[bridge-settings] invalid config at $configFilePath: $error');
       return const BridgeSettings();
     }
   }
