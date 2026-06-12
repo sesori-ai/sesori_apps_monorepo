@@ -7,11 +7,6 @@
 *.mocks.dart linguist-generated=true
 **/drift_schemas/** linguist-generated=true
 
-# Lockfiles
-pubspec.lock linguist-generated=true
-Gemfile.lock linguist-generated=true
-Podfile.lock linguist-generated=true
-
 # Flutter platform-specific generated files
 **/GeneratedPluginRegistrant.* linguist-generated=true
 **/generated_plugin_registrant.* linguist-generated=true
