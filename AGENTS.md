@@ -319,7 +319,7 @@ Never edit `*.freezed.dart`, `*.g.dart`, `*.config.dart`, or `*.steps.dart` by h
 After modifying a `@freezed` class, regenerate from the module dir:
 
 ```sh
-dart run build_runner build --delete-conflicting-outputs
+dart run build_runner build
 ```
 
 ## Database Migrations (Bridge)

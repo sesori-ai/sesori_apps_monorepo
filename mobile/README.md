@@ -85,7 +85,7 @@ cd module_auth && dart test
 After modifying `freezed` models or `injectable`-annotated classes, run from each affected module:
 
 ```bash
-dart run build_runner build --delete-conflicting-outputs
+dart run build_runner build
 ```
 
 ## Related
