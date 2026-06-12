@@ -463,7 +463,7 @@ class PrWatch {
     if (now - this.lastActivityAt < this.config.debounceMinutes * 60_000) return
 
     let forcedHoldMinutes: number | undefined
-    if (ciPhase(this.snapshot) === "running") {
+    if (ciPhase(this.snapshot) === "running" && this.snapshot.state === "OPEN") {
       if (this.holdStartedAt === undefined) this.holdStartedAt = now
       const heldMs = now - this.holdStartedAt
       if (heldMs < this.config.maxCiWaitMinutes * 60_000) return
