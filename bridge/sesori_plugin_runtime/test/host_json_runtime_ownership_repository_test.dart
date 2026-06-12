@@ -87,11 +87,26 @@ void main() {
         store.calls,
         equals(<String>[
           "read:opencode-processes.json",
+          "update:opencode-processes.json",
           "quarantine:opencode-processes.json:opencode-processes.invalid.2026-05-15T12-30-01-234Z.json",
         ]),
       );
       expect(store.files.containsKey("opencode-processes.json"), isFalse);
       expect(store.files["opencode-processes.invalid.2026-05-15T12-30-01-234Z.json"], equals("{"));
+    });
+
+    test("stale corrupt read does not quarantine a concurrently repaired file", () async {
+      final record = _record(ownerSessionId: "owner-a", pid: 401, status: _TestStatus.ready);
+      final repairedContents = jsonEncode(<String, dynamic>{"owner-a": record.toJson()});
+      store.files["opencode-processes.json"] = "{";
+      store.onBeforeUpdate = () {
+        store.files["opencode-processes.json"] = repairedContents;
+      };
+
+      expect(await repository.readAll(), isEmpty);
+
+      expect(store.calls, equals(<String>["read:opencode-processes.json", "update:opencode-processes.json"]));
+      expect(store.files["opencode-processes.json"], equals(repairedContents));
     });
 
     test("non-map file is quarantined with legacy-compatible name and treated as empty", () async {
@@ -283,6 +298,7 @@ class _TestRecordMapper implements RuntimeRecordMapper<_TestRecord> {
 class _FakeHostJsonStore implements HostJsonStore {
   final Map<String, String> files = <String, String>{};
   final List<String> calls = <String>[];
+  void Function()? onBeforeUpdate;
 
   @override
   Future<void> delete({required String name}) async {
@@ -307,6 +323,7 @@ class _FakeHostJsonStore implements HostJsonStore {
 
   @override
   Future<String?> update({required String name, required FutureOr<String?> Function(String? current) transform}) async {
+    onBeforeUpdate?.call();
     calls.add("update:$name");
     final updated = await transform(files[name]);
     if (updated == null) {

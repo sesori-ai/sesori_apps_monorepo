@@ -38,9 +38,12 @@ class HostJsonRuntimeOwnershipRepository<R> implements RuntimeOwnershipRepositor
     await _store.update(
       name: _fileName,
       transform: (current) async {
-        final loaded = await _loadRecordsFromContents(contents: current);
-        loaded.records[_mapper.ownerSessionIdOf(record: record)] = record;
-        return jsonEncode(_recordsToJson(records: loaded.records));
+        final parsed = _parseRecords(contents: current);
+        if (parsed.invalidError != null) {
+          await _handleInvalidRuntimeFile(reason: "invalid runtime ownership file", error: parsed.invalidError!);
+        }
+        parsed.records[_mapper.ownerSessionIdOf(record: record)] = record;
+        return jsonEncode(_recordsToJson(records: parsed.records));
       },
     );
   }
@@ -50,19 +53,22 @@ class HostJsonRuntimeOwnershipRepository<R> implements RuntimeOwnershipRepositor
     await _store.update(
       name: _fileName,
       transform: (current) async {
-        final loaded = await _loadRecordsFromContents(contents: current);
-        final removedRecord = loaded.records.remove(ownerSessionId);
+        final parsed = _parseRecords(contents: current);
+        if (parsed.invalidError != null) {
+          await _handleInvalidRuntimeFile(reason: "invalid runtime ownership file", error: parsed.invalidError!);
+        }
+        final removedRecord = parsed.records.remove(ownerSessionId);
         if (removedRecord == null) {
           // Nothing to delete: leave a valid file byte-for-byte untouched
           // (legacy early-returns without writing). If the contents were just
           // quarantined, returning null keeps the original name absent instead
           // of resurrecting the corrupt bytes.
-          return loaded.wasInvalid ? null : current;
+          return parsed.invalidError != null ? null : current;
         }
-        if (loaded.records.isEmpty) {
+        if (parsed.records.isEmpty) {
           return null;
         }
-        return jsonEncode(_recordsToJson(records: loaded.records));
+        return jsonEncode(_recordsToJson(records: parsed.records));
       },
     );
   }
@@ -72,16 +78,20 @@ class HostJsonRuntimeOwnershipRepository<R> implements RuntimeOwnershipRepositor
     try {
       contents = await _store.read(name: _fileName);
     } on Object catch (error) {
-      await _handleInvalidRuntimeFile(reason: "unreadable runtime ownership file", error: error);
+      await _quarantineIfStillInvalid(reason: "unreadable runtime ownership file", error: error);
       return <String, R>{};
     }
-    final loaded = await _loadRecordsFromContents(contents: contents);
-    return loaded.records;
+    final parsed = _parseRecords(contents: contents);
+    if (parsed.invalidError != null) {
+      await _quarantineIfStillInvalid(reason: "invalid runtime ownership file", error: parsed.invalidError!);
+      return <String, R>{};
+    }
+    return parsed.records;
   }
 
-  Future<({Map<String, R> records, bool wasInvalid})> _loadRecordsFromContents({required String? contents}) async {
+  ({Map<String, R> records, Object? invalidError}) _parseRecords({required String? contents}) {
     if (contents == null || contents.trim().isEmpty) {
-      return (records: <String, R>{}, wasInvalid: false);
+      return (records: <String, R>{}, invalidError: null);
     }
 
     try {
@@ -95,11 +105,39 @@ class HostJsonRuntimeOwnershipRepository<R> implements RuntimeOwnershipRepositor
           for (final MapEntry<String, dynamic> entry in rootJson.entries)
             entry.key: _mapper.fromJson(json: Map<String, dynamic>.from(entry.value as Map)),
         },
-        wasInvalid: false,
+        invalidError: null,
       );
     } on Object catch (error) {
-      await _handleInvalidRuntimeFile(reason: "invalid runtime ownership file", error: error);
-      return (records: <String, R>{}, wasInvalid: true);
+      return (records: <String, R>{}, invalidError: error);
+    }
+  }
+
+  /// Quarantines the ownership file only if it is still invalid when observed
+  /// under the store's update lock. A snapshot that failed to parse on the
+  /// unlocked read path must not rename the file directly: a concurrent
+  /// locked mutation may have repaired it in between, and renaming then would
+  /// quarantine a freshly written valid file.
+  Future<void> _quarantineIfStillInvalid({required String reason, required Object error}) async {
+    try {
+      await _store.update(
+        name: _fileName,
+        transform: (current) async {
+          if (current == null || current.trim().isEmpty) {
+            return current;
+          }
+          final recheck = _parseRecords(contents: current);
+          if (recheck.invalidError == null) {
+            return current;
+          }
+          await _handleInvalidRuntimeFile(reason: reason, error: recheck.invalidError!);
+          return null;
+        },
+      );
+    } on Object catch (updateError) {
+      Log.w(
+        "Could not revalidate runtime ownership file at $_fileName before quarantine; "
+        "continuing fresh without persisted ownership state. Error: $updateError (original: $error)",
+      );
     }
   }
 
