@@ -768,6 +768,17 @@ linter:
 
     # DO use int literals rather than the corresponding double literal.
     #
+    # PREFER using an initializing formal to assign a parameter to a field.
+    #
+    # https://dart.dev/tools/linter-rules/prefer_initializing_formals.html
+    #
+    # Disabled because the Dart 3.12 analyzer started flagging our codebase-wide
+    # dependency-injection idiom (`required Dep dep) : _dep = dep`). Dart 3.12 added
+    # private named initializing formals (`{required this._dep}`), so the rule now
+    # fires on hundreds of constructors. We keep the explicit assignment style, which
+    # keeps the public parameter name visible at the declaration site.
+    prefer_initializing_formals: false
+
     # https://dart.dev/tools/linter-rules/prefer_int_literals.html
     #
     # This rule goes against the preferred style of being explicit with
