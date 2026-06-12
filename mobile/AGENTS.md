@@ -44,6 +44,7 @@ BLoC/Cubit only. Cubits live in `module_core/lib/src/cubits/`, never in `app/`. 
 Splash/startup cubits must stay local-only and fast. Do not call auth-server validation (`/auth/me`), token refresh, relay connection, or any other network operation from splash. Splash may only inspect locally stored auth state/tokens to choose the initial route; destination screens/services own network validation and error handling.
 
 Cubits orchestrate: they call services/repositories and emit state. They MUST NOT:
+
 - Import from `api/` (go through a repository or service)
 - Perform HTTP calls directly
 - Depend on other cubits
