@@ -3,6 +3,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "managed_runtime_spec.dart";
 import "runtime_ownership_repository.dart";
 import "runtime_record_mapper.dart";
+import "runtime_start_intent.dart";
 
 class ManagedProcessService<R> {
   ManagedProcessService({
@@ -13,13 +14,15 @@ class ManagedProcessService<R> {
     required ServerClock clock,
     required String runtimeId,
     required Duration gracefulShutdownWait,
+    RuntimeStartIntentStore? intentStore,
   }) : _ownershipRepository = ownershipRepository,
        _mapper = mapper,
        _processes = processes,
        _bridge = bridge,
        _clock = clock,
        _runtimeId = runtimeId,
-       _gracefulShutdownWait = gracefulShutdownWait;
+       _gracefulShutdownWait = gracefulShutdownWait,
+       _intentStore = intentStore;
 
   final RuntimeOwnershipRepository<R> _ownershipRepository;
   final RuntimeRecordMapper<R> _mapper;
@@ -28,6 +31,11 @@ class ManagedProcessService<R> {
   final ServerClock _clock;
   final String _runtimeId;
   final Duration _gracefulShutdownWait;
+
+  /// Optional bridge-private side-file store for [RuntimeRecordTiming.intentSideFile].
+  /// Required when that timing is selected; unused for the legacy after-spawn
+  /// timing, so it defaults to null and the legacy path never touches it.
+  final RuntimeStartIntentStore? _intentStore;
   final Map<String, _CurrentOwnedRuntimeProcess> _currentOwnedProcessesBySessionId =
       <String, _CurrentOwnedRuntimeProcess>{};
 
@@ -48,13 +56,9 @@ class ManagedProcessService<R> {
   }) async {
     final abort = startAborted ?? StartAbortSignal.never;
 
-    // A deterministic configuration error: reject it once, up front, so the
-    // dynamic path never retries it candidate by candidate.
-    if (spec.recordTiming == RuntimeRecordTiming.intentSideFile) {
-      // The bridge-private intent side file is introduced in a later step;
-      // until then only the legacy after-spawn timing is representable.
-      throw UnsupportedError("[$_runtimeId] intent side-file record timing is not available yet");
-    }
+    // A deterministic configuration error: reject it once, up front, before
+    // cleanup and before the dynamic path can retry it candidate by candidate.
+    _requireIntentStoreFor(spec);
 
     await cleanupStaleOwnedRuntimes(terminatedBridgeIdentities: terminatedBridgeIdentities);
     _throwIfAborted(abort);
@@ -98,6 +102,84 @@ class ManagedProcessService<R> {
       identity: null,
       health: probe,
     );
+  }
+
+  /// Re-spawns the runtime on its original, address-frozen [port] after an
+  /// unexpected exit.
+  ///
+  /// Unlike [start] this runs no stale cleanup and never moves to another port:
+  /// the runtime's HTTP/SSE stack is pinned to [port], so a restart must reclaim
+  /// that exact address. The previous child has already exited; this waits for
+  /// the address to free (bounded by [portReleaseTimeout]) — if it never frees
+  /// it throws [PluginStartException], which the caller treats as terminal.
+  /// Otherwise it spawns a fresh child and writes the new ownership record and
+  /// confirms health on exactly the cold-start path (including intent side-file
+  /// handling and rollback).
+  Future<ManagedRuntimeHandle<R>> restartOnPort({
+    required ManagedRuntimeSpec<R> spec,
+    required int port,
+    required Duration portReleaseTimeout,
+    required Duration portReleasePollInterval,
+    StartAbortSignal? startAborted,
+  }) async {
+    // Reject a misconfigured intent timing up front, before waiting on the port,
+    // so a direct caller fails fast and clearly instead of crashing on a null
+    // intent store deep inside the spawn path.
+    _requireIntentStoreFor(spec);
+    final abort = startAborted ?? StartAbortSignal.never;
+    _throwIfAborted(abort);
+    await _waitForPortRelease(
+      spec: spec,
+      port: port,
+      timeout: portReleaseTimeout,
+      pollInterval: portReleasePollInterval,
+      abort: abort,
+    );
+    return _startAndConfirmHealthy(spec: spec, port: port, abort: abort);
+  }
+
+  /// A managed runtime that opts into intent side-file timing must be given an
+  /// intent store; selecting the timing without one is a deterministic
+  /// configuration error, surfaced before any side effects.
+  void _requireIntentStoreFor(ManagedRuntimeSpec<R> spec) {
+    if (spec.recordTiming == RuntimeRecordTiming.intentSideFile && _intentStore == null) {
+      throw ArgumentError("[$_runtimeId] intent side-file record timing requires an intent store");
+    }
+  }
+
+  Future<void> _waitForPortRelease({
+    required ManagedRuntimeSpec<R> spec,
+    required int port,
+    required Duration timeout,
+    required Duration pollInterval,
+    required StartAbortSignal abort,
+  }) async {
+    final deadline = _clock.now().add(timeout);
+    // A hard backstop independent of the clock: a misconfigured (e.g.
+    // non-advancing) clock must fail loud, never hang the supervisor.
+    final maxPolls = _portReleaseMaxPolls(timeout: timeout, pollInterval: pollInterval);
+    var polls = 0;
+    while (true) {
+      _throwIfAborted(abort);
+      if (await spec.probePortBindable(port: port)) {
+        return;
+      }
+      polls += 1;
+      if (polls >= maxPolls || !_clock.now().isBefore(deadline)) {
+        throw PluginStartException(
+          "[$_runtimeId] port $port did not free for restart within ${timeout.inMilliseconds}ms",
+          cause: null,
+        );
+      }
+      await _clock.delay(duration: pollInterval);
+    }
+  }
+
+  int _portReleaseMaxPolls({required Duration timeout, required Duration pollInterval}) {
+    if (pollInterval <= Duration.zero) {
+      return 1;
+    }
+    return (timeout.inMicroseconds / pollInterval.inMicroseconds).ceil() + 2;
   }
 
   Future<ManagedRuntimeHandle<R>> _startOnExplicitPort({
@@ -179,9 +261,44 @@ class ManagedProcessService<R> {
     required int port,
     required StartAbortSignal abort,
   }) async {
+    final usesIntent = spec.recordTiming == RuntimeRecordTiming.intentSideFile;
+    if (usesIntent) {
+      // Record the spawn intent before the child exists, so a crash between
+      // spawn and the ownership write still names the bridge run and the port.
+      await _intentStore!.write(
+        RuntimeStartIntent(
+          ownerSessionId: _bridge.ownerSessionId,
+          port: port,
+          bridgePid: _bridge.identity.pid,
+          bridgeStartMarker: _bridge.identity.startMarker,
+          recordedAt: _clock.now(),
+        ),
+      );
+    }
+
     // Spawn errors propagate before any ownership state is acquired: the
     // explicit-port caller surfaces them raw, the dynamic caller retries.
-    final spawned = await spec.spawn(port: port);
+    final SpawnedProcess spawned;
+    try {
+      spawned = await spec.spawn(port: port);
+    } on Object {
+      if (usesIntent) {
+        await _clearIntentQuietly();
+      }
+      rethrow;
+    }
+
+    // The documented post-spawn abort checkpoint: settle here, before any
+    // ownership state is created, so an abort that fired during the spawn does
+    // not first write a starting record only to roll it straight back. The
+    // freshly spawned child is still untracked, so stop it directly.
+    if (abort.isAborted) {
+      await _stopUntrackedSpawnQuietly(process: spawned, port: port, reason: "after a post-spawn abort");
+      if (usesIntent) {
+        await _clearIntentQuietly();
+      }
+      throw const PluginStartAbortedException();
+    }
 
     final R record;
     try {
@@ -197,10 +314,9 @@ class ManagedProcessService<R> {
     } on Object {
       // The child is already running but not yet tracked or recorded — stop it
       // directly so a record-factory failure cannot leak a started runtime.
-      try {
-        await _stopUntrackedSpawn(process: spawned);
-      } on Object catch (cleanupError, cleanupStackTrace) {
-        Log.w("[$_runtimeId] Failed to stop an orphaned child after a record build error on port $port", cleanupError, cleanupStackTrace);
+      await _stopUntrackedSpawnQuietly(process: spawned, port: port, reason: "after a record build error");
+      if (usesIntent) {
+        await _clearIntentQuietly();
       }
       rethrow;
     }
@@ -208,6 +324,11 @@ class ManagedProcessService<R> {
 
     try {
       await _ownershipRepository.upsert(record: record);
+      if (usesIntent) {
+        // The starting record is now in the frozen ownership file; an orphan is
+        // trackable from there, so the intent has done its job.
+        await _clearIntentQuietly();
+      }
       _throwIfAborted(abort);
 
       final health = await _confirmHealthy(spec: spec, port: port, spawned: spawned, abort: abort);
@@ -243,7 +364,24 @@ class ManagedProcessService<R> {
       } on Object catch (cleanupError, cleanupStackTrace) {
         Log.w("[$_runtimeId] Failed to clean up after a failed start on port $port", cleanupError, cleanupStackTrace);
       }
+      if (usesIntent) {
+        await _clearIntentQuietly();
+      }
       rethrow;
+    }
+  }
+
+  /// Best-effort removal of the intent side file. An intent-clear failure must
+  /// never mask the start error that prompted it, so this only logs.
+  Future<void> _clearIntentQuietly() async {
+    final store = _intentStore;
+    if (store == null) {
+      return;
+    }
+    try {
+      await store.clear();
+    } on Object catch (error, stackTrace) {
+      Log.w("[$_runtimeId] Failed to clear the runtime start-intent side file", error, stackTrace);
     }
   }
 
@@ -326,6 +464,21 @@ class ManagedProcessService<R> {
 
   Future<void> _cleanupFailedStart({required R record}) async {
     await _stopRecord(record: record, removeOwnership: true);
+  }
+
+  /// Stops an untracked, unrecorded child without letting the stop failure mask
+  /// the start outcome that triggered it (an abort, a record-build error). Only
+  /// logs on failure.
+  Future<void> _stopUntrackedSpawnQuietly({
+    required SpawnedProcess process,
+    required int port,
+    required String reason,
+  }) async {
+    try {
+      await _stopUntrackedSpawn(process: process);
+    } on Object catch (cleanupError, cleanupStackTrace) {
+      Log.w("[$_runtimeId] Failed to stop an orphaned child $reason on port $port", cleanupError, cleanupStackTrace);
+    }
   }
 
   /// Stops a freshly spawned child that has no ownership record yet (the record
