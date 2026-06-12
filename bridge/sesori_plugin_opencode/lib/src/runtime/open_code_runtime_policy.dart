@@ -36,6 +36,12 @@ const int dynamicOpenCodeMaxAttempts = 5;
 /// How long a graceful (SIGTERM) stop waits before escalating to SIGKILL.
 const Duration openCodeGracefulShutdownWait = Duration(seconds: 5);
 
+/// Budget for the awaited cold-start in `descriptor.start()`: a service that
+/// passed the health probe but stalls a REST call must surface as degraded,
+/// not hang `start()` under the bridge's cross-instance startup mutex. The
+/// cold-start keeps running in the background after the budget elapses.
+const Duration openCodeColdStartBudget = Duration(seconds: 15);
+
 /// The loopback host OpenCode binds to and is probed on.
 const String openCodeLoopbackHost = "127.0.0.1";
 
