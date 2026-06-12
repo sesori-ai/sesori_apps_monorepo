@@ -9,8 +9,10 @@ import "package:theme_zyra/module_zyra.dart";
 import "../../../core/constants.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/routing/app_router.dart";
+import "../../../core/routing/imperative_pane_route.dart";
 import "../../../core/widgets/agent_picker_sheet.dart";
 import "../../../core/widgets/model_picker_sheet.dart";
+import "../../../core/widgets/session_split/session_split_scope.dart";
 import "../../../core/widgets/variant_picker_sheet.dart";
 import "permission_modal.dart";
 import "question_modal.dart";
@@ -19,6 +21,7 @@ import "session_detail_scaffold_sections.dart";
 
 class SessionDetailBody extends StatefulWidget {
   final String projectId;
+  final String? projectName;
   final String sessionId;
   final String? sessionTitle;
   final bool readOnly;
@@ -26,6 +29,7 @@ class SessionDetailBody extends StatefulWidget {
   const SessionDetailBody({
     super.key,
     required this.projectId,
+    required this.projectName,
     required this.sessionId,
     required this.sessionTitle,
     required this.readOnly,
@@ -59,6 +63,8 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
   Widget build(BuildContext context) {
     final loc = context.loc;
     final state = context.watch<SessionDetailCubit>().state;
+    final isSplit = SessionSplitScope.maybeOf(context)?.isSplit ?? false;
+    final showLeading = !isSplit || isImperativePaneRoute(context);
     final isBusy = switch (state) {
       SessionDetailLoaded(:final sessionStatus, :final childStatuses) => hasActiveWork(
         sessionStatus: sessionStatus,
@@ -70,6 +76,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: showLeading,
         title: SessionDetailTitle(
           state: state,
           fallbackTitle: widget.sessionTitle ?? loc.sessionDetailTitle,
@@ -82,6 +89,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
               onPressed: () => context.pushRoute(
                 AppRoute.sessionDiffs(
                   projectId: widget.projectId,
+                  projectName: widget.projectName,
                   sessionId: widget.sessionId,
                 ),
               ),

@@ -17,10 +17,12 @@ import "new_session_loading_overlay.dart";
 
 class NewSessionScreen extends StatelessWidget {
   final String projectId;
+  final String? projectName;
 
   const NewSessionScreen({
     super.key,
     required this.projectId,
+    required this.projectName,
   });
 
   @override
@@ -30,15 +32,16 @@ class NewSessionScreen extends StatelessWidget {
         sessionService: getIt<SessionService>(),
         projectId: projectId,
       ),
-      child: _NewSessionBody(projectId: projectId),
+      child: _NewSessionBody(projectId: projectId, projectName: projectName),
     );
   }
 }
 
 class _NewSessionBody extends StatefulWidget {
   final String projectId;
+  final String? projectName;
 
-  const _NewSessionBody({required this.projectId});
+  const _NewSessionBody({required this.projectId, required this.projectName});
 
   @override
   State<_NewSessionBody> createState() => _NewSessionBodyState();
@@ -150,10 +153,10 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
       listener: (context, state) {
         if (state case NewSessionCreated(:final session)) {
           _navigatingToCreatedSession = true;
-          _dismissScreen();
-          context.pushRoute(
+          context.replaceRoute(
             AppRoute.sessionDetail(
               projectId: widget.projectId,
+              projectName: widget.projectName,
               sessionId: session.id,
               sessionTitle: session.title ?? "",
               readOnly: false,

@@ -116,6 +116,7 @@ class NotificationOpenDispatcher {
           AppRoute.sessions(projectId: request.projectId, projectName: null),
           AppRoute.sessionDetail(
             projectId: request.projectId,
+            projectName: null,
             sessionId: request.sessionId,
             sessionTitle: request.sessionTitle,
             readOnly: false,

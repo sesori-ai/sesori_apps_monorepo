@@ -29,6 +29,11 @@ class _SessionDiffsBodyState extends State<SessionDiffsBody> {
   int _computeToken = 0;
   Brightness? _lastBrightness;
 
+  /// Number of view-model computations started; lets regression tests assert
+  /// that theme-brightness changes trigger a recompute.
+  @visibleForTesting
+  int get recomputeCount => _computeToken;
+
   /// Stable [GlobalKey]s attached to each file's header [SizedBox] so the
   /// post-frame scroll adjustment can find the collapsed file's header.
   /// Keys are created lazily as files are rendered.

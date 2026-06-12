@@ -1,5 +1,11 @@
 const bundleId = "com.sesori.app";
 const redirectUri = "$bundleId://auth/callback";
+const projectNameQueryParam = "name";
+
+String _appendQuery({required String path, required Map<String, String> queryParameters}) {
+  if (queryParameters.isEmpty) return path;
+  return "$path?${Uri(queryParameters: queryParameters).query}";
+}
 
 /// Path-template enum for GoRouter registration and route matching.
 ///
@@ -29,6 +35,7 @@ enum AppRouteDef {
 /// ```dart
 /// context.pushRoute(AppRoute.sessionDetail(
 ///   projectId: 'p1',
+///   projectName: null,
 ///   sessionId: 's1',
 ///   sessionTitle: null,
 ///   readOnly: false,
@@ -54,15 +61,20 @@ sealed class AppRoute {
     required String projectId,
     required String? projectName,
   }) = AppRouteSessions;
-  const factory AppRoute.newSession({required String projectId}) = AppRouteNewSession;
+  const factory AppRoute.newSession({
+    required String projectId,
+    required String? projectName,
+  }) = AppRouteNewSession;
   const factory AppRoute.sessionDetail({
     required String projectId,
+    required String? projectName,
     required String sessionId,
     required String? sessionTitle,
     required bool readOnly,
   }) = AppRouteSessionDetail;
   const factory AppRoute.sessionDiffs({
     required String projectId,
+    required String? projectName,
     required String sessionId,
   }) = AppRouteSessionDiffs;
 
@@ -136,7 +148,7 @@ class AppRouteSettings extends AppRoute {
 
 class AppRouteSessions extends AppRoute {
   static const _projectIdPathParam = "projectId";
-  static const _nameQueryParam = "name";
+  static const _nameQueryParam = projectNameQueryParam;
 
   final String projectId;
   final String? projectName;
@@ -163,49 +175,59 @@ class AppRouteSessions extends AppRoute {
     final queryParams = <String, String>{
       _nameQueryParam: ?projectName,
     };
-    if (queryParams.isNotEmpty) {
-      return Uri(path: base, queryParameters: queryParams).toString();
-    }
-    return base;
+    return _appendQuery(path: base, queryParameters: queryParams);
   }
 }
 
 class AppRouteNewSession extends AppRoute {
   static const _projectIdPathParam = "projectId";
+  static const _nameQueryParam = projectNameQueryParam;
 
   final String projectId;
+  final String? projectName;
 
-  const AppRouteNewSession({required this.projectId});
+  const AppRouteNewSession({required this.projectId, required this.projectName});
 
   /// Decodes from path/query parameter maps (inverse of [buildPath]).
   factory AppRouteNewSession.fromParams({
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
   }) {
-    final _ = queryParams;
-    return AppRouteNewSession(projectId: pathParams[_projectIdPathParam] ?? "");
+    return AppRouteNewSession(
+      projectId: pathParams[_projectIdPathParam] ?? "",
+      projectName: queryParams[_nameQueryParam],
+    );
   }
 
   @override
   AppRouteDef get def => AppRouteDef.newSession;
 
   @override
-  String buildPath() => "/projects/${Uri.encodeComponent(projectId)}/sessions/new";
+  String buildPath() {
+    final base = "/projects/${Uri.encodeComponent(projectId)}/sessions/new";
+    final queryParams = <String, String>{
+      _nameQueryParam: ?projectName,
+    };
+    return _appendQuery(path: base, queryParameters: queryParams);
+  }
 }
 
 class AppRouteSessionDetail extends AppRoute {
   static const _projectIdPathParam = "projectId";
   static const _sessionIdPathParam = "sessionId";
+  static const _nameQueryParam = projectNameQueryParam;
   static const _titleQueryParam = "title";
   static const _readOnlyQueryParam = "readOnly";
 
   final String projectId;
+  final String? projectName;
   final String sessionId;
   final String? sessionTitle;
   final bool readOnly;
 
   const AppRouteSessionDetail({
     required this.projectId,
+    required this.projectName,
     required this.sessionId,
     required this.sessionTitle,
     required this.readOnly,
@@ -218,6 +240,7 @@ class AppRouteSessionDetail extends AppRoute {
   }) {
     return AppRouteSessionDetail(
       projectId: pathParams[_projectIdPathParam] ?? "",
+      projectName: queryParams[_nameQueryParam],
       sessionId: pathParams[_sessionIdPathParam] ?? "",
       sessionTitle: queryParams[_titleQueryParam],
       readOnly: queryParams[_readOnlyQueryParam] == "true",
@@ -232,29 +255,32 @@ class AppRouteSessionDetail extends AppRoute {
     final base = "/projects/${Uri.encodeComponent(projectId)}/sessions/${Uri.encodeComponent(sessionId)}";
     final queryParams = <String, String>{
       _readOnlyQueryParam: readOnly.toString(),
+      _nameQueryParam: ?projectName,
       _titleQueryParam: ?sessionTitle,
     };
-    return Uri(path: base, queryParameters: queryParams).toString();
+    return _appendQuery(path: base, queryParameters: queryParams);
   }
 }
 
 class AppRouteSessionDiffs extends AppRoute {
   static const _projectIdPathParam = "projectId";
   static const _sessionIdPathParam = "sessionId";
+  static const _nameQueryParam = projectNameQueryParam;
 
   final String projectId;
+  final String? projectName;
   final String sessionId;
 
-  const AppRouteSessionDiffs({required this.projectId, required this.sessionId});
+  const AppRouteSessionDiffs({required this.projectId, required this.projectName, required this.sessionId});
 
   /// Decodes from path/query parameter maps (inverse of [buildPath]).
   factory AppRouteSessionDiffs.fromParams({
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
   }) {
-    final _ = queryParams;
     return AppRouteSessionDiffs(
       projectId: pathParams[_projectIdPathParam] ?? "",
+      projectName: queryParams[_nameQueryParam],
       sessionId: pathParams[_sessionIdPathParam] ?? "",
     );
   }
@@ -263,5 +289,11 @@ class AppRouteSessionDiffs extends AppRoute {
   AppRouteDef get def => AppRouteDef.sessionDiffs;
 
   @override
-  String buildPath() => "/projects/${Uri.encodeComponent(projectId)}/sessions/${Uri.encodeComponent(sessionId)}/diffs";
+  String buildPath() {
+    final base = "/projects/${Uri.encodeComponent(projectId)}/sessions/${Uri.encodeComponent(sessionId)}/diffs";
+    final queryParams = <String, String>{
+      _nameQueryParam: ?projectName,
+    };
+    return _appendQuery(path: base, queryParameters: queryParams);
+  }
 }

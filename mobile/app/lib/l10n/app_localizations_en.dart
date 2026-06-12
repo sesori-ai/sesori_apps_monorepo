@@ -861,4 +861,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailRetryLabel => 'Retry';
+
+  @override
+  String get emptySessionDetailTitle => 'Select a session';
+
+  @override
+  String get emptySessionDetailSubtitle => 'Choose a session from the list to view details';
 }
