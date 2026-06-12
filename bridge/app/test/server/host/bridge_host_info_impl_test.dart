@@ -31,6 +31,21 @@ void main() {
       expect(hostInfo.ownerSessionId, '100:bridge-start-marker');
     });
 
+    test('snapshots the terminated-bridge identities immutably', () {
+      final mutable = <ProcessIdentity>[bridgeIdentity];
+      final info = BridgeHostInfoImpl(
+        identity: bridgeIdentity,
+        ownerSessionId: '100:bridge-start-marker',
+        terminatedBridgeIdentities: mutable,
+        processRepository: processRepository,
+      );
+
+      mutable.clear();
+
+      expect(info.terminatedBridgeIdentities, hasLength(1), reason: 'a caller-side mutation must not leak in');
+      expect(info.terminatedBridgeIdentities.clear, throwsUnsupportedError);
+    });
+
     test('isLiveBridgeProcess is false when the pid is not running', () async {
       expect(
         await hostInfo.isLiveBridgeProcess(pid: 211, startMarker: 'other-marker'),
