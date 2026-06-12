@@ -4,6 +4,7 @@ import "dart:math";
 import "package:http/http.dart" as http;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
+import "package:sesori_shared/sesori_shared.dart" show StringExtensions;
 
 import "../opencode_plugin_impl.dart";
 import "open_code_bridge_plugin.dart";
@@ -62,17 +63,20 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     Iterable<int>? candidatePorts,
     Random? random,
     Duration degradedDebounce = const Duration(seconds: 5),
+    Duration coldStartBudget = openCodeColdStartBudget,
   }) : _buildApi = buildApi,
        _probeClientFactory = probeClientFactory,
        _candidatePorts = candidatePorts,
        _random = random,
-       _degradedDebounce = degradedDebounce;
+       _degradedDebounce = degradedDebounce,
+       _coldStartBudget = coldStartBudget;
 
   final OpenCodeManagedApiFactory? _buildApi;
   final http.Client Function()? _probeClientFactory;
   final Iterable<int>? _candidatePorts;
   final Random? _random;
   final Duration _degradedDebounce;
+  final Duration _coldStartBudget;
 
   /// The four OpenCode CLI options, names/help/defaults identical to the flags
   /// the bridge has always declared.
@@ -130,8 +134,11 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   Future<OpenCodeBridgePlugin> start(PluginHost host) async {
     final config = host.config;
     final requestedPort = config.intValue("port");
-    final rawPassword = config.value("password");
-    final providedPassword = (rawPassword == null || rawPassword.isEmpty) ? null : rawPassword;
+    // Mirror the legacy flow's `password.normalize()`: trim, and map a blank
+    // value to "no password supplied" — otherwise the same CLI input would
+    // select a different password (or demand auth the user never set) after
+    // the flip.
+    final providedPassword = config.value("password")?.normalize();
 
     final probeClientFactory = _probeClientFactory ?? http.Client.new;
     const mapper = OpenCodeRecordMapper();
@@ -297,9 +304,39 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       // plugin started but degraded rather than failing the whole bridge — the
       // server answered a health probe, so it is addressable; the SSE stream
       // keeps retrying and recovers the tracker.
+      //
+      // The await is bounded by [_coldStartBudget]: a service that passed the
+      // health probe but stalls a REST call must not hang start() under the
+      // bridge's cross-instance startup mutex. Past the budget the cold-start
+      // keeps running in the background and the plugin starts degraded.
+      final coldStart = api.initialize();
+      var budgetExceeded = false;
+      // The sink keeps a post-budget failure from surfacing as an unhandled
+      // async error once the await below has moved on; the awaited path
+      // observes (and logs) every pre-budget failure itself.
+      unawaited(
+        coldStart.catchError((Object error, StackTrace stackTrace) {
+          if (budgetExceeded) {
+            Log.w("[opencode] cold-start failed after the start budget: $error");
+          }
+        }),
+      );
       try {
-        await api.initialize();
-        reporter.markConnected();
+        await coldStart.timeout(
+          _coldStartBudget,
+          onTimeout: () {
+            budgetExceeded = true;
+            Log.w(
+              "[opencode] cold-start did not finish within ${_coldStartBudget.inSeconds}s — "
+              "starting degraded while it keeps running in the background",
+            );
+          },
+        );
+        if (budgetExceeded) {
+          reporter.markDegradedNow();
+        } else {
+          reporter.markConnected();
+        }
       } on Object catch (error) {
         Log.w("[opencode] cold-start did not complete cleanly: $error");
         reporter.markDegradedNow();

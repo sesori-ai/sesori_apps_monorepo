@@ -205,6 +205,51 @@ void main() {
       await plugin.shutdown(budget: null);
     });
 
+    test("normalizes the password option like the legacy flow (trim, blank to null)", () async {
+      final descriptor = OpenCodePluginDescriptor(
+        buildApi: apiRecorder.build,
+        probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
+      );
+
+      final trimmedHost = _FakeHost(
+        config: const PluginConfig(
+          values: {"port": "4096", "no-auto-start": true, "password": "  secret  ", "opencode-bin": "opencode"},
+        ),
+      );
+      final trimmedPlugin = await descriptor.start(trimmedHost);
+      expect(apiRecorder.last!.password, equals("secret"));
+      await trimmedPlugin.shutdown(budget: null);
+
+      final blankHost = _FakeHost(
+        config: const PluginConfig(
+          values: {"port": "4096", "no-auto-start": true, "password": "   ", "opencode-bin": "opencode"},
+        ),
+      );
+      final blankPlugin = await descriptor.start(blankHost);
+      expect(apiRecorder.last!.password, isNull);
+      await blankPlugin.shutdown(budget: null);
+    });
+
+    test("a stalled cold-start after a healthy attach probe degrades within the budget instead of hanging", () async {
+      final host = attachHost();
+      // A wrong/wedged service that answers /global/health with 200 but stalls
+      // a REST call inside the cold-start: the await must be bounded, or
+      // start() hangs under the bridge's cross-instance startup mutex.
+      apiRecorder.neverCompleteInitialize = true;
+      final descriptor = OpenCodePluginDescriptor(
+        buildApi: apiRecorder.build,
+        probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
+        coldStartBudget: const Duration(milliseconds: 200),
+      );
+
+      final plugin = await descriptor.start(host).timeout(const Duration(seconds: 5));
+
+      expect(plugin.currentStatus, isA<PluginDegraded>());
+      expect(plugin.describe().details["mode"], equals("attached"));
+
+      await plugin.shutdown(budget: null);
+    });
+
     test("a failed attach probe does not block start on the cold-start", () async {
       final host = attachHost();
       // A pathological "server" that accepts connections but never answers: the
@@ -248,6 +293,7 @@ class _FakeApiRecorder {
       initializeError: initializeError,
       onInitialize: onInitialize,
       neverCompleteInitialize: neverCompleteInitialize,
+      password: password,
       onConnected: onConnected,
       onDisconnected: onDisconnected,
     );
@@ -261,6 +307,7 @@ class _FakeManagedApi implements OpenCodeManagedApi {
     required this.initializeError,
     required this.onInitialize,
     required this.neverCompleteInitialize,
+    required this.password,
     required this.onConnected,
     required this.onDisconnected,
   });
@@ -268,6 +315,7 @@ class _FakeManagedApi implements OpenCodeManagedApi {
   final Object? initializeError;
   final void Function()? onInitialize;
   final bool neverCompleteInitialize;
+  final String? password;
   final void Function() onConnected;
   final void Function() onDisconnected;
   bool initializeCalled = false;
