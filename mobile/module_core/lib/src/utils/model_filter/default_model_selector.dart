@@ -6,18 +6,20 @@ import "package:sesori_shared/sesori_shared.dart";
 /// The selector uses only signals already present in the upstream data, so
 /// the same logic works for every provider without per-provider knowledge:
 ///
-/// 1. The provider's backend-supplied [ProviderInfo.defaultModelID], if it
-///    is available. This is the strongest signal — it is the provider's own
-///    "this is the default" answer.
-/// 2. Any model whose name contains the upstream " (latest)" marker.
+/// 1. Any model whose name contains the upstream " (latest)" marker.
 ///    OpenCode / models.dev uses this suffix to flag a model as the
 ///    recommended one in its family (e.g. `Claude Sonnet 4.5 (latest)`,
 ///    `Mistral Small (latest)`). The model picker already strips this
 ///    suffix from the display name, so it is a known convention worth
 ///    trusting.
-/// 3. The model with the most recent [ProviderModel.releaseDate]. Models
+/// 2. The model with the most recent [ProviderModel.releaseDate]. Models
 ///    without a release date sort last.
-/// 4. The first available model in iteration order.
+/// 3. The first available model in iteration order.
+///
+/// The provider's backend-supplied [ProviderInfo.defaultModelID] is
+/// intentionally ignored. It is a provider-wide default that is frequently
+/// stale (e.g. Kimi), and the family-level newest-by-date signal is a more
+/// reliable default for the picker.
 ///
 /// There is intentionally no "newer than X months" cutoff. Deprecated
 /// models are already filtered out by [ProviderModel.isAvailable] in
@@ -28,52 +30,56 @@ class DefaultModelSelector {
 
   /// Selects the default model for a single family of [ProviderModel]s.
   ///
-  /// [defaultModelId] is honored only when it identifies one of the
-  /// [group] members. Returns `null` only if [group] is empty.
-  ProviderModel? pickFromFamily({
-    required Iterable<ProviderModel> group,
-    required String? defaultModelId,
-  }) {
+  /// Returns `null` only if [group] is empty.
+  ProviderModel? pickFromFamily({required Iterable<ProviderModel> group}) {
     final list = group.where((m) => m.isAvailable).toList();
     if (list.isEmpty) return null;
+    return _bestModel(list);
+  }
 
-    // 1. Provider's backend default.
-    if (defaultModelId != null) {
-      for (final m in list) {
-        if (m.id == defaultModelId) return m;
-      }
+  /// Selects a single default model across an entire provider.
+  ///
+  /// Groups [models] by family, picks the best model per family using
+  /// [pickFromFamily], then returns the best of those representatives
+  /// using the same ranking ("(latest)" marker, then newest release date,
+  /// then `id`).
+  ///
+  /// Returns `null` if [models] contains no available models.
+  ProviderModel? pickFromProvider({required Map<String, ProviderModel> models}) {
+    // 1. Group by family, pick the best per family.
+    final byFamily = <String, List<ProviderModel>>{};
+    for (final m in models.values) {
+      if (!m.isAvailable) continue;
+      final family = m.family ?? m.id;
+      (byFamily[family] ??= []).add(m);
     }
+    if (byFamily.isEmpty) return null;
 
-    // 2. Upstream "(latest)" name marker. Ties broken by newest release
-    //    date, then by `id` for determinism.
+    // 2. Pick the best representative across all families using the same
+    //    ranking as `pickFromFamily`. This avoids defaulting to an
+    //    arbitrary alphabetically-first family when a newer model exists
+    //    in another family.
+    final representatives = byFamily.values
+        .map((group) => pickFromFamily(group: group))
+        .whereType<ProviderModel>()
+        .toList();
+    if (representatives.isEmpty) return null;
+    return _bestModel(representatives);
+  }
+
+  /// Returns the best model from [candidates] using the standard ranking:
+  /// "(latest)" marker wins, then newest release date, then id.
+  ///
+  /// [candidates] must be non-empty and contain only available models.
+  ProviderModel _bestModel(List<ProviderModel> candidates) {
+    assert(candidates.isNotEmpty, "_bestModel requires non-empty candidates");
+
+    // Prefer any model whose name contains the "(latest)" marker.
     final latestMarked =
-        list.where((m) => m.name.toLowerCase().contains("(latest)")).toList();
-    if (latestMarked.isNotEmpty) {
-      // `List.sort` requires a two-positional-arg comparator; the inline
-      // form avoids the `prefer_required_named_parameters` lint while
-      // keeping the same behavior as the closed-over helper.
-      latestMarked.sort((a, b) {
-        final dateA = a.releaseDate;
-        final dateB = b.releaseDate;
-        final int dateCompare;
-        if (dateB == null && dateA == null) {
-          dateCompare = 0;
-        } else if (dateB == null) {
-          dateCompare = -1;
-        } else if (dateA == null) {
-          dateCompare = 1;
-        } else {
-          dateCompare = dateB.compareTo(dateA);
-        }
-        if (dateCompare != 0) return dateCompare;
-        return a.id.compareTo(b.id);
-      });
-      return latestMarked.first;
-    }
+        candidates.where((m) => m.name.toLowerCase().contains("(latest)")).toList();
+    final toSort = latestMarked.isNotEmpty ? latestMarked : candidates;
 
-    // 3. Newest by releaseDate, then by `id` for determinism. See note
-    //    above about the inline comparator.
-    final sorted = [...list]..sort((a, b) {
+    final sorted = [...toSort]..sort((a, b) {
         final dateA = a.releaseDate;
         final dateB = b.releaseDate;
         final int dateCompare;
@@ -90,41 +96,5 @@ class DefaultModelSelector {
         return a.id.compareTo(b.id);
       });
     return sorted.first;
-  }
-
-  /// Selects a single default model across an entire provider.
-  ///
-  /// Groups [models] by family, picks the best model per family using
-  /// [pickFromFamily], then returns the best model of the alphabetically
-  /// first family. If [defaultModelId] is set and matches an available
-  /// model in [models], that model wins regardless of family order.
-  ///
-  /// Returns `null` if [models] contains no available models.
-  ProviderModel? pickFromProvider({
-    required Map<String, ProviderModel> models,
-    required String? defaultModelId,
-  }) {
-    // 1. Provider's backend default always wins.
-    if (defaultModelId != null) {
-      final m = models[defaultModelId];
-      if (m != null && m.isAvailable) return m;
-    }
-
-    // 2. Group by family, pick the best per family.
-    final byFamily = <String, List<ProviderModel>>{};
-    for (final m in models.values) {
-      if (!m.isAvailable) continue;
-      final family = m.family ?? m.id;
-      (byFamily[family] ??= []).add(m);
-    }
-    if (byFamily.isEmpty) return null;
-
-    // 3. Use the alphabetically first family. Stable, deterministic, and
-    //    independent of map iteration order so the same provider always
-    //    picks the same default.
-    final sortedKeys = byFamily.keys.toList()..sort();
-    final firstGroup = byFamily[sortedKeys.first];
-    if (firstGroup == null) return null;
-    return pickFromFamily(group: firstGroup, defaultModelId: defaultModelId);
   }
 }

@@ -24,13 +24,12 @@ ProviderInfo _provider({
   required String id,
   required List<ProviderModel> models,
   String? name,
-  String? defaultModelID,
 }) {
   return ProviderInfo(
     id: id,
     name: name ?? id,
     models: {for (final m in models) m.id: m},
-    defaultModelID: defaultModelID,
+    defaultModelID: null,
   );
 }
 
@@ -115,12 +114,11 @@ void main() {
       expect(visible, isNot(contains("sonnet-old")));
     });
 
-    test("honors the provider defaultModelID when picking the family representative", () {
+    test("ignores the provider defaultModelID and picks the newest by date", () {
       final sections = build(
         providers: [
           _provider(
             id: "p",
-            defaultModelID: "sonnet-old",
             models: [
               _model(id: "sonnet-new", family: "sonnet", releaseDate: DateTime(2026)),
               _model(id: "sonnet-old", family: "sonnet", releaseDate: DateTime(2024)),
@@ -129,8 +127,8 @@ void main() {
         ],
       );
       final visible = sections.single.models.where((m) => m.visibleByDefault).map((m) => m.modelID);
-      expect(visible, contains("sonnet-old"));
-      expect(visible, isNot(contains("sonnet-new")));
+      expect(visible, contains("sonnet-new"));
+      expect(visible, isNot(contains("sonnet-old")));
     });
 
     test("treats models without a family as their own family", () {

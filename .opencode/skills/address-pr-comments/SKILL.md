@@ -17,7 +17,9 @@ Addresses unresolved inline PR review comments by assessing their validity, impl
 6. **Extra scrutiny for AI/bot comments**: Comments from AI reviewers or bots require more careful assessment. They are more likely to be incorrect, irrelevant, or based on stale context.
 7. **Human comments are trusted by default**: Comments from actual humans should be assumed valid unless you have a strong reason to believe they are wrong, detrimental, or cause likely unintended side effects.
 8. **Single commit**: All fixes can be committed together in a single commit. The user squash-merges at the end.
-9. **Outdated comments**: If `is_outdated == true`, assess whether the comment is still relevant. If the issue still exists in the current code, address it. If not, reply explaining why it is no longer applicable.
+9. **Never amend**: Always create new commits when addressing feedback. Do not use `git commit --amend`, `git rebase` to rewrite published history, or any other history-rewriting operation. If you make a mistake in a commit, fix it with a follow-up commit rather than rewriting.
+10. **Never force push**: Do not use force push under any circumstances. If the remote branch has moved ahead of your local branch, pull/merge and continue with normal commits. History rewriting on a shared branch is forbidden.
+11. **Outdated comments**: If `is_outdated == true`, assess whether the comment is still relevant. If the issue still exists in the current code, address it. If not, reply explaining why it is no longer applicable.
 
 ## Workflow
 
@@ -122,7 +124,7 @@ git push origin <branch-name>
 
 **Important:** Always commit and push BEFORE posting replies. If you post "Addressed" before pushing, the fixes won't be visible to reviewers, making the replies misleading.
 
-**Important:** DO NOT use force push without explicit per-instance consent. Do not assume that you can use force push again just because the user allowed it previously.
+**Important:** Never rewrite history when addressing PR feedback. Do not amend commits and do not force push. If the remote branch has diverged, pull/merge normally and add new commits on top. The user squash-merges at the end, so a linear chain of fix commits is expected.
 
 **No changes to commit:** If all fetched comments were invalid, outdated, or questions requiring no code change, skip the commit and push steps. Proceed directly to posting replies.
 
@@ -237,6 +239,10 @@ If the user explicitly asks you to look at resolved comments, omit the `--unreso
 - `gh` (authenticated via `gh auth login`)
 - `pr-inline-comments` skill (for fetching comments)
 - Access to the repository working tree (to read and edit files)
+
+## Determining the PR Number
+
+If the user invokes this skill without an explicit PR number (e.g. "address the PR comments" or "review feedback"), assume they are referring to the most recently raised PR in the current session. Look at the recent conversation for the latest PR URL or number; if in doubt, ask the user to confirm before fetching comments.
 
 ## Example Session
 
