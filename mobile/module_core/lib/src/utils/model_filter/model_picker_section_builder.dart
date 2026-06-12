@@ -141,10 +141,7 @@ class ModelPickerSectionBuilder {
     }
 
     for (final group in byFamily.values) {
-      final chosen = _defaultModelSelector.pickFromFamily(
-        group: group,
-        defaultModelId: provider.defaultModelID,
-      );
+      final chosen = _defaultModelSelector.pickFromFamily(group: group);
       if (chosen != null) visible.add(chosen.id);
     }
 
