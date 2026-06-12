@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:math";
 
 import "package:http/http.dart" as http;
@@ -268,19 +269,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       onDisconnected: reporter.markDisconnected,
     );
 
-    // Await cold-start (previously fire-and-forget). A failure leaves the plugin
-    // started but degraded rather than failing the whole bridge — the server
-    // answered a health probe, so it is addressable; the SSE stream keeps
-    // retrying and recovers the tracker.
-    try {
-      await api.initialize();
-      reporter.markConnected();
-    } on Object catch (error) {
-      Log.w("[opencode] cold-start did not complete cleanly: $error");
-      reporter.markDegradedNow();
-    }
-
-    return OpenCodeBridgePlugin(
+    final plugin = OpenCodeBridgePlugin(
       api: api,
       reporter: reporter,
       monitor: monitor,
@@ -289,5 +278,47 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       port: port,
       serverUrl: serverUrl,
     );
+
+    if (handle == null) {
+      // Attach probe failed: the server is already known to be unreachable, and
+      // the cold-start has no bound of its own — a wrong localhost process that
+      // accepts but never answers would hang start() under the bridge's startup
+      // mutex. Keep the legacy fail-soft shape instead: report degraded now and
+      // run the cold-start in the background; the SSE stream keeps retrying and
+      // recovers the tracker when the server appears.
+      reporter.markDegradedNow();
+      unawaited(
+        api.initialize().catchError((Object error, StackTrace stackTrace) {
+          Log.w("[opencode] background cold-start did not complete cleanly: $error");
+        }),
+      );
+    } else {
+      // Await cold-start (previously fire-and-forget). A failure leaves the
+      // plugin started but degraded rather than failing the whole bridge — the
+      // server answered a health probe, so it is addressable; the SSE stream
+      // keeps retrying and recovers the tracker.
+      try {
+        await api.initialize();
+        reporter.markConnected();
+      } on Object catch (error) {
+        Log.w("[opencode] cold-start did not complete cleanly: $error");
+        reporter.markDegradedNow();
+      }
+    }
+
+    // The cold-start is a phase boundary like any other: an abort observed here
+    // must roll back everything acquired so far (api/SSE transport, monitor,
+    // the owned child) before surfacing, or an aborted start leaks a live
+    // runtime. The wrapper's shutdown owns exactly that ordered teardown.
+    if (host.startAborted.isAborted) {
+      try {
+        await plugin.shutdown(budget: null);
+      } on Object catch (error) {
+        Log.e("[opencode] rollback after aborted start failed: $error");
+      }
+      throw const PluginStartAbortedException();
+    }
+
+    return plugin;
   }
 }

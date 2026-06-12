@@ -143,6 +143,18 @@ void main() {
       await expectLater(descriptor().start(host), throwsA(isA<PluginStartAbortedException>()));
       expect(host.ownershipRecord("owner-current"), isNull);
     });
+
+    test("an abort raised during cold-start rolls back the owned runtime and throws", () async {
+      host.ports.defaultBindable = true;
+      apiRecorder.onInitialize = host.abort.abort;
+
+      await expectLater(descriptor().start(host), throwsA(isA<PluginStartAbortedException>()));
+
+      // The api (and its SSE transport) was torn down and the owned child was
+      // stopped: its ownership record is gone.
+      expect(apiRecorder.last!.disposeCount, equals(1));
+      expect(host.ownershipRecord("owner-current"), isNull);
+    });
   });
 
   group("OpenCodePluginDescriptor.start (attach / --no-auto-start)", () {
@@ -192,6 +204,25 @@ void main() {
 
       await plugin.shutdown(budget: null);
     });
+
+    test("a failed attach probe does not block start on the cold-start", () async {
+      final host = attachHost();
+      // A pathological "server" that accepts connections but never answers: the
+      // cold-start future never completes. start() must not await it once the
+      // probe has already failed.
+      apiRecorder.neverCompleteInitialize = true;
+      final descriptor = OpenCodePluginDescriptor(
+        buildApi: apiRecorder.build,
+        probeClientFactory: () => MockClient((_) async => http.Response("nope", 503)),
+      );
+
+      final plugin = await descriptor.start(host).timeout(const Duration(seconds: 5));
+
+      expect(plugin.currentStatus, isA<PluginDegraded>());
+      expect(apiRecorder.last!.initializeCalled, isTrue);
+
+      await plugin.shutdown(budget: null);
+    });
   });
 }
 
@@ -201,6 +232,8 @@ void main() {
 
 class _FakeApiRecorder {
   Object? initializeError;
+  void Function()? onInitialize;
+  bool neverCompleteInitialize = false;
   final List<_FakeManagedApi> built = <_FakeManagedApi>[];
 
   _FakeManagedApi? get last => built.isEmpty ? null : built.last;
@@ -213,6 +246,8 @@ class _FakeApiRecorder {
   }) {
     final api = _FakeManagedApi(
       initializeError: initializeError,
+      onInitialize: onInitialize,
+      neverCompleteInitialize: neverCompleteInitialize,
       onConnected: onConnected,
       onDisconnected: onDisconnected,
     );
@@ -222,9 +257,17 @@ class _FakeApiRecorder {
 }
 
 class _FakeManagedApi implements OpenCodeManagedApi {
-  _FakeManagedApi({required this.initializeError, required this.onConnected, required this.onDisconnected});
+  _FakeManagedApi({
+    required this.initializeError,
+    required this.onInitialize,
+    required this.neverCompleteInitialize,
+    required this.onConnected,
+    required this.onDisconnected,
+  });
 
   final Object? initializeError;
+  final void Function()? onInitialize;
+  final bool neverCompleteInitialize;
   final void Function() onConnected;
   final void Function() onDisconnected;
   bool initializeCalled = false;
@@ -233,6 +276,10 @@ class _FakeManagedApi implements OpenCodeManagedApi {
   @override
   Future<void> initialize() async {
     initializeCalled = true;
+    onInitialize?.call();
+    if (neverCompleteInitialize) {
+      return Completer<void>().future;
+    }
     final error = initializeError;
     if (error != null) {
       throw error;
