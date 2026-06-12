@@ -524,9 +524,12 @@ export const PrMonitorPlugin: Plugin = async ({ client, directory, worktree, $ }
     return normalizeSnapshot(payload, { ignoreTag: config.ignoreCommentTag, selfLogin })
   }
 
-  const deliver = (sessionID: string) => (report: string) => {
+  // `agent` must be sent explicitly: agent-less prompts resolve to the server's
+  // default agent, which fails when that default is configured as a subagent
+  // (observed live: 'default agent "build" is a subagent').
+  const deliver = (sessionID: string, agent: string) => (report: string) => {
     void client.session
-      .promptAsync({ path: { id: sessionID }, body: { parts: [{ type: "text", text: report }] } })
+      .promptAsync({ path: { id: sessionID }, body: { agent, parts: [{ type: "text", text: report }] } })
       .catch((error: unknown) => log(`failed to deliver report to session ${sessionID}: ${error}`))
   }
 
@@ -542,7 +545,7 @@ export const PrMonitorPlugin: Plugin = async ({ client, directory, worktree, $ }
     return [entry.watch]
   }
 
-  const startWatch = async (sessionID: string, pr: string): Promise<string> => {
+  const startWatch = async (sessionID: string, agent: string, pr: string): Promise<string> => {
     const target = parseTarget(pr)
     if ("error" in target) return target.error
     const key = `${sessionID} ${targetKey(target)}`
@@ -574,7 +577,7 @@ export const PrMonitorPlugin: Plugin = async ({ client, directory, worktree, $ }
       deps: {
         now: Date.now,
         fetchSnapshot: () => fetchSnapshot(target, config),
-        deliver: deliver(sessionID),
+        deliver: deliver(sessionID, agent),
         log,
         onStopped: () => {
           const entry = watches.get(key)
@@ -617,7 +620,7 @@ export const PrMonitorPlugin: Plugin = async ({ client, directory, worktree, $ }
           switch (args.action) {
             case "start": {
               if (!args.pr || args.pr === "all") return "action 'start' requires a single explicit pr: 'owner/repo#123' or a PR URL."
-              return await startWatch(sessionID, args.pr)
+              return await startWatch(sessionID, context.agent, args.pr)
             }
             case "stop": {
               if (!args.pr) return "action 'stop' requires pr: 'owner/repo#123', a PR URL, or 'all'."
