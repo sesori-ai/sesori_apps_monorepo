@@ -8,8 +8,12 @@ MODULES := sesori_plugin_interface sesori_plugin_runtime sesori_plugin_opencode 
 
 codegen:
 	@for mod in $(MODULES); do \
-		echo "=== codegen: $$mod ==="; \
-		(cd $$mod && $(DART) run build_runner build --delete-conflicting-outputs); \
+		if grep -q build_runner $$mod/pubspec.yaml; then \
+			echo "=== codegen: $$mod ==="; \
+			(cd $$mod && $(DART) run build_runner build --delete-conflicting-outputs); \
+		else \
+			echo "=== codegen: $$mod (skipped: no build_runner dependency) ==="; \
+		fi; \
 	done
 
 pub-get:
