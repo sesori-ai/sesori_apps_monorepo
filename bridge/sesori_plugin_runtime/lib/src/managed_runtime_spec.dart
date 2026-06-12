@@ -154,13 +154,17 @@ class DynamicPortPolicy extends RuntimePortPolicy {
   }) : assert(maxAttempts > 0, "maxAttempts must be positive"),
        super();
 
-  /// Candidate ports to consider, in order. May be a lazy generator (e.g. a
-  /// random source). Candidates equal to [reservedPort] or outside
-  /// [[minPort], [maxPort]] are skipped.
+  /// Candidate ports to consider, in order. May be a lazy or unbounded
+  /// generator (e.g. a random source): the supervisor pulls at most
+  /// [maxAttempts] values from it and counts every value examined against that
+  /// cap — including ones skipped for being [reservedPort] or outside
+  /// [[minPort], [maxPort]] — so even an all-invalid infinite source still
+  /// terminates rather than spinning under the startup mutex.
   final Iterable<int> candidates;
 
-  /// Maximum number of candidates examined (whether bindable or not) before
-  /// giving up — bounds discovery the way the legacy five-candidate cap does.
+  /// Maximum number of candidates examined (whether skipped, unbindable, or
+  /// attempted) before giving up — bounds discovery the way the legacy
+  /// five-candidate cap does, and guarantees termination for lazy [candidates].
   final int maxAttempts;
 
   /// The reserved default port, excluded from dynamic discovery.

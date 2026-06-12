@@ -382,6 +382,48 @@ void main() {
       expect(fakes.spawn.spawnedPorts, isEmpty);
       expect(fakes.ownership.records, isEmpty);
     });
+
+    test("rejects intent side-file timing once, never retrying across dynamic candidates", () async {
+      fakes.bindable.byPort.addAll(<int, bool>{49152: true, 49153: true});
+
+      await expectLater(
+        fakes.service().start(
+          spec: fakes.spec(
+            portPolicy: _dynamic(<int>[49152, 49153]),
+            recordTiming: RuntimeRecordTiming.intentSideFile,
+          ),
+          terminatedBridgeIdentities: const <ProcessIdentity>[],
+        ),
+        throwsA(isA<UnsupportedError>()),
+      );
+
+      // Rejected before the candidate loop: nothing probed or spawned.
+      expect(fakes.bindable.probedPorts, isEmpty);
+      expect(fakes.spawn.spawnedPorts, isEmpty);
+    });
+
+    test("stops the spawned child when the record factory throws", () async {
+      final spawned = _spawned(pid: 230, port: 50143, exitImmediately: false);
+      fakes.spawn.results.add(spawned);
+      fakes.processes.forceHooks[230] = spawned.completeExit;
+
+      await expectLater(
+        fakes.service().start(
+          spec: fakes.spec(
+            portPolicy: const ExplicitPortPolicy(port: 50143),
+            buildRecord: (draft) => throw StateError("malformed record"),
+          ),
+          terminatedBridgeIdentities: const <ProcessIdentity>[],
+        ),
+        throwsA(isA<StateError>()),
+      );
+
+      // The orphaned child is stopped via host signals; no record is ever written.
+      expect(fakes.spawn.spawnedPorts, equals(<int>[50143]));
+      expect(fakes.processes.signalRequests, equals(<String>["graceful:230", "force:230"]));
+      expect(fakes.ownership.writeCallCount, equals(0));
+      expect(fakes.ownership.records, isEmpty);
+    });
   });
 
   group("ManagedProcessService.start (deadline health policy)", () {
@@ -724,12 +766,13 @@ class _Fakes {
     RuntimeRecordTiming recordTiming = RuntimeRecordTiming.afterSpawn,
     Future<void> Function({required int port})? validateRuntime,
     bool failOnEarlyChildExit = false,
+    _TestRecord Function(RuntimeRecordDraft draft)? buildRecord,
   }) {
     return ManagedRuntimeSpec<_TestRecord>(
       spawn: spawn.spawn,
       probeHealth: probe.probe,
       probePortBindable: bindable.bindable,
-      buildRecord: _buildRecord,
+      buildRecord: buildRecord ?? _buildRecord,
       portPolicy: portPolicy,
       healthPolicy: healthPolicy,
       recordTiming: recordTiming,

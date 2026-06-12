@@ -48,6 +48,14 @@ class ManagedProcessService<R> {
   }) async {
     final abort = startAborted ?? StartAbortSignal.never;
 
+    // A deterministic configuration error: reject it once, up front, so the
+    // dynamic path never retries it candidate by candidate.
+    if (spec.recordTiming == RuntimeRecordTiming.intentSideFile) {
+      // The bridge-private intent side file is introduced in a later step;
+      // until then only the legacy after-spawn timing is representable.
+      throw UnsupportedError("[$_runtimeId] intent side-file record timing is not available yet");
+    }
+
     await cleanupStaleOwnedRuntimes(terminatedBridgeIdentities: terminatedBridgeIdentities);
     _throwIfAborted(abort);
 
@@ -168,25 +176,31 @@ class ManagedProcessService<R> {
     required int port,
     required StartAbortSignal abort,
   }) async {
-    if (spec.recordTiming == RuntimeRecordTiming.intentSideFile) {
-      // The bridge-private intent side file is introduced in a later step;
-      // until then only the legacy after-spawn timing is representable.
-      throw UnsupportedError("[$_runtimeId] intent side-file record timing is not available yet");
-    }
-
     // Spawn errors propagate before any ownership state is acquired: the
     // explicit-port caller surfaces them raw, the dynamic caller retries.
     final spawned = await spec.spawn(port: port);
 
-    final record = spec.buildRecord(
-      RuntimeRecordDraft(
-        ownerSessionId: _bridge.ownerSessionId,
-        runtimeIdentity: spawned.identity,
-        port: port,
-        bridgeIdentity: _bridge.identity,
-        startedAt: _clock.now(),
-      ),
-    );
+    final R record;
+    try {
+      record = spec.buildRecord(
+        RuntimeRecordDraft(
+          ownerSessionId: _bridge.ownerSessionId,
+          runtimeIdentity: spawned.identity,
+          port: port,
+          bridgeIdentity: _bridge.identity,
+          startedAt: _clock.now(),
+        ),
+      );
+    } on Object {
+      // The child is already running but not yet tracked or recorded — stop it
+      // directly so a record-factory failure cannot leak a started runtime.
+      try {
+        await _stopUntrackedSpawn(process: spawned);
+      } on Object catch (cleanupError, cleanupStackTrace) {
+        Log.w("[$_runtimeId] Failed to stop an orphaned child after a record build error on port $port", cleanupError, cleanupStackTrace);
+      }
+      rethrow;
+    }
     trackOwnedRuntime(ownerSessionId: _ownerSessionIdOf(record: record), process: spawned);
 
     try {
@@ -309,6 +323,20 @@ class ManagedProcessService<R> {
 
   Future<void> _cleanupFailedStart({required R record}) async {
     await _stopRecord(record: record, removeOwnership: true);
+  }
+
+  /// Stops a freshly spawned child that has no ownership record yet (the record
+  /// factory threw before one could be built). Graceful, then force if it
+  /// outlives the grace period — there is nothing tracked or persisted to undo.
+  Future<void> _stopUntrackedSpawn({required SpawnedProcess process}) async {
+    if (await _spawnedProcessExited(process: process)) {
+      return;
+    }
+    await _processes.signalGraceful(pid: process.pid);
+    await _clock.delay(duration: _gracefulShutdownWait);
+    if (!await _spawnedProcessExited(process: process)) {
+      await _processes.signalForce(pid: process.pid);
+    }
   }
 
   void _throwIfAborted(StartAbortSignal abort) {
