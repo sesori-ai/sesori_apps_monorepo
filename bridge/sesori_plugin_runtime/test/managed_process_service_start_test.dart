@@ -365,7 +365,7 @@ void main() {
       expect(fakes.ownership.upsertedStatuses, equals(<_TestStatus>[_TestStatus.starting]));
     });
 
-    test("rejects the not-yet-available intent side-file record timing", () async {
+    test("rejects intent side-file record timing when no intent store is wired", () async {
       fakes.spawn.results.add(_spawned(pid: 801, port: 50142));
 
       await expectLater(
@@ -376,14 +376,14 @@ void main() {
           ),
           terminatedBridgeIdentities: const <ProcessIdentity>[],
         ),
-        throwsA(isA<UnsupportedError>()),
+        throwsA(isA<ArgumentError>()),
       );
 
       expect(fakes.spawn.spawnedPorts, isEmpty);
       expect(fakes.ownership.records, isEmpty);
     });
 
-    test("rejects intent side-file timing once, never retrying across dynamic candidates", () async {
+    test("rejects a storeless intent timing once, never retrying across dynamic candidates", () async {
       fakes.bindable.byPort.addAll(<int, bool>{49152: true, 49153: true});
 
       await expectLater(
@@ -394,10 +394,11 @@ void main() {
           ),
           terminatedBridgeIdentities: const <ProcessIdentity>[],
         ),
-        throwsA(isA<UnsupportedError>()),
+        throwsA(isA<ArgumentError>()),
       );
 
-      // Rejected before the candidate loop: nothing probed or spawned.
+      // Rejected up front, before cleanup and the candidate loop: nothing
+      // probed or spawned.
       expect(fakes.bindable.probedPorts, isEmpty);
       expect(fakes.spawn.spawnedPorts, isEmpty);
     });
@@ -520,12 +521,12 @@ void main() {
       expect(fakes.bindable.probedPorts, isEmpty);
     });
 
-    test("aborting after spawn rolls back the record and child", () async {
+    test("aborting at the post-spawn checkpoint stops the child before any record is written", () async {
       final controller = StartAbortController();
-      final spawned = _spawned(pid: 401, port: 50160, exitImmediately: true);
+      final spawned = _spawned(pid: 401, port: 50160, exitImmediately: false);
       fakes.spawn.results.add(spawned);
       fakes.spawn.onSpawn = controller.abort;
-      fakes.processes.inspectResults[401] = <ProcessIdentity?>[null];
+      fakes.processes.forceHooks[401] = spawned.completeExit;
 
       await expectLater(
         fakes.service().start(
@@ -537,7 +538,10 @@ void main() {
       );
 
       expect(fakes.spawn.spawnedPorts, equals(<int>[50160]));
-      expect(fakes.ownership.upsertedStatuses, equals(<_TestStatus>[_TestStatus.starting]));
+      // The abort is honored immediately after spawn (the documented checkpoint):
+      // the untracked child is stopped and no ownership record is ever written.
+      expect(fakes.processes.signalRequests, equals(<String>["graceful:401", "force:401"]));
+      expect(fakes.ownership.upsertedStatuses, isEmpty);
       expect(fakes.ownership.records, isEmpty);
     });
 
