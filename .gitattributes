@@ -1,0 +1,21 @@
+# Generated code — collapse diffs on GitHub and exclude from language stats
+*.g.dart linguist-generated=true
+*.freezed.dart linguist-generated=true
+*.gr.dart linguist-generated=true
+*.config.dart linguist-generated=true
+*.steps.dart linguist-generated=true
+*.mocks.dart linguist-generated=true
+**/drift_schemas/** linguist-generated=true
+
+# Lockfiles
+pubspec.lock linguist-generated=true
+Gemfile.lock linguist-generated=true
+Podfile.lock linguist-generated=true
+
+# Flutter platform-specific generated files
+**/GeneratedPluginRegistrant.* linguist-generated=true
+**/generated_plugin_registrant.* linguist-generated=true
+**/generated_plugins.cmake linguist-generated=true
+
+# Test directories — don't render diffs by default
+**/test/** linguist-generated=true
