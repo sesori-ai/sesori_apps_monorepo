@@ -219,25 +219,68 @@ void main() {
     );
 
     test(
-      "uses the alphabetically first family when picking the provider default",
+      "picks the best representative across all families, not just the alphabetically first",
       () {
         final models = {
-          "zeta": _model(
-            id: "zeta",
-            name: "Zeta (latest)",
-            family: "zeta-family",
-            releaseDate: DateTime(2020, 1),
-          ),
           "alpha": _model(
             id: "alpha",
             name: "Alpha",
             family: "alpha-family",
             releaseDate: DateTime(2025, 1),
           ),
+          "zeta-newer": _model(
+            id: "zeta-newer",
+            name: "Zeta Newer",
+            family: "zeta-family",
+            releaseDate: DateTime(2026, 4),
+          ),
         };
         final picked = selector.pickFromProvider(models: models);
-        // alpha-family is alphabetically first, so alpha wins even though
-        // zeta is marked "(latest)".
+        // zeta-family is alphabetically later but has the newer model.
+        expect(picked?.id, "zeta-newer");
+      },
+    );
+
+    test(
+      "prefers a '(latest)' marker in any family over a newer date in another family",
+      () {
+        final models = {
+          "newer-plain": _model(
+            id: "newer-plain",
+            name: "Newer Plain",
+            family: "plain-family",
+            releaseDate: DateTime(2026, 4),
+          ),
+          "marked-older": _model(
+            id: "marked-older",
+            name: "Marked Older (latest)",
+            family: "marked-family",
+            releaseDate: DateTime(2025, 1),
+          ),
+        };
+        final picked = selector.pickFromProvider(models: models);
+        expect(picked?.id, "marked-older");
+      },
+    );
+
+    test(
+      "breaks cross-family ties deterministically by id when dates are equal",
+      () {
+        final models = {
+          "zebra": _model(
+            id: "zebra",
+            name: "Zeta",
+            family: "zeta-family",
+            releaseDate: DateTime(2026, 4),
+          ),
+          "alpha": _model(
+            id: "alpha",
+            name: "Alpha",
+            family: "alpha-family",
+            releaseDate: DateTime(2026, 4),
+          ),
+        };
+        final picked = selector.pickFromProvider(models: models);
         expect(picked?.id, "alpha");
       },
     );
