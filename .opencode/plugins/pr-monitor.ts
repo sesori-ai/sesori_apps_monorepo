@@ -518,6 +518,16 @@ class PrWatch {
 export const PrMonitorPlugin: Plugin = async ({ client, directory, worktree, $ }) => {
   type Entry = { watch: PrWatch; timer: ReturnType<typeof setInterval> }
   const watches = new Map<string, Entry>() // key: `${sessionID} ${owner/repo#n}`
+
+  // Plugin reloads can re-instantiate this plugin without finalizing the
+  // previous instance, leaving its setInterval timers polling as invisible
+  // zombies that deliver duplicate reports (observed live). Each instance
+  // registers a killer on globalThis; the next instance invokes it on init.
+  const globalState = globalThis as { __sesoriPrMonitorTakeover?: () => void }
+  globalState.__sesoriPrMonitorTakeover?.()
+  globalState.__sesoriPrMonitorTakeover = () => {
+    for (const entry of [...watches.values()]) entry.watch.stop()
+  }
   let selfLogin: string | undefined
 
   const log = (message: string): void => {
@@ -554,8 +564,17 @@ export const PrMonitorPlugin: Plugin = async ({ client, directory, worktree, $ }
   // `agent` must be sent explicitly: agent-less prompts resolve to the server's
   // default agent, which fails when that default is configured as a subagent
   // (observed live: 'default agent "build" is a subagent').
+  // The SDK client defaults to responseStyle "fields" / throwOnError false:
+  // promptAsync resolves { data, error } and NEVER rejects on server errors,
+  // so delivery failure must be detected via the error field explicitly.
   const deliver = (sessionID: string, agent: string) => async (report: string): Promise<void> => {
-    await client.session.promptAsync({ path: { id: sessionID }, body: { agent, parts: [{ type: "text", text: report }] } })
+    const result = await client.session.promptAsync({
+      path: { id: sessionID },
+      body: { agent, parts: [{ type: "text", text: report }] },
+    })
+    if (result.error !== undefined) {
+      throw new Error(`prompt_async rejected: ${JSON.stringify(result.error)}`)
+    }
   }
 
   const sessionWatches = (sessionID: string): PrWatch[] =>
