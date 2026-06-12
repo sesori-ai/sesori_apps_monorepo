@@ -564,6 +564,27 @@ void main() {
       expect(fakes.ownership.records, isEmpty);
     });
 
+    test("aborting settles as an abort even when the remaining candidates are all invalid", () async {
+      // The first candidate's spawn aborts the start and fails; every later
+      // candidate is the reserved port, so the loop would otherwise skip them
+      // all and end as a generic exhaustion failure instead of an abort.
+      final controller = StartAbortController();
+      fakes.bindable.byPort[49152] = true;
+      fakes.spawn.results.add(StateError("bind race"));
+      fakes.spawn.onSpawn = controller.abort;
+
+      await expectLater(
+        fakes.service().start(
+          spec: fakes.spec(portPolicy: _dynamic(<int>[49152, 4096, 4096, 4096])),
+          terminatedBridgeIdentities: const <ProcessIdentity>[],
+          startAborted: controller.signal,
+        ),
+        throwsA(isA<PluginStartAbortedException>()),
+      );
+
+      expect(fakes.spawn.spawnedPorts, equals(<int>[49152]));
+    });
+
     test("aborting after validation rolls back before marking ready", () async {
       final controller = StartAbortController();
       fakes.spawn.results.add(_spawned(pid: 121, port: 50161, exitImmediately: true));

@@ -135,11 +135,14 @@ class ManagedProcessService<R> {
       }
       attempts += 1;
 
+      // Honor cancellation on every iteration boundary, including the ones
+      // that only skip an invalid candidate, so an abort during an all-invalid
+      // tail settles as an abort rather than a generic exhaustion failure.
+      _throwIfAborted(abort);
+
       if (port == policy.reservedPort || port < policy.minPort || port > policy.maxPort) {
         continue;
       }
-
-      _throwIfAborted(abort);
 
       final bindable = await spec.probePortBindable(port: port);
       if (!bindable) {
