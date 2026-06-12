@@ -320,6 +320,109 @@ void main() {
     );
   });
 
+  testWidgets("deleting the selected session returns the wide detail pane to the empty state", (tester) async {
+    const location = "/projects/p1/sessions?name=Project+One";
+    final harness = AdaptiveSessionRouterTestHarness();
+    await tester.binding.setSurfaceSize(const Size(1024, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    addTearDown(harness.tearDown);
+    await harness.setUp(
+      initialLocation: location,
+      currentRouteDef: AppRouteDef.sessions,
+      sessionsByProject: {
+        "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
+      },
+    );
+    when(
+      () => harness.sessionRepository.deleteSession(
+        sessionId: any(named: "sessionId"),
+        deleteWorktree: any(named: "deleteWorktree"),
+        deleteBranch: any(named: "deleteBranch"),
+        force: any(named: "force"),
+      ),
+    ).thenAnswer((_) async => ApiResponse<void>.success(null));
+
+    await tester.pumpWidget(harness.buildApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Session One"));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
+
+    await tester.longPress(
+      find.descendant(
+        of: find.byKey(const Key("session-split-left-pane")),
+        matching: find.text("Session One"),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Delete"));
+    await tester.pumpAndSettle();
+
+    final uri = Uri.parse(harness.currentLocation);
+    expect(uri.path, "/projects/p1/sessions");
+    expect(uri.queryParameters["name"], "Project One");
+    expect(find.byKey(const Key("empty-session-detail-panel")), findsOneWidget);
+    expect(find.byKey(const ValueKey("session-detail-session-1")), findsNothing);
+
+    // Let the deletion snackbar expire so no timers outlive the test.
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets("deleting an unselected session keeps the open wide detail pane", (tester) async {
+    const location = "/projects/p1/sessions?name=Project+One";
+    final harness = AdaptiveSessionRouterTestHarness();
+    await tester.binding.setSurfaceSize(const Size(1024, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    addTearDown(harness.tearDown);
+    await harness.setUp(
+      initialLocation: location,
+      currentRouteDef: AppRouteDef.sessions,
+      sessionsByProject: {
+        "p1": [
+          adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One"),
+          adaptiveTestSession(projectId: "p1", id: "session-2", title: "Session Two"),
+        ],
+      },
+    );
+    when(
+      () => harness.sessionRepository.deleteSession(
+        sessionId: any(named: "sessionId"),
+        deleteWorktree: any(named: "deleteWorktree"),
+        deleteBranch: any(named: "deleteBranch"),
+        force: any(named: "force"),
+      ),
+    ).thenAnswer((_) async => ApiResponse<void>.success(null));
+
+    await tester.pumpWidget(harness.buildApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Session One"));
+    await tester.pumpAndSettle();
+
+    await tester.longPress(
+      find.descendant(
+        of: find.byKey(const Key("session-split-left-pane")),
+        matching: find.text("Session Two"),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Delete"));
+    await tester.pumpAndSettle();
+
+    expect(Uri.parse(harness.currentLocation).path, "/projects/p1/sessions/session-1");
+    expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
+    expect(find.byKey(const Key("empty-session-detail-panel")), findsNothing);
+
+    // Let the deletion snackbar expire so no timers outlive the test.
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+  });
+
   testWidgets("wide shell preserves the left-list cubit for same-project routes and resets it for a new project", (
     tester,
   ) async {

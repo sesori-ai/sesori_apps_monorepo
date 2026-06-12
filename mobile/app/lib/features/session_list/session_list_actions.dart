@@ -185,6 +185,7 @@ Future<void> _deleteSession({
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(SnackBar(content: Text(loc.sessionListDeleted)));
+    _closeDeletedSessionRoute(context: context, sessionId: sessionId);
     return;
   }
 
@@ -205,4 +206,26 @@ Future<void> _deleteSession({
       ..clearSnackBars()
       ..showSnackBar(SnackBar(content: Text(loc.sessionListDeleteFailed)));
   }
+}
+
+/// Leaves the deleted session's detail (or diffs) route when it is still the
+/// current location.
+///
+/// In the split layout the detail pane would otherwise keep rendering the
+/// deleted session; returning to the sessions route swaps it for the empty
+/// "select a session" panel. In the narrow layout the sessions route is
+/// already current when deleting from the list, so this is a no-op there.
+void _closeDeletedSessionRoute({required BuildContext context, required String sessionId}) {
+  final routeState = GoRouterState.of(context);
+  if (routeState.pathParameters["sessionId"] != sessionId) return;
+
+  final projectId = routeState.pathParameters["projectId"];
+  if (projectId == null) return;
+
+  context.goRoute(
+    AppRoute.sessions(
+      projectId: projectId,
+      projectName: routeState.uri.queryParameters[projectNameQueryParam],
+    ),
+  );
 }
