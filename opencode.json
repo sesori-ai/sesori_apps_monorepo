@@ -12,6 +12,20 @@
       "enabled": true
     }
   },
+  "references": {
+    "sesori-auth": {
+      "repository": "sesori-ai/sesori_auth_server",
+      "description": "Sesori auth server — OAuth flows, token issuance, and auth API endpoints used by the bridge and mobile app"
+    },
+    "sesori-relay": {
+      "repository": "sesori-ai/sesori_relay_server",
+      "description": "Sesori relay server — WebSocket routing of encrypted frames between bridge and mobile app"
+    },
+    "opencode": {
+      "repository": "anomalyco/opencode",
+      "description": "OpenCode AI assistant — REST/SSE API the bridge plugin integrates with"
+    }
+  },
   "permission": {
     "skill": {
       "pr-inline-comments": "deny"
