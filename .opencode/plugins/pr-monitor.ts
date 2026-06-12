@@ -368,6 +368,7 @@ class PrWatch {
   private lastFlushAt: number
   private holdStartedAt: number | undefined
   private consecutiveFailures = 0
+  private deliveryFailures = 0
   private stopped = false
   private ticking = false
 
@@ -471,15 +472,26 @@ class PrWatch {
       forcedHoldMinutes = Math.round(heldMs / 60_000)
     }
     const previousFlushAt = this.lastFlushAt
+    const previousHoldStartedAt = this.holdStartedAt
     const report = this.flush(forcedHoldMinutes)
     void this.deps.deliver(report).then(
-      () => this.stopIfTerminal(),
+      () => {
+        this.deliveryFailures = 0
+        this.stopIfTerminal()
+      },
       (error: unknown) => {
-        // Delivery failed: restore the baseline and dirty flag so the same
-        // activity is re-reported on a later tick instead of silently lost.
+        // Delivery failed: restore the baseline, dirty flag, and CI-hold
+        // timer so the same activity is re-reported on a later tick without
+        // restarting the maxCiWaitMinutes window.
         this.lastFlushAt = previousFlushAt
         this.dirty = true
-        this.deps.log(`report delivery failed for ${targetKey(this.target)}, will retry: ${error}`)
+        this.holdStartedAt = previousHoldStartedAt
+        this.deliveryFailures += 1
+        this.deps.log(`report delivery failed for ${targetKey(this.target)} (${this.deliveryFailures}/${MAX_CONSECUTIVE_FAILURES}), will retry: ${error}`)
+        if (this.deliveryFailures >= MAX_CONSECUTIVE_FAILURES) {
+          this.deps.log(`monitor stopped for ${targetKey(this.target)}: ${MAX_CONSECUTIVE_FAILURES} consecutive delivery failures`)
+          this.stop()
+        }
       },
     )
   }
