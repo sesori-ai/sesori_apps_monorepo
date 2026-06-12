@@ -87,8 +87,8 @@
   <h1>Plugin Lifecycle Migration Plan</h1>
   <div class="sub">Move all OpenCode runtime ownership (spawn, ports, health, ownership records, DB maintenance) out of <code>bridge/app</code> and into the OpenCode plugin, behind a plugin interface that supports managed-runtime, direct-CLI, and remote-server plugins — with per-plugin enable/start/stop. Delivered as a ladder of small, always-green PRs.</div>
   <div class="meta">
-    <span><b>Status:</b> in progress (rev 3 — PR 1 merged #210, PR 2 shipped #223; their cards carry shipped-delta callouts binding on later PRs)</span>
-    <span><b>Date:</b> 2026-06-10 (rev 3: 2026-06-11)</span>
+    <span><b>Status:</b> in progress (rev 4 — PRs 1–8 merged (PR 8 = #239), PR 9 shipped #243; shipped cards carry delta callouts binding on later PRs)</span>
+    <span><b>Date:</b> 2026-06-10 (rev 3: 2026-06-11; rev 4: 2026-06-12)</span>
     <span><b>PRs:</b> 15, strictly sequential</span>
     <span><b>Max PR size:</b> ~2,000 changed lines (hard)</span>
     <span><b>Branch base:</b> main</span>
@@ -296,6 +296,15 @@
   <li>All features here are <b>off by default</b> and activate only when the real descriptor opts in at PR 12 — PR 10's wrapper keeps them off.</li>
 </ul>
 <div class="safe"><b>Why always-green:</b> no production consumer; everything default-off.</div>
+<div class="callout green">
+  <b>Shipped as #243 (2026-06-12).</b> Deltas vs this card, <b>binding on later PRs</b>:
+  <ul>
+    <li><b>The monitor is a separate class, not folded into the service.</b> <code>ManagedRuntimeMonitor&lt;R&gt;</code> composes <code>ManagedProcessService</code> and is the unit that drains stdio, watches exit, restarts, and publishes status via an injected <code>PluginStatusController</code>. <b>PR 10 keeps exit-monitoring/restart "off" by simply not constructing a monitor</b> (the service alone has no exit watch, so the fidelity suite is untouched); <b>PR 11 constructs the monitor, arms it with the started handle, and owns its status controller</b>; <b>PR 12 switches its <code>RuntimeRestartPolicy</code> from <code>disabled()</code> to <code>bounded(...)</code></b>. The restart policy is a <i>monitor constructor argument</i>, not a <code>ManagedRuntimeSpec</code> field.</li>
+    <li><b><code>restartOnPort()</code> lives on the service.</b> It waits (bounded by an advancing-clock deadline <i>and</i> a <code>maxPolls</code> backstop) for the address-frozen port to free, then reuses the cold-start spawn/record/health/rollback path — <i>no</i> stale cleanup. The monitor adopts its returned handle (adopt-before-stand-down, so a disarm racing the commit can't orphan the new child); restart pins the port and emits <code>PluginFailed</code> if it never frees.</li>
+    <li><b>Tightened abort contract (start-path behavior delta).</b> <code>start()</code> now honors the documented post-spawn abort checkpoint: an abort observed right after spawn stops the untracked child and throws <code>PluginStartAbortedException</code> <i>before</i> any starting record is written (previously the starting record was written then rolled back). <b>Inert on the legacy/PR-10 path</b> (<code>afterSpawn</code> + the never-abort signal ⇒ no-op), so the 1,224-line suite is unaffected; PR 11/12 emitters should expect no pre-record write on an aborted spawn.</li>
+    <li><b>Intent side-file.</b> <code>RuntimeRecordTiming.intentSideFile</code> is implemented via an injected <code>RuntimeStartIntentStore</code> (<code>ManagedProcessService(intentStore: …)</code>); the bridge-private <code>RuntimeStartIntent</code> carries <i>no child pid</i> and never touches <code>opencode-processes.json</code> (mixed-version inertness test). Selecting the timing with no store is an <code>ArgumentError</code> raised before stale cleanup (was <code>UnsupportedError</code>). <b>PR 11</b> supplies the store at <code>&lt;cacheDir&gt;/runtime/&lt;runtimeId&gt;-start-intent.json</code>; <b>PR 12's "crashed-mid-intent" case resolves implicitly</b> — a fresh spawning start overwrites+clears a leftover intent. PR 9 ships <b>no</b> cross-bridge reclamation path (deferred, as scoped).</li>
+  </ul>
+</div>
 </div>
 
 <div class="card pr">
