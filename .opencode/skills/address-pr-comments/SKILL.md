@@ -238,6 +238,10 @@ If the user explicitly asks you to look at resolved comments, omit the `--unreso
 - `pr-inline-comments` skill (for fetching comments)
 - Access to the repository working tree (to read and edit files)
 
+## Determining the PR Number
+
+If the user invokes this skill without an explicit PR number (e.g. "address the PR comments" or "review feedback"), assume they are referring to the most recently raised PR in the current session. Look at the recent conversation for the latest PR URL or number; if in doubt, ask the user to confirm before fetching comments.
+
 ## Example Session
 
 User: "Address the comments on PR 42"

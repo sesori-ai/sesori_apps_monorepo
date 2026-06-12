@@ -34,16 +34,6 @@ class DefaultModelSelector {
   ProviderModel? pickFromFamily({required Iterable<ProviderModel> group}) {
     final list = group.where((m) => m.isAvailable).toList();
     if (list.isEmpty) return null;
-
-    // 1. Upstream "(latest)" name marker. Ties broken by newest release
-    //    date, then by `id` for determinism.
-    final latestMarked =
-        list.where((m) => m.name.toLowerCase().contains("(latest)")).toList();
-    if (latestMarked.isNotEmpty) {
-      return _bestModel(latestMarked);
-    }
-
-    // 2. Newest by releaseDate, then by `id` for determinism.
     return _bestModel(list);
   }
 
