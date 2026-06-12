@@ -369,6 +369,8 @@ class PrWatch {
   private holdStartedAt: number | undefined
   private consecutiveFailures = 0
   private deliveryFailures = 0
+  private fetchStartedAt: number | undefined
+  private snapshotAt: number | undefined
   private stopped = false
   private ticking = false
 
@@ -401,12 +403,14 @@ class PrWatch {
     try {
       let next: PrSnapshot
       try {
+        this.fetchStartedAt = this.deps.now()
         next = await this.deps.fetchSnapshot()
       } catch (error) {
         this.handlePollFailure(error)
         return
       }
       this.consecutiveFailures = 0
+      this.snapshotAt = this.fetchStartedAt
       if (this.snapshot !== undefined && detectActivity(this.snapshot, next)) {
         this.dirty = true
         this.lastActivityAt = this.deps.now()
@@ -424,8 +428,10 @@ class PrWatch {
   /** Manual flush: always re-fetches and always returns a full report. */
   async manualFlush(): Promise<string> {
     try {
+      this.fetchStartedAt = this.deps.now()
       this.snapshot = await this.deps.fetchSnapshot()
       this.consecutiveFailures = 0
+      this.snapshotAt = this.fetchStartedAt
     } catch (error) {
       if (this.snapshot === undefined) return `${targetKey(this.target)}: flush failed — ${(error as Error).message}`
       // Refresh failed: report from the stale snapshot WITHOUT advancing the
@@ -509,7 +515,7 @@ class PrWatch {
   private flush(forcedHoldMinutes: number | undefined): string {
     const snapshot = this.snapshot!
     const report = buildReport(this.target, snapshot, { baselineMs: this.lastFlushAt, forcedHoldMinutes })
-    this.lastFlushAt = this.deps.now()
+    this.lastFlushAt = this.snapshotAt ?? this.deps.now()
     this.dirty = false
     this.holdStartedAt = undefined
     return report
