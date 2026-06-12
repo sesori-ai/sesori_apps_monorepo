@@ -37,7 +37,6 @@ import "../../server/host/bridge_host_json_store.dart";
 import "../../server/host/bridge_host_port_service.dart";
 import "../../server/host/bridge_host_process_service.dart";
 import "../../server/host/bridge_plugin_host_impl.dart";
-import "../../server/models/open_code_ownership_record.dart";
 import "../../server/repositories/bridge_instance_repository.dart";
 import "../../server/repositories/process_repository.dart";
 import "../../server/repositories/startup_mutex_repository.dart";
@@ -71,7 +70,7 @@ import "../sse/sse_manager.dart";
 import "bridge_cli_options.dart";
 import "bridge_runtime.dart";
 import "bridge_runtime_auth.dart";
-import "bridge_runtime_server.dart";
+import "bridge_runtime_server_exception.dart";
 import "bridge_shutdown_coordinator.dart";
 import "plugin_failure_latch.dart";
 import "plugin_manager.dart";
@@ -492,21 +491,4 @@ class BridgeRuntimeRunner {
   static String _buildOwnerSessionId({required ProcessIdentity currentBridgeIdentity}) {
     return '${currentBridgeIdentity.pid}:${currentBridgeIdentity.startMarker ?? currentBridgeIdentity.capturedAt.toIso8601String()}';
   }
-}
-
-void registerOwnedOpenCodeShutdown({
-  required BridgeShutdownCoordinator shutdownCoordinator,
-  required BridgeServerRuntime serverRuntime,
-  required Future<void> Function(OpenCodeOwnershipRecord record) stopOwnedOpenCode,
-}) {
-  final ownedOpenCodeRecord = serverRuntime.ownedOpenCodeRecord;
-  if (ownedOpenCodeRecord == null) {
-    return;
-  }
-
-  shutdownCoordinator.add(
-    disposable: () {
-      return stopOwnedOpenCode(ownedOpenCodeRecord);
-    },
-  );
 }
