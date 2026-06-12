@@ -1,6 +1,8 @@
 const bundleId = "com.sesori.app";
 const redirectUri = "$bundleId://auth/callback";
 const projectNameQueryParam = "name";
+const projectIdPathParam = "projectId";
+const sessionIdPathParam = "sessionId";
 
 String _appendQuery({required String path, required Map<String, String> queryParameters}) {
   if (queryParameters.isEmpty) return path;
@@ -16,10 +18,10 @@ enum AppRouteDef {
   login("/login"),
   projects("/projects"),
   settings("/settings"),
-  sessions("/projects/:projectId/sessions"),
-  newSession("/projects/:projectId/sessions/new"),
-  sessionDetail("/projects/:projectId/sessions/:sessionId"),
-  sessionDiffs("/projects/:projectId/sessions/:sessionId/diffs"),
+  sessions("/projects/:$projectIdPathParam/sessions"),
+  newSession("/projects/:$projectIdPathParam/sessions/new"),
+  sessionDetail("/projects/:$projectIdPathParam/sessions/:$sessionIdPathParam"),
+  sessionDiffs("/projects/:$projectIdPathParam/sessions/:$sessionIdPathParam/diffs"),
   ;
 
   const AppRouteDef(this.path);
@@ -147,7 +149,7 @@ class AppRouteSettings extends AppRoute {
 }
 
 class AppRouteSessions extends AppRoute {
-  static const _projectIdPathParam = "projectId";
+  static const _projectIdPathParam = projectIdPathParam;
   static const _nameQueryParam = projectNameQueryParam;
 
   final String projectId;
@@ -180,7 +182,7 @@ class AppRouteSessions extends AppRoute {
 }
 
 class AppRouteNewSession extends AppRoute {
-  static const _projectIdPathParam = "projectId";
+  static const _projectIdPathParam = projectIdPathParam;
   static const _nameQueryParam = projectNameQueryParam;
 
   final String projectId;
@@ -213,8 +215,8 @@ class AppRouteNewSession extends AppRoute {
 }
 
 class AppRouteSessionDetail extends AppRoute {
-  static const _projectIdPathParam = "projectId";
-  static const _sessionIdPathParam = "sessionId";
+  static const _projectIdPathParam = projectIdPathParam;
+  static const _sessionIdPathParam = sessionIdPathParam;
   static const _nameQueryParam = projectNameQueryParam;
   static const _titleQueryParam = "title";
   static const _readOnlyQueryParam = "readOnly";
@@ -263,8 +265,8 @@ class AppRouteSessionDetail extends AppRoute {
 }
 
 class AppRouteSessionDiffs extends AppRoute {
-  static const _projectIdPathParam = "projectId";
-  static const _sessionIdPathParam = "sessionId";
+  static const _projectIdPathParam = projectIdPathParam;
+  static const _sessionIdPathParam = sessionIdPathParam;
   static const _nameQueryParam = projectNameQueryParam;
 
   final String projectId;
