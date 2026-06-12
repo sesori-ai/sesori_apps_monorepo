@@ -49,7 +49,7 @@ lib/
 
 ```bash
 dart pub get                                                         # Install deps
-dart run build_runner build                                          # Regenerate .freezed.dart / .g.dart
+dart run build_runner build --delete-conflicting-outputs             # Regenerate .freezed.dart / .g.dart
 dart test                                                            # Run tests
 dart analyze                                                         # Static analysis
 make publish                                                         # Publish to pub.dev

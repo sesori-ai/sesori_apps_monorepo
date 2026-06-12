@@ -10,7 +10,7 @@ dart analyze                                              # run per module (app/
 cd app && flutter test                                    # Flutter tests
 cd module_core && dart test                               # pure Dart tests
 cd module_auth && dart test                               # pure Dart tests
-dart run build_runner build                               # per module, after modifying annotated classes
+dart run build_runner build --delete-conflicting-outputs  # per module, after modifying annotated classes
 ```
 
 ## Module Dependency Direction

@@ -20,7 +20,7 @@ pub-get:
 codegen:
 	@for mod in $(CODEGEN_MODULES); do \
 		echo "=== codegen: $$mod ==="; \
-		(cd $$mod && $(DART) run build_runner build) || exit 1; \
+		(cd $$mod && $(DART) run build_runner build --delete-conflicting-outputs) || exit 1; \
 	done
 
 test:

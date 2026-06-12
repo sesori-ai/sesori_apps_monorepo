@@ -9,7 +9,7 @@ MODULES := sesori_plugin_interface sesori_plugin_opencode app
 codegen:
 	@for mod in $(MODULES); do \
 		echo "=== codegen: $$mod ==="; \
-		(cd $$mod && $(DART) run build_runner build); \
+		(cd $$mod && $(DART) run build_runner build --delete-conflicting-outputs); \
 	done
 
 pub-get:

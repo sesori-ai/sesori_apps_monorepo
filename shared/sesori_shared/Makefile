@@ -12,7 +12,7 @@ test:
 	$(DART) test
 
 build:
-	$(DART) run build_runner build
+	$(DART) run build_runner build --delete-conflicting-outputs
 
 publish:
 	$(DART) pub publish
