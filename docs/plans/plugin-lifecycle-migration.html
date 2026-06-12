@@ -87,8 +87,8 @@
   <h1>Plugin Lifecycle Migration Plan</h1>
   <div class="sub">Move all OpenCode runtime ownership (spawn, ports, health, ownership records, DB maintenance) out of <code>bridge/app</code> and into the OpenCode plugin, behind a plugin interface that supports managed-runtime, direct-CLI, and remote-server plugins — with per-plugin enable/start/stop. Delivered as a ladder of small, always-green PRs.</div>
   <div class="meta">
-    <span><b>Status:</b> in progress (rev 5 — PRs 1–8 merged (PR 8 = #239), PR 9 shipped #243; codegen / line-budget rule revised per maintainer review; shipped cards carry delta callouts binding on later PRs)</span>
-    <span><b>Date:</b> 2026-06-10 (rev 3: 2026-06-11; rev 4–5: 2026-06-12)</span>
+    <span><b>Status:</b> in progress (rev 6 — PRs 1–11 merged (PR 9 #243, PR 10 #244, PR 11 #245 + follow-up #248), PR 12 shipped #249; codegen / line-budget rule revised per maintainer review; shipped cards carry delta callouts binding on later PRs)</span>
+    <span><b>Date:</b> 2026-06-10 (rev 3: 2026-06-11; rev 4–6: 2026-06-12)</span>
     <span><b>PRs:</b> 15, strictly sequential</span>
     <span><b>Max PR size:</b> ~2,000 hand-written changed lines (soft target; generated code excluded)</span>
     <span><b>Branch base:</b> main</span>
@@ -352,6 +352,17 @@
   <li><b>Acceptance matrix:</b> normal start (spawns, owns, stops on exit); <code>--no-auto-start --port</code> attach (never kills); stale-runtime cleanup after <code>kill -9</code> of a previous bridge; second-bridge replacement; crash-restart with pinned port; headless systemd unit unchanged; upgrade-in-place from a pre-flip bridge (frozen ownership file read correctly); <b>crashed-mid-intent upgrade case</b> (side file present, old bridge unaffected; new bridge resolves it).</li>
 </ul>
 <div class="safe"><b>Why always-green:</b> PR 10 already proved the supervisor against the legacy spec in production; PR 11 landed the descriptor fully tested. This PR is a wiring swap whose new-code surface was reviewed earlier.</div>
+<div class="callout green">
+  <b>Shipped as #249 (2026-06-12).</b> Deltas vs this card, <b>binding on later PRs</b>:
+  <ul>
+    <li><b><code>BridgeConfig.serverURL</code> was replaced, not just removed.</b> Per plan review (an A7 pass-through rejection of threading <code>PluginDiagnostics</code> through <code>BridgeRuntime.create</code>), <code>BridgeConfig</code> gained a purely informational <code>pluginEndpoint</code> field fed from <code>plugin.describe().endpoint</code> in the runner; the orchestrator's <code>Target:</code> log reads it off config. <code>serverPassword</code> was removed outright.</li>
+    <li><b><code>PluginCliSurface</code> collapsed as predicted:</b> <code>plugin_registry.dart</code> is now <code>const List&lt;BridgePluginDescriptor&gt; knownPlugins = [OpenCodePluginDescriptor()]</code>; <code>PluginSelector</code> and <code>bin/bridge.dart</code> operate on descriptors directly.</li>
+    <li><b>Pinned policy values:</b> health <code>deadline(30s, poll 500ms)</code>; restart <code>bounded(maxAttempts: 3, backoff 1s→15s ×2, portReleaseTimeout 10s, poll 500ms)</code> via <code>buildOpenCodeRestartPolicy()</code>. The PR 8 hardened knobs also activated: <code>preProbeBindable</code> on explicit ports, <code>failFastOnSpawnError</code> on dynamic ports, <code>failOnEarlyChildExit</code>.</li>
+    <li><b>DB maintenance shape:</b> a constructor-injected <code>OpenCodeDbOptimizer</code> test seam on the descriptor with a file-private default (mirrors <code>_defaultBuildApi</code>) — no new class; runs at the top of <code>start()</code> with a cooperative-abort check after; <code>optimizeIfNeeded</code> is never-throwing.</li>
+    <li><b>Binding on PR 14:</b> <code>bridge_runtime_server_test.dart</code> was <i>rewritten</i> (fake-descriptor mutex/contention/host-wiring tests for <code>startPluginUnderStartupMutex</code>, including terminated-identity propagation), not left for deletion — PR 14 must <b>not</b> delete it; only <code>bridge_runtime_runner_test.dart</code>'s <code>registerOwnedOpenCodeShutdown</code> coverage still dies with PR 13's deletions.</li>
+    <li><b>Binding on PR 13:</b> still-unreferenced leftovers to delete now also include <code>OpenCodeBridgeHostInfo</code>'s dead <code>terminatedBridgeIdentities: const []</code> getter (legacy adapters), and <code>resolveServer</code>/<code>BridgeServerRuntime</code>/<code>registerOwnedOpenCodeShutdown</code> as planned. The descriptor-side terminated-identity wiring lives on <code>BridgeHostInfo</code> (interface) as the card required.</li>
+  </ul>
+</div>
 </div>
 
 <div class="card pr">
