@@ -1,16 +1,17 @@
-import "package:sesori_bridge/src/bridge/runtime/legacy_opencode_descriptor.dart";
+import "package:opencode_plugin/opencode_plugin.dart" show OpenCodePluginDescriptor;
 import "package:sesori_bridge/src/bridge/runtime/plugin_registry.dart";
 import "package:sesori_bridge/src/server/host/plugin_state_directory.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginConfig;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show BridgePlugin, BridgePluginDescriptor, PluginConfig, PluginHost, PluginOption;
 import "package:test/test.dart";
 
 void main() {
   group("knownPlugins", () {
-    test("registers the OpenCode surface off the legacy descriptor statics", () {
+    test("registers the real OpenCode descriptor", () {
       expect(knownPlugins, hasLength(1));
+      expect(knownPlugins.single, isA<OpenCodePluginDescriptor>());
       expect(knownPlugins.single.id, openCodePluginId);
-      expect(identical(knownPlugins.single.options, LegacyOpenCodeDescriptor.cliOptions), isTrue);
-      expect(knownPlugins.single.validateConfig, LegacyOpenCodeDescriptor.validateConfigValues);
+      expect(identical(knownPlugins.single.options, OpenCodePluginDescriptor.cliOptions), isTrue);
       expect(defaultPluginId, openCodePluginId);
     });
   });
@@ -27,7 +28,7 @@ void main() {
     test("a --plugin value on the command line wins over settings", () async {
       var loads = 0;
       final selector = PluginSelector(
-        knownPlugins: _surfaces,
+        knownPlugins: _descriptors,
         defaultPluginId: "opencode",
         loadEnabledPlugins: () async {
           loads++;
@@ -158,7 +159,7 @@ void main() {
 
     test("a default id missing from the known plugins is a descriptive wiring error", () async {
       final selector = PluginSelector(
-        knownPlugins: _surfaces,
+        knownPlugins: _descriptors,
         defaultPluginId: "miswired",
         loadEnabledPlugins: () async => null,
       );
@@ -192,16 +193,34 @@ void main() {
   });
 }
 
-void _noValidation(PluginConfig config) {}
+class _FakeDescriptor extends BridgePluginDescriptor {
+  const _FakeDescriptor({required this.id});
 
-const _surfaces = [
-  PluginCliSurface(id: "opencode", options: [], validateConfig: _noValidation),
-  PluginCliSurface(id: "cursor", options: [], validateConfig: _noValidation),
+  @override
+  final String id;
+
+  @override
+  String get displayName => id;
+
+  @override
+  List<PluginOption> get options => const [];
+
+  @override
+  void validateConfig(PluginConfig config) {}
+
+  @override
+  Future<BridgePlugin> start(PluginHost host) =>
+      throw UnsupportedError("selector tests never start a plugin");
+}
+
+const _descriptors = [
+  _FakeDescriptor(id: "opencode"),
+  _FakeDescriptor(id: "cursor"),
 ];
 
 PluginSelector _selector({required List<String>? enabledPlugins}) {
   return PluginSelector(
-    knownPlugins: _surfaces,
+    knownPlugins: _descriptors,
     defaultPluginId: "opencode",
     loadEnabledPlugins: () async => enabledPlugins,
   );

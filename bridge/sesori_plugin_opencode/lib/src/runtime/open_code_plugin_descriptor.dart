@@ -6,6 +6,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:sesori_shared/sesori_shared.dart" show StringExtensions;
 
+import "../opencode_db_api.dart";
+import "../opencode_db_maintenance_service.dart";
+import "../opencode_db_repository.dart";
 import "../opencode_plugin_impl.dart";
 import "open_code_bridge_plugin.dart";
 import "open_code_managed_api.dart";
@@ -40,18 +43,37 @@ OpenCodeManagedApi _defaultBuildApi({
   );
 }
 
+/// Runs the opportunistic OpenCode database maintenance for [environment].
+/// The production default locates `opencode.db` under `XDG_DATA_HOME` (or
+/// `~/.local/share`) and delegates to [OpenCodeDbMaintenanceService]; tests
+/// inject a recorder.
+typedef OpenCodeDbOptimizer = Future<void> Function({required Map<String, String> environment});
+
+Future<void> _defaultOptimizeDb({required Map<String, String> environment}) async {
+  final homeDir = environment["HOME"] ?? environment["USERPROFILE"];
+  if (homeDir == null) {
+    return;
+  }
+
+  await OpenCodeDbMaintenanceService(
+    repository: OpenCodeDbRepository(api: OpenCodeDbApi()),
+  ).optimizeIfNeeded(
+    dbPath: '${environment["XDG_DATA_HOME"] ?? "$homeDir/.local/share"}/opencode/opencode.db',
+  );
+}
+
 /// The real, const OpenCode plugin descriptor: it owns the full OpenCode runtime
 /// lifecycle (stale cleanup, start-or-attach, health, ownership persistence,
-/// exit monitoring) over the [PluginHost] and the `sesori_plugin_runtime`
-/// supervisor.
+/// exit monitoring, bounded crash-restart) over the [PluginHost] and the
+/// `sesori_plugin_runtime` supervisor.
 ///
-/// PR 11 of the plugin-lifecycle migration lands this **dormant**: it is fully
-/// compiled and tested but not yet registered in `bin/bridge.dart`, which still
-/// uses the bridge-app `LegacyOpenCodeDescriptor`. The descriptor is wired with
-/// the **legacy** policy knobs — five 500 ms health attempts, the record written
-/// after spawn, and the exit monitor armed but its restart policy disabled. The
-/// flip (PR 12) registers this descriptor and switches the remaining knobs on
-/// (deadline health, intent side-file, bounded restart with port pinning).
+/// Registered in `bin/bridge.dart` since the flip (PR 12 of the
+/// plugin-lifecycle migration), with the hardened policy knobs active:
+/// deadline-paced health confirmation, the start intent recorded to a
+/// bridge-private side file, pre-probed explicit ports, early child exits
+/// treated as authoritative failure, and bounded restart pinned to the
+/// original port. OpenCode database maintenance also runs here, at the top of
+/// [start].
 ///
 /// The optional constructor parameters are test seams (and the random/candidate
 /// sources the supervisor needs); the registered descriptor is `const
@@ -64,12 +86,14 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     Random? random,
     Duration degradedDebounce = const Duration(seconds: 5),
     Duration coldStartBudget = openCodeColdStartBudget,
+    OpenCodeDbOptimizer? optimizeDb,
   }) : _buildApi = buildApi,
        _probeClientFactory = probeClientFactory,
        _candidatePorts = candidatePorts,
        _random = random,
        _degradedDebounce = degradedDebounce,
-       _coldStartBudget = coldStartBudget;
+       _coldStartBudget = coldStartBudget,
+       _optimizeDb = optimizeDb;
 
   final OpenCodeManagedApiFactory? _buildApi;
   final http.Client Function()? _probeClientFactory;
@@ -77,6 +101,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   final Random? _random;
   final Duration _degradedDebounce;
   final Duration _coldStartBudget;
+  final OpenCodeDbOptimizer? _optimizeDb;
 
   /// The four OpenCode CLI options, names/help/defaults identical to the flags
   /// the bridge has always declared.
@@ -132,6 +157,16 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
 
   @override
   Future<OpenCodeBridgePlugin> start(PluginHost host) async {
+    // Opportunistic database maintenance runs first, before any runtime state
+    // is acquired (it moved here from the runner at the flip). It never
+    // throws, and the underlying sqlite3 work runs in a worker isolate, so
+    // awaiting it under the startup mutex keeps the event loop — and the
+    // cooperative abort below — responsive.
+    await (_optimizeDb ?? _defaultOptimizeDb)(environment: host.environment);
+    if (host.startAborted.isAborted) {
+      throw const PluginStartAbortedException();
+    }
+
     final config = host.config;
     final requestedPort = config.intValue("port");
     // Mirror the legacy flow's `password.normalize()`: trim, and map a blank
@@ -156,9 +191,10 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       clock: host.clock,
       runtimeId: "opencode",
       gracefulShutdownWait: openCodeGracefulShutdownWait,
-      // Supplied now so the flip only switches recordTiming to intentSideFile;
-      // PR 11 keeps the legacy afterSpawn timing, leaving this store unused. The
-      // bridge-private side file never touches the frozen ownership file.
+      // Backs the intentSideFile record timing: the start intent is written
+      // here before spawn and resolved after. The bridge-private side file
+      // never touches the frozen ownership file, and a leftover intent from a
+      // crashed start is simply overwritten (then cleared) by the next one.
       intentStore: RuntimeStartIntentStore(store: host.store, fileName: "opencode-start-intent.json"),
     );
 
@@ -202,7 +238,9 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       final RuntimePortPolicy portPolicy;
       if (requestedPort != null) {
         Log.d("[opencode] starting on port $requestedPort");
-        portPolicy = ExplicitPortPolicy(port: requestedPort);
+        // Pre-probe the explicit port so an occupied port fails with a
+        // diagnosis instead of spawning a child doomed to lose the bind race.
+        portPolicy = ExplicitPortPolicy(port: requestedPort, preProbeBindable: true);
       } else {
         Log.d("[opencode] starting on a dynamic port");
         portPolicy = DynamicPortPolicy(
@@ -211,6 +249,9 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
           reservedPort: openCodeDefaultPort,
           minPort: dynamicOpenCodePortMin,
           maxPort: dynamicOpenCodePortMax,
+          // A spawn that cannot even launch (e.g. ENOENT on the binary) fails
+          // the same way on every candidate — fail fast instead of retrying.
+          failFastOnSpawnError: true,
         );
       }
 
@@ -224,10 +265,12 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
 
       // start() cleans up stale owned runtimes, selects a port, spawns, and
       // confirms health before returning — rolling everything back (and throwing
-      // PluginStartException / PluginStartAbortedException) on failure.
+      // PluginStartException / PluginStartAbortedException) on failure. The
+      // replaced-bridge identities authorize cleanup to reclaim records owned
+      // by a bridge this one just replaced, even when its pid still looks live.
       handle = await service.start(
         spec: spec,
-        terminatedBridgeIdentities: const <ProcessIdentity>[],
+        terminatedBridgeIdentities: host.bridge.terminatedBridgeIdentities,
         startAborted: host.startAborted,
       );
       port = handle.port;
@@ -253,17 +296,17 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       degradedDebounce: _degradedDebounce,
     );
 
-    // Construct and arm the exit monitor with restart disabled: PR 11 watches
-    // the child and reports an unexpected exit as PluginFailed, but does not
-    // restart. The flip (PR 12) switches the restart policy to bounded(). An
-    // attached (un-owned) handle has no child, so arm() is a no-op.
+    // Construct and arm the exit monitor with bounded restart: an unexpected
+    // child exit restarts on the address-frozen port with backoff, surfacing
+    // PluginFailed only when the attempts are exhausted or the port never
+    // frees. An attached (un-owned) handle has no child, so arm() is a no-op.
     final monitor = ManagedRuntimeMonitor<OpenCodeOwnershipRecord>(
       service: service,
       spec: spec,
       status: reporter.status,
       clock: host.clock,
       runtimeId: "opencode",
-      restartPolicy: const RuntimeRestartPolicy.disabled(),
+      restartPolicy: buildOpenCodeRestartPolicy(),
     );
     if (handle != null) {
       monitor.arm(handle);

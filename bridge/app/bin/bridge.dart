@@ -32,7 +32,7 @@ import 'package:sesori_bridge/src/services/bridge_config_service.dart';
 import 'package:sesori_bridge/src/services/sleep_prevention_service.dart';
 import 'package:sesori_bridge/src/version.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart'
-    show Log, LogLevel, PluginConfig, PluginConfigException, ProcessUser, ServerClock;
+    show BridgePluginDescriptor, Log, LogLevel, PluginConfig, PluginConfigException, ProcessUser, ServerClock;
 
 const String _defaultRelayURL = 'wss://relay.sesori.com';
 const String _defaultAuthURL = 'https://api.sesori.com';
@@ -44,14 +44,14 @@ class RunCommand extends cli.Command<void> {
   @override
   final description = 'Run the Sesori bridge (default)';
 
-  final PluginCliSurface _selectedPlugin;
+  final BridgePluginDescriptor _selectedPlugin;
 
   /// Deferred plugin-selection failure (bad `enabledPlugins`): only running
   /// the bridge needs a valid selection, so the error surfaces here instead
   /// of blocking informational commands like `--help`, logout, or config.
   final String? _selectionError;
 
-  RunCommand({required PluginCliSurface selectedPlugin, required String? selectionError})
+  RunCommand({required BridgePluginDescriptor selectedPlugin, required String? selectionError})
     : _selectedPlugin = selectedPlugin,
       _selectionError = selectionError {
     argParser
@@ -315,7 +315,7 @@ Future<void> main(List<String> args) async {
 
   // First pass of the two-pass parse: the selected plugin determines which
   // options the run command's parser is built with.
-  PluginCliSurface selectedPlugin;
+  BridgePluginDescriptor selectedPlugin;
   String? pluginSelectionError;
   try {
     selectedPlugin = await const PluginSelector(

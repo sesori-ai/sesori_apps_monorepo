@@ -21,6 +21,7 @@ void main() {
       hostInfo = BridgeHostInfoImpl(
         identity: bridgeIdentity,
         ownerSessionId: '100:bridge-start-marker',
+        terminatedBridgeIdentities: const [],
         processRepository: processRepository,
       );
     });

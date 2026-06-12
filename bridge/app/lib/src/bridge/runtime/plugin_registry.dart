@@ -1,45 +1,15 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginConfig, PluginOption;
+import "package:opencode_plugin/opencode_plugin.dart" show OpenCodePluginDescriptor;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginDescriptor;
 
 import "../../server/host/plugin_state_directory.dart" show openCodePluginId;
-import "legacy_opencode_descriptor.dart";
-
-/// The parse-time CLI surface of a registered plugin: everything
-/// `bin/bridge.dart` needs *before* any service exists — the id selected via
-/// `--plugin`, the options to register into the argument parser, and the
-/// config rule to run at argument-parse time.
-///
-/// Transitional shape (plugin-lifecycle migration, PR 5): the contract reads
-/// this surface off the descriptor itself, but `LegacyOpenCodeDescriptor`
-/// can only be constructed inside the startup mutex, so its static surface
-/// is registered here instead. Collapses into a registry of const
-/// descriptors at the flip (PR 12).
-class PluginCliSurface {
-  const PluginCliSurface({
-    required this.id,
-    required this.options,
-    required this.validateConfig,
-  });
-
-  /// Descriptor id, as typed after `--plugin`.
-  final String id;
-
-  /// CLI options this plugin contributes to the parser when selected.
-  final List<PluginOption> options;
-
-  /// Cross-option config rule, run at argument-parse time — strictly before
-  /// the startup mutex, so a misconfigured invocation can never terminate a
-  /// healthy resident bridge.
-  final void Function(PluginConfig config) validateConfig;
-}
 
 /// Every plugin this bridge build knows how to run.
-const List<PluginCliSurface> knownPlugins = [
-  PluginCliSurface(
-    id: openCodePluginId,
-    options: LegacyOpenCodeDescriptor.cliOptions,
-    validateConfig: LegacyOpenCodeDescriptor.validateConfigValues,
-  ),
-];
+///
+/// Descriptors are const and side-effect free — registered is *not* started.
+/// `bin/bridge.dart` reads the parse-time surface (`id`, `options`,
+/// `validateConfig`) straight off the selected descriptor, and the runner
+/// later calls its `start(host)` under the startup mutex.
+const List<BridgePluginDescriptor> knownPlugins = [OpenCodePluginDescriptor()];
 
 /// The plugin used when neither `--plugin` nor `enabledPlugins` selects one,
 /// so existing installs see zero change.
@@ -60,21 +30,21 @@ class PluginSelectionException implements Exception {
 /// Resolves which plugin's CLI surface the bridge registers into its
 /// argument parser — the first pass of the two-pass parse: `--plugin` is
 /// scanned out of the raw argv, the full parser is then built from the
-/// winning surface and parses everything (including `--plugin` itself, whose
-/// `allowed:` list produces the usage error for unknown ids).
+/// winning descriptor and parses everything (including `--plugin` itself,
+/// whose `allowed:` list produces the usage error for unknown ids).
 ///
 /// Precedence: `--plugin` on the command line, then `enabledPlugins` from
 /// the bridge settings, then the injected default id.
 class PluginSelector {
   const PluginSelector({
-    required List<PluginCliSurface> knownPlugins,
+    required List<BridgePluginDescriptor> knownPlugins,
     required String defaultPluginId,
     required Future<List<String>?> Function() loadEnabledPlugins,
   }) : _knownPlugins = knownPlugins,
        _defaultPluginId = defaultPluginId,
        _loadEnabledPlugins = loadEnabledPlugins;
 
-  final List<PluginCliSurface> _knownPlugins;
+  final List<BridgePluginDescriptor> _knownPlugins;
   final String _defaultPluginId;
 
   /// Reads `enabledPlugins` from the bridge settings; null means unset.
@@ -82,18 +52,18 @@ class PluginSelector {
   /// must not create files — selection also runs for `--help` and `logout`.
   final Future<List<String>?> Function() _loadEnabledPlugins;
 
-  /// Resolves the surface for raw process [args] (pre `run`-insertion; the
-  /// scan is insensitive to the implicit-command rewrite, which only ever
-  /// prepends a token).
+  /// Resolves the descriptor for raw process [args] (pre `run`-insertion;
+  /// the scan is insensitive to the implicit-command rewrite, which only
+  /// ever prepends a token).
   ///
   /// The scan itself never raises a user-facing error: an unknown or missing
-  /// `--plugin` value resolves to a fallback surface so the parser still
+  /// `--plugin` value resolves to a fallback descriptor so the parser still
   /// gets built, and the full parse then reports it (`allowed:` violation or
   /// missing argument).
-  Future<PluginCliSurface> resolve({required List<String> args}) async {
+  Future<BridgePluginDescriptor> resolve({required List<String> args}) async {
     final cliSelection = _scanPluginFlag(args);
     if (cliSelection != null) {
-      return _surfaceById(cliSelection) ?? _fallback;
+      return _descriptorById(cliSelection) ?? _fallback;
     }
 
     final enabledPlugins = await _loadEnabledPlugins();
@@ -108,19 +78,19 @@ class PluginSelector {
       );
     }
     final enabled = enabledPlugins.single;
-    final surface = _surfaceById(enabled);
-    if (surface == null) {
+    final descriptor = _descriptorById(enabled);
+    if (descriptor == null) {
       throw PluginSelectionException(
         'Bridge settings enable unknown plugin "$enabled". Known plugins: '
         '${_knownPlugins.map((plugin) => plugin.id).join(", ")}. Update '
         '"enabledPlugins" in the bridge config (sesori-bridge config).',
       );
     }
-    return surface;
+    return descriptor;
   }
 
-  PluginCliSurface get _fallback {
-    final fallback = _surfaceById(_defaultPluginId);
+  BridgePluginDescriptor get _fallback {
+    final fallback = _descriptorById(_defaultPluginId);
     if (fallback == null) {
       // Only reachable by miswiring the selector itself — fail with a
       // diagnosis rather than a bare null-check error.
@@ -132,7 +102,7 @@ class PluginSelector {
     return fallback;
   }
 
-  PluginCliSurface? _surfaceById(String id) {
+  BridgePluginDescriptor? _descriptorById(String id) {
     for (final plugin in _knownPlugins) {
       if (plugin.id == id) {
         return plugin;

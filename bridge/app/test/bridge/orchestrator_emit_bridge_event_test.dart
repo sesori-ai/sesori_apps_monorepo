@@ -92,8 +92,7 @@ void main() {
     final orchestrator = Orchestrator(
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
-        serverURL: "http://127.0.0.1:4096",
-        serverPassword: null,
+        pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
       ),
@@ -219,8 +218,7 @@ void main() {
     final orchestrator = Orchestrator(
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
-        serverURL: "http://127.0.0.1:4096",
-        serverPassword: null,
+        pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
       ),
@@ -374,8 +372,7 @@ void main() {
     final orchestrator = Orchestrator(
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
-        serverURL: "http://127.0.0.1:4096",
-        serverPassword: null,
+        pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
       ),
@@ -500,8 +497,7 @@ void main() {
     final orchestrator = Orchestrator(
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
-        serverURL: "http://127.0.0.1:4096",
-        serverPassword: null,
+        pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
       ),
@@ -597,8 +593,7 @@ void main() {
     final orchestrator = Orchestrator(
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
-        serverURL: "http://127.0.0.1:4096",
-        serverPassword: null,
+        pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
       ),
@@ -719,8 +714,7 @@ void main() {
     final orchestrator = Orchestrator(
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
-        serverURL: "http://127.0.0.1:4096",
-        serverPassword: null,
+        pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "http://127.0.0.1:8080",
         sseReplayWindow: const Duration(minutes: 1),
       ),

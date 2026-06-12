@@ -7,6 +7,7 @@ class BridgeHostInfoImpl implements BridgeHostInfo {
   BridgeHostInfoImpl({
     required this.identity,
     required this.ownerSessionId,
+    required this.terminatedBridgeIdentities,
     required ProcessRepository processRepository,
   }) : _processRepository = processRepository;
 
@@ -15,6 +16,9 @@ class BridgeHostInfoImpl implements BridgeHostInfo {
 
   @override
   final String ownerSessionId;
+
+  @override
+  final List<ProcessIdentity> terminatedBridgeIdentities;
 
   final ProcessRepository _processRepository;
 

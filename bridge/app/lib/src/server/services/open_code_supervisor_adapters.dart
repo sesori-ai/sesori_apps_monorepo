@@ -147,6 +147,13 @@ class OpenCodeBridgeHostInfo implements BridgeHostInfo {
   @override
   String get ownerSessionId => _ownerSessionId;
 
+  /// The legacy `OpenCodeServerService.start` receives the terminated-bridge
+  /// identities per call and forwards them straight into
+  /// `ManagedProcessService.start`, so this host-level view is never read on
+  /// the legacy path.
+  @override
+  List<ProcessIdentity> get terminatedBridgeIdentities => const [];
+
   @override
   Future<bool> isLiveBridgeProcess({required int pid, required String? startMarker}) async {
     // Reproduces the legacy owner-liveness check verbatim: a process is a live

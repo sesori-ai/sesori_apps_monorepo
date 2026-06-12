@@ -1047,6 +1047,9 @@ class _FakeHostProcessService implements HostProcessService {
 }
 
 class _FakeBridgeHostInfo implements BridgeHostInfo {
+  @override
+  List<ProcessIdentity> get terminatedBridgeIdentities => const [];
+
   _FakeBridgeHostInfo({required ProcessIdentity identity}) : _identity = identity;
 
   final ProcessIdentity _identity;
