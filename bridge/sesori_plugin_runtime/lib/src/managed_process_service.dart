@@ -73,6 +73,9 @@ class ManagedProcessService<R> {
     _throwIfAborted(abort);
 
     final probe = await _probeTolerant(spec: spec, port: port);
+    // Honor an abort that fired while the probe was in flight: even a healthy
+    // result must not produce a live handle once the bridge has aborted.
+    _throwIfAborted(abort);
     if (!probe.healthy) {
       throw PluginStartException(
         "[$_runtimeId] existing runtime health check failed on port $port",
@@ -115,11 +118,18 @@ class ManagedProcessService<R> {
     Object? lastError;
     var attempts = 0;
 
-    for (final port in _dynamicCandidates(policy: policy)) {
+    // The cap counts every raw candidate examined — not just the in-range
+    // ones — so a lazy source that keeps yielding the reserved or out-of-range
+    // port can never spin past maxAttempts while the startup mutex is held.
+    for (final port in policy.candidates) {
       if (attempts >= policy.maxAttempts) {
         break;
       }
       attempts += 1;
+
+      if (port == policy.reservedPort || port < policy.minPort || port > policy.maxPort) {
+        continue;
+      }
 
       _throwIfAborted(abort);
 
@@ -151,14 +161,6 @@ class ManagedProcessService<R> {
       "[$_runtimeId] unable to start runtime on an available dynamic port after $attempts attempt(s)",
       cause: lastError,
     );
-  }
-
-  Iterable<int> _dynamicCandidates({required DynamicPortPolicy policy}) sync* {
-    for (final port in policy.candidates) {
-      if (port != policy.reservedPort && port >= policy.minPort && port <= policy.maxPort) {
-        yield port;
-      }
-    }
   }
 
   Future<ManagedRuntimeHandle<R>> _startAndConfirmHealthy({
@@ -218,7 +220,12 @@ class ManagedProcessService<R> {
         health: health,
       );
     } on Object {
-      await _cleanupFailedStart(record: record);
+      // Never let a cleanup failure mask the error that triggered it.
+      try {
+        await _cleanupFailedStart(record: record);
+      } on Object catch (cleanupError, cleanupStackTrace) {
+        Log.w("[$_runtimeId] Failed to clean up after a failed start on port $port", cleanupError, cleanupStackTrace);
+      }
       rethrow;
     }
   }

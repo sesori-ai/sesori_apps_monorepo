@@ -120,6 +120,29 @@ void main() {
       expect(fakes.processes.signalRequests, isEmpty);
     });
 
+    test("caps an unbounded source that only ever yields the reserved port", () async {
+      // A lazy candidate generator that never yields an in-range port must
+      // still terminate at maxAttempts — the cap counts raw candidates.
+      await expectLater(
+        fakes.service().start(
+          spec: fakes.spec(
+            portPolicy: RuntimePortPolicy.dynamic(
+              candidates: _endless(4096),
+              maxAttempts: 5,
+              reservedPort: 4096,
+              minPort: 49152,
+              maxPort: 65535,
+            ),
+          ),
+          terminatedBridgeIdentities: const <ProcessIdentity>[],
+        ),
+        throwsA(isA<PluginStartException>()),
+      );
+
+      expect(fakes.bindable.probedPorts, isEmpty);
+      expect(fakes.spawn.spawnedPorts, isEmpty);
+    });
+
     test("fail-fast policy stops on a spawn error instead of retrying", () async {
       fakes.bindable.byPort.addAll(<int, bool>{49152: true, 49153: true});
       fakes.spawn.results.add(const ProcessException("opencode", <String>["serve"]));
@@ -235,6 +258,25 @@ void main() {
           for (var i = 0; i < 5; i += 1) const Duration(milliseconds: 500),
           _gracefulShutdownWait,
         ]),
+      );
+    });
+
+    test("a cleanup failure does not mask the original start failure", () async {
+      fakes.spawn.results.add(_spawned(pid: 220, port: 50133, exitImmediately: true));
+      fakes.probe.results.addAll(<RuntimeHealthProbe>[
+        for (var i = 0; i < 5; i += 1) const RuntimeHealthProbe(healthy: false, error: "not ready"),
+      ]);
+      fakes.processes.inspectResults[220] = <ProcessIdentity?>[null];
+      // The record delete during rollback fails; the health-check failure that
+      // triggered the rollback must still be what surfaces.
+      fakes.ownership.deleteError = StateError("ownership store offline");
+
+      await expectLater(
+        fakes.service().start(
+          spec: fakes.spec(portPolicy: const ExplicitPortPolicy(port: 50133)),
+          terminatedBridgeIdentities: const <ProcessIdentity>[],
+        ),
+        throwsA(isA<PluginStartException>()),
       );
     });
 
@@ -359,9 +401,9 @@ void main() {
       final handle = await fakes.service().start(
         spec: fakes.spec(
           portPolicy: const ExplicitPortPolicy(port: 50150),
-          healthPolicy: const RuntimeHealthPolicy.deadline(
-            deadline: Duration(seconds: 5),
-            pollInterval: Duration(seconds: 1),
+          healthPolicy: RuntimeHealthPolicy.deadline(
+            deadline: const Duration(seconds:5),
+            pollInterval: const Duration(seconds: 1),
           ),
         ),
         terminatedBridgeIdentities: const <ProcessIdentity>[],
@@ -384,9 +426,9 @@ void main() {
         fakes.service().start(
           spec: fakes.spec(
             portPolicy: const ExplicitPortPolicy(port: 50151),
-            healthPolicy: const RuntimeHealthPolicy.deadline(
-              deadline: Duration(seconds: 2),
-              pollInterval: Duration(seconds: 1),
+            healthPolicy: RuntimeHealthPolicy.deadline(
+              deadline: const Duration(seconds:2),
+              pollInterval: const Duration(seconds: 1),
             ),
           ),
           terminatedBridgeIdentities: const <ProcessIdentity>[],
@@ -396,6 +438,20 @@ void main() {
 
       expect(fakes.probe.probedPorts, equals(<int>[50151, 50151]));
       expect(fakes.ownership.records, isEmpty);
+    });
+
+    test("rejects a non-positive poll interval or negative deadline", () {
+      expect(
+        () => RuntimeHealthPolicy.deadline(deadline: const Duration(seconds: 5), pollInterval: Duration.zero),
+        throwsA(isA<AssertionError>()),
+      );
+      expect(
+        () => RuntimeHealthPolicy.deadline(
+          deadline: const Duration(seconds: -1),
+          pollInterval: const Duration(seconds: 1),
+        ),
+        throwsA(isA<AssertionError>()),
+      );
     });
   });
 
@@ -535,6 +591,23 @@ void main() {
       expect(fakes.processes.signalRequests, isEmpty);
     });
 
+    test("honors an abort that fires while the health probe is in flight", () async {
+      final controller = StartAbortController();
+      fakes.probe.results.add(const RuntimeHealthProbe(healthy: true));
+      fakes.probe.onProbe = controller.abort;
+
+      await expectLater(
+        fakes.service().attach(
+          spec: fakes.spec(portPolicy: const ExplicitPortPolicy(port: 50128)),
+          port: 50128,
+          startAborted: controller.signal,
+        ),
+        throwsA(isA<PluginStartAbortedException>()),
+      );
+
+      expect(fakes.probe.probedPorts, equals(<int>[50128]));
+    });
+
     test("treats a thrown probe as an unreachable server", () async {
       fakes.probe.throwError = Exception("connection refused");
 
@@ -551,6 +624,14 @@ void main() {
       expect(fakes.processes.signalRequests, isEmpty);
     });
   });
+}
+
+/// An unbounded source that keeps yielding [value] — used to prove the
+/// dynamic-start cap terminates even when every candidate is filtered out.
+Iterable<int> _endless(int value) sync* {
+  while (true) {
+    yield value;
+  }
 }
 
 RuntimePortPolicy _dynamic(List<int> candidates, {bool failFastOnSpawnError = false}) {
@@ -798,10 +879,15 @@ class _FakeOwnershipRepository implements RuntimeOwnershipRepository<_TestRecord
   final List<_TestStatus> upsertedStatuses = <_TestStatus>[];
   int writeCallCount = 0;
   int deleteCallCount = 0;
+  Object? deleteError;
 
   @override
   Future<void> deleteByOwnerSessionId({required String ownerSessionId}) async {
     deleteCallCount += 1;
+    final error = deleteError;
+    if (error != null) {
+      throw error;
+    }
     records.remove(ownerSessionId);
   }
 

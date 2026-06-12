@@ -70,7 +70,7 @@ sealed class RuntimeHealthPolicy {
 
   /// Deadline pacing: probe every [pollInterval] until healthy or until
   /// [deadline] elapses (host clock).
-  const factory RuntimeHealthPolicy.deadline({
+  factory RuntimeHealthPolicy.deadline({
     required Duration deadline,
     required Duration pollInterval,
   }) = HealthDeadlinePolicy;
@@ -86,7 +86,12 @@ class HealthAttemptCountPolicy extends RuntimeHealthPolicy {
 }
 
 class HealthDeadlinePolicy extends RuntimeHealthPolicy {
-  const HealthDeadlinePolicy({required this.deadline, required this.pollInterval}) : super();
+  // Not const: the parameter guards below compare Durations, which is not a
+  // constant-evaluable operation. The policy is built at runtime anyway.
+  HealthDeadlinePolicy({required this.deadline, required this.pollInterval})
+    : assert(!deadline.isNegative, "deadline must be non-negative"),
+      assert(pollInterval > Duration.zero, "pollInterval must be positive"),
+      super();
 
   final Duration deadline;
   final Duration pollInterval;
