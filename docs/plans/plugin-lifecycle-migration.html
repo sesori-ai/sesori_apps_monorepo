@@ -331,7 +331,12 @@
 </ul>
 <div class="safe"><b>Why always-green:</b> <code>bin/bridge.dart</code> still uses the legacy descriptor; nothing here executes in production. Duplication is deliberate and temporary.</div>
 <div class="callout">
-  <b>Deferred from PR 11 review (do after the PR 12 flip):</b> cold-start retry-on-connect. When the initial cold-start (<code>initialize()</code>) fails but the SSE transport later connects, the plugin should retry the cold-start so hydration and status recover instead of relying on the next reconnect cycle. Deferred because the still-live legacy <code>OpenCodePlugin</code> path shares this code until the flip and PR 11 must stay behavior-preserving; the visible symptom (status stuck <code>Ready</code> on a dead event stream) was fixed in PR 11 by firing <code>onDisconnected</code> on a failed initial connect. Implement once PRs 12/13 remove the legacy path.
+  <b>Deferred from PR 11 review (do after the PR 12 flip)</b> — SSE robustness items that would change the still-live legacy <code>OpenCodePlugin</code> path, which shares <code>SseConnection</code> until the flip; PR 11 must stay behavior-preserving:
+  <ul>
+    <li><b>Cold-start retry-on-connect.</b> When the initial cold-start (<code>initialize()</code>) fails but the SSE transport later connects, the plugin should retry the cold-start so hydration and status recover instead of relying on the next reconnect cycle. The visible symptom (status stuck <code>Ready</code> on a dead event stream) was fixed in PR 11 by firing <code>onDisconnected</code> on a failed initial connect.</li>
+    <li><b>Initial SSE handshake timeout.</b> <code>SseConnection</code>'s <code>client.send()</code> has no timeout: a server that accepts the TCP connection but never sends response headers parks the connect attempt forever without firing either lifecycle callback, so the status can stay <code>Ready</code> off a successful REST cold-start while the event stream is silently dead. Bound the handshake (and let the reconnect loop retry) once the legacy path no longer shares the class.</li>
+  </ul>
+  Implement once PRs 12/13 remove the legacy path.
 </div>
 </div>
 

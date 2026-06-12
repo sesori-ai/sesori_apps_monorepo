@@ -191,12 +191,18 @@ Future<RuntimeHealthProbe> probeOpenCodeHealth({
     final uri = Uri.parse("http://$openCodeLoopbackHost:$port/global/health");
     final request = http.Request("GET", uri);
     request.headers["Authorization"] = "Basic ${base64Encode(utf8.encode("opencode:$password"))}";
-    final response = await client.send(request).timeout(timeout);
-    await response.stream.drain<void>();
-    final healthy = response.statusCode == 200;
+    // One timeout bounds the send AND the body drain together (mirroring the
+    // legacy probe): a service that returns headers but never closes the body
+    // must fail the attempt, not hang the supervisor under the startup mutex.
+    final statusCode = await () async {
+      final response = await client.send(request);
+      await response.stream.drain<void>();
+      return response.statusCode;
+    }().timeout(timeout);
+    final healthy = statusCode == 200;
     return RuntimeHealthProbe(
       healthy: healthy,
-      error: healthy ? null : StateError("OpenCode health probe returned HTTP ${response.statusCode}"),
+      error: healthy ? null : StateError("OpenCode health probe returned HTTP $statusCode"),
     );
   } on Object catch (error) {
     return RuntimeHealthProbe.unhealthy(error: error);

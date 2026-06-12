@@ -34,6 +34,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   final SseEventMapper _mapper = SseEventMapper();
   late final SseConnection _sseConnection;
   Future<void>? _initializeFuture;
+  bool _disposed = false;
 
   /// Builds an OpenCode plugin against the server at [serverUrl].
   ///
@@ -122,7 +123,12 @@ class OpenCodePlugin implements OpenCodeManagedApi {
       coldStartError = error;
       coldStartStackTrace = stackTrace;
     }
-    _sseConnection.start();
+    // A dispose() can win the race against an in-flight cold-start (e.g. a
+    // background initialize from a failed attach probe, or an aborted-start
+    // rollback): starting the transport now would revive it after teardown.
+    if (!_disposed) {
+      _sseConnection.start();
+    }
     if (coldStartError != null) {
       Error.throwWithStackTrace(coldStartError, coldStartStackTrace!);
     }
@@ -156,6 +162,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
 
   @override
   Future<void> dispose() async {
+    _disposed = true;
     _sseConnection.stop();
     _httpClient.close(force: true);
     await _eventBuffer.close();

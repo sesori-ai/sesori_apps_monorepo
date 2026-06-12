@@ -24,6 +24,27 @@ void main() {
       expect(plugin.id, equals("opencode"));
     });
 
+    test("dispose during an in-flight initialize never starts the SSE stream", () async {
+      server.holdProjects = Completer<void>();
+      final plugin = OpenCodePlugin(serverUrl: server.baseUrl, autoInitialize: false);
+
+      // Hold the cold-start at the gated GET /project, then dispose while it
+      // is still in flight — the late _sseConnection.start() must not revive
+      // the transport after teardown.
+      final initialize = plugin.initialize().catchError((Object _) {});
+      while (!server.requestLog.contains("GET /project")) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+
+      await plugin.dispose();
+      server.holdProjects!.complete();
+      await initialize;
+
+      // Give a revived SSE loop time to surface if the guard were missing.
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(server.requestLog.where((entry) => entry.contains("/global/event")), isEmpty);
+    });
+
     test("getProjects maps internal projects to plugin projects", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
@@ -603,6 +624,10 @@ class _FakeOpenCodeServer {
   final List<HttpResponse> _sseClients = [];
   final Completer<void> _firstSseClient = Completer<void>();
   final List<String> requestLog = [];
+
+  /// When set, `GET /project` waits on this gate before responding, so a test
+  /// can hold a cold-start in flight.
+  Completer<void>? holdProjects;
   Map<String, dynamic>? lastPromptBody;
   String? lastPromptDirectoryHeader;
   Map<String, dynamic>? lastCommandBody;
@@ -632,6 +657,10 @@ class _FakeOpenCodeServer {
       requestLog.add("${request.method} $path");
 
       if (request.method == "GET" && path == "/project") {
+        final hold = holdProjects;
+        if (hold != null) {
+          await hold.future;
+        }
         await _sendJson(request.response, _projects.values.toList());
         return;
       }

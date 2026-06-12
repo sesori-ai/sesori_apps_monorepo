@@ -145,6 +145,20 @@ void main() {
       expect(probe.healthy, isFalse);
       expect(probe.error, isA<SocketException>());
     });
+
+    test("reports unhealthy when the response body never completes within the timeout", () async {
+      // A wrong localhost service that sends 200 headers but keeps the body
+      // open: the drain must be bounded by the same timeout as the send, or
+      // the probe hangs the supervisor under the startup mutex.
+      final probe = await probeOpenCodeHealth(
+        port: 51000,
+        password: "secret",
+        clientFactory: _HangingBodyClient.new,
+        timeout: const Duration(milliseconds: 100),
+      );
+      expect(probe.healthy, isFalse);
+      expect(probe.error, isA<TimeoutException>());
+    });
   });
 
   group("spawnOpenCodeProcess", () {
@@ -221,6 +235,23 @@ class _SpawnFakeHost implements PluginHost {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Accepts the request and returns 200 headers, but the body stream never
+/// emits and never closes — a drain on it hangs forever.
+class _HangingBodyClient extends http.BaseClient {
+  final StreamController<List<int>> _body = StreamController<List<int>>();
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    return http.StreamedResponse(_body.stream, 200);
+  }
+
+  @override
+  void close() {
+    _body.close().ignore();
+    super.close();
+  }
 }
 
 class _RecordingHostProcessService implements HostProcessService {
