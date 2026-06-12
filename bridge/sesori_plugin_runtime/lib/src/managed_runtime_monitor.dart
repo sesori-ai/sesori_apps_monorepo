@@ -161,7 +161,12 @@ class ManagedRuntimeMonitor<R> {
         if (_disarmed) {
           return;
         }
-        _status.trySet(PluginRestarting(attempt: attempt, reason: reason));
+        if (!_status.trySet(PluginRestarting(attempt: attempt, reason: reason))) {
+          // The status machine rejected the transition — the plugin is stopping,
+          // stopped, or already failed — so stand down instead of spawning a
+          // child into a terminal/shutdown state.
+          return;
+        }
         await _clock.delay(duration: policy.backoffFor(attempt));
         if (_disarmed) {
           return;

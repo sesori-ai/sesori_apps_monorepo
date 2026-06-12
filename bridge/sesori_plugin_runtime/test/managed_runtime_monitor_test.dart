@@ -160,6 +160,24 @@ void main() {
       expect(clock.delays, greaterThan(0));
     });
 
+    test("a restart stands down when the status machine has already moved to a terminal state", () async {
+      final status = PluginStatusController(initial: const PluginReady());
+      final tags = _collect(status);
+      final monitor = fakes.monitor(status: status, restartPolicy: _bounded());
+      final child = _child(pid: 101);
+
+      monitor.arm(_handle(port: 4096, process: child));
+      // The owner moved the plugin to Stopping without disarming the monitor:
+      // the rejected PluginRestarting transition must stop the episode.
+      status.set(const PluginStopping());
+      child.completeExit(1);
+      await pumpEventQueue();
+
+      expect(fakes.spawn.spawnedPorts, isEmpty);
+      expect(tags, isNot(contains("restarting(1)")));
+      expect(tags, isNot(contains("failed")));
+    });
+
     test("disarming before the exit suppresses any restart or failure", () async {
       final status = PluginStatusController(initial: const PluginReady());
       final tags = _collect(status);
