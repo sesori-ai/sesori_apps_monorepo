@@ -9,6 +9,8 @@ class SseConnection {
   final String? _password;
   final void Function(String rawData) _onEvent;
   final Future<void> Function()? _onReconnect;
+  final void Function()? _onConnected;
+  final void Function()? _onDisconnected;
 
   bool _active = false;
   int _generation = 0;
@@ -19,10 +21,14 @@ class SseConnection {
     required String? password,
     required void Function(String rawData) onEvent,
     Future<void> Function()? onReconnect,
+    void Function()? onConnected,
+    void Function()? onDisconnected,
   }) : _targetUrl = targetUrl,
        _password = password,
        _onEvent = onEvent,
-       _onReconnect = onReconnect;
+       _onReconnect = onReconnect,
+       _onConnected = onConnected,
+       _onDisconnected = onDisconnected;
 
   void start() {
     if (_active) return;
@@ -45,6 +51,9 @@ class SseConnection {
     while (_active && _generation == generation) {
       final client = http.Client();
       _currentClient = client;
+      // Whether this iteration reached a live SSE stream, so a drop only fires
+      // onDisconnected after a matching onConnected.
+      var connected = false;
 
       try {
         final request = http.Request(
@@ -65,6 +74,11 @@ class SseConnection {
           throw StateError("Unexpected SSE content type: $contentType");
         }
 
+        // The transport is live: signal connected on the first connect and on
+        // every reconnect (the lifecycle status follows the live stream).
+        connected = true;
+        _onConnected?.call();
+
         if (!isFirstConnect) {
           await _onReconnect?.call();
         }
@@ -80,6 +94,12 @@ class SseConnection {
       }
 
       if (!_active || _generation != generation) return;
+
+      // A live stream that ended/errored while still active is a transient
+      // drop; a deliberate stop() returns above and never reports disconnect.
+      if (connected) {
+        _onDisconnected?.call();
+      }
 
       await Future<void>.delayed(reconnectDelay);
       final doubled = reconnectDelay.inSeconds * 2;

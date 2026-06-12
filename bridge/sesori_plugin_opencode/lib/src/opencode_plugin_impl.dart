@@ -26,17 +26,29 @@ String formatDroppedSseFrameLog({
   return "[opencode][sse][$category]$suffix $message";
 }
 
-class OpenCodePlugin implements BridgePluginApi {
+class OpenCodePlugin implements OpenCodeManagedApi {
   final OpenCodeService _service;
   final SseEventParser _parser;
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
   final io.HttpClient _httpClient;
   final SseEventMapper _mapper = SseEventMapper();
   late final SseConnection _sseConnection;
+  Future<void>? _initializeFuture;
 
+  /// Builds an OpenCode plugin against the server at [serverUrl].
+  ///
+  /// When [autoInitialize] is true (the default, used by the legacy bridge-app
+  /// flow), cold-start is kicked off fire-and-forget at construction, swallowing
+  /// failures so creation never throws. The descriptor passes
+  /// `autoInitialize: false` and awaits [initialize] itself so it can surface a
+  /// cold-start failure as a degraded status. [onConnected]/[onDisconnected]
+  /// follow the SSE transport's live state for lifecycle reporting.
   factory OpenCodePlugin({
     required String serverUrl,
     String? password,
+    bool autoInitialize = true,
+    void Function()? onConnected,
+    void Function()? onDisconnected,
   }) {
     final httpClient = io.HttpClient();
     final api = OpenCodeApi(
@@ -51,6 +63,9 @@ class OpenCodePlugin implements BridgePluginApi {
       httpClient: httpClient,
       serverUrl: serverUrl,
       password: password,
+      autoInitialize: autoInitialize,
+      onConnected: onConnected,
+      onDisconnected: onDisconnected,
     );
   }
 
@@ -59,6 +74,9 @@ class OpenCodePlugin implements BridgePluginApi {
     required io.HttpClient httpClient,
     required String serverUrl,
     required String? password,
+    required bool autoInitialize,
+    void Function()? onConnected,
+    void Function()? onDisconnected,
   }) : _service = service,
        _httpClient = httpClient,
        _parser = SseEventParser(),
@@ -72,18 +90,37 @@ class OpenCodePlugin implements BridgePluginApi {
         await _service.coldStart();
         _emitProjectsSummary();
       },
+      onConnected: onConnected,
+      onDisconnected: onDisconnected,
     );
-    unawaited(_initialize());
+    if (autoInitialize) {
+      // Legacy behavior: cold-start fire-and-forget and swallow its failure so
+      // direct construction never throws (the descriptor awaits initialize()).
+      unawaited(initialize().catchError((Object _) {}));
+    }
   }
 
+  /// Hydrates the session tracker and starts the SSE stream. Idempotent:
+  /// repeated calls share one in-flight cold-start.
+  @override
+  Future<void> initialize() => _initializeFuture ??= _initialize();
+
   Future<void> _initialize() async {
+    Object? coldStartError;
+    StackTrace? coldStartStackTrace;
     try {
       await _service.coldStart();
       _emitProjectsSummary();
-    } catch (_) {
-      // Initialization errors should not crash plugin creation.
+    } catch (error, stackTrace) {
+      // Surface the failure to the caller (the descriptor maps it to a degraded
+      // status) but still start the SSE stream so a later reconnect recovers.
+      coldStartError = error;
+      coldStartStackTrace = stackTrace;
     }
     _sseConnection.start();
+    if (coldStartError != null) {
+      Error.throwWithStackTrace(coldStartError, coldStartStackTrace!);
+    }
   }
 
   Future<T> _call<T>(Future<T> Function() fn) async {
