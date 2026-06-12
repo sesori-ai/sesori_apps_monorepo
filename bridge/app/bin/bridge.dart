@@ -17,8 +17,8 @@ import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_dispatch.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_logout_runner.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart';
-import 'package:sesori_bridge/src/bridge/runtime/legacy_opencode_descriptor.dart';
 import 'package:sesori_bridge/src/bridge/runtime/plugin_cli_binding.dart';
+import 'package:sesori_bridge/src/bridge/runtime/plugin_registry.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
 import 'package:sesori_bridge/src/repositories/default_editor_repository.dart';
 import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
@@ -44,17 +44,35 @@ class RunCommand extends cli.Command<void> {
   @override
   final description = 'Run the Sesori bridge (default)';
 
-  RunCommand() {
+  final PluginCliSurface _selectedPlugin;
+
+  /// Deferred plugin-selection failure (bad `enabledPlugins`): only running
+  /// the bridge needs a valid selection, so the error surfaces here instead
+  /// of blocking informational commands like `--help`, logout, or config.
+  final String? _selectionError;
+
+  RunCommand({required PluginCliSurface selectedPlugin, required String? selectionError})
+    : _selectedPlugin = selectedPlugin,
+      _selectionError = selectionError {
     argParser
       ..addFlag(
         'version',
         negatable: false,
         help: 'Show version and exit',
       )
-      ..addOption('relay', defaultsTo: _defaultRelayURL, help: 'Relay server URL');
-    // The selected plugin contributes its own CLI options (the four OpenCode
-    // flags, with their historical names, help text, and defaults).
-    registerPluginOptions(parser: argParser, options: LegacyOpenCodeDescriptor.cliOptions);
+      ..addOption('relay', defaultsTo: _defaultRelayURL, help: 'Relay server URL')
+      // The selection was already scanned out of the raw argv to build this
+      // parser (see PluginSelector); registering the option here makes the
+      // full parse accept it and reject unknown ids via the allowed list.
+      // --help therefore documents the *selected* plugin's options.
+      ..addOption(
+        'plugin',
+        help: 'Plugin backend to run. Defaults to "enabledPlugins" in the bridge settings, then opencode',
+        allowed: [for (final plugin in knownPlugins) plugin.id],
+      );
+    // The selected plugin contributes its own CLI options (for OpenCode: the
+    // four flags with their historical names, help text, and defaults).
+    registerPluginOptions(parser: argParser, options: _selectedPlugin.options);
     argParser
       ..addOption('auth-backend', defaultsTo: '', help: 'Auth backend URL')
       ..addOption(
@@ -79,14 +97,19 @@ class RunCommand extends cli.Command<void> {
       return;
     }
 
+    final selectionError = _selectionError;
+    if (selectionError != null) {
+      usageException(selectionError);
+    }
+
     final BridgeCliOptions options;
     final PluginConfig pluginConfig;
     try {
       // Plugin option validate hooks and config validation run at
       // argument-parse time — strictly before the startup mutex, so a typo'd
       // flag can never terminate a healthy resident bridge.
-      pluginConfig = parsePluginConfig(options: LegacyOpenCodeDescriptor.cliOptions, results: results);
-      LegacyOpenCodeDescriptor.validateConfigValues(pluginConfig);
+      pluginConfig = parsePluginConfig(options: _selectedPlugin.options, results: results);
+      _selectedPlugin.validateConfig(pluginConfig);
       options = BridgeCliOptions.fromArgResults(
         cliArgs: globalResults!.arguments,
         results: results,
@@ -122,6 +145,7 @@ class RunCommand extends cli.Command<void> {
     final exitCode = await runBridgeApp(
       options: options,
       pluginConfig: pluginConfig,
+      pluginId: _selectedPlugin.id,
     );
     await sleepPreventionService.dispose();
     exit(exitCode);
@@ -268,14 +292,47 @@ class ConfigCommand extends cli.Command<void> {
   }
 }
 
+/// Best-effort `enabledPlugins` read for plugin selection. Selection also
+/// runs for `--help` and `logout`, so it must never crash on (or create)
+/// a missing/broken config — failures resolve to "unset". Diagnostics go
+/// through [Log.e] (the stderr level): stdout of `--version`/`--help` must
+/// stay machine-consumable.
+Future<List<String>?> _loadEnabledPluginsFromSettings() async {
+  try {
+    final settings = await BridgeSettingsRepository(api: BridgeSettingsApi()).peekSettings();
+    return settings.enabledPlugins;
+  } on Object catch (error) {
+    Log.e('Could not read bridge settings for plugin selection: $error');
+    return null;
+  }
+}
+
 Future<void> main(List<String> args) async {
   if (!(Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
     Log.e('Unsupported platform ${Platform.operatingSystem}');
     exit(1);
   }
 
+  // First pass of the two-pass parse: the selected plugin determines which
+  // options the run command's parser is built with.
+  PluginCliSurface selectedPlugin;
+  String? pluginSelectionError;
+  try {
+    selectedPlugin = await const PluginSelector(
+      knownPlugins: knownPlugins,
+      defaultPluginId: defaultPluginId,
+      loadEnabledPlugins: _loadEnabledPluginsFromSettings,
+    ).resolve(args: args);
+  } on PluginSelectionException catch (e) {
+    // Bad settings must not brick --help, logout, or config — config being
+    // the recovery command the message recommends. Build the parser from the
+    // default surface and defer the error to the run command itself.
+    selectedPlugin = knownPlugins.firstWhere((plugin) => plugin.id == defaultPluginId);
+    pluginSelectionError = e.message;
+  }
+
   final runner = cli.CommandRunner<void>('sesori-bridge', 'Sesori Bridge CLI')
-    ..addCommand(RunCommand())
+    ..addCommand(RunCommand(selectedPlugin: selectedPlugin, selectionError: pluginSelectionError))
     ..addCommand(LogoutCommand())
     ..addCommand(ConfigCommand());
 
