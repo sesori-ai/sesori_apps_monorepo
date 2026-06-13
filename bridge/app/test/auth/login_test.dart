@@ -126,6 +126,56 @@ void main() {
           reason: 'the full auth URL (with & query separators) must be printed so headless/SSH users can open it manually',
         );
       });
+
+      test('skips the browser launch but still prints the URL when no browser is available', () async {
+        const authUrl =
+            'https://github.com/login/oauth/authorize?client_id=abc&scope=read%3Auser&state=xyz';
+        final authServer = await _OAuthLongPollTestServer.start(
+          authUrl: authUrl,
+          statusResponses: [
+            AuthSessionStatusResponse.complete(
+              accessToken: 'github-access-token',
+              refreshToken: 'github-refresh-token',
+              user: AuthUser(
+                id: 'user-1',
+                provider: AuthProvider.github,
+                providerUserId: 'gh-1',
+                providerUsername: 'octocat',
+              ),
+            ),
+          ],
+        );
+        addTearDown(authServer.close);
+
+        final launchedUrls = <String>[];
+        final stdoutLines = <String>[];
+        String? accessToken;
+        await IOOverrides.runZoned(
+          () async {
+            final service = _createOAuthService(
+              authServer: authServer,
+              browserLauncher: (url) async => launchedUrls.add(url),
+              canLaunchBrowser: () => false,
+            );
+            final tokens = await service.performOAuthLogin(AuthProvider.github);
+            accessToken = tokens.accessToken;
+          },
+          stdout: () => _CapturingStdout(stdoutLines),
+          stderr: () => _CapturingStdout(<String>[]),
+        );
+
+        expect(accessToken, equals('github-access-token'));
+        expect(
+          launchedUrls,
+          isEmpty,
+          reason: 'must not attempt to launch a browser when canLaunchBrowser() is false',
+        );
+        expect(
+          stdoutLines,
+          contains(authUrl),
+          reason: 'the URL must still be printed so the user can complete login manually',
+        );
+      });
     });
 
     group('Google OAuth', () {
@@ -340,6 +390,7 @@ void main() {
 LoginOAuthService _createOAuthService({
   required _OAuthLongPollTestServer authServer,
   required Future<void> Function(String url) browserLauncher,
+  bool Function() canLaunchBrowser = _alwaysCanLaunchBrowser,
   Duration pollTimeout = const Duration(seconds: 2),
   Duration pollInterval = Duration.zero,
   Future<void> Function(Duration duration)? delay,
@@ -350,11 +401,14 @@ LoginOAuthService _createOAuthService({
       client: authServer.client,
     ),
     browserLauncher: browserLauncher,
+    canLaunchBrowser: canLaunchBrowser,
     pollTimeout: pollTimeout,
     pollInterval: pollInterval,
     delay: delay,
   );
 }
+
+bool _alwaysCanLaunchBrowser() => true;
 
 class _MockLoginEmailApi implements LoginEmailApi {
   @override

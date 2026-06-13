@@ -166,6 +166,7 @@ class BridgeRuntimeRunner {
           client: httpClient,
         ),
         browserLauncher: openOAuthBrowser,
+        canLaunchBrowser: canOpenBrowser,
       ),
       environment: environment,
     );

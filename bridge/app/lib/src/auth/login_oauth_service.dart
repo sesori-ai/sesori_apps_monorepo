@@ -46,9 +46,28 @@ Future<void> openOAuthBrowser(String url) async {
   }
 }
 
+/// Best-effort check for whether a graphical browser can be launched.
+///
+/// Mirrors CPython's `webbrowser` gating: on Linux a GUI browser is only
+/// reachable when `DISPLAY` or `WAYLAND_DISPLAY` is set, so a headless server,
+/// SSH session, container, or CI box returns false and we skip a pointless (or
+/// hanging) `xdg-open`. macOS and Windows have no reliable environment-only
+/// probe — correct detection there needs platform APIs (e.g. the Win32
+/// `SM_REMOTESESSION` metric) we don't want to depend on — so they
+/// optimistically return true and rely on the always-printed URL as the
+/// fallback when an attempt turns out to be a no-op.
+bool canOpenBrowser() {
+  if (Platform.isLinux) {
+    final env = Platform.environment;
+    return (env["DISPLAY"] ?? "").isNotEmpty || (env["WAYLAND_DISPLAY"] ?? "").isNotEmpty;
+  }
+  return Platform.isMacOS || Platform.isWindows;
+}
+
 class LoginOAuthService {
   final LoginOAuthApi _api;
   final Future<void> Function(String url) _browserLauncher;
+  final bool Function() _canLaunchBrowser;
   final Duration _pollInterval;
   final Duration _pollTimeout;
   final Duration _perRequestTimeout;
@@ -57,12 +76,14 @@ class LoginOAuthService {
   LoginOAuthService({
     required LoginOAuthApi api,
     required Future<void> Function(String url) browserLauncher,
+    required bool Function() canLaunchBrowser,
     @visibleForTesting Duration pollInterval = _defaultPollInterval,
     @visibleForTesting Duration pollTimeout = _defaultPollTimeout,
     @visibleForTesting Duration perRequestTimeout = _defaultPerRequestTimeout,
     @visibleForTesting Future<void> Function(Duration duration)? delay,
   }) : _api = api,
        _browserLauncher = browserLauncher,
+       _canLaunchBrowser = canLaunchBrowser,
        _pollInterval = pollInterval,
        _pollTimeout = pollTimeout,
        _perRequestTimeout = perRequestTimeout,
@@ -81,18 +102,27 @@ class LoginOAuthService {
 
     _printUserCode(initResp.userCode);
 
-    // Always print the URL before attempting to open a browser. The bridge
-    // frequently runs headless (servers, SSH sessions, containers) where no
-    // browser exists, and a launcher exit code of 0 only means the OS accepted
-    // the request — not that a browser actually appeared. Printing it
-    // unconditionally guarantees the user can always finish login by hand.
-    Log.i("To authorize ${provider.label} login, open this URL in your browser:");
+    // The URL is ALWAYS printed, on its own line, so login works even when no
+    // browser can be opened: the bridge frequently runs headless (servers, SSH
+    // sessions, containers), and a launcher exit code of 0 only means the OS
+    // accepted the request, not that a browser actually appeared. We attempt an
+    // automatic open only when a graphical browser is believed reachable. The
+    // wording is identical across platforms — only the environment differs.
+    final canOpen = _canLaunchBrowser();
+    if (canOpen) {
+      Log.i("Opening your browser to complete ${provider.label} login...");
+      Log.i("If it doesn't open automatically, open this URL manually to continue:");
+    } else {
+      Log.i("No graphical browser detected (e.g. a headless or SSH session).");
+      Log.i("Open this URL to complete ${provider.label} login:");
+    }
     Log.i(initResp.authUrl);
-    Log.i("Attempting to open it in your default browser...");
-    try {
-      await _browserLauncher(initResp.authUrl);
-    } catch (e) {
-      Log.w("Could not open a browser automatically: $e");
+    if (canOpen) {
+      try {
+        await _browserLauncher(initResp.authUrl);
+      } catch (e) {
+        Log.w("Could not open a browser automatically; open the URL above manually: $e");
+      }
     }
 
     Log.i("Waiting for authorization...");
