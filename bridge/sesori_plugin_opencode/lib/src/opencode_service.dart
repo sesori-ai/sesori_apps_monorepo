@@ -39,10 +39,16 @@ class OpenCodeService {
   final ActiveSessionTracker tracker;
   final Duration _commandDispatchFastFailWindow;
 
+  /// [commandDispatchFastFailWindow] bounds how long [sendCommand] waits on
+  /// OpenCode's synchronous command/summarize endpoints before treating the run
+  /// as accepted and detaching (see [sendCommand]). Genuine dispatch rejections
+  /// (unknown command/session, missing model, server down) surface from
+  /// localhost within milliseconds, so 1s is enough to catch them while keeping
+  /// the phone's "accepted" feedback snappy.
   OpenCodeService(
     this.repository,
     this.tracker, {
-    Duration commandDispatchFastFailWindow = const Duration(seconds: 3),
+    Duration commandDispatchFastFailWindow = const Duration(seconds: 1),
   }) : _commandDispatchFastFailWindow = commandDispatchFastFailWindow;
 
   Future<List<Project>> getProjects() {
