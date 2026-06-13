@@ -116,7 +116,7 @@ A plugin is a Dart package that implements the contract defined in `sesori_plugi
 3. Implement the contract:
    - A `BridgePluginDescriptor` that declares the plugin's CLI options, validates configuration, and starts the plugin against a `PluginHost`.
    - A `BridgePlugin` that exposes a `BridgePluginApi`, reports status via a `PluginStatus` stream, and implements ordered `shutdown()`.
-4. Register the descriptor in `app/bin/bridge.dart` (`plugin_registry.dart`).
+4. Register the descriptor in `app/lib/src/bridge/runtime/plugin_registry.dart` (referenced from `app/bin/bridge.dart`).
 
 For a concrete example, see `sesori_plugin_opencode`.
 

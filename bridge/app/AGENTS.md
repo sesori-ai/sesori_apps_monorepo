@@ -29,7 +29,7 @@ lib/src/
 bridge/ workspace modules (siblings of app/):
 ├── sesori_plugin_interface/   Plugin contract — BridgePlugin, BridgePluginDescriptor, PluginHost
 └── sesori_plugin_opencode/    OpenCode implementation
-    ├── runtime/               OpenCode lifecycle: descriptor, spawn, health, ownership, DB maintenance
+    ├── runtime/               OpenCode lifecycle: descriptor, managed runtime (spawn, health, restart), ownership records
     ├── models/                Freezed models (project, session, message, SSE events, etc.)
     ├── opencode_plugin_impl.dart  BridgePlugin implementation
     ├── opencode_service.dart      Business logic coordinator
@@ -43,18 +43,18 @@ bridge/ workspace modules (siblings of app/):
 
 | Task             | Location                           | Notes                                                   |
 | ---------------- | ---------------------------------- | ------------------------------------------------------- |
-| CLI flags        | `bin/bridge.dart`                  | Bridge flags (`--relay`, `--port`, etc.); selected plugin contributes its own options |
+| CLI flags        | `bin/bridge.dart`                  | Bridge core flags (`--relay`, `--plugin`, etc.); the selected plugin contributes its own (OpenCode adds `--port`, `--no-auto-start`) |
 | Auth flow        | `lib/src/auth/`                    | OAuth PKCE with token persistence to disk               |
 | Relay connection | `lib/src/bridge/relay_client.dart` | WebSocket + auth handshake + reconnection               |
 | Key exchange     | `lib/src/bridge/key_exchange.dart` | X25519 → HKDF → room key delivery                       |
 | Request routing  | `lib/src/bridge/routing/`          | Intercept-first handlers with proxy fallback            |
-| Plugin interface | `modules/sesori_plugin_interface/` | BridgePlugin contract for all backends                  |
-| OpenCode plugin  | `modules/sesori_plugin_opencode/`  | OpenCode backend implementation + models + tests        |
+| Plugin interface | `../sesori_plugin_interface/`       | BridgePlugin contract for all backends                  |
+| OpenCode plugin  | `../sesori_plugin_opencode/`        | OpenCode backend implementation + models + tests        |
 | Bridge instances | `lib/src/server/`                  | Single-live-bridge enforcement, startup mutex, plugin host abstractions |
 
 ## CONVENTIONS
 
-- **Plugin architecture** — all backend-specific code lives in plugin modules under `modules/`. The bridge `lib/src/` is plugin-agnostic — it only imports from `sesori_plugin_interface`, never from concrete plugins. `bin/bridge.dart`'s registry (`plugin_registry.dart`) imports `opencode_plugin` for the const descriptor — that is the supported descriptor registration point.
+- **Plugin architecture** — all backend-specific code lives in sibling plugin packages under `bridge/` (e.g. `sesori_plugin_opencode`). The bridge `lib/src/` is plugin-agnostic — it only imports from `sesori_plugin_interface`, never from concrete plugins. `bin/bridge.dart`'s registry (`plugin_registry.dart`) imports `opencode_plugin` for the const descriptor — that is the supported descriptor registration point.
 - **Intercept-first routing** — requests are intercepted by handlers by default. Proxy is the fallback for unhandled routes, not the default path.
 - **Crypto from `sesori_shared`** — all crypto primitives imported from shared package, not duplicated
 - **Linting**: `package:lints/recommended.yaml` (lighter than mobile's `all_lint_rules`)
@@ -96,12 +96,16 @@ For push code specifically, `PushDispatcher` owns only outbound push sends (imme
 ## TESTING
 
 ```bash
-dart test                                    # Bridge tests (run from bridge/app/)
-cd bridge/sesori_plugin_opencode && dart test # Plugin tests
-make analyze                                 # Bridge analysis (run from bridge/)
-cd bridge/sesori_plugin_interface && dart analyze # Interface analysis
-cd bridge/sesori_plugin_opencode && dart analyze  # Plugin analysis
-make build                                   # Compile native binary (run from bridge/app/)
+# Run all commands from the bridge/ workspace root.
+make analyze                                   # Analyze all bridge modules
+make test                                      # Test all bridge modules
+(cd app && make build)                         # Compile the native binary
+
+# Target a single module (the subshell keeps your shell at bridge/):
+(cd app && dart test)                          # Bridge app tests only
+(cd sesori_plugin_opencode && dart test)       # OpenCode plugin tests only
+(cd sesori_plugin_interface && dart analyze)   # Interface analysis only
+(cd sesori_plugin_opencode && dart analyze)    # Plugin analysis only
 ```
 
 Test helpers in `test/helpers/test_helpers.dart`: `makeRoomKey()`, `startTestRelayServer()`, `connectTestRelayClient()`

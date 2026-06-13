@@ -119,14 +119,20 @@ Bridge core flags:
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--relay` | `wss://relay.sesori.com` | Relay server URL |
-| `--port` | plugin-defined | Port the plugin should use for its backend server (when supported) |
-| `--password` | *(auto-generated)* | Override the backend server password |
 | `--plugin` | `opencode` | Plugin backend to run |
 | `--auth-backend` | `https://api.sesori.com` | Auth backend URL (also reads `AUTH_BACKEND_URL` env var) |
 | `--debug-port` | *(disabled)* | Start a debug HTTP server on this port for Postman/curl testing |
 | `--log-level` | `info` | Minimum log level: `verbose`, `debug`, `info`, `warning`, `error` |
+| `--version` | — | Print the bridge version and exit |
 
-Each plugin contributes its own options. For example, the OpenCode plugin adds `--no-auto-start` and `--opencode-bin`. Run `--help` to see the options for the selected plugin.
+The selected plugin contributes its own options, parsed after `--plugin` resolves the backend. Run `--help` to see the options for the selected plugin. The OpenCode plugin adds:
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--port` | *(auto)* | Port for the OpenCode server. Required with `--no-auto-start`; otherwise a free port is chosen automatically. |
+| `--password` | *(auto-generated)* | Override the OpenCode server password |
+| `--no-auto-start` | `false` | Skip spawning OpenCode; attach to an existing server on `--port` |
+| `--opencode-bin` | `opencode` | Path to the OpenCode binary |
 
 ## Commands
 
