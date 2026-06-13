@@ -155,7 +155,7 @@ void main() {
             final service = _createOAuthService(
               authServer: authServer,
               browserLauncher: (url) async => launchedUrls.add(url),
-              canLaunchBrowser: () => false,
+              browserOpenability: () => BrowserOpenability.no,
             );
             final tokens = await service.performOAuthLogin(AuthProvider.github);
             accessToken = tokens.accessToken;
@@ -174,6 +174,55 @@ void main() {
           stdoutLines,
           contains(authUrl),
           reason: 'the URL must still be printed so the user can complete login manually',
+        );
+      });
+
+      test('uses tentative "Attempting to open" wording but still launches when openability is unknown', () async {
+        const authUrl =
+            'https://github.com/login/oauth/authorize?client_id=abc&scope=read%3Auser&state=xyz';
+        final authServer = await _OAuthLongPollTestServer.start(
+          authUrl: authUrl,
+          statusResponses: [
+            AuthSessionStatusResponse.complete(
+              accessToken: 'github-access-token',
+              refreshToken: 'github-refresh-token',
+              user: AuthUser(
+                id: 'user-1',
+                provider: AuthProvider.github,
+                providerUserId: 'gh-1',
+                providerUsername: 'octocat',
+              ),
+            ),
+          ],
+        );
+        addTearDown(authServer.close);
+
+        final launchedUrls = <String>[];
+        final stdoutLines = <String>[];
+        await IOOverrides.runZoned(
+          () async {
+            final service = _createOAuthService(
+              authServer: authServer,
+              browserLauncher: (url) async => launchedUrls.add(url),
+              browserOpenability: () => BrowserOpenability.unknown,
+            );
+            await service.performOAuthLogin(AuthProvider.github);
+          },
+          stdout: () => _CapturingStdout(stdoutLines),
+          stderr: () => _CapturingStdout(<String>[]),
+        );
+
+        expect(launchedUrls, equals([authUrl]), reason: 'unknown still attempts a best-effort launch');
+        expect(stdoutLines, contains(authUrl));
+        expect(
+          stdoutLines.any((line) => line.contains('Attempting to open')),
+          isTrue,
+          reason: 'unknown openability must use tentative wording',
+        );
+        expect(
+          stdoutLines.any((line) => line.startsWith('Opening your browser')),
+          isFalse,
+          reason: 'must not claim the browser is definitely opening when uncertain',
         );
       });
     });
@@ -260,6 +309,54 @@ void main() {
           throwsA(isA<TimeoutException>()),
         );
       });
+    });
+  });
+
+  group('resolveBrowserOpenability', () {
+    BrowserOpenability resolve({
+      bool isLinux = false,
+      bool isMacOS = false,
+      bool isWindows = false,
+      bool hasDisplay = false,
+      bool isWsl = false,
+      bool isSsh = false,
+    }) {
+      return resolveBrowserOpenability(
+        isLinux: isLinux,
+        isMacOS: isMacOS,
+        isWindows: isWindows,
+        hasDisplay: hasDisplay,
+        isWsl: isWsl,
+        isSsh: isSsh,
+      );
+    }
+
+    test('Linux with a display server is yes (incl. SSH X11 forwarding)', () {
+      expect(resolve(isLinux: true, hasDisplay: true), BrowserOpenability.yes);
+      expect(resolve(isLinux: true, hasDisplay: true, isSsh: true), BrowserOpenability.yes);
+    });
+
+    test('headless Linux without a display is no', () {
+      expect(resolve(isLinux: true), BrowserOpenability.no);
+      expect(resolve(isLinux: true, isSsh: true), BrowserOpenability.no);
+    });
+
+    test('WSL without a display is unknown (may reach the Windows browser via wslview)', () {
+      expect(resolve(isLinux: true, isWsl: true), BrowserOpenability.unknown);
+    });
+
+    test('macOS is yes locally and unknown over SSH', () {
+      expect(resolve(isMacOS: true), BrowserOpenability.yes);
+      expect(resolve(isMacOS: true, isSsh: true), BrowserOpenability.unknown);
+    });
+
+    test('Windows is unknown locally and no over SSH', () {
+      expect(resolve(isWindows: true), BrowserOpenability.unknown);
+      expect(resolve(isWindows: true, isSsh: true), BrowserOpenability.no);
+    });
+
+    test('an unrecognized platform is no', () {
+      expect(resolve(), BrowserOpenability.no);
     });
   });
 
@@ -390,7 +487,7 @@ void main() {
 LoginOAuthService _createOAuthService({
   required _OAuthLongPollTestServer authServer,
   required Future<void> Function(String url) browserLauncher,
-  bool Function() canLaunchBrowser = _alwaysCanLaunchBrowser,
+  BrowserOpenability Function() browserOpenability = _alwaysOpenableBrowser,
   Duration pollTimeout = const Duration(seconds: 2),
   Duration pollInterval = Duration.zero,
   Future<void> Function(Duration duration)? delay,
@@ -401,14 +498,14 @@ LoginOAuthService _createOAuthService({
       client: authServer.client,
     ),
     browserLauncher: browserLauncher,
-    canLaunchBrowser: canLaunchBrowser,
+    browserOpenability: browserOpenability,
     pollTimeout: pollTimeout,
     pollInterval: pollInterval,
     delay: delay,
   );
 }
 
-bool _alwaysCanLaunchBrowser() => true;
+BrowserOpenability _alwaysOpenableBrowser() => BrowserOpenability.yes;
 
 class _MockLoginEmailApi implements LoginEmailApi {
   @override

@@ -46,28 +46,96 @@ Future<void> openOAuthBrowser(String url) async {
   }
 }
 
-/// Best-effort check for whether a graphical browser can be launched.
+/// Confidence that a URL can be opened in a graphical browser on this host.
+enum BrowserOpenability {
+  /// A graphical browser is almost certainly reachable — open it confidently.
+  yes,
+
+  /// No graphical browser is reachable (headless host, or an SSH session on a
+  /// platform where SSH cannot reach the desktop). Don't attempt a launch.
+  no,
+
+  /// Cannot be decided from the environment alone — attempt a best-effort open
+  /// and rely on the always-printed URL when it turns out to be a no-op.
+  unknown,
+}
+
+/// Detects whether a graphical browser can be launched on this host from the
+/// environment and platform. Injected into [LoginOAuthService] so tests can
+/// force a specific outcome; the decision table itself lives in the pure
+/// [resolveBrowserOpenability] for direct testing.
+BrowserOpenability detectBrowserOpenability() {
+  final env = Platform.environment;
+  final isLinux = Platform.isLinux;
+  return resolveBrowserOpenability(
+    isLinux: isLinux,
+    isMacOS: Platform.isMacOS,
+    isWindows: Platform.isWindows,
+    hasDisplay: (env["DISPLAY"] ?? "").isNotEmpty || (env["WAYLAND_DISPLAY"] ?? "").isNotEmpty,
+    isWsl: isLinux && _isWindowsSubsystemForLinux(env),
+    isSsh: _isSshSession(env),
+  );
+}
+
+/// Pure decision table for [detectBrowserOpenability], split out so the
+/// per-platform reasoning is unit-testable without touching the real host.
 ///
-/// Mirrors CPython's `webbrowser` gating: on Linux a GUI browser is only
-/// reachable when `DISPLAY` or `WAYLAND_DISPLAY` is set, so a headless server,
-/// SSH session, container, or CI box returns false and we skip a pointless (or
-/// hanging) `xdg-open`. macOS and Windows have no reliable environment-only
-/// probe — correct detection there needs platform APIs (e.g. the Win32
-/// `SM_REMOTESESSION` metric) we don't want to depend on — so they
-/// optimistically return true and rely on the always-printed URL as the
-/// fallback when an attempt turns out to be a no-op.
-bool canOpenBrowser() {
-  if (Platform.isLinux) {
-    final env = Platform.environment;
-    return (env["DISPLAY"] ?? "").isNotEmpty || (env["WAYLAND_DISPLAY"] ?? "").isNotEmpty;
+/// Mirrors CPython's `webbrowser` gating on Linux (a GUI browser is only
+/// reachable when `DISPLAY`/`WAYLAND_DISPLAY` is set, which also covers SSH X11
+/// forwarding and WSLg). WSL without a display may still reach the Windows
+/// browser via `wslview`, so it is `unknown` rather than `no`. SSH into Windows
+/// cannot reach the interactive desktop, so it is `no`; a local Windows or
+/// SSH-on-macOS session can't be proven either way without platform APIs, so it
+/// stays `unknown`.
+@visibleForTesting
+BrowserOpenability resolveBrowserOpenability({
+  required bool isLinux,
+  required bool isMacOS,
+  required bool isWindows,
+  required bool hasDisplay,
+  required bool isWsl,
+  required bool isSsh,
+}) {
+  if (isLinux) {
+    if (hasDisplay) {
+      return BrowserOpenability.yes;
+    }
+    if (isWsl) {
+      return BrowserOpenability.unknown;
+    }
+    return BrowserOpenability.no;
   }
-  return Platform.isMacOS || Platform.isWindows;
+  if (isMacOS) {
+    return isSsh ? BrowserOpenability.unknown : BrowserOpenability.yes;
+  }
+  if (isWindows) {
+    return isSsh ? BrowserOpenability.no : BrowserOpenability.unknown;
+  }
+  return BrowserOpenability.no;
+}
+
+bool _isSshSession(Map<String, String> env) =>
+    (env["SSH_CONNECTION"] ?? "").isNotEmpty ||
+    (env["SSH_CLIENT"] ?? "").isNotEmpty ||
+    (env["SSH_TTY"] ?? "").isNotEmpty;
+
+bool _isWindowsSubsystemForLinux(Map<String, String> env) {
+  if ((env["WSL_DISTRO_NAME"] ?? "").isNotEmpty || (env["WSL_INTEROP"] ?? "").isNotEmpty) {
+    return true;
+  }
+  // Fallback for shells that drop the WSL_* vars (e.g. after sudo): the WSL
+  // kernel advertises itself in /proc/version.
+  try {
+    return File("/proc/version").readAsStringSync().toLowerCase().contains("microsoft");
+  } on IOException {
+    return false;
+  }
 }
 
 class LoginOAuthService {
   final LoginOAuthApi _api;
   final Future<void> Function(String url) _browserLauncher;
-  final bool Function() _canLaunchBrowser;
+  final BrowserOpenability Function() _browserOpenability;
   final Duration _pollInterval;
   final Duration _pollTimeout;
   final Duration _perRequestTimeout;
@@ -76,14 +144,14 @@ class LoginOAuthService {
   LoginOAuthService({
     required LoginOAuthApi api,
     required Future<void> Function(String url) browserLauncher,
-    required bool Function() canLaunchBrowser,
+    required BrowserOpenability Function() browserOpenability,
     @visibleForTesting Duration pollInterval = _defaultPollInterval,
     @visibleForTesting Duration pollTimeout = _defaultPollTimeout,
     @visibleForTesting Duration perRequestTimeout = _defaultPerRequestTimeout,
     @visibleForTesting Future<void> Function(Duration duration)? delay,
   }) : _api = api,
        _browserLauncher = browserLauncher,
-       _canLaunchBrowser = canLaunchBrowser,
+       _browserOpenability = browserOpenability,
        _pollInterval = pollInterval,
        _pollTimeout = pollTimeout,
        _perRequestTimeout = perRequestTimeout,
@@ -106,18 +174,23 @@ class LoginOAuthService {
     // browser can be opened: the bridge frequently runs headless (servers, SSH
     // sessions, containers), and a launcher exit code of 0 only means the OS
     // accepted the request, not that a browser actually appeared. We attempt an
-    // automatic open only when a graphical browser is believed reachable. The
-    // wording is identical across platforms — only the environment differs.
-    final canOpen = _canLaunchBrowser();
-    if (canOpen) {
-      Log.i("Opening your browser to complete ${provider.label} login...");
-      Log.i("If it doesn't open automatically, open this URL manually to continue:");
-    } else {
-      Log.i("No graphical browser detected (e.g. a headless or SSH session).");
-      Log.i("Open this URL to complete ${provider.label} login:");
+    // automatic open unless we're confident none is reachable, and soften the
+    // wording from "Opening" to "Attempting to open" when it's uncertain. The
+    // messaging is identical across platforms — only the environment differs.
+    final openability = _browserOpenability();
+    switch (openability) {
+      case BrowserOpenability.yes:
+        Log.i("Opening your browser to complete ${provider.label} login...");
+        Log.i("If it doesn't open automatically, open this URL manually to continue:");
+      case BrowserOpenability.unknown:
+        Log.i("Attempting to open your browser to complete ${provider.label} login...");
+        Log.i("If it doesn't open, open this URL manually to continue:");
+      case BrowserOpenability.no:
+        Log.i("No graphical browser detected (e.g. a headless or SSH session).");
+        Log.i("Open this URL to complete ${provider.label} login:");
     }
     Log.i(initResp.authUrl);
-    if (canOpen) {
+    if (openability != BrowserOpenability.no) {
       try {
         await _browserLauncher(initResp.authUrl);
       } catch (e) {
