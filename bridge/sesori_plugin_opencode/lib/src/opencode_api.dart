@@ -4,17 +4,19 @@ import "package:http/http.dart" as http;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeListMap, jsonDecodeMap;
 
-import "models/agent_info.dart";
-import "models/command.dart";
-import "models/message_with_parts.dart";
-import "models/pending_permission.dart";
-import "models/pending_question.dart";
-import "models/project.dart";
-import "models/provider_info.dart";
+import "models/openapi/agent.g.dart";
+import "models/openapi/command.g.dart";
+import "models/openapi/config_providers_response.g.dart";
+import "models/openapi/global_session.g.dart";
+import "models/openapi/permission_request.g.dart";
+import "models/openapi/project.g.dart";
+import "models/openapi/provider_list_response.g.dart";
+import "models/openapi/question_request.g.dart";
+import "models/openapi/session.g.dart";
+import "models/openapi/session_messages_response_item.g.dart";
+import "models/openapi/session_status.g.dart";
 import "models/send_command_body.dart";
 import "models/send_prompt_body.dart";
-import "models/session.dart";
-import "models/session_status.dart";
 
 const _directoryOpenCodeHeader = "x-opencode-directory";
 
@@ -257,7 +259,7 @@ class OpenCodeApi {
     return Session.fromJson(jsonDecodeMap(response.body));
   }
 
-  Future<List<MessageWithParts>> getMessages({
+  Future<List<SessionMessagesResponseItem>> getMessages({
     required String sessionId,
     required String? directory,
   }) async {
@@ -272,7 +274,7 @@ class OpenCodeApi {
     _ensureSuccess(response, "GET /session/$sessionId/message");
 
     final decoded = jsonDecodeListMap(response.body);
-    return decoded.map(MessageWithParts.fromJson).toList();
+    return decoded.map(SessionMessagesResponseItem.fromJson).toList();
   }
 
   Future<void> sendPrompt({
@@ -335,7 +337,7 @@ class OpenCodeApi {
     _ensureSuccess(response, "POST /session/$sessionId/abort");
   }
 
-  Future<List<AgentInfo>> listAgents({required String directory}) async {
+  Future<List<Agent>> listAgents({required String directory}) async {
     // OpenCode resolves agents per project; newer releases reject requests
     // that carry no directory context with a 500.
     final headers = <String, String>{
@@ -346,10 +348,10 @@ class OpenCodeApi {
     _ensureSuccess(response, "GET /agent");
 
     final decoded = jsonDecodeListMap(response.body);
-    return decoded.map(AgentInfo.fromJson).toList();
+    return decoded.map(Agent.fromJson).toList();
   }
 
-  Future<List<PendingQuestion>> getPendingQuestions({
+  Future<List<QuestionRequest>> getPendingQuestions({
     required String? directory,
   }) async {
     final headers = <String, String>{
@@ -361,10 +363,10 @@ class OpenCodeApi {
     _ensureSuccess(response, "GET /question");
 
     final decoded = jsonDecodeListMap(response.body);
-    return decoded.map(PendingQuestion.fromJson).toList();
+    return decoded.map(QuestionRequest.fromJson).toList();
   }
 
-  Future<List<PendingPermission>> getPendingPermissions({
+  Future<List<PermissionRequest>> getPendingPermissions({
     required String? directory,
   }) async {
     final response = await _client.get(
@@ -378,7 +380,7 @@ class OpenCodeApi {
     _ensureSuccess(response, "GET /permission");
 
     final decoded = jsonDecodeListMap(response.body);
-    return decoded.map(PendingPermission.fromJson).toList();
+    return decoded.map(PermissionRequest.fromJson).toList();
   }
 
   Future<void> replyToQuestion({
@@ -493,7 +495,7 @@ class OpenCodeApi {
     return ProviderListResponse.fromJson(jsonDecodeMap(response.body));
   }
 
-  Future<ProviderListResponse> listConfigProviders({required String? directory}) async {
+  Future<ConfigProvidersResponse> listConfigProviders({required String? directory}) async {
     final headers = <String, String>{
       ..._authHeaders,
       _directoryOpenCodeHeader: ?directory,
@@ -503,7 +505,7 @@ class OpenCodeApi {
       headers: headers,
     );
     _ensureSuccess(response, "GET /config/providers");
-    return ProviderListResponse.fromJson(
+    return ConfigProvidersResponse.fromJson(
       jsonDecodeMap(response.body),
     );
   }

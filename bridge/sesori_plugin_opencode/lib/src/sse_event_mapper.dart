@@ -1,13 +1,15 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "models/message_part.dart";
-import "models/sse_event_data.dart";
+import "message_part_mapper.dart";
+import "models/sse_event_data.g.dart";
 
 /// Maps OpenCode SSE events and message parts to plugin interface types.
 ///
 /// Extracted from [OpenCodePlugin] to isolate the mapping concern.
 /// This class is stateless — all methods are pure transformations.
 class SseEventMapper {
+  final MessagePartMapper _messagePartMapper = const MessagePartMapper();
+
   /// Maps an [SseEventData] to a [BridgeSseEvent], or null if the event
   /// type has no plugin representation.
   BridgeSseEvent? map(SseEventData event) {
@@ -26,7 +28,7 @@ class SseEventMapper {
       SseSessionCompacted(:final sessionID) => BridgeSseSessionCompacted(sessionID: sessionID),
       SseSessionStatus(:final sessionID, :final status) => BridgeSseSessionStatus(
         sessionID: sessionID,
-        status: status.toJson(),
+        status: status.toJson()! as Map<String, dynamic>,
       ),
       // ignore: deprecated_member_use, forwards legacy idle event for backward compatibility
       SseSessionIdle(:final sessionID) => BridgeSseSessionIdle(sessionID: sessionID),
@@ -36,12 +38,12 @@ class SseEventMapper {
         arguments: arguments,
         messageID: messageID,
       ),
-      SseMessageUpdated(:final info) => BridgeSseMessageUpdated(info: info.toJson()),
+      SseMessageUpdated(:final info) => BridgeSseMessageUpdated(info: info.toJson()! as Map<String, dynamic>),
       SseMessageRemoved(:final sessionID, :final messageID) => BridgeSseMessageRemoved(
         sessionID: sessionID,
         messageID: messageID,
       ),
-      SseMessagePartUpdated(:final part) => BridgeSseMessagePartUpdated(part: mapPart(part)),
+      SseMessagePartUpdated(:final part) => BridgeSseMessagePartUpdated(part: _messagePartMapper.mapPart(part)),
       SseMessagePartDelta(
         :final sessionID,
         :final messageID,
@@ -116,55 +118,4 @@ class SseEventMapper {
       SseWorktreeFailed() => const BridgeSseWorktreeFailed(),
     };
   }
-
-  /// Maps an OpenCode [MessagePart] to a [PluginMessagePart].
-  PluginMessagePart mapPart(MessagePart raw) {
-    return PluginMessagePart(
-      id: raw.id,
-      sessionID: raw.sessionID,
-      messageID: raw.messageID,
-      type: toPluginPartType(type: raw.type),
-      text: raw.text,
-      tool: raw.tool,
-      state: switch (raw.state) {
-        ToolState(:final status, :final title, :final output, :final error) => PluginToolState(
-          status: status,
-          title: title,
-          output: output != null && output.length > maxToolOutputLength
-              ? String.fromCharCodes(output.runes.take(maxToolOutputLength))
-              : output,
-          error: error,
-        ),
-        null => null,
-      },
-      prompt: raw.prompt,
-      description: raw.description,
-      agent: raw.agent,
-      agentName: raw.name,
-      attempt: raw.attempt,
-      retryError: (raw.error?['data'] as Map<String, dynamic>?)?['message']?.toString(),
-    );
-  }
-
-  /// Maps an OpenCode part type string to [PluginMessagePartType].
-  /// Unknown types are mapped to [PluginMessagePartType.unknown] (invisible)
-  /// and logged as a warning so new types are noticed.
-  static PluginMessagePartType toPluginPartType({required String type}) => switch (type) {
-    "text" => PluginMessagePartType.text,
-    "reasoning" => PluginMessagePartType.reasoning,
-    "tool" => PluginMessagePartType.tool,
-    "subtask" => PluginMessagePartType.subtask,
-    "step-start" => PluginMessagePartType.stepStart,
-    "step-finish" => PluginMessagePartType.stepFinish,
-    "file" => PluginMessagePartType.file,
-    "snapshot" => PluginMessagePartType.snapshot,
-    "patch" => PluginMessagePartType.patch,
-    "agent" => PluginMessagePartType.agent,
-    "retry" => PluginMessagePartType.retry,
-    "compaction" => PluginMessagePartType.compaction,
-    _ => () {
-      Log.w("Unknown message part type: '$type' — filtering out");
-      return PluginMessagePartType.unknown;
-    }(),
-  };
 }

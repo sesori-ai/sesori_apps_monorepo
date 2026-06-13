@@ -7,6 +7,38 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
+  group("OpenCodeApi.listProviders", () {
+    test("uses the provider-list response shape for GET /provider", () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            "all": [
+              {
+                "id": "openai",
+                "name": "OpenAI",
+                "models": <String, dynamic>{},
+              },
+            ],
+            "default": {"openai": "gpt-4.1"},
+            "connected": ["openai"],
+          }),
+          200,
+        );
+      });
+
+      final api = OpenCodeApi(
+        serverURL: "http://localhost:1234",
+        password: "test-pass",
+        client: mockClient,
+      );
+
+      final response = await api.listProviders();
+
+      expect(response.all.single.id, equals("openai"));
+      expect(response.connected, equals(["openai"]));
+    });
+  });
+
   group("OpenCodeApi.listConfigProviders", () {
     test("uses GET /config/providers and forwards the directory header", () async {
       late http.BaseRequest capturedRequest;
@@ -49,7 +81,7 @@ void main() {
       expect(capturedRequest.method, equals("GET"));
       expect(capturedRequest.url.toString(), equals("http://localhost:1234/config/providers"));
       expect(capturedRequest.headers["x-opencode-directory"], equals("/repo"));
-      expect(response.providers.single.models.values.single.variants, equals(["low", "high"]));
+      expect(response.providers.single.models.values.single.variants?.keys, equals(["low", "high"]));
     });
   });
 

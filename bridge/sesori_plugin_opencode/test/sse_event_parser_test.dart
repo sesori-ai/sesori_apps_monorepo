@@ -279,7 +279,7 @@ void main() {
       expect(result.rawData, equals(rawData));
     });
 
-    test("known event with malformed payload is categorized separately", () {
+    test("known event with unknown session status is preserved", () {
       final parser = SseEventParser();
       final rawData = jsonEncode({
         "directory": "/repo",
@@ -294,11 +294,14 @@ void main() {
 
       final result = parser.parse(rawData);
 
-      expect(result.outcome, equals(SseParseOutcome.malformedKnownPayload));
-      expect(result.event, isNull);
+      expect(result.outcome, equals(SseParseOutcome.validKnownEvent));
+      expect(result.event, isA<SseSessionStatus>());
       expect(result.directory, equals("/repo"));
       expect(result.eventType, equals("session.status"));
       expect(result.rawData, equals(rawData));
+
+      final event = result.event! as SseSessionStatus;
+      expect(event.status, isA<SessionStatusUnknown>());
     });
 
     test("malformed payload envelope is categorized separately", () {

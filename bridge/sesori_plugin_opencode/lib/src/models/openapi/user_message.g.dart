@@ -1,0 +1,254 @@
+// GENERATED FILE - DO NOT EDIT BY HAND
+// Source: anomalyco/opencode@v1.17.3 (8c8011336163d7e7fb24a6a4a049cdb1f6e6ee74)
+
+import 'package:collection/collection.dart';
+import 'package:meta/meta.dart';
+import 'message.g.dart';
+import 'output_format.g.dart';
+import 'snapshot_file_diff.g.dart';
+
+@immutable
+class UserMessage implements Message {
+  const UserMessage({
+    this.id = '',
+    this.sessionID = '',
+    required this.time,
+    this.format,
+    this.summary,
+    this.agent = '',
+    required this.model,
+    this.system,
+    this.tools,
+  });
+
+  factory UserMessage.fromJson(Map<String, dynamic> json) {
+    return UserMessage(
+      id: (json["id"] ?? '') as String,
+      sessionID: (json["sessionID"] ?? '') as String,
+      time: UserMessageTime.fromJson((json["time"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      format: json["format"] == null ? null : OutputFormat.fromJson(json["format"] as Object),
+      summary: json["summary"] == null ? null : UserMessageSummary.fromJson(json["summary"] as Map<String, dynamic>),
+      agent: (json["agent"] ?? '') as String,
+      model: UserMessageModel.fromJson((json["model"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      system: json["system"] as String?,
+      tools: (json["tools"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as bool)),
+    );
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "id": id,
+      "sessionID": sessionID,
+      "role": "user",
+      "time": time.toJson(),
+      "format": ?format?.toJson(),
+      "summary": ?summary?.toJson(),
+      "agent": agent,
+      "model": model.toJson(),
+      "system": ?system,
+      "tools": ?tools,
+    };
+  }
+
+  /// Returns a copy with non-null arguments replacing existing values.
+  /// Nullable fields cannot be set to null through this helper; null means keep.
+  UserMessage copyWith({
+    String? id,
+    String? sessionID,
+    UserMessageTime? time,
+    OutputFormat? format,
+    UserMessageSummary? summary,
+    String? agent,
+    UserMessageModel? model,
+    String? system,
+    Map<String, bool>? tools,
+  }) {
+    return UserMessage(
+      id: id ?? this.id,
+      sessionID: sessionID ?? this.sessionID,
+      time: time ?? this.time,
+      format: format ?? this.format,
+      summary: summary ?? this.summary,
+      agent: agent ?? this.agent,
+      model: model ?? this.model,
+      system: system ?? this.system,
+      tools: tools ?? this.tools,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UserMessage &&
+          other.id == id &&
+          other.sessionID == sessionID &&
+          other.time == time &&
+          other.format == format &&
+          other.summary == summary &&
+          other.agent == agent &&
+          other.model == model &&
+          other.system == system &&
+          const DeepCollectionEquality().equals(other.tools, tools));
+
+  @override
+  int get hashCode => Object.hash(id, sessionID, time, format, summary, agent, model, system, const DeepCollectionEquality().hash(tools));
+
+  final String id;
+  final String sessionID;
+  final UserMessageTime time;
+  final OutputFormat? format;
+  final UserMessageSummary? summary;
+  final String agent;
+  final UserMessageModel model;
+  final String? system;
+  final Map<String, bool>? tools;
+}
+
+@immutable
+class UserMessageTime {
+  const UserMessageTime({
+    this.created = 0,
+  });
+
+  factory UserMessageTime.fromJson(Map<String, dynamic> json) {
+    return UserMessageTime(
+      created: ((json["created"] ?? 0) as num).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "created": created,
+    };
+  }
+
+  /// Returns a copy with non-null arguments replacing existing values.
+  /// Nullable fields cannot be set to null through this helper; null means keep.
+  UserMessageTime copyWith({
+    double? created,
+  }) {
+    return UserMessageTime(
+      created: created ?? this.created,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UserMessageTime &&
+          other.created == created);
+
+  @override
+  int get hashCode => created.hashCode;
+
+  final double created;
+}
+
+@immutable
+class UserMessageSummary {
+  const UserMessageSummary({
+    this.title,
+    this.body,
+    this.diffs = const [],
+  });
+
+  factory UserMessageSummary.fromJson(Map<String, dynamic> json) {
+    return UserMessageSummary(
+      title: json["title"] as String?,
+      body: json["body"] as String?,
+      diffs: ((json["diffs"] ?? const []) as List<dynamic>).map((e) => SnapshotFileDiff.fromJson(e as Map<String, dynamic>)).toList(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "title": ?title,
+      "body": ?body,
+      "diffs": diffs.map((e) => e.toJson()).toList(),
+    };
+  }
+
+  /// Returns a copy with non-null arguments replacing existing values.
+  /// Nullable fields cannot be set to null through this helper; null means keep.
+  UserMessageSummary copyWith({
+    String? title,
+    String? body,
+    List<SnapshotFileDiff>? diffs,
+  }) {
+    return UserMessageSummary(
+      title: title ?? this.title,
+      body: body ?? this.body,
+      diffs: diffs ?? this.diffs,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UserMessageSummary &&
+          other.title == title &&
+          other.body == body &&
+          const DeepCollectionEquality().equals(other.diffs, diffs));
+
+  @override
+  int get hashCode => Object.hash(title, body, const DeepCollectionEquality().hash(diffs));
+
+  final String? title;
+  final String? body;
+  final List<SnapshotFileDiff> diffs;
+}
+
+@immutable
+class UserMessageModel {
+  const UserMessageModel({
+    this.providerID = '',
+    this.modelID = '',
+    this.variant,
+  });
+
+  factory UserMessageModel.fromJson(Map<String, dynamic> json) {
+    return UserMessageModel(
+      providerID: (json["providerID"] ?? '') as String,
+      modelID: (json["modelID"] ?? '') as String,
+      variant: json["variant"] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "providerID": providerID,
+      "modelID": modelID,
+      "variant": ?variant,
+    };
+  }
+
+  /// Returns a copy with non-null arguments replacing existing values.
+  /// Nullable fields cannot be set to null through this helper; null means keep.
+  UserMessageModel copyWith({
+    String? providerID,
+    String? modelID,
+    String? variant,
+  }) {
+    return UserMessageModel(
+      providerID: providerID ?? this.providerID,
+      modelID: modelID ?? this.modelID,
+      variant: variant ?? this.variant,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UserMessageModel &&
+          other.providerID == providerID &&
+          other.modelID == modelID &&
+          other.variant == variant);
+
+  @override
+  int get hashCode => Object.hash(providerID, modelID, variant);
+
+  final String providerID;
+  final String modelID;
+  final String? variant;
+}
