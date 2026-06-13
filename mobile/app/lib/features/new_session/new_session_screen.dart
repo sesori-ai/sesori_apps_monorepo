@@ -17,10 +17,12 @@ import "new_session_loading_overlay.dart";
 
 class NewSessionScreen extends StatelessWidget {
   final String projectId;
+  final String? projectName;
 
   const NewSessionScreen({
     super.key,
     required this.projectId,
+    required this.projectName,
   });
 
   @override
@@ -30,15 +32,16 @@ class NewSessionScreen extends StatelessWidget {
         sessionService: getIt<SessionService>(),
         projectId: projectId,
       ),
-      child: _NewSessionBody(projectId: projectId),
+      child: _NewSessionBody(projectId: projectId, projectName: projectName),
     );
   }
 }
 
 class _NewSessionBody extends StatefulWidget {
   final String projectId;
+  final String? projectName;
 
-  const _NewSessionBody({required this.projectId});
+  const _NewSessionBody({required this.projectId, required this.projectName});
 
   @override
   State<_NewSessionBody> createState() => _NewSessionBodyState();
@@ -144,16 +147,28 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     final loc = context.loc;
     final zyra = context.zyra;
     final isSending = state is NewSessionSending;
+    // Captured at build time: the callbacks below can run while this route is
+    // being torn down, where an ancestor lookup on a deactivated context
+    // throws. Both references stay valid — the root messenger outlives this
+    // route, and the route object is stable (`isCurrent` is still read at
+    // event time).
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final modalRoute = ModalRoute.of(context);
 
     return BlocListener<NewSessionCubit, NewSessionState>(
       listenWhen: (_, current) => current is NewSessionCreated,
       listener: (context, state) {
         if (state case NewSessionCreated(:final session)) {
+          // The user may have navigated elsewhere (e.g. opened another
+          // session from the split-view list) while creation was in flight.
+          // Replacing the route then would hijack their navigation — the
+          // pop-time snackbar already told them the session continues.
+          if (modalRoute != null && !modalRoute.isCurrent) return;
           _navigatingToCreatedSession = true;
-          _dismissScreen();
-          context.pushRoute(
+          context.replaceRoute(
             AppRoute.sessionDetail(
               projectId: widget.projectId,
+              projectName: widget.projectName,
               sessionId: session.id,
               sessionTitle: session.title ?? "",
               readOnly: false,
@@ -165,7 +180,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
         canPop: true,
         onPopInvokedWithResult: (didPop, result) {
           if (didPop && isSending && !_navigatingToCreatedSession) {
-            ScaffoldMessenger.of(context).showSnackBar(
+            scaffoldMessenger.showSnackBar(
               SnackBar(
                 content: Text(loc.newSessionLaunchingInBackground),
                 duration: const Duration(seconds: 3),

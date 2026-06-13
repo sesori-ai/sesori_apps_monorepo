@@ -1650,6 +1650,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Retry'**
   String get sessionDetailRetryLabel;
+
+  /// No description provided for @emptySessionDetailTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a session'**
+  String get emptySessionDetailTitle;
+
+  /// No description provided for @emptySessionDetailSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a session from the list to view details'**
+  String get emptySessionDetailSubtitle;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

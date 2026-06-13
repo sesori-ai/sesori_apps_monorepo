@@ -26,7 +26,7 @@ void main() {
   group("DefaultModelSelector.pickFromFamily", () {
     test("returns null for an empty group", () {
       expect(
-        selector.pickFromFamily(group: const [], defaultModelId: null),
+        selector.pickFromFamily(group: const []),
         isNull,
       );
     });
@@ -37,36 +37,12 @@ void main() {
         _model(id: "b", isAvailable: false),
       ];
       expect(
-        selector.pickFromFamily(group: group, defaultModelId: null),
+        selector.pickFromFamily(group: group),
         isNull,
       );
     });
 
-    test("honors defaultModelId when it identifies a member of the group", () {
-      final group = [
-        _model(id: "newer", releaseDate: DateTime(2026, 4)),
-        _model(id: "older", releaseDate: DateTime(2025, 11)),
-      ];
-      final picked = selector.pickFromFamily(
-        group: group,
-        defaultModelId: "older",
-      );
-      expect(picked?.id, "older");
-    });
-
-    test("ignores defaultModelId that is not in the group", () {
-      final group = [
-        _model(id: "newer", releaseDate: DateTime(2026, 4)),
-        _model(id: "older", releaseDate: DateTime(2025, 11)),
-      ];
-      final picked = selector.pickFromFamily(
-        group: group,
-        defaultModelId: "missing",
-      );
-      expect(picked?.id, "newer");
-    });
-
-    test("prefers a model whose name contains '(latest)' over a newer date", () {
+    test("ignores a model whose name contains '(latest)' in favor of a newer date", () {
       final group = [
         _model(
           id: "newer",
@@ -79,14 +55,11 @@ void main() {
           releaseDate: DateTime(2025, 11),
         ),
       ];
-      final picked = selector.pickFromFamily(
-        group: group,
-        defaultModelId: null,
-      );
-      expect(picked?.id, "marked");
+      final picked = selector.pickFromFamily(group: group);
+      expect(picked?.id, "newer");
     });
 
-    test("breaks '(latest)' ties by newest releaseDate", () {
+    test("breaks ties by newest releaseDate", () {
       final group = [
         _model(
           id: "latest-older",
@@ -99,10 +72,7 @@ void main() {
           releaseDate: DateTime(2025, 6),
         ),
       ];
-      final picked = selector.pickFromFamily(
-        group: group,
-        defaultModelId: null,
-      );
+      final picked = selector.pickFromFamily(group: group);
       expect(picked?.id, "latest-newer");
     });
 
@@ -116,10 +86,7 @@ void main() {
         _model(id: "alpha", name: "Alpha", releaseDate: DateTime(2026, 4)),
         _model(id: "mango", name: "Mango", releaseDate: DateTime(2026, 4)),
       ];
-      final picked = selector.pickFromFamily(
-        group: group,
-        defaultModelId: null,
-      );
+      final picked = selector.pickFromFamily(group: group);
       expect(picked?.id, "alpha");
     });
 
@@ -128,10 +95,7 @@ void main() {
         _model(id: "zebra", name: "Zebra", releaseDate: null),
         _model(id: "alpha", name: "Alpha", releaseDate: null),
       ];
-      final picked = selector.pickFromFamily(
-        group: group,
-        defaultModelId: null,
-      );
+      final picked = selector.pickFromFamily(group: group);
       expect(picked?.id, "alpha");
     });
 
@@ -141,10 +105,7 @@ void main() {
         _model(id: "mid", releaseDate: DateTime(2025, 6)),
         _model(id: "newest", releaseDate: DateTime(2026, 4)),
       ];
-      final picked = selector.pickFromFamily(
-        group: group,
-        defaultModelId: null,
-      );
+      final picked = selector.pickFromFamily(group: group);
       expect(picked?.id, "newest");
     });
 
@@ -154,10 +115,7 @@ void main() {
         _model(id: "newest", releaseDate: DateTime(2026, 4)),
         _model(id: "older", releaseDate: DateTime(2025, 6)),
       ];
-      final picked = selector.pickFromFamily(
-        group: group,
-        defaultModelId: null,
-      );
+      final picked = selector.pickFromFamily(group: group);
       expect(picked?.id, "newest");
     });
 
@@ -170,23 +128,28 @@ void main() {
         final group = [
           _model(id: "stale", releaseDate: DateTime(2023, 1)),
         ];
-        final picked = selector.pickFromFamily(
-          group: group,
-          defaultModelId: null,
-        );
+        final picked = selector.pickFromFamily(group: group);
         expect(picked?.id, "stale");
       },
     );
+
+    test("ignores an API defaultModelID pointing to an older model", () {
+      // Regression: the upstream provider default is frequently stale.
+      // The selector should prefer the newest-by-date model instead.
+      final group = [
+        _model(id: "newer", releaseDate: DateTime(2026, 4)),
+        _model(id: "api-default", releaseDate: DateTime(2025, 6)),
+      ];
+      final picked = selector.pickFromFamily(group: group);
+      expect(picked?.id, "newer");
+    });
 
     test("falls back to the first group member when nothing else matches", () {
       final group = [
         _model(id: "first", releaseDate: null),
         _model(id: "second", releaseDate: null),
       ];
-      final picked = selector.pickFromFamily(
-        group: group,
-        defaultModelId: null,
-      );
+      final picked = selector.pickFromFamily(group: group);
       expect(picked?.id, "first");
     });
   });
@@ -197,46 +160,10 @@ void main() {
         "a": _model(id: "a", isAvailable: false),
       };
       expect(
-        selector.pickFromProvider(models: models, defaultModelId: null),
+        selector.pickFromProvider(models: models),
         isNull,
       );
     });
-
-    test("returns defaultModelId when it points to an available model", () {
-      final models = {
-        "newer": _model(id: "newer", releaseDate: DateTime(2026, 4)),
-        "older": _model(id: "older", releaseDate: DateTime(2025, 11)),
-      };
-      final picked = selector.pickFromProvider(
-        models: models,
-        defaultModelId: "older",
-      );
-      expect(picked?.id, "older");
-    });
-
-    test(
-      "ignores defaultModelId when it is unavailable and falls back to family picks",
-      () {
-        final models = {
-          "newer": _model(
-            id: "newer",
-            family: "k2",
-            releaseDate: DateTime(2026, 4),
-          ),
-          "older": _model(
-            id: "older",
-            family: "k2",
-            releaseDate: DateTime(2025, 11),
-            isAvailable: false,
-          ),
-        };
-        final picked = selector.pickFromProvider(
-          models: models,
-          defaultModelId: "older",
-        );
-        expect(picked?.id, "newer");
-      },
-    );
 
     test("Kimi For Coding: picks K2.6 over K2 Thinking (the original bug)", () {
       // Mirrors the live models.dev entry for `kimi-for-coding`:
@@ -267,36 +194,93 @@ void main() {
           releaseDate: DateTime(2026, 4),
         ),
       };
-      final picked = selector.pickFromProvider(
-        models: models,
-        defaultModelId: null,
-      );
+      final picked = selector.pickFromProvider(models: models);
       expect(picked?.id, "k2p6");
     });
 
     test(
-      "uses the alphabetically first family when picking the provider default",
+      "ignores the provider's API defaultModelID and still picks newest by date",
       () {
         final models = {
-          "zeta": _model(
-            id: "zeta",
-            name: "Zeta (latest)",
-            family: "zeta-family",
-            releaseDate: DateTime(2020, 1),
+          "newer": _model(
+            id: "newer",
+            family: "k2",
+            releaseDate: DateTime(2026, 4),
           ),
+          "api-default": _model(
+            id: "api-default",
+            family: "k2",
+            releaseDate: DateTime(2025, 11),
+          ),
+        };
+        final picked = selector.pickFromProvider(models: models);
+        expect(picked?.id, "newer");
+      },
+    );
+
+    test(
+      "picks the best representative across all families, not just the alphabetically first",
+      () {
+        final models = {
           "alpha": _model(
             id: "alpha",
             name: "Alpha",
             family: "alpha-family",
             releaseDate: DateTime(2025, 1),
           ),
+          "zeta-newer": _model(
+            id: "zeta-newer",
+            name: "Zeta Newer",
+            family: "zeta-family",
+            releaseDate: DateTime(2026, 4),
+          ),
         };
-        final picked = selector.pickFromProvider(
-          models: models,
-          defaultModelId: null,
-        );
-        // alpha-family is alphabetically first, so alpha wins even though
-        // zeta is marked "(latest)".
+        final picked = selector.pickFromProvider(models: models);
+        // zeta-family is alphabetically later but has the newer model.
+        expect(picked?.id, "zeta-newer");
+      },
+    );
+
+    test(
+      "ignores a '(latest)' marker in another family in favor of a newer date",
+      () {
+        final models = {
+          "newer-plain": _model(
+            id: "newer-plain",
+            name: "Newer Plain",
+            family: "plain-family",
+            releaseDate: DateTime(2026, 4),
+          ),
+          "marked-older": _model(
+            id: "marked-older",
+            name: "Marked Older (latest)",
+            family: "marked-family",
+            releaseDate: DateTime(2025, 1),
+          ),
+        };
+        final picked = selector.pickFromProvider(models: models);
+        expect(picked?.id, "newer-plain");
+      },
+    );
+
+    test(
+      "breaks cross-family ties deterministically by id when dates are equal",
+      () {
+        final models = {
+          "zebra": _model(
+            id: "zebra",
+            name: "Zeta",
+            family: "zeta-family",
+            releaseDate: DateTime(2026, 4),
+          ),
+          "alpha": _model(
+            id: "alpha",
+            name: "Alpha",
+            family: "alpha-family",
+            releaseDate: DateTime(2026, 4),
+          ),
+        };
+        final picked = selector.pickFromProvider(models: models);
         expect(picked?.id, "alpha");
       },
     );
@@ -315,10 +299,7 @@ void main() {
           releaseDate: DateTime(2025, 11),
         ),
       };
-      final picked = selector.pickFromProvider(
-        models: models,
-        defaultModelId: null,
-      );
+      final picked = selector.pickFromProvider(models: models);
       expect(picked?.id, "fallback");
     });
   });

@@ -80,8 +80,8 @@ as String?,
 /// @nodoc
 @JsonSerializable()
 
-class _BridgeStartupLock implements BridgeStartupLock {
-  const _BridgeStartupLock({required this.bridgePid, required this.bridgeStartMarker});
+class _BridgeStartupLock extends BridgeStartupLock {
+  const _BridgeStartupLock({required this.bridgePid, required this.bridgeStartMarker}): super._();
   factory _BridgeStartupLock.fromJson(Map<String, dynamic> json) => _$BridgeStartupLockFromJson(json);
 
 @override final  int bridgePid;

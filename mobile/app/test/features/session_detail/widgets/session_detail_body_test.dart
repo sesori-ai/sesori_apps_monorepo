@@ -29,11 +29,16 @@ Widget _buildApp({required SessionDetailCubit cubit}) {
           value: cubit,
           child: const SessionDetailBody(
             projectId: "project-1",
+            projectName: null,
             sessionId: "session-1",
             sessionTitle: "Session",
             readOnly: false,
           ),
         ),
+      ),
+      GoRoute(
+        path: "/projects/:projectId/sessions/:sessionId/diffs",
+        builder: (context, state) => const Scaffold(body: Text("Diffs")),
       ),
     ],
   );
@@ -178,5 +183,15 @@ void main() {
     // The UI should now show "Default".
     expect(find.widgetWithText(OutlinedButton, "Default"), findsOneWidget);
     expect(find.widgetWithText(OutlinedButton, "xhigh"), findsNothing);
+  });
+
+  testWidgets("diff button navigates to diffs with the typed route", (tester) async {
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.difference_outlined));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Diffs"), findsOneWidget);
   });
 }

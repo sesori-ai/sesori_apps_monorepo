@@ -1,15 +1,20 @@
-import "package:flutter/widgets.dart";
+import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "package:sesori_mobile/core/platform/go_router_route_dispatcher.dart";
 import "package:sesori_mobile/core/routing/app_router.dart";
+import "package:sesori_mobile/core/routing/imperative_pane_route.dart";
+import "package:sesori_mobile/core/widgets/session_split/session_split_shell.dart";
 import "package:sesori_mobile/features/login/login_screen.dart";
+import "package:sesori_mobile/features/new_session/new_session_screen.dart";
 import "package:sesori_mobile/features/project_list/project_list_screen.dart";
 import "package:sesori_mobile/features/session_detail/session_detail_screen.dart";
-import "package:sesori_mobile/features/session_list/session_list_screen.dart";
+import "package:sesori_mobile/features/session_diffs/session_diffs_screen.dart";
+import "package:sesori_mobile/features/session_list/session_list_cubit_provider.dart";
 import "package:sesori_mobile/features/settings/settings_screen.dart";
+import "package:sesori_mobile/features/splash/splash_screen.dart";
 
 void main() {
   group("AppRoute", () {
@@ -23,6 +28,7 @@ void main() {
 
   group("AppRoute.buildPath", () {
     test("returns raw path for parameterless routes", () {
+      expect(const AppRoute.splash().buildPath(), "/splash");
       expect(const AppRoute.login().buildPath(), "/login");
       expect(const AppRoute.projects().buildPath(), "/projects");
       expect(const AppRoute.settings().buildPath(), "/settings");
@@ -36,6 +42,7 @@ void main() {
     test("substitutes path params for sessionDetail", () {
       final result = const AppRoute.sessionDetail(
         projectId: "proj-123",
+        projectName: null,
         sessionId: "ses-456",
         sessionTitle: null,
         readOnly: false,
@@ -44,10 +51,7 @@ void main() {
     });
 
     test("includes projectName as query param for sessions", () {
-      final result = const AppRoute.sessions(
-        projectId: "proj-123",
-        projectName: "My Project",
-      ).buildPath();
+      final result = const AppRoute.sessions(projectId: "proj-123", projectName: "My Project").buildPath();
       expect(result, contains("/projects/proj-123/sessions?"));
       expect(result, contains("name=My+Project"));
     });
@@ -61,19 +65,21 @@ void main() {
     test("includes title and readOnly as query params for sessionDetail", () {
       final result = const AppRoute.sessionDetail(
         projectId: "proj-1",
+        projectName: "Project One",
         sessionId: "ses-1",
         sessionTitle: "hello world & more",
         readOnly: true,
       ).buildPath();
       expect(result, contains("/projects/proj-1/sessions/ses-1?"));
-      // Verify values are encoded (& becomes %26)
       expect(result, isNot(contains("& more")));
+      expect(result, contains("name=Project+One"));
       expect(result, contains("readOnly=true"));
     });
 
     test("always includes readOnly in query when false", () {
       final result = const AppRoute.sessionDetail(
         projectId: "proj-1",
+        projectName: null,
         sessionId: "ses-1",
         sessionTitle: null,
         readOnly: false,
@@ -84,11 +90,11 @@ void main() {
     test("encodes path params with special characters", () {
       final result = const AppRoute.sessionDetail(
         projectId: "project/with?special&chars",
+        projectName: null,
         sessionId: "id/with?special&chars",
         sessionTitle: null,
         readOnly: false,
       ).buildPath();
-      // Special characters in the param value must be percent-encoded
       expect(
         result,
         "/projects/project%2Fwith%3Fspecial%26chars/sessions/id%2Fwith%3Fspecial%26chars?readOnly=false",
@@ -96,17 +102,20 @@ void main() {
     });
 
     test("substitutes projectId for newSession", () {
-      final result = const AppRoute.newSession(projectId: "proj-42").buildPath();
+      final result = const AppRoute.newSession(projectId: "proj-42", projectName: null).buildPath();
       expect(result, "/projects/proj-42/sessions/new");
+    });
+
+    test("includes projectName as query param for newSession", () {
+      final result = const AppRoute.newSession(projectId: "proj-42", projectName: "Project One").buildPath();
+      expect(result, "/projects/proj-42/sessions/new?name=Project+One");
     });
   });
 
-  group("AppRoute.toGoRoute", () {
-    test("returns GoRoute with matching path for every route", () {
-      for (final def in AppRouteDef.values) {
-        final goRoute = def.toGoRoute();
-        expect(goRoute.path, def.path, reason: "${def.name} GoRoute path should match");
-      }
+  group("flat route builders", () {
+    test("splash route builds SplashScreen", () {
+      final widget = AppRouteDef.splash.toGoRoute().builder!(_FakeBuildContext(), _FakeGoRouterState());
+      expect(widget, isA<SplashScreen>());
     });
 
     test("login route builds LoginScreen behind a fade transition page", () {
@@ -120,79 +129,204 @@ void main() {
     });
 
     test("projects route builds ProjectListScreen", () {
-      final goRoute = AppRouteDef.projects.toGoRoute();
-      final widget = goRoute.builder!(
-        _FakeBuildContext(),
-        _FakeGoRouterState(),
-      );
+      final widget = AppRouteDef.projects.toGoRoute().builder!(_FakeBuildContext(), _FakeGoRouterState());
       expect(widget, isA<ProjectListScreen>());
     });
 
     test("settings route builds SettingsScreen", () {
-      final goRoute = AppRouteDef.settings.toGoRoute();
-      final widget = goRoute.builder!(
-        _FakeBuildContext(),
-        _FakeGoRouterState(),
-      );
+      final widget = AppRouteDef.settings.toGoRoute().builder!(_FakeBuildContext(), _FakeGoRouterState());
       expect(widget, isA<SettingsScreen>());
     });
 
-    test("sessions route builds SessionListScreen with path and query params", () {
-      final goRoute = AppRouteDef.sessions.toGoRoute();
-      final widget = goRoute.builder!(
+    test("newSession route builds NewSessionScreen", () {
+      final widget = AppRouteDef.newSession.toGoRoute().builder!(
         _FakeBuildContext(),
-        _FakeGoRouterState(
-          pathParameters: {"projectId": "proj-42"},
-          queryParameters: {"name": "My App"},
-        ),
+        _FakeGoRouterState(pathParameters: {"projectId": "proj-42"}, queryParameters: {"name": "Project One"}),
       );
-      expect(widget, isA<SessionListScreen>());
-      final screen = widget as SessionListScreen;
-      expect(screen.projectId, "proj-42");
-      expect(screen.projectName, "My App");
+      expect(widget, isA<NewSessionScreen>());
+      expect((widget as NewSessionScreen).projectId, "proj-42");
+      expect(widget.projectName, "Project One");
+    });
+  });
+
+  group("buildAppRoutes", () {
+    test("explicit route table covers every AppRouteDef exactly once", () {
+      final routes = buildAppRoutes();
+      final registeredPaths = _collectAbsoluteRoutePaths(routes: routes);
+
+      expect(registeredPaths, hasLength(AppRouteDef.values.length));
+      expect(
+        registeredPaths.toSet(),
+        equals(AppRouteDef.values.map((def) => def.path).toSet()),
+      );
     });
 
-    test("sessions route defaults missing params to empty strings", () {
-      final goRoute = AppRouteDef.sessions.toGoRoute();
-      final widget = goRoute.builder!(
-        _FakeBuildContext(),
-        _FakeGoRouterState(),
-      );
-      final screen = widget as SessionListScreen;
-      expect(screen.projectId, "");
-      expect(screen.projectName, isNull);
+    test("nested session route segments compose to AppRouteDef templates", () {
+      expect("${AppRouteDef.projects.path}/:projectId/sessions", AppRouteDef.sessions.path);
+      expect("${AppRouteDef.sessions.path}/new", AppRouteDef.newSession.path);
+      expect("${AppRouteDef.sessions.path}/:sessionId", AppRouteDef.sessionDetail.path);
+      expect("${AppRouteDef.sessionDetail.path}/diffs", AppRouteDef.sessionDiffs.path);
     });
 
-    test("sessionDetail route builds SessionDetailScreen with params", () {
-      final goRoute = AppRouteDef.sessionDetail.toGoRoute();
-      final widget = goRoute.builder!(
+    test("keeps non-session routes flat and session routes nested under a ShellRoute", () {
+      final routes = buildAppRoutes();
+      final flatPaths = routes.whereType<GoRoute>().map((route) => route.path).toList();
+      final shell = _sessionShellRoute();
+      final allPaths = _collectAbsoluteRoutePaths(routes: routes);
+
+      expect(
+        flatPaths,
+        equals([AppRouteDef.splash.path, AppRouteDef.login.path, AppRouteDef.projects.path, AppRouteDef.settings.path]),
+      );
+      expect(shell.routes, hasLength(1));
+      expect(
+        allPaths,
+        equals([
+          AppRouteDef.splash.path,
+          AppRouteDef.login.path,
+          AppRouteDef.projects.path,
+          AppRouteDef.sessions.path,
+          AppRouteDef.newSession.path,
+          AppRouteDef.sessionDetail.path,
+          AppRouteDef.sessionDiffs.path,
+          AppRouteDef.settings.path,
+        ]),
+      );
+    });
+
+    test("registers newSession before dynamic session route inside the shell", () {
+      final shell = _sessionShellRoute();
+      final sessionsRoute = shell.routes.whereType<GoRoute>().single;
+      final childPaths = sessionsRoute.routes.whereType<GoRoute>().map((route) => route.path).toList();
+
+      expect(childPaths, equals(["new", ":sessionId"]));
+    });
+
+    test("session shell builder hoists cubit provider above split shell", () {
+      final shell = _sessionShellRoute();
+      final widget = shell.builder!(
         _FakeBuildContext(),
         _FakeGoRouterState(
           pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"},
-          queryParameters: {"title": "Debug session", "readOnly": "true"},
+          queryParameters: {"name": "My Project"},
+        ),
+        const SizedBox(),
+      );
+
+      expect(widget, isA<SessionListCubitProvider>());
+      final provider = widget as SessionListCubitProvider;
+      expect(provider.key, const ValueKey("session-list-cubit-proj-42"));
+      expect(provider.projectId, "proj-42");
+      expect(provider.child, isA<SessionSplitShell>());
+    });
+
+    test("detail route preserves typed route decoding and stable key", () {
+      final detailRoute = _sessionDetailRoute();
+
+      final page = detailRoute.pageBuilder!(
+        _FakeBuildContext(),
+        _FakeGoRouterState(
+          pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"},
+          queryParameters: {"name": "My Project", "title": "Debug session", "readOnly": "true"},
         ),
       );
+      final scope = (page as CustomTransitionPage<void>).child as ImperativePaneRouteScope;
+      final widget = scope.child;
+
       expect(widget, isA<SessionDetailScreen>());
       final screen = widget as SessionDetailScreen;
+      expect(screen.key, const ValueKey("session-detail-ses-99"));
       expect(screen.projectId, "proj-42");
+      expect(screen.projectName, "My Project");
       expect(screen.sessionId, "ses-99");
       expect(screen.sessionTitle, "Debug session");
       expect(screen.readOnly, isTrue);
     });
 
-    test("sessionDetail route defaults readOnly to false when absent", () {
-      final goRoute = AppRouteDef.sessionDetail.toGoRoute();
-      final widget = goRoute.builder!(
+    test("diffs route preserves typed route decoding and stable key", () {
+      final diffsRoute = _sessionDiffsRoute();
+
+      final page = diffsRoute.pageBuilder!(
         _FakeBuildContext(),
-        _FakeGoRouterState(
-          pathParameters: {"projectId": "proj-1", "sessionId": "ses-1"},
-        ),
+        _FakeGoRouterState(pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"}),
       );
-      final screen = widget as SessionDetailScreen;
-      expect(screen.projectId, "proj-1");
-      expect(screen.sessionId, "ses-1");
-      expect(screen.sessionTitle, isNull);
-      expect(screen.readOnly, isFalse);
+      final scope = (page as CustomTransitionPage<void>).child as ImperativePaneRouteScope;
+      final widget = scope.child;
+
+      expect(widget, isA<SessionDiffsScreen>());
+      final screen = widget as SessionDiffsScreen;
+      expect(screen.key, const ValueKey("session-diffs-ses-99"));
+      expect(screen.projectId, "proj-42");
+      expect(screen.sessionId, "ses-99");
+    });
+
+    group("nested route tree invariants", () {
+      test("registers exactly one shell route", () {
+        expect(_collectShellRoutes(routes: buildAppRoutes()), hasLength(1));
+      });
+
+      test("shell owns exactly one first-level session route", () {
+        final shell = _sessionShellRoute();
+        expect(shell.routes.whereType<GoRoute>(), hasLength(1));
+      });
+
+      test("first-level shell route is the relative sessions segment", () {
+        final shell = _sessionShellRoute();
+        final sessionsRoute = shell.routes.whereType<GoRoute>().single;
+        expect(sessionsRoute.path, ":projectId/sessions");
+        expect(
+          _composeRoutePath(parentPath: AppRouteDef.projects.path, path: sessionsRoute.path),
+          AppRouteDef.sessions.path,
+        );
+      });
+
+      test("new-session child uses a relative segment", () {
+        final sessionsRoute = _sessionShellRoute().routes.whereType<GoRoute>().single;
+        expect(sessionsRoute.routes.whereType<GoRoute>().first.path, "new");
+      });
+
+      test("detail child uses a relative dynamic segment", () {
+        final sessionsRoute = _sessionShellRoute().routes.whereType<GoRoute>().single;
+        expect(sessionsRoute.routes.whereType<GoRoute>().last.path, ":sessionId");
+      });
+
+      test("diffs child uses a relative segment under detail", () {
+        expect(_sessionDiffsRoute().path, "diffs");
+      });
+
+      test("new-session child is declared before dynamic detail", () {
+        final sessionsRoute = _sessionShellRoute().routes.whereType<GoRoute>().single;
+        expect(sessionsRoute.routes.whereType<GoRoute>().map((route) => route.path), equals(["new", ":sessionId"]));
+      });
+
+      test("only non-session routes remain top-level GoRoutes", () {
+        expect(buildAppRoutes().whereType<GoRoute>().map((route) => route.path), [
+          AppRouteDef.splash.path,
+          AppRouteDef.login.path,
+          AppRouteDef.projects.path,
+          AppRouteDef.settings.path,
+        ]);
+      });
+
+      test("detail route has exactly one nested child", () {
+        expect(_sessionDetailRoute().routes.whereType<GoRoute>(), hasLength(1));
+      });
+
+      test("composed new-session path remains absolute", () {
+        final sessionsRoute = _sessionShellRoute().routes.whereType<GoRoute>().single;
+        final newRoute = sessionsRoute.routes.whereType<GoRoute>().first;
+        expect(
+          _composeRoutePath(parentPath: AppRouteDef.sessions.path, path: newRoute.path),
+          AppRouteDef.newSession.path,
+        );
+      });
+
+      test("composed diffs path remains absolute", () {
+        expect(
+          _composeRoutePath(parentPath: AppRouteDef.sessionDetail.path, path: _sessionDiffsRoute().path),
+          AppRouteDef.sessionDiffs.path,
+        );
+      });
     });
   });
 
@@ -214,6 +348,7 @@ void main() {
             const AppRoute.sessions(projectId: "proj_1", projectName: null).buildPath(),
             const AppRoute.sessionDetail(
               projectId: "proj_1",
+              projectName: null,
               sessionId: "ses_1",
               sessionTitle: "Session Title",
               readOnly: false,
@@ -230,6 +365,7 @@ void main() {
           const AppRoute.sessions(projectId: "proj_1", projectName: null).buildPath(),
           const AppRoute.sessionDetail(
             projectId: "proj_1",
+            projectName: null,
             sessionId: "ses_1",
             sessionTitle: "Session Title",
             readOnly: false,
@@ -261,6 +397,58 @@ void main() {
 // Test helpers
 // ---------------------------------------------------------------------------
 
+List<String> _collectAbsoluteRoutePaths({required List<RouteBase> routes, String parentPath = ""}) {
+  final paths = <String>[];
+  for (final route in routes) {
+    switch (route) {
+      case GoRoute(:final path, :final routes):
+        final absolutePath = _composeRoutePath(parentPath: parentPath, path: path);
+        paths.add(absolutePath);
+        paths.addAll(_collectAbsoluteRoutePaths(routes: routes, parentPath: absolutePath));
+      case ShellRoute(:final routes):
+        paths.addAll(_collectAbsoluteRoutePaths(routes: routes, parentPath: parentPath));
+      default:
+        throw StateError("Unsupported route type ${route.runtimeType}");
+    }
+  }
+  return paths;
+}
+
+List<ShellRoute> _collectShellRoutes({required List<RouteBase> routes}) {
+  final shells = <ShellRoute>[];
+  for (final route in routes) {
+    switch (route) {
+      case GoRoute(:final routes):
+        shells.addAll(_collectShellRoutes(routes: routes));
+      case ShellRoute(:final routes):
+        shells.add(route);
+        shells.addAll(_collectShellRoutes(routes: routes));
+      default:
+        throw StateError("Unsupported route type ${route.runtimeType}");
+    }
+  }
+  return shells;
+}
+
+ShellRoute _sessionShellRoute() => _collectShellRoutes(routes: buildAppRoutes()).single;
+
+String _composeRoutePath({required String parentPath, required String path}) {
+  if (path.startsWith("/")) return path;
+  if (parentPath.endsWith("/")) return "$parentPath$path";
+  return "$parentPath/$path";
+}
+
+GoRoute _sessionDetailRoute() {
+  final shell = _sessionShellRoute();
+  final sessionsRoute = shell.routes.whereType<GoRoute>().single;
+  return sessionsRoute.routes.whereType<GoRoute>().singleWhere((route) => route.path == ":sessionId");
+}
+
+GoRoute _sessionDiffsRoute() {
+  final detailRoute = _sessionDetailRoute();
+  return detailRoute.routes.whereType<GoRoute>().singleWhere((route) => route.path == "diffs");
+}
+
 class _FakeBuildContext extends Fake implements BuildContext {
   // No inherited widgets in this synthetic context: MediaQuery lookups in
   // page builders (reduced-motion checks) resolve to null → defaults.
@@ -271,7 +459,7 @@ class _FakeBuildContext extends Fake implements BuildContext {
   InheritedElement? getElementForInheritedWidgetOfExactType<T extends InheritedWidget>() => null;
 }
 
-// ignore: avoid_implementing_value_types
+// ignore: avoid_implementing_value_types, GoRouterState is a value type but tests only need a lightweight fake
 class _FakeGoRouterState extends Fake implements GoRouterState {
   _FakeGoRouterState({
     this.pathParameters = const {},

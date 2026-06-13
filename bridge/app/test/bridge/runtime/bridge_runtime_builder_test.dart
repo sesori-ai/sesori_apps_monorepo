@@ -43,8 +43,7 @@ void main() {
     final runtime = BridgeRuntime.create(
       config: const BridgeConfig(
         relayURL: "ws://127.0.0.1:9999",
-        serverURL: "http://127.0.0.1:4096",
-        serverPassword: null,
+        pluginEndpoint: "http://127.0.0.1:4096",
         authBackendURL: "https://api.sesori.test",
         sseReplayWindow: Duration(minutes: 5),
       ),

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:sesori_bridge/src/server/foundation/process_match.dart';
 import 'package:sesori_bridge/src/server/foundation/terminal_prompt_decision.dart';
+import 'package:sesori_bridge/src/server/models/bridge_startup_lock.dart';
 import 'package:sesori_bridge/src/server/repositories/bridge_instance_repository.dart';
 import 'package:sesori_bridge/src/server/repositories/process_repository.dart';
 import 'package:sesori_bridge/src/server/repositories/terminal_prompt_repository.dart';
@@ -146,6 +147,168 @@ void main() {
       expect(contents, isNot(contains('OpenCodeServerService')));
       expect(contents, isNot(contains("../api/")));
     });
+
+    test('startup lock replace graceful-kill verified holder returns allowed', () async {
+      const lock = BridgeStartupLock(bridgePid: 300, bridgeStartMarker: 'holder-start');
+      final holder = _match(pid: 300, startMarker: 'holder-start');
+      processRepository.matchSnapshots[300] = <ProcessMatch?>[holder, null];
+      terminalPromptRepository.decision = TerminalPromptDecision.replace;
+
+      final status = await service.resolveStartupLockContention(
+        lock: lock,
+        holder: holder,
+        currentPid: 100,
+      );
+
+      expect(status, equals(BridgeInstanceResolutionStatus.allowed));
+      expect(terminalPromptRepository.startingBridgePids, equals(<int>[300]));
+      expect(processRepository.signalRequests, equals(<String>['graceful:300']));
+      expect(clock.delays, equals(<Duration>[const Duration(seconds: 5)]));
+    });
+
+    test('startup lock matching current pid returns allowed without prompt or signals', () async {
+      const lock = BridgeStartupLock(bridgePid: 300, bridgeStartMarker: 'holder-start');
+      final holder = _match(pid: 300, startMarker: 'holder-start');
+
+      final status = await service.resolveStartupLockContention(
+        lock: lock,
+        holder: holder,
+        currentPid: 300,
+      );
+
+      expect(status, equals(BridgeInstanceResolutionStatus.allowed));
+      expect(terminalPromptRepository.askCount, equals(0));
+      expect(processRepository.signalRequests, isEmpty);
+    });
+
+    test('startup lock holder already dead at revalidation returns allowed without signals', () async {
+      const lock = BridgeStartupLock(bridgePid: 301, bridgeStartMarker: 'holder-start');
+      final holder = _match(pid: 301, startMarker: 'holder-start');
+      processRepository.matchSnapshots[301] = <ProcessMatch?>[null];
+      terminalPromptRepository.decision = TerminalPromptDecision.replace;
+
+      final status = await service.resolveStartupLockContention(
+        lock: lock,
+        holder: holder,
+        currentPid: 100,
+      );
+
+      expect(status, equals(BridgeInstanceResolutionStatus.allowed));
+      expect(processRepository.signalRequests, isEmpty);
+    });
+
+    test('startup lock identity mismatch treats lock as stale and sends no kill signals', () async {
+      const lock = BridgeStartupLock(bridgePid: 302, bridgeStartMarker: 'original-start');
+      final holder = _match(pid: 302, startMarker: 'original-start');
+      processRepository.matchSnapshots[302] = <ProcessMatch?>[_match(pid: 302, startMarker: 'reused-start')];
+      terminalPromptRepository.decision = TerminalPromptDecision.replace;
+
+      final status = await service.resolveStartupLockContention(
+        lock: lock,
+        holder: holder,
+        currentPid: 100,
+      );
+
+      expect(status, equals(BridgeInstanceResolutionStatus.allowed));
+      expect(processRepository.signalRequests, isEmpty);
+    });
+
+    test('startup lock decline returns declined', () async {
+      const lock = BridgeStartupLock(bridgePid: 303, bridgeStartMarker: 'holder-start');
+      final holder = _match(pid: 303, startMarker: 'holder-start');
+      terminalPromptRepository.decision = TerminalPromptDecision.decline;
+
+      final status = await service.resolveStartupLockContention(
+        lock: lock,
+        holder: holder,
+        currentPid: 100,
+      );
+
+      expect(status, equals(BridgeInstanceResolutionStatus.declined));
+      expect(processRepository.signalRequests, isEmpty);
+    });
+
+    test('startup lock nonInteractive returns nonInteractive', () async {
+      const lock = BridgeStartupLock(bridgePid: 304, bridgeStartMarker: 'holder-start');
+      final holder = _match(pid: 304, startMarker: 'holder-start');
+      terminalPromptRepository.decision = TerminalPromptDecision.nonInteractive;
+
+      final status = await service.resolveStartupLockContention(
+        lock: lock,
+        holder: holder,
+        currentPid: 100,
+      );
+
+      expect(status, equals(BridgeInstanceResolutionStatus.nonInteractive));
+      expect(processRepository.signalRequests, isEmpty);
+    });
+
+    test('startup lock survives graceful then force-killed returns allowed', () async {
+      const lock = BridgeStartupLock(bridgePid: 305, bridgeStartMarker: 'holder-start');
+      final holder = _match(pid: 305, startMarker: 'holder-start');
+      processRepository.matchSnapshots[305] = <ProcessMatch?>[holder, holder, null];
+      terminalPromptRepository.decision = TerminalPromptDecision.replace;
+
+      final status = await service.resolveStartupLockContention(
+        lock: lock,
+        holder: holder,
+        currentPid: 100,
+      );
+
+      expect(status, equals(BridgeInstanceResolutionStatus.allowed));
+      expect(processRepository.signalRequests, equals(<String>['graceful:305', 'force:305']));
+      expect(clock.delays, equals(<Duration>[const Duration(seconds: 5), const Duration(seconds: 1)]));
+    });
+
+    test('startup lock survives force returns declined', () async {
+      const lock = BridgeStartupLock(bridgePid: 306, bridgeStartMarker: 'holder-start');
+      final holder = _match(pid: 306, startMarker: 'holder-start');
+      processRepository.matchSnapshots[306] = <ProcessMatch?>[holder, holder, holder];
+      terminalPromptRepository.decision = TerminalPromptDecision.replace;
+
+      final status = await service.resolveStartupLockContention(
+        lock: lock,
+        holder: holder,
+        currentPid: 100,
+      );
+
+      expect(status, equals(BridgeInstanceResolutionStatus.declined));
+      expect(processRepository.signalRequests, equals(<String>['graceful:306', 'force:306']));
+    });
+
+    test('startup lock graceful signal failure proceeds to force path without escaping', () async {
+      const lock = BridgeStartupLock(bridgePid: 307, bridgeStartMarker: 'holder-start');
+      final holder = _match(pid: 307, startMarker: 'holder-start');
+      processRepository.matchSnapshots[307] = <ProcessMatch?>[holder, holder, holder];
+      processRepository.throwGraceful = true;
+      terminalPromptRepository.decision = TerminalPromptDecision.replace;
+
+      final status = await service.resolveStartupLockContention(
+        lock: lock,
+        holder: holder,
+        currentPid: 100,
+      );
+
+      expect(status, equals(BridgeInstanceResolutionStatus.declined));
+      expect(processRepository.signalRequests, equals(<String>['graceful:307', 'force:307']));
+    });
+
+    test('startup lock force signal failure returns declined without escaping', () async {
+      const lock = BridgeStartupLock(bridgePid: 308, bridgeStartMarker: 'holder-start');
+      final holder = _match(pid: 308, startMarker: 'holder-start');
+      processRepository.matchSnapshots[308] = <ProcessMatch?>[holder, holder, holder];
+      processRepository.throwForce = true;
+      terminalPromptRepository.decision = TerminalPromptDecision.replace;
+
+      final status = await service.resolveStartupLockContention(
+        lock: lock,
+        holder: holder,
+        currentPid: 100,
+      );
+
+      expect(status, equals(BridgeInstanceResolutionStatus.declined));
+      expect(processRepository.signalRequests, equals(<String>['graceful:308', 'force:308']));
+    });
   });
 }
 
@@ -161,6 +324,19 @@ ProcessIdentity _candidate({
     ownerUser: ProcessUser.fromRawUser("alex"),
     platform: 'macos',
     capturedAt: DateTime.utc(2026, 5, 15, 12),
+  );
+}
+
+ProcessMatch _match({
+  required int pid,
+  required String? startMarker,
+  ProcessMatchKind kind = ProcessMatchKind.sesoriBridge,
+  bool isCurrentUserProcess = true,
+}) {
+  return ProcessMatch(
+    identity: _candidate(pid: pid, startMarker: startMarker),
+    kind: kind,
+    isCurrentUserProcess: isCurrentUserProcess,
   );
 }
 
@@ -183,11 +359,19 @@ class _FakeTerminalPromptRepository implements TerminalPromptRepository {
   int askCount = 0;
   int emailPromptCount = 0;
   final List<int> bridgeCounts = <int>[];
+  final List<int> startingBridgePids = <int>[];
 
   @override
   Future<TerminalPromptDecision> askReplaceExistingBridge({required int bridgeCount}) async {
     askCount += 1;
     bridgeCounts.add(bridgeCount);
+    return decision;
+  }
+
+  @override
+  Future<TerminalPromptDecision> askReplaceStartingBridge({required int holderPid}) async {
+    askCount += 1;
+    startingBridgePids.add(holderPid);
     return decision;
   }
 
@@ -210,6 +394,9 @@ class _FakeTerminalPromptRepository implements TerminalPromptRepository {
 
 class _FakeProcessRepository implements ProcessRepository {
   final List<String> signalRequests = <String>[];
+  final Map<int, List<ProcessMatch?>> matchSnapshots = <int, List<ProcessMatch?>>{};
+  bool throwGraceful = false;
+  bool throwForce = false;
 
   @override
   Future<ProcessIdentity?> inspectProcess({required int pid}) async {
@@ -218,7 +405,11 @@ class _FakeProcessRepository implements ProcessRepository {
 
   @override
   Future<ProcessMatch?> inspectProcessMatch({required int pid}) async {
-    return null;
+    final snapshots = matchSnapshots[pid];
+    if (snapshots == null || snapshots.isEmpty) {
+      return null;
+    }
+    return snapshots.removeAt(0);
   }
 
   @override
@@ -234,6 +425,9 @@ class _FakeProcessRepository implements ProcessRepository {
   @override
   Future<SignalResult> sendGracefulSignal({required int pid}) async {
     signalRequests.add('graceful:$pid');
+    if (throwGraceful) {
+      throw StateError('graceful failed');
+    }
     return SignalResult(
       pid: pid,
       requestedSignal: ShutdownSignal.graceful,
@@ -246,6 +440,9 @@ class _FakeProcessRepository implements ProcessRepository {
   @override
   Future<SignalResult> sendForceSignal({required int pid}) async {
     signalRequests.add('force:$pid');
+    if (throwForce) {
+      throw StateError('force failed');
+    }
     return SignalResult(
       pid: pid,
       requestedSignal: ShutdownSignal.force,

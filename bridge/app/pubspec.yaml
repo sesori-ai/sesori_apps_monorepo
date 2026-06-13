@@ -5,7 +5,7 @@ publish_to: none
 resolution: workspace
 
 environment:
-  sdk: ^3.11.5
+  sdk: ^3.12.2
 
 dependencies:
   args: ^2.6.0
@@ -22,11 +22,12 @@ dependencies:
   rxdart: ^0.28.0
   sesori_plugin_interface:
     path: ../sesori_plugin_interface
+  sesori_plugin_runtime:
+    path: ../sesori_plugin_runtime
   opencode_plugin:
     path: ../sesori_plugin_opencode
   meta: ^1.17.0
   drift: ^2.32.1
-  sqlite3: ^3.2.0
   collection: ^1.19.1
   win32: ^6.0.0
 
@@ -34,6 +35,9 @@ dev_dependencies:
   test: ^1.25.0
   lints: ^6.1.0
   fake_async: ^1.3.3
+  # Tests exercise raw sqlite3 directly (drift migrations, DAO tests);
+  # production code reaches sqlite3 only transitively through drift.
+  sqlite3: ^3.2.0
   build_runner: any
   freezed: ^3.2.5
   json_serializable: ^6.14.0

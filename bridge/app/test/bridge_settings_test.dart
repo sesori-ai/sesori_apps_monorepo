@@ -46,5 +46,57 @@ void main() {
 
       expect(settings.toJson(), equals({'sleepPrevention': 'off'}));
     });
+
+    test('enabledPlugins defaults to unset', () {
+      const settings = BridgeSettings();
+
+      expect(settings.enabledPlugins, isNull);
+    });
+
+    test('fromJson parses enabledPlugins entries', () {
+      final settings = BridgeSettings.fromJson({
+        'enabledPlugins': ['opencode'],
+      });
+
+      expect(settings.enabledPlugins, equals(['opencode']));
+    });
+
+    test('fromJson treats a missing enabledPlugins key as unset', () {
+      final settings = BridgeSettings.fromJson({'sleepPrevention': 'always'});
+
+      expect(settings.enabledPlugins, isNull);
+    });
+
+    test('fromJson treats a non-list enabledPlugins as unset', () {
+      final settings = BridgeSettings.fromJson({'enabledPlugins': 'opencode'});
+
+      expect(settings.enabledPlugins, isNull);
+    });
+
+    test('fromJson keeps only string entries of enabledPlugins', () {
+      final settings = BridgeSettings.fromJson({
+        'enabledPlugins': ['opencode', 42, null],
+      });
+
+      expect(settings.enabledPlugins, equals(['opencode']));
+    });
+
+    test('toJson omits enabledPlugins when unset, keeping the defaults file shape', () {
+      const settings = BridgeSettings();
+
+      expect(settings.toJson(), equals({'sleepPrevention': 'always'}));
+    });
+
+    test('toJson includes enabledPlugins when set', () {
+      const settings = BridgeSettings(enabledPlugins: ['opencode']);
+
+      expect(
+        settings.toJson(),
+        equals({
+          'sleepPrevention': 'always',
+          'enabledPlugins': ['opencode'],
+        }),
+      );
+    });
   });
 }

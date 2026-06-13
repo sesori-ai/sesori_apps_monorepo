@@ -58,6 +58,7 @@ void main() {
           const AppRoute.sessions(projectId: "project-1", projectName: null).buildPath(),
           const AppRoute.sessionDetail(
             projectId: "project-1",
+            projectName: null,
             sessionId: "session-1",
             sessionTitle: "Weekly planning",
             readOnly: false,
@@ -99,6 +100,7 @@ void main() {
         equals(
           const AppRoute.sessionDetail(
             projectId: "project-2",
+            projectName: null,
             sessionId: "session-2",
             sessionTitle: "Latest title",
             readOnly: false,
@@ -125,6 +127,7 @@ void main() {
         everyElement(
           const AppRoute.sessionDetail(
             projectId: "project-1",
+            projectName: null,
             sessionId: "session-1",
             sessionTitle: "Weekly planning",
             readOnly: false,

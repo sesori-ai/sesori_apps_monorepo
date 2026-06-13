@@ -322,7 +322,7 @@ class OrchestratorSession {
     }
 
     Log.i("Relay:  ${config.relayURL}");
-    Log.i("Target: ${config.serverURL}\n");
+    Log.i("Target: ${config.pluginEndpoint}\n");
     Log.i("Waiting for relay events...");
 
     try {
@@ -377,9 +377,9 @@ class OrchestratorSession {
       await _completionListener.dispose();
       _maintenanceListener.dispose();
       _prSyncService.dispose();
-      Log.d("disposing plugin...");
-      await _plugin.dispose();
-      Log.d("plugin disposed");
+      // Plugin teardown is owned by BridgePlugin.shutdown(), run as the
+      // shutdown coordinator's ordered step — the deprecated direct
+      // api.dispose() call is gone since the descriptor flip.
       Log.d("stopping sse manager...");
       _sseManager.stop();
       Log.d("sse manager stopped");

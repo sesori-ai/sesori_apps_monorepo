@@ -52,6 +52,38 @@ void main() {
       expect(candidates.single.pid, equals(20));
     });
 
+    test('accepts source-run dartvm bridge command (Flutter-bundled Dart SDK)', () async {
+      api.facts = <ProcessIdentity>[
+        _fact(
+          pid: 21,
+          executablePath: '/Users/alex/.asdf/installs/flutter/3.44.2-stable/bin/cache/dart-sdk/bin/dartvm',
+          commandLine: '/Users/alex/.asdf/installs/flutter/3.44.2-stable/bin/cache/dart-sdk/bin/dartvm '
+              '--resolved_executable_name=/Users/alex/.asdf/installs/flutter/3.44.2-stable/bin/cache/dart-sdk/bin/dart '
+              '--executable_name=/Users/alex/.asdf/installs/flutter/3.44.2-stable/bin/cache/dart-sdk/bin/dart '
+              'bridge/app/bin/bridge.dart --debug-port=7829 --log-level=debug --no-auto-start --port 4096',
+        ),
+      ];
+
+      final candidates = await repository.listLiveBridgeCandidates(currentPid: 999);
+
+      expect(candidates.single.pid, equals(21));
+    });
+
+    test('accepts source-run dartaotruntime bridge command', () async {
+      api.facts = <ProcessIdentity>[
+        _fact(
+          pid: 22,
+          executablePath: '/Users/alex/.asdf/installs/flutter/3.44.2-stable/bin/cache/dart-sdk/bin/dartaotruntime',
+          commandLine: '/Users/alex/.asdf/installs/flutter/3.44.2-stable/bin/cache/dart-sdk/bin/dartaotruntime '
+              'bridge/app/bin/bridge.dart --relay wss://relay.sesori.com',
+        ),
+      ];
+
+      final candidates = await repository.listLiveBridgeCandidates(currentPid: 999);
+
+      expect(candidates.single.pid, equals(22));
+    });
+
     test('filters false positives and other-user bridge commands', () async {
       api.facts = <ProcessIdentity>[
         _fact(

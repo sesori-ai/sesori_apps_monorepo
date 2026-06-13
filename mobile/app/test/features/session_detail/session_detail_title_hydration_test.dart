@@ -30,6 +30,7 @@ Widget _buildApp({required String? sessionTitle}) {
     supportedLocales: AppLocalizations.supportedLocales,
     home: SessionDetailScreen(
       projectId: "project-1",
+      projectName: null,
       sessionId: "session-1",
       sessionTitle: sessionTitle,
     ),
@@ -146,10 +147,16 @@ void main() {
     when(() => voiceTranscriptionService.onMaxDurationReached).thenAnswer((_) => maxDurationReached.stream);
 
     when(
-      () => loadService.load(sessionId: any(named: "sessionId"), projectId: any(named: "projectId")),
+      () => loadService.load(
+        sessionId: any(named: "sessionId"),
+        projectId: any(named: "projectId"),
+      ),
     ).thenAnswer((_) async => _loadedResult());
     when(
-      () => loadService.reload(sessionId: any(named: "sessionId"), projectId: any(named: "projectId")),
+      () => loadService.reload(
+        sessionId: any(named: "sessionId"),
+        projectId: any(named: "projectId"),
+      ),
     ).thenAnswer((_) async => _loadedResult());
 
     _registerDependencies(
@@ -173,7 +180,10 @@ void main() {
   testWidgets("shows carried title during loading and before canonical data arrives", (tester) async {
     final loadCompleter = Completer<SessionDetailLoadResult>();
     when(
-      () => loadService.load(sessionId: any(named: "sessionId"), projectId: any(named: "projectId")),
+      () => loadService.load(
+        sessionId: any(named: "sessionId"),
+        projectId: any(named: "projectId"),
+      ),
     ).thenAnswer((_) => loadCompleter.future);
 
     await tester.pumpWidget(_buildApp(sessionTitle: "Carried title"));
@@ -190,7 +200,10 @@ void main() {
 
   testWidgets("shows carried title on failed load and keeps retry wired to reload", (tester) async {
     when(
-      () => loadService.load(sessionId: any(named: "sessionId"), projectId: any(named: "projectId")),
+      () => loadService.load(
+        sessionId: any(named: "sessionId"),
+        projectId: any(named: "projectId"),
+      ),
     ).thenAnswer((_) async => const SessionDetailLoadResult.failed(error: Object(), stackTrace: null));
 
     await tester.pumpWidget(_buildApp(sessionTitle: "Carried title"));
@@ -203,13 +216,19 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(
-      () => loadService.reload(sessionId: "session-1", projectId: any(named: "projectId")),
+      () => loadService.reload(
+        sessionId: "session-1",
+        projectId: any(named: "projectId"),
+      ),
     ).called(1);
   });
 
   testWidgets("canonical title overrides the carried route title", (tester) async {
     when(
-      () => loadService.load(sessionId: any(named: "sessionId"), projectId: any(named: "projectId")),
+      () => loadService.load(
+        sessionId: any(named: "sessionId"),
+        projectId: any(named: "projectId"),
+      ),
     ).thenAnswer((_) async => _loadedResultWithCanonicalTitle("Canonical title"));
 
     await tester.pumpWidget(_buildApp(sessionTitle: "Carried title"));
@@ -221,7 +240,10 @@ void main() {
 
   testWidgets("later SSE title update still overrides the currently loaded title", (tester) async {
     when(
-      () => loadService.load(sessionId: any(named: "sessionId"), projectId: any(named: "projectId")),
+      () => loadService.load(
+        sessionId: any(named: "sessionId"),
+        projectId: any(named: "projectId"),
+      ),
     ).thenAnswer((_) async => _loadedResultWithCanonicalTitle("Canonical title"));
 
     await tester.pumpWidget(_buildApp(sessionTitle: "Carried title"));

@@ -10,6 +10,16 @@ abstract class BridgeHostInfo {
   /// by a previous, possibly crashed, bridge).
   String get ownerSessionId;
 
+  /// Identities of the bridge processes this bridge replaced during startup
+  /// (the user accepted terminating them, or they were reclaimed from a stale
+  /// startup lock). Empty when no bridge was replaced.
+  ///
+  /// Stale-runtime cleanup is explicitly authorized to reclaim records owned
+  /// by these bridges: a just-terminated owner can still look alive to a
+  /// liveness probe (its PID lingers, or was reused without start markers —
+  /// the Windows path), and sparing it would orphan the runtime it owned.
+  List<ProcessIdentity> get terminatedBridgeIdentities;
+
   /// Whether the process [pid] is a *live sesori-bridge process* matching
   /// [startMarker].
   ///

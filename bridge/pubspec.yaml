@@ -2,9 +2,10 @@ name: sesori_bridge_workspace
 publish_to: none
 
 environment:
-  sdk: ^3.11.5
+  sdk: ^3.12.2
 
 workspace:
   - app
   - sesori_plugin_opencode
+  - sesori_plugin_runtime
   - sesori_plugin_interface

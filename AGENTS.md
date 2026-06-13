@@ -353,6 +353,12 @@ The bridge uses Drift (SQLite) for local persistence. Schema changes require a s
 
 Conventional commits: `fix:`, `feat:`, `ci:`, `docs:`, `chore:`.
 
+`.gitattributes` marks generated code and test directories as `linguist-generated` so GitHub collapses their diffs. Lockfiles (`pubspec.lock`, `Gemfile.lock`, `Podfile.lock`) must NEVER be marked as generated — the user always reviews lockfile diffs.
+
+## PR Monitoring
+
+A `pr_monitor` tool (provided by the [sesori-ai/opencode-pr-monitor](https://github.com/sesori-ai/opencode-pr-monitor) plugin, referenced from `opencode.json`) watches GitHub PRs in the background and delivers factual `[PR Monitor]` reports into the owning session. Usage and report-handling policy live in the `monitor-pr` skill — load it after raising a PR and whenever a `[PR Monitor]` message arrives. Monitors are per-session, configured via `.opencode/pr-monitor.json`, and do not survive opencode restarts.
+
 ## Testing
 
 | Location                 | Command        |

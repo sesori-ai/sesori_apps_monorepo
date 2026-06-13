@@ -12,6 +12,7 @@ Systematically update all project dependencies across both Dart workspaces and s
 The repo has two Dart workspaces and two standalone packages. Workspace members share a single resolution; standalone packages resolve independently.
 
 **Mobile workspace** (`mobile/pubspec.yaml` is the workspace root, has `flutter` env constraint):
+
 - `mobile/pubspec.yaml` — workspace root, env only
 - `mobile/module_auth/pubspec.yaml`
 - `mobile/module_core/pubspec.yaml`
@@ -19,12 +20,14 @@ The repo has two Dart workspaces and two standalone packages. Workspace members 
 - `mobile/app/pubspec.yaml` (Flutter app — Firebase, flutter_bloc, etc.)
 
 **Bridge workspace** (`bridge/pubspec.yaml` is the workspace root, pure Dart):
+
 - `bridge/pubspec.yaml` — workspace root, env only
 - `bridge/sesori_plugin_interface/pubspec.yaml`
 - `bridge/sesori_plugin_opencode/pubspec.yaml`
 - `bridge/app/pubspec.yaml` (CLI relay server)
 
 **Standalone packages** (NOT in any workspace — resolve independently with their own lockfile):
+
 - `shared/sesori_shared/pubspec.yaml` — pure Dart; consumed by both workspaces via `path:` dep
 - `shared/no_slop_linter/pubspec.yaml` — pure Dart analyzer plugin; consumed by `module_zyra` via `path:` dev_dep
 
@@ -41,6 +44,7 @@ Sesori iOS is **Swift Package Manager only** — there is no Podfile, and CocoaP
 </ios_files>
 
 <android_files>
+
 - `mobile/app/android/Gemfile` (fastlane gem)
 - `mobile/app/android/Gemfile.lock`
 </android_files>
@@ -51,21 +55,25 @@ Sesori iOS is **Swift Package Manager only** — there is no Podfile, and CocoaP
 <description>Ensure Flutter/Dart is at latest stable version, align environment constraints, and clean lock files</description>
 
 <step name="1.1">Check current Flutter version and update if needed:
+
 ```bash
 flutter --version
 asdf install flutter latest
 asdf set flutter latest   # asdf 0.16+ canonical form; equivalent to `asdf local` on older versions
 flutter --version
 ```
+
 If `flutter --version` still reports the old version after `asdf set`, run `asdf reshim flutter` (or open a new shell) and re-run `flutter --version`.
 </step>
 
 <step name="1.2">Check and update environment constraints in all pubspec.yaml files **except `shared/no_slop_linter/pubspec.yaml`** (manually managed).
 
 Get the current Dart SDK version bundled with Flutter:
+
 ```bash
 flutter --version
 ```
+
 Note the Dart version (e.g., "Dart 3.11.0") and Flutter version (e.g., "Flutter 3.41.0").
 
 For each pubspec.yaml below, read its `environment` section and update only the keys present. **Preserve the existing constraint syntax per file** — do not normalize between caret and range forms.
@@ -74,7 +82,7 @@ For each pubspec.yaml below, read its `environment` section and update only the 
 
 | File | Has `sdk` | Has `flutter` | Constraint style |
 |------|-----------|---------------|------------------|
-| `mobile/pubspec.yaml` | ✅ | ✅ | caret (`^3.11.5`) + range (`">=3.41.7 <3.42.0"`) |
+| `mobile/pubspec.yaml` | ✅ | ✅ | caret (`^3.12.2`) + range (`">=3.44.2 <3.45.0"`) |
 | `mobile/app/pubspec.yaml` | ✅ | — | caret |
 | `mobile/module_auth/pubspec.yaml` | ✅ | — | caret |
 | `mobile/module_core/pubspec.yaml` | ✅ | — | caret |
@@ -86,14 +94,17 @@ For each pubspec.yaml below, read its `environment` section and update only the 
 | `shared/sesori_shared/pubspec.yaml` | ✅ | — | caret |
 
 Example:
+
 ```yaml
 environment:
   sdk: ^DART_VERSION
   flutter: ">=FLUTTER_VERSION <NEXT_MINOR"   # mobile/pubspec.yaml only
 ```
+
 </step>
 
 <step name="1.3">Commit if environment constraints changed:
+
 ```bash
 git diff .tool-versions
 git diff --name-only -- '*.yaml'
@@ -103,16 +114,19 @@ git commit -m "chore: update Flutter/Dart environment constraints
 - Update environment constraints in all pubspec.yaml files
 - Update Flutter SDK version in .tool-versions (if changed)"
 ```
+
 Skip this commit if no environment changes were needed.
 </step>
 
 <step name="1.4">Delete all pubspec.lock files except `shared/no_slop_linter/pubspec.lock` (the linter is excluded from this workflow — its lock must remain untouched so transitive resolution doesn't shift):
+
 ```bash
 find . -name "pubspec.lock" \
   -not -path "./.worktrees/*" \
   -not -path "./shared/no_slop_linter/*" \
   -delete
 ```
+
 </step>
 </phase>
 
@@ -122,11 +136,13 @@ find . -name "pubspec.lock" \
 <step name="2.1">Run outdated check for each package. Workspaces resolve as a unit (run from workspace root); standalone packages resolve individually.
 
 **Standalone (`shared/sesori_shared` only — `no_slop_linter` is excluded):**
+
 ```bash
 (cd shared/sesori_shared && dart pub outdated)
 ```
 
 **Mobile workspace** (one resolution covers all members; run `outdated` per-member to see direct deps per package — `flutter pub outdated` for Flutter packages, `dart pub outdated` for pure-Dart members):
+
 ```bash
 set -e
 (cd mobile && flutter pub get)
@@ -137,6 +153,7 @@ set -e
 ```
 
 **Bridge workspace** (pure Dart):
+
 ```bash
 set -e
 (cd bridge && dart pub get)
@@ -144,19 +161,23 @@ set -e
 (cd bridge/sesori_plugin_opencode && dart pub outdated)
 (cd bridge/app && dart pub outdated)
 ```
+
 </step>
 
 <step name="2.2">Identify updates and categorize:
+
 - **Direct updates**: Can update version constraint in pubspec.yaml immediately
 - **Breaking changes**: Major version bumps that need code changes (separate tickets)
 - **Blocked updates**: Waiting on transitive dependencies
 </step>
 
 <step name="2.3">For each dependency with a major version update, check release notes:
+
 - Visit pub.dev/packages/{package}/changelog
 - Identify breaking changes or migration requirements
 - Note any that require code changes for later
 </step>
+
 </phase>
 
 <phase name="3. Update Dependencies">
@@ -173,6 +194,7 @@ set -e
 **a) Bump version constraints for direct dependencies** that have newer versions available.
 
 For each direct dependency listed in the `pub outdated` output from Phase 2:
+
 - If the "Latest" column shows a newer version than the current constraint's minimum AND it is resolvable:
   - Update the constraint in pubspec.yaml to use the latest resolvable version as the minimum
   - Example: `drift: ^2.30.1` → `drift: ^2.31.0`
@@ -190,9 +212,11 @@ set -e
 (cd bridge && make pub-get)   # single workspace resolution
 (cd mobile && make pub-get)   # single workspace resolution (uses dart from Flutter SDK)
 ```
+
 </step>
 
 <step name="3.3">If conflicts occur:
+
 - Identify the conflicting dependency
 - Roll back to the maximum compatible version
 - Add to conflicts tracking list
@@ -200,9 +224,11 @@ set -e
 </step>
 
 <step name="3.4">Verify that pubspec.yaml files were actually modified:
+
 ```bash
 git diff --name-only -- '*.yaml'
 ```
+
 **HALT** if no pubspec.yaml files show changes but outdated packages exist. Do not proceed without having bumped version constraints. Revisit step 3.1.
 </step>
 </phase>
@@ -218,6 +244,7 @@ set -e
 (cd bridge && make analyze)   # sesori_plugin_interface, sesori_plugin_opencode, app
 (cd mobile && make analyze)   # module_auth, module_core, module_zyra, app (with --fatal-infos)
 ```
+
 </step>
 
 <step name="4.2">Run tests for every package via the Makefile targets. Each `test` target skips members without a `test/` dir and uses `flutter test` for the Flutter app:
@@ -228,9 +255,11 @@ set -e
 (cd bridge && make test)
 (cd mobile && make test)
 ```
+
 </step>
 
 <step name="4.3">If build or tests fail:
+
 - Identify the failing dependency
 - Check if code changes are needed
 - Either fix the issue or roll back the dependency
@@ -245,6 +274,7 @@ set -e
 (cd bridge && make codegen)   # sesori_plugin_interface, sesori_plugin_opencode, app
 (cd mobile && make codegen)   # module_auth, module_core, module_zyra, app
 ```
+
 If a generator dependency is later added to a currently-skipped package, update `CODEGEN_MODULES` in the matching Makefile rather than re-introducing per-package commands here.
 </step>
 </phase>
@@ -253,11 +283,13 @@ If a generator dependency is later added to a currently-skipped package, update 
 <description>Update Fastlane and Ruby gem dependencies for iOS and Android. Sesori iOS is SPM-only — there is no `cocoapods` gem step.</description>
 
 <step name="5.1">Check the latest fastlane version:
+
 ```bash
 gem search fastlane --remote --versions | head -3
 ```
 
 Update the `fastlane` gem constraint in both Gemfiles if a newer minor version is available:
+
 - `mobile/app/ios/Gemfile`
 - `mobile/app/android/Gemfile`
 
@@ -265,22 +297,28 @@ Do NOT touch any `cocoapods` gem entry — Sesori does not use CocoaPods. If a `
 </step>
 
 <step name="5.2">Update Gemfile.lock for iOS:
+
 ```bash
 cd mobile/app/ios && bundle update && cd ../../..
 ```
+
 </step>
 
 <step name="5.3">Update Gemfile.lock for Android:
+
 ```bash
 cd mobile/app/android && bundle update && cd ../../..
 ```
+
 </step>
 
 <step name="5.4">Verify fastlane still works:
+
 ```bash
 cd mobile/app/ios && bundle exec fastlane --version && cd ../../..
 cd mobile/app/android && bundle exec fastlane --version && cd ../../..
 ```
+
 </step>
 </phase>
 
@@ -288,6 +326,7 @@ cd mobile/app/android && bundle exec fastlane --version && cd ../../..
 <description>Commit all remaining changes with proper categorization</description>
 
 <step name="6.1">Commit dependency updates (pubspec.yaml changes, lock files, generated code):
+
 ```bash
 git add -A
 git commit -m "chore: update project dependencies
@@ -298,9 +337,11 @@ git commit -m "chore: update project dependencies
 Conflicts/Deferred:
 - {dependency}: blocked by {reason}"
 ```
+
 </step>
 
 <step name="6.2">If Fastlane/Gemfile had changes, commit separately:
+
 ```bash
 git add mobile/app/ios/Gemfile mobile/app/ios/Gemfile.lock mobile/app/android/Gemfile mobile/app/android/Gemfile.lock
 git commit -m "chore: update Fastlane gem dependencies
@@ -308,6 +349,7 @@ git commit -m "chore: update Fastlane gem dependencies
 - Update fastlane to X.Y.Z
 - Regenerate Gemfile.lock for iOS and Android"
 ```
+
 </step>
 </phase>
 </process>
@@ -323,6 +365,7 @@ Report this list at the end of the update process for visibility.
 </conflict_tracking>
 
 <success_criteria>
+
 - Environment constraints (sdk, flutter) updated in 10 pubspec.yaml files (every pubspec EXCEPT `shared/no_slop_linter/pubspec.yaml`, which is excluded entirely)
 - Version constraints bumped to latest resolvable versions in every pubspec EXCEPT `shared/no_slop_linter/pubspec.yaml`
 - All pubspec.lock files regenerated (workspace roots + 2 standalone packages = 4 lockfiles)
@@ -336,6 +379,7 @@ Report this list at the end of the update process for visibility.
 
 <rollback_strategy>
 If a dependency update causes issues that cannot be quickly resolved:
+
 1. Note the problematic version
 2. Revert to the previous working version in pubspec.yaml
 3. Re-run `pub get` to regenerate the lock file
