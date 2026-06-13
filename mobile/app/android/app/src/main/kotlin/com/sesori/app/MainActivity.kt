@@ -17,7 +17,7 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         applyEdgeToEdge()
-        val splashScreen = installSplashScreen()
+        installSplashScreen()
         super.onCreate(savedInstanceState)
 
         flutterEngine?.renderer?.addIsDisplayingFlutterUiListener(this)
@@ -27,11 +27,6 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
             rootLayout.setBackgroundColor(resources.getColor(R.color.splash_screen_background, null))
 
             View.inflate(this, R.layout.main_activity, rootLayout)
-
-            splashScreen.setOnExitAnimationListener { splashScreenViewProvider ->
-                splashScreenViewProvider.remove()
-                hideSplashOverlay()
-            }
         }
     }
 
