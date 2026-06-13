@@ -87,7 +87,7 @@
   <h1>Plugin Lifecycle Migration Plan</h1>
   <div class="sub">Move all OpenCode runtime ownership (spawn, ports, health, ownership records, DB maintenance) out of <code>bridge/app</code> and into the OpenCode plugin, behind a plugin interface that supports managed-runtime, direct-CLI, and remote-server plugins — with per-plugin enable/start/stop. Delivered as a ladder of small, always-green PRs.</div>
   <div class="meta">
-    <span><b>Status:</b> in progress (rev 6 — PRs 1–11 merged (PR 9 #243, PR 10 #244, PR 11 #245 + follow-up #248), PR 12 shipped #249; codegen / line-budget rule revised per maintainer review; shipped cards carry delta callouts binding on later PRs)</span>
+    <span><b>Status:</b> in progress (rev 7 — PRs 1–11 merged, PR 12 shipped #249, PR 13 shipped #251; PR 14 had no remaining deletions and was folded into PR 15 docs sweep; codegen / line-budget rule revised per maintainer review; shipped cards carry delta callouts binding on later PRs)</span>
     <span><b>Date:</b> 2026-06-10 (rev 3: 2026-06-11; rev 4–6: 2026-06-12)</span>
     <span><b>PRs:</b> 15, strictly sequential</span>
     <span><b>Max PR size:</b> ~2,000 hand-written changed lines (soft target; generated code excluded)</span>
@@ -155,8 +155,7 @@
   <tr><td>11</td><td>OpenCode plugin absorbs its lifecycle (dormant)</td><td><span class="pill pkg">opencode</span></td><td>~1,400–1,900</td><td><span class="pill s">low</span></td></tr>
   <tr><td>12</td><td>Flip to the real descriptor; new policies activate</td><td><span class="pill pkg">app</span> <span class="pill pkg">opencode</span></td><td>~700–1,000</td><td><span class="pill l">high</span></td></tr>
   <tr><td>13</td><td>Deletion sweep 1: legacy source files and their direct tests</td><td><span class="pill pkg">app</span></td><td>~2,000 (pure del)</td><td><span class="pill s">low</span></td></tr>
-  <tr><td>14</td><td>Deletion sweep 2: remaining legacy tests (if any)</td><td><span class="pill pkg">app</span></td><td>~small / 0</td><td><span class="pill s">low</span></td></tr>
-  <tr><td>15</td><td>Docs sweep</td><td><span class="pill pkg">docs</span></td><td>~400–700</td><td><span class="pill s">low</span></td></tr>
+  <tr><td>14+15</td><td>Final sweep: remaining tests (none) + docs update</td><td><span class="pill pkg">docs</span></td><td>~400–700</td><td><span class="pill s">low</span></td></tr>
 </table>
 <p class="meta" style="margin-top:4px">Packages: <b>interface</b> = <code>bridge/sesori_plugin_interface</code> · <b>app</b> = <code>bridge/app</code> · <b>opencode</b> = <code>bridge/sesori_plugin_opencode</code> (pub name <code>opencode_plugin</code>) · <b>runtime</b> = new <code>bridge/sesori_plugin_runtime</code></p>
 
@@ -374,22 +373,25 @@
   <li>Clean up the stale transitional exception note in <code>bridge/app/AGENTS.md</code> that claimed legacy OpenCode sources still lived in <code>lib/src/server/services/open_code_*</code>.</li>
 </ul>
 <div class="safe"><b>Why always-green:</b> nothing references the deleted sources after PR 12; the directly-dependent tests are removed with them so <code>dart analyze</code> stays clean. ~2,000 lines, all deletions.</div>
+<div class="callout green"><b>Shipped as #251 (2026-06-13).</b> No deltas vs this card.</div>
 </div>
 
 <div class="card pr">
-<h3><span class="prnum">PR 14</span> Deletion sweep 2 — remaining legacy tests</h3>
+<h3><span class="prnum">PR 14+15</span> Final sweep — remaining tests (none) + docs update</h3>
 <ul>
-  <li>Delete any leftover legacy tests not already removed in PR 13. (The PR 1 re-export shims were removed in PR 1 itself, per review — nothing left to sweep here.)</li>
+  <li><b>PR 14 scope:</b> no remaining legacy tests to delete. The only test still referencing deleted classes is <code>bridge_instance_service_test.dart</code>, which asserts the source does <i>not</i> contain <code>OpenCodeServerService</code> — a regression guard, not a legacy test. PR 14 is therefore empty and folded into this final sweep.</li>
+  <li><b>PR 15 docs sweep:</b>
+    <ul>
+      <li><code>bridge/README.md</code>: rewrite intro and architecture diagram to be plugin-agnostic; expand "Adding a New Plugin" guide with descriptor-based steps and lifecycle overview.</li>
+      <li><code>bridge/app/README.md</code>: make intro, how-it-works, CLI flags, examples, process-management, and project-structure sections plugin-agnostic; move OpenCode specifics to plugin-specific examples.</li>
+      <li><code>bridge/app/AGENTS.md</code>: update STRUCTURE/WHERE TO LOOK for <code>server/</code> (bridge instance / host services), update modules diagram, remove stale transitional exception.</li>
+      <li>Root <code>AGENTS.md</code>: update <code>server/</code> subsystem description from "process lifecycle" to "bridge instance / host services".</li>
+      <li><code>docs/SETUP_HEADLESS_VM.md</code>: flags unchanged; add process-ownership note explaining that <code>--no-auto-start</code> leaves OpenCode managed by systemd, not the plugin.</li>
+      <li><code>shared/sesori_shared</code>: generalize OpenCode-specific doc comments in <code>session.dart</code> and <code>message.dart</code>.</li>
+    </ul>
+  </li>
 </ul>
-<div class="safe"><b>Why always-green:</b> test-only deletions. Small/zero-risk by construction.</div>
-</div>
-
-<div class="card pr">
-<h3><span class="prnum">PR 15</span> Docs sweep</h3>
-<ul>
-  <li><code>bridge/README.md</code> plugin-authoring guide (descriptor-based), <code>bridge/app/README.md</code> process-management sections → plugin docs, both <code>AGENTS.md</code>, root <code>AGENTS.md</code> server-subsystem description, <code>docs/SETUP_HEADLESS_VM.md</code> (flags unchanged; ownership story updated), scrub OpenCode references from <code>sesori_shared</code> doc comments.</li>
-</ul>
-<div class="safe"><b>Why always-green:</b> docs only.</div>
+<div class="safe"><b>Why always-green:</b> docs only; no production code changes.</div>
 </div>
 
 <h2><span class="num">4</span>Risk register → where each is retired</h2>
@@ -418,8 +420,8 @@
 <div class="card">
 <ul class="check">
   <li><code>dart analyze --fatal-infos</code> clean in every touched package; <code>dart test</code> green across the bridge workspace.</li>
-  <li>Bridge smoke test: start → OpenCode spawns → mobile can create a session and stream a reply → Ctrl-C → clean exit, no orphaned <code>opencode serve</code> (check <code>ps</code>), ownership file consistent.</li>
-  <li><code>--no-auto-start --port &lt;p&gt;</code> attach mode works against a manually started server.</li>
+  <li>Bridge smoke test: start → plugin backend spawns → mobile can create a session and stream a reply → Ctrl-C → clean exit, no orphaned backend process, ownership file consistent.</li>
+  <li><code>--no-auto-start --port &lt;p&gt;</code> attach mode works against a manually started server (plugin-provided flag).</li>
   <li>Diff ≤ ~2,000 changed lines as <code>git diff --stat</code> counts them (split the PR if a test suite or codegen pushes it over).</li>
   <li>No change to CLI flag names/semantics. No change to <i>steady-state</i> <code>opencode-processes.json</code> bytes (PRs 7–12: verify explicitly); any new persisted state lives in separate files proven inert to pre-migration bridges (mixed-version test).</li>
   <li>PR description states its behavior delta (expected: "none", except the deliberate deltas in PRs 4, 6, and 12).</li>

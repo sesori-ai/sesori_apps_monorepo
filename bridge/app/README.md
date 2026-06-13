@@ -1,8 +1,8 @@
 # Sesori Bridge CLI
 
-Native CLI tool written in Dart, compiled to a platform binary, that bridges a local OpenCode server to mobile devices over the internet via an encrypted WebSocket relay.
+Native CLI tool written in Dart, compiled to a platform binary, that bridges a local AI assistant server to mobile devices over the internet via an encrypted WebSocket relay.
 
-It authenticates with OAuth PKCE, spawns `opencode serve`, connects to the relay, performs an X25519 key exchange with each connecting phone, and routes encrypted requests and responses between them. All traffic is end-to-end encrypted; the relay server only ever sees ciphertext.
+The bridge authenticates with OAuth PKCE, loads the selected plugin, connects to the relay, performs an X25519 key exchange with each connecting phone, and routes encrypted requests and responses between them. All traffic is end-to-end encrypted; the relay server only ever sees ciphertext. The plugin (e.g. `sesori_plugin_opencode`) owns all backend-specific logic: spawning the assistant, health checks, SSE event parsing, and graceful shutdown.
 
 ## Quick Start
 
@@ -14,7 +14,7 @@ make build
 ./dist/bridge-macos-arm64
 ```
 
-Press `Ctrl+C` to stop. This shuts down both the bridge and the OpenCode server it started.
+Press `Ctrl+C` to stop. This shuts down the bridge and triggers the selected plugin's ordered shutdown, which in turn stops any backend server it started.
 
 No Dart SDK? You can bootstrap the managed install with npm:
 
@@ -96,33 +96,37 @@ If you used the npm bootstrap path, `npm uninstall @sesori/bridge` does not remo
 ## How It Works
 
 ```
-Phone <--(E2E encrypted)--> Relay Server <--(E2E encrypted)--> Bridge CLI -> [OpenCode Plugin] -> opencode serve
+Phone <--(E2E encrypted)--> Relay Server <--(E2E encrypted)--> Bridge CLI -> [Plugin] -> AI assistant server
 ```
 
-1. Bridge starts `opencode serve` on `127.0.0.1:4096` with a generated password.
-2. Bridge authenticates with the auth backend (OAuth PKCE).
-3. Bridge connects to the relay WebSocket with role `"bridge"`.
-4. Phone connects to the same relay, grouped by user ID.
-5. Key exchange: phone sends its X25519 public key; bridge derives a shared secret via HKDF-SHA256 and sends an encrypted ready message containing the room key.
-6. All subsequent traffic is end-to-end encrypted. The relay cannot read any data.
-7. Up to 5 phones can connect simultaneously.
-8. Phone HTTP requests are decrypted by the bridge and forwarded to the local OpenCode server.
-9. Responses flow back encrypted through the relay to the phone.
+1. The bridge loads the selected plugin descriptor and runs its `start(PluginHost)`.
+2. The plugin starts (or attaches to) its backend server on a local port and reports `Ready`.
+3. The bridge authenticates with the auth backend (OAuth PKCE).
+4. The bridge connects to the relay WebSocket with role `"bridge"`.
+5. The phone connects to the same relay, grouped by user ID.
+6. Key exchange: phone sends its X25519 public key; bridge derives a shared secret via HKDF-SHA256 and sends an encrypted ready message containing the room key.
+7. All subsequent traffic is end-to-end encrypted. The relay cannot read any data.
+8. Up to 5 phones can connect simultaneously.
+9. Phone HTTP requests are decrypted by the bridge and forwarded to the local assistant server through the plugin.
+10. Responses flow back encrypted through the relay to the phone.
 
 ## CLI Flags (for `run` command)
 
 These flags apply when running the bridge. The `run` command is the default, so you can use these flags directly without specifying `run`.
 
+Bridge core flags:
+
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--relay` | `wss://relay.sesori.com` | Relay server URL |
-| `--port` | `4096` | Port for the OpenCode server (applies to both auto-start and `--no-auto-start`) |
-| `--password` | *(auto-generated)* | Override the server password |
-| `--opencode-bin` | `opencode` | Path to the OpenCode binary |
-| `--no-auto-start` | `false` | Skip spawning OpenCode; connect to an existing server on localhost instead |
+| `--port` | plugin-defined | Port the plugin should use for its backend server (when supported) |
+| `--password` | *(auto-generated)* | Override the backend server password |
+| `--plugin` | `opencode` | Plugin backend to run |
 | `--auth-backend` | `https://api.sesori.com` | Auth backend URL (also reads `AUTH_BACKEND_URL` env var) |
 | `--debug-port` | *(disabled)* | Start a debug HTTP server on this port for Postman/curl testing |
 | `--log-level` | `info` | Minimum log level: `verbose`, `debug`, `info`, `warning`, `error` |
+
+Each plugin contributes its own options. For example, the OpenCode plugin adds `--no-auto-start` and `--opencode-bin`. Run `--help` to see the options for the selected plugin.
 
 ## Commands
 
@@ -140,20 +144,24 @@ In addition to flags, the bridge supports subcommands:
 # Use a custom relay server
 ./dist/bridge-macos-arm64 --relay wss://my-relay.example.com
 
-# Connect to an already-running OpenCode server on port 4096
-./dist/bridge-macos-arm64 --no-auto-start --port 4096
-
-# Connect to an already-running OpenCode server on a custom port
-./dist/bridge-macos-arm64 --no-auto-start --port 8080
-
-# Use a custom OpenCode binary path
-./dist/bridge-macos-arm64 --opencode-bin /usr/local/bin/opencode
-
 # Use a custom auth backend
 ./dist/bridge-macos-arm64 --auth-backend https://my-auth.example.com
 
+# Select a different plugin (when available)
+./dist/bridge-macos-arm64 --plugin opencode
+
 # Log out (clear stored tokens)
 ./dist/bridge-macos-arm64 logout
+```
+
+Plugin-specific examples (OpenCode):
+
+```bash
+# Connect to an already-running OpenCode server on port 4096
+./dist/bridge-macos-arm64 --no-auto-start --port 4096
+
+# Use a custom OpenCode binary path
+./dist/bridge-macos-arm64 --opencode-bin /usr/local/bin/opencode
 ```
 
 ## Security
@@ -170,17 +178,19 @@ The bridge generates a 32-byte room key on startup. Each phone receives this key
 
 ### Password authentication
 
-The bridge generates a 64-character hex password (32 random bytes) and passes it to `opencode serve` via the `OPENCODE_SERVER_PASSWORD` environment variable. All proxied requests include an `Authorization: Basic` header injected by the bridge. The password never leaves the local machine.
+The bridge generates a 64-character hex password (32 random bytes) and passes it to the backend server via the plugin. All proxied requests include an `Authorization: Basic` header injected by the bridge. The password never leaves the local machine; the exact mechanism is plugin-defined.
 
-## Process Management
+## Plugin Process Management
 
-The bridge manages the OpenCode server process lifecycle:
+Backend process lifecycle is owned by the plugin, not the bridge core:
 
-- On startup, it spawns `opencode serve` and polls the health endpoint until it responds.
-- On `Ctrl+C` (SIGINT) or SIGTERM, it sends SIGTERM to the child process and waits for a clean exit.
-- On Windows, SIGTERM is unavailable; the bridge sends SIGKILL directly.
-- If the child process exits unexpectedly, the bridge shuts down as well.
+- On startup, the plugin starts (or attaches to) its backend server.
+- On `Ctrl+C` (SIGINT) or SIGTERM, the bridge calls the plugin's ordered `shutdown()`, which sends the appropriate signals and waits for a clean exit.
+- On Windows, SIGTERM is unavailable; the plugin typically sends SIGKILL directly.
+- If the backend process exits unexpectedly, the plugin publishes `Failed`/`Degraded` status and the bridge shuts down the session.
 - A 10-second safety timer forces process exit if graceful shutdown stalls.
+
+See the plugin package (e.g. `sesori_plugin_opencode`) for backend-specific details.
 
 ## Build
 
@@ -221,12 +231,24 @@ sesori-bridge
 
 ```
 bin/bridge.dart       CLI entry point: flag parsing, auth, plugin loading, signal handling
-lib/src/auth/         OAuth PKCE login, token persistence, validation
-lib/src/bridge/       Core bridge (plugin-agnostic): relay client, orchestrator, SSE delivery, debug server
-lib/src/server/       OpenCode process management: start, stop, health polling
+lib/src/
+├── api/              Dumb data-access classes (HTTP, DB, shell, plugins)
+├── auth/             OAuth PKCE login, token persistence, validation
+├── bridge/           Core bridge (plugin-agnostic)
+│   ├── relay_client.dart      WebSocket connection to relay, message routing
+│   ├── orchestrator.dart      Coordinates relay + plugin lifecycle + key exchange
+│   ├── key_exchange.dart      X25519 DH key exchange with phones, room key delivery
+│   ├── routing/               Request handler chain (one class per API route) + proxy fallback
+│   ├── sse/                   SSE stream multiplexing and per-subscriber event buffers
+│   └── debug_server.dart      Debug HTTP server for local testing
+├── push/             Outgoing push notification subsystem
+├── repositories/     Aggregators + mappers over APIs
+├── server/           Bridge instance / host services: single-live-bridge enforcement, startup mutex, plugin host abstractions
+├── services/         Business logic and coordination
+└── updater/          Packaged-install auto-update logic
 ```
 
-The crypto and protocol types live in `sesori_shared`, shared with the Flutter mobile app.
+The crypto and protocol types live in `sesori_shared`, shared with the Flutter mobile app. Backend-specific logic lives in plugin packages (e.g. `bridge/sesori_plugin_opencode`).
 
 ## Testing
 

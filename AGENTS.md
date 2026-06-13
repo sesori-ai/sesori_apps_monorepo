@@ -153,7 +153,7 @@ app/lib/src/
 │   ├── push_session_state_tracker.dart
 │   └── completion_notifier.dart
 │
-└── server/                  # Subsystem (minimal — process lifecycle)
+└── server/                  # Subsystem (bridge instance / host services: single-live-bridge, startup mutex, plugin host abstractions)
 ```
 
 - BridgePlugin is semantically a Layer 1 data source (it exposes a public API for projects/sessions/messages)
