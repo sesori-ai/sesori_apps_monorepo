@@ -42,7 +42,7 @@ void main() {
       );
     });
 
-    test("prefers a model whose name contains '(latest)' over a newer date", () {
+    test("ignores a model whose name contains '(latest)' in favor of a newer date", () {
       final group = [
         _model(
           id: "newer",
@@ -56,10 +56,10 @@ void main() {
         ),
       ];
       final picked = selector.pickFromFamily(group: group);
-      expect(picked?.id, "marked");
+      expect(picked?.id, "newer");
     });
 
-    test("breaks '(latest)' ties by newest releaseDate", () {
+    test("breaks ties by newest releaseDate", () {
       final group = [
         _model(
           id: "latest-older",
@@ -242,7 +242,7 @@ void main() {
     );
 
     test(
-      "prefers a '(latest)' marker in any family over a newer date in another family",
+      "ignores a '(latest)' marker in another family in favor of a newer date",
       () {
         final models = {
           "newer-plain": _model(
@@ -259,7 +259,7 @@ void main() {
           ),
         };
         final picked = selector.pickFromProvider(models: models);
-        expect(picked?.id, "marked-older");
+        expect(picked?.id, "newer-plain");
       },
     );
 

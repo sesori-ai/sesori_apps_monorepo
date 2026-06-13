@@ -6,15 +6,14 @@ import "package:sesori_shared/sesori_shared.dart";
 /// The selector uses only signals already present in the upstream data, so
 /// the same logic works for every provider without per-provider knowledge:
 ///
-/// 1. Any model whose name contains the upstream " (latest)" marker.
-///    OpenCode / models.dev uses this suffix to flag a model as the
-///    recommended one in its family (e.g. `Claude Sonnet 4.5 (latest)`,
-///    `Mistral Small (latest)`). The model picker already strips this
-///    suffix from the display name, so it is a known convention worth
-///    trusting.
-/// 2. The model with the most recent [ProviderModel.releaseDate]. Models
+/// 1. The model with the most recent [ProviderModel.releaseDate]. Models
 ///    without a release date sort last.
-/// 3. The first available model in iteration order.
+/// 2. The first available model in iteration order.
+///
+/// The "(latest)" marker in a model name is intentionally ignored as a
+/// ranking signal. Providers may label an older model as "latest" (e.g.
+/// `Claude Sonnet 4.5 (latest)` vs. a newer `Claude Sonnet 4.8`), so the
+/// release date is a more reliable signal for picking the current default.
 ///
 /// The provider's backend-supplied [ProviderInfo.defaultModelID] is
 /// intentionally ignored. It is a provider-wide default that is frequently
@@ -41,8 +40,7 @@ class DefaultModelSelector {
   ///
   /// Groups [models] by family, picks the best model per family using
   /// [pickFromFamily], then returns the best of those representatives
-  /// using the same ranking ("(latest)" marker, then newest release date,
-  /// then `id`).
+  /// using the same ranking (newest release date, then `id`).
   ///
   /// Returns `null` if [models] contains no available models.
   ProviderModel? pickFromProvider({required Map<String, ProviderModel> models}) {
@@ -68,18 +66,13 @@ class DefaultModelSelector {
   }
 
   /// Returns the best model from [candidates] using the standard ranking:
-  /// "(latest)" marker wins, then newest release date, then id.
+  /// newest release date, then id.
   ///
   /// [candidates] must be non-empty and contain only available models.
   ProviderModel _bestModel(List<ProviderModel> candidates) {
     assert(candidates.isNotEmpty, "_bestModel requires non-empty candidates");
 
-    // Prefer any model whose name contains the "(latest)" marker.
-    final latestMarked =
-        candidates.where((m) => m.name.toLowerCase().contains("(latest)")).toList();
-    final toSort = latestMarked.isNotEmpty ? latestMarked : candidates;
-
-    final sorted = [...toSort]..sort((a, b) {
+    final sorted = [...candidates]..sort((a, b) {
         final dateA = a.releaseDate;
         final dateB = b.releaseDate;
         final int dateCompare;
