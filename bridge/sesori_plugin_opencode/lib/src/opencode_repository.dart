@@ -18,6 +18,7 @@ import "models/project.dart";
 import "models/send_command_body.dart";
 import "models/send_prompt_body.dart";
 import "models/session.dart";
+import "models/summarize_body.dart";
 import "opencode_api.dart";
 import "provider_mapper.dart";
 
@@ -121,6 +122,25 @@ class OpenCodeRepository {
         agent: agent,
         variant: variant?.id,
         model: model,
+      ),
+    );
+  }
+
+  /// Triggers manual compaction of [sessionId] via the summarize endpoint.
+  ///
+  /// Unlike [sendCommand], OpenCode's summarize payload needs the provider and
+  /// model as separate, non-optional fields, so [model] is required here.
+  Future<void> summarize({
+    required String sessionId,
+    required String? directory,
+    required ({String providerID, String modelID}) model,
+  }) {
+    return _api.summarize(
+      sessionId: sessionId,
+      directory: directory?.normalize(),
+      body: SummarizeBody(
+        providerID: model.providerID,
+        modelID: model.modelID,
       ),
     );
   }

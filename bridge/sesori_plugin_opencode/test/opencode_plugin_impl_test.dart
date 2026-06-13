@@ -80,14 +80,15 @@ void main() {
       expect(child.parentID, isNull);
     });
 
-    test("getCommands delegates through service and returns plugin commands", () async {
+    test("getCommands delegates through service and includes the synthetic compact command", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
       final commands = await plugin.getCommands(projectId: "/repo");
 
-      expect(commands, hasLength(1));
-      expect(commands.single.name, equals("/review-work"));
-      expect(commands.single.source, equals(PluginCommandSource.skill));
+      expect(
+        commands.map((command) => command.name),
+        containsAll(["/review-work", OpenCodeService.compactionCommandName]),
+      );
     });
 
     test("createSession creates the session then sends the first prompt", () async {
