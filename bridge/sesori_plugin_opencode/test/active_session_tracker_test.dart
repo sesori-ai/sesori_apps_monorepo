@@ -1114,6 +1114,13 @@ class _FakeApi implements OpenCodeApi {
   Future<List<Command>> listCommands({required String? directory}) async => const [];
 
   @override
+  Future<void> summarize({
+    required String sessionId,
+    required SummarizeBody body,
+    required String? directory,
+  }) async {}
+
+  @override
   Future<Session> createSession({required String directory, String? parentSessionId}) async =>
       throw UnimplementedError();
 
