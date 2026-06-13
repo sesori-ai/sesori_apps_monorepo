@@ -14,12 +14,11 @@ lib/src/
 │   ├── key_exchange.dart      X25519 DH key exchange with phones, room key delivery
 │   ├── routing/               Request handler chain (one class per API route)
 │   │   ├── request_handler.dart  Abstract base — declares method + path pattern, implements canHandle/extractParams
-│   │   ├── request_router.dart   Iterates handler list, extracts params, delegates to first match
+│   │   ├── request_router.dart   Iterates handlers, delegates to first match; returns 404 when none match
 │   │   ├── health_check_handler.dart        GET /global/health
 │   │   ├── get_projects_handler.dart        GET /project
 │   │   ├── get_sessions_handler.dart        GET /session
-│   │   ├── get_session_messages_handler.dart GET /session/:id/message
-│   │   └── proxy_handler.dart               Catch-all fallback — proxies unmatched routes to plugin backend
+│   │   └── get_session_messages_handler.dart GET /session/:id/message
 │   ├── sse/                   SSE stream management (backend-agnostic)
 │   │   ├── sse_manager.dart   SSE stream multiplexing to connected phones
 │   │   └── event_queue.dart   Per-subscriber event buffer with replay
@@ -47,7 +46,7 @@ bridge/ workspace modules (siblings of app/):
 | Auth flow        | `lib/src/auth/`                    | OAuth PKCE with token persistence to disk               |
 | Relay connection | `lib/src/bridge/relay_client.dart` | WebSocket + auth handshake + reconnection               |
 | Key exchange     | `lib/src/bridge/key_exchange.dart` | X25519 → HKDF → room key delivery                       |
-| Request routing  | `lib/src/bridge/routing/`          | Intercept-first handlers with proxy fallback            |
+| Request routing  | `lib/src/bridge/routing/`          | Explicit handlers; unmatched routes return 404          |
 | Plugin interface | `../sesori_plugin_interface/`       | BridgePlugin contract for all backends                  |
 | OpenCode plugin  | `../sesori_plugin_opencode/`        | OpenCode backend implementation + models + tests        |
 | Bridge instances | `lib/src/server/`                  | Single-live-bridge enforcement, startup mutex, plugin host abstractions |
@@ -55,7 +54,7 @@ bridge/ workspace modules (siblings of app/):
 ## CONVENTIONS
 
 - **Plugin architecture** — all backend-specific code lives in sibling plugin packages under `bridge/` (e.g. `sesori_plugin_opencode`). The bridge `lib/src/` is plugin-agnostic — it only imports from `sesori_plugin_interface`, never from concrete plugins. `bin/bridge.dart`'s registry (`plugin_registry.dart`) imports `opencode_plugin` for the const descriptor — that is the supported descriptor registration point.
-- **Intercept-first routing** — requests are intercepted by handlers by default. Proxy is the fallback for unhandled routes, not the default path.
+- **Explicit routing** — every supported route has a dedicated handler; `RequestRouter` returns 404 for unmatched routes (no catch-all proxy).
 - **Crypto from `sesori_shared`** — all crypto primitives imported from shared package, not duplicated
 - **Linting**: `package:lints/recommended.yaml` (lighter than mobile's `all_lint_rules`)
 - **Binary distribution**: npm wrapper package with platform-specific optional deps (darwin/linux/windows × arm64/x64)

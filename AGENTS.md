@@ -271,7 +271,7 @@ module_auth/lib/src/
 
 - **Bridge plugin system:** `BridgePluginApi` abstract class in `sesori_plugin_interface` defines the backend contract (projects, sessions, messages, events, health). THIS BELONGS TO Layer 1 (API layer). `sesori_plugin_opencode` implements it for OpenCode. New backends implement this interface.
 - **Relay protocol:** `RelayMessage` sealed class in `sesori_shared` defines all message types (auth, key_exchange, ready, request, response, sse_event, etc.). Binary wire format: `[version_byte][nonce (24B)][ciphertext + auth tag]`.
-- **Request routing (bridge):** Intercept-first handler chain. `RequestRouter` tries each registered handler in order; first match wins. `ProxyHandler` is the catch-all fallback.
+- **Request routing (bridge):** Explicit handler chain. `RequestRouter` tries each registered handler in order; first match wins. Unmatched routes return 404 — there is no catch-all proxy.
 - **SSE pipeline (bridge):** `SseConnection` → `SseEventParser` → plugin event stream → `Orchestrator` → `SSEManager` → per-phone encrypted delivery with event buffering.
 - **Mobile state management:** BLoC/Cubit pattern. Cubits live in `module_core` (pure Dart, testable). UI widgets in `app/` consume cubit state.
 - **Mobile DI:** 3-phase injection: platform adapters → auth → core services.

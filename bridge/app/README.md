@@ -193,7 +193,7 @@ Backend process lifecycle is owned by the plugin, not the bridge core:
 - On startup, the plugin starts (or attaches to) its backend server.
 - On `Ctrl+C` (SIGINT) or SIGTERM, the bridge calls the plugin's ordered `shutdown()`, which sends the appropriate signals and waits for a clean exit.
 - On Windows, SIGTERM is unavailable; the plugin typically sends SIGKILL directly.
-- If the backend process exits unexpectedly, the plugin publishes `Failed`/`Degraded` status and the bridge shuts down the session.
+- If the backend process exits unexpectedly, the plugin attempts a bounded restart (status `Restarting`, on the same pinned port). Only a terminal `Failed` — restarts exhausted or the port never frees — cancels the relay session and shuts the bridge down (exit 1). Transient problems surface as recoverable `Degraded` and do not stop the bridge.
 - A 10-second safety timer forces process exit if graceful shutdown stalls.
 
 See the plugin package (e.g. `sesori_plugin_opencode`) for backend-specific details.
@@ -244,7 +244,7 @@ lib/src/
 │   ├── relay_client.dart      WebSocket connection to relay, message routing
 │   ├── orchestrator.dart      Coordinates relay + plugin lifecycle + key exchange
 │   ├── key_exchange.dart      X25519 DH key exchange with phones, room key delivery
-│   ├── routing/               Request handler chain (one class per API route) + proxy fallback
+│   ├── routing/               Explicit request handler chain (one class per API route); unmatched routes return 404
 │   ├── sse/                   SSE stream multiplexing and per-subscriber event buffers
 │   └── debug_server.dart      Debug HTTP server for local testing
 ├── push/             Outgoing push notification subsystem
