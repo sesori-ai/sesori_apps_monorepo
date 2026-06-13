@@ -478,6 +478,26 @@ void main() {
     });
   });
 
+  group("OpenCodeRepository.summarize", () {
+    test("builds the summarize payload and normalizes the directory", () async {
+      final api = _FakeApi();
+      final repository = OpenCodeRepository(api);
+
+      await repository.summarize(
+        sessionId: "ses-1",
+        directory: " /repo ",
+        model: (providerID: "openai", modelID: "gpt-4.1"),
+      );
+
+      expect(api.lastSummarizeSessionId, equals("ses-1"));
+      expect(api.lastSummarizeDirectory, equals("/repo"));
+      expect(
+        api.lastSummarizeBody?.toJson(),
+        equals({"providerID": "openai", "modelID": "gpt-4.1", "auto": false}),
+      );
+    });
+  });
+
   group("Send*Body toJson", () {
     test("SendPromptBody emits variant only when provided", () {
       final withVariant = const SendPromptBody(
@@ -534,6 +554,9 @@ class _FakeApi implements OpenCodeApi {
   String? lastCommandSessionId;
   String? lastCommandDirectory;
   SendCommandBody? lastCommandBody;
+  String? lastSummarizeSessionId;
+  String? lastSummarizeDirectory;
+  SummarizeBody? lastSummarizeBody;
 
   _FakeApi({
     List<Session>? sessions,
@@ -622,6 +645,17 @@ class _FakeApi implements OpenCodeApi {
     lastCommandSessionId = sessionId;
     lastCommandDirectory = directory;
     lastCommandBody = body;
+  }
+
+  @override
+  Future<void> summarize({
+    required String sessionId,
+    required SummarizeBody body,
+    required String? directory,
+  }) async {
+    lastSummarizeSessionId = sessionId;
+    lastSummarizeDirectory = directory;
+    lastSummarizeBody = body;
   }
 
   @override
