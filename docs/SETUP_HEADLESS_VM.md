@@ -173,6 +173,10 @@ systemctl daemon-reload
 systemctl enable --now sesori-bridge
 ```
 
+> **Process ownership note:** because this unit passes `--no-auto-start`, the OpenCode plugin does **not** spawn or manage the OpenCode process. Systemd owns OpenCode via the `opencode.service` unit above, and the bridge attaches to it on `--port 9921`.
+>
+> **Switching to plugin-owned OpenCode:** dropping `--no-auto-start` alone is **not** enough in this setup. With an explicit `--port`, the plugin runs in managed mode and pre-probes that port as bindable, so it will fail to start because `opencode.service` is already listening on `9921`. To hand OpenCode ownership to the plugin: (1) stop and disable the standalone server with `systemctl disable --now opencode`, (2) remove the `After=opencode.service` and `Requires=opencode.service` lines from `sesori-bridge.service`, and (3) remove `--no-auto-start` from `ExecStart` (keep `--port 9921` for a fixed port, or drop it to let the plugin pick a free one). The plugin then spawns OpenCode itself, writes the ownership file under `~/.local/share/sesori/runtime/`, and handles restarts/cleanup.
+
 ---
 
 ## 10. Verify services
@@ -276,7 +280,7 @@ dmesg -T | grep -i oom
 ## Summary
 
 - OpenCode runs as a systemd service on port 9921
-- Sesori Bridge depends on it and connects to that port
+- Sesori Bridge depends on it and connects to that port (`--no-auto-start` means the plugin does not manage the OpenCode process)
 - Both auto-start on boot
 - Bridge updates apply on service restart; OpenCode updates via `opencode upgrade`
 - Logs are accessible via `journalctl`

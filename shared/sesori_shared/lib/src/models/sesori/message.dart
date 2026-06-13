@@ -18,7 +18,7 @@ part "message.g.dart";
 /// - `MessageError`: `"error"`
 ///
 /// The bridge layer is responsible for normalizing backend-specific error
-/// shapes (e.g., OpenCode's nested `error.data.message`) into the flat
+/// shapes (e.g., a nested `error.data.message`) into the flat
 /// `errorName` and `errorMessage` fields before constructing a
 /// [MessageError].
 @Freezed(unionKey: "role", fromJson: true, toJson: true)

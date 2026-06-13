@@ -83,7 +83,7 @@ sealed class SessionSummary with _$SessionSummary {
 
 /// Session with embedded project info, returned by `/experimental/session`.
 ///
-/// This is the `GlobalInfo` type from the OpenCode server — a [Session] extended
+/// This is the `GlobalInfo` type from the backend server — a [Session] extended
 /// with a nullable [SessionProject] that identifies which project the session
 /// belongs to.
 @Freezed(fromJson: true, toJson: true)
@@ -104,7 +104,7 @@ sealed class GlobalSession with _$GlobalSession {
 
 /// Lightweight project reference embedded in [GlobalSession].
 ///
-/// This is the `ProjectInfo` / `ProjectSummary` type from the OpenCode server —
+/// This is the `ProjectInfo` / `ProjectSummary` type from the backend server —
 /// a subset of [Project] with only `id`, `name`, and `worktree`.
 @Freezed(fromJson: true, toJson: true)
 sealed class SessionProject with _$SessionProject {
