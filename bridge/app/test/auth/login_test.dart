@@ -83,6 +83,49 @@ void main() {
           throwsA(isA<Exception>().having((error) => error.toString(), 'message', contains('denied'))),
         );
       });
+
+      test('prints the auth URL verbatim and still completes login when the browser launcher fails', () async {
+        const authUrl =
+            'https://github.com/login/oauth/authorize?client_id=abc&redirect_uri=https%3A%2F%2Fapi.sesori.com%2Fauth%2Fgithub%2Fcallback&scope=read%3Auser&state=xyz';
+        final authServer = await _OAuthLongPollTestServer.start(
+          authUrl: authUrl,
+          statusResponses: [
+            AuthSessionStatusResponse.complete(
+              accessToken: 'github-access-token',
+              refreshToken: 'github-refresh-token',
+              user: AuthUser(
+                id: 'user-1',
+                provider: AuthProvider.github,
+                providerUserId: 'gh-1',
+                providerUsername: 'octocat',
+              ),
+            ),
+          ],
+        );
+        addTearDown(authServer.close);
+
+        final stdoutLines = <String>[];
+        String? accessToken;
+        await IOOverrides.runZoned(
+          () async {
+            final service = _createOAuthService(
+              authServer: authServer,
+              browserLauncher: (_) async => throw Exception('no browser available'),
+            );
+            final tokens = await service.performOAuthLogin(AuthProvider.github);
+            accessToken = tokens.accessToken;
+          },
+          stdout: () => _CapturingStdout(stdoutLines),
+          stderr: () => _CapturingStdout(<String>[]),
+        );
+
+        expect(accessToken, equals('github-access-token'));
+        expect(
+          stdoutLines,
+          contains(authUrl),
+          reason: 'the full auth URL (with & query separators) must be printed so headless/SSH users can open it manually',
+        );
+      });
     });
 
     group('Google OAuth', () {
@@ -597,4 +640,19 @@ class _PasswordLoginTestServer {
   Future<void> close() async {
     await _server.close(force: true);
   }
+}
+
+/// Captures [writeln] calls; [IOOverrides] swaps it in for stdout/stderr.
+class _CapturingStdout implements Stdout {
+  _CapturingStdout(this.lines);
+
+  final List<String> lines;
+
+  @override
+  void writeln([Object? object = '']) {
+    lines.add(object.toString());
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

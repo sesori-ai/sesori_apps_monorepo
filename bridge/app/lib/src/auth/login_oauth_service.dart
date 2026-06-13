@@ -21,7 +21,7 @@ const Duration _defaultPerRequestTimeout = Duration(seconds: _perRequestTimeoutS
 /// Platform-specific:
 /// - macOS: `open`
 /// - Linux: `xdg-open`
-/// - Windows: `cmd /c start`
+/// - Windows: `rundll32 url.dll,FileProtocolHandler`
 Future<void> openOAuthBrowser(String url) async {
   late final ProcessResult result;
   if (Platform.isMacOS) {
@@ -29,7 +29,14 @@ Future<void> openOAuthBrowser(String url) async {
   } else if (Platform.isLinux) {
     result = await Process.run("xdg-open", [url]);
   } else if (Platform.isWindows) {
-    result = await Process.run("cmd", ["/c", "start", url]);
+    // Hand the URL straight to the shell's protocol handler via rundll32
+    // instead of `cmd /c start`. cmd.exe treats the `&` query-string
+    // separators in an OAuth URL as command separators — it runs the first
+    // segment and then tries to execute each remaining "name=value" fragment
+    // as its own command — and `start` would additionally misread the URL as a
+    // window title. rundll32 is launched without a shell, so the URL (every
+    // `&` included) reaches the default browser verbatim.
+    result = await Process.run("rundll32", ["url.dll,FileProtocolHandler", url]);
   } else {
     throw UnsupportedError("Unsupported platform: ${Platform.operatingSystem}");
   }
@@ -74,12 +81,18 @@ class LoginOAuthService {
 
     _printUserCode(initResp.userCode);
 
-    Log.i("Opening browser for ${provider.label} login...");
+    // Always print the URL before attempting to open a browser. The bridge
+    // frequently runs headless (servers, SSH sessions, containers) where no
+    // browser exists, and a launcher exit code of 0 only means the OS accepted
+    // the request — not that a browser actually appeared. Printing it
+    // unconditionally guarantees the user can always finish login by hand.
+    Log.i("To authorize ${provider.label} login, open this URL in your browser:");
+    Log.i(initResp.authUrl);
+    Log.i("Attempting to open it in your default browser...");
     try {
       await _browserLauncher(initResp.authUrl);
     } catch (e) {
-      Log.w("Could not open browser automatically: $e");
-      Log.i("Open this URL manually:\n${initResp.authUrl}");
+      Log.w("Could not open a browser automatically: $e");
     }
 
     Log.i("Waiting for authorization...");
