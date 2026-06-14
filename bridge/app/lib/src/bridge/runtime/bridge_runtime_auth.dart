@@ -77,11 +77,14 @@ class BridgeRuntimeAuthService {
       } catch (error) {
         throw Exception('validate stored tokens: $error');
       }
+    } on PathNotFoundException {
+      // Token file or its parent directory does not exist — fall through to
+      // login below. PathNotFoundException is the portable "missing path"
+      // signal: POSIX ENOENT, Windows ERROR_FILE_NOT_FOUND (errno 2), and
+      // Windows ERROR_PATH_NOT_FOUND (errno 3, e.g. the %LOCALAPPDATA%\sesori
+      // directory missing on first run) all surface as this type.
     } on FileSystemException catch (error) {
-      if (error.osError?.errorCode != 2) {
-        throw Exception('load stored tokens: $error');
-      }
-      // Token file not found — fall through to login below
+      throw Exception('load stored tokens: $error');
     } on FormatException {
       // Invalid token data (e.g., missing/invalid lastProvider) — treat as no valid tokens
       await clearTokens();
@@ -92,11 +95,10 @@ class BridgeRuntimeAuthService {
     try {
       final storedTokens = await loadTokens();
       provider = storedTokens.lastProvider;
-    } on FileSystemException catch (error) {
-      if (error.osError?.errorCode != 2) {
-        throw Exception('load stored tokens: $error');
-      }
+    } on PathNotFoundException {
       provider = await promptForProvider();
+    } on FileSystemException catch (error) {
+      throw Exception('load stored tokens: $error');
     } on FormatException {
       provider = await promptForProvider();
     }
@@ -138,12 +140,11 @@ class BridgeRuntimeAuthService {
     try {
       final existingTokens = await loadTokens();
       existingBridgeId = existingTokens.bridgeId;
-    } on FileSystemException catch (error) {
-      if (error.osError?.errorCode != 2) {
-        rethrow;
-      }
+    } on PathNotFoundException {
       // Token file missing — no previous bridge id to carry over.
       existingBridgeId = null;
+    } on FileSystemException {
+      rethrow;
     } on FormatException {
       // Token file corrupt — no previous bridge id to carry over.
       existingBridgeId = null;

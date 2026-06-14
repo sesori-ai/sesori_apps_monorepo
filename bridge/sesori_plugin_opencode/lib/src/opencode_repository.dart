@@ -20,6 +20,7 @@ import "models/openapi/question_request.g.dart";
 import "models/openapi/session.g.dart";
 import "models/send_command_body.dart";
 import "models/send_prompt_body.dart";
+import "models/summarize_body.dart";
 import "opencode_api.dart";
 import "plugin_model_mapper.dart";
 import "provider_mapper.dart";
@@ -127,6 +128,25 @@ class OpenCodeRepository {
         agent: agent,
         variant: variant?.id,
         model: model,
+      ),
+    );
+  }
+
+  /// Triggers manual compaction of [sessionId] via the summarize endpoint.
+  ///
+  /// Unlike [sendCommand], OpenCode's summarize payload needs the provider and
+  /// model as separate, non-optional fields, so [model] is required here.
+  Future<void> summarize({
+    required String sessionId,
+    required String? directory,
+    required ({String providerID, String modelID}) model,
+  }) {
+    return _api.summarize(
+      sessionId: sessionId,
+      directory: directory?.normalize(),
+      body: SummarizeBody(
+        providerID: model.providerID,
+        modelID: model.modelID,
       ),
     );
   }
@@ -309,12 +329,22 @@ class OpenCodeRepository {
     return mapProviderResponse(response: response);
   }
 
-  Future<List<QuestionRequest>> getPendingQuestions() {
-    return _api.getPendingQuestions(directory: null);
+  Future<Session> getSession({
+    required String sessionId,
+    required String? directory,
+  }) {
+    return _api.getSession(
+      sessionId: sessionId,
+      directory: directory?.normalize(),
+    );
   }
 
-  Future<List<PermissionRequest>> getPendingPermissions() {
-    return _api.getPendingPermissions(directory: null);
+  Future<List<QuestionRequest>> getPendingQuestions({required String? directory}) {
+    return _api.getPendingQuestions(directory: directory?.normalize());
+  }
+
+  Future<List<PermissionRequest>> getPendingPermissions({required String? directory}) {
+    return _api.getPendingPermissions(directory: directory?.normalize());
   }
 
   /// Collects all sessions whose directory is equal to or under [worktree],

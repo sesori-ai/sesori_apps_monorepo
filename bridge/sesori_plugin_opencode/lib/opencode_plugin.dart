@@ -21,6 +21,7 @@ export "src/models/openapi/session_status.g.dart";
 export "src/models/send_command_body.dart";
 export "src/models/send_prompt_body.dart";
 export "src/models/sse_event_data.g.dart";
+export "src/models/summarize_body.dart";
 export "src/opencode_api.dart";
 export "src/opencode_db_api.dart";
 export "src/opencode_db_maintenance_service.dart";

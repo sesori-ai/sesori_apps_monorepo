@@ -1,26 +1,20 @@
 # Sesori Bridge
 
-Dart workspace containing the Sesori Bridge CLI and its plugin system. The bridge connects a local OpenCode server to mobile devices over an encrypted WebSocket relay.
+Dart workspace containing the Sesori Bridge CLI and its plugin system. The bridge connects a local AI assistant server to mobile devices over an encrypted WebSocket relay.
 
-## Architecture
-
-Plugin-based design with three modules:
-
-- **`sesori_plugin_interface`** defines the plugin contract: the `BridgePluginApi` request surface (sessions, prompts, questions, permissions, projects, providers, events) and the lifecycle contract (`BridgePluginDescriptor` → `start(PluginHost)` → `BridgePlugin`). See its [README](sesori_plugin_interface/README.md).
-- **`sesori_plugin_opencode`** implements that contract for the OpenCode backend.
-- **`app`** orchestrates everything: auth (OAuth PKCE), relay connection, encryption, and request routing. It depends only on the plugin interface, not on any specific implementation.
+The bridge itself is plugin-agnostic: it knows how to authenticate, relay, encrypt, and route traffic, but all backend-specific logic (how to spawn the assistant, what its health endpoint looks like, how to parse its events) lives in plugins.
 
 ```
-Phone <--(E2E encrypted)--> Relay Server <--(E2E encrypted)--> Bridge CLI -> [Plugin] -> opencode serve
+Phone <--(E2E encrypted)--> Relay Server <--(E2E encrypted)--> Bridge CLI -> [Plugin] -> AI assistant server
 ```
 
 ## Modules
 
 | Module | Description |
 |--------|-------------|
-| `sesori_plugin_interface` | Plugin contract (`BridgePluginApi`, lifecycle types) and shared model types |
+| `sesori_plugin_interface` | Plugin contract (`BridgePluginApi`, `BridgePluginDescriptor`, lifecycle types) and shared model types |
 | `sesori_plugin_opencode` | OpenCode backend implementation of the plugin contract |
-| `app` | CLI entry point: auth, relay, encryption, request routing |
+| `app` | CLI entry point: auth, relay, encryption, request routing, plugin loading |
 
 ## Quick Start
 
@@ -115,7 +109,23 @@ See `app/README.md` for the full security and protocol details.
 
 ## Adding a New Plugin
 
+A plugin is a Dart package that implements the contract defined in `sesori_plugin_interface`.
+
 1. Create a new Dart package in `bridge/`.
 2. Add `sesori_plugin_interface` as a dependency.
-3. Implement the contract — see the [plugin interface README](sesori_plugin_interface/README.md) for the full guide.
-4. Register the plugin in the `app` orchestrator (`bin/bridge.dart`).
+3. Implement the contract:
+   - A `BridgePluginDescriptor` that declares the plugin's CLI options, validates configuration, and starts the plugin against a `PluginHost`.
+   - A `BridgePlugin` that exposes a `BridgePluginApi`, reports status via a `PluginStatus` stream, and implements ordered `shutdown()`.
+4. Register the descriptor in `app/lib/src/bridge/runtime/plugin_registry.dart` (referenced from `app/bin/bridge.dart`).
+
+For a concrete example, see `sesori_plugin_opencode`.
+
+### Plugin lifecycle at a glance
+
+The bridge selects one plugin at startup, runs its `validateConfig()` strictly before acquiring the startup mutex, then calls `start(PluginHost)` under the mutex. The plugin is responsible for:
+
+- Starting (or attaching to) its backend server.
+- Publishing `Ready` / `Degraded` / `Failed` / `Restarting` status transitions.
+- Gracefully shutting down when the bridge exits.
+
+The bridge handles relay connection, encryption, request routing, and SSE multiplexing; it never knows the backend's command line, health endpoint, or event format.

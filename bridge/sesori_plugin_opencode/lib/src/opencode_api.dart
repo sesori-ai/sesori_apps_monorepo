@@ -17,6 +17,7 @@ import "models/openapi/session_messages_response_item.g.dart";
 import "models/openapi/session_status.g.dart";
 import "models/send_command_body.dart";
 import "models/send_prompt_body.dart";
+import "models/summarize_body.dart";
 
 const _directoryOpenCodeHeader = "x-opencode-directory";
 
@@ -319,6 +320,30 @@ class OpenCodeApi {
       body: jsonEncode(body.toJson()),
     );
     _ensureSuccess(response, "POST /session/$sessionId/command");
+  }
+
+  /// Triggers AI compaction of a session via `POST /session/:id/summarize`.
+  ///
+  /// WARNING: like [sendCommand], this OpenCode endpoint is **synchronous** —
+  /// the HTTP response does not complete until the compaction agent run has
+  /// finished, which can take minutes. Callers that must not block on the run
+  /// (see [OpenCodeService]) are responsible for detaching; this Layer 1 method
+  /// stays a dumb HTTP call.
+  Future<void> summarize({
+    required String sessionId,
+    required SummarizeBody body,
+    required String? directory,
+  }) async {
+    final response = await _client.post(
+      Uri.parse("$serverURL/session/$sessionId/summarize"),
+      headers: {
+        ..._authHeaders,
+        "content-type": "application/json",
+        _directoryOpenCodeHeader: ?directory,
+      },
+      body: jsonEncode(body.toJson()),
+    );
+    _ensureSuccess(response, "POST /session/$sessionId/summarize");
   }
 
   Future<void> abortSession({

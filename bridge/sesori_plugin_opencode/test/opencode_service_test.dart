@@ -37,10 +37,10 @@ void main() {
   });
 
   group("OpenCodeService.getCommands", () {
-    test("delegates to repository and returns plugin commands", () async {
+    test("returns upstream commands alongside the synthetic compact command", () async {
       final repository = FakeOpenCodeRepository(
         commands: const [
-          PluginCommand(name: "/review-work", model: "openai", provider: null, source: PluginCommandSource.skill),
+          PluginCommand(name: "review-work", model: "openai", provider: null, source: PluginCommandSource.skill),
         ],
       );
       final service = OpenCodeService(repository, FakeActiveSessionTracker());
@@ -48,8 +48,38 @@ void main() {
       final commands = await service.getCommands(projectId: "/repo");
 
       expect(repository.lastCommandsProjectId, equals("/repo"));
-      expect(commands, hasLength(1));
-      expect(commands.single.name, equals("/review-work"));
+      expect(
+        commands.map((command) => command.name),
+        containsAll(["review-work", OpenCodeService.compactionCommandName]),
+      );
+    });
+
+    test("appends a compact command carrying display metadata", () async {
+      final service = OpenCodeService(FakeOpenCodeRepository(), FakeActiveSessionTracker());
+
+      final commands = await service.getCommands(projectId: "/repo");
+
+      final compact = commands.singleWhere(
+        (command) => command.name == OpenCodeService.compactionCommandName,
+      );
+      expect(compact.description, isNotNull);
+      expect(compact.source, equals(PluginCommandSource.command));
+    });
+
+    test("does not duplicate compact when the project already defines one", () async {
+      final repository = FakeOpenCodeRepository(
+        commands: const [
+          PluginCommand(name: "compact", provider: null, source: PluginCommandSource.command),
+        ],
+      );
+      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+
+      final commands = await service.getCommands(projectId: "/repo");
+
+      expect(
+        commands.where((command) => command.name == OpenCodeService.compactionCommandName),
+        hasLength(1),
+      );
     });
   });
 
@@ -258,6 +288,61 @@ void main() {
     });
   });
 
+  group("OpenCodeService.getPendingQuestionsForSession", () {
+    test("returns root-session question with known directory", () async {
+      final repository = FakeOpenCodeRepository(
+        pendingQuestionsByDirectory: {
+          "/repo": [_question(id: "q-root", sessionId: "root")],
+        },
+      );
+      final tracker = FakeActiveSessionTracker(sessionDirectories: const {"root": "/repo"});
+      final service = OpenCodeService(repository, tracker);
+
+      final questions = await service.getPendingQuestionsForSession(sessionId: "root");
+
+      expect(questions.map((question) => question.id), equals(["q-root"]));
+      expect(repository.pendingQuestionDirectories, equals(["/repo"]));
+      expect(repository.getSessionCalls, equals(0));
+    });
+
+    test("resolves unknown directory via getSession, registers it, and returns question", () async {
+      final repository = FakeOpenCodeRepository(
+        sessions: const [Session(id: "root", projectID: "p1", directory: "/repo")],
+        pendingQuestionsByDirectory: {
+          "/repo": [_question(id: "q-root", sessionId: "root")],
+        },
+      );
+      final tracker = FakeActiveSessionTracker();
+      final service = OpenCodeService(repository, tracker);
+
+      final questions = await service.getPendingQuestionsForSession(sessionId: "root");
+
+      expect(questions.map((question) => question.id), equals(["q-root"]));
+      expect(repository.lastGetSessionId, equals("root"));
+      expect(repository.lastGetSessionDirectory, isNull);
+      expect(tracker.lastRegisteredSessionId, equals("root"));
+      expect(tracker.lastRegisteredDirectory, equals("/repo"));
+      expect(repository.pendingQuestionDirectories, equals(["/repo"]));
+    });
+
+    test("excludes sibling-root questions in the same directory", () async {
+      final repository = FakeOpenCodeRepository(
+        pendingQuestionsByDirectory: {
+          "/repo": [
+            _question(id: "q-root", sessionId: "root"),
+            _question(id: "q-sibling", sessionId: "sibling"),
+          ],
+        },
+      );
+      final tracker = FakeActiveSessionTracker(sessionDirectories: const {"root": "/repo"});
+      final service = OpenCodeService(repository, tracker);
+
+      final questions = await service.getPendingQuestionsForSession(sessionId: "root");
+
+      expect(questions.map((question) => question.id), equals(["q-root"]));
+    });
+  });
+
   group("OpenCodeService.createSession", () {
     test("creates session, registers tracker directory, sends first prompt, and returns canonical project", () async {
       final tracker = FakeActiveSessionTracker(resolvedWorktree: "/canonical-repo");
@@ -404,6 +489,47 @@ void main() {
       expect(repository.lastCommandAgent, equals("reviewer"));
       expect(repository.lastCommandVariant, equals("xhigh"));
       expect(repository.lastCommandModel, equals((providerID: "openai", modelID: "gpt-4.1")));
+    });
+
+    test("routes the artificial compact command to the summarize endpoint", () async {
+      final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
+      final repository = FakeOpenCodeRepository();
+      final service = OpenCodeService(repository, tracker);
+
+      await service.sendCommand(
+        sessionId: "ses-1",
+        command: OpenCodeService.compactionCommandName,
+        arguments: "",
+        agent: null,
+        variant: null,
+        model: (providerID: "openai", modelID: "gpt-4.1"),
+      );
+
+      expect(repository.summarizeCalls, equals(1));
+      expect(repository.lastSummarizeSessionId, equals("ses-1"));
+      expect(repository.lastSummarizeDirectory, equals("/repo"));
+      expect(repository.lastSummarizeModel, equals((providerID: "openai", modelID: "gpt-4.1")));
+      // The real command endpoint must never be hit for compaction.
+      expect(repository.lastCommandName, isNull);
+    });
+
+    test("throws and skips summarize when compact is invoked without a model", () async {
+      final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
+      final repository = FakeOpenCodeRepository();
+      final service = OpenCodeService(repository, tracker);
+
+      await expectLater(
+        service.sendCommand(
+          sessionId: "ses-1",
+          command: OpenCodeService.compactionCommandName,
+          arguments: "",
+          agent: null,
+          variant: null,
+          model: null,
+        ),
+        throwsA(isA<PluginApiException>()),
+      );
+      expect(repository.summarizeCalls, equals(0));
     });
 
     group("dispatch fast-fail window", () {
@@ -716,6 +842,10 @@ String? _messageId(PluginMessageWithParts message) {
   };
 }
 
+QuestionRequest _question({required String id, required String sessionId}) {
+  return QuestionRequest(id: id, sessionID: sessionId, questions: const []);
+}
+
 class FakeOpenCodeApi implements OpenCodeApi {
   @override
   String get serverURL => "http://fake";
@@ -785,6 +915,13 @@ class FakeOpenCodeApi implements OpenCodeApi {
   Future<void> sendCommand({
     required String sessionId,
     required SendCommandBody body,
+    required String? directory,
+  }) async {}
+
+  @override
+  Future<void> summarize({
+    required String sessionId,
+    required SummarizeBody body,
     required String? directory,
   }) async {}
 
@@ -864,6 +1001,8 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   final List<Session> _sessions;
   final List<PluginCommand> _commands;
   final PluginSession? _createdSession;
+  final Map<String, List<QuestionRequest>> _pendingQuestionsByDirectory;
+  final Map<String, List<PermissionRequest>> _pendingPermissionsByDirectory;
   int getProjectsCalls = 0;
   int getSessionsCalls = 0;
   String? lastWorktree;
@@ -886,8 +1025,17 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   String? lastCommandVariant;
   ({String providerID, String modelID})? lastCommandModel;
   Completer<void>? sendCommandCompleter;
+  int summarizeCalls = 0;
+  String? lastSummarizeSessionId;
+  String? lastSummarizeDirectory;
+  ({String providerID, String modelID})? lastSummarizeModel;
   String? lastDeletedSessionId;
   String? lastDeletedDirectory;
+  int getSessionCalls = 0;
+  String? lastGetSessionId;
+  String? lastGetSessionDirectory;
+  final List<String?> pendingQuestionDirectories = [];
+  final List<String?> pendingPermissionDirectories = [];
 
   factory FakeOpenCodeRepository({
     List<Project> projects = const [],
@@ -896,6 +1044,8 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     PluginSession? createdSession,
     List<SessionMessagesResponseItem> messages = const [],
     Object? messagesError,
+    Map<String, List<QuestionRequest>> pendingQuestionsByDirectory = const {},
+    Map<String, List<PermissionRequest>> pendingPermissionsByDirectory = const {},
   }) {
     final api = FakeOpenCodeApi(messages: messages, messagesError: messagesError);
     return FakeOpenCodeRepository._(
@@ -904,6 +1054,8 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
       sessions: sessions,
       commands: commands,
       createdSession: createdSession,
+      pendingQuestionsByDirectory: pendingQuestionsByDirectory,
+      pendingPermissionsByDirectory: pendingPermissionsByDirectory,
     );
   }
 
@@ -913,10 +1065,14 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     required List<Session> sessions,
     required List<PluginCommand> commands,
     required PluginSession? createdSession,
+    required Map<String, List<QuestionRequest>> pendingQuestionsByDirectory,
+    required Map<String, List<PermissionRequest>> pendingPermissionsByDirectory,
   }) : _projects = projects,
        _sessions = sessions,
        _commands = commands,
        _createdSession = createdSession,
+       _pendingQuestionsByDirectory = pendingQuestionsByDirectory,
+       _pendingPermissionsByDirectory = pendingPermissionsByDirectory,
        super(api);
 
   @override
@@ -1015,12 +1171,47 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   }
 
   @override
+  Future<void> summarize({
+    required String sessionId,
+    required String? directory,
+    required ({String providerID, String modelID}) model,
+  }) async {
+    summarizeCalls += 1;
+    lastSummarizeSessionId = sessionId;
+    lastSummarizeDirectory = directory;
+    lastSummarizeModel = model;
+  }
+
+  @override
   Future<void> deleteSession({
     required String sessionId,
     required String? directory,
   }) async {
     lastDeletedSessionId = sessionId;
     lastDeletedDirectory = directory;
+  }
+
+  @override
+  Future<Session> getSession({
+    required String sessionId,
+    required String? directory,
+  }) async {
+    getSessionCalls += 1;
+    lastGetSessionId = sessionId;
+    lastGetSessionDirectory = directory;
+    return _sessions.firstWhere((session) => session.id == sessionId);
+  }
+
+  @override
+  Future<List<QuestionRequest>> getPendingQuestions({required String? directory}) async {
+    pendingQuestionDirectories.add(directory);
+    return _pendingQuestionsByDirectory[directory] ?? const [];
+  }
+
+  @override
+  Future<List<PermissionRequest>> getPendingPermissions({required String? directory}) async {
+    pendingPermissionDirectories.add(directory);
+    return _pendingPermissionsByDirectory[directory] ?? const [];
   }
 }
 
@@ -1033,6 +1224,8 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   final String? resolvedWorktree;
   String? lastRegisteredSessionId;
   String? lastRegisteredDirectory;
+  List<QuestionRequest> populatedQuestions = const [];
+  List<PermissionRequest> populatedPermissions = const [];
 
   FakeActiveSessionTracker({
     this.summary = const [],
@@ -1066,6 +1259,16 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   @override
   String? resolveProjectWorktree({required String directory}) {
     return resolvedWorktree;
+  }
+
+  @override
+  void populatePendingQuestions({required List<QuestionRequest> questions}) {
+    populatedQuestions = questions;
+  }
+
+  @override
+  void populatePendingPermissions({required List<PermissionRequest> permissions}) {
+    populatedPermissions = permissions;
   }
 
   @override

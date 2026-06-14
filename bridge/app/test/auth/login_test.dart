@@ -83,6 +83,148 @@ void main() {
           throwsA(isA<Exception>().having((error) => error.toString(), 'message', contains('denied'))),
         );
       });
+
+      test('prints the auth URL verbatim and still completes login when the browser launcher fails', () async {
+        const authUrl =
+            'https://github.com/login/oauth/authorize?client_id=abc&redirect_uri=https%3A%2F%2Fapi.sesori.com%2Fauth%2Fgithub%2Fcallback&scope=read%3Auser&state=xyz';
+        final authServer = await _OAuthLongPollTestServer.start(
+          authUrl: authUrl,
+          statusResponses: [
+            AuthSessionStatusResponse.complete(
+              accessToken: 'github-access-token',
+              refreshToken: 'github-refresh-token',
+              user: AuthUser(
+                id: 'user-1',
+                provider: AuthProvider.github,
+                providerUserId: 'gh-1',
+                providerUsername: 'octocat',
+              ),
+            ),
+          ],
+        );
+        addTearDown(authServer.close);
+
+        final stdoutLines = <String>[];
+        String? accessToken;
+        await IOOverrides.runZoned(
+          () async {
+            final service = _createOAuthService(
+              authServer: authServer,
+              browserLauncher: (_) async => throw Exception('no browser available'),
+            );
+            final tokens = await service.performOAuthLogin(AuthProvider.github);
+            accessToken = tokens.accessToken;
+          },
+          stdout: () => _CapturingStdout(stdoutLines),
+          stderr: () => _CapturingStdout(<String>[]),
+        );
+
+        expect(accessToken, equals('github-access-token'));
+        expect(
+          stdoutLines,
+          contains(authUrl),
+          reason: 'the full auth URL (with & query separators) must be printed so headless/SSH users can open it manually',
+        );
+      });
+
+      test('skips the browser launch but still prints the URL when no browser is available', () async {
+        const authUrl =
+            'https://github.com/login/oauth/authorize?client_id=abc&scope=read%3Auser&state=xyz';
+        final authServer = await _OAuthLongPollTestServer.start(
+          authUrl: authUrl,
+          statusResponses: [
+            AuthSessionStatusResponse.complete(
+              accessToken: 'github-access-token',
+              refreshToken: 'github-refresh-token',
+              user: AuthUser(
+                id: 'user-1',
+                provider: AuthProvider.github,
+                providerUserId: 'gh-1',
+                providerUsername: 'octocat',
+              ),
+            ),
+          ],
+        );
+        addTearDown(authServer.close);
+
+        final launchedUrls = <String>[];
+        final stdoutLines = <String>[];
+        String? accessToken;
+        await IOOverrides.runZoned(
+          () async {
+            final service = _createOAuthService(
+              authServer: authServer,
+              browserLauncher: (url) async => launchedUrls.add(url),
+              browserOpenability: () => BrowserOpenability.no,
+            );
+            final tokens = await service.performOAuthLogin(AuthProvider.github);
+            accessToken = tokens.accessToken;
+          },
+          stdout: () => _CapturingStdout(stdoutLines),
+          stderr: () => _CapturingStdout(<String>[]),
+        );
+
+        expect(accessToken, equals('github-access-token'));
+        expect(
+          launchedUrls,
+          isEmpty,
+          reason: 'must not attempt to launch a browser when canLaunchBrowser() is false',
+        );
+        expect(
+          stdoutLines,
+          contains(authUrl),
+          reason: 'the URL must still be printed so the user can complete login manually',
+        );
+      });
+
+      test('uses tentative "Attempting to open" wording but still launches when openability is unknown', () async {
+        const authUrl =
+            'https://github.com/login/oauth/authorize?client_id=abc&scope=read%3Auser&state=xyz';
+        final authServer = await _OAuthLongPollTestServer.start(
+          authUrl: authUrl,
+          statusResponses: [
+            AuthSessionStatusResponse.complete(
+              accessToken: 'github-access-token',
+              refreshToken: 'github-refresh-token',
+              user: AuthUser(
+                id: 'user-1',
+                provider: AuthProvider.github,
+                providerUserId: 'gh-1',
+                providerUsername: 'octocat',
+              ),
+            ),
+          ],
+        );
+        addTearDown(authServer.close);
+
+        final launchedUrls = <String>[];
+        final stdoutLines = <String>[];
+        await IOOverrides.runZoned(
+          () async {
+            final service = _createOAuthService(
+              authServer: authServer,
+              browserLauncher: (url) async => launchedUrls.add(url),
+              browserOpenability: () => BrowserOpenability.unknown,
+            );
+            await service.performOAuthLogin(AuthProvider.github);
+          },
+          stdout: () => _CapturingStdout(stdoutLines),
+          stderr: () => _CapturingStdout(<String>[]),
+        );
+
+        expect(launchedUrls, equals([authUrl]), reason: 'unknown still attempts a best-effort launch');
+        expect(stdoutLines, contains(authUrl));
+        expect(
+          stdoutLines.any((line) => line.contains('Attempting to open')),
+          isTrue,
+          reason: 'unknown openability must use tentative wording',
+        );
+        expect(
+          stdoutLines.any((line) => line.startsWith('Opening your browser')),
+          isFalse,
+          reason: 'must not claim the browser is definitely opening when uncertain',
+        );
+      });
     });
 
     group('Google OAuth', () {
@@ -167,6 +309,54 @@ void main() {
           throwsA(isA<TimeoutException>()),
         );
       });
+    });
+  });
+
+  group('resolveBrowserOpenability', () {
+    BrowserOpenability resolve({
+      bool isLinux = false,
+      bool isMacOS = false,
+      bool isWindows = false,
+      bool hasDisplay = false,
+      bool isWsl = false,
+      bool isSsh = false,
+    }) {
+      return resolveBrowserOpenability(
+        isLinux: isLinux,
+        isMacOS: isMacOS,
+        isWindows: isWindows,
+        hasDisplay: hasDisplay,
+        isWsl: isWsl,
+        isSsh: isSsh,
+      );
+    }
+
+    test('Linux with a display server is yes (incl. SSH X11 forwarding)', () {
+      expect(resolve(isLinux: true, hasDisplay: true), BrowserOpenability.yes);
+      expect(resolve(isLinux: true, hasDisplay: true, isSsh: true), BrowserOpenability.yes);
+    });
+
+    test('headless Linux without a display is no', () {
+      expect(resolve(isLinux: true), BrowserOpenability.no);
+      expect(resolve(isLinux: true, isSsh: true), BrowserOpenability.no);
+    });
+
+    test('WSL without a display is unknown (may reach the Windows browser via wslview)', () {
+      expect(resolve(isLinux: true, isWsl: true), BrowserOpenability.unknown);
+    });
+
+    test('macOS is yes locally and unknown over SSH', () {
+      expect(resolve(isMacOS: true), BrowserOpenability.yes);
+      expect(resolve(isMacOS: true, isSsh: true), BrowserOpenability.unknown);
+    });
+
+    test('Windows is unknown locally and no over SSH', () {
+      expect(resolve(isWindows: true), BrowserOpenability.unknown);
+      expect(resolve(isWindows: true, isSsh: true), BrowserOpenability.no);
+    });
+
+    test('an unrecognized platform is no', () {
+      expect(resolve(), BrowserOpenability.no);
     });
   });
 
@@ -297,6 +487,7 @@ void main() {
 LoginOAuthService _createOAuthService({
   required _OAuthLongPollTestServer authServer,
   required Future<void> Function(String url) browserLauncher,
+  BrowserOpenability Function() browserOpenability = _alwaysOpenableBrowser,
   Duration pollTimeout = const Duration(seconds: 2),
   Duration pollInterval = Duration.zero,
   Future<void> Function(Duration duration)? delay,
@@ -307,11 +498,14 @@ LoginOAuthService _createOAuthService({
       client: authServer.client,
     ),
     browserLauncher: browserLauncher,
+    browserOpenability: browserOpenability,
     pollTimeout: pollTimeout,
     pollInterval: pollInterval,
     delay: delay,
   );
 }
+
+BrowserOpenability _alwaysOpenableBrowser() => BrowserOpenability.yes;
 
 class _MockLoginEmailApi implements LoginEmailApi {
   @override
@@ -597,4 +791,19 @@ class _PasswordLoginTestServer {
   Future<void> close() async {
     await _server.close(force: true);
   }
+}
+
+/// Captures [writeln] calls; [IOOverrides] swaps it in for stdout/stderr.
+class _CapturingStdout implements Stdout {
+  _CapturingStdout(this.lines);
+
+  final List<String> lines;
+
+  @override
+  void writeln([Object? object = '']) {
+    lines.add(object.toString());
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

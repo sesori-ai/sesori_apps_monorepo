@@ -368,16 +368,10 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   Future<List<PluginPendingQuestion>> getPendingQuestions({
     required String sessionId,
   }) async {
-    final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
     final pending = await _call(
-      () => _service.repository.api.getPendingQuestions(
-        directory: directory,
-      ),
+      () => _service.getPendingQuestionsForSession(sessionId: sessionId),
     );
-    return pending //
-        .where((e) => e.sessionID == sessionId)
-        .map<PluginPendingQuestion>(_pluginModelMapper.mapQuestion)
-        .toList();
+    return pending.map<PluginPendingQuestion>(_pluginModelMapper.mapQuestion).toList();
   }
 
   @override
