@@ -3,6 +3,7 @@ import "dart:async";
 import "package:flutter/material.dart";
 import "package:flutter_chat_core/flutter_chat_core.dart" as chat_core;
 import "package:flutter_chat_ui/flutter_chat_ui.dart" as chat_ui;
+import "package:sesori_dart_core/logging.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../../core/extensions/build_context_x.dart";
@@ -188,7 +189,11 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
     // transcripts — defense-in-depth against future backend flows that
     // could re-introduce a previously removed message id.
     _indexSignature = null;
-    unawaited(_chatController.setMessages(target, animated: false));
+    unawaited(
+      _chatController.setMessages(target, animated: false).catchError(
+        (Object error, StackTrace stack) => loge("Failed to sync chat controller messages", error, stack),
+      ),
+    );
   }
 
   bool _entriesMatch({
@@ -347,7 +352,10 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
   }
 
   int _signatureOf({required List<MessageWithParts> messages}) {
-    if (messages.isEmpty) return 0;
-    return Object.hash(messages.length, messages.first.info.id, messages.last.info.id);
+    // Hash every id so the cache invalidates on any structural change —
+    // including a middle insert/delete/replace that preserves length and the
+    // first/last ids. Cheap for chat-sized transcripts and bounded by maxLines
+    // at the render layer.
+    return Object.hashAll(messages.map((m) => m.info.id));
   }
 }

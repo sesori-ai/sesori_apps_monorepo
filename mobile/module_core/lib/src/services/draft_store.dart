@@ -1,13 +1,16 @@
+import "package:injectable/injectable.dart";
+
 /// In-memory store for unsent composer drafts, keyed by a stable key
 /// (the session id).
 ///
 /// Lets a half-written prompt survive navigating away from a session and
-/// back, or backgrounding the app — cases where the composer's
-/// [PromptInput] state is disposed and recreated. Registered as a
-/// lazy-singleton so it outlives any single session screen.
+/// back, or backgrounding the app — cases where the composer widget's state
+/// is disposed and recreated. A lazy-singleton so it outlives any single
+/// session screen.
 ///
 /// Intentionally lightweight: drafts live only for the current app run and
 /// are not persisted across an app kill.
+@lazySingleton
 class DraftStore {
   final Map<String, String> _drafts = <String, String>{};
 
@@ -16,7 +19,7 @@ class DraftStore {
 
   /// Saves [text] as the draft for [key]. Whitespace-only (or empty) text
   /// clears the entry, so a blank composer never restores a useless draft.
-  void write(String key, String text) {
+  void write(String key, {required String text}) {
     if (text.trim().isEmpty) {
       _drafts.remove(key);
     } else {

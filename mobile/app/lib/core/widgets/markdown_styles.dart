@@ -41,7 +41,7 @@ MarkdownStyleSheet buildSessionMarkdownStyleSheet({
 /// code is not re-tokenized on every token delta.
 Map<String, MarkdownElementBuilder> buildSessionMarkdownBuilders({
   required bool highlightEnabled,
-  String? copyTooltip,
+  required String? copyTooltip,
 }) {
   return <String, MarkdownElementBuilder>{
     "pre": CodeBlockMarkdownBuilder(

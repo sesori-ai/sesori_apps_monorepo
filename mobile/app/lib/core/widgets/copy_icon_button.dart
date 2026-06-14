@@ -38,8 +38,18 @@ class _CopyIconButtonState extends State<CopyIconButton> {
   }
 
   Future<void> _copy() async {
-    await Clipboard.setData(ClipboardData(text: widget.text));
-    await HapticFeedback.lightImpact();
+    // Clipboard/haptic can throw on restricted platforms or states; fail soft.
+    try {
+      await Clipboard.setData(ClipboardData(text: widget.text));
+    } on Object catch (_) {
+      return; // Copy failed — do not show the success indicator.
+    }
+    // Haptic is best-effort; its failure must not hide the success state.
+    try {
+      await HapticFeedback.lightImpact();
+    } on Object catch (_) {
+      // ignore
+    }
     if (!mounted) return;
     setState(() => _copied = true);
     _resetTimer?.cancel();

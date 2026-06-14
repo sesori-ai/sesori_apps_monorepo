@@ -130,14 +130,16 @@ class _ToolOutputBlockState extends State<_ToolOutputBlock> {
 
   bool _expanded = false;
 
+  /// Horizontal space reserved at the text's trailing edge for the overlaid
+  /// copy button, so wrapped text never runs under it and overflow is measured
+  /// against the same width the text actually lays out in.
+  static const _copyButtonReserve = 32.0;
+
   @override
   Widget build(BuildContext context) {
     final zyra = context.zyra;
     final loc = context.loc;
     final output = widget.output;
-    // Show the expand toggle only when content plausibly overflows the
-    // collapsed budget: more than 8 lines, or one long wrapping line.
-    final isExpandable = output.length > 500 || "\n".allMatches(output).length >= _collapsedMaxLines;
     final monoStyle = zyra.textTheme.textXs.regular.copyWith(fontSize: 11).monospace;
 
     return Container(
@@ -147,36 +149,57 @@ class _ToolOutputBlockState extends State<_ToolOutputBlock> {
         color: zyra.colors.bgQuaternary,
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Column(
-        crossAxisAlignment: .start,
-        children: [
-          Row(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Measure actual overflow against the collapsed budget at the real
+          // text width (accounts for soft-wrapped long lines, not just
+          // explicit newlines). maxLines bounds the layout cost.
+          final textWidth = constraints.maxWidth - _copyButtonReserve;
+          final painter = TextPainter(
+            text: TextSpan(text: output, style: monoStyle),
+            maxLines: _collapsedMaxLines,
+            textDirection: Directionality.of(context),
+            textScaler: MediaQuery.textScalerOf(context),
+          )..layout(maxWidth: textWidth);
+          final isExpandable = painter.didExceedMaxLines;
+
+          return Column(
             crossAxisAlignment: .start,
             children: [
-              Expanded(
-                child: Text(
-                  output,
-                  style: monoStyle,
-                  maxLines: _expanded ? null : _collapsedMaxLines,
-                  overflow: _expanded ? TextOverflow.clip : TextOverflow.ellipsis,
-                ),
+              Stack(
+                children: [
+                  Padding(
+                    // Reserve trailing room for the overlaid copy button.
+                    padding: const EdgeInsetsDirectional.only(end: _copyButtonReserve),
+                    child: Text(
+                      output,
+                      style: monoStyle,
+                      maxLines: _expanded ? null : _collapsedMaxLines,
+                      overflow: _expanded ? TextOverflow.clip : TextOverflow.ellipsis,
+                    ),
+                  ),
+                  PositionedDirectional(
+                    top: 0,
+                    end: 0,
+                    child: CopyIconButton(text: output, tooltip: loc.sessionDetailCopy, iconSize: 14),
+                  ),
+                ],
               ),
-              CopyIconButton(text: output, tooltip: loc.sessionDetailCopy, iconSize: 14),
+              if (isExpandable)
+                GestureDetector(
+                  onTap: () => setState(() => _expanded = !_expanded),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.only(top: 4),
+                    child: Text(
+                      _expanded ? loc.sessionDetailShowLess : loc.sessionDetailShowMore,
+                      style: zyra.textTheme.textXs.medium.copyWith(color: zyra.colors.bgBrandSolid),
+                    ),
+                  ),
+                ),
             ],
-          ),
-          if (isExpandable)
-            GestureDetector(
-              onTap: () => setState(() => _expanded = !_expanded),
-              behavior: HitTestBehavior.opaque,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  _expanded ? loc.sessionDetailShowLess : loc.sessionDetailShowMore,
-                  style: zyra.textTheme.textXs.medium.copyWith(color: zyra.colors.bgBrandSolid),
-                ),
-              ),
-            ),
-        ],
+          );
+        },
       ),
     );
   }

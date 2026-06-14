@@ -3,7 +3,7 @@ import "dart:math" as math;
 
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
-import "package:sesori_dart_core/logging.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_zyra/module_zyra.dart";
 
@@ -11,7 +11,6 @@ import "../../../capabilities/voice/voice_transcription_service.dart";
 import "../../../core/constants.dart";
 import "../../../core/di/injection.dart";
 import "../../../core/extensions/build_context_x.dart";
-import "../../../core/services/draft_store.dart";
 import "../../../core/widgets/command_picker_sheet.dart";
 
 enum _VoiceState { idle, recording, transcribing }
@@ -95,21 +94,28 @@ class _PromptInputState extends State<PromptInput> {
   /// been reset (e.g. in widget tests).
   DraftStore? get _draftStore => getIt.isRegistered<DraftStore>() ? getIt<DraftStore>() : null;
 
-  void _restoreDraft() {
-    final key = widget.draftKey;
+  void _restoreDraft() => _restoreDraftFor(widget.draftKey);
+
+  /// Loads the draft for [key] into the controller. Clears the controller when
+  /// there is no draft (or no [key]/store) so text never leaks across a
+  /// session switch when the state is reused (see [didUpdateWidget]).
+  void _restoreDraftFor(String? key) {
     final store = _draftStore;
-    if (key == null || store == null) return;
+    if (key == null || store == null) {
+      _controller.clear();
+      return;
+    }
     final draft = store.read(key);
-    if (draft.isEmpty) return;
     _controller.text = draft;
     _controller.selection = TextSelection.collapsed(offset: draft.length);
   }
 
-  void _saveDraft() {
-    final key = widget.draftKey;
+  void _saveDraft() => _saveDraftFor(widget.draftKey);
+
+  void _saveDraftFor(String? key) {
     final store = _draftStore;
     if (key == null || store == null) return;
-    store.write(key, _controller.text);
+    store.write(key, text: _controller.text);
   }
 
   void _clearDraft() {
@@ -138,6 +144,14 @@ class _PromptInputState extends State<PromptInput> {
   @override
   void didUpdateWidget(covariant PromptInput oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.draftKey != widget.draftKey) {
+      // The state was reused for a different session (e.g. split-view swap
+      // or a parent rebuild with a new session) without initState/dispose.
+      // Persist the previous session's draft and load the new one so text
+      // never leaks between sessions.
+      _saveDraftFor(oldWidget.draftKey);
+      _restoreDraftFor(widget.draftKey);
+    }
     if (oldWidget.stagedCommand?.name != widget.stagedCommand?.name && widget.stagedCommand != null) {
       _focusNode.requestFocus();
     }

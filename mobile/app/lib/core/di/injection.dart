@@ -6,7 +6,6 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../platform/no_op_failure_reporter.dart";
-import "../services/draft_store.dart";
 import "injection.config.dart";
 
 final getIt = GetIt.instance;
@@ -28,8 +27,4 @@ void configureDependencies() {
 
   configureAuthDependencies(getIt);
   configureCoreDependencies(getIt);
-
-  // App-layer service registered manually (no injectable codegen): holds
-  // unsent composer drafts for the lifetime of the app run.
-  getIt.registerLazySingleton<DraftStore>(DraftStore.new);
 }

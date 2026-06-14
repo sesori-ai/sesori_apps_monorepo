@@ -82,15 +82,17 @@ class CodeBlock extends StatefulWidget {
 }
 
 class _CodeBlockState extends State<CodeBlock> {
-  String? _cacheKey;
+  (Brightness, String?, String, TextStyle)? _cacheKey;
   TextSpan? _cachedSpan;
 
-  /// Highlights once per distinct (brightness, language, code) tuple so
-  /// unrelated rebuilds (follow/detach, theme-independent setState) reuse the
-  /// previous result instead of re-tokenizing.
+  /// Highlights once per distinct (brightness, language, code, baseStyle)
+  /// tuple so unrelated rebuilds (follow/detach, theme-independent setState)
+  /// reuse the previous result instead of re-tokenizing. baseStyle is part of
+  /// the key so a same-brightness color-token or text-scale change still
+  /// invalidates the cache.
   TextSpan? _spanFor({required Brightness brightness, required TextStyle baseStyle}) {
     if (!widget.highlightEnabled) return null;
-    final key = "${brightness.name}|${widget.language}|${widget.code}";
+    final key = (brightness, widget.language, widget.code, baseStyle);
     if (key == _cacheKey) return _cachedSpan;
     _cacheKey = key;
     return _cachedSpan = CodeHighlighter.highlight(
