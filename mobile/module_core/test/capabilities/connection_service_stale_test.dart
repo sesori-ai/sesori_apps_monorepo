@@ -3,6 +3,7 @@ import "dart:async";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/capabilities/relay/relay_client.dart";
 import "package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
@@ -23,6 +24,21 @@ class MockLifecycleSource extends Mock implements LifecycleSource {}
 
 class MockFailureReporter extends Mock implements FailureReporter {}
 
+class MockRelayClient extends Mock implements RelayClient {}
+
+class _TestRelayClientFactory extends RelayClientFactory {
+  final RelayClient _client;
+  _TestRelayClientFactory({required RelayClient client}) : _client = client;
+
+  @override
+  RelayClient call({
+    required String relayHost,
+    required RelayCryptoService cryptoService,
+    required RoomKeyStorage roomKeyStorage,
+    required String? authToken,
+  }) => _client;
+}
+
 class _TestClockProvider extends ClockProvider {
   final DateTime Function() _now;
   _TestClockProvider(this._now);
@@ -32,6 +48,13 @@ class _TestClockProvider extends ClockProvider {
 }
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(const Duration(minutes: 1));
+    registerFallbackValue(
+      const RelayRequest(id: "fallback", method: "GET", path: "/health", headers: {}, body: null),
+    );
+  });
+
   group("ConnectionService stale reconnect", () {
     late MockRelayCryptoService cryptoService;
     late MockRoomKeyStorage roomKeyStorage;
@@ -217,10 +240,11 @@ void main() {
       expect(service.currentStatus, isA<ConnectionConnected>());
     });
 
-    test("proactively reconnects when resuming past the threshold while bridge offline", () async {
-      // Bridge-offline keeps an open relay socket waiting for the bridge to
-      // return; the relay still drops it while backgrounded, so resume must
-      // reconnect or the BridgeStatus.online frame would never arrive.
+    test("does NOT proactively reconnect on resume while bridge offline", () async {
+      // While the bridge is offline the E2E handshake cannot complete, so a
+      // forced reconnect would fail into the blocking ConnectionLost state.
+      // Bridge-offline recovery instead relies on its relay watcher / socket
+      // drop, so resume must leave the status untouched.
       service.emitStatusForTesting(const ConnectionStatus.bridgeOffline(config: config, health: health));
 
       lifecycleController.add(LifecycleState.paused);
@@ -229,7 +253,49 @@ void main() {
       lifecycleController.add(LifecycleState.resumed);
       await flush();
 
-      expect(service.currentStatus, isA<ConnectionReconnecting>());
+      expect(service.currentStatus, isA<ConnectionBridgeOffline>());
+    });
+
+    test("detaches the stale relay client on resume so requests stop using the dead socket", () async {
+      final sseController = StreamController<RelaySseEvent>.broadcast();
+      addTearDown(sseController.close);
+
+      final relayClient = MockRelayClient();
+      when(relayClient.connect).thenAnswer((_) async {});
+      when(() => relayClient.isConnected).thenReturn(true);
+      when(() => relayClient.sendRequest(any())).thenAnswer(
+        (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
+      );
+      when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
+      when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(relayClient.disconnect).thenAnswer((_) async {});
+      when(() => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl")))
+          .thenAnswer((_) async => "token");
+
+      final staleService = ConnectionService(
+        cryptoService,
+        roomKeyStorage,
+        authTokenProvider,
+        authSession,
+        lifecycleSource,
+        MockFailureReporter(),
+        clock: _TestClockProvider(() => now),
+        relayClientFactory: _TestRelayClientFactory(client: relayClient),
+      );
+      addTearDown(staleService.dispose);
+
+      await staleService.connect(config);
+      expect(staleService.relayClient, isNotNull);
+
+      lifecycleController.add(LifecycleState.paused);
+      await flush();
+      now = now.add(const Duration(seconds: 30));
+      lifecycleController.add(LifecycleState.resumed);
+      await flush();
+
+      // Eager teardown nulls the client immediately (before the reconnect
+      // backoff elapses), so RelayHttpApiClient won't route through the zombie.
+      expect(staleService.relayClient, isNull);
     });
   });
 }

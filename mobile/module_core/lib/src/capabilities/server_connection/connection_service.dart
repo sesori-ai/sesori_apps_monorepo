@@ -65,6 +65,7 @@ class ConnectionService {
   Timer? _reconnectTimer;
   Completer<void>? _reconnectDelayCompleter;
   Future<bool>? _activeAuthConnect;
+  Future<void>? _activeDisconnect;
   int _requestCounter = 0;
   final Random _requestIdRandom = Random();
   int _authRetryCount = 0;
@@ -418,15 +419,42 @@ class ConnectionService {
     }
   }
 
-  Future<void> _disconnectRelayClient() async {
-    await _relaySseSubscription?.cancel();
-    _relaySseSubscription = null;
+  /// Tears down the active relay client, coalescing concurrent callers so an
+  /// eager teardown (e.g. on resume) and the reconnect path's own teardown share
+  /// a single in-flight operation. A replacement socket is therefore never
+  /// opened until the previous client's disconnect has fully completed, avoiding
+  /// briefly holding two phone sockets for the same account (which the relay can
+  /// reject as account-full at the device limit).
+  Future<void> _disconnectRelayClient() {
+    return _activeDisconnect ??= _doDisconnectRelayClient().whenComplete(() {
+      _activeDisconnect = null;
+    });
+  }
 
-    await _bridgeStatusSubscription?.cancel();
-    _bridgeStatusSubscription = null;
-
+  Future<void> _doDisconnectRelayClient() async {
+    // Detach the client synchronously first so callers (e.g. RelayHttpApiClient)
+    // stop routing requests through a socket we're tearing down, rather than
+    // during the async subscription cancellations below.
     final relayClient = _relayClient;
     _relayClient = null;
+
+    // Never let teardown complete with an error: several callers invoke this via
+    // `unawaited(...)`, so a thrown cancellation/disconnect error would surface
+    // as an uncaught async error in the zone.
+    try {
+      await _relaySseSubscription?.cancel();
+    } catch (error, stackTrace) {
+      loge("Failed to cancel relay SSE subscription", error, stackTrace);
+    }
+    _relaySseSubscription = null;
+
+    try {
+      await _bridgeStatusSubscription?.cancel();
+    } catch (error, stackTrace) {
+      loge("Failed to cancel bridge status subscription", error, stackTrace);
+    }
+    _bridgeStatusSubscription = null;
+
     if (relayClient == null) {
       return;
     }
@@ -461,21 +489,29 @@ class ConnectionService {
     if (config == null) return;
 
     // The relay closes backgrounded phones once its ping/pong window lapses
-    // (~30-45s). Past [_resumeReconnectThreshold], any status that still holds
-    // an open relay socket (connected, or bridge-offline while waiting for the
-    // bridge to return) is almost certainly a dead socket, so reconnect
-    // proactively rather than discovering it later via a request timeout.
-    // Bridge-offline especially must reconnect: its recovery depends on a relay
-    // frame (BridgeStatus.online) that a dead socket will never deliver.
+    // (~30-45s). Past [_resumeReconnectThreshold], a still-"connected" status is
+    // almost certainly a dead socket, so reconnect proactively rather than
+    // discovering it later via a request timeout.
+    //
+    // ConnectionBridgeOffline is deliberately NOT treated as stale here: while
+    // the bridge is offline the E2E handshake cannot complete, so a forced
+    // reconnect would fail and drop us into the blocking ConnectionLost state,
+    // losing the watcher for the bridge's return. Bridge-offline recovery keeps
+    // relying on its relay status watcher and the socket's own drop (onDone).
+    // Re-establishing a relay-level watcher without a completed handshake is a
+    // separate, larger change (tracked in the reconnect UX plan).
     final connectionLikelyStale =
-        (status is ConnectionConnected || status is ConnectionBridgeOffline) &&
-        backgroundedFor >= _resumeReconnectThreshold;
+        status is ConnectionConnected && backgroundedFor >= _resumeReconnectThreshold;
 
     final needsReconnect =
         status is ConnectionLost || status is ConnectionReconnecting || connectionLikelyStale;
     if (!needsReconnect) return;
 
     logd("App resumed — triggering reconnect (status=${status.runtimeType}, backgrounded=$backgroundedFor)");
+    // Detach the likely-dead socket immediately so requests fired right after
+    // foregrounding fail fast instead of routing through the zombie connection
+    // and blocking on the 30s request timeout during the reconnect backoff.
+    unawaited(_disconnectRelayClient());
     _relayReconnectBackoff = const Duration(seconds: 1);
     _status.add(ConnectionStatus.reconnecting(config: config));
     unawaited(_reconnectRelayWithRefresh(config));
