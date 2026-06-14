@@ -315,7 +315,11 @@ class ConfigTrackCommand extends cli.Command<void> {
 
   @override
   Future<void> run() async {
-    final rest = argResults!.rest;
+    final results = argResults;
+    if (results == null) {
+      usageException('Unable to read command arguments.');
+    }
+    final rest = results.rest;
     final repository = BridgeSettingsRepository(api: BridgeSettingsApi());
 
     if (rest.isEmpty) {

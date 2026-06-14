@@ -184,11 +184,12 @@ class BridgeRuntimeRunner {
         return 1;
       }
 
-      final releaseTrack = await _resolveReleaseTrack();
+      final settingsRepository = BridgeSettingsRepository(api: BridgeSettingsApi());
+      final releaseTrack = await _readReleaseTrack(settingsRepository: settingsRepository);
       if (releaseTrack == ReleaseTrack.internal) {
         Log.w("Release track: internal (pre-release auto-updates enabled)");
       } else {
-        Log.i("Release track: ${releaseTrack.wireValue}");
+        Log.d("Release track: ${releaseTrack.wireValue}");
       }
 
       final updateService = _createUpdateService(
@@ -442,9 +443,11 @@ class BridgeRuntimeRunner {
     return attemptStart(attempt: 1);
   }
 
-  static Future<ReleaseTrack> _resolveReleaseTrack() async {
+  static Future<ReleaseTrack> _readReleaseTrack({
+    required BridgeSettingsRepository settingsRepository,
+  }) async {
     try {
-      final settings = await BridgeSettingsRepository(api: BridgeSettingsApi()).loadSettings();
+      final settings = await settingsRepository.loadSettings();
       return settings.releaseTrack;
     } on Object catch (error) {
       Log.w("Failed to read release track from settings; defaulting to stable: $error");
