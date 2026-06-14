@@ -48,5 +48,5 @@ the flush. Just handle everything in the report in one batch, then wait for the 
 ## Other actions
 
 - `pr_monitor(action: "status")` — list this session's monitors (also useful before ending a work session).
-- `pr_monitor(action: "flush", pr: "owner/repo#123" | "all")` — force an immediate full status report on demand (this also advances the baseline). Use it only when you want the current state right now instead of waiting for the next scheduled report — never as a routine step after handling a report.
-- `pr_monitor(action: "stop", pr: "owner/repo#123" | "all")` — stop watching without waiting for merge.
+- `pr_monitor(action: "flush", pr: "owner/repo#123")` or `pr_monitor(action: "flush", pr: "all")` — force an immediate full status report on demand (this also advances the baseline). Use it only when you want the current state right now instead of waiting for the next scheduled report — never as a routine step after handling a report.
+- `pr_monitor(action: "stop", pr: "owner/repo#123")` or `pr_monitor(action: "stop", pr: "all")` — stop watching without waiting for merge.
