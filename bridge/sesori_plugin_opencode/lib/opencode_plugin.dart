@@ -19,6 +19,7 @@ export "src/models/send_prompt_body.dart";
 export "src/models/session.dart";
 export "src/models/session_status.dart";
 export "src/models/sse_event_data.dart";
+export "src/open_code_raw_http_client.dart";
 export "src/opencode_api.dart";
 export "src/opencode_db_api.dart";
 export "src/opencode_db_maintenance_service.dart";

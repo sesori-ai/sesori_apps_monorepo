@@ -53,9 +53,11 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   }) {
     final httpClient = io.HttpClient();
     final api = OpenCodeApi(
-      serverURL: serverUrl,
-      password: password,
-      client: IOClient(httpClient),
+      client: OpenCodeRawHttpClient(
+        serverURL: serverUrl,
+        password: password,
+        client: IOClient(httpClient),
+      ),
     );
     final repository = OpenCodeRepository(api);
     final tracker = ActiveSessionTracker(repository);

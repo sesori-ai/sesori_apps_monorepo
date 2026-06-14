@@ -39,9 +39,11 @@ void main() {
       });
 
       final api = OpenCodeApi(
-        serverURL: "http://localhost:1234",
-        password: "test-pass",
-        client: mockClient,
+        client: OpenCodeRawHttpClient(
+          serverURL: "http://localhost:1234",
+          password: "test-pass",
+          client: mockClient,
+        ),
       );
 
       final response = await api.listConfigProviders(directory: "/repo");
@@ -73,9 +75,11 @@ void main() {
       });
 
       final api = OpenCodeApi(
-        serverURL: "http://localhost:1234",
-        password: "test-pass",
-        client: mockClient,
+        client: OpenCodeRawHttpClient(
+          serverURL: "http://localhost:1234",
+          password: "test-pass",
+          client: mockClient,
+        ),
       );
 
       final agents = await api.listAgents(directory: "/repo");
@@ -92,9 +96,11 @@ void main() {
       });
 
       final api = OpenCodeApi(
-        serverURL: "http://localhost:1234",
-        password: "test-pass",
-        client: mockClient,
+        client: OpenCodeRawHttpClient(
+          serverURL: "http://localhost:1234",
+          password: "test-pass",
+          client: mockClient,
+        ),
       );
 
       await expectLater(
@@ -122,9 +128,11 @@ void main() {
       });
 
       final api = OpenCodeApi(
-        serverURL: "http://localhost:1234",
-        password: "test-pass",
-        client: mockClient,
+        client: OpenCodeRawHttpClient(
+          serverURL: "http://localhost:1234",
+          password: "test-pass",
+          client: mockClient,
+        ),
       );
 
       await api.sendCommand(
@@ -196,9 +204,11 @@ void main() {
       });
 
       final api = OpenCodeApi(
-        serverURL: "http://localhost:1234",
-        password: "test-pass",
-        client: mockClient,
+        client: OpenCodeRawHttpClient(
+          serverURL: "http://localhost:1234",
+          password: "test-pass",
+          client: mockClient,
+        ),
       );
 
       await api.replyToPermission(
@@ -223,9 +233,11 @@ void main() {
       });
 
       final api = OpenCodeApi(
-        serverURL: "http://localhost:1234",
-        password: "test-pass",
-        client: mockClient,
+        client: OpenCodeRawHttpClient(
+          serverURL: "http://localhost:1234",
+          password: "test-pass",
+          client: mockClient,
+        ),
       );
 
       expect(
