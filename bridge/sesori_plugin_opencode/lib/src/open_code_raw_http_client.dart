@@ -3,15 +3,16 @@ import "dart:convert";
 
 import "package:http/http.dart" as http;
 
-/// Soft deadline applied to every OpenCode REST call unless the caller passes
-/// an explicit [Duration] (or `null` to opt out).
+/// Soft deadline applied to idempotent GET reads by default. Writes
+/// (POST/PATCH/DELETE) default to no timeout — see [OpenCodeRawHttpClient] for
+/// why the two are treated differently.
 ///
-/// A timeout is necessary because `http.Client` (specifically `IOClient`) does
-/// NOT impose a total request/response deadline by default — only optional
-/// connection/idle timeouts. An OpenCode server that accepts the connection
-/// and then stalls (a frequent failure mode) would otherwise hang the call
-/// indefinitely. Routing every request through this client guarantees the
-/// timeout (and success check) can't be forgotten on a new endpoint.
+/// A read timeout is useful because `http.Client` (specifically `IOClient`)
+/// does NOT impose a total request/response deadline by default — only
+/// optional connection/idle timeouts. An OpenCode server that accepts the
+/// connection and then stalls (a frequent failure mode) would otherwise hang a
+/// read indefinitely. Abandoning a read this way is safe precisely because it
+/// has no side effects: a timed-out GET can simply be retried.
 const _defaultTimeout = Duration(seconds: 30);
 
 /// HTTP status reported when a request exceeds its timeout. 504 (Gateway
@@ -24,11 +25,28 @@ enum _HttpMethod { get, post, patch, delete }
 
 /// Transport-level HTTP client for the OpenCode REST API.
 ///
-/// Centralizes the three cross-cutting concerns every OpenCode call needs so
+/// Centralizes the cross-cutting concerns every OpenCode call needs so
 /// individual endpoint methods (in [OpenCodeApi]) cannot bypass them:
-///   1. applies a request [timeout] (default [_defaultTimeout]),
+///   1. applies a request [timeout] — idempotent reads ([get]) default to
+///      [_defaultTimeout]; non-idempotent writes ([post]/[patch]/[delete])
+///      default to no timeout (see below),
 ///   2. enforces a 2xx response (throws [OpenCodeApiException] otherwise),
 ///   3. computes a debug endpoint label ("METHOD /path") for error messages.
+///
+/// **Why reads time out but writes don't.** `Future.timeout` cannot cancel an
+/// in-flight HTTP request — it only stops *waiting* for the response. For an
+/// idempotent GET that is harmless: report a 504 and let the caller retry. For
+/// a non-idempotent write it is dangerous: OpenCode may have accepted the
+/// mutation and merely be slow to respond, so a client-side timeout would
+/// surface a false 504 while the write still commits server-side, leaving the
+/// caller free to retry or run cleanup against state that actually changed. A
+/// *longer* write timeout only widens the window before that same race; it
+/// does not remove it. Writes therefore impose no timeout by default. They
+/// never block shutdown anyway: the orchestrator abandons in-flight routes on
+/// teardown, and the genuinely long-running synchronous endpoints
+/// ([OpenCodeApi.sendCommand]/[OpenCodeApi.summarize]) are detached by
+/// `OpenCodeService`. A caller may still pass an explicit [timeout] to a write
+/// if it has a concrete reason to bound it.
 ///
 /// It also owns Basic-auth header computation and URI construction. It performs
 /// no JSON decoding or model mapping — that stays in [OpenCodeApi].
@@ -72,7 +90,7 @@ class OpenCodeRawHttpClient {
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
     Object? body,
-    Duration? timeout = _defaultTimeout,
+    Duration? timeout, // unbounded by default — non-idempotent; see class docs
   }) {
     return _send(
       method: _HttpMethod.post,
@@ -89,7 +107,7 @@ class OpenCodeRawHttpClient {
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
     Object? body,
-    Duration? timeout = _defaultTimeout,
+    Duration? timeout, // unbounded by default — non-idempotent; see class docs
   }) {
     return _send(
       method: _HttpMethod.patch,
@@ -106,7 +124,7 @@ class OpenCodeRawHttpClient {
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
     Object? body,
-    Duration? timeout = _defaultTimeout,
+    Duration? timeout, // unbounded by default — non-idempotent; see class docs
   }) {
     return _send(
       method: _HttpMethod.delete,
@@ -119,8 +137,9 @@ class OpenCodeRawHttpClient {
   }
 
   /// Sends [method] to [path], applying auth headers, the optional [timeout],
-  /// and a 2xx success check. A `null` [timeout] means unbounded (only for
-  /// genuinely long-running synchronous endpoints).
+  /// and a 2xx success check. A `null` [timeout] means unbounded — the default
+  /// for writes and for the long-running synchronous command/summarize
+  /// endpoints.
   Future<http.Response> _send({
     required _HttpMethod method,
     required String path,

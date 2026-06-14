@@ -260,12 +260,14 @@ class OpenCodeApi {
   /// Callers that must not block on the run (see [OpenCodeService]) are
   /// responsible for detaching; this Layer 1 method stays a dumb HTTP call.
   ///
-  /// This is the one request sent with `timeout: null` (unbounded). A fixed
-  /// client-side timeout could not abort the synchronous run (`Future.timeout`
-  /// does not cancel the HTTP request) and would only surface as a spurious
-  /// post-dispatch failure. [OpenCodeService] already detaches after a
-  /// fast-fail window, and the orchestrator abandons in-flight routes on
-  /// shutdown, so an unbounded command never blocks teardown.
+  /// Passed `timeout: null` explicitly. Writes already default to no timeout
+  /// (`Future.timeout` cannot abort the underlying request, so a client-side
+  /// deadline on this synchronous, minutes-long run would only surface a
+  /// spurious post-dispatch failure), but stating it at the call site keeps
+  /// that intent obvious for an endpoint where an accidental timeout would be
+  /// especially harmful. [OpenCodeService] already detaches after a fast-fail
+  /// window, and the orchestrator abandons in-flight routes on shutdown, so an
+  /// unbounded command never blocks teardown.
   Future<void> sendCommand({
     required String sessionId,
     required SendCommandBody body,

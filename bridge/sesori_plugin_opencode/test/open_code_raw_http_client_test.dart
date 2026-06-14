@@ -1,5 +1,6 @@
 import "dart:convert";
 
+import "package:fake_async/fake_async.dart";
 import "package:http/http.dart" as http;
 import "package:http/testing.dart";
 import "package:opencode_plugin/opencode_plugin.dart";
@@ -134,6 +135,75 @@ void main() {
       );
 
       expect(response.body, equals("done"));
+    });
+
+    test("applies the default 30s timeout to idempotent GET reads", () {
+      fakeAsync((async) {
+        final mockClient = MockClient((request) async {
+          await Future<void>.delayed(const Duration(minutes: 5));
+          return http.Response("late", 200);
+        });
+
+        final client = OpenCodeRawHttpClient(
+          serverURL: "http://localhost:1234",
+          password: null,
+          client: mockClient,
+        );
+
+        Object? error;
+        () async {
+          try {
+            await client.get(path: "/session");
+          } catch (e) {
+            error = e;
+          }
+        }();
+
+        // A read with no explicit timeout must abort at the 30s default.
+        async.elapse(const Duration(seconds: 31));
+
+        expect(error, isA<OpenCodeApiException>());
+        expect((error! as OpenCodeApiException).statusCode, equals(504));
+      });
+    });
+
+    test("imposes no default timeout on non-idempotent writes", () {
+      // Guards the regression the PR fixes: a POST/PATCH/DELETE that inherits
+      // the read timeout would surface a false 504 while OpenCode still commits
+      // the mutation. Writes must wait for the real response instead.
+      fakeAsync((async) {
+        final mockClient = MockClient((request) async {
+          await Future<void>.delayed(const Duration(minutes: 5));
+          return http.Response("done", 200);
+        });
+
+        final client = OpenCodeRawHttpClient(
+          serverURL: "http://localhost:1234",
+          password: null,
+          client: mockClient,
+        );
+
+        Object? error;
+        http.Response? response;
+        () async {
+          try {
+            response = await client.post(path: "/session", body: "x");
+          } catch (e) {
+            error = e;
+          }
+        }();
+
+        // Well past the 30s read deadline: the write must NOT have timed out.
+        async.elapse(const Duration(seconds: 31));
+        expect(error, isNull);
+        expect(response, isNull);
+
+        // It still completes once OpenCode eventually responds.
+        async.elapse(const Duration(minutes: 5));
+        async.flushMicrotasks();
+        expect(error, isNull);
+        expect(response?.body, equals("done"));
+      });
     });
   });
 }
