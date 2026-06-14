@@ -14,6 +14,9 @@ import "session_detail_scaffold_sections.dart";
 
 class SessionDetailLoadedView extends StatelessWidget {
   final String? projectId;
+  // Session id, used as the composer draft key. Null in the read-only
+  // variant, which renders no prompt input.
+  final String? sessionId;
   final SessionDetailLoaded state;
   final bool readOnly;
   final VoidCallback onShowPendingQuestions;
@@ -29,6 +32,7 @@ class SessionDetailLoadedView extends StatelessWidget {
     required this.onShowPendingQuestions,
     required this.onShowPendingPermissions,
   }) : readOnly = true,
+       sessionId = null,
        onOpenAgentPicker = _noopCallback,
        onOpenModelPicker = _noopCallback,
        onOpenVariantPicker = _noopCallback;
@@ -36,6 +40,7 @@ class SessionDetailLoadedView extends StatelessWidget {
   const SessionDetailLoadedView.editable({
     super.key,
     required this.projectId,
+    required this.sessionId,
     required this.state,
     required this.onShowPendingQuestions,
     required this.onShowPendingPermissions,
@@ -92,6 +97,7 @@ class SessionDetailLoadedView extends StatelessWidget {
           SessionDetailQueuedMessagesSection(messages: state.queuedMessages),
         if (!readOnly)
           PromptInput(
+            draftKey: sessionId,
             isBusy: hasActiveWork(
               sessionStatus: state.sessionStatus,
               childStatuses: state.childStatuses,

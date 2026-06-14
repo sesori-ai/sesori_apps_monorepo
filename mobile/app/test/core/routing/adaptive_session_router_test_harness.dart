@@ -8,6 +8,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
 import "package:sesori_mobile/core/routing/app_router.dart";
+import "package:sesori_mobile/core/services/draft_store.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_zyra/module_zyra.dart";
@@ -159,6 +160,7 @@ class AdaptiveSessionRouterTestHarness {
     getIt.registerSingleton<SessionDetailLoadService>(sessionDetailLoadService);
     getIt.registerSingleton<NotificationCanceller>(notificationCanceller);
     getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
+    getIt.registerLazySingleton<DraftStore>(DraftStore.new);
     getIt.registerSingleton<AuthSession>(authSession);
 
     router = GoRouter(

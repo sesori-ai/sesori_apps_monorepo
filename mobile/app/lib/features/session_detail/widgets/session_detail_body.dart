@@ -120,6 +120,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
                 )
               : SessionDetailLoadedView.editable(
                   projectId: widget.projectId,
+                  sessionId: widget.sessionId,
                   state: loaded,
                   onShowPendingQuestions: _showPendingQuestions,
                   onShowPendingPermissions: _showPendingPermissions,

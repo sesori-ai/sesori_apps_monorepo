@@ -9,6 +9,7 @@ import "package:go_router/go_router.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
+import "package:sesori_mobile/core/services/draft_store.dart";
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_body.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -103,6 +104,7 @@ void main() {
     when(() => voiceTranscriptionService.onMaxDurationReached).thenAnswer((_) => maxDurationReached.stream);
 
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
+    GetIt.instance.registerLazySingleton<DraftStore>(DraftStore.new);
   });
 
   tearDown(() async {

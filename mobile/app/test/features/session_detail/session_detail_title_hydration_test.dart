@@ -7,6 +7,7 @@ import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
+import "package:sesori_mobile/core/services/draft_store.dart";
 import "package:sesori_mobile/features/session_detail/session_detail_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -95,6 +96,7 @@ void _registerDependencies({
   getIt.registerSingleton<NotificationCanceller>(notificationCanceller);
   getIt.registerSingleton<FailureReporter>(failureReporter);
   getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
+  getIt.registerLazySingleton<DraftStore>(DraftStore.new);
 }
 
 void main() {

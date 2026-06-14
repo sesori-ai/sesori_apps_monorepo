@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:math" as math;
 
 import "package:flutter/material.dart";
+import "package:flutter/services.dart";
 import "package:sesori_dart_core/logging.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_zyra/module_zyra.dart";
@@ -10,6 +11,7 @@ import "../../../capabilities/voice/voice_transcription_service.dart";
 import "../../../core/constants.dart";
 import "../../../core/di/injection.dart";
 import "../../../core/extensions/build_context_x.dart";
+import "../../../core/services/draft_store.dart";
 import "../../../core/widgets/command_picker_sheet.dart";
 
 enum _VoiceState { idle, recording, transcribing }
@@ -28,6 +30,11 @@ class PromptInput extends StatefulWidget {
   /// but below the separator line.
   final Widget? header;
 
+  /// Key under which the in-progress draft is persisted across navigation /
+  /// backgrounding (the session id). Null disables draft persistence, e.g. on
+  /// the new-session screen where there is no session id yet.
+  final String? draftKey;
+
   const PromptInput({
     super.key,
     required this.isBusy,
@@ -39,6 +46,7 @@ class PromptInput extends StatefulWidget {
     required this.onCommandSelected,
     required this.onCommandCleared,
     this.header,
+    this.draftKey,
   });
 
   @override
@@ -56,6 +64,7 @@ class _PromptInputState extends State<PromptInput> {
   @override
   void initState() {
     super.initState();
+    _restoreDraft();
     _maxDurationSub = _voiceService.onMaxDurationReached.listen((_) {
       if (_voiceState == _VoiceState.recording && mounted) {
         _showRecordingLimitReached();
@@ -66,6 +75,11 @@ class _PromptInputState extends State<PromptInput> {
 
   @override
   void dispose() {
+    // Persist the in-progress draft so it survives leaving and returning to
+    // the session. Sent messages clear the draft in [_handleSend], so this
+    // only saves genuinely unsent text. Must run before disposing the
+    // controller.
+    _saveDraft();
     _maxDurationSub?.cancel();
     // Fire-and-forget cancel if the widget is disposed mid-recording or mid-transcription.
     if (_voiceState != _VoiceState.idle) {
@@ -74,6 +88,35 @@ class _PromptInputState extends State<PromptInput> {
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  /// The draft store, or null when it isn't registered. Guarded because
+  /// [dispose] can run during teardown after the service locator has already
+  /// been reset (e.g. in widget tests).
+  DraftStore? get _draftStore => getIt.isRegistered<DraftStore>() ? getIt<DraftStore>() : null;
+
+  void _restoreDraft() {
+    final key = widget.draftKey;
+    final store = _draftStore;
+    if (key == null || store == null) return;
+    final draft = store.read(key);
+    if (draft.isEmpty) return;
+    _controller.text = draft;
+    _controller.selection = TextSelection.collapsed(offset: draft.length);
+  }
+
+  void _saveDraft() {
+    final key = widget.draftKey;
+    final store = _draftStore;
+    if (key == null || store == null) return;
+    store.write(key, _controller.text);
+  }
+
+  void _clearDraft() {
+    final key = widget.draftKey;
+    final store = _draftStore;
+    if (key == null || store == null) return;
+    store.clear(key);
   }
 
   void _handleSend() {
@@ -88,6 +131,7 @@ class _PromptInputState extends State<PromptInput> {
     }
 
     _controller.clear();
+    _clearDraft();
     _focusNode.requestFocus();
   }
 
@@ -273,25 +317,33 @@ class _PromptInputState extends State<PromptInput> {
                   child: switch (_voiceState) {
                     _VoiceState.recording => _RecordingIndicator(amplitudeStream: _voiceService.amplitudeStream),
                     _VoiceState.transcribing => const _TranscribingIndicator(),
-                    _VoiceState.idle => TextField(
-                      controller: _controller,
-                      focusNode: _focusNode,
-                      minLines: 1,
-                      maxLines: 5,
-                      textInputAction: TextInputAction.newline,
-                      decoration: InputDecoration(
-                        hintText: _commandHintText(context),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide.none,
+                    _VoiceState.idle => CallbackShortcuts(
+                      // Cmd/Ctrl+Enter sends (handy with a hardware keyboard);
+                      // plain Enter stays a newline via textInputAction below.
+                      bindings: <ShortcutActivator, VoidCallback>{
+                        const SingleActivator(LogicalKeyboardKey.enter, meta: true): _handleSend,
+                        const SingleActivator(LogicalKeyboardKey.enter, control: true): _handleSend,
+                      },
+                      child: TextField(
+                        controller: _controller,
+                        focusNode: _focusNode,
+                        minLines: 1,
+                        maxLines: 5,
+                        textInputAction: TextInputAction.newline,
+                        decoration: InputDecoration(
+                          hintText: _commandHintText(context),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: zyra.colors.bgQuaternary,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          isDense: true,
                         ),
-                        filled: true,
-                        fillColor: zyra.colors.bgQuaternary,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        isDense: true,
                       ),
                     ),
                   },
