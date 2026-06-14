@@ -99,6 +99,31 @@ class OpenCodeService {
     return _applyLimit(afterStart, limit);
   }
 
+  Future<List<PendingQuestion>> getPendingQuestionsForSession({
+    required String sessionId,
+  }) async {
+    var directory = tracker.getSessionDirectory(sessionId: sessionId);
+    if (directory == null) {
+      final session = await repository.getSession(
+        sessionId: sessionId,
+        directory: null,
+      );
+      directory = session.directory;
+      tracker.registerSession(sessionId: sessionId, directory: directory);
+      Log.d(
+        "getPendingQuestionsForSession: resolved missing directory "
+        "for session $sessionId via getSession: $directory",
+      );
+    }
+
+    // Subagent (child) sessions are non-interactive and never ask questions, so
+    // only the session's own pending questions are relevant. `getPendingQuestions`
+    // is directory-scoped and may return questions for sibling sessions in the
+    // same worktree, so filter to this session.
+    final all = await repository.getPendingQuestions(directory: directory);
+    return all.where((question) => question.sessionID == sessionId).toList();
+  }
+
   Future<List<MessageWithParts>> getMessages({
     required String sessionId,
     required String? directory,
@@ -276,16 +301,16 @@ class OpenCodeService {
   Future<void> _hydratePendingInput() async {
     await (
       repository
-          .getPendingQuestions()
+          .getPendingQuestions(directory: null)
           .then((questions) => tracker.populatePendingQuestions(questions: questions))
           .catchError((Object e, StackTrace st) {
-            Log.w("coldStart: failed to hydrate pending questions: $e\n$st");
+            Log.w("coldStart: failed to hydrate pending questions", e, st);
           }),
       repository
-          .getPendingPermissions()
+          .getPendingPermissions(directory: null)
           .then((permissions) => tracker.populatePendingPermissions(permissions: permissions))
           .catchError((Object e, StackTrace st) {
-            Log.w("coldStart: failed to hydrate pending permissions: $e\n$st");
+            Log.w("coldStart: failed to hydrate pending permissions", e, st);
           }),
     ).wait;
   }
