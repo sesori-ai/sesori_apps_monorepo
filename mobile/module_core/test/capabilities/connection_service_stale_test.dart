@@ -216,5 +216,20 @@ void main() {
 
       expect(service.currentStatus, isA<ConnectionConnected>());
     });
+
+    test("proactively reconnects when resuming past the threshold while bridge offline", () async {
+      // Bridge-offline keeps an open relay socket waiting for the bridge to
+      // return; the relay still drops it while backgrounded, so resume must
+      // reconnect or the BridgeStatus.online frame would never arrive.
+      service.emitStatusForTesting(const ConnectionStatus.bridgeOffline(config: config, health: health));
+
+      lifecycleController.add(LifecycleState.paused);
+      await flush();
+      now = now.add(const Duration(seconds: 30));
+      lifecycleController.add(LifecycleState.resumed);
+      await flush();
+
+      expect(service.currentStatus, isA<ConnectionReconnecting>());
+    });
   });
 }

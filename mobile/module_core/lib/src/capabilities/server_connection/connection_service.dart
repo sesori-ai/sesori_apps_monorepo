@@ -461,11 +461,15 @@ class ConnectionService {
     if (config == null) return;
 
     // The relay closes backgrounded phones once its ping/pong window lapses
-    // (~30-45s). Past [_resumeReconnectThreshold], a status that still reads
-    // "connected" is almost certainly a dead socket, so reconnect proactively
-    // rather than discovering it later via a request timeout.
+    // (~30-45s). Past [_resumeReconnectThreshold], any status that still holds
+    // an open relay socket (connected, or bridge-offline while waiting for the
+    // bridge to return) is almost certainly a dead socket, so reconnect
+    // proactively rather than discovering it later via a request timeout.
+    // Bridge-offline especially must reconnect: its recovery depends on a relay
+    // frame (BridgeStatus.online) that a dead socket will never deliver.
     final connectionLikelyStale =
-        status is ConnectionConnected && backgroundedFor >= _resumeReconnectThreshold;
+        (status is ConnectionConnected || status is ConnectionBridgeOffline) &&
+        backgroundedFor >= _resumeReconnectThreshold;
 
     final needsReconnect =
         status is ConnectionLost || status is ConnectionReconnecting || connectionLikelyStale;
