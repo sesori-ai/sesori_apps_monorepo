@@ -2,6 +2,16 @@
 
 Status: **in progress** · Owner: mobile/transport · Branch strategy: **one small PR per step**
 
+## Current stage
+
+**PR 1 implemented** — open for review as #262 (proactive reconnect on resume,
+including the bridge-offline state).
+
+> **Maintenance rule:** this **Current stage** line (and the Status tracker
+> table at the bottom) MUST be updated as part of **every** PR in this series.
+> Whenever the next step is implemented, bump the stage here in the same PR so
+> the document always reflects exactly what has been done.
+
 ## Problem
 
 When the app returns from background to foreground, re-establishing the relay
@@ -167,7 +177,7 @@ Tier 4 stand alone. Ship and validate each before starting the next.
 
 | PR | Tier | Status |
 | --- | --- | --- |
-| PR 1 — proactive reconnect on resume | 1 | in progress |
+| PR 1 — proactive reconnect on resume | 1 | implemented — PR #262 (in review) |
 | PR 2 — immediate first attempt | 1 | not started |
 | PR 3 — skip health after resume | 1 | not started |
 | PR 4 — room-key memory cache | 2 | not started |
