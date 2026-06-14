@@ -446,8 +446,10 @@ class OrchestratorSession {
     // unblock an in-flight OpenCode request that the read loop is awaiting.
     // Idempotent disposal still runs through the shutdown coordinator later;
     // this call just makes it happen early enough to prevent a 15–30s hang.
+    // Future.sync so a synchronously-throwing dispose() (e.g. a test fake) is
+    // captured by catchError instead of escaping this method.
     unawaited(
-      _plugin.dispose().catchError((Object e) {
+      Future.sync(_plugin.dispose).catchError((Object e) {
         Log.v("[shutdown] early plugin dispose error (ignored): $e");
       }),
     );
@@ -694,9 +696,13 @@ class OrchestratorSession {
         Log.v("RelayRequest: ${req.method} ${req.path}");
         _inFlightRequestLabel = "${req.method} ${req.path}";
         final routeSw = Stopwatch()..start();
+        // If shutdown wins the race below, this future keeps running in the
+        // background. ignore() marks any later failure as handled so it can
+        // never surface as an unhandled async exception after abandonment.
+        final routeFuture = _router.route(req)..ignore();
         try {
           final response = await Future.any<RelayResponse>([
-            _router.route(req),
+            routeFuture,
             _shutdownCompleter.future.then((_) => throw const _ShutdownInProgressException()),
           ]);
           if (_cancelled) {

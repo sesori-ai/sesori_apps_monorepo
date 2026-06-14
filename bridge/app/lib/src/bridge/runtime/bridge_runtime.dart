@@ -212,28 +212,25 @@ void registerSignalHandlers({
   required OrchestratorSession session,
   required CompositeSubscription subscriptions,
 }) {
-  var signalCount = 0;
-  ProcessSignal.sigint
-      .watch()
-      .listen((_) {
-        signalCount++;
-        if (signalCount >= 2) {
-          Log.e("[shutdown] SIGINT #2 — forcing immediate exit");
-          exit(1);
-        }
-        Log.i("[shutdown] SIGINT received (#$signalCount) — cancelling session");
-        unawaited(session.cancel());
-      })
-      .addTo(subscriptions);
+  // SIGINT and SIGTERM are equivalent shutdown triggers: the first of either
+  // requests a graceful cancel; a second shutdown signal of either kind is the
+  // emergency escape hatch that forces an immediate exit. Counting both through
+  // one counter keeps the two triggers symmetric (a prior SIGTERM must not let
+  // the first SIGINT skip straight to force-exit, and vice versa).
+  var shutdownSignalCount = 0;
+  void handleShutdownSignal(String name) {
+    shutdownSignalCount++;
+    if (shutdownSignalCount >= 2) {
+      Log.e("[shutdown] $name received (#$shutdownSignalCount) — forcing immediate exit");
+      exit(1);
+    }
+    Log.i("[shutdown] $name received (#$shutdownSignalCount) — cancelling session");
+    unawaited(session.cancel());
+  }
+
+  ProcessSignal.sigint.watch().listen((_) => handleShutdownSignal("SIGINT")).addTo(subscriptions);
   if (!Platform.isWindows) {
-    ProcessSignal.sigterm
-        .watch()
-        .listen((_) {
-          signalCount++;
-          Log.i("[shutdown] SIGTERM received (#$signalCount) — cancelling session");
-          unawaited(session.cancel());
-        })
-        .addTo(subscriptions);
+    ProcessSignal.sigterm.watch().listen((_) => handleShutdownSignal("SIGTERM")).addTo(subscriptions);
   }
 }
 

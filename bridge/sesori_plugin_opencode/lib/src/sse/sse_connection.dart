@@ -76,10 +76,10 @@ class SseConnection {
         // every reconnect (the lifecycle status follows the live stream).
         _onConnected?.call();
 
-        if (!isFirstConnect) {
+        if (!isFirstConnect && _onReconnect != null) {
           final reconnectSw = Stopwatch()..start();
           Log.v("[sse-conn] reconnect: running onReconnect cold-start");
-          await _onReconnect?.call();
+          await _onReconnect();
           if (!_active || _generation != generation) {
             Log.v("[sse-conn] reconnect: shutdown requested during onReconnect, dropping");
             return;
