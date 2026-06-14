@@ -283,34 +283,11 @@ void main() {
       expect(repository.pendingQuestionDirectories, equals(["/repo"]));
     });
 
-    test("includes direct child/subagent questions for the root", () async {
-      final repository = FakeOpenCodeRepository(
-        childrenBySessionId: const {
-          "root": [Session(id: "child", projectID: "p1", directory: "/repo", parentID: "root")],
-        },
-        pendingQuestionsByDirectory: {
-          "/repo": [_question(id: "q-child", sessionId: "child")],
-        },
-      );
-      final tracker = FakeActiveSessionTracker(sessionDirectories: const {"root": "/repo"});
-      final service = OpenCodeService(repository, tracker);
-
-      final questions = await service.getPendingQuestionsForSession(sessionId: "root");
-
-      expect(questions.map((question) => question.id), equals(["q-child"]));
-      expect(repository.lastGetChildrenSessionId, equals("root"));
-      expect(repository.lastGetChildrenDirectory, equals("/repo"));
-    });
-
     test("excludes sibling-root questions in the same directory", () async {
       final repository = FakeOpenCodeRepository(
-        childrenBySessionId: const {
-          "root": [Session(id: "child", projectID: "p1", directory: "/repo", parentID: "root")],
-        },
         pendingQuestionsByDirectory: {
           "/repo": [
             _question(id: "q-root", sessionId: "root"),
-            _question(id: "q-child", sessionId: "child"),
             _question(id: "q-sibling", sessionId: "sibling"),
           ],
         },
@@ -320,28 +297,7 @@ void main() {
 
       final questions = await service.getPendingQuestionsForSession(sessionId: "root");
 
-      expect(questions.map((question) => question.id), equals(["q-root", "q-child"]));
-    });
-
-    test("returns root questions when child fetch fails", () async {
-      final repository = FakeOpenCodeRepository(
-        childrenError: StateError("children unavailable"),
-        pendingQuestionsByDirectory: {
-          "/repo": [
-            _question(id: "q-root", sessionId: "root"),
-            _question(id: "q-child", sessionId: "child"),
-          ],
-        },
-      );
-      final tracker = FakeActiveSessionTracker(sessionDirectories: const {"root": "/repo"});
-      final service = OpenCodeService(repository, tracker);
-
-      final questions = await service.getPendingQuestionsForSession(sessionId: "root");
-
       expect(questions.map((question) => question.id), equals(["q-root"]));
-      expect(repository.lastGetChildrenSessionId, equals("root"));
-      expect(repository.lastGetChildrenDirectory, equals("/repo"));
-      expect(repository.pendingQuestionDirectories, equals(["/repo"]));
     });
   });
 
@@ -967,7 +923,6 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   final PluginSession? _createdSession;
   final Map<String, List<PendingQuestion>> _pendingQuestionsByDirectory;
   final Map<String, List<PendingPermission>> _pendingPermissionsByDirectory;
-  final Map<String, List<Session>> _childrenBySessionId;
   int getProjectsCalls = 0;
   int getSessionsCalls = 0;
   String? lastWorktree;
@@ -999,9 +954,6 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   int getSessionCalls = 0;
   String? lastGetSessionId;
   String? lastGetSessionDirectory;
-  String? lastGetChildrenSessionId;
-  String? lastGetChildrenDirectory;
-  final Object? childrenError;
   final List<String?> pendingQuestionDirectories = [];
   final List<String?> pendingPermissionDirectories = [];
 
@@ -1014,15 +966,12 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     Object? messagesError,
     Map<String, List<PendingQuestion>> pendingQuestionsByDirectory = const {},
     Map<String, List<PendingPermission>> pendingPermissionsByDirectory = const {},
-    Map<String, List<Session>> childrenBySessionId = const {},
-    this.childrenError,
   }) : _projects = projects,
        _sessions = sessions,
        _commands = commands,
        _createdSession = createdSession,
        _pendingQuestionsByDirectory = pendingQuestionsByDirectory,
        _pendingPermissionsByDirectory = pendingPermissionsByDirectory,
-       _childrenBySessionId = childrenBySessionId,
        api = FakeOpenCodeApi(messages: messages, messagesError: messagesError),
        super(FakeOpenCodeApi(messages: messages, messagesError: messagesError));
 
@@ -1139,19 +1088,6 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     lastGetSessionId = sessionId;
     lastGetSessionDirectory = directory;
     return _sessions.firstWhere((session) => session.id == sessionId);
-  }
-
-  @override
-  Future<List<Session>> getChildren({
-    required String sessionId,
-    required String? directory,
-  }) async {
-    lastGetChildrenSessionId = sessionId;
-    lastGetChildrenDirectory = directory;
-    if (childrenError case final error?) {
-      throw error;
-    }
-    return _childrenBySessionId[sessionId] ?? const [];
   }
 
   @override

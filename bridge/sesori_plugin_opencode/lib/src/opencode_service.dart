@@ -116,20 +116,12 @@ class OpenCodeService {
       );
     }
 
-    Set<String> childIds = const {};
-    try {
-      childIds = (await repository.getChildren(
-        sessionId: sessionId,
-        directory: directory,
-      )).map((child) => child.id).toSet();
-    } catch (e, st) {
-      Log.w(
-        "getPendingQuestionsForSession: failed to fetch children "
-        "for session $sessionId in directory $directory: $e\n$st",
-      );
-    }
+    // Subagent (child) sessions are non-interactive and never ask questions, so
+    // only the session's own pending questions are relevant. `getPendingQuestions`
+    // is directory-scoped and may return questions for sibling sessions in the
+    // same worktree, so filter to this session.
     final all = await repository.getPendingQuestions(directory: directory);
-    return all.where((question) => question.sessionID == sessionId || childIds.contains(question.sessionID)).toList();
+    return all.where((question) => question.sessionID == sessionId).toList();
   }
 
   Future<List<MessageWithParts>> getMessages({
@@ -311,26 +303,31 @@ class OpenCodeService {
     final questionsById = <String, PendingQuestion>{};
     final permissionsById = <String, PendingPermission>{};
 
-    for (final project in projects) {
-      final worktree = project.worktree;
-      try {
-        final questions = await repository.getPendingQuestions(directory: worktree);
-        for (final question in questions) {
-          questionsById[question.id] = question;
-        }
-      } catch (e, st) {
-        Log.w("coldStart: failed to hydrate pending questions for worktree $worktree: $e\n$st");
-      }
-
-      try {
-        final permissions = await repository.getPendingPermissions(directory: worktree);
-        for (final permission in permissions) {
-          permissionsById[permission.id] = permission;
-        }
-      } catch (e, st) {
-        Log.w("coldStart: failed to hydrate pending permissions for worktree $worktree: $e\n$st");
-      }
-    }
+    // Fetch per-project pending input concurrently to keep cold start
+    // responsive. Writes to the shared maps are safe because Dart runs each
+    // continuation on a single thread (no parallel mutation). Per-call failures
+    // are logged and skipped so one unavailable project can't abort hydration.
+    await Future.wait(
+      projects.map((project) async {
+        final worktree = project.worktree;
+        await Future.wait([
+          repository.getPendingQuestions(directory: worktree).then((questions) {
+            for (final question in questions) {
+              questionsById[question.id] = question;
+            }
+          }).catchError((Object e, StackTrace st) {
+            Log.w("coldStart: failed to hydrate pending questions for worktree $worktree", e, st);
+          }),
+          repository.getPendingPermissions(directory: worktree).then((permissions) {
+            for (final permission in permissions) {
+              permissionsById[permission.id] = permission;
+            }
+          }).catchError((Object e, StackTrace st) {
+            Log.w("coldStart: failed to hydrate pending permissions for worktree $worktree", e, st);
+          }),
+        ]);
+      }),
+    );
 
     tracker.populatePendingQuestions(questions: questionsById.values.toList());
     tracker.populatePendingPermissions(permissions: permissionsById.values.toList());

@@ -286,16 +286,6 @@ class OpenCodeRepository {
     );
   }
 
-  Future<List<Session>> getChildren({
-    required String sessionId,
-    required String? directory,
-  }) {
-    return _api.getChildren(
-      sessionId: sessionId,
-      directory: directory?.normalize(),
-    );
-  }
-
   Future<List<PendingQuestion>> getPendingQuestions({required String? directory}) {
     return _api.getPendingQuestions(directory: directory?.normalize());
   }
