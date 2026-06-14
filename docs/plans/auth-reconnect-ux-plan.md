@@ -4,8 +4,12 @@ Status: **in progress** · Owner: mobile/transport · Branch strategy: **one sma
 
 ## Current stage
 
-**PR 1 implemented** (proactive reconnect on resume, including the
-bridge-offline state).
+**PR 1a implemented** — review follow-ups on PR 1: detach the stale socket on
+resume so requests fail fast instead of blocking on the dead connection, and
+revert the bridge-offline case from the proactive check (the E2E handshake can't
+complete while the bridge is down, so forcing a reconnect regressed it to the
+blocking ConnectionLost state). PR 1 (proactive reconnect on resume) shipped in
+#262.
 
 > **Maintenance rule:** this **Current stage** line (and the Status tracker
 > table at the bottom) MUST be updated as part of **every** PR in this series.
@@ -178,7 +182,9 @@ Tier 4 stand alone. Ship and validate each before starting the next.
 | PR | Tier | Status |
 | --- | --- | --- |
 | PR 1 — proactive reconnect on resume | 1 | implemented (#262) |
+| PR 1a — review follow-ups (stale-socket teardown; revert bridge-offline) | 1 | implemented |
 | PR 2 — immediate first attempt | 1 | not started |
+| (deferred) bridge-offline recovery without a completed handshake | 1/3 | not started |
 | PR 3 — skip health after resume | 1 | not started |
 | PR 4 — room-key memory cache | 2 | not started |
 | PR 5 — token read memory cache | 2 | not started |
