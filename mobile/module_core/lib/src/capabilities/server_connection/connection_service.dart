@@ -65,6 +65,7 @@ class ConnectionService {
   Timer? _reconnectTimer;
   Completer<void>? _reconnectDelayCompleter;
   Future<bool>? _activeAuthConnect;
+  Future<void>? _activeDisconnect;
   int _requestCounter = 0;
   final Random _requestIdRandom = Random();
   int _authRetryCount = 0;
@@ -418,7 +419,19 @@ class ConnectionService {
     }
   }
 
-  Future<void> _disconnectRelayClient() async {
+  /// Tears down the active relay client, coalescing concurrent callers so an
+  /// eager teardown (e.g. on resume) and the reconnect path's own teardown share
+  /// a single in-flight operation. A replacement socket is therefore never
+  /// opened until the previous client's disconnect has fully completed, avoiding
+  /// briefly holding two phone sockets for the same account (which the relay can
+  /// reject as account-full at the device limit).
+  Future<void> _disconnectRelayClient() {
+    return _activeDisconnect ??= _doDisconnectRelayClient().whenComplete(() {
+      _activeDisconnect = null;
+    });
+  }
+
+  Future<void> _doDisconnectRelayClient() async {
     // Detach the client synchronously first so callers (e.g. RelayHttpApiClient)
     // stop routing requests through a socket we're tearing down, rather than
     // during the async subscription cancellations below.
