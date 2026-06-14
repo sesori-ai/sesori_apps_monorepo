@@ -162,10 +162,18 @@ class OpenCodePlugin implements OpenCodeManagedApi {
 
   @override
   Future<void> dispose() async {
+    if (_disposed) {
+      Log.v("[shutdown] OpenCodePlugin.dispose: already disposed, skipping");
+      return;
+    }
     _disposed = true;
+    Log.v("[shutdown] OpenCodePlugin.dispose: stopping SSE connection");
     _sseConnection.stop();
+    Log.v("[shutdown] OpenCodePlugin.dispose: force-closing http client");
     _httpClient.close(force: true);
+    final sw = Stopwatch()..start();
     await _eventBuffer.close();
+    Log.d("[shutdown] OpenCodePlugin.dispose: event buffer closed in ${sw.elapsedMilliseconds}ms");
   }
 
   @override

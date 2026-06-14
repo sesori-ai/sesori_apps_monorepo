@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:convert";
 
 import "package:http/http.dart" as http;
@@ -18,6 +19,13 @@ import "models/session_status.dart";
 
 const _directoryOpenCodeHeader = "x-opencode-directory";
 
+/// Soft deadline for read-only OpenCode REST calls.
+const _readTimeout = Duration(seconds: 30);
+
+/// Soft deadline for mutating OpenCode REST calls (create, update, delete,
+/// prompts). Longer than reads because some endpoints perform local work.
+const _writeTimeout = Duration(seconds: 60);
+
 class OpenCodeApi {
   final String serverURL;
   final String? _password;
@@ -36,6 +44,25 @@ class OpenCodeApi {
     return {"Authorization": "Basic $creds"};
   }
 
+  /// Runs [request] with [timeout], converting a [TimeoutException] into an
+  /// [OpenCodeApiException] so callers treat a hung localhost request as a
+  /// transport failure.
+  Future<http.Response> _withTimeout(
+    Future<http.Response> request,
+    String endpoint,
+    Duration timeout,
+  ) async {
+    try {
+      return await request.timeout(timeout);
+    } on TimeoutException {
+      throw OpenCodeApiException(
+        endpoint,
+        0,
+        responseBody: "request timed out after ${timeout.inSeconds}s",
+      );
+    }
+  }
+
   Future<bool> healthCheck() async {
     try {
       final response = await _client
@@ -48,9 +75,13 @@ class OpenCodeApi {
   }
 
   Future<List<Project>> listProjects() async {
-    final response = await _client.get(
-      Uri.parse("$serverURL/project"),
-      headers: _authHeaders,
+    final response = await _withTimeout(
+      _client.get(
+        Uri.parse("$serverURL/project"),
+        headers: _authHeaders,
+      ),
+      "GET /project",
+      _readTimeout,
     );
     _ensureSuccess(response, "GET /project");
 
@@ -59,9 +90,13 @@ class OpenCodeApi {
   }
 
   Future<List<Session>> listRootSessions() async {
-    final response = await _client.get(
-      Uri.parse("$serverURL/session?roots=true"),
-      headers: _authHeaders,
+    final response = await _withTimeout(
+      _client.get(
+        Uri.parse("$serverURL/session?roots=true"),
+        headers: _authHeaders,
+      ),
+      "GET /session?roots=true",
+      _readTimeout,
     );
     _ensureSuccess(response, "GET /session?roots=true");
 
@@ -79,11 +114,15 @@ class OpenCodeApi {
       if (roots) "roots": "true",
     };
 
-    final response = await _client.get(
-      Uri.parse("$serverURL/session").replace(
-        queryParameters: queryParams.isEmpty ? null : queryParams,
+    final response = await _withTimeout(
+      _client.get(
+        Uri.parse("$serverURL/session").replace(
+          queryParameters: queryParams.isEmpty ? null : queryParams,
+        ),
+        headers: headers,
       ),
-      headers: headers,
+      "GET /session",
+      _readTimeout,
     );
     _ensureSuccess(response, "GET /session");
 
@@ -96,9 +135,13 @@ class OpenCodeApi {
       ..._authHeaders,
       _directoryOpenCodeHeader: ?directory,
     };
-    final response = await _client.get(
-      Uri.parse("$serverURL/command"),
-      headers: headers,
+    final response = await _withTimeout(
+      _client.get(
+        Uri.parse("$serverURL/command"),
+        headers: headers,
+      ),
+      "GET /command",
+      _readTimeout,
     );
     _ensureSuccess(response, "GET /command");
 
@@ -121,14 +164,18 @@ class OpenCodeApi {
     if (parentSessionId case final id?) {
       body["parentID"] = id;
     }
-    final response = await _client.post(
-      Uri.parse("$serverURL/session"),
-      headers: {
-        ..._authHeaders,
-        "content-type": "application/json",
-        _directoryOpenCodeHeader: directory,
-      },
-      body: jsonEncode(body),
+    final response = await _withTimeout(
+      _client.post(
+        Uri.parse("$serverURL/session"),
+        headers: {
+          ..._authHeaders,
+          "content-type": "application/json",
+          _directoryOpenCodeHeader: directory,
+        },
+        body: jsonEncode(body),
+      ),
+      "POST /session",
+      _writeTimeout,
     );
     _ensureSuccess(response, "POST /session");
     return Session.fromJson(jsonDecodeMap(response.body));
@@ -142,9 +189,13 @@ class OpenCodeApi {
       ..._authHeaders,
       _directoryOpenCodeHeader: ?directory,
     };
-    final response = await _client.get(
-      Uri.parse("$serverURL/session/$sessionId"),
-      headers: headers,
+    final response = await _withTimeout(
+      _client.get(
+        Uri.parse("$serverURL/session/$sessionId"),
+        headers: headers,
+      ),
+      "GET /session/$sessionId",
+      _readTimeout,
     );
     _ensureSuccess(response, "GET /session/$sessionId");
     return Session.fromJson(jsonDecodeMap(response.body));
@@ -155,14 +206,18 @@ class OpenCodeApi {
     required Map<String, dynamic> body,
     required String? directory,
   }) async {
-    final response = await _client.patch(
-      Uri.parse("$serverURL/session/$sessionId"),
-      headers: {
-        ..._authHeaders,
-        "content-type": "application/json",
-        _directoryOpenCodeHeader: ?directory,
-      },
-      body: jsonEncode(body),
+    final response = await _withTimeout(
+      _client.patch(
+        Uri.parse("$serverURL/session/$sessionId"),
+        headers: {
+          ..._authHeaders,
+          "content-type": "application/json",
+          _directoryOpenCodeHeader: ?directory,
+        },
+        body: jsonEncode(body),
+      ),
+      "PATCH /session/$sessionId",
+      _writeTimeout,
     );
     _ensureSuccess(response, "PATCH /session/$sessionId");
     return Session.fromJson(jsonDecodeMap(response.body));
@@ -175,14 +230,18 @@ class OpenCodeApi {
     required String directory,
     required Map<String, dynamic> body,
   }) async {
-    final response = await _client.patch(
-      Uri.parse("$serverURL/project/$projectId"),
-      headers: {
-        ..._authHeaders,
-        "content-type": "application/json",
-        _directoryOpenCodeHeader: directory,
-      },
-      body: jsonEncode(body),
+    final response = await _withTimeout(
+      _client.patch(
+        Uri.parse("$serverURL/project/$projectId"),
+        headers: {
+          ..._authHeaders,
+          "content-type": "application/json",
+          _directoryOpenCodeHeader: directory,
+        },
+        body: jsonEncode(body),
+      ),
+      "PATCH /project/$projectId",
+      _writeTimeout,
     );
     _ensureSuccess(response, "PATCH /project/$projectId");
     return Project.fromJson(jsonDecodeMap(response.body));
@@ -196,9 +255,13 @@ class OpenCodeApi {
       ..._authHeaders,
       _directoryOpenCodeHeader: ?directory,
     };
-    final response = await _client.delete(
-      Uri.parse("$serverURL/session/$sessionId"),
-      headers: headers,
+    final response = await _withTimeout(
+      _client.delete(
+        Uri.parse("$serverURL/session/$sessionId"),
+        headers: headers,
+      ),
+      "DELETE /session/$sessionId",
+      _writeTimeout,
     );
     _ensureSuccess(response, "DELETE /session/$sessionId");
   }
@@ -212,14 +275,18 @@ class OpenCodeApi {
     required String directory,
     required String worktreePath,
   }) async {
-    final response = await _client.delete(
-      Uri.parse("$serverURL/experimental/worktree"),
-      headers: {
-        ..._authHeaders,
-        "content-type": "application/json",
-        _directoryOpenCodeHeader: directory,
-      },
-      body: jsonEncode({"directory": worktreePath}),
+    final response = await _withTimeout(
+      _client.delete(
+        Uri.parse("$serverURL/experimental/worktree"),
+        headers: {
+          ..._authHeaders,
+          "content-type": "application/json",
+          _directoryOpenCodeHeader: directory,
+        },
+        body: jsonEncode({"directory": worktreePath}),
+      ),
+      "DELETE /experimental/worktree",
+      _writeTimeout,
     );
     _ensureSuccess(response, "DELETE /experimental/worktree");
   }
@@ -232,9 +299,13 @@ class OpenCodeApi {
       ..._authHeaders,
       _directoryOpenCodeHeader: ?directory, // probably irrelevant for this endpoint
     };
-    final response = await _client.get(
-      Uri.parse("$serverURL/session/$sessionId/children"),
-      headers: headers,
+    final response = await _withTimeout(
+      _client.get(
+        Uri.parse("$serverURL/session/$sessionId/children"),
+        headers: headers,
+      ),
+      "GET /session/$sessionId/children",
+      _readTimeout,
     );
     _ensureSuccess(response, "GET /session/$sessionId/children");
 
@@ -246,12 +317,16 @@ class OpenCodeApi {
     required String sessionId,
     required String directory,
   }) async {
-    final response = await _client.post(
-      Uri.parse("$serverURL/session/$sessionId/fork"),
-      headers: {
-        ..._authHeaders,
-        _directoryOpenCodeHeader: directory,
-      },
+    final response = await _withTimeout(
+      _client.post(
+        Uri.parse("$serverURL/session/$sessionId/fork"),
+        headers: {
+          ..._authHeaders,
+          _directoryOpenCodeHeader: directory,
+        },
+      ),
+      "POST /session/$sessionId/fork",
+      _writeTimeout,
     );
     _ensureSuccess(response, "POST /session/$sessionId/fork");
     return Session.fromJson(jsonDecodeMap(response.body));
@@ -265,9 +340,13 @@ class OpenCodeApi {
       ..._authHeaders,
       _directoryOpenCodeHeader: ?directory, // probably irrelevant for this endpoint
     };
-    final response = await _client.get(
-      Uri.parse("$serverURL/session/$sessionId/message"),
-      headers: headers,
+    final response = await _withTimeout(
+      _client.get(
+        Uri.parse("$serverURL/session/$sessionId/message"),
+        headers: headers,
+      ),
+      "GET /session/$sessionId/message",
+      _readTimeout,
     );
     _ensureSuccess(response, "GET /session/$sessionId/message");
 
@@ -282,14 +361,18 @@ class OpenCodeApi {
     // because otherwise it picks the CWD of where bridge is running
     required String? directory,
   }) async {
-    final response = await _client.post(
-      Uri.parse("$serverURL/session/$sessionId/prompt_async"),
-      headers: {
-        ..._authHeaders,
-        "content-type": "application/json",
-        _directoryOpenCodeHeader: ?directory,
-      },
-      body: jsonEncode(body.toJson()),
+    final response = await _withTimeout(
+      _client.post(
+        Uri.parse("$serverURL/session/$sessionId/prompt_async"),
+        headers: {
+          ..._authHeaders,
+          "content-type": "application/json",
+          _directoryOpenCodeHeader: ?directory,
+        },
+        body: jsonEncode(body.toJson()),
+      ),
+      "POST /session/$sessionId/prompt_async",
+      _writeTimeout,
     );
     _ensureSuccess(response, "POST /session/$sessionId/prompt_async");
   }
@@ -327,10 +410,14 @@ class OpenCodeApi {
       ..._authHeaders,
       _directoryOpenCodeHeader: ?directory,
     };
-    final response = await _client.post(
-      Uri.parse("$serverURL/session/$sessionId/abort"),
-      headers: headers,
-      body: "",
+    final response = await _withTimeout(
+      _client.post(
+        Uri.parse("$serverURL/session/$sessionId/abort"),
+        headers: headers,
+        body: "",
+      ),
+      "POST /session/$sessionId/abort",
+      _writeTimeout,
     );
     _ensureSuccess(response, "POST /session/$sessionId/abort");
   }
@@ -342,7 +429,11 @@ class OpenCodeApi {
       ..._authHeaders,
       _directoryOpenCodeHeader: directory,
     };
-    final response = await _client.get(Uri.parse("$serverURL/agent"), headers: headers);
+    final response = await _withTimeout(
+      _client.get(Uri.parse("$serverURL/agent"), headers: headers),
+      "GET /agent",
+      _readTimeout,
+    );
     _ensureSuccess(response, "GET /agent");
 
     final decoded = jsonDecodeListMap(response.body);
@@ -356,7 +447,11 @@ class OpenCodeApi {
       ..._authHeaders,
       _directoryOpenCodeHeader: ?directory,
     };
-    final response = await _client.get(Uri.parse("$serverURL/question"), headers: headers);
+    final response = await _withTimeout(
+      _client.get(Uri.parse("$serverURL/question"), headers: headers),
+      "GET /question",
+      _readTimeout,
+    );
     Log.v("[getPendingQuestions] response: ${response.body}");
     _ensureSuccess(response, "GET /question");
 
@@ -367,12 +462,16 @@ class OpenCodeApi {
   Future<List<PendingPermission>> getPendingPermissions({
     required String? directory,
   }) async {
-    final response = await _client.get(
-      Uri.parse("$serverURL/permission"),
-      headers: {
-        ..._authHeaders,
-        _directoryOpenCodeHeader: ?directory,
-      },
+    final response = await _withTimeout(
+      _client.get(
+        Uri.parse("$serverURL/permission"),
+        headers: {
+          ..._authHeaders,
+          _directoryOpenCodeHeader: ?directory,
+        },
+      ),
+      "GET /permission",
+      _readTimeout,
     );
     Log.v("[getPendingPermissions] response: ${response.body}");
     _ensureSuccess(response, "GET /permission");
@@ -388,14 +487,18 @@ class OpenCodeApi {
   }) async {
     final encodedBody = jsonEncode(body);
     Log.d("[question-api] POST /question/$questionId/reply body=$encodedBody");
-    final response = await _client.post(
-      Uri.parse("$serverURL/question/$questionId/reply"),
-      headers: {
-        ..._authHeaders,
-        _directoryOpenCodeHeader: ?directory, // doesn't work well with the directory header
-        "content-type": "application/json",
-      },
-      body: encodedBody,
+    final response = await _withTimeout(
+      _client.post(
+        Uri.parse("$serverURL/question/$questionId/reply"),
+        headers: {
+          ..._authHeaders,
+          _directoryOpenCodeHeader: ?directory, // doesn't work well with the directory header
+          "content-type": "application/json",
+        },
+        body: encodedBody,
+      ),
+      "POST /question/$questionId/reply",
+      _writeTimeout,
     );
     Log.d("[question-api] POST /question/$questionId/reply => ${response.statusCode} body=${response.body}");
     _ensureSuccess(response, "POST /question/$questionId/reply");
@@ -408,13 +511,17 @@ class OpenCodeApi {
   }) async {
     final body = jsonEncode({"reply": reply.name});
     Log.d("[permission-api] POST /permission/$requestId/reply for session $sessionId");
-    final httpResponse = await _client.post(
-      Uri.parse("$serverURL/permission/$requestId/reply"),
-      headers: {
-        ..._authHeaders,
-        "content-type": "application/json",
-      },
-      body: body,
+    final httpResponse = await _withTimeout(
+      _client.post(
+        Uri.parse("$serverURL/permission/$requestId/reply"),
+        headers: {
+          ..._authHeaders,
+          "content-type": "application/json",
+        },
+        body: body,
+      ),
+      "POST /permission/$requestId/reply",
+      _writeTimeout,
     );
     _ensureSuccess(
       httpResponse,
@@ -426,10 +533,14 @@ class OpenCodeApi {
     required String questionId,
   }) async {
     Log.d("[question-api] POST /question/$questionId/reject");
-    final response = await _client.post(
-      Uri.parse("$serverURL/question/$questionId/reject"),
-      headers: _authHeaders,
-      body: "",
+    final response = await _withTimeout(
+      _client.post(
+        Uri.parse("$serverURL/question/$questionId/reject"),
+        headers: _authHeaders,
+        body: "",
+      ),
+      "POST /question/$questionId/reject",
+      _writeTimeout,
     );
     Log.d("[question-api] POST /question/$questionId/reject => ${response.statusCode} body=${response.body}");
     _ensureSuccess(response, "POST /question/$questionId/reject");
@@ -438,12 +549,16 @@ class OpenCodeApi {
   Future<Project> getProject({
     required String directory,
   }) async {
-    final response = await _client.get(
-      Uri.parse("$serverURL/project/current"),
-      headers: {
-        ..._authHeaders,
-        _directoryOpenCodeHeader: directory,
-      },
+    final response = await _withTimeout(
+      _client.get(
+        Uri.parse("$serverURL/project/current"),
+        headers: {
+          ..._authHeaders,
+          _directoryOpenCodeHeader: directory,
+        },
+      ),
+      "GET /project/current",
+      _readTimeout,
     );
     _ensureSuccess(response, "GET /project/current");
     return Project.fromJson(jsonDecodeMap(response.body));
@@ -477,7 +592,11 @@ class OpenCodeApi {
     final uri = Uri.parse(
       "$serverURL/experimental/session",
     ).replace(queryParameters: queryParams.isEmpty ? null : queryParams);
-    final response = await _client.get(uri, headers: _authHeaders);
+    final response = await _withTimeout(
+      _client.get(uri, headers: _authHeaders),
+      "GET /experimental/session",
+      _readTimeout,
+    );
     _ensureSuccess(response, "GET /experimental/session");
 
     final decoded = jsonDecodeListMap(response.body);
@@ -485,9 +604,13 @@ class OpenCodeApi {
   }
 
   Future<ProviderListResponse> listProviders() async {
-    final response = await _client.get(
-      Uri.parse("$serverURL/provider"),
-      headers: _authHeaders,
+    final response = await _withTimeout(
+      _client.get(
+        Uri.parse("$serverURL/provider"),
+        headers: _authHeaders,
+      ),
+      "GET /provider",
+      _readTimeout,
     );
     _ensureSuccess(response, "GET /provider");
     return ProviderListResponse.fromJson(jsonDecodeMap(response.body));
@@ -498,9 +621,13 @@ class OpenCodeApi {
       ..._authHeaders,
       _directoryOpenCodeHeader: ?directory,
     };
-    final response = await _client.get(
-      Uri.parse("$serverURL/config/providers"),
-      headers: headers,
+    final response = await _withTimeout(
+      _client.get(
+        Uri.parse("$serverURL/config/providers"),
+        headers: headers,
+      ),
+      "GET /config/providers",
+      _readTimeout,
     );
     _ensureSuccess(response, "GET /config/providers");
     return ProviderListResponse.fromJson(
@@ -514,9 +641,13 @@ class OpenCodeApi {
       _directoryOpenCodeHeader: ?directory,
     };
 
-    final response = await _client.get(
-      Uri.parse("$serverURL/session/status"),
-      headers: headers,
+    final response = await _withTimeout(
+      _client.get(
+        Uri.parse("$serverURL/session/status"),
+        headers: headers,
+      ),
+      "GET /session/status",
+      _readTimeout,
     );
     _ensureSuccess(response, "GET /session/status");
 

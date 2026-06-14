@@ -205,9 +205,13 @@ class OpenCodeService {
   }
 
   Future<void> coldStart() async {
+    final trackerSw = Stopwatch()..start();
     await tracker.coldStart();
+    Log.v("[coldStart] tracker.coldStart finished in ${trackerSw.elapsedMilliseconds}ms");
     try {
+      final hydrateSw = Stopwatch()..start();
       await _hydratePendingInput();
+      Log.v("[coldStart] hydratePendingInput finished in ${hydrateSw.elapsedMilliseconds}ms");
     } catch (e, st) {
       Log.w("coldStart: failed to hydrate pending input: $e\n$st");
     }

@@ -212,9 +212,28 @@ void registerSignalHandlers({
   required OrchestratorSession session,
   required CompositeSubscription subscriptions,
 }) {
-  ProcessSignal.sigint.watch().listen((_) => unawaited(session.cancel())).addTo(subscriptions);
+  var signalCount = 0;
+  ProcessSignal.sigint
+      .watch()
+      .listen((_) {
+        signalCount++;
+        if (signalCount >= 2) {
+          Log.e("[shutdown] SIGINT #2 — forcing immediate exit");
+          exit(1);
+        }
+        Log.i("[shutdown] SIGINT received (#$signalCount) — cancelling session");
+        unawaited(session.cancel());
+      })
+      .addTo(subscriptions);
   if (!Platform.isWindows) {
-    ProcessSignal.sigterm.watch().listen((_) => unawaited(session.cancel())).addTo(subscriptions);
+    ProcessSignal.sigterm
+        .watch()
+        .listen((_) {
+          signalCount++;
+          Log.i("[shutdown] SIGTERM received (#$signalCount) — cancelling session");
+          unawaited(session.cancel());
+        })
+        .addTo(subscriptions);
   }
 }
 

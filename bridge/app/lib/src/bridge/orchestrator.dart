@@ -179,6 +179,20 @@ class OrchestratorSession {
 
   bool _cancelled = false;
 
+  /// When the first [cancel] was requested. Used only for shutdown timing
+  /// diagnostics (the logger emits no timestamps, so durations are explicit).
+  DateTime? _cancelRequestedAt;
+
+  /// Label ("METHOD path") of the relay request currently being routed, or
+  /// `null` when the read loop is idle. Surfaces which in-flight request is
+  /// blocking the read loop when a shutdown is requested mid-route.
+  String? _inFlightRequestLabel;
+
+  /// Completes when [cancel] is first called. Allows in-flight request routing
+  /// to abandon a response instead of awaiting an OpenCode HTTP call that has
+  /// outlived the relay session.
+  final Completer<void> _shutdownCompleter = Completer<void>();
+
   OrchestratorSession._({
     required this.config,
     required RelayClient client,
@@ -371,35 +385,72 @@ class OrchestratorSession {
         }
       }
     } finally {
+      final teardownSw = Stopwatch()..start();
+      final sinceCancelMs = _cancelRequestedAt == null
+          ? null
+          : DateTime.now().difference(_cancelRequestedAt!).inMilliseconds;
       Log.i("Disconnecting...");
+      Log.d(
+        "[shutdown] session teardown begin "
+        "(${sinceCancelMs == null ? "no cancel timestamp" : "${sinceCancelMs}ms since cancel()"}"
+        "${_inFlightRequestLabel == null ? "" : ", in-flight request: $_inFlightRequestLabel"})",
+      );
       await _subscriptions.cancel();
+      Log.v("[shutdown] subscriptions cancelled (+${teardownSw.elapsedMilliseconds}ms)");
       await _sessionAbortService.dispose();
+      Log.v("[shutdown] session abort service disposed (+${teardownSw.elapsedMilliseconds}ms)");
       await _completionListener.dispose();
+      Log.v("[shutdown] completion listener disposed (+${teardownSw.elapsedMilliseconds}ms)");
       _maintenanceListener.dispose();
       _prSyncService.dispose();
+      Log.v("[shutdown] maintenance + pr-sync listeners disposed (+${teardownSw.elapsedMilliseconds}ms)");
       // Plugin teardown is owned by BridgePlugin.shutdown(), run as the
       // shutdown coordinator's ordered step — the deprecated direct
       // api.dispose() call is gone since the descriptor flip.
-      Log.d("stopping sse manager...");
+      Log.v("stopping sse manager...");
       _sseManager.stop();
-      Log.d("sse manager stopped");
-      Log.d("disposing push notification service...");
+      Log.v("sse manager stopped (+${teardownSw.elapsedMilliseconds}ms)");
+      Log.v("disposing push notification service...");
       await _pushDispatcher.dispose();
-      Log.d("push notification service disposed");
+      Log.v("push notification service disposed (+${teardownSw.elapsedMilliseconds}ms)");
       await _bytesSentController.close();
       try {
-        Log.d("closing relay client...");
+        Log.v("closing relay client...");
         await _client.close();
-        Log.d("relay client closed");
+        Log.v("relay client closed (+${teardownSw.elapsedMilliseconds}ms)");
       } catch (e) {
         Log.e("error closing relay connection: $e");
       }
+      Log.d("[shutdown] session teardown complete (${teardownSw.elapsedMilliseconds}ms total)");
     }
   }
 
   Future<void> cancel() async {
+    if (_cancelRequestedAt == null) {
+      _cancelRequestedAt = DateTime.now();
+      Log.d(
+        "[shutdown] cancel() requested"
+        "${_inFlightRequestLabel == null ? "" : " — in-flight request: $_inFlightRequestLabel"}",
+      );
+    } else {
+      Log.v("[shutdown] cancel() again (already shutting down)");
+    }
     _cancelled = true;
+    if (!_shutdownCompleter.isCompleted) {
+      _shutdownCompleter.complete();
+    }
+    final sw = Stopwatch()..start();
     await _client.close();
+    Log.d("[shutdown] cancel(): relay client closed in ${sw.elapsedMilliseconds}ms");
+    // Fire-and-forget: closing the plugin's HTTP client is the only way to
+    // unblock an in-flight OpenCode request that the read loop is awaiting.
+    // Idempotent disposal still runs through the shutdown coordinator later;
+    // this call just makes it happen early enough to prevent a 15–30s hang.
+    unawaited(
+      _plugin.dispose().catchError((Object e) {
+        Log.v("[shutdown] early plugin dispose error (ignored): $e");
+      }),
+    );
   }
 
   Future<void> _processPluginEvent(BridgeSseEvent event) async {
@@ -641,13 +692,41 @@ class OrchestratorSession {
     switch (msg) {
       case final RelayRequest req:
         Log.v("RelayRequest: ${req.method} ${req.path}");
+        _inFlightRequestLabel = "${req.method} ${req.path}";
+        final routeSw = Stopwatch()..start();
         try {
-          final response = await _router.route(req);
+          final response = await Future.any<RelayResponse>([
+            _router.route(req),
+            _shutdownCompleter.future.then((_) => throw const _ShutdownInProgressException()),
+          ]);
+          if (_cancelled) {
+            Log.v(
+              "[shutdown] route ${req.method} ${req.path} completed after cancel — "
+              "dropping response (status=${response.status})",
+            );
+            return;
+          }
+          if (routeSw.elapsedMilliseconds > 1000) {
+            Log.d(
+              "[shutdown] slow route ${req.method} ${req.path} for connId $connID "
+              "took ${routeSw.elapsedMilliseconds}ms (cancelled=$_cancelled)",
+            );
+          }
           Log.v("response: status=${response.status}");
           await _encryptAndSend(connID: connID, message: response);
           Log.v("response sent to connID=$connID");
+        } on _ShutdownInProgressException {
+          Log.v(
+            "[shutdown] route ${req.method} ${req.path} abandoned because shutdown was requested",
+          );
         } catch (e) {
-          Log.e("request routing failed for connId $connID: $e");
+          if (_cancelled) {
+            Log.v("[shutdown] route ${req.method} ${req.path} failed during shutdown: $e");
+          } else {
+            Log.e("request routing failed for connId $connID: $e");
+          }
+        } finally {
+          _inFlightRequestLabel = null;
         }
       case final RelaySseSubscribe subscribe:
         Log.v("SseSubscribe: path=${subscribe.path}");
@@ -693,4 +772,9 @@ class OrchestratorSession {
     final framed = await frame(jsonBytes, encryptor: encryptor);
     _client.send(connID, framed);
   }
+}
+
+/// Thrown when a request is racing against shutdown and shutdown wins.
+class _ShutdownInProgressException implements Exception {
+  const _ShutdownInProgressException();
 }
