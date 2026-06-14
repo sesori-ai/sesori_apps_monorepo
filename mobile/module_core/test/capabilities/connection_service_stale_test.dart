@@ -189,5 +189,47 @@ void main() {
       expect(staleEmissions, 1);
       await sub.cancel();
     });
+
+    test("proactively reconnects when resuming past the relay-drop threshold while still connected", () async {
+      service.emitStatusForTesting(const ConnectionStatus.connected(config: config, health: health));
+
+      lifecycleController.add(LifecycleState.paused);
+      await flush();
+      // 30s exceeds the resume reconnect threshold: the relay has very likely
+      // already dropped the backgrounded phone, so a "connected" status is stale.
+      now = now.add(const Duration(seconds: 30));
+      lifecycleController.add(LifecycleState.resumed);
+      await flush();
+
+      expect(service.currentStatus, isA<ConnectionReconnecting>());
+    });
+
+    test("does NOT reconnect when resuming quickly while still connected", () async {
+      service.emitStatusForTesting(const ConnectionStatus.connected(config: config, health: health));
+
+      lifecycleController.add(LifecycleState.paused);
+      await flush();
+      // 5s is well within the threshold: the socket is presumed alive.
+      now = now.add(const Duration(seconds: 5));
+      lifecycleController.add(LifecycleState.resumed);
+      await flush();
+
+      expect(service.currentStatus, isA<ConnectionConnected>());
+    });
+
+    test("proactively reconnects when resuming past the threshold while bridge offline", () async {
+      // Bridge-offline keeps an open relay socket waiting for the bridge to
+      // return; the relay still drops it while backgrounded, so resume must
+      // reconnect or the BridgeStatus.online frame would never arrive.
+      service.emitStatusForTesting(const ConnectionStatus.bridgeOffline(config: config, health: health));
+
+      lifecycleController.add(LifecycleState.paused);
+      await flush();
+      now = now.add(const Duration(seconds: 30));
+      lifecycleController.add(LifecycleState.resumed);
+      await flush();
+
+      expect(service.currentStatus, isA<ConnectionReconnecting>());
+    });
   });
 }

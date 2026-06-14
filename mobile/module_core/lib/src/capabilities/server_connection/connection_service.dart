@@ -74,6 +74,14 @@ class ConnectionService {
 
   static const _maxRelayReconnectBackoff = Duration(seconds: 30);
 
+  /// Once the app has been backgrounded longer than this, the relay has very
+  /// likely already closed our phone socket: it pings every 30s with a 15s
+  /// pong deadline, and a suspended app cannot answer in time. Past this point
+  /// a status that still reads "connected" can no longer be trusted, so on
+  /// resume we reconnect proactively instead of waiting to discover the dead
+  /// socket via a request timeout.
+  static const _resumeReconnectThreshold = Duration(seconds: 20);
+
   /// 90% of the bridge's SSE replay window, providing a safety margin
   /// to ensure we detect staleness before events are actually lost.
   static final Duration staleThreshold = Duration(
@@ -441,22 +449,33 @@ class ConnectionService {
 
     final backgroundedAt = _backgroundedAt;
     _backgroundedAt = null;
-    if (backgroundedAt != null) {
-      final elapsed = _clock().difference(backgroundedAt);
-      if (elapsed >= staleThreshold && activeConfig != null) {
-        logd("App was backgrounded for $elapsed — emitting stale reconnect signal");
-        _dataMayBeStale.add(null);
-      }
+    final backgroundedFor = backgroundedAt == null ? Duration.zero : _clock().difference(backgroundedAt);
+
+    if (backgroundedAt != null && backgroundedFor >= staleThreshold && activeConfig != null) {
+      logd("App was backgrounded for $backgroundedFor — emitting stale reconnect signal");
+      _dataMayBeStale.add(null);
     }
 
     final status = _status.value;
     final config = activeConfig;
     if (config == null) return;
 
-    final needsReconnect = status is ConnectionLost || status is ConnectionReconnecting;
+    // The relay closes backgrounded phones once its ping/pong window lapses
+    // (~30-45s). Past [_resumeReconnectThreshold], any status that still holds
+    // an open relay socket (connected, or bridge-offline while waiting for the
+    // bridge to return) is almost certainly a dead socket, so reconnect
+    // proactively rather than discovering it later via a request timeout.
+    // Bridge-offline especially must reconnect: its recovery depends on a relay
+    // frame (BridgeStatus.online) that a dead socket will never deliver.
+    final connectionLikelyStale =
+        (status is ConnectionConnected || status is ConnectionBridgeOffline) &&
+        backgroundedFor >= _resumeReconnectThreshold;
+
+    final needsReconnect =
+        status is ConnectionLost || status is ConnectionReconnecting || connectionLikelyStale;
     if (!needsReconnect) return;
 
-    logd("App resumed with lost connection — triggering reconnect");
+    logd("App resumed — triggering reconnect (status=${status.runtimeType}, backgrounded=$backgroundedFor)");
     _relayReconnectBackoff = const Duration(seconds: 1);
     _status.add(ConnectionStatus.reconnecting(config: config));
     unawaited(_reconnectRelayWithRefresh(config));
