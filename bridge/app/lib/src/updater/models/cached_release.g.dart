@@ -11,7 +11,7 @@ _CachedRelease _$CachedReleaseFromJson(Map json) => _CachedRelease(
   downloadUrl: json['downloadUrl'] as String,
   checksumsUrl: json['checksumsUrl'] as String,
   assetName: json['assetName'] as String,
-  track: json['track'] as String,
+  track: json['track'] as String? ?? 'stable',
   publishedAt: DateTime.parse(json['publishedAt'] as String),
   checkedAt: DateTime.parse(json['checkedAt'] as String),
 );

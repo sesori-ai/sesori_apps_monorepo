@@ -57,6 +57,29 @@ void main() {
       expect(cached.checkedAt, equals(now));
     });
 
+    test('legacy cache without track field defaults to stable without throwing', () async {
+      final now = DateTime(2024, 1, 1, 12, 0, 0);
+      final cache = UpdateCacheApi(
+        cacheDirectory: tempDir,
+        clock: Clock.fixed(now),
+      );
+
+      await Directory(tempDir).create(recursive: true);
+      // A cache file written before the `track` field existed.
+      await File('$tempDir/update_cache.json').writeAsString(
+        '{"latestVersion":"1.2.3","downloadUrl":"https://example.com/d",'
+        '"checksumsUrl":"https://example.com/c",'
+        '"assetName":"sesori-bridge-macos-arm64.tar.gz",'
+        '"publishedAt":"2023-12-31T12:00:00.000","checkedAt":"2024-01-01T12:00:00.000"}',
+      );
+
+      final cached = await cache.read(ttl: const Duration(hours: 1));
+
+      expect(cached, isNotNull);
+      expect(cached!.track, equals('stable'));
+      expect(cached.latestVersion, equals('1.2.3'));
+    });
+
     test('expired: data older than TTL returns null', () async {
       final checkedAt = DateTime(2024, 1, 1, 12, 0, 0);
       const ttl = Duration(hours: 1);

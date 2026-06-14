@@ -22,6 +22,8 @@ mixin _$CachedRelease {
  String get assetName;/// The release track ([ReleaseTrack.wireValue]) this cache entry was
 /// resolved for. A cache entry from a different track is ignored so a
 /// recent stable check can't mask an internal build (or vice versa).
+/// Defaults to `stable` so cache files written before this field existed
+/// (always the stable channel) parse without throwing during upgrades.
  String get track;/// When this release was published upstream.
  DateTime get publishedAt;/// When this cache entry was created.
  DateTime get checkedAt;
@@ -95,7 +97,7 @@ as DateTime,
 @JsonSerializable()
 
 class _CachedRelease implements CachedRelease {
-  const _CachedRelease({required this.latestVersion, required this.downloadUrl, required this.checksumsUrl, required this.assetName, required this.track, required this.publishedAt, required this.checkedAt});
+  const _CachedRelease({required this.latestVersion, required this.downloadUrl, required this.checksumsUrl, required this.assetName, this.track = 'stable', required this.publishedAt, required this.checkedAt});
   factory _CachedRelease.fromJson(Map<String, dynamic> json) => _$CachedReleaseFromJson(json);
 
 /// The latest version string found during the check.
@@ -109,7 +111,9 @@ class _CachedRelease implements CachedRelease {
 /// The release track ([ReleaseTrack.wireValue]) this cache entry was
 /// resolved for. A cache entry from a different track is ignored so a
 /// recent stable check can't mask an internal build (or vice versa).
-@override final  String track;
+/// Defaults to `stable` so cache files written before this field existed
+/// (always the stable channel) parse without throwing during upgrades.
+@override@JsonKey() final  String track;
 /// When this release was published upstream.
 @override final  DateTime publishedAt;
 /// When this cache entry was created.
