@@ -70,6 +70,7 @@ class ConnectionService {
   final Random _requestIdRandom = Random();
   int _authRetryCount = 0;
   Duration _relayReconnectBackoff = const Duration(seconds: 1);
+  int _reconnectAttemptId = 0;
   bool _isInBackground = false;
   DateTime? _backgroundedAt;
 
@@ -235,8 +236,18 @@ class ConnectionService {
     ServerConnectionConfig config,
   ) => _connectViaRelay(config);
 
-  Future<ApiResponse<HealthResponse>> _connectViaRelay(ServerConnectionConfig config) async {
+  Future<ApiResponse<HealthResponse>> _connectViaRelay(
+    ServerConnectionConfig config, {
+    bool Function()? isStale,
+  }) async {
     await _disconnectRelayClient();
+
+    // If a newer reconnect attempt superseded us (or we were disconnected) while
+    // the previous socket was tearing down, don't open a replacement — otherwise
+    // two sockets briefly race for the same account (relay close code 4005).
+    if (isStale?.call() ?? false) {
+      return ApiResponse.error(ApiError.generic());
+    }
 
     final relayClient = _relayClientFactory.call(
       relayHost: config.relayHost,
@@ -271,6 +282,14 @@ class ConnectionService {
       // A non-error status code is sufficient — the bridge only returns 200
       // when the underlying backend is healthy. The response body is ignored.
       const health = HealthResponse(healthy: true, version: "");
+
+      // The handshake spanned several awaits; if a newer attempt or a disconnect
+      // landed meanwhile, tear down this socket instead of committing it as the
+      // live connection.
+      if (isStale?.call() ?? false) {
+        await relayClient.disconnect();
+        return ApiResponse.error(ApiError.generic());
+      }
 
       _relayClient = relayClient;
       _authRetryCount = 0;
@@ -580,6 +599,12 @@ class ConnectionService {
     }
     if (_status.value is ConnectionDisconnected) return;
 
+    // Each reconnect attempt claims a generation id. A newer attempt (another
+    // drop, resume, or manual reconnect) bumps the id, so any older attempt that
+    // wakes from an await boundary below sees it has been superseded and bails —
+    // keeping two attempts from opening relay sockets concurrently.
+    final attemptId = ++_reconnectAttemptId;
+
     if (!immediate) {
       final backoff = _relayReconnectBackoff;
       final jitter = (backoff.inMilliseconds * 0.25 * (Random().nextDouble() * 2 - 1)).round();
@@ -597,6 +622,7 @@ class ConnectionService {
       await completer.future;
       _reconnectTimer = null;
       _reconnectDelayCompleter = null;
+      if (attemptId != _reconnectAttemptId) return;
       if (_isInBackground) {
         _status.add(ConnectionStatus.connectionLost(config: config));
         return;
@@ -613,6 +639,7 @@ class ConnectionService {
         minTtl: const Duration(minutes: 2),
       );
 
+      if (attemptId != _reconnectAttemptId) return;
       if (_isInBackground) {
         _status.add(ConnectionStatus.connectionLost(config: config));
         return;
@@ -630,8 +657,14 @@ class ConnectionService {
         authToken: authToken,
       );
 
-      final result = await _connectViaRelay(freshConfig);
+      final result = await _connectViaRelay(
+        freshConfig,
+        isStale: () => attemptId != _reconnectAttemptId || _status.value is ConnectionDisconnected,
+      );
 
+      // A newer attempt or a disconnect during connect means that owner is now
+      // responsible for the resulting state — don't clobber it with our outcome.
+      if (attemptId != _reconnectAttemptId) return;
       if (_status.value is ConnectionDisconnected) return;
 
       if (result is ErrorResponse<HealthResponse>) {
@@ -646,6 +679,7 @@ class ConnectionService {
       }
     } catch (error, stackTrace) {
       loge("Relay reconnect attempt failed unexpectedly", error, stackTrace);
+      if (attemptId != _reconnectAttemptId) return;
       if (_status.value is ConnectionDisconnected) return;
       _relayReconnectBackoff = Duration(
         milliseconds: min(

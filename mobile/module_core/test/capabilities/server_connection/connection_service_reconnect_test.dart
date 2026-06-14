@@ -331,5 +331,78 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 1400));
       expect(factory.callCount, 1);
     });
+
+    test("a superseded reconnect attempt aborts after its async gap and does not open a second socket", () async {
+      final sseController = StreamController<RelaySseEvent>.broadcast();
+      addTearDown(sseController.close);
+
+      final relayClient = MockRelayClient();
+      when(relayClient.connect).thenAnswer((_) async {});
+      when(() => relayClient.isConnected).thenReturn(true);
+      when(() => relayClient.sendRequest(any())).thenAnswer(
+        (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
+      );
+      when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
+      when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(relayClient.disconnect).thenAnswer((_) async {});
+
+      // Attempt 1's token refresh is held pending; Attempt 2's resolves
+      // immediately, so Attempt 2 supersedes Attempt 1 while it is still parked.
+      final firstToken = Completer<String?>();
+      var tokenCalls = 0;
+      when(() => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl"))).thenAnswer((_) {
+        tokenCalls++;
+        return tokenCalls == 1 ? firstToken.future : Future<String?>.value("token");
+      });
+
+      var now = DateTime(2025, 1, 1, 12, 0, 0);
+      final factory = _TestRelayClientFactory(
+        ({
+          required String relayHost,
+          required RelayCryptoService cryptoService,
+          required RoomKeyStorage roomKeyStorage,
+          required String? authToken,
+        }) => relayClient,
+      );
+      final service = ConnectionService(
+        cryptoService,
+        roomKeyStorage,
+        authTokenProvider,
+        authSession,
+        lifecycleSource,
+        failureReporter,
+        clock: _TestClockProvider(() => now),
+        relayClientFactory: factory,
+      );
+      addTearDown(service.dispose);
+
+      await service.connect(config);
+      expect(factory.callCount, 1);
+
+      // Attempt 1: resume past the threshold → immediate reconnect, parks at token.
+      lifecycleController.add(LifecycleState.paused);
+      await Future<void>.delayed(Duration.zero);
+      now = now.add(const Duration(seconds: 30));
+      lifecycleController.add(LifecycleState.resumed);
+      await Future<void>.delayed(Duration.zero);
+      expect(factory.callCount, 1);
+
+      // Attempt 2: background + resume again → supersedes Attempt 1 and connects.
+      lifecycleController.add(LifecycleState.paused);
+      await Future<void>.delayed(Duration.zero);
+      now = now.add(const Duration(seconds: 30));
+      lifecycleController.add(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(factory.callCount, 2);
+      expect(service.currentStatus, isA<ConnectionConnected>());
+
+      // Releasing Attempt 1's token must NOT open a third socket: it detects it
+      // was superseded and bails after the await.
+      firstToken.complete("token-stale");
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(factory.callCount, 2);
+      expect(service.currentStatus, isA<ConnectionConnected>());
+    });
   });
 }
