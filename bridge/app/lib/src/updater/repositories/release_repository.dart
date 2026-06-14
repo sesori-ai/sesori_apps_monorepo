@@ -39,7 +39,7 @@ class ReleaseRepository {
     }
     return _track == ReleaseTrack.internal &&
         version.prereleaseIdentifiers.isNotEmpty &&
-        version.prereleaseIdentifiers.first == 'internal';
+        version.prereleaseIdentifiers.first == ReleaseTrack.internal.wireValue;
   }
 
   Future<ReleaseInfo?> checkForNewerRelease() async {
