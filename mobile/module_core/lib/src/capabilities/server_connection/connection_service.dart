@@ -425,10 +425,21 @@ class ConnectionService {
     final relayClient = _relayClient;
     _relayClient = null;
 
-    await _relaySseSubscription?.cancel();
+    // Never let teardown complete with an error: several callers invoke this via
+    // `unawaited(...)`, so a thrown cancellation/disconnect error would surface
+    // as an uncaught async error in the zone.
+    try {
+      await _relaySseSubscription?.cancel();
+    } catch (error, stackTrace) {
+      loge("Failed to cancel relay SSE subscription", error, stackTrace);
+    }
     _relaySseSubscription = null;
 
-    await _bridgeStatusSubscription?.cancel();
+    try {
+      await _bridgeStatusSubscription?.cancel();
+    } catch (error, stackTrace) {
+      loge("Failed to cancel bridge status subscription", error, stackTrace);
+    }
     _bridgeStatusSubscription = null;
 
     if (relayClient == null) {

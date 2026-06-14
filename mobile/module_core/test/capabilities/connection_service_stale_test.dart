@@ -49,6 +49,7 @@ class _TestClockProvider extends ClockProvider {
 
 void main() {
   setUpAll(() {
+    registerFallbackValue(const Duration(minutes: 1));
     registerFallbackValue(
       const RelayRequest(id: "fallback", method: "GET", path: "/health", headers: {}, body: null),
     );
@@ -268,6 +269,8 @@ void main() {
       when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
       when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
       when(relayClient.disconnect).thenAnswer((_) async {});
+      when(() => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl")))
+          .thenAnswer((_) async => "token");
 
       final staleService = ConnectionService(
         cryptoService,
