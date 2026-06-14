@@ -2,6 +2,7 @@ import 'package:sesori_bridge/src/repositories/bridge_settings.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
 import 'package:sesori_bridge/src/repositories/default_editor_repository.dart';
 import 'package:sesori_bridge/src/services/bridge_config_service.dart';
+import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -44,6 +45,9 @@ class _FakeBridgeSettingsRepository implements BridgeSettingsRepository {
 
   @override
   Future<void> saveSettings({required BridgeSettings settings}) async {}
+
+  @override
+  Future<void> updateReleaseTrack({required ReleaseTrack track}) async {}
 }
 
 class _FakeDefaultEditorRepository implements DefaultEditorRepository {

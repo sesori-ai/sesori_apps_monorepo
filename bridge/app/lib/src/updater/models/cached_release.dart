@@ -19,6 +19,13 @@ sealed class CachedRelease with _$CachedRelease {
     /// The release asset name this cache entry was resolved for.
     required String assetName,
 
+    /// The release track ([ReleaseTrack.wireValue]) this cache entry was
+    /// resolved for. A cache entry from a different track is ignored so a
+    /// recent stable check can't mask an internal build (or vice versa).
+    /// Defaults to `stable` so cache files written before this field existed
+    /// (always the stable channel) parse without throwing during upgrades.
+    @Default('stable') String track,
+
     /// When this release was published upstream.
     required DateTime publishedAt,
 

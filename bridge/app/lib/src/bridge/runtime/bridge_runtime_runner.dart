@@ -19,6 +19,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         StartAbortController,
         StartAbortSignal;
 
+import "../../api/bridge_settings_api.dart";
 import "../../auth/bridge_registration_api.dart";
 import "../../auth/bridge_registration_repository.dart";
 import "../../auth/bridge_registration_service.dart";
@@ -28,6 +29,7 @@ import "../../auth/login_oauth_api.dart";
 import "../../auth/login_oauth_service.dart";
 import "../../auth/token.dart";
 import "../../auth/token_manager.dart";
+import "../../repositories/bridge_settings_repository.dart";
 import "../../server/api/loopback_port_api.dart";
 import "../../server/api/runtime_file_api.dart";
 import "../../server/api/system_process_api.dart";
@@ -49,6 +51,7 @@ import "../../updater/api/file_replacement_api.dart";
 import "../../updater/api/github_releases_api.dart";
 import "../../updater/api/update_cache_api.dart";
 import "../../updater/api/update_download_api.dart";
+import "../../updater/foundation/release_track.dart";
 import "../../updater/foundation/update_lock.dart";
 import "../../updater/foundation/update_policy.dart";
 import "../../updater/foundation/update_relaunch_client.dart";
@@ -181,10 +184,29 @@ class BridgeRuntimeRunner {
         return 1;
       }
 
+      // Resolve the configured release track once, here in the composition
+      // root. Constructing settings access (BridgeSettingsApi reads HOME) or
+      // reading the config can throw; a settings failure must never block the
+      // bridge from starting, so any error falls back to the stable track.
+      ReleaseTrack? configuredTrack;
+      try {
+        final settingsRepository = BridgeSettingsRepository(api: BridgeSettingsApi());
+        configuredTrack = (await settingsRepository.loadSettings()).releaseTrack;
+      } on Object catch (error) {
+        Log.w("Failed to resolve release track; defaulting to stable: $error");
+      }
+      final releaseTrack = configuredTrack ?? ReleaseTrack.stable;
+      if (releaseTrack == ReleaseTrack.internal) {
+        Log.w("Release track: internal (pre-release auto-updates enabled)");
+      } else {
+        Log.d("Release track: ${releaseTrack.wireValue}");
+      }
+
       final updateService = _createUpdateService(
         httpClient: httpClient,
         processRunner: processRunner,
         managedRuntimePaths: managedRuntimePaths,
+        releaseTrack: releaseTrack,
       );
       await updateService.checkAndApplyUpdate(cliArgs: options.cliArgs);
 
@@ -435,6 +457,7 @@ class BridgeRuntimeRunner {
     required http.Client httpClient,
     required ProcessRunner processRunner,
     required ManagedRuntimePaths managedRuntimePaths,
+    required ReleaseTrack releaseTrack,
   }) {
     final installedFileRepository = InstalledFileRepository(
       fileReplacementApi: FileReplacementApi(processRunner: processRunner),
@@ -449,6 +472,7 @@ class BridgeRuntimeRunner {
         ),
         currentVersion: appVersion,
         target: currentDistributionTarget(),
+        track: releaseTrack,
       ),
       updateInstallerService: UpdateInstallService(
         updateArtifactRepository: UpdateArtifactRepository(

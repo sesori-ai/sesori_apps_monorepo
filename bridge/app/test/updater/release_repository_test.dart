@@ -7,6 +7,7 @@ import 'package:http/testing.dart';
 import 'package:sesori_bridge/src/updater/api/github_releases_api.dart';
 import 'package:sesori_bridge/src/updater/api/update_cache_api.dart';
 import 'package:sesori_bridge/src/updater/foundation/platform_info.dart';
+import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
 import 'package:sesori_bridge/src/updater/models/bridge_version.dart';
 import 'package:sesori_bridge/src/updater/models/cached_release.dart';
 import 'package:sesori_bridge/src/updater/models/distribution_target.dart';
@@ -84,6 +85,7 @@ ReleaseRepository _makeRepository({
   _FakeCache? cache,
   String currentVersion = '0.2.0',
   DistributionTarget? target,
+  ReleaseTrack track = ReleaseTrack.stable,
 }) {
   final resolvedTarget = target ?? _defaultTarget;
 
@@ -92,6 +94,7 @@ ReleaseRepository _makeRepository({
     cache: cache ?? _FakeCache(),
     currentVersion: currentVersion,
     target: resolvedTarget,
+    track: track,
   );
 }
 
@@ -388,6 +391,7 @@ void main() {
           downloadUrl: 'https://example.com/dl/asset.tar.gz',
           checksumsUrl: 'https://example.com/dl/checksums.txt',
           assetName: _defaultTarget.assetName,
+          track: 'stable',
           publishedAt: DateTime.parse('2024-06-01T00:00:00Z'),
           checkedAt: DateTime.now(),
         );
@@ -417,6 +421,7 @@ void main() {
           downloadUrl: 'https://example.com/dl/asset.tar.gz',
           checksumsUrl: 'https://example.com/dl/checksums.txt',
           assetName: _defaultTarget.assetName,
+          track: 'stable',
           publishedAt: DateTime.parse('2024-06-01T00:00:00Z'),
           checkedAt: DateTime.now(),
         );
@@ -442,6 +447,7 @@ void main() {
           downloadUrl: 'https://example.com/dl/asset.tar.gz',
           checksumsUrl: 'https://example.com/dl/checksums.txt',
           assetName: _defaultTarget.assetName,
+          track: 'stable',
           publishedAt: DateTime.parse('2024-06-01T00:00:00Z'),
           checkedAt: DateTime.now(),
         );
@@ -550,6 +556,7 @@ void main() {
           downloadUrl: 'https://example.com/dl/windows.zip',
           checksumsUrl: 'https://example.com/dl/checksums.txt',
           assetName: 'sesori-bridge-windows-x64.zip',
+          track: 'stable',
           publishedAt: DateTime.parse('2024-06-01T00:00:00Z'),
           checkedAt: DateTime.now(),
         );
@@ -617,6 +624,164 @@ void main() {
 
         expect(result, isNotNull);
         expect(result!.version, equals('0.3.1'));
+      });
+    });
+    // -----------------------------------------------------------------------
+    group('release track', () {
+      test('stable track ignores a newer internal pre-release', () async {
+        final repository = _makeRepository(
+          httpClient: _mockOk(
+            body: [
+              _releaseJson(version: '0.5.0-internal.3', prerelease: true),
+              _releaseJson(version: '0.3.1'),
+            ],
+          ),
+          currentVersion: '0.2.0',
+        );
+
+        final result = await repository.checkForNewerRelease();
+
+        expect(result, isNotNull);
+        expect(result!.version, equals('0.3.1'));
+      });
+
+      test('internal track selects a newer internal pre-release', () async {
+        final repository = _makeRepository(
+          httpClient: _mockOk(
+            body: [
+              _releaseJson(version: '0.5.0-internal.3', prerelease: true),
+              _releaseJson(version: '0.3.1'),
+            ],
+          ),
+          currentVersion: '0.2.0',
+          track: ReleaseTrack.internal,
+        );
+
+        final result = await repository.checkForNewerRelease();
+
+        expect(result, isNotNull);
+        expect(result!.version, equals('0.5.0-internal.3'));
+      });
+
+      test('internal track picks the newest of stable and internal', () async {
+        final repository = _makeRepository(
+          httpClient: _mockOk(
+            body: [
+              _releaseJson(version: '0.4.0-internal.2', prerelease: true),
+              _releaseJson(version: '0.4.0'),
+            ],
+          ),
+          currentVersion: '0.2.0',
+          track: ReleaseTrack.internal,
+        );
+
+        final result = await repository.checkForNewerRelease();
+
+        expect(result, isNotNull);
+        // Stable 0.4.0 outranks its own 0.4.0-internal.2 pre-release.
+        expect(result!.version, equals('0.4.0'));
+      });
+
+      test('internal track ignores non-internal pre-releases (rc/beta)', () async {
+        final repository = _makeRepository(
+          httpClient: _mockOk(
+            body: [
+              _releaseJson(version: '0.5.0-rc.1', prerelease: true),
+              _releaseJson(version: '0.5.0-beta.2', prerelease: true),
+              _releaseJson(version: '0.3.1'),
+            ],
+          ),
+          currentVersion: '0.2.0',
+          track: ReleaseTrack.internal,
+        );
+
+        final result = await repository.checkForNewerRelease();
+
+        expect(result, isNotNull);
+        expect(result!.version, equals('0.3.1'));
+      });
+
+      test('internal track is forward-only: stable older than current internal → null', () async {
+        final repository = _makeRepository(
+          httpClient: _mockOk(
+            body: [
+              _releaseJson(version: '0.3.0'),
+            ],
+          ),
+          currentVersion: '0.4.0-internal.3',
+          track: ReleaseTrack.internal,
+        );
+
+        // 0.3.0 < 0.4.0-internal.3, so no update (no downgrade to stable).
+        expect(await repository.checkForNewerRelease(), isNull);
+      });
+
+      test('internal track selects the highest internal build number', () async {
+        final repository = _makeRepository(
+          httpClient: _mockOk(
+            body: [
+              _releaseJson(version: '0.4.0-internal.9', prerelease: true),
+              _releaseJson(version: '0.4.0-internal.53', prerelease: true),
+              _releaseJson(version: '0.4.0-internal.12', prerelease: true),
+            ],
+          ),
+          currentVersion: '0.2.0',
+          track: ReleaseTrack.internal,
+        );
+
+        final result = await repository.checkForNewerRelease();
+
+        expect(result, isNotNull);
+        expect(result!.version, equals('0.4.0-internal.53'));
+      });
+
+      test('internal track writes the track into the cache', () async {
+        final cache = _FakeCache();
+        final repository = _makeRepository(
+          httpClient: _mockOk(body: [_releaseJson(version: '0.5.0-internal.3', prerelease: true)]),
+          cache: cache,
+          currentVersion: '0.2.0',
+          track: ReleaseTrack.internal,
+        );
+
+        await repository.checkForNewerRelease();
+
+        expect(cache.writtenReleases, hasLength(1));
+        expect(cache.writtenReleases.first.track, equals('internal'));
+        expect(cache.writtenReleases.first.latestVersion, equals('0.5.0-internal.3'));
+      });
+
+      test('cache entry from a different track is ignored and refreshed from HTTP', () async {
+        var httpCallCount = 0;
+        final client = MockClient((_) async {
+          httpCallCount++;
+          return http.Response(
+            jsonEncode([_releaseJson(version: '0.5.0-internal.4', prerelease: true)]),
+            200,
+          );
+        });
+
+        final cached = CachedRelease(
+          latestVersion: '9.9.9',
+          downloadUrl: 'https://example.com/dl/asset.tar.gz',
+          checksumsUrl: 'https://example.com/dl/checksums.txt',
+          assetName: _defaultTarget.assetName,
+          track: 'stable',
+          publishedAt: DateTime.parse('2024-06-01T00:00:00Z'),
+          checkedAt: DateTime.now(),
+        );
+        final repository = _makeRepository(
+          httpClient: client,
+          cache: _FakeCache(readResult: cached),
+          currentVersion: '0.2.0',
+          track: ReleaseTrack.internal,
+        );
+
+        final result = await repository.checkForNewerRelease();
+
+        expect(result, isNotNull);
+        expect(result!.version, equals('0.5.0-internal.4'));
+        expect(httpCallCount, equals(1), reason: 'a stable cache must not satisfy an internal-track check');
       });
     });
   });

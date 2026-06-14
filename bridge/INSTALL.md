@@ -87,6 +87,7 @@ sesori-bridge
 - Release checksum manifests use archive basenames such as `sesori-bridge-macos-arm64.tar.gz`; installers match that basename instead of a temp download path
 - Startup auto-update only applies to managed installs under the Sesori install root (`~/.local/share/sesori/bin` on macOS/Linux, `%LOCALAPPDATA%\sesori\bin` on Windows)
 - Runtime auto-update also performs periodic polling every 4 hours while the managed bridge is running, and it is skipped in CI and when `SESORI_NO_UPDATE=1` is set
+- The update track selects which releases auto-update follows: `stable` (default) tracks stable `vX.Y.Z` releases, while `internal` additionally tracks the `vX.Y.Z-internal.N` pre-releases. Switch with `sesori-bridge config track internal` (and back with `sesori-bridge config track stable`), then restart the bridge to apply. The shell and npm installers always fetch the latest stable release regardless of the configured track
 - Periodic polling only notifies that an update is available — the update is applied at the next startup. For a bridge running under a service manager (e.g. systemd), restart the service to apply updates (see [`docs/SETUP_HEADLESS_VM.md`](../docs/SETUP_HEADLESS_VM.md))
 - Direct execution of package binaries from npm-owned `node_modules` locations is unsupported
 
