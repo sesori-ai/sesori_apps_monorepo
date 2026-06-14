@@ -60,6 +60,7 @@ class ConnectionService {
   final _compositeSubscription = CompositeSubscription();
 
   RelayClient? _relayClient;
+  RelayClient? _connectingRelayClient;
   StreamSubscription<RelaySseEvent>? _relaySseSubscription;
   StreamSubscription<BridgeStatus>? _bridgeStatusSubscription;
   Timer? _reconnectTimer;
@@ -255,9 +256,24 @@ class ConnectionService {
       roomKeyStorage: _roomKeyStorage,
       authToken: config.authToken,
     );
+    _connectingRelayClient = relayClient;
+
+    if (isStale?.call() ?? false) {
+      _clearConnectingRelayClient(relayClient);
+      await relayClient.disconnect();
+      return ApiResponse.error(ApiError.generic());
+    }
 
     try {
       await relayClient.connect();
+
+      // If this attempt was superseded while the websocket handshake awaited,
+      // stop before sending health on a socket that a newer attempt now owns.
+      if (isStale?.call() ?? false) {
+        _clearConnectingRelayClient(relayClient);
+        await relayClient.disconnect();
+        return ApiResponse.error(ApiError.generic());
+      }
 
       final response = await relayClient.sendRequest(
         RelayRequest(
@@ -270,6 +286,7 @@ class ConnectionService {
       );
 
       if (response.status < 200 || response.status >= 300 || response.body == null) {
+        _clearConnectingRelayClient(relayClient);
         await relayClient.disconnect();
         return ApiResponse.error(
           ApiError.nonSuccessCode(
@@ -287,10 +304,12 @@ class ConnectionService {
       // landed meanwhile, tear down this socket instead of committing it as the
       // live connection.
       if (isStale?.call() ?? false) {
+        _clearConnectingRelayClient(relayClient);
         await relayClient.disconnect();
         return ApiResponse.error(ApiError.generic());
       }
 
+      _clearConnectingRelayClient(relayClient);
       _relayClient = relayClient;
       _authRetryCount = 0;
       _relayReconnectBackoff = const Duration(seconds: 1);
@@ -310,6 +329,7 @@ class ConnectionService {
       return ApiResponse.success(health);
     } catch (error, stackTrace) {
       loge("Failed to connect via relay", error, stackTrace);
+      _clearConnectingRelayClient(relayClient);
       try {
         await relayClient.disconnect().timeout(const Duration(seconds: 3));
       } catch (disconnectError, disconnectStackTrace) {
@@ -317,6 +337,12 @@ class ConnectionService {
         loge("Relay disconnect cleanup failed", disconnectError, disconnectStackTrace);
       }
       return ApiResponse.error(ApiError.generic());
+    }
+  }
+
+  void _clearConnectingRelayClient(RelayClient relayClient) {
+    if (identical(_connectingRelayClient, relayClient)) {
+      _connectingRelayClient = null;
     }
   }
 
@@ -455,7 +481,9 @@ class ConnectionService {
     // stop routing requests through a socket we're tearing down, rather than
     // during the async subscription cancellations below.
     final relayClient = _relayClient;
+    final connectingRelayClient = _connectingRelayClient;
     _relayClient = null;
+    _connectingRelayClient = null;
 
     // Never let teardown complete with an error: several callers invoke this via
     // `unawaited(...)`, so a thrown cancellation/disconnect error would surface
@@ -474,14 +502,19 @@ class ConnectionService {
     }
     _bridgeStatusSubscription = null;
 
-    if (relayClient == null) {
+    if (relayClient == null && connectingRelayClient == null) {
       return;
     }
 
-    try {
-      await relayClient.disconnect();
-    } catch (error, stackTrace) {
-      loge("Failed to disconnect relay client", error, stackTrace);
+    for (final client in <RelayClient?>{
+      relayClient,
+      connectingRelayClient,
+    }.whereType<RelayClient>()) {
+      try {
+        await client.disconnect();
+      } catch (error, stackTrace) {
+        loge("Failed to disconnect relay client", error, stackTrace);
+      }
     }
   }
 
@@ -659,12 +692,16 @@ class ConnectionService {
 
       final result = await _connectViaRelay(
         freshConfig,
-        isStale: () => attemptId != _reconnectAttemptId || _status.value is ConnectionDisconnected,
+        isStale: () => attemptId != _reconnectAttemptId || _status.value is ConnectionDisconnected || _isInBackground,
       );
 
       // A newer attempt or a disconnect during connect means that owner is now
       // responsible for the resulting state — don't clobber it with our outcome.
       if (attemptId != _reconnectAttemptId) return;
+      if (_isInBackground) {
+        _status.add(ConnectionStatus.connectionLost(config: config));
+        return;
+      }
       if (_status.value is ConnectionDisconnected) return;
 
       if (result is ErrorResponse<HealthResponse>) {
@@ -680,6 +717,10 @@ class ConnectionService {
     } catch (error, stackTrace) {
       loge("Relay reconnect attempt failed unexpectedly", error, stackTrace);
       if (attemptId != _reconnectAttemptId) return;
+      if (_isInBackground) {
+        _status.add(ConnectionStatus.connectionLost(config: config));
+        return;
+      }
       if (_status.value is ConnectionDisconnected) return;
       _relayReconnectBackoff = Duration(
         milliseconds: min(

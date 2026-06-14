@@ -404,5 +404,150 @@ void main() {
       expect(factory.callCount, 2);
       expect(service.currentStatus, isA<ConnectionConnected>());
     });
+
+    test("a superseded in-flight handshake is disconnected before the next reconnect opens", () async {
+      final sseController = StreamController<RelaySseEvent>.broadcast();
+      addTearDown(sseController.close);
+
+      final initialClient = MockRelayClient();
+      final firstReconnectClient = MockRelayClient();
+      final secondReconnectClient = MockRelayClient();
+      final firstConnect = Completer<void>();
+      final clients = <MockRelayClient>[
+        initialClient,
+        firstReconnectClient,
+        secondReconnectClient,
+      ];
+
+      for (final client in clients) {
+        when(() => client.isConnected).thenReturn(true);
+        when(() => client.sendRequest(any())).thenAnswer(
+          (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
+        );
+        when(() => client.subscribeSse(any())).thenAnswer((_) => sseController.stream);
+        when(() => client.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+        when(client.disconnect).thenAnswer((_) async {});
+      }
+      when(initialClient.connect).thenAnswer((_) async {});
+      when(firstReconnectClient.connect).thenAnswer((_) => firstConnect.future);
+      when(secondReconnectClient.connect).thenAnswer((_) async {});
+
+      var nextClient = 0;
+      final factory = _TestRelayClientFactory(
+        ({
+          required String relayHost,
+          required RelayCryptoService cryptoService,
+          required RoomKeyStorage roomKeyStorage,
+          required String? authToken,
+        }) => clients[nextClient++],
+      );
+      var now = DateTime(2025, 1, 1, 12, 0, 0);
+      final service = ConnectionService(
+        cryptoService,
+        roomKeyStorage,
+        authTokenProvider,
+        authSession,
+        lifecycleSource,
+        failureReporter,
+        clock: _TestClockProvider(() => now),
+        relayClientFactory: factory,
+      );
+      addTearDown(service.dispose);
+
+      await service.connect(config);
+      expect(service.relayClient, same(initialClient));
+
+      lifecycleController.add(LifecycleState.paused);
+      await Future<void>.delayed(Duration.zero);
+      now = now.add(const Duration(seconds: 30));
+      lifecycleController.add(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(factory.callCount, 2);
+      expect(service.relayClient, isNull);
+
+      lifecycleController.add(LifecycleState.paused);
+      await Future<void>.delayed(Duration.zero);
+      now = now.add(const Duration(seconds: 30));
+      lifecycleController.add(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      verify(firstReconnectClient.disconnect).called(greaterThanOrEqualTo(1));
+      expect(factory.callCount, 3);
+      expect(service.relayClient, same(secondReconnectClient));
+      expect(service.currentStatus, isA<ConnectionConnected>());
+
+      firstConnect.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      verifyNever(() => firstReconnectClient.sendRequest(any()));
+      expect(service.relayClient, same(secondReconnectClient));
+      expect(service.currentStatus, isA<ConnectionConnected>());
+    });
+
+    test("backgrounding during an immediate reconnect handshake aborts without publishing connected", () async {
+      final sseController = StreamController<RelaySseEvent>.broadcast();
+      addTearDown(sseController.close);
+
+      final initialClient = MockRelayClient();
+      final reconnectClient = MockRelayClient();
+      final reconnectConnect = Completer<void>();
+      final clients = <MockRelayClient>[initialClient, reconnectClient];
+
+      for (final client in clients) {
+        when(() => client.isConnected).thenReturn(true);
+        when(() => client.sendRequest(any())).thenAnswer(
+          (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
+        );
+        when(() => client.subscribeSse(any())).thenAnswer((_) => sseController.stream);
+        when(() => client.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+        when(client.disconnect).thenAnswer((_) async {});
+      }
+      when(initialClient.connect).thenAnswer((_) async {});
+      when(reconnectClient.connect).thenAnswer((_) => reconnectConnect.future);
+
+      var nextClient = 0;
+      final factory = _TestRelayClientFactory(
+        ({
+          required String relayHost,
+          required RelayCryptoService cryptoService,
+          required RoomKeyStorage roomKeyStorage,
+          required String? authToken,
+        }) => clients[nextClient++],
+      );
+      var now = DateTime(2025, 1, 1, 12, 0, 0);
+      final service = ConnectionService(
+        cryptoService,
+        roomKeyStorage,
+        authTokenProvider,
+        authSession,
+        lifecycleSource,
+        failureReporter,
+        clock: _TestClockProvider(() => now),
+        relayClientFactory: factory,
+      );
+      addTearDown(service.dispose);
+
+      await service.connect(config);
+      expect(service.currentStatus, isA<ConnectionConnected>());
+
+      lifecycleController.add(LifecycleState.paused);
+      await Future<void>.delayed(Duration.zero);
+      now = now.add(const Duration(seconds: 30));
+      lifecycleController.add(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(factory.callCount, 2);
+
+      lifecycleController.add(LifecycleState.paused);
+      await Future<void>.delayed(Duration.zero);
+      reconnectConnect.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(service.currentStatus, const ConnectionStatus.connectionLost(config: config));
+      expect(service.relayClient, isNull);
+      verify(reconnectClient.disconnect).called(greaterThanOrEqualTo(1));
+      verifyNever(() => reconnectClient.sendRequest(any()));
+    });
   });
 }
