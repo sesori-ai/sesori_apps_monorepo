@@ -27,10 +27,10 @@ void main() {
   });
 
   group("OpenCodeService.getCommands", () {
-    test("delegates to repository and returns plugin commands", () async {
+    test("returns upstream commands alongside the synthetic compact command", () async {
       final repository = FakeOpenCodeRepository(
         commands: const [
-          PluginCommand(name: "/review-work", provider: "openai", source: PluginCommandSource.skill),
+          PluginCommand(name: "review-work", provider: "openai", source: PluginCommandSource.skill),
         ],
       );
       final service = OpenCodeService(repository, FakeActiveSessionTracker());
@@ -38,8 +38,38 @@ void main() {
       final commands = await service.getCommands(projectId: "/repo");
 
       expect(repository.lastCommandsProjectId, equals("/repo"));
-      expect(commands, hasLength(1));
-      expect(commands.single.name, equals("/review-work"));
+      expect(
+        commands.map((command) => command.name),
+        containsAll(["review-work", OpenCodeService.compactionCommandName]),
+      );
+    });
+
+    test("appends a compact command carrying display metadata", () async {
+      final service = OpenCodeService(FakeOpenCodeRepository(), FakeActiveSessionTracker());
+
+      final commands = await service.getCommands(projectId: "/repo");
+
+      final compact = commands.singleWhere(
+        (command) => command.name == OpenCodeService.compactionCommandName,
+      );
+      expect(compact.description, isNotNull);
+      expect(compact.source, equals(PluginCommandSource.command));
+    });
+
+    test("does not duplicate compact when the project already defines one", () async {
+      final repository = FakeOpenCodeRepository(
+        commands: const [
+          PluginCommand(name: "compact", provider: null, source: PluginCommandSource.command),
+        ],
+      );
+      final service = OpenCodeService(repository, FakeActiveSessionTracker());
+
+      final commands = await service.getCommands(projectId: "/repo");
+
+      expect(
+        commands.where((command) => command.name == OpenCodeService.compactionCommandName),
+        hasLength(1),
+      );
     });
   });
 
@@ -364,6 +394,47 @@ void main() {
       expect(repository.lastCommandModel, equals((providerID: "openai", modelID: "gpt-4.1")));
     });
 
+    test("routes the artificial compact command to the summarize endpoint", () async {
+      final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
+      final repository = FakeOpenCodeRepository();
+      final service = OpenCodeService(repository, tracker);
+
+      await service.sendCommand(
+        sessionId: "ses-1",
+        command: OpenCodeService.compactionCommandName,
+        arguments: "",
+        agent: null,
+        variant: null,
+        model: (providerID: "openai", modelID: "gpt-4.1"),
+      );
+
+      expect(repository.summarizeCalls, equals(1));
+      expect(repository.lastSummarizeSessionId, equals("ses-1"));
+      expect(repository.lastSummarizeDirectory, equals("/repo"));
+      expect(repository.lastSummarizeModel, equals((providerID: "openai", modelID: "gpt-4.1")));
+      // The real command endpoint must never be hit for compaction.
+      expect(repository.lastCommandName, isNull);
+    });
+
+    test("throws and skips summarize when compact is invoked without a model", () async {
+      final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
+      final repository = FakeOpenCodeRepository();
+      final service = OpenCodeService(repository, tracker);
+
+      await expectLater(
+        service.sendCommand(
+          sessionId: "ses-1",
+          command: OpenCodeService.compactionCommandName,
+          arguments: "",
+          agent: null,
+          variant: null,
+          model: null,
+        ),
+        throwsA(isA<PluginApiException>()),
+      );
+      expect(repository.summarizeCalls, equals(0));
+    });
+
     group("dispatch fast-fail window", () {
       const fastFailWindow = Duration(milliseconds: 50);
 
@@ -679,6 +750,13 @@ class FakeOpenCodeApi implements OpenCodeApi {
   }) async {}
 
   @override
+  Future<void> summarize({
+    required String sessionId,
+    required SummarizeBody body,
+    required String? directory,
+  }) async {}
+
+  @override
   Future<void> abortSession({required String sessionId, required String? directory}) async {}
 
   @override
@@ -777,6 +855,10 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   String? lastCommandVariant;
   ({String providerID, String modelID})? lastCommandModel;
   Completer<void>? sendCommandCompleter;
+  int summarizeCalls = 0;
+  String? lastSummarizeSessionId;
+  String? lastSummarizeDirectory;
+  ({String providerID, String modelID})? lastSummarizeModel;
   String? lastDeletedSessionId;
   String? lastDeletedDirectory;
 
@@ -875,6 +957,18 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     if (sendCommandCompleter case final completer?) {
       await completer.future;
     }
+  }
+
+  @override
+  Future<void> summarize({
+    required String sessionId,
+    required String? directory,
+    required ({String providerID, String modelID}) model,
+  }) async {
+    summarizeCalls += 1;
+    lastSummarizeSessionId = sessionId;
+    lastSummarizeDirectory = directory;
+    lastSummarizeModel = model;
   }
 
   @override

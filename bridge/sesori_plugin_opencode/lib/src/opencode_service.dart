@@ -8,6 +8,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginAgent,
         PluginApiException,
         PluginCommand,
+        PluginCommandSource,
         PluginPermissionReply,
         PluginPromptPart,
         PluginProvidersResult,
@@ -18,14 +19,36 @@ import "package:sesori_shared/sesori_shared.dart" show ProjectActivitySummary, S
 import "../opencode_plugin.dart";
 
 class OpenCodeService {
+  /// Name of the artificial slash command injected into [getCommands] so the
+  /// mobile app can trigger OpenCode's manual compaction.
+  ///
+  /// OpenCode does not list `/compact` in `GET /command` — it is a client-side
+  /// built-in in OpenCode's own TUI/web — so the plugin synthesizes it here and
+  /// routes its invocation to the summarize endpoint in [sendCommand].
+  static const String compactionCommandName = "compact";
+
+  static const PluginCommand _compactionCommand = PluginCommand(
+    name: compactionCommandName,
+    description: "Summarize the conversation so far to free up the context window",
+    provider: null,
+    source: PluginCommandSource.command,
+    subtask: null,
+  );
+
   final OpenCodeRepository repository;
   final ActiveSessionTracker tracker;
   final Duration _commandDispatchFastFailWindow;
 
+  /// [commandDispatchFastFailWindow] bounds how long [sendCommand] waits on
+  /// OpenCode's synchronous command/summarize endpoints before treating the run
+  /// as accepted and detaching (see [sendCommand]). Genuine dispatch rejections
+  /// (unknown command/session, missing model, server down) surface from
+  /// localhost within milliseconds, so 1s is enough to catch them while keeping
+  /// the phone's "accepted" feedback snappy.
   OpenCodeService(
     this.repository,
     this.tracker, {
-    Duration commandDispatchFastFailWindow = const Duration(seconds: 3),
+    Duration commandDispatchFastFailWindow = const Duration(seconds: 1),
   }) : _commandDispatchFastFailWindow = commandDispatchFastFailWindow;
 
   Future<List<Project>> getProjects() {
@@ -38,8 +61,14 @@ class OpenCodeService {
     );
   }
 
-  Future<List<PluginCommand>> getCommands({required String? projectId}) {
-    return repository.getCommands(projectId: projectId);
+  Future<List<PluginCommand>> getCommands({required String? projectId}) async {
+    final commands = await repository.getCommands(projectId: projectId);
+    // Synthesize the compaction command unless the project already defines one
+    // with the same name (e.g. a user-authored `compact` config command).
+    if (commands.any((command) => command.name == compactionCommandName)) {
+      return commands;
+    }
+    return [...commands, _compactionCommand];
   }
 
   /// Returns the agents available for [projectId] (a worktree directory).
@@ -149,19 +178,28 @@ class OpenCodeService {
     required ({String providerID, String modelID})? model,
   }) async {
     final directory = _getTrackedDirectory(sessionId: sessionId);
-    final sendFuture = repository.sendCommand(
-      sessionId: sessionId,
-      directory: directory,
-      command: command,
-      arguments: arguments,
-      agent: agent,
-      variant: variant,
-      model: model,
-    );
-    // OpenCode's POST /session/:id/command endpoint is synchronous — it
-    // responds only after the command's full agent run completes, and no
-    // async variant exists upstream (see OpenCodeApi.sendCommand). The
-    // BridgePluginApi contract requires sendCommand to complete once the
+    // The artificial "compact" command (see [compactionCommandName]) has no
+    // OpenCode command counterpart — route it to the summarize endpoint, which
+    // performs manual compaction. Everything else is a real slash command.
+    final sendFuture = command == compactionCommandName
+        ? repository.summarize(
+            sessionId: sessionId,
+            directory: directory,
+            model: _requireCompactionModel(model: model, sessionId: sessionId),
+          )
+        : repository.sendCommand(
+            sessionId: sessionId,
+            directory: directory,
+            command: command,
+            arguments: arguments,
+            agent: agent,
+            variant: variant,
+            model: model,
+          );
+    // OpenCode's POST /session/:id/command and /summarize endpoints are both
+    // synchronous — they respond only after the agent run completes, and no
+    // async variant exists upstream (see OpenCodeApi.sendCommand/summarize).
+    // The BridgePluginApi contract requires sendCommand to complete once the
     // command is accepted, so dispatch with a fast-fail window: failures
     // raised within the window (unknown command/agent, missing session,
     // server down) propagate to the caller, while a run that outlives the
@@ -186,6 +224,24 @@ class OpenCodeService {
         );
       },
     );
+  }
+
+  /// Compaction needs an explicit provider/model (OpenCode's summarize payload
+  /// has no server-side default). The session model is normally threaded in
+  /// from the mobile prompt request; if it is absent we fail loudly rather than
+  /// silently dropping the compaction.
+  ({String providerID, String modelID}) _requireCompactionModel({
+    required ({String providerID, String modelID})? model,
+    required String sessionId,
+  }) {
+    if (model == null) {
+      throw PluginApiException(
+        "POST /session/$sessionId/summarize",
+        400,
+        message: "compaction requires a model selection",
+      );
+    }
+    return model;
   }
 
   Future<void> replyToPermission({

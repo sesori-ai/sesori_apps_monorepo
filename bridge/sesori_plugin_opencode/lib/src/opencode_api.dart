@@ -14,6 +14,7 @@ import "models/send_command_body.dart";
 import "models/send_prompt_body.dart";
 import "models/session.dart";
 import "models/session_status.dart";
+import "models/summarize_body.dart";
 import "open_code_raw_http_client.dart";
 
 const _directoryOpenCodeHeader = "x-opencode-directory";
@@ -272,6 +273,30 @@ class OpenCodeApi {
   }) async {
     await _client.post(
       path: "/session/$sessionId/command",
+      headers: {
+        "content-type": "application/json",
+        _directoryOpenCodeHeader: ?directory,
+      },
+      body: jsonEncode(body.toJson()),
+      timeout: null,
+    );
+  }
+
+  /// Triggers AI compaction of a session via `POST /session/:id/summarize`.
+  ///
+  /// WARNING: like [sendCommand], this OpenCode endpoint is **synchronous** —
+  /// the HTTP response does not complete until the compaction agent run has
+  /// finished, which can take minutes. Callers that must not block on the run
+  /// (see [OpenCodeService]) are responsible for detaching; this Layer 1 method
+  /// stays a dumb HTTP call. Sent with `timeout: null` for the same reason as
+  /// [sendCommand].
+  Future<void> summarize({
+    required String sessionId,
+    required SummarizeBody body,
+    required String? directory,
+  }) async {
+    await _client.post(
+      path: "/session/$sessionId/summarize",
       headers: {
         "content-type": "application/json",
         _directoryOpenCodeHeader: ?directory,
