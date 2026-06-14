@@ -510,11 +510,13 @@ class ConnectionService {
     logd("App resumed — triggering reconnect (status=${status.runtimeType}, backgrounded=$backgroundedFor)");
     // Detach the likely-dead socket immediately so requests fired right after
     // foregrounding fail fast instead of routing through the zombie connection
-    // and blocking on the 30s request timeout during the reconnect backoff.
+    // while the replacement socket is being established.
     unawaited(_disconnectRelayClient());
     _relayReconnectBackoff = const Duration(seconds: 1);
     _status.add(ConnectionStatus.reconnecting(config: config));
-    unawaited(_reconnectRelayWithRefresh(config));
+    // Resume is user-visible and the prior socket is already dead, so attempt
+    // the first reconnect immediately; backoff still applies to later retries.
+    unawaited(_reconnectRelayWithRefresh(config, immediate: true));
   }
 
   void _onRelayConnectionDrop() {
@@ -559,7 +561,18 @@ class ConnectionService {
   }
 
   /// Reconnects to relay after refreshing the auth token.
-  Future<void> _reconnectRelayWithRefresh(ServerConnectionConfig config) async {
+  ///
+  /// When [immediate] is true the pre-attempt backoff delay is skipped for this
+  /// first attempt. It is used on foreground resume, where the user is waiting
+  /// and the previous socket is already known-dead, so the artificial ~1s wait
+  /// would be pure latency. The exponential backoff + jitter still applies to
+  /// every retry that follows a *failed* attempt (a failure doubles
+  /// [_relayReconnectBackoff]), so a genuinely unreachable bridge is never
+  /// hammered.
+  Future<void> _reconnectRelayWithRefresh(
+    ServerConnectionConfig config, {
+    bool immediate = false,
+  }) async {
     if (_isInBackground) {
       logd("App is backgrounded — skipping reconnect attempt");
       _status.add(ConnectionStatus.connectionLost(config: config));
@@ -567,27 +580,31 @@ class ConnectionService {
     }
     if (_status.value is ConnectionDisconnected) return;
 
-    final backoff = _relayReconnectBackoff;
-    final jitter = (backoff.inMilliseconds * 0.25 * (Random().nextDouble() * 2 - 1)).round();
-    final delayMs = backoff.inMilliseconds + jitter;
+    if (!immediate) {
+      final backoff = _relayReconnectBackoff;
+      final jitter = (backoff.inMilliseconds * 0.25 * (Random().nextDouble() * 2 - 1)).round();
+      final delayMs = backoff.inMilliseconds + jitter;
 
-    logd("Relay reconnect: waiting ${delayMs}ms before attempt to ${config.relayHost}");
-    _reconnectTimer?.cancel();
-    final completer = Completer<void>();
-    _reconnectDelayCompleter = completer;
-    _reconnectTimer = Timer(Duration(milliseconds: delayMs), () {
-      if (!completer.isCompleted) {
-        completer.complete();
+      logd("Relay reconnect: waiting ${delayMs}ms before attempt to ${config.relayHost}");
+      _reconnectTimer?.cancel();
+      final completer = Completer<void>();
+      _reconnectDelayCompleter = completer;
+      _reconnectTimer = Timer(Duration(milliseconds: delayMs), () {
+        if (!completer.isCompleted) {
+          completer.complete();
+        }
+      });
+      await completer.future;
+      _reconnectTimer = null;
+      _reconnectDelayCompleter = null;
+      if (_isInBackground) {
+        _status.add(ConnectionStatus.connectionLost(config: config));
+        return;
       }
-    });
-    await completer.future;
-    _reconnectTimer = null;
-    _reconnectDelayCompleter = null;
-    if (_isInBackground) {
-      _status.add(ConnectionStatus.connectionLost(config: config));
-      return;
+      if (_status.value is ConnectionDisconnected) return;
+    } else {
+      logd("Relay reconnect: immediate first attempt to ${config.relayHost}");
     }
-    if (_status.value is ConnectionDisconnected) return;
 
     logd("Relay reconnect: refreshing token and reconnecting to ${config.relayHost}");
 

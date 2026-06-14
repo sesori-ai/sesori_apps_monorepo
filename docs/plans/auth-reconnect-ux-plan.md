@@ -4,12 +4,14 @@ Status: **in progress** · Owner: mobile/transport · Branch strategy: **one sma
 
 ## Current stage
 
-**PR 1a implemented** — review follow-ups on PR 1: detach the stale socket on
-resume so requests fail fast instead of blocking on the dead connection, and
-revert the bridge-offline case from the proactive check (the E2E handshake can't
-complete while the bridge is down, so forcing a reconnect regressed it to the
-blocking ConnectionLost state). PR 1 (proactive reconnect on resume) shipped in
-#262.
+**PR 2 implemented** — the foreground-resume reconnect now fires its first
+attempt immediately instead of waiting the ~1s exponential-backoff delay
+(`_reconnectRelayWithRefresh` gained an `immediate` flag that `_onAppResumed`
+sets). Backoff + jitter still gate every retry that follows a *failed* attempt,
+so an unreachable bridge is never hammered — only the resume path opts into the
+immediate first attempt. PR 1 (proactive reconnect on resume, #262) and its
+follow-up PR 1a (stale-socket teardown + bridge-offline revert) shipped earlier
+in this series.
 
 > **Maintenance rule:** this **Current stage** line (and the Status tracker
 > table at the bottom) MUST be updated as part of **every** PR in this series.
@@ -183,7 +185,7 @@ Tier 4 stand alone. Ship and validate each before starting the next.
 | --- | --- | --- |
 | PR 1 — proactive reconnect on resume | 1 | implemented (#262) |
 | PR 1a — review follow-ups (stale-socket teardown; revert bridge-offline) | 1 | implemented |
-| PR 2 — immediate first attempt | 1 | not started |
+| PR 2 — immediate first attempt | 1 | implemented |
 | (deferred) bridge-offline recovery without a completed handshake | 1/3 | not started |
 | PR 3 — skip health after resume | 1 | not started |
 | PR 4 — room-key memory cache | 2 | not started |

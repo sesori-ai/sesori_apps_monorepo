@@ -65,6 +65,7 @@ void main() {
     late BehaviorSubject<AuthState> authStateController;
     late DateTime now;
     late ConnectionService service;
+    late Completer<String?> pendingToken;
 
     const config = ServerConnectionConfig(
       relayHost: "relay.example.com",
@@ -87,6 +88,14 @@ void main() {
 
       when(() => lifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleController.stream);
       when(() => authSession.authStateStream).thenAnswer((_) => authStateController.stream);
+      // PR 2: resume now triggers an immediate reconnect, so the attempt reaches
+      // token refresh within the flush window. Hold the token pending so that
+      // reconnect parks harmlessly at the refresh step, keeping these tests
+      // focused on the resume signals (staleness, status, socket teardown)
+      // rather than the downstream connect.
+      pendingToken = Completer<String?>();
+      when(() => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl")))
+          .thenAnswer((_) => pendingToken.future);
 
       service = ConnectionService(
         cryptoService,
@@ -101,6 +110,7 @@ void main() {
 
     tearDown(() async {
       service.dispose();
+      if (!pendingToken.isCompleted) pendingToken.complete(null);
       await lifecycleController.close();
       await authStateController.close();
     });
@@ -214,6 +224,9 @@ void main() {
     });
 
     test("proactively reconnects when resuming past the relay-drop threshold while still connected", () async {
+      // Resume now fires the first reconnect immediately (no backoff wait); the
+      // group-level pending token parks it at refresh so the in-flight
+      // Reconnecting state is observable rather than racing past it.
       service.emitStatusForTesting(const ConnectionStatus.connected(config: config, health: health));
 
       lifecycleController.add(LifecycleState.paused);
@@ -269,8 +282,9 @@ void main() {
       when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
       when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
       when(relayClient.disconnect).thenAnswer((_) async {});
-      when(() => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl")))
-          .thenAnswer((_) async => "token");
+      // The group-level pending token holds the now-immediate post-resume reconnect
+      // at the refresh step, right after the eager teardown — letting us assert the
+      // stale client was detached before any replacement socket is established.
 
       final staleService = ConnectionService(
         cryptoService,
