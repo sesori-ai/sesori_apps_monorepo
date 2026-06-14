@@ -30,6 +30,7 @@ import 'package:sesori_bridge/src/server/repositories/terminal_prompt_repository
 import 'package:sesori_bridge/src/server/services/bridge_instance_service.dart';
 import 'package:sesori_bridge/src/services/bridge_config_service.dart';
 import 'package:sesori_bridge/src/services/sleep_prevention_service.dart';
+import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
 import 'package:sesori_bridge/src/version.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart'
     show BridgePluginDescriptor, Log, LogLevel, PluginConfig, PluginConfigException, ProcessUser, ServerClock;
@@ -271,6 +272,19 @@ class ConfigCommand extends cli.Command<void> {
   final name = 'config';
 
   @override
+  final description = 'Manage bridge configuration';
+
+  ConfigCommand() {
+    addSubcommand(ConfigTrackCommand());
+    addSubcommand(ConfigEditCommand());
+  }
+}
+
+class ConfigEditCommand extends cli.Command<void> {
+  @override
+  final name = 'edit';
+
+  @override
   final description = 'Open the bridge configuration file in your default editor';
 
   @override
@@ -289,6 +303,52 @@ class ConfigCommand extends cli.Command<void> {
 
     final configFilePath = await configService.openConfigFile();
     stdout.writeln('Opening config file at $configFilePath');
+  }
+}
+
+class ConfigTrackCommand extends cli.Command<void> {
+  @override
+  final name = 'track';
+
+  @override
+  final description = 'Show or set the bridge update track (stable|internal)';
+
+  @override
+  Future<void> run() async {
+    final rest = argResults!.rest;
+    final repository = BridgeSettingsRepository(api: BridgeSettingsApi());
+
+    if (rest.isEmpty) {
+      final settings = await repository.loadSettings();
+      stdout.writeln('Release track: ${settings.releaseTrack.wireValue}');
+      return;
+    }
+
+    if (rest.length > 1) {
+      usageException('Expected a single track value: stable or internal.');
+    }
+
+    final ReleaseTrack track = _parseTrackArgument(rest.single);
+    await repository.updateReleaseTrack(track: track);
+    stdout.writeln('Release track set to ${track.wireValue}.');
+    if (track == ReleaseTrack.internal) {
+      stdout.writeln(
+        'Warning: internal builds are pre-release and may be unstable. '
+        'The bridge will auto-update to the latest internal build on next start.',
+      );
+    }
+    stdout.writeln('Restart sesori-bridge to apply.');
+  }
+
+  ReleaseTrack _parseTrackArgument(String value) {
+    switch (value) {
+      case 'stable':
+        return ReleaseTrack.stable;
+      case 'internal':
+        return ReleaseTrack.internal;
+      default:
+        usageException('Track must be "stable" or "internal".');
+    }
   }
 }
 

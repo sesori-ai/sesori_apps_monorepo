@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 
 import '../api/github_releases_api.dart';
 import '../api/update_cache_api.dart';
+import '../foundation/release_track.dart';
 import '../models/bridge_version.dart';
 import '../models/cached_release.dart';
 import '../models/distribution_target.dart';
@@ -13,21 +14,38 @@ class ReleaseRepository {
   final UpdateCacheApi _cache;
   final BridgeVersion _currentVersion;
   final DistributionTarget _target;
+  final ReleaseTrack _track;
 
   ReleaseRepository({
     required GitHubReleasesApi api,
     required UpdateCacheApi cache,
     required String currentVersion,
     required DistributionTarget target,
+    required ReleaseTrack track,
   }) : _api = api,
        _cache = cache,
        _currentVersion = BridgeVersion.parse(value: currentVersion),
-       _target = target;
+       _target = target,
+       _track = track;
+
+  /// Whether [version] is eligible for the active [ReleaseTrack]:
+  /// - stable: only stable releases.
+  /// - internal: stable releases plus `-internal.*` pre-releases. Other
+  ///   pre-release kinds (e.g. `-rc`, `-beta`) are intentionally excluded so
+  ///   "internal" means exactly the internal lane, not "any non-stable build".
+  bool _isEligible(BridgeVersion version) {
+    if (version.isStable) {
+      return true;
+    }
+    return _track == ReleaseTrack.internal &&
+        version.prereleaseIdentifiers.isNotEmpty &&
+        version.prereleaseIdentifiers.first == 'internal';
+  }
 
   Future<ReleaseInfo?> checkForNewerRelease() async {
     final cached = await _cache.read(ttl: const Duration(minutes: 10));
     if (cached != null) {
-      if (cached.assetName == _target.assetName) {
+      if (cached.assetName == _target.assetName && cached.track == _track.wireValue) {
         return _evaluateCached(cached: cached);
       }
     }
@@ -36,12 +54,12 @@ class ReleaseRepository {
   }
 
   ReleaseInfo? _evaluateCached({required CachedRelease cached}) {
-    if (cached.assetName != _target.assetName) {
+    if (cached.assetName != _target.assetName || cached.track != _track.wireValue) {
       return null;
     }
 
     final BridgeVersion? latestVersion = BridgeVersion.tryParse(value: cached.latestVersion);
-    if (latestVersion == null || !latestVersion.isStable) {
+    if (latestVersion == null || !_isEligible(latestVersion)) {
       return null;
     }
 
@@ -73,7 +91,6 @@ class ReleaseRepository {
         .where(
           (release) =>
               !release.draft &&
-              !release.prerelease &&
               release.tagName.startsWith('v'),
         )
         .map(
@@ -81,7 +98,7 @@ class ReleaseRepository {
             final tagName = release.tagName;
             final versionString = tagName.replaceFirst('v', '');
             final version = BridgeVersion.tryParse(value: versionString);
-            return version != null && version.isStable
+            return version != null && _isEligible(version)
                 ? (
                     release: release,
                     version: version,
@@ -150,13 +167,14 @@ class ReleaseRepository {
           downloadUrl: assetUrl,
           checksumsUrl: checksumsUrl,
           assetName: assetName,
+          track: _track.wireValue,
           publishedAt: publishedAt,
           checkedAt: DateTime.now(),
         ),
       );
     }
 
-    if (!latestVersion.isStable) {
+    if (!_isEligible(latestVersion)) {
       return null;
     }
     if (latestVersion.compareTo(_currentVersion) <= 0) {

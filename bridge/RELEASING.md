@@ -4,7 +4,7 @@
 
 - **Enabled by default:** GitHub Releases
 - **Enabled by default:** npm publish via npm trusted publishing
-- **Release selector:** installers and updater accept stable GitHub releases tagged `v*`.
+- **Release selector:** installers always use the newest stable GitHub release tagged `v*`. The runtime auto-updater follows the configured update track — `stable` (default) uses stable `v*` releases, while `internal` also picks up `v*-internal.*` pre-releases (see `config track` in [INSTALL.md](INSTALL.md)).
 
 ## Release tag
 
@@ -94,7 +94,7 @@ That bump step is the source of truth for the release version. It must keep `bri
 
 ### 2. Merge to main
 
-Every main merge runs `release-all-platforms.yml`: it uploads the mobile apps to TestFlight / Play internal, builds all five bridge platform archives with `X.Y.Z-internal.<N>` baked in, and — only when everything succeeded — pushes a `v<X.Y.Z>-internal.<N>` tag and rolls the single internal GitHub pre-release onto it (binaries + `checksums.txt` + regenerated notes). The auto-updater ignores pre-releases.
+Every main merge runs `release-all-platforms.yml`: it uploads the mobile apps to TestFlight / Play internal, builds all five bridge platform archives with `X.Y.Z-internal.<N>` baked in, and — only when everything succeeded — pushes a `v<X.Y.Z>-internal.<N>` tag and rolls the single internal GitHub pre-release onto it (binaries + `checksums.txt` + regenerated notes). The auto-updater ignores pre-releases on the default `stable` track; bridges switched to the `internal` track (`sesori-bridge config track internal`) pick up these `-internal.<N>` pre-releases.
 
 ### 3. Submit to production
 

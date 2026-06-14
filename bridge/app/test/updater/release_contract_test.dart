@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:sesori_bridge/src/updater/api/github_releases_api.dart';
 import 'package:sesori_bridge/src/updater/api/update_cache_api.dart';
 import 'package:sesori_bridge/src/updater/foundation/platform_info.dart';
+import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
 import 'package:sesori_bridge/src/updater/models/cached_release.dart';
 import 'package:sesori_bridge/src/updater/models/distribution_target.dart';
 import 'package:sesori_bridge/src/updater/repositories/release_repository.dart';
@@ -124,6 +125,7 @@ void main() {
         cache: _NoCache(),
         currentVersion: '0.2.0',
         target: target,
+        track: ReleaseTrack.stable,
       );
     });
 

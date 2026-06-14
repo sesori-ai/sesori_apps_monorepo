@@ -36,6 +36,7 @@ void main() {
         downloadUrl: 'https://example.com/download/1.2.3',
         checksumsUrl: 'https://example.com/checksums/1.2.3',
         assetName: 'sesori-bridge-macos-arm64.tar.gz',
+        track: 'stable',
         publishedAt: now.subtract(const Duration(days: 1)),
         checkedAt: now,
       );
@@ -51,6 +52,7 @@ void main() {
       expect(cached.downloadUrl, equals('https://example.com/download/1.2.3'));
       expect(cached.checksumsUrl, equals('https://example.com/checksums/1.2.3'));
       expect(cached.assetName, equals('sesori-bridge-macos-arm64.tar.gz'));
+      expect(cached.track, equals('stable'));
       expect(cached.publishedAt, equals(now.subtract(const Duration(days: 1))));
       expect(cached.checkedAt, equals(now));
     });
@@ -69,6 +71,7 @@ void main() {
         downloadUrl: 'https://example.com/download/1.2.3',
         checksumsUrl: 'https://example.com/checksums/1.2.3',
         assetName: 'sesori-bridge-macos-arm64.tar.gz',
+        track: 'stable',
         publishedAt: checkedAt.subtract(const Duration(days: 1)),
         checkedAt: checkedAt,
       );
@@ -102,6 +105,7 @@ void main() {
         downloadUrl: 'https://example.com/download/1.2.3',
         checksumsUrl: 'https://example.com/checksums/1.2.3',
         assetName: 'sesori-bridge-macos-arm64.tar.gz',
+        track: 'stable',
         publishedAt: checkedAt.subtract(const Duration(days: 1)),
         checkedAt: checkedAt,
       );
@@ -164,6 +168,7 @@ void main() {
         downloadUrl: 'https://example.com/download/1.0.0',
         checksumsUrl: 'https://example.com/checksums/1.0.0',
         assetName: 'sesori-bridge-macos-arm64.tar.gz',
+        track: 'stable',
         publishedAt: DateTime.now(),
         checkedAt: DateTime.now(),
       );
@@ -192,6 +197,7 @@ void main() {
         downloadUrl: 'https://example.com/download/1.2.3',
         checksumsUrl: 'https://example.com/checksums/1.2.3',
         assetName: 'sesori-bridge-macos-arm64.tar.gz',
+        track: 'stable',
         publishedAt: checkedAt.subtract(const Duration(days: 1)),
         checkedAt: checkedAt,
       );
@@ -226,6 +232,7 @@ void main() {
         downloadUrl: 'https://example.com/download/1.0.0',
         checksumsUrl: 'https://example.com/checksums/1.0.0',
         assetName: 'sesori-bridge-macos-arm64.tar.gz',
+        track: 'stable',
         publishedAt: now.subtract(const Duration(days: 2)),
         checkedAt: now,
       );
@@ -237,6 +244,7 @@ void main() {
         downloadUrl: 'https://example.com/download/2.0.0',
         checksumsUrl: 'https://example.com/checksums/2.0.0',
         assetName: 'sesori-bridge-macos-arm64.tar.gz',
+        track: 'stable',
         publishedAt: now.subtract(const Duration(days: 1)),
         checkedAt: now,
       );
@@ -260,6 +268,7 @@ void main() {
         downloadUrl: 'https://example.com/download/1.0.0',
         checksumsUrl: 'https://example.com/checksums/1.0.0',
         assetName: 'sesori-bridge-macos-arm64.tar.gz',
+        track: 'stable',
         publishedAt: DateTime.now(),
         checkedAt: DateTime.now(),
       );

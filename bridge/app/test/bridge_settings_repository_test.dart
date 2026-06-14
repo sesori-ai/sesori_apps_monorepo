@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
+import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -149,7 +150,19 @@ void main() {
 
       expect(
         api.lastWrittenConfig,
-        equals('{\n  "sleepPrevention": "off"\n}'),
+        equals('{\n  "sleepPrevention": "off",\n  "releaseTrack": "stable"\n}'),
+      );
+    });
+
+    test('updateReleaseTrack persists the track and preserves other settings', () async {
+      final api = FakeBridgeSettingsApi(readResult: '{"sleepPrevention":"off"}');
+      final repository = BridgeSettingsRepository(api: api);
+
+      await repository.updateReleaseTrack(track: ReleaseTrack.internal);
+
+      expect(
+        api.lastWrittenConfig,
+        equals('{\n  "sleepPrevention": "off",\n  "releaseTrack": "internal"\n}'),
       );
     });
 
@@ -165,7 +178,7 @@ void main() {
   });
 }
 
-const _defaultJson = '{\n  "sleepPrevention": "always"\n}';
+const _defaultJson = '{\n  "sleepPrevention": "always",\n  "releaseTrack": "stable"\n}';
 
 /// Captures [writeln] calls; [IOOverrides] swaps it in for stdout/stderr.
 class _CapturingStdout implements Stdout {
