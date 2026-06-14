@@ -679,32 +679,6 @@ void main() {
       expect(tracker.coldStartCalls, equals(1));
     });
 
-    test("coldStart hydrates pending input per project worktree", () async {
-      final repository = FakeOpenCodeRepository(
-        projects: const [
-          Project(id: "p1", worktree: "/repo-a"),
-          Project(id: "p2", worktree: "/repo-b"),
-        ],
-        pendingQuestionsByDirectory: {
-          "/repo-a": [_question(id: "q-a", sessionId: "a")],
-          "/repo-b": [_question(id: "q-b", sessionId: "b")],
-        },
-        pendingPermissionsByDirectory: const {
-          "/repo-a": [PendingPermission(id: "perm-a", sessionID: "a", permission: "write")],
-          "/repo-b": [PendingPermission(id: "perm-b", sessionID: "b", permission: "read")],
-        },
-      );
-      final tracker = FakeActiveSessionTracker();
-      final service = OpenCodeService(repository, tracker);
-
-      await service.coldStart();
-
-      expect(repository.pendingQuestionDirectories, equals(["/repo-a", "/repo-b"]));
-      expect(repository.pendingPermissionDirectories, equals(["/repo-a", "/repo-b"]));
-      expect(tracker.populatedQuestionIds, equals(["q-a", "q-b"]));
-      expect(tracker.populatedPermissionIds, equals(["perm-a", "perm-b"]));
-    });
-
     test("reset delegates to tracker", () {
       final tracker = FakeActiveSessionTracker();
       final service = OpenCodeService(FakeOpenCodeRepository(), tracker);
@@ -1148,10 +1122,6 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   String? resolveProjectWorktree({required String directory}) {
     return resolvedWorktree;
   }
-
-  List<String> get populatedQuestionIds => populatedQuestions.map((question) => question.id).toList();
-
-  List<String> get populatedPermissionIds => populatedPermissions.map((permission) => permission.id).toList();
 
   @override
   void populatePendingQuestions({required List<PendingQuestion> questions}) {

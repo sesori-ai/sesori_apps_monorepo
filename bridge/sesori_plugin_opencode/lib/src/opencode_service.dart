@@ -299,38 +299,20 @@ class OpenCodeService {
   /// abort cold start — [ActiveSessionTracker.coldStart] succeeds
   /// independently.
   Future<void> _hydratePendingInput() async {
-    final projects = await repository.getProjects();
-    final questionsById = <String, PendingQuestion>{};
-    final permissionsById = <String, PendingPermission>{};
-
-    // Fetch per-project pending input concurrently to keep cold start
-    // responsive. Writes to the shared maps are safe because Dart runs each
-    // continuation on a single thread (no parallel mutation). Per-call failures
-    // are logged and skipped so one unavailable project can't abort hydration.
-    await Future.wait(
-      projects.map((project) async {
-        final worktree = project.worktree;
-        await Future.wait([
-          repository.getPendingQuestions(directory: worktree).then((questions) {
-            for (final question in questions) {
-              questionsById[question.id] = question;
-            }
-          }).catchError((Object e, StackTrace st) {
-            Log.w("coldStart: failed to hydrate pending questions for worktree $worktree", e, st);
+    await (
+      repository
+          .getPendingQuestions(directory: null)
+          .then((questions) => tracker.populatePendingQuestions(questions: questions))
+          .catchError((Object e, StackTrace st) {
+            Log.w("coldStart: failed to hydrate pending questions", e, st);
           }),
-          repository.getPendingPermissions(directory: worktree).then((permissions) {
-            for (final permission in permissions) {
-              permissionsById[permission.id] = permission;
-            }
-          }).catchError((Object e, StackTrace st) {
-            Log.w("coldStart: failed to hydrate pending permissions for worktree $worktree", e, st);
+      repository
+          .getPendingPermissions(directory: null)
+          .then((permissions) => tracker.populatePendingPermissions(permissions: permissions))
+          .catchError((Object e, StackTrace st) {
+            Log.w("coldStart: failed to hydrate pending permissions", e, st);
           }),
-        ]);
-      }),
-    );
-
-    tracker.populatePendingQuestions(questions: questionsById.values.toList());
-    tracker.populatePendingPermissions(permissions: permissionsById.values.toList());
+    ).wait;
   }
 
   void reset() {
