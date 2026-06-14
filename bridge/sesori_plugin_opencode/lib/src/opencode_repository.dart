@@ -276,12 +276,32 @@ class OpenCodeRepository {
     return mapProviderResponse(response: response);
   }
 
-  Future<List<PendingQuestion>> getPendingQuestions() {
-    return _api.getPendingQuestions(directory: null);
+  Future<Session> getSession({
+    required String sessionId,
+    required String? directory,
+  }) {
+    return _api.getSession(
+      sessionId: sessionId,
+      directory: directory?.normalize(),
+    );
   }
 
-  Future<List<PendingPermission>> getPendingPermissions() {
-    return _api.getPendingPermissions(directory: null);
+  Future<List<Session>> getChildren({
+    required String sessionId,
+    required String? directory,
+  }) {
+    return _api.getChildren(
+      sessionId: sessionId,
+      directory: directory?.normalize(),
+    );
+  }
+
+  Future<List<PendingQuestion>> getPendingQuestions({required String? directory}) {
+    return _api.getPendingQuestions(directory: directory?.normalize());
+  }
+
+  Future<List<PendingPermission>> getPendingPermissions({required String? directory}) {
+    return _api.getPendingPermissions(directory: directory?.normalize());
   }
 
   /// Collects all sessions whose directory is equal to or under [worktree],

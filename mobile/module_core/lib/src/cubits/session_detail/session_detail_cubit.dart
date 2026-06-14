@@ -199,8 +199,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               streamingText: streamingText,
               sessionStatus: refreshedSessionStatus,
               retryErrorMessage: retryMessage,
-              pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
-              pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
+              pendingQuestions: _mapPendingQuestions(
+                snapshot.pendingQuestions,
+                childSessionIds: childIds,
+              ),
+              pendingPermissions: _mapPendingPermissions(
+                snapshot.pendingPermissions,
+                childSessionIds: childIds,
+              ),
               agent: latestAssistant?.agent,
               assistantAgentModel: assistantAgentModel,
               children: refreshedChildSessions,
@@ -1208,8 +1214,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       streamingText: const {},
       sessionStatus: initialSessionStatus,
       retryErrorMessage: initialRetryMessage,
-      pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
-      pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
+      pendingQuestions: _mapPendingQuestions(
+        snapshot.pendingQuestions,
+        childSessionIds: childIds,
+      ),
+      pendingPermissions: _mapPendingPermissions(
+        snapshot.pendingPermissions,
+        childSessionIds: childIds,
+      ),
       sessionTitle: snapshot.canonicalSessionTitle,
       agent: latestAssistant?.agent,
       assistantAgentModel: assistantAgentModel,
@@ -1239,9 +1251,12 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     return m?.variants.where((v) => v != "none").map((v) => SessionVariant(id: v)).toList() ?? [];
   }
 
-  List<SesoriQuestionAsked> _mapPendingQuestions(List<PendingQuestion> pendingQuestions) {
+  List<SesoriQuestionAsked> _mapPendingQuestions(
+    List<PendingQuestion> pendingQuestions, {
+    required Set<String> childSessionIds,
+  }) {
     return pendingQuestions
-        .where((q) => q.sessionID == _sessionId)
+        .where((q) => q.sessionID == _sessionId || childSessionIds.contains(q.sessionID))
         .map(
           (q) => SesoriQuestionAsked(
             id: q.id,
@@ -1252,9 +1267,12 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         .toList();
   }
 
-  List<SesoriPermissionAsked> _mapPendingPermissions(List<PendingPermission> pendingPermissions) {
+  List<SesoriPermissionAsked> _mapPendingPermissions(
+    List<PendingPermission> pendingPermissions, {
+    required Set<String> childSessionIds,
+  }) {
     return pendingPermissions
-        .where((p) => p.sessionID == _sessionId)
+        .where((p) => p.sessionID == _sessionId || childSessionIds.contains(p.sessionID))
         .map(
           (p) => SesoriPermissionAsked(
             requestID: p.id,

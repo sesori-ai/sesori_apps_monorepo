@@ -99,6 +99,39 @@ class OpenCodeService {
     return _applyLimit(afterStart, limit);
   }
 
+  Future<List<PendingQuestion>> getPendingQuestionsForSession({
+    required String sessionId,
+  }) async {
+    var directory = tracker.getSessionDirectory(sessionId: sessionId);
+    if (directory == null) {
+      final session = await repository.getSession(
+        sessionId: sessionId,
+        directory: null,
+      );
+      directory = session.directory;
+      tracker.registerSession(sessionId: sessionId, directory: directory);
+      Log.d(
+        "getPendingQuestionsForSession: resolved missing directory "
+        "for session $sessionId via getSession: $directory",
+      );
+    }
+
+    Set<String> childIds = const {};
+    try {
+      childIds = (await repository.getChildren(
+        sessionId: sessionId,
+        directory: directory,
+      )).map((child) => child.id).toSet();
+    } catch (e, st) {
+      Log.w(
+        "getPendingQuestionsForSession: failed to fetch children "
+        "for session $sessionId in directory $directory: $e\n$st",
+      );
+    }
+    final all = await repository.getPendingQuestions(directory: directory);
+    return all.where((question) => question.sessionID == sessionId || childIds.contains(question.sessionID)).toList();
+  }
+
   Future<List<MessageWithParts>> getMessages({
     required String sessionId,
     required String? directory,
@@ -274,20 +307,33 @@ class OpenCodeService {
   /// abort cold start — [ActiveSessionTracker.coldStart] succeeds
   /// independently.
   Future<void> _hydratePendingInput() async {
-    await (
-      repository
-          .getPendingQuestions()
-          .then((questions) => tracker.populatePendingQuestions(questions: questions))
-          .catchError((Object e, StackTrace st) {
-            Log.w("coldStart: failed to hydrate pending questions: $e\n$st");
-          }),
-      repository
-          .getPendingPermissions()
-          .then((permissions) => tracker.populatePendingPermissions(permissions: permissions))
-          .catchError((Object e, StackTrace st) {
-            Log.w("coldStart: failed to hydrate pending permissions: $e\n$st");
-          }),
-    ).wait;
+    final projects = await repository.getProjects();
+    final questionsById = <String, PendingQuestion>{};
+    final permissionsById = <String, PendingPermission>{};
+
+    for (final project in projects) {
+      final worktree = project.worktree;
+      try {
+        final questions = await repository.getPendingQuestions(directory: worktree);
+        for (final question in questions) {
+          questionsById[question.id] = question;
+        }
+      } catch (e, st) {
+        Log.w("coldStart: failed to hydrate pending questions for worktree $worktree: $e\n$st");
+      }
+
+      try {
+        final permissions = await repository.getPendingPermissions(directory: worktree);
+        for (final permission in permissions) {
+          permissionsById[permission.id] = permission;
+        }
+      } catch (e, st) {
+        Log.w("coldStart: failed to hydrate pending permissions for worktree $worktree: $e\n$st");
+      }
+    }
+
+    tracker.populatePendingQuestions(questions: questionsById.values.toList());
+    tracker.populatePendingPermissions(permissions: permissionsById.values.toList());
   }
 
   void reset() {

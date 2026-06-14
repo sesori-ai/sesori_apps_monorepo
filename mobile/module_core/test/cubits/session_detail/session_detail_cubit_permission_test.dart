@@ -145,6 +145,96 @@ void main() {
       expect(seenPermissions, [permission]);
     });
 
+    test("initial load keeps pending questions for direct child sessions", () async {
+      when(
+        () => mockSessionService.getChildren(sessionId: any(named: "sessionId")),
+      ).thenAnswer(
+        (_) => Future<ApiResponse<SessionListResponse>>.value(
+          ApiResponse.success(SessionListResponse(items: [_childSession()])),
+        ),
+      );
+      when(
+        () => mockSessionService.getPendingQuestions(sessionId: any(named: "sessionId")),
+      ).thenAnswer(
+        (_) => Future<ApiResponse<PendingQuestionResponse>>.value(
+          ApiResponse.success(
+            const PendingQuestionResponse(
+              data: [
+                PendingQuestion(id: "q-child", sessionID: "child-1", questions: []),
+                PendingQuestion(id: "q-sibling", sessionID: "sibling", questions: []),
+              ],
+            ),
+          ),
+        ),
+      );
+      final cubit = _buildCubit(
+        sessionId: sessionId,
+        projectId: "project-1",
+        connectionService: mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        notificationCanceller: mockNotificationCanceller,
+        permissionRepository: mockPermissionRepository,
+        failureReporter: mockFailureReporter,
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+
+      final loaded = cubit.state as SessionDetailLoaded;
+      expect(loaded.pendingQuestions.map((question) => question.id), equals(["q-child"]));
+    });
+
+    test("initial load keeps pending permissions for direct child sessions", () async {
+      when(
+        () => mockSessionService.getChildren(sessionId: any(named: "sessionId")),
+      ).thenAnswer(
+        (_) => Future<ApiResponse<SessionListResponse>>.value(
+          ApiResponse.success(SessionListResponse(items: [_childSession()])),
+        ),
+      );
+      when(
+        () => mockSessionService.getPendingPermissions(),
+      ).thenAnswer(
+        (_) => Future<ApiResponse<PendingPermissionResponse>>.value(
+          ApiResponse.success(
+            const PendingPermissionResponse(
+              data: [
+                PendingPermission(
+                  id: "perm-child",
+                  sessionID: "child-1",
+                  tool: "fs_write",
+                  description: "Allow writing file",
+                ),
+                PendingPermission(
+                  id: "perm-sibling",
+                  sessionID: "sibling",
+                  tool: "fs_read",
+                  description: "Allow reading file",
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      final cubit = _buildCubit(
+        sessionId: sessionId,
+        projectId: "project-1",
+        connectionService: mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        notificationCanceller: mockNotificationCanceller,
+        permissionRepository: mockPermissionRepository,
+        failureReporter: mockFailureReporter,
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+
+      final loaded = cubit.state as SessionDetailLoaded;
+      expect(loaded.pendingPermissions.map((permission) => permission.requestID), equals(["perm-child"]));
+    });
+
     test("duplicate permission IDs are ignored", () async {
       final cubit = _buildCubit(
         sessionId: sessionId,
@@ -394,6 +484,20 @@ MessageWithParts _messageWithParts({String messageId = "msg-1"}) {
       providerID: null,
     ),
     parts: const [],
+  );
+}
+
+Session _childSession() {
+  return const Session(
+    id: "child-1",
+    projectID: "project-1",
+    directory: "/repo",
+    parentID: "session-1",
+    title: "Child",
+    time: null,
+    summary: null,
+    pullRequest: null,
+    promptDefaults: null,
   );
 }
 
