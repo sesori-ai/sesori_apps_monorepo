@@ -571,9 +571,6 @@ class _FakeApi implements OpenCodeApi {
        _createdSession = createdSession;
 
   @override
-  String get serverURL => "http://fake";
-
-  @override
   Future<bool> healthCheck() async => true;
 
   @override

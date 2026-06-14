@@ -161,6 +161,8 @@ class OpenCodeBridgePlugin implements BridgePlugin {
   Future<void> shutdown({required Duration? budget}) => _shutdown ??= _shutdownNow();
 
   Future<void> _shutdownNow() async {
+    final sw = Stopwatch()..start();
+    Log.d("[shutdown] OpenCode plugin stop begin (mode=${_ownedRecord == null ? "attached" : "managed"})");
     _reporter.dispose();
     if (!_status.isClosed && _status.current is! PluginStopped) {
       _status.trySet(const PluginStopping());
@@ -179,6 +181,7 @@ class OpenCodeBridgePlugin implements BridgePlugin {
         // Disarm before signaling the child so its deliberate exit is not
         // mistaken for a crash (no spurious restart / PluginFailed).
         await _monitor.disarm();
+        Log.v("[shutdown] OpenCode monitor disarmed (+${sw.elapsedMilliseconds}ms)");
       } on Object catch (error, stackTrace) {
         Log.e("[opencode] monitor disarm failed: $error");
         primaryError = error;
@@ -187,6 +190,7 @@ class OpenCodeBridgePlugin implements BridgePlugin {
 
       try {
         await api.dispose();
+        Log.v("[shutdown] OpenCode api disposed (+${sw.elapsedMilliseconds}ms)");
       } on Object catch (error, stackTrace) {
         primaryError ??= error;
         primaryStackTrace ??= stackTrace;
@@ -200,11 +204,14 @@ class OpenCodeBridgePlugin implements BridgePlugin {
       if (record != null) {
         try {
           await _service.stopOwnedRuntime(record: record);
+          Log.v("[shutdown] OpenCode owned runtime stopped (+${sw.elapsedMilliseconds}ms)");
         } on Object catch (error, stackTrace) {
           Log.e("[opencode] stop owned runtime failed: $error");
           primaryError ??= error;
           primaryStackTrace ??= stackTrace;
         }
+      } else {
+        Log.v("[shutdown] OpenCode has no owned runtime to stop (attach mode)");
       }
 
       if (primaryError != null) {
@@ -214,6 +221,7 @@ class OpenCodeBridgePlugin implements BridgePlugin {
       if (!_status.isClosed) {
         _status.trySet(const PluginStopped());
       }
+      Log.d("[shutdown] OpenCode plugin stop complete (${sw.elapsedMilliseconds}ms total)");
     }
   }
 }

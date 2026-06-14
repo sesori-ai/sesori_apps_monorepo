@@ -740,9 +740,6 @@ PendingQuestion _question({required String id, required String sessionId}) {
 }
 
 class FakeOpenCodeApi implements OpenCodeApi {
-  @override
-  String get serverURL => "http://fake";
-
   List<plugin.MessageWithParts> messages;
   Object? messagesError;
   String? lastRequestedSessionId;

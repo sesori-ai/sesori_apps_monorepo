@@ -53,9 +53,11 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   }) {
     final httpClient = io.HttpClient();
     final api = OpenCodeApi(
-      serverURL: serverUrl,
-      password: password,
-      client: IOClient(httpClient),
+      client: OpenCodeRawHttpClient(
+        serverURL: serverUrl,
+        password: password,
+        client: IOClient(httpClient),
+      ),
     );
     final repository = OpenCodeRepository(api);
     final tracker = ActiveSessionTracker(repository);
@@ -162,10 +164,18 @@ class OpenCodePlugin implements OpenCodeManagedApi {
 
   @override
   Future<void> dispose() async {
+    if (_disposed) {
+      Log.v("[shutdown] OpenCodePlugin.dispose: already disposed, skipping");
+      return;
+    }
     _disposed = true;
+    Log.v("[shutdown] OpenCodePlugin.dispose: stopping SSE connection");
     _sseConnection.stop();
+    Log.v("[shutdown] OpenCodePlugin.dispose: force-closing http client");
     _httpClient.close(force: true);
+    final sw = Stopwatch()..start();
     await _eventBuffer.close();
+    Log.d("[shutdown] OpenCodePlugin.dispose: event buffer closed in ${sw.elapsedMilliseconds}ms");
   }
 
   @override
