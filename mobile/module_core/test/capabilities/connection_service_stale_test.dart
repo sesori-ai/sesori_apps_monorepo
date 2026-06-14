@@ -28,7 +28,7 @@ class MockRelayClient extends Mock implements RelayClient {}
 
 class _TestRelayClientFactory extends RelayClientFactory {
   final RelayClient _client;
-  _TestRelayClientFactory(this._client);
+  _TestRelayClientFactory({required RelayClient client}) : _client = client;
 
   @override
   RelayClient call({
@@ -280,7 +280,7 @@ void main() {
         lifecycleSource,
         MockFailureReporter(),
         clock: _TestClockProvider(() => now),
-        relayClientFactory: _TestRelayClientFactory(relayClient),
+        relayClientFactory: _TestRelayClientFactory(client: relayClient),
       );
       addTearDown(staleService.dispose);
 
