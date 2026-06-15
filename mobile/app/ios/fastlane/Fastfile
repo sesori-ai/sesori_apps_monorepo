@@ -300,7 +300,8 @@ platform :ios do
       # half-submitted version. Without this, Pass 2 fails with
       # "You must provide a value for the attribute 'whatsNew'".
       if metadata_dir.nil?
-        notes = release_notes_by_locale(metadata_dir_from_env("IOS_RELEASE_NOTES_PATH"))
+        release_notes_dir = metadata_dir_from_env("IOS_RELEASE_NOTES_PATH")
+        notes = release_notes_by_locale(release_notes_dir)
         if notes
           require "tmpdir"
           require "fileutils"
@@ -322,7 +323,7 @@ platform :ios do
               run_precheck_before_submit: false
             )
           end
-        else
+        elsif release_notes_dir
           UI.important(
             "No release_notes.txt in the metadata repo — submitting without setting " \
             "'What's New'. If this version has none on App Store Connect yet, Apple " \
