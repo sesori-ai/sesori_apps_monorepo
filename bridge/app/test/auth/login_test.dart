@@ -40,7 +40,8 @@ void main() {
           browserLauncher: (url) async => launchedUrls.add(url),
         );
 
-        final tokens = await service.performOAuthLogin(AuthProvider.github);
+        final result = await service.performOAuthLogin(AuthProvider.github);
+        final tokens = result.tokens;
 
         expect(tokens.accessToken, equals('github-access-token'));
         expect(tokens.refreshToken, equals('github-refresh-token'));
@@ -48,6 +49,7 @@ void main() {
         expect(launchedUrls, equals(['https://example.com/github-login']));
         expect(authServer.initRequests, hasLength(1));
         expect(authServer.statusRequests, hasLength(2));
+        expect(authServer.ackRequests, isEmpty);
 
         final initRequest = authServer.initRequests.single;
         expect(initRequest.method, equals('POST'));
@@ -108,14 +110,38 @@ void main() {
           browserLauncher: (_) async {},
         );
 
-        final tokens = await service.performOAuthLogin(AuthProvider.google);
+        final result = await service.performOAuthLogin(AuthProvider.google);
+        final tokens = result.tokens;
 
         expect(tokens.accessToken, equals('google-access-token'));
         expect(tokens.refreshToken, equals('google-refresh-token'));
         expect(tokens.lastProvider, equals(AuthProvider.google));
         expect(authServer.initRequests.single.path, equals('/auth/google/init'));
         expect(authServer.initRequests.single.queryParameters, isEmpty);
+        expect(authServer.ackRequests, isEmpty);
         expect(authServer.unexpectedPaths, isNot(contains('/callback')));
+      });
+
+      test('ackOAuthSessionCompletion POSTs the session ACK with the session token header', () async {
+        final authServer = await _OAuthLongPollTestServer.start(
+          authUrl: 'https://example.com/google-login',
+          statusResponses: const [AuthSessionStatusResponse.pending()],
+        );
+        addTearDown(authServer.close);
+        final api = LoginOAuthApi(
+          authBackendUrl: authServer.baseUrl,
+          client: authServer.client,
+        );
+
+        await api.ackOAuthSessionCompletion(sessionToken: 'session-token-123');
+
+        expect(authServer.ackRequests, hasLength(1));
+        final ackRequest = authServer.ackRequests.single;
+        expect(ackRequest.method, equals('POST'));
+        expect(ackRequest.path, equals('/auth/session/status/ack'));
+        expect(ackRequest.queryParameters, isEmpty);
+        expect(ackRequest.sessionToken, equals('session-token-123'));
+        expect(ackRequest.body, isNull);
       });
 
       test('expired status throws', () async {
@@ -406,6 +432,7 @@ class _OAuthLongPollTestServer {
   final http.Client client = http.Client();
   final List<_OAuthRequestRecord> initRequests = [];
   final List<_OAuthRequestRecord> statusRequests = [];
+  final List<_OAuthRequestRecord> ackRequests = [];
   final List<String> unexpectedPaths = [];
 
   _OAuthLongPollTestServer._({
@@ -455,6 +482,12 @@ class _OAuthLongPollTestServer {
         request.response.statusCode = 200;
         request.response.headers.contentType = ContentType.json;
         request.response.write(jsonEncode(status.toJson()));
+        await request.response.close();
+      } else if (request.uri.path == '/auth/session/status/ack' && request.method == 'POST') {
+        ackRequests.add(await _recordRequest(request));
+        request.response.statusCode = 200;
+        request.response.headers.contentType = ContentType.json;
+        request.response.write(jsonEncode({'success': true}));
         await request.response.close();
       } else {
         unexpectedPaths.add(request.uri.path);
