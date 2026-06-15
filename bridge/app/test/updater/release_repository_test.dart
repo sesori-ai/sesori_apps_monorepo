@@ -90,7 +90,7 @@ ReleaseRepository _makeRepository({
   final resolvedTarget = target ?? _defaultTarget;
 
   return ReleaseRepository(
-    api: GitHubReleasesApi(httpClient: httpClient),
+    api: GitHubReleasesApi(httpClient: httpClient, authToken: null),
     cache: cache ?? _FakeCache(),
     currentVersion: currentVersion,
     target: resolvedTarget,
@@ -241,7 +241,7 @@ void main() {
         );
       });
 
-      test('HTTP 403 (rate limit) → throws', () async {
+      test('HTTP 403 without rate-limit headers → throws StateError', () async {
         await expectLater(
           _makeRepository(httpClient: _mockStatus(403)).checkForNewerRelease(),
           throwsA(isA<StateError>()),

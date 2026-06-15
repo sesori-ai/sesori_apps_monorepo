@@ -121,7 +121,7 @@ void main() {
       });
 
       repository = ReleaseRepository(
-        api: GitHubReleasesApi(httpClient: client),
+        api: GitHubReleasesApi(httpClient: client, authToken: null),
         cache: _NoCache(),
         currentVersion: '0.2.0',
         target: target,
