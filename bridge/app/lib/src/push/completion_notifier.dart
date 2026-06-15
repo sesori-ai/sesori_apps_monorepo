@@ -100,19 +100,24 @@ class CompletionNotifier {
         _pendingAbortRoots.remove(info.id);
         _abortedRoots.remove(info.id);
         _permissionRequestToSession.removeWhere((_, sessionId) => sessionId == info.id);
-      // User already handled the question, so cancel any pending completion ping.
+        // The deleted session may have been the last pending interaction
+        // blocking its root. Resume completion for the root if it is still
+        // reachable via the parent and now eligible.
+        if (info.parentID case final parentId?) {
+          _maybeResumeBlockedCompletion(parentId);
+        }
+      // User already handled the question; resume completion if this was the
+      // last blocker for an idle session group.
       case SesoriQuestionReplied(:final sessionID):
-        _cancelDebounceForSessionGroup(sessionID);
         _maybeResumeBlockedCompletion(sessionID);
       // Rejected questions are also already seen by the user.
       case SesoriQuestionRejected(:final sessionID):
-        _cancelDebounceForSessionGroup(sessionID);
         _maybeResumeBlockedCompletion(sessionID);
-      // Permission replies are user actions, so cancel completion debounce.
+      // Permission replies are user actions; resume completion if this was the
+      // last blocker for an idle session group.
       case SesoriPermissionReplied(:final requestID):
         final sessionId = _permissionRequestToSession.remove(requestID);
         if (sessionId != null) {
-          _cancelDebounceForSessionGroup(sessionId);
           _maybeResumeBlockedCompletion(sessionId);
         }
       // Ignore unsupported events.
@@ -164,9 +169,10 @@ class CompletionNotifier {
   }
 
   /// Schedules completion for [sessionId] only if its group was previously busy,
-  /// is fully idle, and has no pending interactions. Used after question/permission
-  /// replies so an already-idle session can still fire completion once the user
-  /// resolves the last prompt.
+  /// is fully idle, has no pending interactions, and was blocked by a pending
+  /// interaction. Used after question/permission replies or session deletions
+  /// so an already-idle session can still fire completion once the last blocker
+  /// is removed.
   void _maybeResumeBlockedCompletion(String sessionId) {
     final rootSessionId = _tracker.resolveRootSessionId(sessionId);
     if (!_completionBlockedByPendingInteraction.contains(rootSessionId)) {

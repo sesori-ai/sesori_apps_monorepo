@@ -105,6 +105,81 @@ void main() {
       });
     });
 
+    test("deletion of last pending child resumes blocked root completion", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        harness.dispatch(SesoriSseEvent.sessionCreated(info: _session(id: "parent")));
+        harness.dispatch(
+          SesoriSseEvent.sessionCreated(
+            info: _session(id: "child", parentID: "parent"),
+          ),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "parent", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.questionAsked(
+            id: "q-1",
+            sessionID: "child",
+            questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
+          ),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "parent", status: SessionStatus.idle()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+        );
+        async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
+
+        harness.dispatch(SesoriSseEvent.sessionDeleted(info: _session(id: "child", parentID: "parent")));
+
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, equals(["parent"]));
+      });
+    });
+
+    test("duplicate question reply does not lose completion", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.questionAsked(
+            id: "q-1",
+            sessionID: "session-a",
+            questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
+          ),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
+        );
+        async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
+
+        harness.dispatch(
+          const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "session-a"),
+        );
+        async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
+
+        // Duplicate reply arrives before debounce fires.
+        harness.dispatch(
+          const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "session-a"),
+        );
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, equals(["session-a"]));
+      });
+    });
     test("session deleted during debounce cancels pending callback", () {
       fakeAsync((async) {
         final harness = _newHarness();

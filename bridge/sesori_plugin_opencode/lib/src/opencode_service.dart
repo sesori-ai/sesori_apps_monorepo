@@ -305,17 +305,18 @@ class OpenCodeService {
   }) async {
     final resolvedSessionId = sessionId ?? tracker.getSessionIdForQuestion(questionId: questionId);
     final directory = resolvedSessionId != null ? await _resolveSessionDirectory(sessionId: resolvedSessionId) : null;
-    try {
-      await repository.rejectQuestion(
-        questionId: questionId,
-        directory: directory,
-      );
-    } on OpenCodeApiException catch (e) {
-      // For an explicit user reject we clear local pending state even when the
-      // request was unscoped (older mobile clients may omit sessionId). Other
-      // errors still propagate so genuine failures are not silently swallowed.
-      if (e.statusCode != 404) rethrow;
-      Log.w("question already resolved upstream (404), reconciling tracker: ${e.endpoint}", e);
+    if (directory != null) {
+      try {
+        await repository.rejectQuestion(
+          questionId: questionId,
+          directory: directory,
+        );
+      } on OpenCodeApiException catch (e) {
+        // A 404 after a scoped request means the question is already gone
+        // upstream; reconcile local state so the UI does not stay stuck.
+        if (e.statusCode != 404) rethrow;
+        Log.w("question already resolved upstream (404), reconciling tracker: ${e.endpoint}", e);
+      }
     }
     return tracker.clearPendingQuestion(questionId: questionId, sessionId: resolvedSessionId);
   }

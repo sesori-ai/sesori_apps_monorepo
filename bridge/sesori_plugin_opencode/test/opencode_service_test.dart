@@ -859,7 +859,7 @@ void main() {
       expect(tracker.lastClearedQuestionSessionId, equals("ses-1"));
     });
 
-    test("rejectQuestion 404 without resolvable sessionId still clears tracker for backwards compatibility", () async {
+    test("rejectQuestion 404 without resolvable sessionId clears local state without upstream call", () async {
       final repository = FakeOpenCodeRepository(
         rejectQuestionError: OpenCodeApiException("POST /question/q1/reject", 404),
       );
@@ -875,8 +875,7 @@ void main() {
       expect(result.resolvedSessionId, isNull);
       expect(result.summaryChanged, isTrue);
       expect(tracker.lastGetSessionIdForQuestionQuestionId, equals("q1"));
-      expect(repository.lastRejectQuestionId, equals("q1"));
-      expect(repository.lastRejectQuestionDirectory, isNull);
+      expect(repository.lastRejectQuestionId, isNull);
       expect(tracker.lastClearedQuestionId, equals("q1"));
       expect(tracker.lastClearedQuestionSessionId, isNull);
     });
