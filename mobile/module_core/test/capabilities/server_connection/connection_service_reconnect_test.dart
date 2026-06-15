@@ -188,6 +188,7 @@ void main() {
       final relayClient = MockRelayClient();
 
       when(relayClient.connect).thenAnswer((_) async {});
+      when(() => relayClient.didResume).thenReturn(false);
       when(() => relayClient.sendRequest(any())).thenAnswer(
         (_) async => RelayResponse(
           id: "1",
@@ -227,6 +228,81 @@ void main() {
       verify(relayClient.disconnect).called(greaterThanOrEqualTo(1));
     });
 
+    test("resumed connect skips the GET /health round-trip", () async {
+      final sseController = StreamController<RelaySseEvent>.broadcast();
+      addTearDown(sseController.close);
+
+      final relayClient = MockRelayClient();
+      when(relayClient.connect).thenAnswer((_) async {});
+      when(() => relayClient.didResume).thenReturn(true);
+      when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
+      when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(relayClient.disconnect).thenAnswer((_) async {});
+
+      final factory = _TestRelayClientFactory(
+        ({
+          required String relayHost,
+          required RelayCryptoService cryptoService,
+          required RoomKeyStorage roomKeyStorage,
+          required String? authToken,
+        }) => relayClient,
+      );
+      final service = ConnectionService(
+        cryptoService,
+        roomKeyStorage,
+        authTokenProvider,
+        authSession,
+        lifecycleSource,
+        failureReporter,
+        relayClientFactory: factory,
+      );
+      addTearDown(service.dispose);
+
+      await service.connect(config);
+
+      verifyNever(() => relayClient.sendRequest(any()));
+      expect(service.currentStatus, isA<ConnectionConnected>());
+    });
+
+    test("fresh-DH connect still sends GET /health", () async {
+      final sseController = StreamController<RelaySseEvent>.broadcast();
+      addTearDown(sseController.close);
+
+      final relayClient = MockRelayClient();
+      when(relayClient.connect).thenAnswer((_) async {});
+      when(() => relayClient.didResume).thenReturn(false);
+      when(() => relayClient.sendRequest(any())).thenAnswer(
+        (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
+      );
+      when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
+      when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(relayClient.disconnect).thenAnswer((_) async {});
+
+      final factory = _TestRelayClientFactory(
+        ({
+          required String relayHost,
+          required RelayCryptoService cryptoService,
+          required RoomKeyStorage roomKeyStorage,
+          required String? authToken,
+        }) => relayClient,
+      );
+      final service = ConnectionService(
+        cryptoService,
+        roomKeyStorage,
+        authTokenProvider,
+        authSession,
+        lifecycleSource,
+        failureReporter,
+        relayClientFactory: factory,
+      );
+      addTearDown(service.dispose);
+
+      await service.connect(config);
+
+      verify(() => relayClient.sendRequest(any())).called(1);
+      expect(service.currentStatus, isA<ConnectionConnected>());
+    });
+
     test(
       "foreground resume attempts the first reconnect immediately, without the backoff delay",
       () async {
@@ -237,6 +313,7 @@ void main() {
 
         final relayClient = MockRelayClient();
         when(relayClient.connect).thenAnswer((_) async {});
+        when(() => relayClient.didResume).thenReturn(false);
         when(() => relayClient.isConnected).thenReturn(true);
         when(() => relayClient.sendRequest(any())).thenAnswer(
           (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
@@ -293,6 +370,7 @@ void main() {
 
       final relayClient = MockRelayClient();
       when(relayClient.connect).thenAnswer((_) async {});
+      when(() => relayClient.didResume).thenReturn(false);
       when(() => relayClient.isConnected).thenReturn(true);
       when(() => relayClient.sendRequest(any())).thenAnswer(
         (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
@@ -338,6 +416,7 @@ void main() {
 
       final relayClient = MockRelayClient();
       when(relayClient.connect).thenAnswer((_) async {});
+      when(() => relayClient.didResume).thenReturn(false);
       when(() => relayClient.isConnected).thenReturn(true);
       when(() => relayClient.sendRequest(any())).thenAnswer(
         (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
@@ -420,6 +499,7 @@ void main() {
       ];
 
       for (final client in clients) {
+        when(() => client.didResume).thenReturn(false);
         when(() => client.isConnected).thenReturn(true);
         when(() => client.sendRequest(any())).thenAnswer(
           (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
@@ -495,6 +575,7 @@ void main() {
       final clients = <MockRelayClient>[initialClient, reconnectClient];
 
       for (final client in clients) {
+        when(() => client.didResume).thenReturn(false);
         when(() => client.isConnected).thenReturn(true);
         when(() => client.sendRequest(any())).thenAnswer(
           (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
