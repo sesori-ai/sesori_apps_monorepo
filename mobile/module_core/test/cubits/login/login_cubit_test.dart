@@ -1,10 +1,12 @@
 import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
+import "package:http/http.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart" show AuthSession, OAuthFlowProvider;
 import "package:sesori_dart_core/src/cubits/login/login_cubit.dart";
+import "package:sesori_dart_core/src/cubits/login/login_failed_reason.dart";
 import "package:sesori_dart_core/src/cubits/login/login_state.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/url_launcher.dart";
@@ -60,7 +62,7 @@ void main() {
       when(() => mockOAuthFlowProvider.hasActiveOAuthSession()).thenAnswer((_) async => false);
       when(() => mockOAuthFlowProvider.resumeOAuthFlow()).thenAnswer((_) async => testAuthUser);
       when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer(
-        (_) => BehaviorSubject<LifecycleState>.seeded(LifecycleState.paused).stream,
+        (_) => BehaviorSubject<LifecycleState>.seeded(LifecycleState.resumed).stream,
       );
     });
 
@@ -168,6 +170,112 @@ void main() {
           isA<LoginTimeout>(),
         ],
       );
+
+      group("background interruption", () {
+        test("parks interrupted background poll in LoginPolling instead of LoginFailed", () async {
+          final lifecycleSubject = BehaviorSubject<LifecycleState>.seeded(LifecycleState.resumed);
+          when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleSubject.stream);
+          when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async {
+            lifecycleSubject.add(LifecycleState.paused);
+            await Future<void>.delayed(Duration.zero);
+            throw ClientException("Software caused connection abort");
+          });
+
+          final cubit = buildCubit();
+          final states = <LoginState>[];
+          final sub = cubit.stream.listen(states.add);
+
+          await cubit.loginWithProvider(AuthProvider.google);
+
+          await cubit.close();
+          await sub.cancel();
+          await lifecycleSubject.close();
+
+          expect(cubit.state, isA<LoginPolling>());
+          expect(states, contains(isA<LoginPolling>()));
+          expect(states, isNot(contains(isA<LoginFailed>())));
+        });
+
+        test("resume after background-interrupted poll completes login", () async {
+          final lifecycleSubject = BehaviorSubject<LifecycleState>.seeded(LifecycleState.resumed);
+          when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleSubject.stream);
+          when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async {
+            lifecycleSubject.add(LifecycleState.paused);
+            await Future<void>.delayed(Duration.zero);
+            throw ClientException("Software caused connection abort");
+          });
+
+          final cubit = buildCubit();
+          final states = <LoginState>[];
+          final sub = cubit.stream.listen(states.add);
+
+          await cubit.loginWithProvider(AuthProvider.google);
+          expect(cubit.state, isA<LoginPolling>());
+
+          when(() => mockOAuthFlowProvider.hasActiveOAuthSession()).thenAnswer((_) async => true);
+          when(() => mockOAuthFlowProvider.resumeOAuthFlow()).thenAnswer((_) async => testAuthUser);
+
+          lifecycleSubject.add(LifecycleState.resumed);
+          await Future<void>.delayed(Duration.zero);
+
+          await cubit.close();
+          await sub.cancel();
+          await lifecycleSubject.close();
+
+          expect(cubit.state, isA<LoginSuccess>());
+          expect(states, contains(isA<LoginSuccess>()));
+          verify(() => mockOAuthFlowProvider.resumeOAuthFlow()).called(1);
+        });
+
+        blocTest<LoginCubit, LoginState>(
+          "foreground poll error still fails",
+          build: buildCubit,
+          act: (cubit) async {
+            when(() => mockOAuthFlowProvider.pollForResult()).thenThrow(StateError("poll failed"));
+            await cubit.loginWithProvider(AuthProvider.google);
+          },
+          expect: () => [
+            isA<LoginAuthenticating>(),
+            isA<LoginAwaitingConfirmation>(),
+            isA<LoginPolling>(),
+            isA<LoginFailed>().having(
+              (state) => state.reason,
+              "reason",
+              LoginFailedReason.unknown,
+            ),
+          ],
+        );
+
+        test("resume with expired session resets interrupted poll to LoginIdle", () async {
+          final lifecycleSubject = BehaviorSubject<LifecycleState>.seeded(LifecycleState.resumed);
+          when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleSubject.stream);
+          when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async {
+            lifecycleSubject.add(LifecycleState.paused);
+            await Future<void>.delayed(Duration.zero);
+            throw ClientException("Software caused connection abort");
+          });
+
+          final cubit = buildCubit();
+          final states = <LoginState>[];
+          final sub = cubit.stream.listen(states.add);
+
+          await cubit.loginWithProvider(AuthProvider.google);
+          expect(cubit.state, isA<LoginPolling>());
+
+          when(() => mockOAuthFlowProvider.hasActiveOAuthSession()).thenAnswer((_) async => false);
+
+          lifecycleSubject.add(LifecycleState.resumed);
+          await Future<void>.delayed(Duration.zero);
+
+          await cubit.close();
+          await sub.cancel();
+          await lifecycleSubject.close();
+
+          expect(cubit.state, isA<LoginIdle>());
+          expect(states, contains(isA<LoginIdle>()));
+          verifyNever(() => mockOAuthFlowProvider.resumeOAuthFlow());
+        });
+      });
     });
 
     group("Lifecycle resume", () {

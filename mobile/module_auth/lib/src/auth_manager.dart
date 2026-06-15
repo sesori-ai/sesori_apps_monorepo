@@ -95,6 +95,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   Future<AuthInitResponse> startOAuthFlow({required OAuthProvider provider}) async {
     final sessionToken = _generateSessionToken();
     _oAuthSessionToken = sessionToken;
+    _logAuth("startOAuthFlow: provider=${provider.key} sessionToken=${_short(sessionToken)}");
 
     try {
       final uri = Uri.parse("$authBaseUrl/auth/${provider.key}/init");
@@ -103,6 +104,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
         body: const AuthInitRequest(clientType: _mobileClientType).toJson(),
         headers: {_sessionTokenHeader: sessionToken},
       );
+      _logAuth("startOAuthFlow: /auth/${provider.key}/init -> HTTP ${response.statusCode}");
       _ensureSuccess(response, context: "Failed to start ${provider.label} auth flow");
 
       final initResponse = AuthInitResponse.fromJson(jsonDecodeMap(response.body));
@@ -111,8 +113,14 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
         sessionToken: sessionToken,
         expiresAt: expiresAt,
       );
+      _logAuth(
+        "startOAuthFlow: ready provider=${provider.key} userCode=${initResponse.userCode} "
+        "expiresIn=${initResponse.expiresIn}s expiresAt=${expiresAt.toIso8601String()} "
+        "authUrlHost=${Uri.tryParse(initResponse.authUrl)?.host}",
+      );
       return initResponse;
-    } catch (_) {
+    } catch (e, st) {
+      _logAuth("startOAuthFlow: failed for provider=${provider.key}", e, st);
       _oAuthSessionToken = null;
       await _oAuthStorage.clearOAuthSession();
       rethrow;
@@ -123,17 +131,25 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   Future<AuthUser> pollForResult() async {
     final sessionToken = _oAuthSessionToken ?? (await _oAuthStorage.getOAuthSession()).sessionToken;
     final expiresAt = (await _oAuthStorage.getOAuthSession()).expiresAt;
+    _logAuth(
+      "pollForResult: start inMemoryToken=${_oAuthSessionToken != null} "
+      "sessionToken=${sessionToken == null ? "null" : _short(sessionToken)} "
+      "expiresAt=${expiresAt?.toIso8601String()}",
+    );
 
     if (sessionToken == null || sessionToken.isEmpty) {
+      _logAuth("pollForResult: aborting -- no active OAuth session token");
       throw StateError("No OAuth flow is active");
     }
 
     if (expiresAt != null && DateTime.now().isAfter(expiresAt)) {
+      _logAuth("pollForResult: aborting -- session already expired at ${expiresAt.toIso8601String()}");
       await _oAuthStorage.clearOAuthSession();
       _oAuthSessionToken = null;
       throw TimeoutException("OAuth authorization expired");
     }
 
+    var pollCount = 0;
     try {
       while (expiresAt == null || DateTime.now().isBefore(expiresAt)) {
         final remaining = expiresAt?.difference(DateTime.now()) ?? _pollTimeout;
@@ -141,14 +157,24 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
         if (requestTimeout <= Duration.zero) break;
 
         final uri = Uri.parse("$authBaseUrl/auth/session/status");
-        final response = await _get(
-          uri,
-          headers: {_sessionTokenHeader: sessionToken},
-        ).timeout(requestTimeout);
+        pollCount++;
+        final http.Response response;
+        try {
+          response = await _get(
+            uri,
+            headers: {_sessionTokenHeader: sessionToken},
+          ).timeout(requestTimeout);
+        } catch (e, st) {
+          _logAuth("pollForResult: HTTP request failed on poll #$pollCount", e, st);
+          rethrow;
+        }
 
         final status = _parseSessionStatus(response);
         switch (status) {
           case AuthSessionStatusResponsePending():
+            if (pollCount == 1 || pollCount % 40 == 0) {
+              _logAuth("pollForResult: pending (poll #$pollCount, HTTP ${response.statusCode})");
+            }
             final delayRemaining = expiresAt?.difference(DateTime.now()) ?? _pollTimeout;
             final delay = _pollInterval < delayRemaining ? _pollInterval : delayRemaining;
             if (delay > Duration.zero) {
@@ -159,6 +185,10 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
             refreshToken: final refreshToken,
             user: final user,
           ):
+            _logAuth(
+              "pollForResult: COMPLETE after $pollCount poll(s) -- "
+              "user=${user.id} provider=${user.provider.key}",
+            );
             await _persistOAuthCompletion(
               accessToken: accessToken,
               refreshToken: refreshToken,
@@ -166,17 +196,21 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
             );
             return user;
           case AuthSessionStatusResponseDenied():
+            _logAuth("pollForResult: DENIED after $pollCount poll(s)");
             await _oAuthStorage.clearOAuthSession();
             throw StateError("OAuth authorization was denied");
           case AuthSessionStatusResponseExpired():
+            _logAuth("pollForResult: EXPIRED after $pollCount poll(s)");
             await _oAuthStorage.clearOAuthSession();
             throw StateError("OAuth authorization expired");
           case AuthSessionStatusResponseError(:final message):
+            _logAuth("pollForResult: ERROR after $pollCount poll(s) -- message=$message");
             await _oAuthStorage.clearOAuthSession();
             throw StateError("OAuth authorization failed: $message");
         }
       }
 
+      _logAuth("pollForResult: timed out after $pollCount poll(s)");
       await _oAuthStorage.clearOAuthSession();
       throw TimeoutException("OAuth authorization timed out");
     } finally {
@@ -231,6 +265,9 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     final isExpired = response.statusCode == 410;
 
     if (!isSuccess && !isExpired) {
+      _logAuth(
+        "session/status: non-success HTTP ${response.statusCode} body=${_bodyPreview(response.body)}",
+      );
       _ensureSuccess(response, context: "OAuth session polling failed");
       throw StateError("OAuth session polling failed");
     }
@@ -239,17 +276,28 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       try {
         return AuthSessionStatusResponse.fromJson(jsonDecodeMap(response.body));
       } on Object catch (e) {
+        _logAuth(
+          "session/status: parse failure HTTP ${response.statusCode} body=${_bodyPreview(response.body)}",
+          e,
+        );
         throw Exception("Failed to parse auth session status response: ${e.toString()}");
       }
     }
 
+    _logAuth("session/status: empty body with HTTP ${response.statusCode}");
     throw StateError("OAuth session polling failed: empty response body");
   }
 
   @override
   Future<AuthUser> resumeOAuthFlow() async {
     final session = await _oAuthStorage.getOAuthSession();
-    if (session.sessionToken == null) {
+    final storedToken = session.sessionToken;
+    _logAuth(
+      "resumeOAuthFlow: sessionToken=${storedToken == null ? "null" : _short(storedToken)} "
+      "expiresAt=${session.expiresAt?.toIso8601String()}",
+    );
+    if (storedToken == null) {
+      _logAuth("resumeOAuthFlow: aborting -- no stored OAuth session");
       throw StateError("No OAuth flow is active");
     }
     return pollForResult();
@@ -259,11 +307,17 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   Future<bool> hasActiveOAuthSession() async {
     final session = await _oAuthStorage.getOAuthSession();
     if (session.sessionToken == null || session.expiresAt == null) {
+      _logAuth(
+        "hasActiveOAuthSession: false (hasToken=${session.sessionToken != null}, "
+        "hasExpiry=${session.expiresAt != null})",
+      );
       return false;
     }
     final expiresAt = session.expiresAt;
     if (expiresAt == null) return false;
-    return DateTime.now().isBefore(expiresAt);
+    final active = DateTime.now().isBefore(expiresAt);
+    _logAuth("hasActiveOAuthSession: $active (expiresAt=${expiresAt.toIso8601String()})");
+    return active;
   }
 
   @override
@@ -548,7 +602,35 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
 
   void _ensureSuccess(http.Response response, {required String context}) {
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      _logAuth("$context (HTTP ${response.statusCode}) body=${_bodyPreview(response.body)}");
       throw StateError("$context (HTTP ${response.statusCode})");
     }
+  }
+
+  /// Structured auth diagnostics routed through `dart:developer` under the
+  /// shared `sesori_auth` log name, so they can be filtered in `flutter logs`
+  /// and the DevTools logging view.
+  // ignore: no_slop_linter/prefer_required_named_parameters, logging convenience API keeps optional positional context
+  void _logAuth(String message, [Object? error, StackTrace? stackTrace]) {
+    developer.log(
+      message,
+      name: "sesori_auth",
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
+
+  /// First 8 chars of a token-like value, for correlating logs across the flow
+  /// without leaking the full secret.
+  String _short(String value) => value.length <= 8 ? value : "${value.substring(0, 8)}...";
+
+  /// Truncates an HTTP body for logging. Only ever called on non-success,
+  /// parse-failure, or empty responses -- never on a successfully parsed
+  /// "complete" body -- so access/refresh tokens are never written to logs.
+  String _bodyPreview(String body) {
+    final trimmed = body.trim();
+    const maxChars = 500;
+    if (trimmed.length <= maxChars) return trimmed;
+    return "${trimmed.substring(0, maxChars)}... (${trimmed.length} chars total)";
   }
 }
