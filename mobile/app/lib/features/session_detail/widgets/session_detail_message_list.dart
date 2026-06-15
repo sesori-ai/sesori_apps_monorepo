@@ -127,6 +127,7 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
   Offset _revealStart = Offset.zero;
   bool _revealEngaged = false;
   bool _revealRejected = false;
+  bool _revealStartedFollowing = false;
 
   /// Snapshot taken at the moment of detach. `null` means "not frozen
   /// — use live `widget.*` props".
@@ -401,10 +402,17 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
   }
 
   void _onRevealPointerDown(PointerDownEvent event) {
+    // The first pointer owns the peek for its whole lifetime; ignore
+    // secondary touches so a stray second finger can't strand the
+    // gesture state (and the detach suppression) on the wrong pointer.
+    if (_revealPointer != null) return;
     _revealPointer = event.pointer;
     _revealStart = event.position;
     _revealEngaged = false;
     _revealRejected = false;
+    // Remember whether we were following when the gesture began: only
+    // then is a detach during this gesture "spurious" and worth undoing.
+    _revealStartedFollowing = _follow.following;
   }
 
   void _onRevealPointerMove(PointerMoveEvent event) {
@@ -422,10 +430,14 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
       }
       if (dx.abs() < _kRevealEngageSlop || dx.abs() <= dy.abs()) return;
       _revealEngaged = true;
-      // The scrollable fired a spurious drag-start as it claimed the
-      // pointer; suppress (and undo) the detach so a sideways peek never
-      // pops the "jump to latest" affordance while we sit at the edge.
-      _follow.suppressDetach();
+      // The scrollable fires a spurious drag-start as it claims the
+      // pointer. Only undo/suppress the resulting detach when we began
+      // the gesture following — otherwise the user was deliberately
+      // scrolled up reading history, and force-re-attaching here would
+      // discard their snapshot and teleport them to the newest edge.
+      if (_revealStartedFollowing) {
+        _follow.suppressDetach();
+      }
     }
 
     // Dragging left (negative dx) opens the gutter; dragging right closes
@@ -450,7 +462,12 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
     _revealEngaged = false;
     _revealRejected = false;
     _follow.releaseDetachSuppression();
-    if (_revealController.value != 0) {
+    if (_revealController.value == 0) return;
+    // Spring the gutter shut, honouring the OS reduce-motion preference
+    // like the rest of the app's decorative animations.
+    if (context.isReducedMotion) {
+      _revealController.value = 0;
+    } else {
       _revealController.animateTo(0, curve: Curves.easeOut);
     }
   }

@@ -640,4 +640,91 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
   });
+
+  testWidgets("peeking timestamps while detached does not snap back to the latest edge", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final created = DateTime.now().millisecondsSinceEpoch;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: [
+          for (var i = 0; i < 12; i++)
+            _message(
+              messageId: "u$i",
+              role: "user",
+              text: _multilineText(label: "Message $i", lines: 6),
+              createdAtMs: created,
+            ),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Scroll up into history so the list is detached from the edge.
+    await _detachViewport(tester);
+    final detachedPixels = _position(tester).pixels;
+
+    // A horizontal peek must reveal timestamps without re-attaching follow
+    // mode or moving the reader's scroll position.
+    final gesture = await tester.startGesture(tester.getCenter(find.byKey(_listViewKey)));
+    await gesture.moveBy(const Offset(-160, 0));
+    await tester.pump();
+
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget, reason: "peek must not re-attach follow mode while detached");
+    expect(_position(tester).pixels, detachedPixels, reason: "peek must not move the scroll position");
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(_jumpToLatestKey),
+      findsOneWidget,
+      reason: "still detached at the same spot after the peek closes",
+    );
+  });
+
+  testWidgets("a second finger during a peek does not hijack or cancel it", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final created = DateTime.now().millisecondsSinceEpoch;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: [
+          for (var i = 0; i < 12; i++)
+            _message(
+              messageId: "u$i",
+              role: "user",
+              text: _multilineText(label: "Message $i", lines: 6),
+              createdAtMs: created,
+            ),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final textFinder = find.textContaining("Message 11").first;
+    final restX = tester.getTopLeft(textFinder).dx;
+
+    // Finger A engages the peek.
+    final pointerA = await tester.startGesture(const Offset(450, 350));
+    await pointerA.moveBy(const Offset(-160, 0));
+    await tester.pump();
+    final peekedX = tester.getTopLeft(textFinder).dx;
+    expect(peekedX, lessThan(restX));
+
+    // A stray second finger lands and lifts; it must not hijack the
+    // gesture or spring the peek shut.
+    final pointerB = await tester.startGesture(const Offset(200, 300));
+    await pointerB.up();
+    await tester.pump();
+    expect(tester.getTopLeft(textFinder).dx, peekedX, reason: "secondary pointer must not cancel the active peek");
+
+    // The owning finger lifts: now it springs back.
+    await pointerA.up();
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
+  });
 }
