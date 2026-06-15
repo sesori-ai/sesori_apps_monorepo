@@ -52,6 +52,7 @@ import "package:flutter/material.dart";
 import "prego_design_system.dart";
 
 export 'font/prego_text_theme.dart';
+export "prego_design_system.dart";
 export "primitives/prego_colors.g.dart" show PregoColors, PregoColorsDark, PregoColorsLight;
 export "primitives/prego_colors_x.dart";
 export "primitives/prego_radius.g.dart";
@@ -59,7 +60,6 @@ export "primitives/prego_shadows.dart";
 export "primitives/prego_spacing.g.dart";
 export "primitives/prego_spacing_primitives.g.dart";
 export "primitives/prego_widths.g.dart";
-export "prego_design_system.dart";
 
 /// Extension on [BuildContext] to access [PregoDesignSystem].
 ///

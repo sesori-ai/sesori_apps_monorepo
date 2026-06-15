@@ -2,7 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:sesori_mobile/features/session_detail/widgets/message_timestamp_reveal.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 /// Hosts an [AnimationController] and hands it to [builder] so a test can
 /// drive the reveal progress directly.
@@ -36,7 +36,7 @@ void main() {
     late AnimationController controller;
     await tester.pumpWidget(
       MaterialApp(
-        theme: ThemeData(extensions: [ZyraDesignSystem.light]),
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
