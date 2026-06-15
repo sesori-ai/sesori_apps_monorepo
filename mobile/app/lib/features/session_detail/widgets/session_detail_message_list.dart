@@ -301,6 +301,9 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
             bottomPadding: 8,
             handleSafeArea: false,
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+            // Always allow overscroll/bounce, even when the transcript is
+            // shorter than the viewport, so the list never feels locked.
+            physics: const AlwaysScrollableScrollPhysics(),
           ),
         ),
       ),

@@ -6,18 +6,22 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../capabilities/session/session_service.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
+import "../../services/new_session_selection_store.dart";
 import "../../utils/model_filter/default_model_selector.dart";
 import "new_session_state.dart";
 
 class NewSessionCubit extends Cubit<NewSessionState> {
   final SessionService _sessionService;
+  final NewSessionSelectionStore _selectionStore;
   final String _projectId;
   static const _defaultModelSelector = DefaultModelSelector();
 
   NewSessionCubit({
     required SessionService sessionService,
+    required NewSessionSelectionStore selectionStore,
     required String projectId,
   }) : _sessionService = sessionService,
+       _selectionStore = selectionStore,
        _projectId = projectId,
        super(
          const NewSessionState.idle(
@@ -94,12 +98,23 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         defaultAgentModel = null;
       }
 
+      // Restore a previously chosen (non-default) agent / model / variant so a
+      // deliberate selection survives leaving and returning to the new-session
+      // screen (where this cubit is recreated). Validate every part against the
+      // freshly loaded data so a now-unavailable choice falls back to default.
+      final (:selectedAgent, :selectedAgentModel) = _resolveInitialSelection(
+        defaultAgent: defaultAgent,
+        defaultAgentModel: defaultAgentModel,
+        agents: agents,
+        providers: providers,
+      );
+
       _emitAgentModelUpdate(
         availableAgents: agents,
         availableProviders: providers,
         availableCommands: commands,
-        selectedAgent: defaultAgent,
-        selectedAgentModel: defaultAgentModel,
+        selectedAgent: selectedAgent,
+        selectedAgentModel: selectedAgentModel,
       );
     } catch (e, stackTrace) {
       loge("New session: failed to load composer data for project $_projectId", e, stackTrace);
@@ -183,6 +198,58 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     return m?.variants.where((v) => v != "none").map((v) => SessionVariant(id: v)).toList() ?? [];
   }
 
+  /// Picks the agent / model / variant to start with: a previously persisted
+  /// user selection (validated against the current [agents]/[providers]) when
+  /// present and still available, otherwise the supplied defaults. Parts that
+  /// are no longer available degrade independently to their default.
+  ({String? selectedAgent, AgentModel? selectedAgentModel}) _resolveInitialSelection({
+    required String? defaultAgent,
+    required AgentModel? defaultAgentModel,
+    required List<AgentInfo> agents,
+    required List<ProviderInfo> providers,
+  }) {
+    final saved = _selectionStore.read(_projectId);
+    if (saved == null) {
+      return (selectedAgent: defaultAgent, selectedAgentModel: defaultAgentModel);
+    }
+
+    final savedAgent = saved.agent;
+    final selectedAgent = (savedAgent != null && agents.any((a) => a.name == savedAgent))
+        ? savedAgent
+        : defaultAgent;
+
+    final savedModel = saved.agentModel;
+    AgentModel? selectedAgentModel = defaultAgentModel;
+    if (savedModel != null && _modelIsAvailable(providers: providers, model: savedModel)) {
+      // Drop a saved variant the model no longer offers.
+      final availableVariants = _deriveAvailableVariants(providers: providers, model: savedModel);
+      final variant = savedModel.variant;
+      final validVariant = (variant != null && availableVariants.any((v) => v.id == variant)) ? variant : null;
+      selectedAgentModel = savedModel.copyWith(variant: validVariant);
+    }
+
+    return (selectedAgent: selectedAgent, selectedAgentModel: selectedAgentModel);
+  }
+
+  bool _modelIsAvailable({required List<ProviderInfo> providers, required AgentModel model}) {
+    final m = providers.firstWhereOrNull((p) => p.id == model.providerID)?.models[model.modelID];
+    // Mirror the picker / DefaultModelSelector, which both filter on
+    // `isAvailable`: a deprecated model lingers in the provider map with
+    // `isAvailable: false`, so restoring it would show a selection absent from
+    // the picker. Fall back to the default instead.
+    return m != null && m.isAvailable;
+  }
+
+  /// Persists the current agent / model / variant selection so it survives a
+  /// round-trip away from the new-session screen. Called after every explicit
+  /// user change (never for the auto-computed default), so a stale entry can
+  /// never shadow a future default.
+  void _persistSelection() {
+    final data = state.agentModelData;
+    if (data == null) return;
+    _selectionStore.write(_projectId, agent: data.agent, agentModel: data.agentModel);
+  }
+
   void selectAgent(String agent) {
     final current = state;
     final agentInfo = switch (current) {
@@ -199,6 +266,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       availableCommands: null, // no change
       availableProviders: null, // no change
     );
+    _persistSelection();
   }
 
   void selectVariant(SessionVariant? variant) {
@@ -219,6 +287,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       case NewSessionCreated():
         return;
     }
+    _persistSelection();
   }
 
   void stageCommand(CommandInfo command) {
@@ -285,6 +354,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       availableCommands: null, // no change
       availableProviders: null, // no change
     );
+    _persistSelection();
   }
 
   AgentModel? _resolveAgentModel({
@@ -345,6 +415,10 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
     switch (response) {
       case SuccessResponse(:final data):
+        // The composer is done; drop the persisted selection so the next new
+        // session for this project starts from the default (mirrors how a sent
+        // prompt clears its text draft).
+        _selectionStore.clear(_projectId);
         emit(NewSessionState.created(session: data));
       case ErrorResponse(:final error):
         loge("New session creation failed", error);
