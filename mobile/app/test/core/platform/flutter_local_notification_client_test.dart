@@ -41,6 +41,17 @@ void main() {
       // delivered notifications; the Android (tag, 0) sweep is a no-op here.
       verify(() => mockPlugin.cancel(id: expectedId, tag: null)).called(1);
     });
+
+    test("cancelForSession swallows plugin cancel failures", () async {
+      when(
+        () => mockPlugin.cancel(id: any(named: "id"), tag: any(named: "tag")),
+      ).thenThrow(Exception("cancel boom"));
+
+      client.cancelForSession(sessionId: "ses_abc");
+      await Future<void>.delayed(Duration.zero);
+
+      verify(() => mockPlugin.cancel(id: any(named: "id"), tag: any(named: "tag"))).called(1);
+    });
   });
 
   group("show", () {

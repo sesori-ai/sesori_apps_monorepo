@@ -179,14 +179,7 @@ class FlutterLocalNotificationClient implements LocalNotificationClient {
 
   @override
   void cancelForSession({required String sessionId}) {
-    unawaited(
-      _cancelForSession(sessionNotificationId(sessionId: sessionId)).catchError((
-        Object error,
-        StackTrace stackTrace,
-      ) {
-        logw("Failed to cancel notifications for session", error, stackTrace);
-      }),
-    );
+    unawaited(_cancelForSession(sessionNotificationId(sessionId: sessionId)));
   }
 
   /// Dismisses every notification for a session, across the surfaces that may
@@ -195,8 +188,15 @@ class FlutterLocalNotificationClient implements LocalNotificationClient {
   ///    keyed by the integer id: `cancel(id)`.
   ///  - the Android OS notification rendered from an FCM background message,
   ///    posted as `(tag, 0)`: `cancel(0, tag: id)`.
+  ///
+  /// Each surface is cancelled independently and best-effort, so a failure on
+  /// one is logged and never blocks the other or escapes this fire-and-forget call.
   Future<void> _cancelForSession(int id) async {
-    await cancel(id: id, tag: null);
+    try {
+      await cancel(id: id, tag: null);
+    } on Object catch (error, stackTrace) {
+      logw("Failed to cancel foreground notification for session", error, stackTrace);
+    }
     await _cancelAndroidBackgroundNotification(id);
   }
 
@@ -204,11 +204,18 @@ class FlutterLocalNotificationClient implements LocalNotificationClient {
   /// tag is the session-scoped id string the auth server sets. Removing
   /// `(tag, 0)` clears that notification. No-op elsewhere: on iOS/macOS the
   /// shared integer identifier already covers both foreground and background.
+  ///
+  /// Best-effort: failures are logged, never thrown, so the pre-show cleanup in
+  /// [show] always proceeds to post the new notification.
   Future<void> _cancelAndroidBackgroundNotification(int id) async {
     if (!Platform.isAndroid) {
       return;
     }
-    await cancel(id: 0, tag: id.toString());
+    try {
+      await cancel(id: 0, tag: id.toString());
+    } on Object catch (error, stackTrace) {
+      logw("Failed to cancel Android background notification for session", error, stackTrace);
+    }
   }
 
   Future<void> dispose() => _notificationOpenedController.close();
