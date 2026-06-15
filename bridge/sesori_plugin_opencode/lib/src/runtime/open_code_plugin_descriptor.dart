@@ -179,7 +179,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     if (config.flag("no-auto-start")) {
       return const PluginAvailable();
     }
-    final executablePath = config.value("opencode-bin")!;
+    final executablePath = config.value("opencode-bin") ?? "opencode";
     return _probeOpenCodeBinary(
       executablePath: executablePath,
       processes: processes,
@@ -240,6 +240,9 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       } on Object {
         // Best-effort: reap the hung probe so it does not linger.
       }
+      return PluginUnavailable(message: _notWorkingMessage(executablePath: executablePath));
+    } on Object catch (error) {
+      Log.d("[opencode] availability probe '$executablePath --version' failed with error: $error");
       return PluginUnavailable(message: _notWorkingMessage(executablePath: executablePath));
     } finally {
       await stdoutSubscription.cancel();

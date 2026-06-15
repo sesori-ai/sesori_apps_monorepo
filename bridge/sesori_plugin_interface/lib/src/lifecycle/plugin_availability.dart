@@ -44,7 +44,9 @@ final class PluginAvailable extends PluginAvailability {
 /// available — e.g. install instructions and a verification command. It is
 /// authored by the plugin, never by the bridge core.
 final class PluginUnavailable extends PluginAvailability {
-  const PluginUnavailable({required this.message});
+  PluginUnavailable({required String message})
+    : assert(message.isNotEmpty, "PluginUnavailable.message must not be empty"),
+      message = message;
 
   /// User-facing guidance printed to the user immediately before the bridge
   /// exits non-zero.

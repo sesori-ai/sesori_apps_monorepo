@@ -100,6 +100,47 @@ void main() {
       expect(processes.forceSignals, equals(<int>[99]));
     });
 
+    test("falls back to 'opencode' when --opencode-bin is null", () async {
+      final processes = _ProbeProcessService(
+        spawnError: const ProcessException("opencode", ["--version"], "No such file or directory", 2),
+      );
+
+      final result = await const OpenCodePluginDescriptor().checkAvailability(
+        config: const PluginConfig(
+          values: {"no-auto-start": false, "port": null, "password": "", "opencode-bin": null},
+        ),
+        processes: processes,
+        environment: const <String, String>{},
+      );
+
+      expect(result, isA<PluginUnavailable>());
+      expect((result as PluginUnavailable).message, contains("opencode --version"));
+      expect(processes.spawnedExecutables, equals(<String>["opencode"]));
+    });
+
+    test("reports unavailable when exitCode completes with an error", () async {
+      final completer = Completer<int>();
+      final processes = _ProbeProcessService(
+        process: _ProbeProcess(
+          pid: 11,
+          stdoutBytes: const <int>[],
+          exitCode: completer.future,
+        ),
+      );
+      scheduleMicrotask(() => completer.completeError(StateError("unexpected exit error")));
+
+      final result = await const OpenCodePluginDescriptor().checkAvailability(
+        config: managedConfig,
+        processes: processes,
+        environment: const <String, String>{},
+      );
+
+      expect(result, isA<PluginUnavailable>());
+      expect((result as PluginUnavailable).message, contains("did not respond"));
+      // A process whose exitCode errors is not hung; we should not force-kill it.
+      expect(processes.forceSignals, isEmpty);
+    });
+
     test("uses the configured --opencode-bin path in the spawn and the message", () async {
       final processes = _ProbeProcessService(
         spawnError: const ProcessException("/custom/opencode", ["--version"], "No such file or directory", 2),
