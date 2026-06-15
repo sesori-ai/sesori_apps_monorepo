@@ -387,6 +387,10 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
     final config = state.agentModelData;
     final variantId = config?.agentModel?.variant;
+    // Snapshot the selection this request is sending with, so a late success
+    // clears only its own snapshot (see below) and never a newer selection a
+    // reopened composer wrote for the same project in the meantime.
+    final selectionAtSend = _selectionTracker.read(projectId: _projectId);
 
     emit(
       NewSessionState.sending(
@@ -416,8 +420,14 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     // even when the user backed out mid-send and closed this cubit (a launch
     // can still succeed in the background; the text draft is likewise cleared
     // the moment the prompt is sent). Must run before the isClosed guard below.
+    //
+    // Clear only the snapshot this request was sent with: if the user reopened
+    // the composer for the same project and picked a different model/effort
+    // while this request was in flight, that newer selection must survive.
     if (response case SuccessResponse()) {
-      _selectionTracker.clear(projectId: _projectId);
+      if (_selectionTracker.read(projectId: _projectId) == selectionAtSend) {
+        _selectionTracker.clear(projectId: _projectId);
+      }
     }
 
     if (isClosed) return;

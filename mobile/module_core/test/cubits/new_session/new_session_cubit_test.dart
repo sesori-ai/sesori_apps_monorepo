@@ -811,5 +811,48 @@ void main() {
 
       expect(selectionTracker.read(projectId: "project-1"), isNull);
     });
+
+    test("a late background success only clears the snapshot it was sent with, not a newer one", () async {
+      final completer = Completer<ApiResponse<Session>>();
+      when(
+        () => mockSessionService.createSessionWithMessage(
+          projectId: any(named: "projectId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      ).thenAnswer((_) => completer.future);
+
+      // The in-flight request was sent with selection V1.
+      selectionTracker.write(
+        projectId: "project-1",
+        agent: "build",
+        agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "low"),
+      );
+      final cubit = buildCubit();
+      final pending = cubit.createSession(text: "hi", dedicatedWorktree: true, command: null);
+      // User backs out; the screen disposes this cubit.
+      await cubit.close();
+      // A reopened composer writes a newer selection V2 for the same project
+      // while the first request is still in flight.
+      selectionTracker.write(
+        projectId: "project-1",
+        agent: "build",
+        agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "high"),
+      );
+      // The first launch now succeeds in the background.
+      completer.complete(ApiResponse.success(testSession(id: "s-late")));
+      await pending;
+
+      // V2 must survive — the late success only owned V1.
+      expect(
+        selectionTracker.read(projectId: "project-1")?.agentModel,
+        const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "high"),
+      );
+    });
   });
 }
