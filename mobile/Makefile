@@ -7,8 +7,8 @@ FLUTTER := $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)/bin/flutter
 # right Flutter even when the shell exports a stale FLUTTER_ROOT (e.g. asdf global).
 export FLUTTER_ROOT := $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)
 
-# Dependency order: module_auth -> module_core -> module_zyra -> app
-MODULES := module_auth module_core module_zyra app
+# Dependency order: module_auth -> module_core -> module_prego -> app
+MODULES := module_auth module_core module_prego app
 
 .PHONY: codegen pub-get test analyze generate-assets generate-tokens
 
@@ -40,8 +40,8 @@ analyze:
 	done
 
 generate-assets:
-	(cd module_zyra && $(DART) run scripts/generate_icon_font_dart.dart --font-dir assets/fonts/TablerIcons --output lib/icons/tabler_icons.g.dart --font-package theme_zyra --family-map "TablerIcons-Thin.ttf:TablerThin:TablerThin" --family-map "TablerIcons-Light.ttf:TablerLight:TablerLight" --family-map "TablerIcons-Regular.ttf:TablerRegular:TablerRegular" --family-map "TablerIcons-Solid.ttf:TablerSolid:TablerSolid")
-	(cd module_zyra && $(DART) run scripts/generate_icon_font_dart.dart --font-dir assets/fonts/VESPRIcons --output lib/icons/vespr_icons.g.dart --font-package theme_zyra --family-map "VESPRIcons-Light.ttf:VESPRLight:VESPRLight" --family-map "VESPRIcons-Regular.ttf:VESPRRegular:VESPRRegular" --family-map "VESPRIcons-Solid.ttf:VESPRSolid:VESPRSolid")
+	(cd module_prego && $(DART) run scripts/generate_icon_font_dart.dart --font-dir assets/fonts/TablerIcons --output lib/icons/tabler_icons.g.dart --font-package theme_prego --family-map "TablerIcons-Thin.ttf:TablerThin:TablerThin" --family-map "TablerIcons-Light.ttf:TablerLight:TablerLight" --family-map "TablerIcons-Regular.ttf:TablerRegular:TablerRegular" --family-map "TablerIcons-Solid.ttf:TablerSolid:TablerSolid")
+	(cd module_prego && $(DART) run scripts/generate_icon_font_dart.dart --font-dir assets/fonts/VESPRIcons --output lib/icons/vespr_icons.g.dart --font-package theme_prego --family-map "VESPRIcons-Light.ttf:VESPRLight:VESPRLight" --family-map "VESPRIcons-Regular.ttf:VESPRRegular:VESPRRegular" --family-map "VESPRIcons-Solid.ttf:VESPRSolid:VESPRSolid")
 
 generate-tokens:
-	(cd module_zyra && $(DART) run scripts/figma_tokens/sync_figma_tokens.dart generate)
+	(cd module_prego && $(DART) run scripts/figma_tokens/sync_figma_tokens.dart generate)
