@@ -62,6 +62,7 @@ MessageWithParts _assistantMessage({required List<MessagePart> parts}) {
       agent: null,
       modelID: null,
       providerID: null,
+      time: null,
     ),
     parts: parts,
   );

@@ -66,6 +66,7 @@ MessageWithParts _messageWithPart({
       agent: null,
       modelID: null,
       providerID: null,
+      time: null,
     ),
     parts: [
       MessagePart(

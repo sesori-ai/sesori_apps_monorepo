@@ -588,6 +588,13 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   PluginMessageWithParts _mapMessage(MessageWithParts raw) {
     final info = raw.info;
     final parts = raw.parts;
+    final time = switch (info.time) {
+      MessageTime(:final created, :final completed) => PluginMessageTime(
+        created: created,
+        completed: completed,
+      ),
+      null => null,
+    };
     final pluginInfo = switch (info.error) {
       final error? => PluginMessage.error(
         id: info.id,
@@ -597,12 +604,14 @@ class OpenCodePlugin implements OpenCodeManagedApi {
         providerID: info.providerID,
         errorName: error.name,
         errorMessage: error.data.message,
+        time: time,
       ),
       null => switch (info.role) {
         "user" => PluginMessage.user(
           id: info.id,
           sessionID: info.sessionID,
           agent: info.agent,
+          time: time,
         ),
         "assistant" => PluginMessage.assistant(
           id: info.id,
@@ -610,6 +619,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
           agent: info.agent,
           modelID: info.modelID,
           providerID: info.providerID,
+          time: time,
         ),
         _ => throw ArgumentError('Unknown message role: ${info.role}'),
       },

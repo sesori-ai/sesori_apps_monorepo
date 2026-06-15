@@ -59,6 +59,7 @@ Map<String, dynamic> _$PluginMessageUserToJson(PluginMessageUser instance) =>
       'id': instance.id,
       'sessionID': instance.sessionID,
       'agent': instance.agent,
+      'time': instance.time?.toJson(),
       'role': instance.$type,
     };
 
@@ -70,6 +71,7 @@ Map<String, dynamic> _$PluginMessageAssistantToJson(
   'agent': instance.agent,
   'modelID': instance.modelID,
   'providerID': instance.providerID,
+  'time': instance.time?.toJson(),
   'role': instance.$type,
 };
 
@@ -82,5 +84,12 @@ Map<String, dynamic> _$PluginMessageErrorToJson(PluginMessageError instance) =>
       'providerID': instance.providerID,
       'errorName': instance.errorName,
       'errorMessage': instance.errorMessage,
+      'time': instance.time?.toJson(),
       'role': instance.$type,
+    };
+
+Map<String, dynamic> _$PluginMessageTimeToJson(_PluginMessageTime instance) =>
+    <String, dynamic>{
+      'created': instance.created,
+      'completed': instance.completed,
     };
