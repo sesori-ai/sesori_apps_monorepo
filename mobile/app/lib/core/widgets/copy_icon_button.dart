@@ -48,7 +48,7 @@ class _CopyIconButtonState extends State<CopyIconButton> {
     try {
       await HapticFeedback.lightImpact();
     } on Object catch (_) {
-      // ignore
+      // Nothing to do — haptics are unavailable on this platform/state.
     }
     if (!mounted) return;
     setState(() => _copied = true);
