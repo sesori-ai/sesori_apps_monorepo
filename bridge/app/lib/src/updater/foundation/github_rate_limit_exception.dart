@@ -11,7 +11,7 @@ class GitHubRateLimitException implements Exception {
   /// Null when the response carried no usable reset hint.
   final DateTime? resetAt;
 
-  const GitHubRateLimitException({this.resetAt});
+  const GitHubRateLimitException({required this.resetAt});
 
   @override
   String toString() {

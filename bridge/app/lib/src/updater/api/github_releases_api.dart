@@ -29,9 +29,7 @@ class GitHubReleasesApi {
           'page': '$page',
         },
       );
-      final http.Response response = await _httpClient
-          .get(uri, headers: _buildHeaders())
-          .timeout(const Duration(seconds: 5));
+      final http.Response response = await _getWithOpportunisticAuth(uri);
 
       if (_isRateLimited(response)) {
         throw GitHubRateLimitException(resetAt: _parseResetAt(response));
@@ -52,6 +50,38 @@ class GitHubReleasesApi {
     }
 
     return releases;
+  }
+
+  /// Fetches [uri], sending the auth token when present. Authentication is
+  /// opportunistic: a stale or invalid token must never leave the updater worse
+  /// off than running unauthenticated. The releases endpoint is public, so an
+  /// auth rejection triggers a single retry without the `Authorization` header.
+  Future<http.Response> _getWithOpportunisticAuth(Uri uri) async {
+    final headers = _buildHeaders();
+    final http.Response response = await _httpClient
+        .get(uri, headers: headers)
+        .timeout(const Duration(seconds: 5));
+
+    if (!headers.containsKey('Authorization') || !_isAuthRejection(response)) {
+      return response;
+    }
+
+    final unauthenticatedHeaders = Map<String, String>.of(headers)..remove('Authorization');
+    return _httpClient
+        .get(uri, headers: unauthenticatedHeaders)
+        .timeout(const Duration(seconds: 5));
+  }
+
+  /// Whether [response] indicates the supplied token was rejected (as opposed to
+  /// a rate limit or success). HTTP 401 is GitHub's "Bad credentials"; a 403
+  /// that is not a rate limit on this public endpoint is most likely a token
+  /// problem (missing scope, SSO enforcement). Both warrant an unauthenticated
+  /// retry.
+  bool _isAuthRejection(http.Response response) {
+    if (response.statusCode == 401) {
+      return true;
+    }
+    return response.statusCode == 403 && !_isRateLimited(response);
   }
 
   /// Builds the request headers. An `Authorization` header is sent only when a

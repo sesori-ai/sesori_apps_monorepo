@@ -45,6 +45,55 @@ void main() {
       });
     });
 
+    group('opportunistic auth fallback', () {
+      test('rejected token (401) → retries once without Authorization and succeeds', () async {
+        final authHeaderSeen = <bool>[];
+        final client = MockClient((request) async {
+          final attempt = authHeaderSeen.length;
+          authHeaderSeen.add(request.headers.containsKey('authorization'));
+          return attempt == 0
+              ? http.Response('Bad credentials', 401)
+              : http.Response('[]', 200);
+        });
+
+        final releases =
+            await GitHubReleasesApi(httpClient: client, authToken: 'stale-token').fetchReleases();
+
+        expect(releases, isEmpty);
+        // Authenticated first, then an unauthenticated retry.
+        expect(authHeaderSeen, equals([true, false]));
+      });
+
+      test('token-related 403 (no rate-limit signal) → retries unauthenticated', () async {
+        final authHeaderSeen = <bool>[];
+        final client = MockClient((request) async {
+          final attempt = authHeaderSeen.length;
+          authHeaderSeen.add(request.headers.containsKey('authorization'));
+          return attempt == 0 ? http.Response('', 403) : http.Response('[]', 200);
+        });
+
+        final releases =
+            await GitHubReleasesApi(httpClient: client, authToken: 'scopeless-token').fetchReleases();
+
+        expect(releases, isEmpty);
+        expect(authHeaderSeen, equals([true, false]));
+      });
+
+      test('rate-limited 403 with a token → does NOT retry, surfaces the rate limit', () async {
+        var calls = 0;
+        final client = MockClient((_) async {
+          calls++;
+          return http.Response('', 403, headers: {'x-ratelimit-remaining': '0'});
+        });
+
+        await expectLater(
+          GitHubReleasesApi(httpClient: client, authToken: 'valid-token').fetchReleases(),
+          throwsA(isA<GitHubRateLimitException>()),
+        );
+        expect(calls, equals(1));
+      });
+    });
+
     group('rate limiting', () {
       test('HTTP 403 with x-ratelimit-remaining: 0 → GitHubRateLimitException with reset time', () async {
         final resetEpochSeconds = DateTime.utc(2030, 6, 1, 15).millisecondsSinceEpoch ~/ 1000;
