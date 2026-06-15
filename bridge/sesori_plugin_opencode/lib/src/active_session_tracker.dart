@@ -280,7 +280,7 @@ class ActiveSessionTracker {
     // deeper — surfaces on its root session's row, because the session list
     // only renders root sessions. Sessions whose chain cannot be resolved to a
     // known root (an ancestor was never observed, or a cycle is detected) are
-    // ignored: there is no root row to attribute them to.
+    // dropped, because there is no root row to attribute them to.
     final activeDescendantsByRoot = <String, List<String>>{};
     final directlyActiveRoots = <String>{};
 
