@@ -2,7 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../core/extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
@@ -52,7 +52,7 @@ class SessionListPanel extends StatelessWidget {
                   Expanded(
                     child: Text(
                       _title(loc: loc),
-                      style: context.zyra.textTheme.textMd.bold,
+                      style: context.prego.textTheme.textMd.bold,
                     ),
                   ),
                   IconButton(
@@ -79,8 +79,8 @@ class SessionListPanel extends StatelessWidget {
                   padding: const EdgeInsetsDirectional.only(top: 2),
                   child: Text(
                     baseBranch,
-                    style: context.zyra.textTheme.textXs.regular.copyWith(
-                      color: context.zyra.colors.textSecondary,
+                    style: context.prego.textTheme.textXs.regular.copyWith(
+                      color: context.prego.colors.textSecondary,
                     ),
                   ),
                 ),

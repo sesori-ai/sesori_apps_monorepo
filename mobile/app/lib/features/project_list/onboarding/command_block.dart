@@ -21,17 +21,17 @@ class _CommandBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
-    final colors = zyra.colors;
+    final prego = context.prego;
+    final colors = prego.colors;
     final loc = context.loc;
-    final mono = zyra.textTheme.textXs.regular.copyWith(color: colors.textSecondary).monospace;
+    final mono = prego.textTheme.textXs.regular.copyWith(color: colors.textSecondary).monospace;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: ZyraSpacing.md, vertical: ZyraSpacing.lg),
+      padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md, vertical: PregoSpacing.lg),
       decoration: BoxDecoration(
         color: colors.bgSecondaryAlt,
-        borderRadius: BorderRadius.circular(ZyraRadius.lg),
+        borderRadius: BorderRadius.circular(PregoRadius.lg),
         border: Border.all(color: colors.borderSecondary),
       ),
       child: Column(
@@ -48,7 +48,7 @@ class _CommandBlock extends StatelessWidget {
                     selected: !isWindows,
                     onTap: onSelectUnix,
                   ),
-                  const SizedBox(width: ZyraSpacing.sm),
+                  const SizedBox(width: PregoSpacing.sm),
                   _PlatformTab(
                     label: loc.projectsOnboardingTabWindows,
                     selected: isWindows,
@@ -71,9 +71,9 @@ class _CommandBlock extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: ZyraSpacing.sm),
+          const SizedBox(height: PregoSpacing.sm),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: ZyraSpacing.lg, vertical: ZyraSpacing.sm),
+            padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.lg, vertical: PregoSpacing.sm),
             // semanticsLabel carries the full command so screen readers read it
             // even though the visible text is clamped to one line with ellipsis.
             child: Text(
@@ -85,7 +85,7 @@ class _CommandBlock extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: ZyraSpacing.lg, vertical: ZyraSpacing.sm),
+            padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.lg, vertical: PregoSpacing.sm),
             child: Text(
               runCommand,
               semanticsLabel: runCommand,
@@ -105,7 +105,7 @@ class _CopyIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Icon(TablerRegular.copy, size: 16, color: context.zyra.colors.textTertiary);
+    return Icon(TablerRegular.copy, size: 16, color: context.prego.colors.textTertiary);
   }
 }
 
@@ -118,8 +118,8 @@ class _PlatformTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
-    final colors = zyra.colors;
+    final prego = context.prego;
+    final colors = prego.colors;
 
     // selected: exposes the active platform to assistive tech (the InkWell
     // already conveys the tappable/label semantics; only selection is missing).
@@ -127,18 +127,18 @@ class _PlatformTab extends StatelessWidget {
       selected: selected,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(ZyraRadius.xxs),
+        borderRadius: BorderRadius.circular(PregoRadius.xxs),
         child: Container(
           height: 28,
           alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: ZyraSpacing.lg),
+          padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.lg),
           decoration: BoxDecoration(
             color: selected ? colors.buttonGlassPrimaryBackground : Colors.transparent,
-            borderRadius: BorderRadius.circular(ZyraRadius.xxs),
+            borderRadius: BorderRadius.circular(PregoRadius.xxs),
           ),
           child: Text(
             label,
-            style: zyra.textTheme.textSm.medium.copyWith(
+            style: prego.textTheme.textSm.medium.copyWith(
               color: selected ? colors.textPrimary : colors.textTertiary,
             ),
           ),

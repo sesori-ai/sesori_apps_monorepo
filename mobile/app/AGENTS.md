@@ -36,26 +36,26 @@ lib/
 
 ## Theming
 
-The app uses the **Zyra design system** via `theme_zyra`. The theme is wired into `MaterialApp.router` in `main.dart` using `ZyraColors`, `ZyraTextTheme`, and `ZyraDesignSystem` for both light and dark modes.
+The app uses the **Prego design system** via `theme_prego`. The theme is wired into `MaterialApp.router` in `main.dart` using `PregoColors`, `PregoTextTheme`, and `PregoDesignSystem` for both light and dark modes.
 
-**ALWAYS access colors, text styles, spacing, radius, and shadows through `context.zyra`.** Never reach for `Theme.of(context).colorScheme` or `Theme.of(context).textTheme` when a Zyra token exists. This ensures every screen stays consistent with the Figma design system.
+**ALWAYS access colors, text styles, spacing, radius, and shadows through `context.prego`.** Never reach for `Theme.of(context).colorScheme` or `Theme.of(context).textTheme` when a Prego token exists. This ensures every screen stays consistent with the Figma design system.
 
 ### Correct usage
 
 ```dart
 // Colors
-context.zyra.colors.textPrimary
-context.zyra.colors.bgBrandSolid
-context.zyra.colors.fgErrorPrimary
+context.prego.colors.textPrimary
+context.prego.colors.bgBrandSolid
+context.prego.colors.fgErrorPrimary
 
 // Text styles
-context.zyra.textTheme.textMd.bold
-context.zyra.textTheme.textSm.regular
+context.prego.textTheme.textMd.bold
+context.prego.textTheme.textSm.regular
 
 // Spacing / radius / shadows
-context.zyra.spacing.md
-context.zyra.radius.lg
-context.zyra.shadows.sm
+context.prego.spacing.md
+context.prego.radius.lg
+context.prego.shadows.sm
 ```
 
 ### Incorrect usage

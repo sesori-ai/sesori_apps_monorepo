@@ -2,7 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
@@ -55,7 +55,7 @@ class _DiffStatsTitle extends StatelessWidget {
                   additions,
                   deletions,
                 ),
-                style: context.zyra.textTheme.textXs.regular,
+                style: context.prego.textTheme.textXs.regular,
               ),
           ],
         );

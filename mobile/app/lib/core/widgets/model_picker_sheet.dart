@@ -6,7 +6,7 @@ import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart"
     show ModelPickerModelEntry, ModelPickerSection, ModelPickerSectionBuilder, loge;
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../extensions/build_context_x.dart";
 import "app_modal_bottom_sheet.dart";
@@ -49,11 +49,11 @@ class ModelPickerSheet extends StatefulWidget {
       handleBottomSafeArea: false,
       builder: (sheetContext) {
         final height = MediaQuery.sizeOf(sheetContext).height * 0.7;
-        final zyra = sheetContext.zyra;
+        final prego = sheetContext.prego;
         // Material (not a decorated Container) so the ListTiles inside can
         // paint their ink and selection effects on the sheet surface.
         return Material(
-          color: zyra.colors.bgPrimary,
+          color: prego.colors.bgPrimary,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           clipBehavior: Clip.antiAlias,
           child: SizedBox(
@@ -149,7 +149,7 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
+    final prego = context.prego;
     final loc = context.loc;
 
     return Column(
@@ -160,7 +160,7 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
             width: 32,
             height: 4,
             decoration: BoxDecoration(
-              color: zyra.colors.textSecondary.withValues(alpha: 0.4),
+              color: prego.colors.textSecondary.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -169,7 +169,7 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Text(
             loc.sessionDetailSelectModel,
-            style: zyra.textTheme.textMd.bold,
+            style: prego.textTheme.textMd.bold,
           ),
         ),
         Padding(
@@ -186,7 +186,7 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
                 borderSide: BorderSide.none,
               ),
               filled: true,
-              fillColor: zyra.colors.bgPrimary,
+              fillColor: prego.colors.bgPrimary,
             ),
             onChanged: (value) => setState(() {
               _query = value.trim();

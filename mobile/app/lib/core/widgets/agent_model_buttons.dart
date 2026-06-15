@@ -1,6 +1,6 @@
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../extensions/build_context_x.dart";
 
@@ -26,14 +26,14 @@ class AgentModelButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
+    final prego = context.prego;
     final loc = context.loc;
     final buttonStyle = OutlinedButton.styleFrom(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       minimumSize: .zero,
       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      textStyle: zyra.textTheme.textXs.medium,
-      side: BorderSide(color: zyra.colors.borderPrimary),
+      textStyle: prego.textTheme.textXs.medium,
+      side: BorderSide(color: prego.colors.borderPrimary),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     );
 
@@ -44,10 +44,10 @@ class AgentModelButtons extends StatelessWidget {
           Flexible(
             child: OutlinedButton.icon(
               onPressed: onAgentTap,
-              icon: Icon(Icons.smart_toy_outlined, size: 14, color: zyra.colors.textSecondary),
+              icon: Icon(Icons.smart_toy_outlined, size: 14, color: prego.colors.textSecondary),
               label: Text(
                 selectedAgent,
-                style: TextStyle(color: zyra.colors.textSecondary),
+                style: TextStyle(color: prego.colors.textSecondary),
                 overflow: .ellipsis,
                 maxLines: 1,
               ),
@@ -58,10 +58,10 @@ class AgentModelButtons extends StatelessWidget {
           Flexible(
             child: OutlinedButton.icon(
               onPressed: onModelTap,
-              icon: Icon(Icons.memory_outlined, size: 14, color: zyra.colors.textSecondary),
+              icon: Icon(Icons.memory_outlined, size: 14, color: prego.colors.textSecondary),
               label: Text(
                 modelName,
-                style: TextStyle(color: zyra.colors.textSecondary),
+                style: TextStyle(color: prego.colors.textSecondary),
                 overflow: .ellipsis,
                 maxLines: 1,
               ),
@@ -73,10 +73,10 @@ class AgentModelButtons extends StatelessWidget {
             Flexible(
               child: OutlinedButton.icon(
                 onPressed: onVariantTap,
-                icon: Icon(Icons.speed_outlined, size: 14, color: zyra.colors.textSecondary),
+                icon: Icon(Icons.speed_outlined, size: 14, color: prego.colors.textSecondary),
                 label: Text(
                   selectedAgentModel?.variant ?? loc.sessionDetailVariantDefault,
-                  style: TextStyle(color: zyra.colors.textSecondary),
+                  style: TextStyle(color: prego.colors.textSecondary),
                   overflow: .ellipsis,
                   maxLines: 1,
                 ),

@@ -9,7 +9,7 @@ import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:sign_in_with_apple/sign_in_with_apple.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
@@ -108,7 +108,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
+    final prego = context.prego;
     final loc = context.loc;
     final state = context.watch<LoginCubit>().state;
     final isLoading = state is LoginAuthenticating || state is LoginAwaitingConfirmation || state is LoginPolling;
@@ -142,12 +142,12 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                                 const Hero(tag: SesoriLogo.heroTag, child: SesoriLogo()),
                                 Text(
                                   loc.loginTitle,
-                                  style: zyra.textTheme.textSm.regular,
+                                  style: prego.textTheme.textSm.regular,
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   loc.loginSubtitle,
-                                  style: zyra.textTheme.displaySm.bold,
+                                  style: prego.textTheme.displaySm.bold,
                                 ),
                               ],
                             ),
@@ -180,8 +180,8 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                                       padding: const EdgeInsetsDirectional.only(top: 16),
                                       child: Text(
                                         loc.loginAuthenticating,
-                                        style: zyra.textTheme.textSm.regular.copyWith(
-                                          color: zyra.colors.textSecondary,
+                                        style: prego.textTheme.textSm.regular.copyWith(
+                                          color: prego.colors.textSecondary,
                                         ),
                                         textAlign: TextAlign.center,
                                       ),
@@ -192,8 +192,8 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                                         children: [
                                           Text(
                                             loc.loginAwaitingConfirmation(userCode),
-                                            style: zyra.textTheme.textSm.regular.copyWith(
-                                              color: zyra.colors.textSecondary,
+                                            style: prego.textTheme.textSm.regular.copyWith(
+                                              color: prego.colors.textSecondary,
                                             ),
                                             textAlign: TextAlign.center,
                                           ),
@@ -201,16 +201,16 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                             decoration: BoxDecoration(
-                                              color: zyra.colors.bgBrandSolid.withAlpha(26),
+                                              color: prego.colors.bgBrandSolid.withAlpha(26),
                                               borderRadius: BorderRadius.circular(8),
                                               border: Border.all(
-                                                color: zyra.colors.bgBrandSolid.withAlpha(77),
+                                                color: prego.colors.bgBrandSolid.withAlpha(77),
                                               ),
                                             ),
                                             child: Text(
                                               userCode,
-                                              style: zyra.textTheme.textXl.bold.copyWith(
-                                                color: zyra.colors.bgBrandSolid,
+                                              style: prego.textTheme.textXl.bold.copyWith(
+                                                color: prego.colors.bgBrandSolid,
                                                 letterSpacing: 4,
                                               ),
                                             ),
@@ -224,8 +224,8 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                                         children: [
                                           Text(
                                             loc.loginPolling,
-                                            style: zyra.textTheme.textSm.regular.copyWith(
-                                              color: zyra.colors.textSecondary,
+                                            style: prego.textTheme.textSm.regular.copyWith(
+                                              color: prego.colors.textSecondary,
                                             ),
                                             textAlign: TextAlign.center,
                                           ),
@@ -234,16 +234,16 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                                             Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                               decoration: BoxDecoration(
-                                                color: zyra.colors.bgBrandSolid.withAlpha(26),
+                                                color: prego.colors.bgBrandSolid.withAlpha(26),
                                                 borderRadius: BorderRadius.circular(8),
                                                 border: Border.all(
-                                                  color: zyra.colors.bgBrandSolid.withAlpha(77),
+                                                  color: prego.colors.bgBrandSolid.withAlpha(77),
                                                 ),
                                               ),
                                               child: Text(
                                                 userCode,
-                                                style: zyra.textTheme.textXl.bold.copyWith(
-                                                  color: zyra.colors.bgBrandSolid,
+                                                style: prego.textTheme.textXl.bold.copyWith(
+                                                  color: prego.colors.bgBrandSolid,
                                                   letterSpacing: 4,
                                                 ),
                                               ),
@@ -256,8 +256,8 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                                       padding: const EdgeInsetsDirectional.only(top: 16),
                                       child: Text(
                                         loc.loginTimeout,
-                                        style: zyra.textTheme.textSm.regular.copyWith(
-                                          color: zyra.colors.textSecondary,
+                                        style: prego.textTheme.textSm.regular.copyWith(
+                                          color: prego.colors.textSecondary,
                                         ),
                                         textAlign: TextAlign.center,
                                       ),
@@ -271,21 +271,21 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                                     LoginTimeout() => Padding(
                                       padding: const EdgeInsetsDirectional.only(top: 24),
                                       child: Card(
-                                        color: zyra.colors.bgErrorPrimary,
+                                        color: prego.colors.bgErrorPrimary,
                                         child: Padding(
                                           padding: const EdgeInsets.all(16),
                                           child: Row(
                                             children: [
                                               Icon(
                                                 Icons.error_outline,
-                                                color: zyra.colors.fgErrorPrimary,
+                                                color: prego.colors.fgErrorPrimary,
                                               ),
                                               const SizedBox(width: 12),
                                               Expanded(
                                                 child: Text(
                                                   loc.loginTimeout,
-                                                  style: zyra.textTheme.textSm.regular.copyWith(
-                                                    color: zyra.colors.fgErrorPrimary,
+                                                  style: prego.textTheme.textSm.regular.copyWith(
+                                                    color: prego.colors.fgErrorPrimary,
                                                   ),
                                                 ),
                                               ),
@@ -304,7 +304,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                                   MarkdownBody(
                                     data: loc.loginAgreementText,
                                     onTapLink: handleMarkdownLinkTap,
-                                    styleSheet: buildAgreementMarkdownStyleSheet(zyra: zyra),
+                                    styleSheet: buildAgreementMarkdownStyleSheet(prego: prego),
                                   ),
                                 ],
                               ),
@@ -331,7 +331,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
 
 /// Floating error notification anchored to the top of the login screen.
 ///
-/// Matches the Figma `zyraAlertsNotifications` placement: it slides down
+/// Matches the Figma `pregoAlertsNotifications` placement: it slides down
 /// into view from above (snackbar-style) while the [LoginCubit] state is
 /// [LoginFailed], and slides back up out of view otherwise. The last
 /// failure reason is retained so the message stays readable during the
@@ -390,7 +390,7 @@ class _LoginErrorBannerState extends State<_LoginErrorBanner> {
               opacity: isVisible ? 1 : 0,
               child: reason == null
                   ? const SizedBox.shrink()
-                  : ZyraAlertsNotification(
+                  : PregoAlertsNotification(
                       title: loc.loginAuthenticationFailedTitle,
                       message: _getErrorMessage(loc: loc, reason: reason),
                       onClose: () =>

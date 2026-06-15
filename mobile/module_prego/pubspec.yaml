@@ -1,0 +1,80 @@
+name: theme_prego
+description: Prego theme
+version: 0.1.0
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  meta: ^1.18.0
+  flutter_svg: ^2.3.0
+  universal_platform: ^1.1.0
+  liquid_glass_plus: ^0.3.1+1
+
+flutter:
+  assets:
+    - assets/svgs/hero_icons/
+  fonts:
+    - family: Satoshi Prego
+      fonts:
+        - asset: assets/fonts/SatoshiPrego/SatoshiPrego-Light.otf
+          weight: 300
+        - asset: assets/fonts/SatoshiPrego/SatoshiPrego-LightItalic.otf
+          weight: 300
+          style: italic
+        - asset: assets/fonts/SatoshiPrego/SatoshiPrego-Regular.otf
+          weight: 400
+        - asset: assets/fonts/SatoshiPrego/SatoshiPrego-Italic.otf
+          weight: 400
+          style: italic
+        - asset: assets/fonts/SatoshiPrego/SatoshiPrego-Medium.otf
+          weight: 500
+        - asset: assets/fonts/SatoshiPrego/SatoshiPrego-MediumItalic.otf
+          weight: 500
+          style: italic
+        - asset: assets/fonts/SatoshiPrego/SatoshiPrego-Bold.otf
+          weight: 700
+        - asset: assets/fonts/SatoshiPrego/SatoshiPrego-BoldItalic.otf
+          weight: 700
+          style: italic
+        - asset: assets/fonts/SatoshiPrego/SatoshiPrego-Black.otf
+          weight: 900
+        - asset: assets/fonts/SatoshiPrego/SatoshiPrego-BlackItalic.otf
+          weight: 900
+          style: italic
+    - family: TablerThin
+      fonts:
+        - asset: assets/fonts/TablerIcons/TablerIcons-Thin.ttf
+    - family: TablerLight
+      fonts:
+        - asset: assets/fonts/TablerIcons/TablerIcons-Light.ttf
+    - family: TablerRegular
+      fonts:
+        - asset: assets/fonts/TablerIcons/TablerIcons-Regular.ttf
+    - family: TablerSolid
+      fonts:
+        - asset: assets/fonts/TablerIcons/TablerIcons-Solid.ttf
+    - family: VESPRLight
+      fonts:
+        - asset: assets/fonts/VESPRIcons/VESPRIcons-Light.ttf
+          weight: 300
+    - family: VESPRRegular
+      fonts:
+        - asset: assets/fonts/VESPRIcons/VESPRIcons-Regular.ttf
+          weight: 400
+    - family: VESPRSolid
+      fonts:
+        - asset: assets/fonts/VESPRIcons/VESPRIcons-Solid.ttf
+          weight: 900
+
+dev_dependencies:
+  no_slop_linter:
+    path: "../../shared/no_slop_linter"
+  build_runner: any
+  mocktail: ^1.0.5
+  test: ^1.31.0
+  fake_async: ^1.3.3
