@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:sesori_bridge/src/updater/api/github_releases_api.dart';
@@ -26,7 +27,7 @@ void main() {
           return http.Response('[]', 200);
         });
 
-        await GitHubReleasesApi(httpClient: client).fetchReleases();
+        await GitHubReleasesApi(httpClient: client, authToken: null).fetchReleases();
 
         expect(hadAuthorization, isFalse);
       });
@@ -55,7 +56,7 @@ void main() {
         );
 
         await expectLater(
-          GitHubReleasesApi(httpClient: client).fetchReleases(),
+          GitHubReleasesApi(httpClient: client, authToken: null).fetchReleases(),
           throwsA(
             isA<GitHubRateLimitException>().having(
               (exception) => exception.resetAt,
@@ -75,16 +76,38 @@ void main() {
         final client = MockClient((_) async => http.Response('', 429));
 
         await expectLater(
-          GitHubReleasesApi(httpClient: client).fetchReleases(),
+          GitHubReleasesApi(httpClient: client, authToken: null).fetchReleases(),
           throwsA(isA<GitHubRateLimitException>()),
         );
       });
 
-      test('HTTP 403 without an exhausted budget → StateError, not a rate limit', () async {
+      test('secondary HTTP 403 with retry-after → GitHubRateLimitException, reset from clock', () async {
+        final now = DateTime.utc(2030, 6, 1, 15);
+        final client = MockClient(
+          (_) async => http.Response('', 403, headers: {'retry-after': '120'}),
+        );
+
+        Object? caught;
+        await withClock(Clock.fixed(now), () async {
+          try {
+            await GitHubReleasesApi(httpClient: client, authToken: null).fetchReleases();
+          } on Object catch (error) {
+            caught = error;
+          }
+        });
+
+        expect(caught, isA<GitHubRateLimitException>());
+        expect(
+          (caught! as GitHubRateLimitException).resetAt,
+          equals(now.add(const Duration(seconds: 120))),
+        );
+      });
+
+      test('HTTP 403 without an exhausted budget or retry-after → StateError, not a rate limit', () async {
         final client = MockClient((_) async => http.Response('', 403));
 
         await expectLater(
-          GitHubReleasesApi(httpClient: client).fetchReleases(),
+          GitHubReleasesApi(httpClient: client, authToken: null).fetchReleases(),
           throwsA(isA<StateError>()),
         );
       });

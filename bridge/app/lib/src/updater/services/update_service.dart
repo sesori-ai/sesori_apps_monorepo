@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:rxdart/rxdart.dart';
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 import 'package:sesori_shared/sesori_shared.dart';
 
 import '../foundation/github_rate_limit_exception.dart';
@@ -99,27 +100,43 @@ class UpdateService {
   Future<ReleaseInfo?> _checkForPollingUpdate() async {
     try {
       return await _releaseRepository.checkForNewerRelease();
-    } on Object catch (error) {
-      writeToStderr(_describeUpdateCheckFailure(error));
+    } on Object catch (error, stackTrace) {
+      _reportUpdateFailure(
+        error: error,
+        stackTrace: stackTrace,
+        stageDescription: 'Periodic update check failed',
+      );
       return null;
     }
   }
 
-  /// Produces a single concise, user-facing line for a failed update check.
+  /// Logs a failed update attempt through [Log].
   ///
   /// A rate limit is an expected, benign condition for a best-effort updater,
-  /// so it gets a friendly explanation (and a hint to authenticate) rather than
-  /// a stack trace. Genuinely unexpected failures surface their error message
-  /// without an alarming async stack dump.
-  String _describeUpdateCheckFailure(Object error) {
+  /// so it is surfaced as a warning with a friendly explanation (and a hint to
+  /// authenticate) and no stack trace. Genuinely unexpected failures are logged
+  /// as errors with their [error] and [stackTrace]; [Log] only appends those at
+  /// debug/verbose levels, so normal output stays clean while `--log-level
+  /// debug` still gets full context. [stageDescription] distinguishes which
+  /// stage failed (check vs. install/restart).
+  void _reportUpdateFailure({
+    required Object error,
+    required StackTrace stackTrace,
+    required String stageDescription,
+  }) {
     if (error is GitHubRateLimitException) {
-      final reset = error.resetAt;
-      final resetHint = reset == null ? '' : ' Limit resets around ${_formatLocalTime(reset)}.';
-      return 'sesori-bridge: skipping update check — GitHub API rate limit reached. '
-          'Unauthenticated requests are capped at 60/hour per IP; set GITHUB_TOKEN '
-          '(or GH_TOKEN) to raise this to 5000/hour.$resetHint';
+      Log.w(_rateLimitMessage(error));
+      return;
     }
-    return 'sesori-bridge: update check failed: $error';
+    Log.e(stageDescription, error, stackTrace);
+  }
+
+  String _rateLimitMessage(GitHubRateLimitException error) {
+    final reset = error.resetAt;
+    final resetHint = reset == null ? '' : ' Limit resets around ${_formatLocalTime(reset)}.';
+    return 'Skipping update check — GitHub API rate limit reached. '
+        'Unauthenticated requests are capped at 60/hour per IP; set GITHUB_TOKEN '
+        '(or GH_TOKEN) to raise this to 5000/hour.$resetHint';
   }
 
   String _formatLocalTime(DateTime time) {
@@ -184,10 +201,12 @@ class UpdateService {
           'Warning: failed to update to ${release.version} (${installResult.result}). Continuing with current version.',
         );
       }
-    } on Object catch (error) {
-      if (hasTerminal()) {
-        writeToStderr(_describeUpdateCheckFailure(error));
-      }
+    } on Object catch (error, stackTrace) {
+      _reportUpdateFailure(
+        error: error,
+        stackTrace: stackTrace,
+        stageDescription: 'Automatic update failed',
+      );
     }
   }
 

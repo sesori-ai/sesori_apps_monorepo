@@ -90,7 +90,7 @@ ReleaseRepository _makeRepository({
   final resolvedTarget = target ?? _defaultTarget;
 
   return ReleaseRepository(
-    api: GitHubReleasesApi(httpClient: httpClient),
+    api: GitHubReleasesApi(httpClient: httpClient, authToken: null),
     cache: cache ?? _FakeCache(),
     currentVersion: currentVersion,
     target: resolvedTarget,

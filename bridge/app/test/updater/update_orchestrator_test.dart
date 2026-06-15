@@ -16,6 +16,7 @@ import 'package:sesori_bridge/src/updater/repositories/installed_file_repository
 import 'package:sesori_bridge/src/updater/repositories/release_repository.dart';
 import 'package:sesori_bridge/src/updater/services/update_install_service.dart';
 import 'package:sesori_bridge/src/updater/services/update_service.dart';
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 
 import 'package:test/test.dart';
 
@@ -226,12 +227,10 @@ void main() {
       expect(updater.performUpdateCallCount, equals(1));
     });
 
-    test('rate-limited check → concise message, no stack trace', () async {
+    test('rate-limited check → friendly warning on stdout, no stack trace', () async {
       final repository = _MockReleaseRepository()
         ..onCheckForNewerRelease = () async =>
             throw GitHubRateLimitException(resetAt: DateTime(2030, 1, 1, 9, 5));
-      final messages = <String>[];
-
       final service = _buildService(
         repository: repository,
         updater: _MockUpdateInstallerService(),
@@ -240,26 +239,29 @@ void main() {
         executablePath: '/usr/local/bin/sesori-bridge',
         environment: const {},
       );
-      service.hasTerminal = () => true;
-      service.writeToStderr = messages.add;
 
-      await service.checkAndApplyUpdate(cliArgs: const []);
+      final stdoutLines = <String>[];
+      final stderrLines = <String>[];
+      await IOOverrides.runZoned(
+        () => service.checkAndApplyUpdate(cliArgs: const []),
+        stdout: () => _CapturingStdout(stdoutLines),
+        stderr: () => _CapturingStdout(stderrLines),
+      );
 
-      expect(messages, hasLength(1));
-      final message = messages.single;
+      // A rate limit is benign, so it is logged via Log.w (stdout), not the
+      // alarming Log.e (stderr) path.
+      expect(stdoutLines, hasLength(1));
+      final message = stdoutLines.single;
       expect(message, contains('rate limit'));
       expect(message, contains('GITHUB_TOKEN'));
       expect(message, contains('09:05'));
       expect(message, isNot(contains('#0')));
-      expect(message, isNot(contains('\n')));
-      expect(message, isNot(contains('GitHubRateLimitException')));
+      expect(stderrLines, isEmpty);
     });
 
-    test('unexpected check failure → message without async stack trace', () async {
+    test('unexpected failure → error on stderr, stack trace suppressed at info level', () async {
       final repository = _MockReleaseRepository()
         ..onCheckForNewerRelease = () async => throw StateError('network exploded');
-      final messages = <String>[];
-
       final service = _buildService(
         repository: repository,
         updater: _MockUpdateInstallerService(),
@@ -268,14 +270,46 @@ void main() {
         executablePath: '/usr/local/bin/sesori-bridge',
         environment: const {},
       );
-      service.hasTerminal = () => true;
-      service.writeToStderr = messages.add;
 
-      await service.checkAndApplyUpdate(cliArgs: const []);
+      final stderrLines = <String>[];
+      await IOOverrides.runZoned(
+        () => service.checkAndApplyUpdate(cliArgs: const []),
+        stdout: () => _CapturingStdout(<String>[]),
+        stderr: () => _CapturingStdout(stderrLines),
+      );
 
-      expect(messages, hasLength(1));
-      expect(messages.single, contains('network exploded'));
-      expect(messages.single, isNot(contains('\n')));
+      // Log.e writes to stderr; at the default info level the raw error and
+      // async stack trace are not appended, so the line stays clean.
+      expect(stderrLines, hasLength(1));
+      expect(stderrLines.single, contains('Automatic update failed'));
+      expect(stderrLines.single, isNot(contains('#0')));
+    });
+
+    test('unexpected failure preserves error + stack trace at debug level', () async {
+      final previousLevel = Log.level;
+      Log.level = LogLevel.debug;
+      addTearDown(() => Log.level = previousLevel);
+
+      final repository = _MockReleaseRepository()
+        ..onCheckForNewerRelease = () async => throw StateError('network exploded');
+      final service = _buildService(
+        repository: repository,
+        updater: _MockUpdateInstallerService(),
+        installedFileRepository: _MockInstalledFileRepository(),
+        updateRelaunchClient: _MockUpdateRelaunchClient(),
+        executablePath: '/usr/local/bin/sesori-bridge',
+        environment: const {},
+      );
+
+      final stderrLines = <String>[];
+      await IOOverrides.runZoned(
+        () => service.checkAndApplyUpdate(cliArgs: const []),
+        stdout: () => _CapturingStdout(<String>[]),
+        stderr: () => _CapturingStdout(stderrLines),
+      );
+
+      expect(stderrLines, isNotEmpty);
+      expect(stderrLines.join('\n'), contains('network exploded'));
     });
 
     test('CI guard enabled → repository is never called', () async {
@@ -683,4 +717,20 @@ void main() {
       );
     });
   });
+}
+
+/// Captures `writeln` calls; [IOOverrides] swaps it in for stdout/stderr so
+/// tests can assert on what `Log` emitted.
+class _CapturingStdout implements Stdout {
+  _CapturingStdout(this.lines);
+
+  final List<String> lines;
+
+  @override
+  void writeln([Object? object = '']) {
+    lines.add(object.toString());
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

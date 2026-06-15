@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
 import 'package:sesori_shared/sesori_shared.dart';
 
@@ -14,7 +15,7 @@ class GitHubReleasesApi {
   final http.Client _httpClient;
   final String? _authToken;
 
-  GitHubReleasesApi({required http.Client httpClient, String? authToken})
+  GitHubReleasesApi({required http.Client httpClient, required String? authToken})
     : _httpClient = httpClient,
       _authToken = authToken;
 
@@ -66,14 +67,19 @@ class GitHubReleasesApi {
   }
 
   /// GitHub signals a primary rate limit with HTTP 403 and
-  /// `x-ratelimit-remaining: 0`, and a secondary/abuse limit with HTTP 429. A
-  /// 403 without an exhausted remaining count is a different failure (e.g. a
-  /// blocked request) and is intentionally not treated as a rate limit.
+  /// `x-ratelimit-remaining: 0`. Secondary/abuse limits arrive as HTTP 429, or
+  /// as HTTP 403 carrying a `retry-after` hint (where the remaining count may
+  /// still be non-zero). A 403 with neither signal is a different failure (e.g.
+  /// a blocked request) and is intentionally not treated as a rate limit.
   bool _isRateLimited(http.Response response) {
     if (response.statusCode == 429) {
       return true;
     }
-    return response.statusCode == 403 && response.headers['x-ratelimit-remaining'] == '0';
+    if (response.statusCode != 403) {
+      return false;
+    }
+    return response.headers['x-ratelimit-remaining'] == '0' ||
+        response.headers.containsKey('retry-after');
   }
 
   DateTime? _parseResetAt(http.Response response) {
@@ -87,7 +93,7 @@ class GitHubReleasesApi {
 
     final retryAfterSeconds = int.tryParse(response.headers['retry-after'] ?? '');
     if (retryAfterSeconds != null) {
-      return DateTime.now().add(Duration(seconds: retryAfterSeconds));
+      return clock.now().add(Duration(seconds: retryAfterSeconds));
     }
 
     return null;
