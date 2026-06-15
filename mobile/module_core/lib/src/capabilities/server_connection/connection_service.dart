@@ -275,25 +275,29 @@ class ConnectionService {
         return ApiResponse.error(ApiError.generic());
       }
 
-      final response = await relayClient.sendRequest(
-        RelayRequest(
-          id: _nextRelayRequestId(),
-          method: "GET",
-          path: ApiPaths.health,
-          headers: {},
-          body: null,
-        ),
-      );
-
-      if (response.status < 200 || response.status >= 300 || response.body == null) {
-        _clearConnectingRelayClient(relayClient);
-        await relayClient.disconnect();
-        return ApiResponse.error(
-          ApiError.nonSuccessCode(
-            errorCode: response.status,
-            rawErrorString: response.body,
+      // A resume_ack already proves the bridge is reachable; only fresh-DH
+      // connects need the extra health round-trip.
+      if (!relayClient.didResume) {
+        final response = await relayClient.sendRequest(
+          RelayRequest(
+            id: _nextRelayRequestId(),
+            method: "GET",
+            path: ApiPaths.health,
+            headers: {},
+            body: null,
           ),
         );
+
+        if (response.status < 200 || response.status >= 300 || response.body == null) {
+          _clearConnectingRelayClient(relayClient);
+          await relayClient.disconnect();
+          return ApiResponse.error(
+            ApiError.nonSuccessCode(
+              errorCode: response.status,
+              rawErrorString: response.body,
+            ),
+          );
+        }
       }
 
       // A non-error status code is sufficient — the bridge only returns 200

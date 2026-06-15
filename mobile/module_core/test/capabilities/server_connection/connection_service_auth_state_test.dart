@@ -90,6 +90,7 @@ void main() {
 
       final relayClient = _MockRelayClient();
       when(relayClient.connect).thenAnswer((_) async {});
+      when(() => relayClient.didResume).thenReturn(false);
       when(() => relayClient.sendRequest(any())).thenAnswer(
         (_) async => const RelayResponse(id: "r", status: 500, headers: {}, body: null),
       );
