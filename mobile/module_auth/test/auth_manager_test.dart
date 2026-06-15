@@ -723,6 +723,41 @@ void main() {
       verifyNever(mockOAuthStorage.clearOAuthSession);
     });
 
+    test("pollForResult treats final status request timeout as OAuth timeout", () async {
+      authManager = AuthManager(
+        mockHttpClient,
+        mockTokenStorage,
+        mockOAuthStorage,
+        pollInterval: Duration.zero,
+        delay: (_) async {},
+      );
+      when(() => mockOAuthStorage.getOAuthSession()).thenAnswer(
+        (_) async => (
+          sessionToken: "stored-session-token",
+          expiresAt: DateTime.now().add(const Duration(milliseconds: 30)),
+        ),
+      );
+      when(
+        () => mockHttpClient.get(
+          Uri.parse("$authBaseUrl/auth/session/status"),
+          headers: any(named: "headers"),
+        ),
+      ).thenAnswer((_) => Completer<http.Response>().future);
+
+      await expectLater(
+        authManager.pollForResult(),
+        throwsA(
+          isA<TimeoutException>().having(
+            (error) => error.message,
+            "message",
+            "OAuth authorization timed out",
+          ),
+        ),
+      );
+
+      verify(mockOAuthStorage.clearOAuthSession).called(1);
+    });
+
     test("pollForResult clears active session on denied, expired, error, and timeout", () async {
       Future<void> arrangeStartedFlow({required http.Response statusResponse}) async {
         when(
