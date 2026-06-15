@@ -446,7 +446,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
       ),
     );
     if (result.found) {
-      if (sessionId case final sessionID?) {
+      if (result.resolvedSessionId case final sessionID?) {
         _eventBuffer.add(BridgeSseQuestionRejected(requestID: questionId, sessionID: sessionID));
       }
     }

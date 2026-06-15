@@ -269,7 +269,7 @@ class OpenCodeService {
     return model;
   }
 
-  Future<({bool found, bool summaryChanged})> replyToQuestion({
+  Future<({bool found, String? resolvedSessionId, bool summaryChanged})> replyToQuestion({
     required String questionId,
     required String sessionId,
     required List<List<String>> answers,
@@ -288,11 +288,12 @@ class OpenCodeService {
     return tracker.clearPendingQuestion(questionId: questionId, sessionId: sessionId);
   }
 
-  Future<({bool found, bool summaryChanged})> rejectQuestion({
+  Future<({bool found, String? resolvedSessionId, bool summaryChanged})> rejectQuestion({
     required String questionId,
     required String? sessionId,
   }) async {
-    final directory = sessionId != null ? tracker.getSessionDirectory(sessionId: sessionId) : null;
+    final resolvedSessionId = sessionId ?? tracker.getSessionIdForQuestion(questionId: questionId);
+    final directory = resolvedSessionId != null ? tracker.getSessionDirectory(sessionId: resolvedSessionId) : null;
     try {
       await repository.rejectQuestion(
         questionId: questionId,
@@ -302,10 +303,10 @@ class OpenCodeService {
       if (e.statusCode != 404) rethrow;
       Log.w("question already resolved upstream (404), reconciling tracker: ${e.endpoint}", e);
     }
-    return tracker.clearPendingQuestion(questionId: questionId, sessionId: sessionId);
+    return tracker.clearPendingQuestion(questionId: questionId, sessionId: resolvedSessionId);
   }
 
-  Future<({bool found, bool summaryChanged})> replyToPermission({
+  Future<({bool found, String? resolvedSessionId, bool summaryChanged})> replyToPermission({
     required String requestId,
     required String sessionId,
     required PluginPermissionReply reply,

@@ -827,6 +827,7 @@ void main() {
         final result = tracker.clearPendingQuestion(questionId: "q1", sessionId: "s1");
 
         expect(result.found, isTrue);
+        expect(result.resolvedSessionId, equals("s1"));
         expect(result.summaryChanged, isTrue);
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isFalse);
       });
@@ -844,6 +845,7 @@ void main() {
         final result = tracker.clearPendingQuestion(questionId: "q1");
 
         expect(result.found, isTrue);
+        expect(result.resolvedSessionId, equals("s1"));
         expect(result.summaryChanged, isTrue);
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isFalse);
       });
@@ -862,8 +864,21 @@ void main() {
         final result = tracker.clearPendingQuestion(questionId: "q1", sessionId: "s1");
 
         expect(result.found, isTrue);
+        expect(result.resolvedSessionId, equals("s1"));
         expect(result.summaryChanged, isFalse);
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
+      });
+
+      test("getSessionIdForQuestion returns owning session id", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/repo")],
+        );
+
+        tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
+        tracker.handleEvent(_questionAsked("q1", "s1"), null);
+
+        expect(tracker.getSessionIdForQuestion(questionId: "q1"), equals("s1"));
+        expect(tracker.getSessionIdForQuestion(questionId: "missing"), isNull);
       });
 
       test("clearPendingPermission clears awaitingInput and fires change", () async {

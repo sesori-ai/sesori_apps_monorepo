@@ -828,6 +828,31 @@ void main() {
       final result = await service.rejectQuestion(questionId: "q1", sessionId: "ses-1");
 
       expect(result.summaryChanged, isTrue);
+      expect(result.resolvedSessionId, equals("ses-1"));
+      expect(repository.lastRejectQuestionId, equals("q1"));
+      expect(repository.lastRejectQuestionDirectory, equals("/repo"));
+      expect(tracker.lastClearedQuestionId, equals("q1"));
+      expect(tracker.lastClearedQuestionSessionId, equals("ses-1"));
+    });
+
+    test("rejectQuestion without sessionId resolves directory from tracker", () async {
+      final repository = FakeOpenCodeRepository(
+        rejectQuestionError: OpenCodeApiException("POST /question/q1/reject", 404),
+      );
+      final tracker = FakeActiveSessionTracker(
+        sessionDirectories: const {"ses-1": "/repo"},
+        clearPendingQuestionFound: true,
+        clearPendingQuestionChanged: true,
+        clearPendingQuestionResolvedSessionId: "ses-1",
+      );
+      final service = OpenCodeService(repository, tracker);
+
+      final result = await service.rejectQuestion(questionId: "q1", sessionId: null);
+
+      expect(result.found, isTrue);
+      expect(result.resolvedSessionId, equals("ses-1"));
+      expect(result.summaryChanged, isTrue);
+      expect(tracker.lastGetSessionIdForQuestionQuestionId, equals("q1"));
       expect(repository.lastRejectQuestionId, equals("q1"));
       expect(repository.lastRejectQuestionDirectory, equals("/repo"));
       expect(tracker.lastClearedQuestionId, equals("q1"));
@@ -1310,6 +1335,7 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   List<PendingQuestion> populatedQuestions = const [];
   List<PendingPermission> populatedPermissions = const [];
   final bool clearPendingQuestionFound;
+  final String? clearPendingQuestionResolvedSessionId;
   final bool clearPendingQuestionChanged;
   final bool clearPendingPermissionFound;
   final bool clearPendingPermissionChanged;
@@ -1317,12 +1343,14 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   String? lastClearedQuestionSessionId;
   String? lastClearedPermissionRequestId;
   String? lastClearedPermissionSessionId;
+  String? lastGetSessionIdForQuestionQuestionId;
 
   FakeActiveSessionTracker({
     this.summary = const [],
     Map<String, String> sessionDirectories = const {},
     this.resolvedWorktree,
     this.clearPendingQuestionFound = false,
+    this.clearPendingQuestionResolvedSessionId,
     this.clearPendingQuestionChanged = false,
     this.clearPendingPermissionFound = false,
     this.clearPendingPermissionChanged = false,
@@ -1352,6 +1380,12 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   }
 
   @override
+  String? getSessionIdForQuestion({required String questionId}) {
+    lastGetSessionIdForQuestionQuestionId = questionId;
+    return clearPendingQuestionResolvedSessionId;
+  }
+
+  @override
   String? resolveProjectWorktree({required String directory}) {
     return resolvedWorktree;
   }
@@ -1367,17 +1401,31 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   }
 
   @override
-  ({bool found, bool summaryChanged}) clearPendingQuestion({required String questionId, String? sessionId}) {
+  ({bool found, String? resolvedSessionId, bool summaryChanged}) clearPendingQuestion({
+    required String questionId,
+    String? sessionId,
+  }) {
     lastClearedQuestionId = questionId;
     lastClearedQuestionSessionId = sessionId;
-    return (found: clearPendingQuestionFound, summaryChanged: clearPendingQuestionChanged);
+    return (
+      found: clearPendingQuestionFound,
+      resolvedSessionId: clearPendingQuestionResolvedSessionId ?? sessionId,
+      summaryChanged: clearPendingQuestionChanged,
+    );
   }
 
   @override
-  ({bool found, bool summaryChanged}) clearPendingPermission({required String sessionId, required String requestId}) {
+  ({bool found, String? resolvedSessionId, bool summaryChanged}) clearPendingPermission({
+    required String sessionId,
+    required String requestId,
+  }) {
     lastClearedPermissionSessionId = sessionId;
     lastClearedPermissionRequestId = requestId;
-    return (found: clearPendingPermissionFound, summaryChanged: clearPendingPermissionChanged);
+    return (
+      found: clearPendingPermissionFound,
+      resolvedSessionId: sessionId,
+      summaryChanged: clearPendingPermissionChanged,
+    );
   }
 
   @override

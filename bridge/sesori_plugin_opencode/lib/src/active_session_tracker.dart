@@ -158,8 +158,21 @@ class ActiveSessionTracker {
     return _detectEmitChange(forceReemit: forceReemit);
   }
 
-  ({bool found, bool summaryChanged}) clearPendingQuestion({required String questionId, String? sessionId}) {
+  /// Looks up the session ID that currently owns the pending [questionId].
+  /// Returns null if the question is not tracked.
+  String? getSessionIdForQuestion({required String questionId}) {
+    for (final entry in _pendingQuestions.entries) {
+      if (entry.value.contains(questionId)) return entry.key;
+    }
+    return null;
+  }
+
+  ({bool found, String? resolvedSessionId, bool summaryChanged}) clearPendingQuestion({
+    required String questionId,
+    String? sessionId,
+  }) {
     bool found;
+    var resolvedSessionId = sessionId;
     if (sessionId != null) {
       found = _removePendingQuestion(sessionId: sessionId, requestId: questionId);
     } else {
@@ -167,18 +180,23 @@ class ActiveSessionTracker {
       for (final entry in _pendingQuestions.entries.toList()) {
         if (entry.value.remove(questionId)) {
           found = true;
+          resolvedSessionId = entry.key;
           if (entry.value.isEmpty) {
             _pendingQuestions.remove(entry.key);
           }
+          break;
         }
       }
     }
-    return (found: found, summaryChanged: _detectEmitChange());
+    return (found: found, resolvedSessionId: resolvedSessionId, summaryChanged: _detectEmitChange());
   }
 
-  ({bool found, bool summaryChanged}) clearPendingPermission({required String sessionId, required String requestId}) {
+  ({bool found, String? resolvedSessionId, bool summaryChanged}) clearPendingPermission({
+    required String sessionId,
+    required String requestId,
+  }) {
     final found = _removePendingPermission(sessionId: sessionId, requestId: requestId);
-    return (found: found, summaryChanged: _detectEmitChange());
+    return (found: found, resolvedSessionId: sessionId, summaryChanged: _detectEmitChange());
   }
 
   bool _detectEmitChange({bool forceReemit = false}) {
