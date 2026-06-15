@@ -88,7 +88,13 @@ void main() {
 
         await expectLater(
           GitHubReleasesApi(httpClient: client, authToken: 'valid-token').fetchReleases(),
-          throwsA(isA<GitHubRateLimitException>()),
+          throwsA(
+            isA<GitHubRateLimitException>().having(
+              (exception) => exception.authenticated,
+              'authenticated',
+              isTrue,
+            ),
+          ),
         );
         expect(calls, equals(1));
       });
@@ -107,16 +113,18 @@ void main() {
         await expectLater(
           GitHubReleasesApi(httpClient: client, authToken: null).fetchReleases(),
           throwsA(
-            isA<GitHubRateLimitException>().having(
-              (exception) => exception.resetAt,
-              'resetAt',
-              equals(
-                DateTime.fromMillisecondsSinceEpoch(
-                  resetEpochSeconds * 1000,
-                  isUtc: true,
-                ).toLocal(),
-              ),
-            ),
+            isA<GitHubRateLimitException>()
+                .having(
+                  (exception) => exception.resetAt,
+                  'resetAt',
+                  equals(
+                    DateTime.fromMillisecondsSinceEpoch(
+                      resetEpochSeconds * 1000,
+                      isUtc: true,
+                    ).toLocal(),
+                  ),
+                )
+                .having((exception) => exception.authenticated, 'authenticated', isFalse),
           ),
         );
       });
@@ -127,6 +135,34 @@ void main() {
         await expectLater(
           GitHubReleasesApi(httpClient: client, authToken: null).fetchReleases(),
           throwsA(isA<GitHubRateLimitException>()),
+        );
+      });
+
+      test('retry-after takes precedence over x-ratelimit-reset for the reset hint', () async {
+        final now = DateTime.utc(2030, 6, 1, 15);
+        final farFutureReset = now.add(const Duration(hours: 1)).millisecondsSinceEpoch ~/ 1000;
+        final client = MockClient(
+          (_) async => http.Response('', 403, headers: {
+            'x-ratelimit-remaining': '0',
+            'x-ratelimit-reset': '$farFutureReset',
+            'retry-after': '60',
+          }),
+        );
+
+        Object? caught;
+        await withClock(Clock.fixed(now), () async {
+          try {
+            await GitHubReleasesApi(httpClient: client, authToken: null).fetchReleases();
+          } on Object catch (error) {
+            caught = error;
+          }
+        });
+
+        // The shorter secondary cooldown (retry-after) wins over the hourly
+        // primary window.
+        expect(
+          (caught! as GitHubRateLimitException).resetAt,
+          equals(now.add(const Duration(seconds: 60))),
         );
       });
 

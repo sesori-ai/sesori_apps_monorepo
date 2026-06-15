@@ -7,11 +7,17 @@
 /// bridge itself only checks for updates a handful of times per day.
 class GitHubRateLimitException implements Exception {
   /// When the rate-limit window resets, in local time, when the response
-  /// advertised it via `x-ratelimit-reset` (epoch seconds) or `retry-after`.
-  /// Null when the response carried no usable reset hint.
+  /// advertised it via `retry-after` (seconds) or `x-ratelimit-reset` (epoch
+  /// seconds). Null when the response carried no usable reset hint.
   final DateTime? resetAt;
 
-  const GitHubRateLimitException({required this.resetAt});
+  /// Whether the rate-limited request was sent with an `Authorization` header.
+  /// Drives the user-facing hint: an unauthenticated caller is told to set a
+  /// token, whereas an authenticated caller hit the larger token budget (or a
+  /// secondary limit) and must not be told to do something already done.
+  final bool authenticated;
+
+  const GitHubRateLimitException({required this.resetAt, required this.authenticated});
 
   @override
   String toString() {

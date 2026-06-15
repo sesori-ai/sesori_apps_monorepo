@@ -227,10 +227,10 @@ void main() {
       expect(updater.performUpdateCallCount, equals(1));
     });
 
-    test('rate-limited check → friendly warning on stdout, no stack trace', () async {
+    test('unauthenticated rate limit → warning on stdout hints at GITHUB_TOKEN', () async {
       final repository = _MockReleaseRepository()
         ..onCheckForNewerRelease = () async =>
-            throw GitHubRateLimitException(resetAt: DateTime(2030, 1, 1, 9, 5));
+            throw GitHubRateLimitException(resetAt: DateTime(2030, 1, 1, 9, 5), authenticated: false);
       final service = _buildService(
         repository: repository,
         updater: _MockUpdateInstallerService(),
@@ -259,7 +259,34 @@ void main() {
       expect(stderrLines, isEmpty);
     });
 
-    test('unexpected failure → error on stderr, stack trace suppressed at info level', () async {
+    test('authenticated rate limit → warning does not tell the user to set a token', () async {
+      final repository = _MockReleaseRepository()
+        ..onCheckForNewerRelease = () async =>
+            throw GitHubRateLimitException(resetAt: DateTime(2030, 1, 1, 9, 5), authenticated: true);
+      final service = _buildService(
+        repository: repository,
+        updater: _MockUpdateInstallerService(),
+        installedFileRepository: _MockInstalledFileRepository(),
+        updateRelaunchClient: _MockUpdateRelaunchClient(),
+        executablePath: '/usr/local/bin/sesori-bridge',
+        environment: const {},
+      );
+
+      final stdoutLines = <String>[];
+      await IOOverrides.runZoned(
+        () => service.checkAndApplyUpdate(cliArgs: const []),
+        stdout: () => _CapturingStdout(stdoutLines),
+        stderr: () => _CapturingStdout(<String>[]),
+      );
+
+      expect(stdoutLines, hasLength(1));
+      final message = stdoutLines.single;
+      expect(message, contains('rate limit'));
+      expect(message, contains('authenticated'));
+      expect(message, isNot(contains('GITHUB_TOKEN')));
+    });
+
+    test('unexpected failure → error cause on stderr, stack trace suppressed at info level', () async {
       final repository = _MockReleaseRepository()
         ..onCheckForNewerRelease = () async => throw StateError('network exploded');
       final service = _buildService(
@@ -278,10 +305,11 @@ void main() {
         stderr: () => _CapturingStdout(stderrLines),
       );
 
-      // Log.e writes to stderr; at the default info level the raw error and
-      // async stack trace are not appended, so the line stays clean.
+      // The concise cause stays on the default line; only the async stack trace
+      // is withheld until debug/verbose.
       expect(stderrLines, hasLength(1));
       expect(stderrLines.single, contains('Automatic update failed'));
+      expect(stderrLines.single, contains('network exploded'));
       expect(stderrLines.single, isNot(contains('#0')));
     });
 

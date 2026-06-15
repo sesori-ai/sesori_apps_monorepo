@@ -29,10 +29,13 @@ class GitHubReleasesApi {
           'page': '$page',
         },
       );
-      final http.Response response = await _getWithOpportunisticAuth(uri);
+      final (:http.Response response, :bool authenticated) = await _getWithOpportunisticAuth(uri);
 
       if (_isRateLimited(response)) {
-        throw GitHubRateLimitException(resetAt: _parseResetAt(response));
+        throw GitHubRateLimitException(
+          resetAt: _parseResetAt(response),
+          authenticated: authenticated,
+        );
       }
       if (response.statusCode == 404) {
         throw StateError('GitHub releases endpoint not found');
@@ -56,20 +59,22 @@ class GitHubReleasesApi {
   /// opportunistic: a stale or invalid token must never leave the updater worse
   /// off than running unauthenticated. The releases endpoint is public, so an
   /// auth rejection triggers a single retry without the `Authorization` header.
-  Future<http.Response> _getWithOpportunisticAuth(Uri uri) async {
+  Future<({http.Response response, bool authenticated})> _getWithOpportunisticAuth(Uri uri) async {
     final headers = _buildHeaders();
+    final bool authenticated = headers.containsKey('Authorization');
     final http.Response response = await _httpClient
         .get(uri, headers: headers)
         .timeout(const Duration(seconds: 5));
 
-    if (!headers.containsKey('Authorization') || !_isAuthRejection(response)) {
-      return response;
+    if (!authenticated || !_isAuthRejection(response)) {
+      return (response: response, authenticated: authenticated);
     }
 
     final unauthenticatedHeaders = Map<String, String>.of(headers)..remove('Authorization');
-    return _httpClient
+    final http.Response retried = await _httpClient
         .get(uri, headers: unauthenticatedHeaders)
         .timeout(const Duration(seconds: 5));
+    return (response: retried, authenticated: false);
   }
 
   /// Whether [response] indicates the supplied token was rejected (as opposed to
@@ -112,18 +117,21 @@ class GitHubReleasesApi {
         response.headers.containsKey('retry-after');
   }
 
+  /// Resolves when the caller may retry. `retry-after` (the explicit
+  /// secondary-limit cooldown) takes precedence when present; otherwise the
+  /// primary `x-ratelimit-reset` window is used.
   DateTime? _parseResetAt(http.Response response) {
+    final retryAfterSeconds = int.tryParse(response.headers['retry-after'] ?? '');
+    if (retryAfterSeconds != null) {
+      return clock.now().add(Duration(seconds: retryAfterSeconds));
+    }
+
     final resetEpochSeconds = int.tryParse(response.headers['x-ratelimit-reset'] ?? '');
     if (resetEpochSeconds != null) {
       return DateTime.fromMillisecondsSinceEpoch(
         resetEpochSeconds * 1000,
         isUtc: true,
       ).toLocal();
-    }
-
-    final retryAfterSeconds = int.tryParse(response.headers['retry-after'] ?? '');
-    if (retryAfterSeconds != null) {
-      return clock.now().add(Duration(seconds: retryAfterSeconds));
     }
 
     return null;

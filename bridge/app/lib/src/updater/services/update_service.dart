@@ -128,12 +128,19 @@ class UpdateService {
       Log.w(_rateLimitMessage(error));
       return;
     }
-    Log.e(stageDescription, error, stackTrace);
+    // Keep the concise cause on the default line (e.g. a timeout vs. a parse
+    // error); Log only appends the error object and stack trace at
+    // debug/verbose levels.
+    Log.e('$stageDescription: $error', error, stackTrace);
   }
 
   String _rateLimitMessage(GitHubRateLimitException error) {
     final reset = error.resetAt;
     final resetHint = reset == null ? '' : ' Limit resets around ${_formatLocalTime(reset)}.';
+    if (error.authenticated) {
+      return 'Skipping update check — GitHub API rate limit reached for the '
+          'authenticated token (usually a temporary secondary limit).$resetHint';
+    }
     return 'Skipping update check — GitHub API rate limit reached. '
         'Unauthenticated requests are capped at 60/hour per IP; set GITHUB_TOKEN '
         '(or GH_TOKEN) to raise this to 5000/hour.$resetHint';
