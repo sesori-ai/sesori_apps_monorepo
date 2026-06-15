@@ -105,29 +105,39 @@ class ActiveSessionTracker {
       case SseSessionCreated():
         _sessionDirectories[event.info.id] = event.info.directory;
         _updateSessionWorktree(event.info.id, event.info.directory);
+        final wasObserved = _sessionParentIds.containsKey(event.info.id);
         final prevParentId = _sessionParentIds[event.info.id];
         _sessionParentIds[event.info.id] = event.info.parentID;
-        // A parent-link change can move active sessions between roots, or make a
-        // previously-orphaned active descendant resolvable, without changing the
-        // per-worktree counts — so re-emit when this session is itself active or
-        // is an ancestor of an active session.
-        if (prevParentId != event.info.parentID && _participatesInActiveSubtree(event.info.id)) {
+        // Newly observing a session — even a root, whose parentID is null and so
+        // would compare equal to the absent value — or changing its parent link
+        // can re-home active descendants between roots without moving the
+        // per-worktree counts. Re-emit when this session is itself active or is
+        // an ancestor of an active session.
+        if ((!wasObserved || prevParentId != event.info.parentID) && _participatesInActiveSubtree(event.info.id)) {
           forceReemit = true;
         }
       case SseSessionUpdated():
         _sessionDirectories[event.info.id] = event.info.directory;
         _updateSessionWorktree(event.info.id, event.info.directory);
+        final wasObserved = _sessionParentIds.containsKey(event.info.id);
         final prevParentId = _sessionParentIds[event.info.id];
         _sessionParentIds[event.info.id] = event.info.parentID;
-        if (prevParentId != event.info.parentID && _participatesInActiveSubtree(event.info.id)) {
+        if ((!wasObserved || prevParentId != event.info.parentID) && _participatesInActiveSubtree(event.info.id)) {
           forceReemit = true;
         }
       case SseSessionDeleted():
+        // Deleting an ancestor can orphan an active descendant (changing its
+        // root attribution) without moving the per-worktree counts, so capture
+        // participation before dropping the metadata.
+        final affectedActiveSubtree = _participatesInActiveSubtree(event.info.id);
         _sessionDirectories.remove(event.info.id);
         _sessionWorktrees.remove(event.info.id);
         _sessionStatuses.remove(event.info.id);
         _sessionParentIds.remove(event.info.id);
         _clearPendingInputForSession(event.info.id);
+        if (affectedActiveSubtree) {
+          forceReemit = true;
+        }
       case SseSessionStatus():
         if (!_sessionWorktrees.containsKey(event.sessionID) && directory != null) {
           _updateSessionWorktree(event.sessionID, directory);

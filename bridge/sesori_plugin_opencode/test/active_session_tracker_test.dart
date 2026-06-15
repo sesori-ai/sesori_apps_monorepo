@@ -718,6 +718,47 @@ void main() {
       expect(summary.first.activeSessions.first.id, equals("s1"));
     });
 
+    test("late root session.created re-emits when it completes an active descendant chain", () async {
+      final tracker = await _coldStartedTracker(
+        projects: [const Project(id: "p1", worktree: "/repo")],
+      );
+
+      // A busy child points at root r, but r has not been observed yet, so the
+      // child is currently an unresolvable orphan.
+      tracker.handleEvent(_childSessionCreated("c1", "r", "/repo"), null);
+      tracker.handleEvent(_sessionBusy("c1"), null);
+      expect(tracker.buildSummary(), isEmpty);
+
+      // r's creation arrives. Its parentID is null, so the previous (absent)
+      // value compares equal — the re-emit must instead trigger on r being
+      // newly observed as an ancestor of the busy child.
+      final changed = tracker.handleEvent(_sessionCreated("r", "/repo"), null);
+
+      expect(changed, isTrue);
+      final summary = tracker.buildSummary();
+      expect(summary, hasLength(1));
+      expect(summary.first.activeSessions.first.id, equals("r"));
+    });
+
+    test("deleting an idle intermediate ancestor re-emits and drops the orphaned root", () async {
+      final tracker = await _coldStartedTracker(
+        projects: [const Project(id: "p1", worktree: "/repo")],
+      );
+
+      tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
+      tracker.handleEvent(_childSessionCreated("c1", "s1", "/repo"), null);
+      tracker.handleEvent(_childSessionCreated("g1", "c1", "/repo"), null);
+      tracker.handleEvent(_sessionBusy("g1"), null);
+      expect(tracker.buildSummary(), hasLength(1));
+
+      // Deleting the idle intermediate c1 orphans the busy grandchild g1; the
+      // active count is unchanged, so the delete must force a re-emit.
+      final changed = tracker.handleEvent(_sessionDeleted("c1", "/repo"), null);
+
+      expect(changed, isTrue);
+      expect(tracker.buildSummary(), isEmpty);
+    });
+
     group("pending input tracking", () {
       test("question asked sets awaitingInput true, replied clears it", () async {
         final tracker = await _coldStartedTracker(
