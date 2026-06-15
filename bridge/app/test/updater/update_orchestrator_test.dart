@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
+import 'package:sesori_bridge/src/updater/foundation/github_rate_limit_exception.dart';
 import 'package:sesori_bridge/src/updater/foundation/update_lock.dart';
 import 'package:sesori_bridge/src/updater/foundation/update_relaunch_client.dart';
 import 'package:sesori_bridge/src/updater/models/file_replacement_result.dart';
@@ -223,6 +224,58 @@ void main() {
 
       expect(repository.checkCallCount, equals(1));
       expect(updater.performUpdateCallCount, equals(1));
+    });
+
+    test('rate-limited check → concise message, no stack trace', () async {
+      final repository = _MockReleaseRepository()
+        ..onCheckForNewerRelease = () async =>
+            throw GitHubRateLimitException(resetAt: DateTime(2030, 1, 1, 9, 5));
+      final messages = <String>[];
+
+      final service = _buildService(
+        repository: repository,
+        updater: _MockUpdateInstallerService(),
+        installedFileRepository: _MockInstalledFileRepository(),
+        updateRelaunchClient: _MockUpdateRelaunchClient(),
+        executablePath: '/usr/local/bin/sesori-bridge',
+        environment: const {},
+      );
+      service.hasTerminal = () => true;
+      service.writeToStderr = messages.add;
+
+      await service.checkAndApplyUpdate(cliArgs: const []);
+
+      expect(messages, hasLength(1));
+      final message = messages.single;
+      expect(message, contains('rate limit'));
+      expect(message, contains('GITHUB_TOKEN'));
+      expect(message, contains('09:05'));
+      expect(message, isNot(contains('#0')));
+      expect(message, isNot(contains('\n')));
+      expect(message, isNot(contains('GitHubRateLimitException')));
+    });
+
+    test('unexpected check failure → message without async stack trace', () async {
+      final repository = _MockReleaseRepository()
+        ..onCheckForNewerRelease = () async => throw StateError('network exploded');
+      final messages = <String>[];
+
+      final service = _buildService(
+        repository: repository,
+        updater: _MockUpdateInstallerService(),
+        installedFileRepository: _MockInstalledFileRepository(),
+        updateRelaunchClient: _MockUpdateRelaunchClient(),
+        executablePath: '/usr/local/bin/sesori-bridge',
+        environment: const {},
+      );
+      service.hasTerminal = () => true;
+      service.writeToStderr = messages.add;
+
+      await service.checkAndApplyUpdate(cliArgs: const []);
+
+      expect(messages, hasLength(1));
+      expect(messages.single, contains('network exploded'));
+      expect(messages.single, isNot(contains('\n')));
     });
 
     test('CI guard enabled → repository is never called', () async {

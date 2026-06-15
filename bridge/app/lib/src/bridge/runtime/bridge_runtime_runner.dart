@@ -463,9 +463,16 @@ class BridgeRuntimeRunner {
       fileReplacementApi: FileReplacementApi(processRunner: processRunner),
     );
 
+    // Opportunistically authenticate GitHub release checks when a token is
+    // present in the environment. Unauthenticated requests share a 60/hour
+    // per-IP budget that is easily exhausted behind shared/NAT'd networks; a
+    // token lifts the bridge to the authenticated 5000/hour limit.
+    final githubToken =
+        io.Platform.environment['GITHUB_TOKEN'] ?? io.Platform.environment['GH_TOKEN'];
+
     return UpdateService(
       releaseRepository: ReleaseRepository(
-        api: GitHubReleasesApi(httpClient: httpClient),
+        api: GitHubReleasesApi(httpClient: httpClient, authToken: githubToken),
         cache: UpdateCacheApi(
           cacheDirectory: managedRuntimePaths.cacheDirectory,
           clock: const Clock(),

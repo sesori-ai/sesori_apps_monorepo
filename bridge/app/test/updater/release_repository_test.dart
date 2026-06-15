@@ -241,7 +241,7 @@ void main() {
         );
       });
 
-      test('HTTP 403 (rate limit) → throws', () async {
+      test('HTTP 403 without rate-limit headers → throws StateError', () async {
         await expectLater(
           _makeRepository(httpClient: _mockStatus(403)).checkForNewerRelease(),
           throwsA(isA<StateError>()),

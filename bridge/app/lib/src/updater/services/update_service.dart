@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:rxdart/rxdart.dart';
 import 'package:sesori_shared/sesori_shared.dart';
 
+import '../foundation/github_rate_limit_exception.dart';
 import '../foundation/update_lock.dart';
 import '../foundation/update_policy.dart';
 import '../foundation/update_relaunch_client.dart';
@@ -98,10 +99,32 @@ class UpdateService {
   Future<ReleaseInfo?> _checkForPollingUpdate() async {
     try {
       return await _releaseRepository.checkForNewerRelease();
-    } on Object catch (error, stackTrace) {
-      writeToStderr('Warning: periodic update check failed: $error\n$stackTrace');
+    } on Object catch (error) {
+      writeToStderr(_describeUpdateCheckFailure(error));
       return null;
     }
+  }
+
+  /// Produces a single concise, user-facing line for a failed update check.
+  ///
+  /// A rate limit is an expected, benign condition for a best-effort updater,
+  /// so it gets a friendly explanation (and a hint to authenticate) rather than
+  /// a stack trace. Genuinely unexpected failures surface their error message
+  /// without an alarming async stack dump.
+  String _describeUpdateCheckFailure(Object error) {
+    if (error is GitHubRateLimitException) {
+      final reset = error.resetAt;
+      final resetHint = reset == null ? '' : ' Limit resets around ${_formatLocalTime(reset)}.';
+      return 'sesori-bridge: skipping update check — GitHub API rate limit reached. '
+          'Unauthenticated requests are capped at 60/hour per IP; set GITHUB_TOKEN '
+          '(or GH_TOKEN) to raise this to 5000/hour.$resetHint';
+    }
+    return 'sesori-bridge: update check failed: $error';
+  }
+
+  String _formatLocalTime(DateTime time) {
+    String pad(int value) => value.toString().padLeft(2, '0');
+    return '${pad(time.hour)}:${pad(time.minute)}';
   }
 
   Future<void> checkAndApplyUpdate({required List<String> cliArgs}) async {
@@ -161,9 +184,9 @@ class UpdateService {
           'Warning: failed to update to ${release.version} (${installResult.result}). Continuing with current version.',
         );
       }
-    } on Object catch (error, stackTrace) {
+    } on Object catch (error) {
       if (hasTerminal()) {
-        writeToStderr('Warning: automatic update failed: $error\n$stackTrace');
+        writeToStderr(_describeUpdateCheckFailure(error));
       }
     }
   }
