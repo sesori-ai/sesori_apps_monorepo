@@ -14,7 +14,7 @@ dependencies:
   http: ^1.6.0
   injectable: ^3.0.0
   json_annotation: ^4.12.0
-  meta: ^1.16.0
+  meta: ^1.18.0
   rxdart: ^0.28.0
   sesori_shared:
     path: ../../shared/sesori_shared
@@ -27,5 +27,5 @@ dev_dependencies:
   freezed: ^3.2.5
   injectable_generator: ^3.0.2
   json_serializable: ^6.14.0
-  mocktail: ^1.0.4
-  test: ^1.25.0
+  mocktail: ^1.0.5
+  test: ^1.31.0
