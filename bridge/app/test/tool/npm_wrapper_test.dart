@@ -16,10 +16,9 @@ String _currentPlatformPackage() {
   };
 
   if (Platform.isWindows) {
-    final processorArch =
-        (Platform.environment['PROCESSOR_ARCHITEW6432'] ?? Platform.environment['PROCESSOR_ARCHITECTURE'] ?? '')
-            .toUpperCase();
-    return processorArch == 'ARM64' ? '@sesori/bridge-win32-arm64' : '@sesori/bridge-win32-x64';
+    final nodeArchResult = Process.runSync('node', ['-p', 'process.arch']);
+    final nodeArch = nodeArchResult.exitCode == 0 ? (nodeArchResult.stdout as String).trim() : 'x64';
+    return nodeArch == 'arm64' ? '@sesori/bridge-win32-arm64' : '@sesori/bridge-win32-x64';
   }
 
   final uname = Process.runSync('uname', ['-m']);
@@ -44,10 +43,9 @@ String _currentPlatformAssetName() {
   };
 
   if (Platform.isWindows) {
-    final processorArch =
-        (Platform.environment['PROCESSOR_ARCHITEW6432'] ?? Platform.environment['PROCESSOR_ARCHITECTURE'] ?? '')
-            .toUpperCase();
-    return processorArch == 'ARM64' ? 'sesori-bridge-windows-arm64.zip' : 'sesori-bridge-windows-x64.zip';
+    final nodeArchResult = Process.runSync('node', ['-p', 'process.arch']);
+    final nodeArch = nodeArchResult.exitCode == 0 ? (nodeArchResult.stdout as String).trim() : 'x64';
+    return nodeArch == 'arm64' ? 'sesori-bridge-windows-arm64.zip' : 'sesori-bridge-windows-x64.zip';
   }
 
   final uname = Process.runSync('uname', ['-m']);

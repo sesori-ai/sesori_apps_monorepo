@@ -392,6 +392,7 @@ cat "\$HOME/.zprofile"
       expect(script, contains('Only x64 (AMD64) and arm64 are supported on Windows.'));
       expect(script, contains(r'sesori-bridge-windows-$arch.zip'));
       expect(script, contains(r"if ($arch -notin @('x64', 'arm64'))"));
+      expect(script, contains('falling back to the x64 build'));
     });
 
     test('resolves stable bridge-tagged release assets and checksum basenames', () {

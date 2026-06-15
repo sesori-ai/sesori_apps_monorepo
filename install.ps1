@@ -103,7 +103,18 @@ function Resolve-BridgeRelease {
     throw "Could not resolve a published bridge release for $ArchiveName."
 }
 
-$Release = Resolve-BridgeRelease -ArchiveName $ArchiveName
+try {
+    $Release = Resolve-BridgeRelease -ArchiveName $ArchiveName
+} catch {
+    if ($arch -eq 'arm64') {
+        Write-Warning "No native arm64 bridge release found yet; falling back to the x64 build (runs under emulation on Windows arm64)."
+        $arch = 'x64'
+        $ArchiveName = "sesori-bridge-windows-$arch.zip"
+        $Release = Resolve-BridgeRelease -ArchiveName $ArchiveName
+    } else {
+        throw
+    }
+}
 $AssetUrl = $Release.AssetUrl
 $ChecksumsUrl = $Release.ChecksumsUrl
 
