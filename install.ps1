@@ -106,8 +106,9 @@ function Resolve-BridgeRelease {
 try {
     $Release = Resolve-BridgeRelease -ArchiveName $ArchiveName
 } catch {
-    if ($arch -eq 'arm64') {
-        Write-Warning "No native arm64 bridge release found yet; falling back to the x64 build (runs under emulation on Windows arm64)."
+    $noReleaseFound = $_.Exception.Message -like '*Could not resolve a published bridge release*'
+    if ($arch -eq 'arm64' -and $noReleaseFound) {
+        Write-Warning "No native arm64 bridge release found yet; falling back to the x64 build (runs under emulation on Windows arm64). Re-run this installer after a native arm64 release to switch to the native build."
         $arch = 'x64'
         $ArchiveName = "sesori-bridge-windows-$arch.zip"
         $Release = Resolve-BridgeRelease -ArchiveName $ArchiveName

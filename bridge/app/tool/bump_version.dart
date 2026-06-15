@@ -126,7 +126,7 @@ Future<void> main(final List<String> args) async {
   }
 
   try {
-    // Update all 8 files
+    // Update all 9 files
     await updatePubspec(appDir: appDir, oldVersion: oldVersion, newVersion: newVersion);
     await updateVersionDart(appDir: appDir, oldVersion: oldVersion, newVersion: newVersion);
 
