@@ -16,7 +16,6 @@ import 'package:sesori_bridge/src/updater/repositories/installed_file_repository
 import 'package:sesori_bridge/src/updater/repositories/release_repository.dart';
 import 'package:sesori_bridge/src/updater/services/update_install_service.dart';
 import 'package:sesori_bridge/src/updater/services/update_service.dart';
-import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 
 import 'package:test/test.dart';
 
@@ -151,9 +150,6 @@ UpdateService _buildService({
 
 void main() {
   setUp(() async {
-    // Pin a deterministic log level: these tests capture Log output, and the
-    // ambient level can otherwise vary across the suite/CI (filtering Log.w).
-    Log.level = LogLevel.info;
     await Directory(_testManagedPaths.installRoot).create(recursive: true);
     final lockFile = File('${_testManagedPaths.installRoot}/.update.lock');
     if (lockFile.existsSync()) {
@@ -230,7 +226,7 @@ void main() {
       expect(updater.performUpdateCallCount, equals(1));
     });
 
-    test('unauthenticated rate limit → warning on stdout hints at GITHUB_TOKEN', () async {
+    test('unauthenticated rate limit → warning hints at GITHUB_TOKEN, not an error', () async {
       final repository = _MockReleaseRepository()
         ..onCheckForNewerRelease = () async =>
             throw GitHubRateLimitException(resetAt: DateTime(2030, 1, 1, 9, 5), authenticated: false);
@@ -242,24 +238,19 @@ void main() {
         executablePath: '/usr/local/bin/sesori-bridge',
         environment: const {},
       );
+      final warnings = <String>[];
+      var errorLogged = false;
+      service.logWarning = warnings.add;
+      service.logError = (_, __, ___) => errorLogged = true;
 
-      final stdoutLines = <String>[];
-      final stderrLines = <String>[];
-      await IOOverrides.runZoned(
-        () => service.checkAndApplyUpdate(cliArgs: const []),
-        stdout: () => _CapturingStdout(stdoutLines),
-        stderr: () => _CapturingStdout(stderrLines),
-      );
+      await service.checkAndApplyUpdate(cliArgs: const []);
 
-      // A rate limit is benign, so it is logged via Log.w (stdout), not the
-      // alarming Log.e (stderr) path.
-      expect(stdoutLines, hasLength(1));
-      final message = stdoutLines.single;
-      expect(message, contains('rate limit'));
-      expect(message, contains('GITHUB_TOKEN'));
-      expect(message, contains('09:05'));
-      expect(message, isNot(contains('#0')));
-      expect(stderrLines, isEmpty);
+      // A rate limit is benign: a warning, never an error.
+      expect(warnings, hasLength(1));
+      expect(warnings.single, contains('rate limit'));
+      expect(warnings.single, contains('GITHUB_TOKEN'));
+      expect(warnings.single, contains('09:05'));
+      expect(errorLogged, isFalse);
     });
 
     test('authenticated rate limit → warning does not tell the user to set a token', () async {
@@ -274,22 +265,18 @@ void main() {
         executablePath: '/usr/local/bin/sesori-bridge',
         environment: const {},
       );
+      final warnings = <String>[];
+      service.logWarning = warnings.add;
 
-      final stdoutLines = <String>[];
-      await IOOverrides.runZoned(
-        () => service.checkAndApplyUpdate(cliArgs: const []),
-        stdout: () => _CapturingStdout(stdoutLines),
-        stderr: () => _CapturingStdout(<String>[]),
-      );
+      await service.checkAndApplyUpdate(cliArgs: const []);
 
-      expect(stdoutLines, hasLength(1));
-      final message = stdoutLines.single;
-      expect(message, contains('rate limit'));
-      expect(message, contains('authenticated'));
-      expect(message, isNot(contains('GITHUB_TOKEN')));
+      expect(warnings, hasLength(1));
+      expect(warnings.single, contains('rate limit'));
+      expect(warnings.single, contains('authenticated'));
+      expect(warnings.single, isNot(contains('GITHUB_TOKEN')));
     });
 
-    test('unexpected failure → error cause on stderr, stack trace suppressed at info level', () async {
+    test('unexpected failure → logged as error with the cause and stack trace', () async {
       final repository = _MockReleaseRepository()
         ..onCheckForNewerRelease = () async => throw StateError('network exploded');
       final service = _buildService(
@@ -300,47 +287,26 @@ void main() {
         executablePath: '/usr/local/bin/sesori-bridge',
         environment: const {},
       );
+      String? errorMessage;
+      Object? loggedError;
+      StackTrace? loggedStackTrace;
+      var warned = false;
+      service.logWarning = (_) => warned = true;
+      service.logError = (message, error, stackTrace) {
+        errorMessage = message;
+        loggedError = error;
+        loggedStackTrace = stackTrace;
+      };
 
-      final stderrLines = <String>[];
-      await IOOverrides.runZoned(
-        () => service.checkAndApplyUpdate(cliArgs: const []),
-        stdout: () => _CapturingStdout(<String>[]),
-        stderr: () => _CapturingStdout(stderrLines),
-      );
+      await service.checkAndApplyUpdate(cliArgs: const []);
 
-      // The concise cause stays on the default line; only the async stack trace
-      // is withheld until debug/verbose.
-      expect(stderrLines, hasLength(1));
-      expect(stderrLines.single, contains('Automatic update failed'));
-      expect(stderrLines.single, contains('network exploded'));
-      expect(stderrLines.single, isNot(contains('#0')));
-    });
-
-    test('unexpected failure preserves error + stack trace at debug level', () async {
-      final previousLevel = Log.level;
-      Log.level = LogLevel.debug;
-      addTearDown(() => Log.level = previousLevel);
-
-      final repository = _MockReleaseRepository()
-        ..onCheckForNewerRelease = () async => throw StateError('network exploded');
-      final service = _buildService(
-        repository: repository,
-        updater: _MockUpdateInstallerService(),
-        installedFileRepository: _MockInstalledFileRepository(),
-        updateRelaunchClient: _MockUpdateRelaunchClient(),
-        executablePath: '/usr/local/bin/sesori-bridge',
-        environment: const {},
-      );
-
-      final stderrLines = <String>[];
-      await IOOverrides.runZoned(
-        () => service.checkAndApplyUpdate(cliArgs: const []),
-        stdout: () => _CapturingStdout(<String>[]),
-        stderr: () => _CapturingStdout(stderrLines),
-      );
-
-      expect(stderrLines, isNotEmpty);
-      expect(stderrLines.join('\n'), contains('network exploded'));
+      // The stage label plus the concise cause are passed to Log.e, which keeps
+      // the error object and stack trace for debug/verbose output.
+      expect(errorMessage, contains('Automatic update failed'));
+      expect(errorMessage, contains('network exploded'));
+      expect(loggedError, isA<StateError>());
+      expect(loggedStackTrace, isNotNull);
+      expect(warned, isFalse);
     });
 
     test('CI guard enabled → repository is never called', () async {
@@ -748,20 +714,4 @@ void main() {
       );
     });
   });
-}
-
-/// Captures `writeln` calls; [IOOverrides] swaps it in for stdout/stderr so
-/// tests can assert on what `Log` emitted.
-class _CapturingStdout implements Stdout {
-  _CapturingStdout(this.lines);
-
-  final List<String> lines;
-
-  @override
-  void writeln([Object? object = '']) {
-    lines.add(object.toString());
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

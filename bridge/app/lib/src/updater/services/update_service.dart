@@ -63,6 +63,12 @@ class UpdateService {
   @visibleForTesting
   void Function(String message) writeToStderr = stderr.writeln;
 
+  @visibleForTesting
+  void Function(String message) logWarning = Log.w;
+
+  @visibleForTesting
+  void Function(String message, Object error, StackTrace stackTrace) logError = Log.e;
+
   UpdateService({
     required ReleaseRepository releaseRepository,
     required UpdateInstallService updateInstallerService,
@@ -125,13 +131,13 @@ class UpdateService {
     required String stageDescription,
   }) {
     if (error is GitHubRateLimitException) {
-      Log.w(_rateLimitMessage(error));
+      logWarning(_rateLimitMessage(error));
       return;
     }
     // Keep the concise cause on the default line (e.g. a timeout vs. a parse
     // error); Log only appends the error object and stack trace at
     // debug/verbose levels.
-    Log.e('$stageDescription: $error', error, stackTrace);
+    logError('$stageDescription: $error', error, stackTrace);
   }
 
   String _rateLimitMessage(GitHubRateLimitException error) {
