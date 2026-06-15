@@ -107,9 +107,11 @@ class ActiveSessionTracker {
         _updateSessionWorktree(event.info.id, event.info.directory);
         final prevParentId = _sessionParentIds[event.info.id];
         _sessionParentIds[event.info.id] = event.info.parentID;
-        // Parent metadata changed for an active session — grouping may differ
-        // even though per-worktree counts haven't changed.
-        if (_sessionStatuses.containsKey(event.info.id) && prevParentId != event.info.parentID) {
+        // A parent-link change can move active sessions between roots, or make a
+        // previously-orphaned active descendant resolvable, without changing the
+        // per-worktree counts — so re-emit when this session is itself active or
+        // is an ancestor of an active session.
+        if (prevParentId != event.info.parentID && _participatesInActiveSubtree(event.info.id)) {
           forceReemit = true;
         }
       case SseSessionUpdated():
@@ -117,7 +119,7 @@ class ActiveSessionTracker {
         _updateSessionWorktree(event.info.id, event.info.directory);
         final prevParentId = _sessionParentIds[event.info.id];
         _sessionParentIds[event.info.id] = event.info.parentID;
-        if (_sessionStatuses.containsKey(event.info.id) && prevParentId != event.info.parentID) {
+        if (prevParentId != event.info.parentID && _participatesInActiveSubtree(event.info.id)) {
           forceReemit = true;
         }
       case SseSessionDeleted():
@@ -289,6 +291,12 @@ class ActiveSessionTracker {
     final byWorktree = <String, List<ActiveSession>>{};
     for (final rootId in allActiveRoots) {
       final descendants = activeDescendantsByRoot[rootId] ?? const <String>[];
+      // childSessionIds carries DIRECT active children only. Consumers such as
+      // PushSessionStateTracker treat these as parent→child links for hierarchy
+      // repair, so listing deeper descendants here would flatten the tree.
+      // Deeper active descendants still surface the root above; they are just
+      // not reported as its direct children.
+      final directChildren = descendants.where((id) => _sessionParentIds[id] == rootId).toList();
       var worktree = _sessionWorktrees[rootId];
       // The root may lack a worktree if we only observed its descendants
       // (e.g. bridge reconnected after the root session was created).
@@ -303,6 +311,8 @@ class ActiveSessionTracker {
         Log.w("buildSummary: no worktree for session $rootId");
         continue;
       }
+      // Retry / awaiting-input are activity badge signals (not hierarchy), so
+      // they reflect the whole active subtree, not just the direct children.
       final isRetrying = _sessionStatuses[rootId] is SessionStatusRetry ||
           descendants.any((id) => _sessionStatuses[id] is SessionStatusRetry);
       byWorktree
@@ -313,7 +323,7 @@ class ActiveSessionTracker {
               mainAgentRunning: directlyActiveRoots.contains(rootId),
               awaitingInput: _rootHasPendingInput(rootId, descendants),
               isRetrying: isRetrying,
-              childSessionIds: descendants,
+              childSessionIds: directChildren,
             ),
           );
     }
@@ -331,21 +341,49 @@ class ActiveSessionTracker {
   /// Walks the parent chain from [sessionId] up to its root ancestor — the
   /// first session whose `parentID` is null.
   ///
-  /// Returns null when the chain cannot be resolved to a known root: an
-  /// ancestor was never observed (`_sessionParentIds` has no entry for it) or a
-  /// cycle is detected. Callers treat an unresolved session as un-attributable
-  /// and drop it from the summary.
+  /// If [sessionId] itself has no observed parent metadata, it is treated as its
+  /// own root. This preserves the prior fallback for active sessions seen only
+  /// via a status event (no `session.created`/cold-start metadata yet), which
+  /// would otherwise be dropped from the summary entirely.
+  ///
+  /// Returns null only when an *ancestor* in the chain was never observed (an
+  /// orphan child whose parent we have not seen) or a cycle is detected — such
+  /// sessions cannot be attributed to a root row and are dropped.
   String? _resolveRootSession(String sessionId) {
     var current = sessionId;
     final visited = <String>{};
     while (visited.add(current)) {
-      if (!_sessionParentIds.containsKey(current)) return null;
+      if (!_sessionParentIds.containsKey(current)) {
+        return current == sessionId ? sessionId : null;
+      }
       final parentId = _sessionParentIds[current];
       if (parentId == null) return current;
       current = parentId;
     }
     Log.w("buildSummary: cycle detected resolving root for $sessionId");
     return null;
+  }
+
+  /// Whether [sessionId] is itself active, or is an ancestor of any active
+  /// session.
+  ///
+  /// A parent-link change on such a session can move an active session to a
+  /// different root — or make a previously-orphaned active descendant
+  /// resolvable — without changing the per-worktree active counts, so the
+  /// summary must be re-emitted when this returns true.
+  bool _participatesInActiveSubtree(String sessionId) {
+    if (_sessionStatuses.containsKey(sessionId)) return true;
+    for (final activeId in _sessionStatuses.keys) {
+      var current = activeId;
+      final visited = <String>{};
+      while (visited.add(current)) {
+        if (current == sessionId) return true;
+        final parentId = _sessionParentIds[current];
+        if (parentId == null) break;
+        current = parentId;
+      }
+    }
+    return false;
   }
 
   /// Raw count of all busy/retry sessions per worktree.

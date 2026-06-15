@@ -3,13 +3,13 @@ import "package:freezed_annotation/freezed_annotation.dart";
 part "active_session.freezed.dart";
 part "active_session.g.dart";
 
-/// A root session that is currently active, along with the active (busy or
-/// retrying) descendant sessions nested beneath it.
+/// A root session that is currently active — either because its own main agent
+/// is running, or because a task somewhere in its subtree is.
 ///
-/// A session is considered active when either the main agent or any task in its
-/// subtree is running. Active descendants at any depth are attributed to their
-/// root session; [childSessionIds] therefore lists every active descendant, not
-/// only direct children.
+/// [childSessionIds] lists only the root's DIRECT active children. Deeper active
+/// descendants still cause the root to surface here (so the session list shows
+/// it as running), but they are not listed individually — the field represents
+/// a single level of parent→child hierarchy, which is what consumers rely on.
 @Freezed(fromJson: true, toJson: true)
 sealed class ActiveSession with _$ActiveSession {
   const factory ActiveSession({

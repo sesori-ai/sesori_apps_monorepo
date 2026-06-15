@@ -628,26 +628,16 @@ void main() {
       expect(summary.first.activeSessions.first.childSessionIds, equals(["c1"]));
     });
 
-    test("deeply nested busy descendants bubble up to their root", () async {
+    test("deeply nested descendants surface the root but are not direct children", () async {
       final tracker = await _coldStartedTracker(
         projects: [const Project(id: "p1", worktree: "/repo")],
       );
 
       tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
       tracker.handleEvent(_sessionBusy("s1"), null);
-      tracker.handleEvent(
-        const SseEventData.sessionCreated(
-          info: Session(id: "c1", projectID: "project", directory: "/repo", parentID: "s1"),
-        ),
-        null,
-      );
+      tracker.handleEvent(_childSessionCreated("c1", "s1", "/repo"), null);
       tracker.handleEvent(_sessionBusy("c1"), null);
-      tracker.handleEvent(
-        const SseEventData.sessionCreated(
-          info: Session(id: "g1", projectID: "project", directory: "/repo", parentID: "c1"),
-        ),
-        null,
-      );
+      tracker.handleEvent(_childSessionCreated("g1", "c1", "/repo"), null);
       tracker.handleEvent(_sessionBusy("g1"), null);
 
       final summary = tracker.buildSummary();
@@ -657,12 +647,13 @@ void main() {
       final root = summary.first.activeSessions.first;
       expect(root.id, equals("s1"));
       expect(root.mainAgentRunning, isTrue);
-      // The grandchild (g1) is attributed to the root alongside the direct
-      // child (c1), not dropped for being deeper than one level.
-      expect(root.childSessionIds, unorderedEquals(["c1", "g1"]));
+      // Only the direct child is listed; the grandchild (g1) surfaces the root
+      // above but is not flattened into the root's direct-children list, which
+      // downstream consumers treat as a single parent->child hierarchy level.
+      expect(root.childSessionIds, equals(["c1"]));
     });
 
-    test("idle root with only a busy grandchild appears in summary", () async {
+    test("idle root with only a busy grandchild still surfaces the root", () async {
       final tracker = await _coldStartedTracker(
         projects: [const Project(id: "p1", worktree: "/repo")],
       );
@@ -680,7 +671,51 @@ void main() {
       final root = summary.first.activeSessions.first;
       expect(root.id, equals("s1"));
       expect(root.mainAgentRunning, isFalse);
-      expect(root.childSessionIds, equals(["g1"]));
+      // The grandchild is not a direct child, so it is not listed, but it still
+      // surfaces the (idle) root as active in the list.
+      expect(root.childSessionIds, isEmpty);
+    });
+
+    test("active session seen only via status (no parent metadata) surfaces as a root", () async {
+      final tracker = await _coldStartedTracker(
+        projects: [const Project(id: "p1", worktree: "/repo")],
+      );
+
+      // A status event arrives with a directory but WITHOUT a session.created
+      // event, so _sessionParentIds has no entry for s1. It must still be
+      // surfaced as its own root rather than dropped.
+      tracker.handleEvent(_sessionBusy("s1"), "/repo");
+
+      final summary = tracker.buildSummary();
+
+      expect(summary, hasLength(1));
+      expect(summary.first.id, equals("/repo"));
+      final root = summary.first.activeSessions.first;
+      expect(root.id, equals("s1"));
+      expect(root.mainAgentRunning, isTrue);
+    });
+
+    test("late intermediate session.created re-emits when it bridges an active descendant", () async {
+      final tracker = await _coldStartedTracker(
+        projects: [const Project(id: "p1", worktree: "/repo")],
+      );
+
+      // Root known; grandchild busy but its intermediate parent c1 has not been
+      // observed yet, so the grandchild is currently an unresolvable orphan.
+      tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
+      tracker.handleEvent(_childSessionCreated("g1", "c1", "/repo"), null);
+      tracker.handleEvent(_sessionBusy("g1"), null);
+      expect(tracker.buildSummary(), isEmpty);
+
+      // c1's creation arrives. Even though c1 is idle, it now bridges g1 up to
+      // s1, changing attribution without changing active counts, so handleEvent
+      // must report a change to trigger a summary re-emit.
+      final changed = tracker.handleEvent(_childSessionCreated("c1", "s1", "/repo"), null);
+
+      expect(changed, isTrue);
+      final summary = tracker.buildSummary();
+      expect(summary, hasLength(1));
+      expect(summary.first.activeSessions.first.id, equals("s1"));
     });
 
     group("pending input tracking", () {
