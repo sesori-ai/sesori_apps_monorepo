@@ -196,6 +196,56 @@ void main() {
           expect(states, isNot(contains(isA<LoginFailed>())));
         });
 
+        test("parks late poll abort after app already resumed", () async {
+          final lifecycleSubject = BehaviorSubject<LifecycleState>.seeded(LifecycleState.resumed);
+          when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleSubject.stream);
+          when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async {
+            lifecycleSubject.add(LifecycleState.paused);
+            await Future<void>.delayed(Duration.zero);
+            lifecycleSubject.add(LifecycleState.resumed);
+            await Future<void>.delayed(Duration.zero);
+            throw ClientException("Software caused connection abort");
+          });
+
+          final cubit = buildCubit();
+          final states = <LoginState>[];
+          final sub = cubit.stream.listen(states.add);
+
+          await cubit.loginWithProvider(AuthProvider.google);
+
+          await cubit.close();
+          await sub.cancel();
+          await lifecycleSubject.close();
+
+          expect(cubit.state, isA<LoginPolling>());
+          expect(states, contains(isA<LoginPolling>()));
+          expect(states, isNot(contains(isA<LoginFailed>())));
+        });
+
+        test("parks poll abort during inactive lifecycle transition", () async {
+          final lifecycleSubject = BehaviorSubject<LifecycleState>.seeded(LifecycleState.resumed);
+          when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleSubject.stream);
+          when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async {
+            lifecycleSubject.add(LifecycleState.inactive);
+            await Future<void>.delayed(Duration.zero);
+            throw ClientException("Software caused connection abort");
+          });
+
+          final cubit = buildCubit();
+          final states = <LoginState>[];
+          final sub = cubit.stream.listen(states.add);
+
+          await cubit.loginWithProvider(AuthProvider.google);
+
+          await cubit.close();
+          await sub.cancel();
+          await lifecycleSubject.close();
+
+          expect(cubit.state, isA<LoginPolling>());
+          expect(states, contains(isA<LoginPolling>()));
+          expect(states, isNot(contains(isA<LoginFailed>())));
+        });
+
         test("resume after background-interrupted poll completes login", () async {
           final lifecycleSubject = BehaviorSubject<LifecycleState>.seeded(LifecycleState.resumed);
           when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleSubject.stream);
@@ -245,6 +295,29 @@ void main() {
             ),
           ],
         );
+
+        test("background terminal poll error still fails", () async {
+          final lifecycleSubject = BehaviorSubject<LifecycleState>.seeded(LifecycleState.resumed);
+          when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleSubject.stream);
+          when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async {
+            lifecycleSubject.add(LifecycleState.paused);
+            await Future<void>.delayed(Duration.zero);
+            throw StateError("OAuth authorization was denied");
+          });
+
+          final cubit = buildCubit();
+          final states = <LoginState>[];
+          final sub = cubit.stream.listen(states.add);
+
+          await cubit.loginWithProvider(AuthProvider.google);
+
+          await cubit.close();
+          await sub.cancel();
+          await lifecycleSubject.close();
+
+          expect(cubit.state, isA<LoginFailed>());
+          expect(states, contains(isA<LoginFailed>()));
+        });
 
         test("resume with expired session resets interrupted poll to LoginIdle", () async {
           final lifecycleSubject = BehaviorSubject<LifecycleState>.seeded(LifecycleState.resumed);

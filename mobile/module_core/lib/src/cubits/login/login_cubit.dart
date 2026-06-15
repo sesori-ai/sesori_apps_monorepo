@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:bloc/bloc.dart";
+import "package:http/http.dart" show ClientException;
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -24,6 +25,12 @@ class LoginCubit extends Cubit<LoginState> {
   /// they must not be surfaced as terminal login failures.
   bool _isInBackground = false;
 
+  /// Whether the currently-settling poll observed a lifecycle transition away
+  /// from resumed. Kept separate from [_isInBackground] so a late transport
+  /// abort from the original poll is still treated as recoverable even if the
+  /// app has already returned to the foreground before the Future completes.
+  bool _didActivePollEnterBackground = false;
+
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   LoginCubit(
     OAuthFlowProvider oAuthFlowProvider,
@@ -38,7 +45,13 @@ class LoginCubit extends Cubit<LoginState> {
     _lifecycleSubscription = _lifecycleSource.lifecycleStateStream.listen((state) {
       switch (state) {
         case LifecycleState.paused:
+        case LifecycleState.inactive:
+        case LifecycleState.hidden:
+        case LifecycleState.detached:
           _isInBackground = true;
+          if (_isPolling) {
+            _didActivePollEnterBackground = true;
+          }
         case LifecycleState.resumed:
           _isInBackground = false;
           _onAppResumed().catchError((Object e, StackTrace st) {
@@ -47,10 +60,6 @@ class LoginCubit extends Cubit<LoginState> {
               emit(const LoginState.failed(reason: LoginFailedReason.unknown));
             }
           });
-        case LifecycleState.inactive:
-        case LifecycleState.hidden:
-        case LifecycleState.detached:
-          break;
       }
     });
   }
@@ -70,6 +79,7 @@ class LoginCubit extends Cubit<LoginState> {
         // session has since expired/cleared, reset to idle instead of leaving
         // a permanently stuck spinner.
         if (state is LoginPolling) {
+          if (isClosed) return;
           emit(const LoginState.idle());
         }
         return;
@@ -86,6 +96,7 @@ class LoginCubit extends Cubit<LoginState> {
         LoginFailed() => null,
       };
 
+      _didActivePollEnterBackground = false;
       _isPolling = true;
       emit(LoginState.polling(userCode: currentUserCode));
       try {
@@ -93,12 +104,12 @@ class LoginCubit extends Cubit<LoginState> {
         if (isClosed) return;
         emit(const LoginState.success());
       } on TimeoutException catch (e, st) {
-        if (_handlePollInterruption(userCode: currentUserCode)) return;
+        if (_handlePollInterruption(error: e, userCode: currentUserCode)) return;
         loge("OAuth resumed but timed out", e, st);
         if (isClosed) return;
         emit(const LoginState.timeout());
       } catch (e, st) {
-        if (_handlePollInterruption(userCode: currentUserCode)) return;
+        if (_handlePollInterruption(error: e, userCode: currentUserCode)) return;
         loge("OAuth resumed but failed", e, st);
         if (isClosed) return;
         emit(const LoginState.failed(reason: LoginFailedReason.unknown));
@@ -108,20 +119,26 @@ class LoginCubit extends Cubit<LoginState> {
     }
   }
 
-  /// When a poll fails while the app is backgrounded, the failure is almost
-  /// certainly the OS aborting the in-flight request (e.g. Android tearing down
-  /// the socket when the OAuth browser opens), not a real authorization
-  /// failure. Park the UI in a resumable, no-error [LoginPolling] state so
-  /// [_onAppResumed] can retry once the app returns to the foreground.
+  /// When a poll has a transport failure while the app is/was backgrounded, the
+  /// failure is almost certainly the OS aborting the in-flight request (e.g.
+  /// Android tearing down the socket when the OAuth browser opens), not a real
+  /// authorization failure. Park the UI in a resumable, no-error [LoginPolling]
+  /// state so [_onAppResumed] can retry once the app returns to the foreground.
   ///
   /// Returns true when the error was handled as a recoverable interruption, in
   /// which case the caller must stop and not emit a failure state.
-  bool _handlePollInterruption({required String? userCode}) {
-    if (!_isInBackground) return false;
+  bool _handlePollInterruption({required Object error, required String? userCode}) {
+    if (!_isRecoverablePollInterruption(error)) return false;
+    if (!_isInBackground && !_didActivePollEnterBackground) return false;
+    _didActivePollEnterBackground = false;
     if (!isClosed) {
       emit(LoginState.polling(userCode: userCode));
     }
     return true;
+  }
+
+  bool _isRecoverablePollInterruption(Object error) {
+    return error is TimeoutException || error is ClientException;
   }
 
   Future<bool> loginWithProvider(OAuthProvider provider) async {
@@ -146,6 +163,7 @@ class LoginCubit extends Cubit<LoginState> {
         return false;
       }
 
+      _didActivePollEnterBackground = false;
       _isPolling = true;
       emit(LoginState.polling(userCode: initResponse.userCode));
       try {
@@ -158,13 +176,13 @@ class LoginCubit extends Cubit<LoginState> {
       emit(const LoginState.success());
       return true;
     } on TimeoutException catch (e, st) {
-      if (_handlePollInterruption(userCode: pollingUserCode)) return false;
+      if (_handlePollInterruption(error: e, userCode: pollingUserCode)) return false;
       loge("${provider.label} login timed out", e, st);
       if (isClosed) return false;
       emit(const LoginState.timeout());
       return false;
     } catch (e, st) {
-      if (_handlePollInterruption(userCode: pollingUserCode)) return false;
+      if (_handlePollInterruption(error: e, userCode: pollingUserCode)) return false;
       loge("${provider.label} login failed", e, st);
       if (isClosed) return false;
       emit(const LoginState.failed(reason: LoginFailedReason.unknown));
