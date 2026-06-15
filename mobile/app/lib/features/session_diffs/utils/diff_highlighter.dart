@@ -1,26 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:re_highlight/languages/css.dart';
-import 'package:re_highlight/languages/dart.dart';
-import 'package:re_highlight/languages/go.dart';
-import 'package:re_highlight/languages/java.dart';
-import 'package:re_highlight/languages/javascript.dart';
-import 'package:re_highlight/languages/json.dart';
-import 'package:re_highlight/languages/kotlin.dart';
-import 'package:re_highlight/languages/python.dart';
-import 'package:re_highlight/languages/rust.dart';
-import 'package:re_highlight/languages/sql.dart';
-import 'package:re_highlight/languages/swift.dart';
-import 'package:re_highlight/languages/typescript.dart';
-import 'package:re_highlight/languages/xml.dart';
-import 'package:re_highlight/languages/yaml.dart';
 import 'package:re_highlight/re_highlight.dart';
-import 'package:re_highlight/styles/github-dark.dart';
-import 'package:re_highlight/styles/github.dart';
 
 import '../../../core/extensions/text_style_x.dart';
+import '../../../core/utils/syntax_highlight.dart';
 
 /// Static helper for syntax highlighting diff lines.
 /// Must call [initialize] once before using [highlightLine].
+///
+/// Shares its grammar set, theme and render mechanics with the whole-block
+/// [CodeHighlighter] via `core/utils/syntax_highlight.dart`. It is kept as a
+/// separate class because diffs are highlighted line-by-line and the grammars
+/// must be registered eagerly up front (never lazily inside an `itemBuilder`),
+/// which gives it the strict init-order contract exercised by its tests.
 class DiffHighlighter {
   static Highlight? _highlight;
   static late Map<String, TextStyle> _theme;
@@ -28,33 +19,11 @@ class DiffHighlighter {
 
   static final _monoStyle = const TextStyle(fontSize: 12).monospace;
 
-  /// Language registrations keyed by the name [detectLanguage] returns.
-  static final _languages = <String, Mode>{
-    'dart': langDart,
-    'typescript': langTypescript,
-    'javascript': langJavascript,
-    'python': langPython,
-    'go': langGo,
-    'java': langJava,
-    'kotlin': langKotlin,
-    'swift': langSwift,
-    'rust': langRust,
-    'html': langXml,
-    'css': langCss,
-    'json': langJson,
-    'yaml': langYaml,
-    'sql': langSql,
-  };
-
   /// Call ONCE before any highlighting. Safe to call multiple times.
   static Future<void> initialize({Brightness brightness = Brightness.light}) async {
     if (_initialized) return;
-    final highlight = Highlight();
-    _highlight = highlight;
-    for (final entry in _languages.entries) {
-      highlight.registerLanguage(entry.key, entry.value);
-    }
-    _theme = brightness == Brightness.dark ? githubDarkTheme : githubTheme;
+    _highlight = buildSyntaxHighlight();
+    _theme = githubThemeFor(brightness);
     _initialized = true;
   }
 
@@ -65,14 +34,13 @@ class DiffHighlighter {
   static TextSpan? highlightLine({required String content, required String? language}) {
     final highlight = _highlight;
     if (!_initialized || language == null || highlight == null) return null;
-    if (!_languages.containsKey(language)) return null;
-    try {
-      final result = highlight.highlight(code: content, language: language);
-      final renderer = TextSpanRenderer(_monoStyle, _theme);
-      result.render(renderer);
-      return renderer.span;
-    } catch (_) {
-      return null; // Graceful fallback for unsupported/unknown languages
-    }
+    if (!kSyntaxLanguages.containsKey(language)) return null;
+    return renderHighlightedSpan(
+      highlight: highlight,
+      code: content,
+      language: language,
+      baseStyle: _monoStyle,
+      theme: _theme,
+    );
   }
 }
