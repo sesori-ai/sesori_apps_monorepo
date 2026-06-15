@@ -174,6 +174,9 @@ class BridgeRuntimeRunner {
         browserOpenability: detectBrowserOpenability,
       ),
       environment: environment,
+      loadTokens: loadTokens,
+      saveTokens: saveTokens,
+      clearTokens: clearTokens,
     );
 
     try {

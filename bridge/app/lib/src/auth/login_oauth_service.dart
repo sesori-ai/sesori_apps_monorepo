@@ -161,7 +161,7 @@ class LoginOAuthService {
   ///
   /// The temporary session token is generated in memory, sent only through the
   /// `X-Sesori-Session-Token` header, and never persisted or placed in URLs.
-  Future<TokenData> performOAuthLogin(OAuthProvider provider) async {
+  Future<({TokenData tokens, String sessionToken})> performOAuthLogin(OAuthProvider provider) async {
     final sessionToken = _generateSessionToken();
     final initResp = await _api.initOAuthSession(
       provider: provider,
@@ -199,7 +199,12 @@ class LoginOAuthService {
     }
 
     Console.message("Waiting for authorization...");
-    return _pollForCompletion(provider: provider, sessionToken: sessionToken);
+    final tokens = await _pollForCompletion(provider: provider, sessionToken: sessionToken);
+    return (tokens: tokens, sessionToken: sessionToken);
+  }
+
+  Future<void> ackOAuthSessionCompletion({required String sessionToken}) {
+    return _api.ackOAuthSessionCompletion(sessionToken: sessionToken);
   }
 
   Future<TokenData> _pollForCompletion({

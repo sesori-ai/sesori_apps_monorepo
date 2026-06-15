@@ -54,6 +54,13 @@ void main() {
     );
     when(() => mockOAuthStorage.clearOAuthSession()).thenAnswer((_) async {});
     when(() => mockTokenStorage.saveUser(any())).thenAnswer((_) async {});
+    when(
+      () => mockHttpClient.post(
+        Uri.parse("$authBaseUrl/auth/session/status/ack"),
+        headers: any(named: "headers"),
+        body: null,
+      ),
+    ).thenAnswer((_) async => http.Response(jsonEncode({"success": true}), 200));
   });
 
   group("getFreshAccessToken", () {
@@ -390,6 +397,15 @@ void main() {
       verify(mockOAuthStorage.clearPkceVerifier).called(1);
       verify(mockOAuthStorage.clearAuthProvider).called(1);
       verify(mockOAuthStorage.clearOAuthSession).called(1);
+      final ackCall = verify(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/session/status/ack"),
+          headers: captureAny(named: "headers"),
+          body: null,
+        ),
+      );
+      final ackHeaders = ackCall.captured.single as Map<String, String>;
+      expect(ackHeaders["X-Sesori-Session-Token"], matches(RegExp(r"^[0-9a-f]{64}$")));
       verify(
         () => mockHttpClient.get(
           Uri.parse("$authBaseUrl/auth/session/status"),
@@ -468,6 +484,150 @@ void main() {
       verify(mockOAuthStorage.clearOAuthSession).called(1);
     });
 
+    test("pollForResult does not ACK completion when token persistence fails", () async {
+      authManager = AuthManager(
+        mockHttpClient,
+        mockTokenStorage,
+        mockOAuthStorage,
+        pollInterval: Duration.zero,
+        delay: (_) async {},
+      );
+
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/google/init"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
+            "state": "state-save-token-fail",
+            "userCode": "STF1",
+            "expiresIn": 300,
+          }),
+          200,
+        ),
+      );
+      when(
+        () => mockHttpClient.get(
+          Uri.parse("$authBaseUrl/auth/session/status"),
+          headers: any(named: "headers"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "status": "complete",
+            "accessToken": "oauth-access-token",
+            "refreshToken": "oauth-refresh-token",
+            "user": {
+              "id": user.id,
+              "provider": user.provider.key,
+              "providerUserId": user.providerUserId,
+              "providerUsername": user.providerUsername,
+            },
+          }),
+          200,
+        ),
+      );
+      when(
+        () => mockTokenStorage.saveTokens(
+          accessToken: "oauth-access-token",
+          refreshToken: "oauth-refresh-token",
+        ),
+      ).thenThrow(Exception("secure storage failed"));
+
+      await authManager.startOAuthFlow(provider: AuthProvider.google);
+
+      await expectLater(authManager.pollForResult(), throwsA(isA<Exception>()));
+      verifyNever(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/session/status/ack"),
+          headers: any(named: "headers"),
+          body: null,
+        ),
+      );
+    });
+
+    test("pollForResult ignores ACK failure after local completion", () async {
+      authManager = AuthManager(
+        mockHttpClient,
+        mockTokenStorage,
+        mockOAuthStorage,
+        pollInterval: Duration.zero,
+        delay: (_) async {},
+      );
+
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/google/init"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
+            "state": "state-ack-fail",
+            "userCode": "ACK1",
+            "expiresIn": 300,
+          }),
+          200,
+        ),
+      );
+      when(
+        () => mockHttpClient.get(
+          Uri.parse("$authBaseUrl/auth/session/status"),
+          headers: any(named: "headers"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "status": "complete",
+            "accessToken": "oauth-access-token",
+            "refreshToken": "oauth-refresh-token",
+            "user": {
+              "id": user.id,
+              "provider": user.provider.key,
+              "providerUserId": user.providerUserId,
+              "providerUsername": user.providerUsername,
+            },
+          }),
+          200,
+        ),
+      );
+      when(
+        () => mockTokenStorage.saveTokens(
+          accessToken: "oauth-access-token",
+          refreshToken: "oauth-refresh-token",
+        ),
+      ).thenAnswer((_) async {});
+      when(mockOAuthStorage.clearPkceVerifier).thenAnswer((_) async {});
+      when(mockOAuthStorage.clearAuthProvider).thenAnswer((_) async {});
+      when(mockOAuthStorage.clearOAuthSession).thenAnswer((_) async {});
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/session/status/ack"),
+          headers: any(named: "headers"),
+          body: null,
+        ),
+      ).thenAnswer((_) async => http.Response(jsonEncode({"error": "not_found"}), 404));
+
+      await authManager.startOAuthFlow(provider: AuthProvider.google);
+      final exchangedUser = await authManager.pollForResult();
+
+      expect(exchangedUser, user);
+      expect(authManager.currentState, const AuthState.authenticated(user: user));
+      verify(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/session/status/ack"),
+          headers: any(named: "headers"),
+          body: null,
+        ),
+      ).called(1);
+    });
+
     test("pollForResult sends the same session token only in status headers", () async {
       when(
         () => mockHttpClient.post(
@@ -513,6 +673,89 @@ void main() {
       final pollHeaders = pollCall.captured.first as Map<String, String>;
       expect(pollHeaders["X-Sesori-Session-Token"], initHeaders["X-Sesori-Session-Token"]);
       expect(pollHeaders["X-Sesori-Session-Token"], matches(RegExp(r"^[0-9a-f]{64}$")));
+    });
+
+    test("pollForResult surfaces status request timeout as recoverable client exception", () async {
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/google/init"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            "authUrl": "https://accounts.google.com/o/oauth2/v2/auth",
+            "state": "state-request-timeout",
+            "userCode": "RT42",
+            "expiresIn": 300,
+          }),
+          200,
+        ),
+      );
+      when(() => mockOAuthStorage.getOAuthSession()).thenAnswer(
+        (_) async => (
+          sessionToken: "stored-session-token",
+          expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+        ),
+      );
+      when(
+        () => mockHttpClient.get(
+          Uri.parse("$authBaseUrl/auth/session/status"),
+          headers: any(named: "headers"),
+        ),
+      ).thenAnswer((_) => Future<http.Response>.error(TimeoutException("status request timed out")));
+
+      await authManager.startOAuthFlow(provider: AuthProvider.google);
+
+      await expectLater(
+        authManager.pollForResult(),
+        throwsA(
+          isA<http.ClientException>().having(
+            (error) => error.uri,
+            "uri",
+            Uri.parse("$authBaseUrl/auth/session/status"),
+          ),
+        ),
+      );
+
+      expect(await authManager.hasActiveOAuthSession(), isTrue);
+      verifyNever(mockOAuthStorage.clearOAuthSession);
+    });
+
+    test("pollForResult treats final status request timeout as OAuth timeout", () async {
+      authManager = AuthManager(
+        mockHttpClient,
+        mockTokenStorage,
+        mockOAuthStorage,
+        pollInterval: Duration.zero,
+        delay: (_) async {},
+      );
+      when(() => mockOAuthStorage.getOAuthSession()).thenAnswer(
+        (_) async => (
+          sessionToken: "stored-session-token",
+          expiresAt: DateTime.now().add(const Duration(milliseconds: 30)),
+        ),
+      );
+      when(
+        () => mockHttpClient.get(
+          Uri.parse("$authBaseUrl/auth/session/status"),
+          headers: any(named: "headers"),
+        ),
+      ).thenAnswer((_) => Completer<http.Response>().future);
+
+      await expectLater(
+        authManager.pollForResult(),
+        throwsA(
+          isA<TimeoutException>().having(
+            (error) => error.message,
+            "message",
+            "OAuth authorization timed out",
+          ),
+        ),
+      );
+
+      verify(mockOAuthStorage.clearOAuthSession).called(1);
     });
 
     test("pollForResult clears active session on denied, expired, error, and timeout", () async {

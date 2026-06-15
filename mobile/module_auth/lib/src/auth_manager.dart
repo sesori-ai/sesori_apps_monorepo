@@ -24,6 +24,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   static const _defaultPollInterval = Duration(milliseconds: 250);
   static const _defaultPollTimeout = Duration(minutes: 5);
   static const _defaultRequestTimeout = Duration(seconds: 35);
+  static const _ackRequestTimeout = Duration(seconds: 5);
 
   final http.Client _client;
   final TokenStorageService _tokenStorage;
@@ -139,12 +140,22 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
         final remaining = expiresAt?.difference(DateTime.now()) ?? _pollTimeout;
         final requestTimeout = remaining < _defaultRequestTimeout ? remaining : _defaultRequestTimeout;
         if (requestTimeout <= Duration.zero) break;
+        final isFinalRequest = expiresAt != null && remaining <= _defaultRequestTimeout;
 
         final uri = Uri.parse("$authBaseUrl/auth/session/status");
-        final response = await _get(
-          uri,
-          headers: {_sessionTokenHeader: sessionToken},
-        ).timeout(requestTimeout);
+        final http.Response response;
+        try {
+          response = await _getSessionStatus(
+            uri: uri,
+            sessionToken: sessionToken,
+            requestTimeout: requestTimeout,
+            expiresAt: expiresAt,
+            isFinalRequest: isFinalRequest,
+          );
+        } on TimeoutException {
+          await _oAuthStorage.clearOAuthSession();
+          rethrow;
+        }
 
         final status = _parseSessionStatus(response);
         switch (status) {
@@ -164,6 +175,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
               refreshToken: refreshToken,
               user: user,
             );
+            _ackOAuthCompletion(sessionToken: sessionToken);
             return user;
           case AuthSessionStatusResponseDenied():
             await _oAuthStorage.clearOAuthSession();
@@ -181,6 +193,32 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       throw TimeoutException("OAuth authorization timed out");
     } finally {
       _oAuthSessionToken = null;
+    }
+  }
+
+  Future<http.Response> _getSessionStatus({
+    required Uri uri,
+    required String sessionToken,
+    required Duration requestTimeout,
+    required DateTime? expiresAt,
+    required bool isFinalRequest,
+  }) async {
+    try {
+      return await _get(
+        uri,
+        headers: {_sessionTokenHeader: sessionToken},
+      ).timeout(requestTimeout);
+    } on TimeoutException catch (_, stackTrace) {
+      if (isFinalRequest || (expiresAt != null && !DateTime.now().isBefore(expiresAt))) {
+        Error.throwWithStackTrace(
+          TimeoutException("OAuth authorization timed out"),
+          stackTrace,
+        );
+      }
+      Error.throwWithStackTrace(
+        http.ClientException("OAuth session status request timed out", uri),
+        stackTrace,
+      );
     }
   }
 
@@ -204,6 +242,28 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     ]);
 
     _authState.add(AuthState.authenticated(user: user));
+  }
+
+  void _ackOAuthCompletion({required String sessionToken}) {
+    unawaited(_sendOAuthCompletionAck(sessionToken: sessionToken));
+  }
+
+  Future<void> _sendOAuthCompletionAck({required String sessionToken}) async {
+    try {
+      final uri = Uri.parse("$authBaseUrl/auth/session/status/ack");
+      final response = await _post(
+        uri,
+        headers: {_sessionTokenHeader: sessionToken},
+      ).timeout(_ackRequestTimeout);
+      _ensureSuccess(response, context: "Failed to acknowledge OAuth session completion");
+    } catch (error, stackTrace) {
+      developer.log(
+        "Failed to acknowledge OAuth session completion; server will expire it",
+        error: error,
+        stackTrace: stackTrace,
+        name: "sesori_auth",
+      );
+    }
   }
 
   /// Persists [user] to local storage, swallowing (and logging) any failure.

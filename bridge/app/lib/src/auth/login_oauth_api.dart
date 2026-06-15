@@ -64,4 +64,16 @@ class LoginOAuthApi {
 
     throw Exception("auth session status failed: status ${response.statusCode}");
   }
+
+  Future<void> ackOAuthSessionCompletion({required String sessionToken}) async {
+    final uri = _buildUri(base: authBackendUrl, path: "auth/session/status/ack");
+    final response = await _client.post(
+      uri,
+      headers: {oauthSessionTokenHeader: sessionToken},
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception("auth session ACK failed: status ${response.statusCode}");
+    }
+  }
 }
