@@ -62,11 +62,9 @@ class LoginCubit extends Cubit<LoginState> {
   }
 
   Future<void> _onAppResumed() async {
-    logd("LoginCubit: app resumed (state=${state.runtimeType}, isPolling=$_isPolling)");
     if (_isPolling) return;
     if (state is LoginAwaitingConfirmation || state is LoginPolling || state is LoginTimeout) {
       final hasActiveSession = await _oAuthFlowProvider.hasActiveOAuthSession();
-      logd("LoginCubit: resume check -- hasActiveOAuthSession=$hasActiveSession");
       if (!hasActiveSession) {
         // A background interruption parks the flow in LoginPolling. If the
         // session has since expired/cleared, reset to idle instead of leaving
@@ -90,20 +88,18 @@ class LoginCubit extends Cubit<LoginState> {
 
       _isPolling = true;
       emit(LoginState.polling(userCode: currentUserCode));
-      logd("LoginCubit: resuming OAuth flow after app resume");
       try {
         await _oAuthFlowProvider.resumeOAuthFlow();
         if (isClosed) return;
-        logd("LoginCubit: OAuth resume succeeded");
         emit(const LoginState.success());
       } on TimeoutException catch (e, st) {
         if (_handlePollInterruption(userCode: currentUserCode)) return;
-        loge("LoginCubit: OAuth resumed but timed out", e, st);
+        loge("OAuth resumed but timed out", e, st);
         if (isClosed) return;
         emit(const LoginState.timeout());
       } catch (e, st) {
         if (_handlePollInterruption(userCode: currentUserCode)) return;
-        loge("LoginCubit: OAuth resumed but failed", e, st);
+        loge("OAuth resumed but failed", e, st);
         if (isClosed) return;
         emit(const LoginState.failed(reason: LoginFailedReason.unknown));
       } finally {
@@ -122,7 +118,6 @@ class LoginCubit extends Cubit<LoginState> {
   /// which case the caller must stop and not emit a failure state.
   bool _handlePollInterruption({required String? userCode}) {
     if (!_isInBackground) return false;
-    logd("LoginCubit: OAuth poll interrupted by app backgrounding; awaiting foreground resume");
     if (!isClosed) {
       emit(LoginState.polling(userCode: userCode));
     }
@@ -130,7 +125,6 @@ class LoginCubit extends Cubit<LoginState> {
   }
 
   Future<bool> loginWithProvider(OAuthProvider provider) async {
-    logd("LoginCubit: loginWithProvider(${provider.key}) starting");
     emit(const LoginState.authenticating());
 
     String? pollingUserCode;
@@ -148,12 +142,10 @@ class LoginCubit extends Cubit<LoginState> {
       if (isClosed) return false;
 
       if (!launched) {
-        logw("LoginCubit: browser failed to launch for ${provider.label}");
         emit(const LoginState.failed(reason: LoginFailedReason.browserOpenFailed));
         return false;
       }
 
-      logd("LoginCubit: browser launched for ${provider.label}; polling for OAuth result");
       _isPolling = true;
       emit(LoginState.polling(userCode: initResponse.userCode));
       try {
@@ -163,7 +155,6 @@ class LoginCubit extends Cubit<LoginState> {
       }
 
       if (isClosed) return false;
-      logd("LoginCubit: ${provider.label} login succeeded");
       emit(const LoginState.success());
       return true;
     } on TimeoutException catch (e, st) {
