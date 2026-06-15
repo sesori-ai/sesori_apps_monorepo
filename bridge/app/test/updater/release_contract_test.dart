@@ -192,8 +192,8 @@ void main() {
       expect(npmWorkflow, contains('needs: gate'));
       expect(npmWorkflow, contains('needs: [gate, publish-platform]'));
       expect(npmWorkflow, contains('id-token: write'));
-      // Both publish jobs run in the gated `release` environment.
-      expect(npmWorkflow, contains('environment: release'));
+      // Both publish jobs run in the gated `store-production` environment.
+      expect(npmWorkflow, contains('environment: store-production'));
       expect(npmWorkflow, contains('registry-url: "https://registry.npmjs.org"'));
       expect(npmWorkflow, contains(r'gh release download "$RELEASE_TAG"'));
       expect(npmWorkflow, contains('--pattern "*.tar.gz" --pattern "*.zip" --pattern "checksums.txt"'));

@@ -91,7 +91,7 @@ jobs:
     needs: gate
     if: needs.gate.outputs.proceed == 'true'
     runs-on: ubuntu-latest
-    environment: release
+    environment: store-production
     timeout-minutes: 30
     permissions:
       contents: read
@@ -287,7 +287,7 @@ jobs:
     needs: [gate, publish-platform]
     if: needs.gate.outputs.proceed == 'true'
     runs-on: ubuntu-latest
-    environment: release
+    environment: store-production
     timeout-minutes: 15
     permissions:
       contents: read
