@@ -140,6 +140,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
         final remaining = expiresAt?.difference(DateTime.now()) ?? _pollTimeout;
         final requestTimeout = remaining < _defaultRequestTimeout ? remaining : _defaultRequestTimeout;
         if (requestTimeout <= Duration.zero) break;
+        final isFinalRequest = expiresAt != null && remaining <= _defaultRequestTimeout;
 
         final uri = Uri.parse("$authBaseUrl/auth/session/status");
         final http.Response response;
@@ -149,6 +150,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
             sessionToken: sessionToken,
             requestTimeout: requestTimeout,
             expiresAt: expiresAt,
+            isFinalRequest: isFinalRequest,
           );
         } on TimeoutException {
           await _oAuthStorage.clearOAuthSession();
@@ -199,6 +201,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     required String sessionToken,
     required Duration requestTimeout,
     required DateTime? expiresAt,
+    required bool isFinalRequest,
   }) async {
     try {
       return await _get(
@@ -206,7 +209,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
         headers: {_sessionTokenHeader: sessionToken},
       ).timeout(requestTimeout);
     } on TimeoutException catch (_, stackTrace) {
-      if (expiresAt != null && !DateTime.now().isBefore(expiresAt)) {
+      if (isFinalRequest || (expiresAt != null && !DateTime.now().isBefore(expiresAt))) {
         Error.throwWithStackTrace(
           TimeoutException("OAuth authorization timed out"),
           stackTrace,
