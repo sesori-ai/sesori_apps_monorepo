@@ -340,6 +340,9 @@ void main() {
     // Simulate system back navigation (which should be allowed while sending).
     await tester.pageBack();
     await tester.pump();
+    // The snackbar is scheduled via a post-frame callback (so it stays safe
+    // when the pop is invoked during build), so pump once more to render it.
+    await tester.pump();
 
     // Snackbar should appear before the screen pops.
     expect(find.text(loc.newSessionLaunchingInBackground), findsOneWidget);
@@ -377,6 +380,9 @@ void main() {
 
     // User leaves while the creation request is still in flight.
     await tester.pageBack();
+    await tester.pump();
+    // The launching-in-background snackbar is deferred to a post-frame
+    // callback; pump once more to render it.
     await tester.pump();
     expect(find.text(loc.newSessionLaunchingInBackground), findsOneWidget);
 
