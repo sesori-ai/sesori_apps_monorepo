@@ -62,12 +62,26 @@ class ScrollFollowTracker extends ChangeNotifier {
   /// Hook for `Listener.onPointerSignal` (trackpad two-finger scroll,
   /// mouse wheel). Detaches on any pointer scroll event.
   void handlePointerSignal({required PointerSignalEvent event}) {
-    if (event is PointerScrollEvent) detach();
+    if (event is PointerScrollEvent && _hasScrollableRange) detach();
   }
 
   /// Hook for `Listener.onPointerPanZoomStart` (trackpad pan-zoom).
   /// Detaches on gesture start.
-  void handlePointerPanZoomStart() => detach();
+  void handlePointerPanZoomStart() {
+    if (_hasScrollableRange) detach();
+  }
+
+  /// Whether the attached scrollable actually has room to scroll. A list
+  /// shorter than its viewport (min == max) is still draggable/wheelable via
+  /// `AlwaysScrollableScrollPhysics` (used so the chat always overscrolls), but
+  /// any such gesture only rubber-bands back to the edge — never leaving it —
+  /// so it must not detach and flash the jump-to-latest pill. Mirrors the guard
+  /// in [_isUserScrollStart] for the touch-drag path.
+  bool get _hasScrollableRange {
+    if (!scrollController.hasClients) return false;
+    final position = scrollController.position;
+    return position.maxScrollExtent > position.minScrollExtent;
+  }
 
   /// Hook for `NotificationListener<ScrollNotification>.onNotification`.
   /// Returns `false` so the notification continues to bubble.
@@ -137,6 +151,13 @@ class ScrollFollowTracker extends ChangeNotifier {
   // ---------------------------------------------------------------------------
 
   bool _isUserScrollStart({required ScrollNotification notification}) {
+    // A list whose content is shorter than the viewport has no scrollable
+    // range, yet is draggable via `AlwaysScrollableScrollPhysics` (used so the
+    // chat always overscrolls). Such a drag can only rubber-band back to the
+    // follow edge — it never leaves it — so it must not flip us to detached,
+    // which would briefly flash the jump-to-latest pill on a short transcript.
+    final metrics = notification.metrics;
+    if (metrics.maxScrollExtent <= metrics.minScrollExtent) return false;
     if (notification is ScrollStartNotification && notification.dragDetails != null) {
       return true;
     }
@@ -147,6 +168,11 @@ class ScrollFollowTracker extends ChangeNotifier {
   }
 
   void _maybeReattach({required ScrollMetrics metrics}) {
+    // No scrollable range → the list can't be away from the follow edge; a
+    // bouncing-overscroll release that settles here must not toggle follow
+    // state (it would flash the jump-to-latest pill on a short transcript).
+    // Pairs with the same guard on the detach path in [_isUserScrollStart].
+    if (metrics.maxScrollExtent <= metrics.minScrollExtent) return;
     final distance = (metrics.pixels - _edgeOffset(metrics: metrics)).abs();
     final shouldFollow = distance <= _edgeTolerance;
     if (shouldFollow == _following) return;

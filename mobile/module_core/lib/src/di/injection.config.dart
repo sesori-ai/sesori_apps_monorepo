@@ -53,6 +53,8 @@ import 'package:sesori_dart_core/src/routing/notification_open_dispatcher.dart'
 import 'package:sesori_dart_core/src/services/draft_store.dart' as _i1002;
 import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher.dart'
     as _i101;
+import 'package:sesori_dart_core/src/services/new_session_selection_tracker.dart'
+    as _i913;
 import 'package:sesori_dart_core/src/services/notification_registration_service.dart'
     as _i659;
 import 'package:sesori_dart_core/src/services/session_detail_load_service.dart'
@@ -71,6 +73,9 @@ extension GetItInjectableX on _i174.GetIt {
       () => const _i369.RelayClientFactory(),
     );
     gh.lazySingleton<_i1002.DraftStore>(() => _i1002.DraftStore());
+    gh.lazySingleton<_i913.NewSessionSelectionTracker>(
+      () => _i913.NewSessionSelectionTracker(),
+    );
     gh.lazySingleton<_i895.RoomKeyStorage>(
       () => _i895.RoomKeyStorage(gh<_i442.SecureStorage>()),
     );
