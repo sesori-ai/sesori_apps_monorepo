@@ -164,7 +164,6 @@ as List<ReplyAnswer>,
 mixin _$RejectQuestionRequest {
 
  String get requestId;// questions request id
-// ignore: no_slop_linter/prefer_required_named_parameters, optional for wire compatibility.
  String? get sessionId;
 /// Create a copy of RejectQuestionRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -231,12 +230,11 @@ as String?,
 @JsonSerializable()
 
 class _RejectQuestionRequest implements RejectQuestionRequest {
-  const _RejectQuestionRequest({required this.requestId, this.sessionId});
+  const _RejectQuestionRequest({required this.requestId, required this.sessionId});
   factory _RejectQuestionRequest.fromJson(Map<String, dynamic> json) => _$RejectQuestionRequestFromJson(json);
 
 @override final  String requestId;
 // questions request id
-// ignore: no_slop_linter/prefer_required_named_parameters, optional for wire compatibility.
 @override final  String? sessionId;
 
 /// Create a copy of RejectQuestionRequest

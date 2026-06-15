@@ -406,7 +406,10 @@ class OpenCodePlugin implements OpenCodeManagedApi {
         answers: answers,
       ),
     );
-    if (changed) _emitProjectsSummary();
+    if (changed) {
+      _eventBuffer.add(BridgeSseQuestionReplied(requestID: questionId, sessionID: sessionId));
+      _emitProjectsSummary();
+    }
   }
 
   @override
@@ -422,7 +425,16 @@ class OpenCodePlugin implements OpenCodeManagedApi {
         reply: reply,
       ),
     );
-    if (changed) _emitProjectsSummary();
+    if (changed) {
+      _eventBuffer.add(
+        BridgeSsePermissionReplied(
+          requestID: requestId,
+          sessionID: sessionId,
+          reply: reply.name,
+        ),
+      );
+      _emitProjectsSummary();
+    }
   }
 
   @override
@@ -433,7 +445,12 @@ class OpenCodePlugin implements OpenCodeManagedApi {
         sessionId: sessionId,
       ),
     );
-    if (changed) _emitProjectsSummary();
+    if (changed) {
+      if (sessionId case final sessionID?) {
+        _eventBuffer.add(BridgeSseQuestionRejected(requestID: questionId, sessionID: sessionID));
+      }
+      _emitProjectsSummary();
+    }
   }
 
   @override

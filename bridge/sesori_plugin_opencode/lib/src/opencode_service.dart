@@ -279,11 +279,11 @@ class OpenCodeService {
       await repository.replyToQuestion(
         questionId: questionId,
         directory: directory,
-        body: {"answers": answers},
+        body: QuestionReplyBody(answers: answers),
       );
     } on OpenCodeApiException catch (e) {
       if (e.statusCode != 404) rethrow;
-      Log.w("question already resolved upstream (404), reconciling tracker: ${e.endpoint}");
+      Log.w("question already resolved upstream (404), reconciling tracker: ${e.endpoint}", e);
     }
     return tracker.clearPendingQuestion(questionId: questionId, sessionId: sessionId);
   }
@@ -296,7 +296,7 @@ class OpenCodeService {
       await repository.rejectQuestion(questionId: questionId);
     } on OpenCodeApiException catch (e) {
       if (e.statusCode != 404) rethrow;
-      Log.w("question already resolved upstream (404), reconciling tracker: ${e.endpoint}");
+      Log.w("question already resolved upstream (404), reconciling tracker: ${e.endpoint}", e);
     }
     return tracker.clearPendingQuestion(questionId: questionId, sessionId: sessionId);
   }
@@ -314,7 +314,7 @@ class OpenCodeService {
       );
     } on OpenCodeApiException catch (e) {
       if (e.statusCode != 404) rethrow;
-      Log.w("permission already resolved upstream (404), reconciling tracker: ${e.endpoint}");
+      Log.w("permission already resolved upstream (404), reconciling tracker: ${e.endpoint}", e);
     }
     return tracker.clearPendingPermission(sessionId: sessionId, requestId: requestId);
   }

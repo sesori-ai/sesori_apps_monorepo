@@ -671,7 +671,7 @@ class _FakeApi implements OpenCodeApi {
   Future<void> replyToQuestion({
     required String questionId,
     required String? directory,
-    required Map<String, dynamic> body,
+    required QuestionReplyBody body,
   }) async {}
 
   @override

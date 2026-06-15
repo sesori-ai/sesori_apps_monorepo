@@ -731,7 +731,7 @@ void main() {
       expect(repository.lastReplyQuestionId, equals("q1"));
       expect(repository.lastReplyQuestionDirectory, equals("/repo"));
       expect(
-        repository.lastReplyQuestionBody,
+        repository.lastReplyQuestionBody?.toJson(),
         equals({
           "answers": const [
             ["yes"],
@@ -988,7 +988,7 @@ class FakeOpenCodeApi implements OpenCodeApi {
   Future<void> replyToQuestion({
     required String questionId,
     required String? directory,
-    required Map<String, dynamic> body,
+    required QuestionReplyBody body,
   }) async {}
 
   @override
@@ -1081,7 +1081,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   String? lastDeletedDirectory;
   String? lastReplyQuestionId;
   String? lastReplyQuestionDirectory;
-  Map<String, dynamic>? lastReplyQuestionBody;
+  QuestionReplyBody? lastReplyQuestionBody;
   Object? replyToQuestionError;
   String? lastRejectQuestionId;
   Object? rejectQuestionError;
@@ -1224,7 +1224,7 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   Future<void> replyToQuestion({
     required String questionId,
     required String? directory,
-    required Map<String, dynamic> body,
+    required QuestionReplyBody body,
   }) async {
     if (replyToQuestionError case final error?) {
       throw error;

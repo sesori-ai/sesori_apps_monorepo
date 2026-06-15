@@ -37,7 +37,7 @@ void main() {
     test("allows null sessionId for backwards compatibility", () async {
       await handler.handle(
         makeRequest("POST", "/question/reject"),
-        body: const RejectQuestionRequest(requestId: "q1"),
+        body: const RejectQuestionRequest(requestId: "q1", sessionId: null),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -63,7 +63,7 @@ void main() {
       expect(
         () => handler.handle(
           makeRequest("POST", "/question/reject"),
-          body: const RejectQuestionRequest(requestId: ""),
+          body: const RejectQuestionRequest(requestId: "", sessionId: null),
           pathParams: {},
           queryParams: {},
           fragment: null,

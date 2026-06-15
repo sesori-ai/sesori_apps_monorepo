@@ -370,6 +370,7 @@ A `pr_monitor` tool (provided by the [sesori-ai/opencode-pr-monitor](https://git
 ## Dart Coding Conventions
 
 - Always use **named arguments with the `required` keyword**, including for nullable parameters. Never use positional arguments.
+  - In Freezed request models, marking a nullable field as `required String? field` does **not** require the key to exist in incoming JSON. Freezed deserializes a missing key to `null`, preserving backwards compatibility while keeping call sites explicit.
 - **Never replace a `switch` statement with a cascade of `if` statements** to satisfy the `prefer_exhaustive_switch` lint. Instead, keep the `switch` and add all missing cases explicitly (return `null` or handle appropriately for unrecognized values).
 
 ```dart

@@ -10,6 +10,7 @@ import "models/pending_permission.dart";
 import "models/pending_question.dart";
 import "models/project.dart";
 import "models/provider_info.dart";
+import "models/question_reply_body.dart";
 import "models/send_command_body.dart";
 import "models/send_prompt_body.dart";
 import "models/session.dart";
@@ -368,9 +369,9 @@ class OpenCodeApi {
   Future<void> replyToQuestion({
     required String questionId,
     required String? directory,
-    required Map<String, dynamic> body,
+    required QuestionReplyBody body,
   }) async {
-    final encodedBody = jsonEncode(body);
+    final encodedBody = jsonEncode(body.toJson());
     Log.d("[question-api] POST /question/$questionId/reply body=$encodedBody");
     final response = await _client.post(
       path: "/question/$questionId/reply",

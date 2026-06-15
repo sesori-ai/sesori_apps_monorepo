@@ -15,6 +15,7 @@ import "models/command.dart";
 import "models/pending_permission.dart";
 import "models/pending_question.dart";
 import "models/project.dart";
+import "models/question_reply_body.dart";
 import "models/send_command_body.dart";
 import "models/send_prompt_body.dart";
 import "models/session.dart";
@@ -224,7 +225,7 @@ class OpenCodeRepository {
   Future<void> replyToQuestion({
     required String questionId,
     required String? directory,
-    required Map<String, dynamic> body,
+    required QuestionReplyBody body,
   }) {
     return _api.replyToQuestion(
       questionId: questionId,
