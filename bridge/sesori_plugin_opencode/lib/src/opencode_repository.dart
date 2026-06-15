@@ -212,12 +212,12 @@ class OpenCodeRepository {
 
   Future<void> replyToPermission({
     required String requestId,
-    required String sessionId,
+    required String? directory,
     required PluginPermissionReply reply,
   }) {
     return _api.replyToPermission(
       requestId: requestId,
-      sessionId: sessionId,
+      directory: directory?.normalize(),
       reply: reply,
     );
   }
@@ -234,8 +234,14 @@ class OpenCodeRepository {
     );
   }
 
-  Future<void> rejectQuestion({required String questionId}) {
-    return _api.rejectQuestion(questionId: questionId);
+  Future<void> rejectQuestion({
+    required String questionId,
+    required String? directory,
+  }) {
+    return _api.rejectQuestion(
+      questionId: questionId,
+      directory: directory?.normalize(),
+    );
   }
 
   Future<List<Session>> getSessions({required String worktree}) async {

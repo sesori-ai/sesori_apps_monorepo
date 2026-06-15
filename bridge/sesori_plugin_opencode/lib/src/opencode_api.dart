@@ -386,14 +386,15 @@ class OpenCodeApi {
 
   Future<void> replyToPermission({
     required String requestId,
-    required String sessionId,
+    required String? directory,
     required PluginPermissionReply reply,
   }) async {
     final body = jsonEncode({"reply": reply.name});
-    Log.d("[permission-api] POST /permission/$requestId/reply for session $sessionId");
+    Log.d("[permission-api] POST /permission/$requestId/reply for session directory $directory");
     await _client.post(
       path: "/permission/$requestId/reply",
       headers: {
+        _directoryOpenCodeHeader: ?directory,
         "content-type": "application/json",
       },
       body: body,
@@ -402,10 +403,14 @@ class OpenCodeApi {
 
   Future<void> rejectQuestion({
     required String questionId,
+    required String? directory,
   }) async {
-    Log.d("[question-api] POST /question/$questionId/reject");
+    Log.d("[question-api] POST /question/$questionId/reject for session directory $directory");
     final response = await _client.post(
       path: "/question/$questionId/reject",
+      headers: {
+        _directoryOpenCodeHeader: ?directory,
+      },
       body: "",
     );
     Log.d("[question-api] POST /question/$questionId/reject => ${response.statusCode} body=${response.body}");

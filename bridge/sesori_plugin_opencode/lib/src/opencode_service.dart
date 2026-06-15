@@ -292,8 +292,12 @@ class OpenCodeService {
     required String questionId,
     required String? sessionId,
   }) async {
+    final directory = sessionId != null ? tracker.getSessionDirectory(sessionId: sessionId) : null;
     try {
-      await repository.rejectQuestion(questionId: questionId);
+      await repository.rejectQuestion(
+        questionId: questionId,
+        directory: directory,
+      );
     } on OpenCodeApiException catch (e) {
       if (e.statusCode != 404) rethrow;
       Log.w("question already resolved upstream (404), reconciling tracker: ${e.endpoint}", e);
@@ -306,10 +310,11 @@ class OpenCodeService {
     required String sessionId,
     required PluginPermissionReply reply,
   }) async {
+    final directory = tracker.getSessionDirectory(sessionId: sessionId);
     try {
       await repository.replyToPermission(
         requestId: requestId,
-        sessionId: sessionId,
+        directory: directory,
         reply: reply,
       );
     } on OpenCodeApiException catch (e) {

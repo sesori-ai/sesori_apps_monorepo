@@ -814,23 +814,32 @@ void main() {
       expect(tracker.lastClearedQuestionId, isNull);
     });
 
-    test("rejectQuestion 404 clears tracker using optional sessionId", () async {
+    test("rejectQuestion 404 clears tracker using optional sessionId and directory", () async {
       final repository = FakeOpenCodeRepository(
         rejectQuestionError: OpenCodeApiException("POST /question/q1/reject", 404),
       );
-      final tracker = FakeActiveSessionTracker(clearPendingQuestionChanged: true);
+      final tracker = FakeActiveSessionTracker(
+        sessionDirectories: const {"ses-1": "/repo"},
+        clearPendingQuestionFound: true,
+        clearPendingQuestionChanged: true,
+      );
       final service = OpenCodeService(repository, tracker);
 
-      final result = await service.rejectQuestion(questionId: "q1", sessionId: null);
+      final result = await service.rejectQuestion(questionId: "q1", sessionId: "ses-1");
 
       expect(result.summaryChanged, isTrue);
+      expect(repository.lastRejectQuestionId, equals("q1"));
+      expect(repository.lastRejectQuestionDirectory, equals("/repo"));
       expect(tracker.lastClearedQuestionId, equals("q1"));
-      expect(tracker.lastClearedQuestionSessionId, isNull);
+      expect(tracker.lastClearedQuestionSessionId, equals("ses-1"));
     });
 
     test("replyToPermission 200 clears tracker and returns change", () async {
       final repository = FakeOpenCodeRepository();
-      final tracker = FakeActiveSessionTracker(clearPendingPermissionChanged: true);
+      final tracker = FakeActiveSessionTracker(
+        sessionDirectories: const {"ses-1": "/repo"},
+        clearPendingPermissionChanged: true,
+      );
       final service = OpenCodeService(repository, tracker);
 
       final result = await service.replyToPermission(
@@ -841,6 +850,7 @@ void main() {
 
       expect(result.summaryChanged, isTrue);
       expect(repository.lastReplyPermissionRequestId, equals("perm-1"));
+      expect(repository.lastReplyPermissionDirectory, equals("/repo"));
       expect(tracker.lastClearedPermissionRequestId, equals("perm-1"));
       expect(tracker.lastClearedPermissionSessionId, equals("ses-1"));
     });
@@ -994,12 +1004,15 @@ class FakeOpenCodeApi implements OpenCodeApi {
   @override
   Future<void> replyToPermission({
     required String requestId,
-    required String sessionId,
+    required String? directory,
     required PluginPermissionReply reply,
   }) async {}
 
   @override
-  Future<void> rejectQuestion({required String questionId}) async {}
+  Future<void> rejectQuestion({
+    required String questionId,
+    required String? directory,
+  }) async {}
 
   @override
   Future<Project> getProject({required String directory}) async => throw UnimplementedError();
@@ -1084,9 +1097,10 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   QuestionReplyBody? lastReplyQuestionBody;
   Object? replyToQuestionError;
   String? lastRejectQuestionId;
+  String? lastRejectQuestionDirectory;
   Object? rejectQuestionError;
   String? lastReplyPermissionRequestId;
-  String? lastReplyPermissionSessionId;
+  String? lastReplyPermissionDirectory;
   PluginPermissionReply? lastReplyPermissionReply;
   Object? replyToPermissionError;
   int getSessionCalls = 0;
@@ -1226,34 +1240,38 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     required String? directory,
     required QuestionReplyBody body,
   }) async {
-    if (replyToQuestionError case final error?) {
-      throw error;
-    }
     lastReplyQuestionId = questionId;
     lastReplyQuestionDirectory = directory;
     lastReplyQuestionBody = body;
+    if (replyToQuestionError case final error?) {
+      throw error;
+    }
   }
 
   @override
-  Future<void> rejectQuestion({required String questionId}) async {
+  Future<void> rejectQuestion({
+    required String questionId,
+    required String? directory,
+  }) async {
+    lastRejectQuestionId = questionId;
+    lastRejectQuestionDirectory = directory;
     if (rejectQuestionError case final error?) {
       throw error;
     }
-    lastRejectQuestionId = questionId;
   }
 
   @override
   Future<void> replyToPermission({
     required String requestId,
-    required String sessionId,
+    required String? directory,
     required PluginPermissionReply reply,
   }) async {
+    lastReplyPermissionRequestId = requestId;
+    lastReplyPermissionDirectory = directory;
+    lastReplyPermissionReply = reply;
     if (replyToPermissionError case final error?) {
       throw error;
     }
-    lastReplyPermissionRequestId = requestId;
-    lastReplyPermissionSessionId = sessionId;
-    lastReplyPermissionReply = reply;
   }
 
   @override
