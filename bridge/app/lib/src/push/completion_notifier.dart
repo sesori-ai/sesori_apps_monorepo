@@ -175,13 +175,21 @@ class CompletionNotifier {
   /// is removed.
   void _maybeResumeBlockedCompletion(String sessionId) {
     final rootSessionId = _tracker.resolveRootSessionId(sessionId);
-    if (!_completionBlockedByPendingInteraction.contains(rootSessionId)) {
+    // The blocked key may have been recorded under the original sessionId
+    // before a parent link was learned (reparenting). Find either key and
+    // remove it only when we are actually going to schedule completion.
+    final blockedKey = _completionBlockedByPendingInteraction.contains(rootSessionId)
+        ? rootSessionId
+        : _completionBlockedByPendingInteraction.contains(sessionId)
+            ? sessionId
+            : null;
+    if (blockedKey == null) {
       return;
     }
     if (_tracker.wasPreviouslyBusy(rootSessionId) &&
         _tracker.isSessionGroupFullyIdle(rootSessionId) &&
         !_tracker.hasPendingInteraction(rootSessionId)) {
-      _completionBlockedByPendingInteraction.remove(rootSessionId);
+      _completionBlockedByPendingInteraction.remove(blockedKey);
       _maybeScheduleCompletion(sessionId);
     }
   }
