@@ -399,17 +399,17 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     required String sessionId,
     required List<List<String>> answers,
   }) async {
-    final changed = await _call(
+    final result = await _call(
       () => _service.replyToQuestion(
         questionId: questionId,
         sessionId: sessionId,
         answers: answers,
       ),
     );
-    if (changed) {
+    if (result.found) {
       _eventBuffer.add(BridgeSseQuestionReplied(requestID: questionId, sessionID: sessionId));
-      _emitProjectsSummary();
     }
+    if (result.summaryChanged) _emitProjectsSummary();
   }
 
   @override
@@ -418,14 +418,14 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     required String sessionId,
     required PluginPermissionReply reply,
   }) async {
-    final changed = await _call(
+    final result = await _call(
       () => _service.replyToPermission(
         requestId: requestId,
         sessionId: sessionId,
         reply: reply,
       ),
     );
-    if (changed) {
+    if (result.found) {
       _eventBuffer.add(
         BridgeSsePermissionReplied(
           requestID: requestId,
@@ -433,24 +433,24 @@ class OpenCodePlugin implements OpenCodeManagedApi {
           reply: reply.name,
         ),
       );
-      _emitProjectsSummary();
     }
+    if (result.summaryChanged) _emitProjectsSummary();
   }
 
   @override
   Future<void> rejectQuestion({required String questionId, required String? sessionId}) async {
-    final changed = await _call(
+    final result = await _call(
       () => _service.rejectQuestion(
         questionId: questionId,
         sessionId: sessionId,
       ),
     );
-    if (changed) {
+    if (result.found) {
       if (sessionId case final sessionID?) {
         _eventBuffer.add(BridgeSseQuestionRejected(requestID: questionId, sessionID: sessionID));
       }
-      _emitProjectsSummary();
     }
+    if (result.summaryChanged) _emitProjectsSummary();
   }
 
   @override

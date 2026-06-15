@@ -269,7 +269,7 @@ class OpenCodeService {
     return model;
   }
 
-  Future<bool> replyToQuestion({
+  Future<({bool found, bool summaryChanged})> replyToQuestion({
     required String questionId,
     required String sessionId,
     required List<List<String>> answers,
@@ -288,7 +288,7 @@ class OpenCodeService {
     return tracker.clearPendingQuestion(questionId: questionId, sessionId: sessionId);
   }
 
-  Future<bool> rejectQuestion({
+  Future<({bool found, bool summaryChanged})> rejectQuestion({
     required String questionId,
     required String? sessionId,
   }) async {
@@ -301,7 +301,7 @@ class OpenCodeService {
     return tracker.clearPendingQuestion(questionId: questionId, sessionId: sessionId);
   }
 
-  Future<bool> replyToPermission({
+  Future<({bool found, bool summaryChanged})> replyToPermission({
     required String requestId,
     required String sessionId,
     required PluginPermissionReply reply,

@@ -824,9 +824,10 @@ void main() {
         tracker.handleEvent(_questionAsked("q1", "s1"), null);
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
 
-        final changed = tracker.clearPendingQuestion(questionId: "q1", sessionId: "s1");
+        final result = tracker.clearPendingQuestion(questionId: "q1", sessionId: "s1");
 
-        expect(changed, isTrue);
+        expect(result.found, isTrue);
+        expect(result.summaryChanged, isTrue);
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isFalse);
       });
 
@@ -840,10 +841,29 @@ void main() {
         tracker.handleEvent(_questionAsked("q1", "s1"), null);
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
 
-        final changed = tracker.clearPendingQuestion(questionId: "q1");
+        final result = tracker.clearPendingQuestion(questionId: "q1");
 
-        expect(changed, isTrue);
+        expect(result.found, isTrue);
+        expect(result.summaryChanged, isTrue);
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isFalse);
+      });
+
+      test("clearPendingQuestion reports found but no summary change when other pending questions remain", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/repo")],
+        );
+
+        tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
+        tracker.handleEvent(_sessionBusy("s1"), null);
+        tracker.handleEvent(_questionAsked("q1", "s1"), null);
+        tracker.handleEvent(_questionAsked("q2", "s1"), null);
+        expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
+
+        final result = tracker.clearPendingQuestion(questionId: "q1", sessionId: "s1");
+
+        expect(result.found, isTrue);
+        expect(result.summaryChanged, isFalse);
+        expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
       });
 
       test("clearPendingPermission clears awaitingInput and fires change", () async {
@@ -856,10 +876,29 @@ void main() {
         tracker.handleEvent(_permissionAsked("p1", "s1"), null);
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
 
-        final changed = tracker.clearPendingPermission(sessionId: "s1", requestId: "p1");
+        final result = tracker.clearPendingPermission(sessionId: "s1", requestId: "p1");
 
-        expect(changed, isTrue);
+        expect(result.found, isTrue);
+        expect(result.summaryChanged, isTrue);
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isFalse);
+      });
+
+      test("clearPendingPermission reports found but no summary change when other pending input remains", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/repo")],
+        );
+
+        tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
+        tracker.handleEvent(_sessionBusy("s1"), null);
+        tracker.handleEvent(_permissionAsked("p1", "s1"), null);
+        tracker.handleEvent(_questionAsked("q1", "s1"), null);
+        expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
+
+        final result = tracker.clearPendingPermission(sessionId: "s1", requestId: "p1");
+
+        expect(result.found, isTrue);
+        expect(result.summaryChanged, isFalse);
+        expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
       });
 
       test("child session pending question bubbles up to root awaitingInput", () async {

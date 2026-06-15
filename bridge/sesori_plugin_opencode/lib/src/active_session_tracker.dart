@@ -158,23 +158,27 @@ class ActiveSessionTracker {
     return _detectEmitChange(forceReemit: forceReemit);
   }
 
-  bool clearPendingQuestion({required String questionId, String? sessionId}) {
+  ({bool found, bool summaryChanged}) clearPendingQuestion({required String questionId, String? sessionId}) {
+    bool found;
     if (sessionId != null) {
-      _removePendingQuestion(sessionId: sessionId, requestId: questionId);
+      found = _removePendingQuestion(sessionId: sessionId, requestId: questionId);
     } else {
+      found = false;
       for (final entry in _pendingQuestions.entries.toList()) {
-        entry.value.remove(questionId);
-        if (entry.value.isEmpty) {
-          _pendingQuestions.remove(entry.key);
+        if (entry.value.remove(questionId)) {
+          found = true;
+          if (entry.value.isEmpty) {
+            _pendingQuestions.remove(entry.key);
+          }
         }
       }
     }
-    return _detectEmitChange();
+    return (found: found, summaryChanged: _detectEmitChange());
   }
 
-  bool clearPendingPermission({required String sessionId, required String requestId}) {
-    _removePendingPermission(sessionId: sessionId, requestId: requestId);
-    return _detectEmitChange();
+  ({bool found, bool summaryChanged}) clearPendingPermission({required String sessionId, required String requestId}) {
+    final found = _removePendingPermission(sessionId: sessionId, requestId: requestId);
+    return (found: found, summaryChanged: _detectEmitChange());
   }
 
   bool _detectEmitChange({bool forceReemit = false}) {
@@ -440,22 +444,24 @@ class ActiveSessionTracker {
     return grouped;
   }
 
-  void _removePendingQuestion({required String sessionId, required String requestId}) {
+  bool _removePendingQuestion({required String sessionId, required String requestId}) {
     final questionIds = _pendingQuestions[sessionId];
-    if (questionIds == null) return;
-    questionIds.remove(requestId);
+    if (questionIds == null) return false;
+    final removed = questionIds.remove(requestId);
     if (questionIds.isEmpty) {
       _pendingQuestions.remove(sessionId);
     }
+    return removed;
   }
 
-  void _removePendingPermission({required String sessionId, required String requestId}) {
+  bool _removePendingPermission({required String sessionId, required String requestId}) {
     final requestIds = _pendingPermissions[sessionId];
-    if (requestIds == null) return;
-    requestIds.remove(requestId);
+    if (requestIds == null) return false;
+    final removed = requestIds.remove(requestId);
     if (requestIds.isEmpty) {
       _pendingPermissions.remove(sessionId);
     }
+    return removed;
   }
 
   void _clearPendingInputForSession(String sessionId) {
