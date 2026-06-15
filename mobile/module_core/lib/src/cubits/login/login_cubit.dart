@@ -96,7 +96,7 @@ class LoginCubit extends Cubit<LoginState> {
         LoginFailed() => null,
       };
 
-      _didActivePollEnterBackground = false;
+      _didActivePollEnterBackground = _isInBackground;
       _isPolling = true;
       emit(LoginState.polling(userCode: currentUserCode));
       try {
@@ -104,7 +104,6 @@ class LoginCubit extends Cubit<LoginState> {
         if (isClosed) return;
         emit(const LoginState.success());
       } on TimeoutException catch (e, st) {
-        if (_handlePollInterruption(error: e, userCode: currentUserCode)) return;
         loge("OAuth resumed but timed out", e, st);
         if (isClosed) return;
         emit(const LoginState.timeout());
@@ -130,16 +129,33 @@ class LoginCubit extends Cubit<LoginState> {
   bool _handlePollInterruption({required Object error, required String? userCode}) {
     if (!_isRecoverablePollInterruption(error)) return false;
     if (!_isInBackground && !_didActivePollEnterBackground) return false;
+    final alreadyForeground = !_isInBackground;
     _didActivePollEnterBackground = false;
-    if (!isClosed) {
-      emit(LoginState.polling(userCode: userCode));
+    if (isClosed) return true;
+    emit(LoginState.polling(userCode: userCode));
+    if (alreadyForeground) {
+      // The app already returned to the foreground before this abort surfaced,
+      // so no further `resumed` lifecycle event will arrive to drive recovery.
+      // Kick the retry now; the microtask lets the caller's `finally` clear
+      // `_isPolling` before `_onAppResumed` runs.
+      Future.microtask(() {
+        if (isClosed) return;
+        _onAppResumed().catchError((Object e, StackTrace st) {
+          loge("OAuth retry after interruption failed", e, st);
+          if (!isClosed) {
+            emit(const LoginState.failed(reason: LoginFailedReason.unknown));
+          }
+        });
+      });
     }
     return true;
   }
 
-  bool _isRecoverablePollInterruption(Object error) {
-    return error is TimeoutException || error is ClientException;
-  }
+  /// Only a transport-level abort (the OS tearing down the in-flight socket when
+  /// the app is backgrounded) is treated as a recoverable interruption. A
+  /// [TimeoutException] is the terminal "OAuth authorization timed out" signal
+  /// and must surface as [LoginTimeout], not be silently parked.
+  bool _isRecoverablePollInterruption(Object error) => error is ClientException;
 
   Future<bool> loginWithProvider(OAuthProvider provider) async {
     emit(const LoginState.authenticating());
@@ -163,7 +179,7 @@ class LoginCubit extends Cubit<LoginState> {
         return false;
       }
 
-      _didActivePollEnterBackground = false;
+      _didActivePollEnterBackground = _isInBackground;
       _isPolling = true;
       emit(LoginState.polling(userCode: initResponse.userCode));
       try {
@@ -176,7 +192,6 @@ class LoginCubit extends Cubit<LoginState> {
       emit(const LoginState.success());
       return true;
     } on TimeoutException catch (e, st) {
-      if (_handlePollInterruption(error: e, userCode: pollingUserCode)) return false;
       loge("${provider.label} login timed out", e, st);
       if (isClosed) return false;
       emit(const LoginState.timeout());

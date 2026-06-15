@@ -67,11 +67,11 @@ void main() {
     });
 
     LoginCubit buildCubit() => LoginCubit(
-          mockOAuthFlowProvider,
-          mockUrlLauncher,
-          mockAuthSession,
-          mockLifecycleSource,
-        );
+      mockOAuthFlowProvider,
+      mockUrlLauncher,
+      mockAuthSession,
+      mockLifecycleSource,
+    );
 
     test("initial state is LoginState.idle", () {
       final cubit = buildCubit();
@@ -196,9 +196,11 @@ void main() {
           expect(states, isNot(contains(isA<LoginFailed>())));
         });
 
-        test("parks late poll abort after app already resumed", () async {
+        test("retries late poll abort after app already resumed and completes login", () async {
           final lifecycleSubject = BehaviorSubject<LifecycleState>.seeded(LifecycleState.resumed);
           when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleSubject.stream);
+          when(() => mockOAuthFlowProvider.hasActiveOAuthSession()).thenAnswer((_) async => true);
+          when(() => mockOAuthFlowProvider.resumeOAuthFlow()).thenAnswer((_) async => testAuthUser);
           when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async {
             lifecycleSubject.add(LifecycleState.paused);
             await Future<void>.delayed(Duration.zero);
@@ -212,6 +214,33 @@ void main() {
           final sub = cubit.stream.listen(states.add);
 
           await cubit.loginWithProvider(AuthProvider.google);
+          // The abort settled after the app already returned to the foreground;
+          // recovery must be kicked immediately rather than waiting for a
+          // resume event that will never arrive. Pump the retry microtask.
+          await Future<void>.delayed(Duration.zero);
+          await Future<void>.delayed(Duration.zero);
+
+          await cubit.close();
+          await sub.cancel();
+          await lifecycleSubject.close();
+
+          expect(cubit.state, isA<LoginSuccess>());
+          expect(states, isNot(contains(isA<LoginFailed>())));
+          verify(() => mockOAuthFlowProvider.resumeOAuthFlow()).called(1);
+        });
+
+        test("parks poll abort when app was already backgrounded before polling starts", () async {
+          final lifecycleSubject = BehaviorSubject<LifecycleState>.seeded(LifecycleState.paused);
+          when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleSubject.stream);
+          when(() => mockOAuthFlowProvider.pollForResult()).thenThrow(
+            ClientException("Software caused connection abort"),
+          );
+
+          final cubit = buildCubit();
+          final states = <LoginState>[];
+          final sub = cubit.stream.listen(states.add);
+
+          await cubit.loginWithProvider(AuthProvider.google);
 
           await cubit.close();
           await sub.cancel();
@@ -219,6 +248,26 @@ void main() {
 
           expect(cubit.state, isA<LoginPolling>());
           expect(states, contains(isA<LoginPolling>()));
+          expect(states, isNot(contains(isA<LoginFailed>())));
+        });
+
+        test("background poll timeout emits LoginTimeout instead of parking", () async {
+          final lifecycleSubject = BehaviorSubject<LifecycleState>.seeded(LifecycleState.paused);
+          when(() => mockLifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleSubject.stream);
+          when(() => mockOAuthFlowProvider.pollForResult()).thenThrow(TimeoutException("poll timeout"));
+
+          final cubit = buildCubit();
+          final states = <LoginState>[];
+          final sub = cubit.stream.listen(states.add);
+
+          await cubit.loginWithProvider(AuthProvider.google);
+
+          await cubit.close();
+          await sub.cancel();
+          await lifecycleSubject.close();
+
+          expect(cubit.state, isA<LoginTimeout>());
+          expect(states, contains(isA<LoginTimeout>()));
           expect(states, isNot(contains(isA<LoginFailed>())));
         });
 
@@ -444,7 +493,12 @@ void main() {
         "loginWithEmail emits loading then success state on successful login",
         build: buildCubit,
         act: (cubit) async {
-          when(() => mockAuthSession.loginWithEmail(email: any(named: "email"), password: any(named: "password"))).thenAnswer(
+          when(
+            () => mockAuthSession.loginWithEmail(
+              email: any(named: "email"),
+              password: any(named: "password"),
+            ),
+          ).thenAnswer(
             (_) async => testAuthUser,
           );
           await cubit.loginWithEmail(
@@ -463,7 +517,10 @@ void main() {
         build: buildCubit,
         act: (cubit) async {
           when(
-            () => mockAuthSession.loginWithEmail(email: any(named: "email"), password: any(named: "password")),
+            () => mockAuthSession.loginWithEmail(
+              email: any(named: "email"),
+              password: any(named: "password"),
+            ),
           ).thenThrow(Exception("Invalid email or password"));
           await cubit.loginWithEmail(
             email: "test@example.com",
@@ -489,7 +546,12 @@ void main() {
           isA<LoginFailed>(),
         ],
         verify: (_) {
-          verifyNever(() => mockAuthSession.loginWithEmail(email: any(named: "email"), password: any(named: "password")));
+          verifyNever(
+            () => mockAuthSession.loginWithEmail(
+              email: any(named: "email"),
+              password: any(named: "password"),
+            ),
+          );
         },
       );
 
@@ -506,7 +568,12 @@ void main() {
           isA<LoginFailed>(),
         ],
         verify: (_) {
-          verifyNever(() => mockAuthSession.loginWithEmail(email: any(named: "email"), password: any(named: "password")));
+          verifyNever(
+            () => mockAuthSession.loginWithEmail(
+              email: any(named: "email"),
+              password: any(named: "password"),
+            ),
+          );
         },
       );
     });
