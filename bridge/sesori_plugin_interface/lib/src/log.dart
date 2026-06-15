@@ -12,12 +12,14 @@ enum LogLevel {
   error,
 }
 
-/// Lightweight global logger for the bridge and its plugins.
+/// Lightweight global diagnostic logger for the bridge and its plugins.
 ///
-/// Set [Log.level] once at startup (defaults to [LogLevel.info]).
-/// Messages below that level are silently discarded.
-///
-/// [Log.e] writes to stderr; all other levels write to stdout.
+/// Set [Log.level] once at startup (defaults to [LogLevel.info]); messages
+/// below that level are silently discarded. All levels write to stderr, so the
+/// log stream can be redirected or silenced (`--log-level error`, `2>/dev/null`)
+/// without affecting user-facing output. For messages the user must see to
+/// operate the bridge — prompts, requests, essential status — use [Console]
+/// instead; it always writes to stdout regardless of [Log.level].
 class Log {
   Log._();
 
@@ -36,7 +38,7 @@ class Log {
   /// Log a warning-level message.
   static void w(String message, [Object? error, StackTrace? st]) => _write(LogLevel.warning, message, error, st);
 
-  /// Log an error-level message. Always written to stderr.
+  /// Log an error-level message.
   static void e(String message, [Object? error, StackTrace? st]) => _write(LogLevel.error, message, error, st);
 
   static void _write(
@@ -47,48 +49,44 @@ class Log {
   ) {
     if (msgLevel.index < level.index) return;
 
-    final String message = msgLevel == .info
-        ? rawMessage
-        : () {
-            final callerClass = _getCallerClassName();
+    final callerClass = _getCallerClassName();
 
-            final buffer = StringBuffer();
-            buffer.write("[$callerClass]");
-            if (!rawMessage.startsWith("[")) {
-              buffer.write(" ");
-            }
-            buffer.write(rawMessage);
-            if (error != null && level.index < LogLevel.info.index) {
-              buffer.write("\n -- Error on next line(s)");
-              buffer.write(error.toString());
-            }
-            if (st != null && level.index < LogLevel.info.index) {
-              buffer.write(st.toString());
-            }
-
-            return buffer.toString();
-          }();
-
-    if (msgLevel == LogLevel.error) {
-      stderr.writeln(message);
-    } else {
-      stdout.writeln(message);
+    final buffer = StringBuffer();
+    buffer.write("[$callerClass]");
+    if (!rawMessage.startsWith("[")) {
+      buffer.write(" ");
     }
+    buffer.write(rawMessage);
+    if (error != null && level.index < LogLevel.info.index) {
+      buffer.write("\n -- Error on next line(s)");
+      buffer.write(error.toString());
+    }
+    if (st != null && level.index < LogLevel.info.index) {
+      buffer.write(st.toString());
+    }
+
+    // All diagnostic logs go to stderr so the log stream stays separate from
+    // user-facing output (which [Console] writes to stdout) and can be
+    // silenced without making the bridge unoperable.
+    stderr.writeln(buffer.toString());
   }
 
   static String _getCallerClassName() {
-    const vallerLineIndex = 4;
+    // Stack frames from this method up to the original caller:
+    //   #0 Log._getCallerClassName
+    //   #1 Log._write
+    //   #2 Log.<v|d|i|w|e>      (the public entry point)
+    //   #3 <caller>             (the class we want to name)
+    const callerLineIndex = 3;
     final trace = StackTrace.current.toString().split('\n');
 
-    if (trace.length < vallerLineIndex + 1) {
+    if (trace.length < callerLineIndex + 1) {
       return "Unknown0";
     }
 
-    // Example trace:
-    // ...
-    // #3      Log.d (package:sesori_plugin_interface/src/log.dart:31:36)
-    // #4      OrchestratorSession.run (package:sesori_bridge/src/bridge/orchestrator.dart:369:13)
-    final line = trace[4];
+    // Example frame:
+    // #3      OrchestratorSession.run (package:sesori_bridge/src/bridge/orchestrator.dart:369:13)
+    final line = trace[callerLineIndex];
 
     final match = RegExp(r'#\d+\s+(.+?)\.').firstMatch(line);
 

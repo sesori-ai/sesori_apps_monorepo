@@ -122,8 +122,10 @@ Bridge core flags:
 | `--plugin` | `opencode` | Plugin backend to run |
 | `--auth-backend` | `https://api.sesori.com` | Auth backend URL (also reads `AUTH_BACKEND_URL` env var) |
 | `--debug-port` | *(disabled)* | Start a debug HTTP server on this port for Postman/curl testing |
-| `--log-level` | `info` | Minimum log level: `verbose`, `debug`, `info`, `warning`, `error` |
+| `--log-level` | `info` | Minimum **diagnostic log** level (written to stderr): `verbose`, `debug`, `info`, `warning`, `error` |
 | `--version` | — | Print the bridge version and exit |
+
+> `--log-level` controls **diagnostic logging only**. Logs are written to stderr and can be silenced freely. User-facing messages — login prompts, the authorization URL and code, startup status, "Authenticated as…" — are written to stdout and are **always shown regardless of `--log-level`**, so the bridge stays operable even with logging disabled (`--log-level error`, or redirecting stderr with `2>/dev/null`).
 
 The selected plugin contributes its own options, parsed after `--plugin` resolves the backend. Run `--help` to see the options for the selected plugin. The OpenCode plugin adds:
 
