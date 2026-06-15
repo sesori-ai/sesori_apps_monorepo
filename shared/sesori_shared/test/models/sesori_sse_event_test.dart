@@ -166,6 +166,7 @@ void main() {
         agent: null,
         modelID: null,
         providerID: null,
+        time: null,
       );
       const event = SesoriSseEvent.messageUpdated(info: message);
       final json = event.toJson();
@@ -234,8 +235,20 @@ void main() {
       final first = (json['projects'] as List)[0] as Map<String, dynamic>;
       expect(first['id'], '/foo');
       expect(first['activeSessions'], <Map<String, dynamic>>[
-        {'id': 's1', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-        {'id': 's2', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
+        {
+          'id': 's1',
+          'mainAgentRunning': false,
+          'awaitingInput': false,
+          'isRetrying': false,
+          'childSessionIds': <String>[],
+        },
+        {
+          'id': 's2',
+          'mainAgentRunning': false,
+          'awaitingInput': false,
+          'isRetrying': false,
+          'childSessionIds': <String>[],
+        },
       ]);
       final second = (json['projects'] as List)[1] as Map<String, dynamic>;
       expect(second['id'], '/bar');
@@ -249,9 +262,27 @@ void main() {
           <String, dynamic>{
             'id': '/foo',
             'activeSessions': <Map<String, dynamic>>[
-              {'id': 's1', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-              {'id': 's2', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-              {'id': 's3', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
+              {
+                'id': 's1',
+                'mainAgentRunning': false,
+                'awaitingInput': false,
+                'isRetrying': false,
+                'childSessionIds': <String>[],
+              },
+              {
+                'id': 's2',
+                'mainAgentRunning': false,
+                'awaitingInput': false,
+                'isRetrying': false,
+                'childSessionIds': <String>[],
+              },
+              {
+                'id': 's3',
+                'mainAgentRunning': false,
+                'awaitingInput': false,
+                'isRetrying': false,
+                'childSessionIds': <String>[],
+              },
             ],
           },
         ],
@@ -382,7 +413,7 @@ void main() {
 
     test('messageUpdated implements SesoriSessionEvent', () {
       const event = SesoriSseEvent.messageUpdated(
-        info: Message.user(id: 'm', sessionID: 's', agent: null),
+        info: Message.user(id: 'm', sessionID: 's', agent: null, time: null),
       );
       expect(event, isA<SesoriSessionEvent>());
     });
@@ -444,10 +475,34 @@ void main() {
       final json = summary.toJson();
       expect(json['id'], '/my/path');
       expect(json['activeSessions'], <Map<String, dynamic>>[
-        {'id': 's1', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-        {'id': 's2', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-        {'id': 's3', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-        {'id': 's4', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
+        {
+          'id': 's1',
+          'mainAgentRunning': false,
+          'awaitingInput': false,
+          'isRetrying': false,
+          'childSessionIds': <String>[],
+        },
+        {
+          'id': 's2',
+          'mainAgentRunning': false,
+          'awaitingInput': false,
+          'isRetrying': false,
+          'childSessionIds': <String>[],
+        },
+        {
+          'id': 's3',
+          'mainAgentRunning': false,
+          'awaitingInput': false,
+          'isRetrying': false,
+          'childSessionIds': <String>[],
+        },
+        {
+          'id': 's4',
+          'mainAgentRunning': false,
+          'awaitingInput': false,
+          'isRetrying': false,
+          'childSessionIds': <String>[],
+        },
       ]);
     });
 
@@ -455,15 +510,69 @@ void main() {
       final json = <String, dynamic>{
         'id': '/from/json',
         'activeSessions': <Map<String, dynamic>>[
-          {'id': 's1', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-          {'id': 's2', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-          {'id': 's3', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-          {'id': 's4', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-          {'id': 's5', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-          {'id': 's6', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-          {'id': 's7', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-          {'id': 's8', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-          {'id': 's9', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
+          {
+            'id': 's1',
+            'mainAgentRunning': false,
+            'awaitingInput': false,
+            'isRetrying': false,
+            'childSessionIds': <String>[],
+          },
+          {
+            'id': 's2',
+            'mainAgentRunning': false,
+            'awaitingInput': false,
+            'isRetrying': false,
+            'childSessionIds': <String>[],
+          },
+          {
+            'id': 's3',
+            'mainAgentRunning': false,
+            'awaitingInput': false,
+            'isRetrying': false,
+            'childSessionIds': <String>[],
+          },
+          {
+            'id': 's4',
+            'mainAgentRunning': false,
+            'awaitingInput': false,
+            'isRetrying': false,
+            'childSessionIds': <String>[],
+          },
+          {
+            'id': 's5',
+            'mainAgentRunning': false,
+            'awaitingInput': false,
+            'isRetrying': false,
+            'childSessionIds': <String>[],
+          },
+          {
+            'id': 's6',
+            'mainAgentRunning': false,
+            'awaitingInput': false,
+            'isRetrying': false,
+            'childSessionIds': <String>[],
+          },
+          {
+            'id': 's7',
+            'mainAgentRunning': false,
+            'awaitingInput': false,
+            'isRetrying': false,
+            'childSessionIds': <String>[],
+          },
+          {
+            'id': 's8',
+            'mainAgentRunning': false,
+            'awaitingInput': false,
+            'isRetrying': false,
+            'childSessionIds': <String>[],
+          },
+          {
+            'id': 's9',
+            'mainAgentRunning': false,
+            'awaitingInput': false,
+            'isRetrying': false,
+            'childSessionIds': <String>[],
+          },
         ],
       };
       final summary = ProjectActivitySummary.fromJson(json);
@@ -546,7 +655,7 @@ void main() {
 
     test('messageUpdated uses message.updated', () {
       final json = const SesoriSseEvent.messageUpdated(
-        info: Message.user(id: 'm', sessionID: 's', agent: null),
+        info: Message.user(id: 'm', sessionID: 's', agent: null, time: null),
       ).toJson();
       expect(json['type'], 'message.updated');
     });

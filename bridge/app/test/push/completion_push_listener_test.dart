@@ -138,6 +138,7 @@ void main() {
               agent: null,
               modelID: null,
               providerID: null,
+              time: null,
             ),
           ),
         );

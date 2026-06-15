@@ -636,6 +636,7 @@ void main() {
           id: "msg-new",
           sessionID: sessionId,
           agent: null,
+          time: null,
         );
         sessionEvents.add(const SesoriMessageUpdated(info: message));
       },

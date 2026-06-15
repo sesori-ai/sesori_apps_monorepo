@@ -228,7 +228,14 @@ void _stubRepositorySnapshot({
 
 MessageWithParts _messageWithParts() {
   return const MessageWithParts(
-    info: Message.assistant(id: "msg-1", sessionID: "session-1", agent: null, modelID: null, providerID: null),
+    info: Message.assistant(
+      id: "msg-1",
+      sessionID: "session-1",
+      agent: null,
+      modelID: null,
+      providerID: null,
+      time: null,
+    ),
     parts: <MessagePart>[],
   );
 }

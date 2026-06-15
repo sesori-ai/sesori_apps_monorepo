@@ -612,6 +612,7 @@ MessageWithParts _messageWithParts({String messageId = "msg-1"}) {
       agent: null,
       modelID: null,
       providerID: null,
+      time: null,
     ),
     parts: const [],
   );

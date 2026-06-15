@@ -29,6 +29,7 @@ sealed class Message with _$Message {
     required String id,
     required String sessionID,
     required String? agent,
+    required MessageTime? time,
   }) = MessageUser;
 
   const factory Message.assistant({
@@ -37,6 +38,7 @@ sealed class Message with _$Message {
     required String? agent,
     required String? modelID,
     required String? providerID,
+    required MessageTime? time,
   }) = MessageAssistant;
 
   const factory Message.error({
@@ -47,8 +49,25 @@ sealed class Message with _$Message {
     required String? providerID,
     required String errorName,
     required String errorMessage,
+    required MessageTime? time,
   }) = MessageError;
 
-  factory Message.fromJson(Map<String, dynamic> json) =>
-      _$MessageFromJson(json);
+  factory Message.fromJson(Map<String, dynamic> json) => _$MessageFromJson(json);
+}
+
+/// Lifecycle timestamps for a [Message], in milliseconds since the Unix
+/// epoch (matching [SessionTime] and the backend wire format).
+///
+/// - [created]: when the message was created (user send time / assistant
+///   generation start).
+/// - [completed]: when the message finished (assistant streaming ended);
+///   `null` for user messages and in-flight assistant messages.
+@Freezed(fromJson: true, toJson: true)
+sealed class MessageTime with _$MessageTime {
+  const factory MessageTime({
+    required int created,
+    required int? completed,
+  }) = _MessageTime;
+
+  factory MessageTime.fromJson(Map<String, dynamic> json) => _$MessageTimeFromJson(json);
 }
