@@ -628,7 +628,7 @@ void main() {
       expect(summary.first.activeSessions.first.childSessionIds, equals(["c1"]));
     });
 
-    test("deeply nested children are ignored", () async {
+    test("deeply nested busy descendants bubble up to their root", () async {
       final tracker = await _coldStartedTracker(
         projects: [const Project(id: "p1", worktree: "/repo")],
       );
@@ -654,8 +654,33 @@ void main() {
 
       expect(summary, hasLength(1));
       expect(summary.first.activeSessions.length, equals(1));
-      expect(summary.first.activeSessions.first.id, equals("s1"));
-      expect(summary.first.activeSessions.first.childSessionIds, equals(["c1"]));
+      final root = summary.first.activeSessions.first;
+      expect(root.id, equals("s1"));
+      expect(root.mainAgentRunning, isTrue);
+      // The grandchild (g1) is attributed to the root alongside the direct
+      // child (c1), not dropped for being deeper than one level.
+      expect(root.childSessionIds, unorderedEquals(["c1", "g1"]));
+    });
+
+    test("idle root with only a busy grandchild appears in summary", () async {
+      final tracker = await _coldStartedTracker(
+        projects: [const Project(id: "p1", worktree: "/repo")],
+      );
+
+      tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
+      tracker.handleEvent(_childSessionCreated("c1", "s1", "/repo"), null);
+      tracker.handleEvent(_childSessionCreated("g1", "c1", "/repo"), null);
+      // Only the grandchild is busy; root and intermediate child are idle.
+      tracker.handleEvent(_sessionBusy("g1"), null);
+
+      final summary = tracker.buildSummary();
+
+      expect(summary, hasLength(1));
+      expect(summary.first.activeSessions.length, equals(1));
+      final root = summary.first.activeSessions.first;
+      expect(root.id, equals("s1"));
+      expect(root.mainAgentRunning, isFalse);
+      expect(root.childSessionIds, equals(["g1"]));
     });
 
     group("pending input tracking", () {

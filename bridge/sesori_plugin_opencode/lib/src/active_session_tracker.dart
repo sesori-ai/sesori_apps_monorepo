@@ -263,63 +263,57 @@ class ActiveSessionTracker {
   }
 
   List<ProjectActivitySummary> buildSummary() {
-    // Partition active (busy/retry) sessions into root vs child.
-    final activeRoots = <String>{};
-    final activeChildrenByParent = <String, List<String>>{};
+    // Attribute every active (busy/retry) session to its root ancestor by
+    // walking the parent chain. Any active descendant — a direct child or
+    // deeper — surfaces on its root session's row, because the session list
+    // only renders root sessions. Sessions whose chain cannot be resolved to a
+    // known root (an ancestor was never observed, or a cycle is detected) are
+    // ignored: there is no root row to attribute them to.
+    final activeDescendantsByRoot = <String, List<String>>{};
+    final directlyActiveRoots = <String>{};
 
     for (final sessionId in _sessionStatuses.keys) {
-      final parentId = _sessionParentIds[sessionId];
-      if (parentId == null) {
-        // Root session (or unknown parent — treated as root).
-        activeRoots.add(sessionId);
+      final rootId = _resolveRootSession(sessionId);
+      if (rootId == null) continue;
+      if (rootId == sessionId) {
+        directlyActiveRoots.add(sessionId);
       } else {
-        // Child session — only include if parent is a known root (direct descendant).
-        // A "known root" is a session we've observed whose own parentId is null.
-        // Use containsKey to distinguish "known root" from "never observed".
-        if (_sessionParentIds.containsKey(parentId) && _sessionParentIds[parentId] == null) {
-          activeChildrenByParent.putIfAbsent(parentId, () => []).add(sessionId);
-        }
-        // Parent not in _sessionParentIds → never observed → orphan → ignore.
-        // Parent's parentId != null → deeper nesting → ignore.
+        activeDescendantsByRoot.putIfAbsent(rootId, () => []).add(sessionId);
       }
     }
 
-    // Merge: roots that are directly active + idle roots with active children.
-    final allActiveRoots = <String>{...activeRoots};
-    activeChildrenByParent.keys.forEach(allActiveRoots.add);
+    // Roots that are themselves active + roots that only have active descendants.
+    final allActiveRoots = <String>{...directlyActiveRoots, ...activeDescendantsByRoot.keys};
 
     // Build ActiveSession per root, grouped by worktree.
     final byWorktree = <String, List<ActiveSession>>{};
     for (final rootId in allActiveRoots) {
+      final descendants = activeDescendantsByRoot[rootId] ?? const <String>[];
       var worktree = _sessionWorktrees[rootId];
-      // Parent may not have a worktree if we only observed its children
+      // The root may lack a worktree if we only observed its descendants
       // (e.g. bridge reconnected after the root session was created).
-      // Fall back to any child's worktree — children share the same project.
+      // Fall back to any descendant's worktree — they share the same project.
       if (worktree == null) {
-        final children = activeChildrenByParent[rootId];
-        if (children != null) {
-          for (final childId in children) {
-            worktree = _sessionWorktrees[childId];
-            if (worktree != null) break;
-          }
+        for (final descendantId in descendants) {
+          worktree = _sessionWorktrees[descendantId];
+          if (worktree != null) break;
         }
       }
       if (worktree == null) {
         Log.w("buildSummary: no worktree for session $rootId");
         continue;
       }
-      final children = activeChildrenByParent[rootId] ?? const <String>[];
       final isRetrying = _sessionStatuses[rootId] is SessionStatusRetry ||
-          children.any((childId) => _sessionStatuses[childId] is SessionStatusRetry);
+          descendants.any((id) => _sessionStatuses[id] is SessionStatusRetry);
       byWorktree
           .putIfAbsent(worktree, () => [])
           .add(
             ActiveSession(
               id: rootId,
-              mainAgentRunning: activeRoots.contains(rootId),
-              awaitingInput: _rootHasPendingInput(rootId, children),
+              mainAgentRunning: directlyActiveRoots.contains(rootId),
+              awaitingInput: _rootHasPendingInput(rootId, descendants),
               isRetrying: isRetrying,
-              childSessionIds: children,
+              childSessionIds: descendants,
             ),
           );
     }
@@ -332,6 +326,26 @@ class ActiveSessionTracker {
           ),
         )
         .toList();
+  }
+
+  /// Walks the parent chain from [sessionId] up to its root ancestor — the
+  /// first session whose `parentID` is null.
+  ///
+  /// Returns null when the chain cannot be resolved to a known root: an
+  /// ancestor was never observed (`_sessionParentIds` has no entry for it) or a
+  /// cycle is detected. Callers treat an unresolved session as un-attributable
+  /// and drop it from the summary.
+  String? _resolveRootSession(String sessionId) {
+    var current = sessionId;
+    final visited = <String>{};
+    while (visited.add(current)) {
+      if (!_sessionParentIds.containsKey(current)) return null;
+      final parentId = _sessionParentIds[current];
+      if (parentId == null) return current;
+      current = parentId;
+    }
+    Log.w("buildSummary: cycle detected resolving root for $sessionId");
+    return null;
   }
 
   /// Raw count of all busy/retry sessions per worktree.
@@ -368,14 +382,14 @@ class ActiveSessionTracker {
     return (_pendingQuestions[sessionId]?.isNotEmpty ?? false) || (_pendingPermissions[sessionId]?.isNotEmpty ?? false);
   }
 
-  /// Returns true if the root session OR any of its direct child sessions
+  /// Returns true if the root session OR any of its active descendant sessions
   /// has pending input (question or permission).
   ///
-  /// Child sessions are included so that sub-agent questions/permissions
-  /// surface on the root session row in the session list.
-  bool _rootHasPendingInput(String rootId, List<String> childIds) {
+  /// Descendants are included so that sub-agent questions/permissions surface
+  /// on the root session row in the session list, at any nesting depth.
+  bool _rootHasPendingInput(String rootId, List<String> descendantIds) {
     if (_hasPendingInput(rootId)) return true;
-    return childIds.any(_hasPendingInput);
+    return descendantIds.any(_hasPendingInput);
   }
 
   /// Raw set of session IDs (including children) that currently have any
