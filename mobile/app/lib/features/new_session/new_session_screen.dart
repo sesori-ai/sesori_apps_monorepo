@@ -180,12 +180,22 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
         canPop: true,
         onPopInvokedWithResult: (didPop, result) {
           if (didPop && isSending && !_navigatingToCreatedSession) {
-            scaffoldMessenger.showSnackBar(
-              SnackBar(
-                content: Text(loc.newSessionLaunchingInBackground),
-                duration: const Duration(seconds: 3),
-              ),
-            );
+            // This pop can fire during the Navigator's build phase — e.g. when
+            // opening another session from the split-view list while creation
+            // is in flight, go_router swaps the underlying detail route in
+            // place and pops this pushed new-session route in the same frame.
+            // showSnackBar throws if called during build, so defer it to the
+            // next frame. The captured root messenger outlives this route;
+            // guard it with `mounted` since the route may already be gone.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!scaffoldMessenger.mounted) return;
+              scaffoldMessenger.showSnackBar(
+                SnackBar(
+                  content: Text(loc.newSessionLaunchingInBackground),
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            });
           }
         },
         child: Scaffold(
