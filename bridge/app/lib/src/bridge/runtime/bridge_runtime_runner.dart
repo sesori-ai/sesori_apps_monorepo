@@ -472,7 +472,10 @@ class BridgeRuntimeRunner {
     final githubToken = [
       io.Platform.environment['GITHUB_TOKEN'],
       io.Platform.environment['GH_TOKEN'],
-    ].firstWhere((token) => token != null && token.isNotEmpty, orElse: () => null);
+    ].map((token) => token?.trim()).firstWhere(
+      (token) => token != null && token.isNotEmpty,
+      orElse: () => null,
+    );
 
     return UpdateService(
       releaseRepository: ReleaseRepository(
