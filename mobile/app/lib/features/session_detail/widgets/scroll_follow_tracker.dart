@@ -48,16 +48,34 @@ class ScrollFollowTracker extends ChangeNotifier {
 
   bool _following = true;
   bool _snapScheduled = false;
+  bool _detachSuppressed = false;
 
   /// Whether the scrollable is currently pinned to [edge].
   bool get following => _following;
 
   /// Immediately enter detached mode if not already detached.
   void detach() {
-    if (!_following) return;
+    if (_detachSuppressed || !_following) return;
     _following = false;
     notifyListeners();
   }
+
+  /// Suppress detaching for the duration of a gesture that must not
+  /// disturb follow mode — specifically the horizontal timestamp "peek",
+  /// which slides rows sideways without scrolling. The scrollable still
+  /// fires a spurious drag-start as it claims the pointer, so this also
+  /// re-attaches if that already flipped us to detached. Subsequent
+  /// [detach] calls are no-ops until [releaseDetachSuppression].
+  void suppressDetach() {
+    _detachSuppressed = true;
+    if (!_following) {
+      _following = true;
+      notifyListeners();
+    }
+  }
+
+  /// Lifts the [suppressDetach] guard once the peek gesture ends.
+  void releaseDetachSuppression() => _detachSuppressed = false;
 
   /// Hook for `Listener.onPointerSignal` (trackpad two-finger scroll,
   /// mouse wheel). Detaches on any pointer scroll event.

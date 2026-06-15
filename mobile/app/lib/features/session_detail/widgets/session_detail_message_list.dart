@@ -11,6 +11,7 @@ import "assistant_message_card.dart";
 import "error_message_card.dart";
 import "follow_detach_scrollable.dart";
 import "jump_to_edge_pill.dart";
+import "message_timestamp_reveal.dart";
 import "retry_error_message_card.dart";
 import "scroll_follow_tracker.dart";
 import "user_message_card.dart";
@@ -88,9 +89,18 @@ typedef _DetachedSnapshot = ({
   String? retryErrorMessage,
 });
 
-class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
+class _SessionDetailMessageListState extends State<SessionDetailMessageList> with SingleTickerProviderStateMixin {
   static const _kListViewKey = Key("session-detail-message-list-view");
   static const _kJumpToLatestKey = Key("session-detail-jump-to-latest");
+
+  /// Width of the per-message timestamp gutter revealed by the horizontal
+  /// "peek" gesture, and the distance rows slide left at full reveal.
+  static const double _kMaxReveal = 76;
+
+  /// Horizontal travel before a drag is treated as a timestamp peek
+  /// rather than a scroll. Kept below `kTouchSlop` so the peek engages
+  /// promptly, but only when horizontal travel clearly dominates.
+  static const double _kRevealEngageSlop = 8;
 
   /// Synthetic controller-entry id for the shimmering retry-error row
   /// pinned at the newest edge. Domain message ids come from the
@@ -102,6 +112,21 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
 
   late final ScrollFollowTracker _follow;
   late final chat_core.InMemoryChatController _chatController;
+
+  /// Shared 0..1 progress for the horizontal timestamp-reveal "peek".
+  /// Set directly while the user drags; springs back to 0 on release.
+  /// Every visible row's [MessageTimestampReveal] listens to it, so one
+  /// drag moves the whole transcript in lockstep.
+  late final AnimationController _revealController;
+
+  /// Pointer-tracking state for the reveal "peek" gesture (see
+  /// [_onRevealPointerMove]). `_revealPointer` is the active pointer id;
+  /// `_revealEngaged`/`_revealRejected` latch the horizontal-vs-vertical
+  /// decision for the duration of one gesture.
+  int? _revealPointer;
+  Offset _revealStart = Offset.zero;
+  bool _revealEngaged = false;
+  bool _revealRejected = false;
 
   /// Snapshot taken at the moment of detach. `null` means "not frozen
   /// — use live `widget.*` props".
@@ -126,6 +151,10 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
     super.initState();
     _follow = ScrollFollowTracker(edge: ScrollFollowEdge.min);
     _follow.addListener(_onFollowChanged);
+    _revealController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+    );
     _chatController = chat_core.InMemoryChatController(
       messages: _chatEntriesFor(
         messages: widget.messages,
@@ -138,6 +167,7 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
   void dispose() {
     _follow.removeListener(_onFollowChanged);
     _follow.dispose();
+    _revealController.dispose();
     _chatController.dispose();
     super.dispose();
   }
@@ -184,9 +214,11 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
     final current = _chatController.messages;
     if (_entriesMatch(current: current, target: target)) return;
     unawaited(
-      _chatController.setMessages(target, animated: false).catchError(
-        (Object error, StackTrace stack) => loge("Failed to sync chat controller messages", error, stack),
-      ),
+      _chatController
+          .setMessages(target, animated: false)
+          .catchError(
+            (Object error, StackTrace stack) => loge("Failed to sync chat controller messages", error, stack),
+          ),
     );
   }
 
@@ -245,65 +277,82 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
         label: loc.sessionDetailJumpToLatest,
         onTap: () => _follow.animateToEdge(),
       ),
-      child: chat_ui.Chat(
-        key: _kListViewKey,
-        currentUserId: _kUserAuthorId,
-        resolveUser: _resolveUser,
-        chatController: _chatController,
-        theme: chat_core.ChatTheme.fromThemeData(Theme.of(context)),
-        backgroundColor: Colors.transparent,
-        builders: chat_core.Builders(
-          // Full-row control: drop the package's bubble/alignment/
-          // gesture wrapper and render our cards bare, exactly as the
-          // previous ListView did.
-          chatMessageBuilder:
-              (
-                context,
-                message,
-                index,
-                animation,
-                child, {
-                bool? isRemoved,
-                required bool isSentByMe,
-                chat_core.MessageGroupStatus? groupStatus,
-              }) => child,
-          customMessageBuilder:
-              (
-                context,
-                message,
-                index, {
-                required bool isSentByMe,
-                chat_core.MessageGroupStatus? groupStatus,
-              }) => _buildRow(
-                entry: message,
-                messages: messages,
-                indexById: indexById,
-                streamingText: streamingText,
-                children: children,
-                childStatuses: childStatuses,
-                retryErrorMessage: retryErrorMessage,
-              ),
-          // The prompt input, queued bubbles and tasks bar live outside
-          // this widget; reserve no composer space inside the list.
-          composerBuilder: (context) => const SizedBox.shrink(),
-          // Follow/detach owns the jump affordance via the overlay pill.
-          scrollToBottomBuilder: (context, animation, onPressed) => const SizedBox.shrink(),
-          // The loaded view renders its own empty state before this
-          // widget is ever mounted.
-          emptyChatListBuilder: (context) => const SizedBox.shrink(),
-          chatAnimatedListBuilder: (context, itemBuilder) => chat_ui.ChatAnimatedListReversed(
-            itemBuilder: itemBuilder,
-            scrollController: _follow.scrollController,
-            insertAnimationDuration: Duration.zero,
-            removeAnimationDuration: Duration.zero,
-            shouldScrollToEndWhenSendingMessage: false,
-            topPadding: 8,
-            bottomPadding: 8,
-            handleSafeArea: false,
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
-            // Always allow overscroll/bounce, even when the transcript is
-            // shorter than the viewport, so the list never feels locked.
-            physics: const AlwaysScrollableScrollPhysics(),
+      // Horizontal "peek" gesture: drag the transcript left to reveal
+      // each message's timestamp on the right. Driven by a raw [Listener]
+      // rather than a drag GestureDetector on purpose — a competing
+      // horizontal drag recognizer would join the gesture arena and stop
+      // the list's vertical scroll recognizer from being the sole member,
+      // which would break small-drag detach. The Listener never joins the
+      // arena, so vertical scrolling is untouched; we disambiguate
+      // direction ourselves and only steer the reveal on horizontal-
+      // dominant drags. `translucent` so the whole list area is tracked
+      // while taps and selection still reach the cards below.
+      child: Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerDown: _onRevealPointerDown,
+        onPointerMove: _onRevealPointerMove,
+        onPointerUp: _onRevealPointerUp,
+        onPointerCancel: _onRevealPointerCancel,
+        child: chat_ui.Chat(
+          key: _kListViewKey,
+          currentUserId: _kUserAuthorId,
+          resolveUser: _resolveUser,
+          chatController: _chatController,
+          theme: chat_core.ChatTheme.fromThemeData(Theme.of(context)),
+          backgroundColor: Colors.transparent,
+          builders: chat_core.Builders(
+            // Full-row control: drop the package's bubble/alignment/
+            // gesture wrapper and render our cards bare, exactly as the
+            // previous ListView did.
+            chatMessageBuilder:
+                (
+                  context,
+                  message,
+                  index,
+                  animation,
+                  child, {
+                  bool? isRemoved,
+                  required bool isSentByMe,
+                  chat_core.MessageGroupStatus? groupStatus,
+                }) => child,
+            customMessageBuilder:
+                (
+                  context,
+                  message,
+                  index, {
+                  required bool isSentByMe,
+                  chat_core.MessageGroupStatus? groupStatus,
+                }) => _buildRow(
+                  entry: message,
+                  messages: messages,
+                  indexById: indexById,
+                  streamingText: streamingText,
+                  children: children,
+                  childStatuses: childStatuses,
+                  retryErrorMessage: retryErrorMessage,
+                ),
+            // The prompt input, queued bubbles and tasks bar live outside
+            // this widget; reserve no composer space inside the list.
+            composerBuilder: (context) => const SizedBox.shrink(),
+            // Follow/detach owns the jump affordance via the overlay pill.
+            scrollToBottomBuilder: (context, animation, onPressed) => const SizedBox.shrink(),
+            // The loaded view renders its own empty state before this
+            // widget is ever mounted.
+            emptyChatListBuilder: (context) => const SizedBox.shrink(),
+            chatAnimatedListBuilder: (context, itemBuilder) => chat_ui.ChatAnimatedListReversed(
+              itemBuilder: itemBuilder,
+              scrollController: _follow.scrollController,
+              insertAnimationDuration: Duration.zero,
+              removeAnimationDuration: Duration.zero,
+              shouldScrollToEndWhenSendingMessage: false,
+              topPadding: 8,
+              bottomPadding: 8,
+              handleSafeArea: false,
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+              // Always allow overscroll/bounce, even when the transcript is
+              // shorter than the viewport, so the list never feels locked.
+              physics: const AlwaysScrollableScrollPhysics(),
+            ),
           ),
         ),
       ),
@@ -321,12 +370,13 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
   }) {
     if (entry.id == _kRetryErrorRowId) {
       if (retryErrorMessage == null) return const SizedBox.shrink();
-      return RetryErrorMessageCard(message: retryErrorMessage);
+      // Synthetic row: no timestamp, but it still slides with the rest.
+      return _revealable(createdAtMs: null, child: RetryErrorMessageCard(message: retryErrorMessage));
     }
     final index = indexById[entry.id];
     if (index == null || index >= messages.length) return const SizedBox.shrink();
     final message = messages[index];
-    return switch (message.info) {
+    final card = switch (message.info) {
       MessageUser() => UserMessageCard(message: message),
       MessageAssistant() => AssistantMessageCard(
         projectId: widget.projectId,
@@ -337,6 +387,72 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
       ),
       final MessageError messageError => ErrorMessageCard(message: messageError),
     };
+    return _revealable(createdAtMs: message.info.time?.created, child: card);
+  }
+
+  /// Wraps a row so the shared horizontal drag reveals its timestamp.
+  Widget _revealable({required int? createdAtMs, required Widget child}) {
+    return MessageTimestampReveal(
+      progress: _revealController,
+      maxReveal: _kMaxReveal,
+      createdAtMs: createdAtMs,
+      child: child,
+    );
+  }
+
+  void _onRevealPointerDown(PointerDownEvent event) {
+    _revealPointer = event.pointer;
+    _revealStart = event.position;
+    _revealEngaged = false;
+    _revealRejected = false;
+  }
+
+  void _onRevealPointerMove(PointerMoveEvent event) {
+    if (event.pointer != _revealPointer || _revealRejected) return;
+
+    if (!_revealEngaged) {
+      // Disambiguate direction. A vertical or ambiguous drag is left to
+      // the scrollable untouched (so its eager small-drag detach still
+      // works); only a clear horizontal drag becomes a timestamp peek.
+      final dx = event.position.dx - _revealStart.dx;
+      final dy = event.position.dy - _revealStart.dy;
+      if (dy.abs() >= _kRevealEngageSlop && dy.abs() > dx.abs()) {
+        _revealRejected = true;
+        return;
+      }
+      if (dx.abs() < _kRevealEngageSlop || dx.abs() <= dy.abs()) return;
+      _revealEngaged = true;
+      // The scrollable fired a spurious drag-start as it claimed the
+      // pointer; suppress (and undo) the detach so a sideways peek never
+      // pops the "jump to latest" affordance while we sit at the edge.
+      _follow.suppressDetach();
+    }
+
+    // Dragging left (negative dx) opens the gutter; dragging right closes
+    // it. The controller value is the reveal fraction, so normalise the
+    // per-move pixel delta by the gutter width and clamp to [0, 1].
+    final next = (_revealController.value - event.delta.dx / _kMaxReveal).clamp(0.0, 1.0);
+    _revealController.value = next;
+  }
+
+  void _onRevealPointerUp(PointerUpEvent event) {
+    if (event.pointer != _revealPointer) return;
+    _endReveal();
+  }
+
+  void _onRevealPointerCancel(PointerCancelEvent event) {
+    if (event.pointer != _revealPointer) return;
+    _endReveal();
+  }
+
+  void _endReveal() {
+    _revealPointer = null;
+    _revealEngaged = false;
+    _revealRejected = false;
+    _follow.releaseDetachSuppression();
+    if (_revealController.value != 0) {
+      _revealController.animateTo(0, curve: Curves.easeOut);
+    }
   }
 
   Map<String, int> _indexByIdFor({required List<MessageWithParts> messages}) {
