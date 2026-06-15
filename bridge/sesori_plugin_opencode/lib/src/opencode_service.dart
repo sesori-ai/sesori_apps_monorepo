@@ -103,6 +103,13 @@ class OpenCodeService {
     required String sessionId,
   }) async {
     final directory = await _resolveSessionDirectory(sessionId: sessionId);
+    if (directory == null) {
+      throw PluginApiException(
+        "GET /session/$sessionId/question",
+        502,
+        message: "could not resolve session directory",
+      );
+    }
 
     // Subagent (child) sessions are non-interactive and never ask questions, so
     // only the session's own pending questions are relevant. `getPendingQuestions`
@@ -304,19 +311,32 @@ class OpenCodeService {
     required String? sessionId,
   }) async {
     final resolvedSessionId = sessionId ?? tracker.getSessionIdForQuestion(questionId: questionId);
-    final directory = resolvedSessionId != null ? await _resolveSessionDirectory(sessionId: resolvedSessionId) : null;
-    if (directory != null) {
-      try {
-        await repository.rejectQuestion(
-          questionId: questionId,
-          directory: directory,
-        );
-      } on OpenCodeApiException catch (e) {
-        // A 404 after a scoped request means the question is already gone
-        // upstream; reconcile local state so the UI does not stay stuck.
-        if (e.statusCode != 404) rethrow;
-        Log.w("question already resolved upstream (404), reconciling tracker: ${e.endpoint}", e);
-      }
+
+    // Older mobile clients may omit sessionId. We accept that in those cases
+    // we can only clear local pending state; the upstream question may remain.
+    if (resolvedSessionId == null) {
+      return tracker.clearPendingQuestion(questionId: questionId, sessionId: null);
+    }
+
+    final directory = await _resolveSessionDirectory(sessionId: resolvedSessionId);
+    if (directory == null) {
+      throw PluginApiException(
+        "POST /question/$questionId/reject",
+        502,
+        message: "could not resolve session directory",
+      );
+    }
+
+    try {
+      await repository.rejectQuestion(
+        questionId: questionId,
+        directory: directory,
+      );
+    } on OpenCodeApiException catch (e) {
+      // A 404 after a scoped request means the question is already gone
+      // upstream; reconcile local state so the UI does not stay stuck.
+      if (e.statusCode != 404) rethrow;
+      Log.w("question already resolved upstream (404), reconciling tracker: ${e.endpoint}", e);
     }
     return tracker.clearPendingQuestion(questionId: questionId, sessionId: resolvedSessionId);
   }
