@@ -1,9 +1,11 @@
+import "dart:async";
+
 import "package:bloc_test/bloc_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_cubit.dart";
 import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
-import "package:sesori_dart_core/src/services/new_session_selection_store.dart";
+import "package:sesori_dart_core/src/services/new_session_selection_tracker.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -12,11 +14,11 @@ import "../../helpers/test_helpers.dart";
 void main() {
   group("NewSessionCubit", () {
     late MockSessionService mockSessionService;
-    late NewSessionSelectionStore selectionStore;
+    late NewSessionSelectionTracker selectionTracker;
 
     setUp(() {
       mockSessionService = MockSessionService();
-      selectionStore = NewSessionSelectionStore();
+      selectionTracker = NewSessionSelectionTracker();
 
       when(
         () => mockSessionService.listAgents(projectId: any(named: "projectId")),
@@ -33,7 +35,7 @@ void main() {
 
     NewSessionCubit buildCubit() => NewSessionCubit(
       sessionService: mockSessionService,
-      selectionStore: selectionStore,
+      selectionTracker: selectionTracker,
       projectId: "project-1",
     );
 
@@ -140,7 +142,7 @@ void main() {
         ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-command")));
         return NewSessionCubit(
           sessionService: mockSessionService,
-          selectionStore: selectionStore,
+          selectionTracker: selectionTracker,
           projectId: "project-1",
         );
       },
@@ -458,7 +460,7 @@ void main() {
       ],
     );
 
-    // --- Selection persistence across navigation (NewSessionSelectionStore) ---
+    // --- Selection persistence across navigation (NewSessionSelectionTracker) ---
 
     blocTest<NewSessionCubit, NewSessionState>(
       "persists the chosen variant to the selection store",
@@ -484,7 +486,7 @@ void main() {
         cubit.selectVariant(const SessionVariant(id: "xhigh"));
       },
       verify: (_) {
-        final saved = selectionStore.read("project-1");
+        final saved = selectionTracker.read(projectId: "project-1");
         expect(saved?.agent, "build");
         expect(
           saved?.agentModel,
@@ -524,7 +526,7 @@ void main() {
       },
       verify: (_) {
         expect(
-          selectionStore.read("project-1")?.agentModel,
+          selectionTracker.read(projectId: "project-1")?.agentModel,
           const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
         );
       },
@@ -533,8 +535,8 @@ void main() {
     blocTest<NewSessionCubit, NewSessionState>(
       "restores a persisted model + variant on load, overriding the default",
       build: () {
-        selectionStore.write(
-          "project-1",
+        selectionTracker.write(
+          projectId: "project-1",
           agent: null,
           agentModel: const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "deep"),
         );
@@ -595,8 +597,8 @@ void main() {
         // (openai/gpt-4, the first provider) so a regression that discarded the
         // saved model entirely would surface openai/gpt-4 and fail this test —
         // i.e. it genuinely exercises variant-dropping, not full fallback.
-        selectionStore.write(
-          "project-1",
+        selectionTracker.write(
+          projectId: "project-1",
           agent: null,
           agentModel: const AgentModel(providerID: "anthropic", modelID: "claude-3", variant: "legacy"),
         );
@@ -654,7 +656,7 @@ void main() {
     blocTest<NewSessionCubit, NewSessionState>(
       "restores a persisted non-default agent on load",
       build: () {
-        selectionStore.write("project-1", agent: "plan", agentModel: null);
+        selectionTracker.write(projectId: "project-1", agent: "plan", agentModel: null);
         when(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).thenAnswer(
           (_) async => ApiResponse.success(
             const Agents(
@@ -689,7 +691,7 @@ void main() {
     blocTest<NewSessionCubit, NewSessionState>(
       "falls back to the default agent when the persisted agent is gone",
       build: () {
-        selectionStore.write("project-1", agent: "ghost", agentModel: null);
+        selectionTracker.write(projectId: "project-1", agent: "ghost", agentModel: null);
         when(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).thenAnswer(
           (_) async => ApiResponse.success(
             const Agents(
@@ -718,8 +720,8 @@ void main() {
     blocTest<NewSessionCubit, NewSessionState>(
       "falls back to the default when the persisted model is no longer available",
       build: () {
-        selectionStore.write(
-          "project-1",
+        selectionTracker.write(
+          projectId: "project-1",
           agent: null,
           agentModel: const AgentModel(providerID: "ghost", modelID: "gone", variant: null),
         );
@@ -751,8 +753,8 @@ void main() {
     blocTest<NewSessionCubit, NewSessionState>(
       "clears the persisted selection once the session is created",
       build: () {
-        selectionStore.write(
-          "project-1",
+        selectionTracker.write(
+          projectId: "project-1",
           agent: "build",
           agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "xhigh"),
         );
@@ -774,8 +776,40 @@ void main() {
         await cubit.createSession(text: "hello", dedicatedWorktree: true, command: null);
       },
       verify: (_) {
-        expect(selectionStore.read("project-1"), isNull);
+        expect(selectionTracker.read(projectId: "project-1"), isNull);
       },
     );
+
+    test("clears the persisted selection on success even when the cubit was closed mid-send", () async {
+      selectionTracker.write(
+        projectId: "project-1",
+        agent: "build",
+        agentModel: const AgentModel(providerID: "openai", modelID: "gpt-4", variant: "xhigh"),
+      );
+      final completer = Completer<ApiResponse<Session>>();
+      when(
+        () => mockSessionService.createSessionWithMessage(
+          projectId: any(named: "projectId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          providerID: any(named: "providerID"),
+          modelID: any(named: "modelID"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      ).thenAnswer((_) => completer.future);
+
+      final cubit = buildCubit();
+      // Kick off creation but don't await — the request is now in flight.
+      final pending = cubit.createSession(text: "hello", dedicatedWorktree: true, command: null);
+      // The user backs out while sending; the screen disposes the cubit.
+      await cubit.close();
+      // The launch still succeeds in the background after the cubit is gone.
+      completer.complete(ApiResponse.success(testSession(id: "s-bg")));
+      await pending;
+
+      expect(selectionTracker.read(projectId: "project-1"), isNull);
+    });
   });
 }

@@ -168,6 +168,11 @@ class ScrollFollowTracker extends ChangeNotifier {
   }
 
   void _maybeReattach({required ScrollMetrics metrics}) {
+    // No scrollable range → the list can't be away from the follow edge; a
+    // bouncing-overscroll release that settles here must not toggle follow
+    // state (it would flash the jump-to-latest pill on a short transcript).
+    // Pairs with the same guard on the detach path in [_isUserScrollStart].
+    if (metrics.maxScrollExtent <= metrics.minScrollExtent) return;
     final distance = (metrics.pixels - _edgeOffset(metrics: metrics)).abs();
     final shouldFollow = distance <= _edgeTolerance;
     if (shouldFollow == _following) return;

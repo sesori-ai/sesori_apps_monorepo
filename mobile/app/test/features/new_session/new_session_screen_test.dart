@@ -97,7 +97,7 @@ void main() {
 
     GetIt.instance.registerSingleton<SessionService>(sessionService);
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
-    GetIt.instance.registerSingleton<NewSessionSelectionStore>(NewSessionSelectionStore());
+    GetIt.instance.registerSingleton<NewSessionSelectionTracker>(NewSessionSelectionTracker());
   });
 
   tearDown(() async {

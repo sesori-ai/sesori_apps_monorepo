@@ -6,22 +6,22 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../capabilities/session/session_service.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
-import "../../services/new_session_selection_store.dart";
+import "../../services/new_session_selection_tracker.dart";
 import "../../utils/model_filter/default_model_selector.dart";
 import "new_session_state.dart";
 
 class NewSessionCubit extends Cubit<NewSessionState> {
   final SessionService _sessionService;
-  final NewSessionSelectionStore _selectionStore;
+  final NewSessionSelectionTracker _selectionTracker;
   final String _projectId;
   static const _defaultModelSelector = DefaultModelSelector();
 
   NewSessionCubit({
     required SessionService sessionService,
-    required NewSessionSelectionStore selectionStore,
+    required NewSessionSelectionTracker selectionTracker,
     required String projectId,
   }) : _sessionService = sessionService,
-       _selectionStore = selectionStore,
+       _selectionTracker = selectionTracker,
        _projectId = projectId,
        super(
          const NewSessionState.idle(
@@ -208,7 +208,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     required List<AgentInfo> agents,
     required List<ProviderInfo> providers,
   }) {
-    final saved = _selectionStore.read(_projectId);
+    final saved = _selectionTracker.read(projectId: _projectId);
     if (saved == null) {
       return (selectedAgent: defaultAgent, selectedAgentModel: defaultAgentModel);
     }
@@ -247,7 +247,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
   void _persistSelection() {
     final data = state.agentModelData;
     if (data == null) return;
-    _selectionStore.write(_projectId, agent: data.agent, agentModel: data.agentModel);
+    _selectionTracker.write(projectId: _projectId, agent: data.agent, agentModel: data.agentModel);
   }
 
   void selectAgent(String agent) {
@@ -411,14 +411,19 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       dedicatedWorktree: dedicatedWorktree,
     );
 
+    // A created session means the composer is done, so the next new session for
+    // this project must start from the default — clear the persisted selection
+    // even when the user backed out mid-send and closed this cubit (a launch
+    // can still succeed in the background; the text draft is likewise cleared
+    // the moment the prompt is sent). Must run before the isClosed guard below.
+    if (response case SuccessResponse()) {
+      _selectionTracker.clear(projectId: _projectId);
+    }
+
     if (isClosed) return;
 
     switch (response) {
       case SuccessResponse(:final data):
-        // The composer is done; drop the persisted selection so the next new
-        // session for this project starts from the default (mirrors how a sent
-        // prompt clears its text draft).
-        _selectionStore.clear(_projectId);
         emit(NewSessionState.created(session: data));
       case ErrorResponse(:final error):
         loge("New session creation failed", error);

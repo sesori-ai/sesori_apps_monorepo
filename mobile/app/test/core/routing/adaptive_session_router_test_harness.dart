@@ -160,7 +160,7 @@ class AdaptiveSessionRouterTestHarness {
     getIt.registerSingleton<NotificationCanceller>(notificationCanceller);
     getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
     getIt.registerLazySingleton<DraftStore>(DraftStore.new);
-    getIt.registerLazySingleton<NewSessionSelectionStore>(NewSessionSelectionStore.new);
+    getIt.registerLazySingleton<NewSessionSelectionTracker>(NewSessionSelectionTracker.new);
     getIt.registerSingleton<AuthSession>(authSession);
 
     router = GoRouter(

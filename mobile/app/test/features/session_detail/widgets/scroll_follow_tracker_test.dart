@@ -67,6 +67,20 @@ void main() {
       expect(tracker.following, isTrue);
     });
 
+    testWidgets("a scroll-end on a list with no scrollable range does NOT toggle follow state", (tester) async {
+      // A bouncing overscroll on a short transcript can fire ScrollEnd with the
+      // pixels still displaced past the tolerance. With no scrollable range the
+      // list never left the edge, so _maybeReattach must not flip to detached.
+      final context = await pumpContext(tester);
+      tracker.handleScrollNotification(
+        notification: ScrollEndNotification(
+          metrics: _metrics(min: 0, max: 0, pixels: -50),
+          context: context,
+        ),
+      );
+      expect(tracker.following, isTrue);
+    });
+
     testWidgets("reattaches when a scroll settles back at the follow edge", (tester) async {
       final context = await pumpContext(tester);
       tracker.handleScrollNotification(

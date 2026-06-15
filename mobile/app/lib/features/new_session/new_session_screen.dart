@@ -30,7 +30,7 @@ class NewSessionScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => NewSessionCubit(
         sessionService: getIt<SessionService>(),
-        selectionStore: getIt<NewSessionSelectionStore>(),
+        selectionTracker: getIt<NewSessionSelectionTracker>(),
         projectId: projectId,
       ),
       child: _NewSessionBody(projectId: projectId, projectName: projectName),
