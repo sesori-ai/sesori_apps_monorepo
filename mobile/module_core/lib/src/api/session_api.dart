@@ -243,11 +243,11 @@ class SessionApi {
     );
   }
 
-  Future<ApiResponse<void>> rejectQuestion({required String requestId}) {
+  Future<ApiResponse<void>> rejectQuestion({required String requestId, required String? sessionId}) {
     return _client.post(
       "/question/reject",
       fromJson: SuccessEmptyResponse.fromJson,
-      body: RejectQuestionRequest(requestId: requestId),
+      body: RejectQuestionRequest(requestId: requestId, sessionId: sessionId),
     );
   }
 }

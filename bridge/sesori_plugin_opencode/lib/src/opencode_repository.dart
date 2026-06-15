@@ -221,6 +221,22 @@ class OpenCodeRepository {
     );
   }
 
+  Future<void> replyToQuestion({
+    required String questionId,
+    required String? directory,
+    required Map<String, dynamic> body,
+  }) {
+    return _api.replyToQuestion(
+      questionId: questionId,
+      directory: directory?.normalize(),
+      body: body,
+    );
+  }
+
+  Future<void> rejectQuestion({required String questionId}) {
+    return _api.rejectQuestion(questionId: questionId);
+  }
+
   Future<List<Session>> getSessions({required String worktree}) async {
     final (standardSessions, globalSessions) = await wait2(
       _api.listSessions(directory: worktree, roots: true),

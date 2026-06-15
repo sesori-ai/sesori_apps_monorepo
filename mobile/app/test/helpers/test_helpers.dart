@@ -170,8 +170,16 @@ void delegateSessionRepositoryToService({
       answers: invocation.namedArguments[#answers]! as List<ReplyAnswer>,
     ),
   );
-  when(() => repository.rejectQuestion(requestId: any(named: "requestId"))).thenAnswer(
-    (invocation) => service.rejectQuestion(requestId: invocation.namedArguments[#requestId]! as String),
+  when(
+    () => repository.rejectQuestion(
+      requestId: any(named: "requestId"),
+      sessionId: any(named: "sessionId"),
+    ),
+  ).thenAnswer(
+    (invocation) => service.rejectQuestion(
+      requestId: invocation.namedArguments[#requestId]! as String,
+      sessionId: invocation.namedArguments[#sessionId] as String?,
+    ),
   );
   when(
     () => repository.getMessages(sessionId: any(named: "sessionId")),

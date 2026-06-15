@@ -968,7 +968,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     _onQuestionResolved(requestId);
     _notificationCanceller.cancelForSession(sessionId: _sessionId);
     try {
-      final result = await _sessionRepository.rejectQuestion(requestId: requestId);
+      final result = await _sessionRepository.rejectQuestion(requestId: requestId, sessionId: _sessionId);
       if (result case ErrorResponse(:final error)) {
         throw error;
       }

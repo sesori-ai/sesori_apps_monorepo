@@ -163,7 +163,9 @@ as List<ReplyAnswer>,
 /// @nodoc
 mixin _$RejectQuestionRequest {
 
- String get requestId;
+ String get requestId;// questions request id
+// ignore: no_slop_linter/prefer_required_named_parameters, optional for wire compatibility.
+ String? get sessionId;
 /// Create a copy of RejectQuestionRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -176,16 +178,16 @@ $RejectQuestionRequestCopyWith<RejectQuestionRequest> get copyWith => _$RejectQu
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RejectQuestionRequest&&(identical(other.requestId, requestId) || other.requestId == requestId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RejectQuestionRequest&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,requestId);
+int get hashCode => Object.hash(runtimeType,requestId,sessionId);
 
 @override
 String toString() {
-  return 'RejectQuestionRequest(requestId: $requestId)';
+  return 'RejectQuestionRequest(requestId: $requestId, sessionId: $sessionId)';
 }
 
 
@@ -196,7 +198,7 @@ abstract mixin class $RejectQuestionRequestCopyWith<$Res>  {
   factory $RejectQuestionRequestCopyWith(RejectQuestionRequest value, $Res Function(RejectQuestionRequest) _then) = _$RejectQuestionRequestCopyWithImpl;
 @useResult
 $Res call({
- String requestId
+ String requestId, String? sessionId
 });
 
 
@@ -213,10 +215,11 @@ class _$RejectQuestionRequestCopyWithImpl<$Res>
 
 /// Create a copy of RejectQuestionRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? requestId = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? requestId = null,Object? sessionId = freezed,}) {
   return _then(_self.copyWith(
 requestId: null == requestId ? _self.requestId : requestId // ignore: cast_nullable_to_non_nullable
-as String,
+as String,sessionId: freezed == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -228,10 +231,13 @@ as String,
 @JsonSerializable()
 
 class _RejectQuestionRequest implements RejectQuestionRequest {
-  const _RejectQuestionRequest({required this.requestId});
+  const _RejectQuestionRequest({required this.requestId, this.sessionId});
   factory _RejectQuestionRequest.fromJson(Map<String, dynamic> json) => _$RejectQuestionRequestFromJson(json);
 
 @override final  String requestId;
+// questions request id
+// ignore: no_slop_linter/prefer_required_named_parameters, optional for wire compatibility.
+@override final  String? sessionId;
 
 /// Create a copy of RejectQuestionRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -246,16 +252,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RejectQuestionRequest&&(identical(other.requestId, requestId) || other.requestId == requestId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RejectQuestionRequest&&(identical(other.requestId, requestId) || other.requestId == requestId)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,requestId);
+int get hashCode => Object.hash(runtimeType,requestId,sessionId);
 
 @override
 String toString() {
-  return 'RejectQuestionRequest(requestId: $requestId)';
+  return 'RejectQuestionRequest(requestId: $requestId, sessionId: $sessionId)';
 }
 
 
@@ -266,7 +272,7 @@ abstract mixin class _$RejectQuestionRequestCopyWith<$Res> implements $RejectQue
   factory _$RejectQuestionRequestCopyWith(_RejectQuestionRequest value, $Res Function(_RejectQuestionRequest) _then) = __$RejectQuestionRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String requestId
+ String requestId, String? sessionId
 });
 
 
@@ -283,10 +289,11 @@ class __$RejectQuestionRequestCopyWithImpl<$Res>
 
 /// Create a copy of RejectQuestionRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? requestId = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? requestId = null,Object? sessionId = freezed,}) {
   return _then(_RejectQuestionRequest(
 requestId: null == requestId ? _self.requestId : requestId // ignore: cast_nullable_to_non_nullable
-as String,
+as String,sessionId: freezed == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

@@ -17,8 +17,11 @@ sealed class ReplyToQuestionRequest with _$ReplyToQuestionRequest {
 
 @Freezed(fromJson: true, toJson: true)
 sealed class RejectQuestionRequest with _$RejectQuestionRequest {
+  // ignore: no_slop_linter/prefer_required_named_parameters, sessionId is intentionally optional for wire compatibility.
   const factory RejectQuestionRequest({
     required String requestId, // questions request id
+    // ignore: no_slop_linter/prefer_required_named_parameters, optional for wire compatibility.
+    String? sessionId,
   }) = _RejectQuestionRequest;
 
   factory RejectQuestionRequest.fromJson(Map<String, dynamic> json) => _$RejectQuestionRequestFromJson(json);

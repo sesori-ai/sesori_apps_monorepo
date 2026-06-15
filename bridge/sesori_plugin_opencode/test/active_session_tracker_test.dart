@@ -814,6 +814,54 @@ void main() {
         expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isFalse);
       });
 
+      test("clearPendingQuestion by sessionId and id clears awaitingInput and fires change", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/repo")],
+        );
+
+        tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
+        tracker.handleEvent(_sessionBusy("s1"), null);
+        tracker.handleEvent(_questionAsked("q1", "s1"), null);
+        expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
+
+        final changed = tracker.clearPendingQuestion(questionId: "q1", sessionId: "s1");
+
+        expect(changed, isTrue);
+        expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isFalse);
+      });
+
+      test("clearPendingQuestion scans by id when sessionId is absent", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/repo")],
+        );
+
+        tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
+        tracker.handleEvent(_sessionBusy("s1"), null);
+        tracker.handleEvent(_questionAsked("q1", "s1"), null);
+        expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
+
+        final changed = tracker.clearPendingQuestion(questionId: "q1");
+
+        expect(changed, isTrue);
+        expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isFalse);
+      });
+
+      test("clearPendingPermission clears awaitingInput and fires change", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/repo")],
+        );
+
+        tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
+        tracker.handleEvent(_sessionBusy("s1"), null);
+        tracker.handleEvent(_permissionAsked("p1", "s1"), null);
+        expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
+
+        final changed = tracker.clearPendingPermission(sessionId: "s1", requestId: "p1");
+
+        expect(changed, isTrue);
+        expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isFalse);
+      });
+
       test("child session pending question bubbles up to root awaitingInput", () async {
         final tracker = await _coldStartedTracker(
           projects: [const Project(id: "p1", worktree: "/repo")],
@@ -1105,7 +1153,8 @@ class _FakeApi implements OpenCodeApi {
   Future<List<Session>> listRootSessions() async => _sessions;
 
   @override
-  Future<List<Session>> listSessions({String? directory, required bool roots}) async => roots ? _sessions.where((s) => s.parentID == null).toList() : _sessions;
+  Future<List<Session>> listSessions({String? directory, required bool roots}) async =>
+      roots ? _sessions.where((s) => s.parentID == null).toList() : _sessions;
 
   @override
   Future<List<Command>> listCommands({required String? directory}) async => const [];

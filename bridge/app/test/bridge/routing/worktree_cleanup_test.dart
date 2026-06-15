@@ -365,10 +365,12 @@ class _FakeBridgePlugin implements BridgePluginApi {
   }) async => throw UnimplementedError();
 
   @override
-  Future<PluginSession> renameSession({required String sessionId, required String title}) async => throw UnimplementedError();
+  Future<PluginSession> renameSession({required String sessionId, required String title}) async =>
+      throw UnimplementedError();
 
   @override
-  Future<PluginProject> renameProject({required String projectId, required String name}) async => throw UnimplementedError();
+  Future<PluginProject> renameProject({required String projectId, required String name}) async =>
+      throw UnimplementedError();
 
   @override
   Future<void> deleteSession(String sessionId) async {}
@@ -424,7 +426,7 @@ class _FakeBridgePlugin implements BridgePluginApi {
   }) async {}
 
   @override
-  Future<void> rejectQuestion(String questionId) async {}
+  Future<void> rejectQuestion({required String questionId, required String? sessionId}) async {}
 
   @override
   Future<void> replyToPermission({
@@ -440,7 +442,8 @@ class _FakeBridgePlugin implements BridgePluginApi {
   Future<bool> healthCheck() async => true;
 
   @override
-  Future<PluginProvidersResult> getProviders({required String projectId}) async => const PluginProvidersResult(providers: []);
+  Future<PluginProvidersResult> getProviders({required String projectId}) async =>
+      const PluginProvidersResult(providers: []);
 
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() => [];

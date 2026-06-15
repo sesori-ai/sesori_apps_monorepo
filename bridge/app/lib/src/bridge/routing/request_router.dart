@@ -4,6 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/permission_repository.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/provider_repository.dart";
+import "../repositories/question_repository.dart";
 import "../repositories/session_repository.dart";
 import "../services/pr_sync_service.dart";
 import "../services/session_archive_service.dart";
@@ -65,6 +66,7 @@ class RequestRouter {
     required ProjectRepository projectRepository,
     required ProviderRepository providerRepository,
     required PermissionRepository permissionRepository,
+    required QuestionRepository questionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
     required GetSessionDiffsHandler sessionDiffsHandler,
@@ -82,6 +84,7 @@ class RequestRouter {
          projectRepository: projectRepository,
          providerRepository: providerRepository,
          permissionRepository: permissionRepository,
+         questionRepository: questionRepository,
          sessionPersistenceService: sessionPersistenceService,
          worktreeService: worktreeService,
          sessionDiffsHandler: sessionDiffsHandler,
@@ -101,6 +104,7 @@ class RequestRouter {
     required ProjectRepository projectRepository,
     required ProviderRepository providerRepository,
     required PermissionRepository permissionRepository,
+    required QuestionRepository questionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
     required GetSessionDiffsHandler sessionDiffsHandler,
@@ -137,8 +141,8 @@ class RequestRouter {
       postAgentsHandler,
       GetSessionQuestionsHandler(plugin),
       GetProjectQuestionsHandler(plugin),
-      ReplyToQuestionHandler(plugin),
-      RejectQuestionHandler(plugin),
+      ReplyToQuestionHandler(questionRepository: questionRepository),
+      RejectQuestionHandler(questionRepository: questionRepository),
       ReplyToPermissionHandler(permissionRepository: permissionRepository),
       RenameProjectHandler(plugin),
       CreateProjectHandler(plugin),

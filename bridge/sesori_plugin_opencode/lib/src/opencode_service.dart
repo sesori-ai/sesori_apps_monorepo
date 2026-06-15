@@ -269,16 +269,54 @@ class OpenCodeService {
     return model;
   }
 
-  Future<void> replyToPermission({
+  Future<bool> replyToQuestion({
+    required String questionId,
+    required String sessionId,
+    required List<List<String>> answers,
+  }) async {
+    final directory = tracker.getSessionDirectory(sessionId: sessionId);
+    try {
+      await repository.replyToQuestion(
+        questionId: questionId,
+        directory: directory,
+        body: {"answers": answers},
+      );
+    } on OpenCodeApiException catch (e) {
+      if (e.statusCode != 404) rethrow;
+      Log.w("question already resolved upstream (404), reconciling tracker: ${e.endpoint}");
+    }
+    return tracker.clearPendingQuestion(questionId: questionId, sessionId: sessionId);
+  }
+
+  Future<bool> rejectQuestion({
+    required String questionId,
+    required String? sessionId,
+  }) async {
+    try {
+      await repository.rejectQuestion(questionId: questionId);
+    } on OpenCodeApiException catch (e) {
+      if (e.statusCode != 404) rethrow;
+      Log.w("question already resolved upstream (404), reconciling tracker: ${e.endpoint}");
+    }
+    return tracker.clearPendingQuestion(questionId: questionId, sessionId: sessionId);
+  }
+
+  Future<bool> replyToPermission({
     required String requestId,
     required String sessionId,
     required PluginPermissionReply reply,
-  }) {
-    return repository.replyToPermission(
-      requestId: requestId,
-      sessionId: sessionId,
-      reply: reply,
-    );
+  }) async {
+    try {
+      await repository.replyToPermission(
+        requestId: requestId,
+        sessionId: sessionId,
+        reply: reply,
+      );
+    } on OpenCodeApiException catch (e) {
+      if (e.statusCode != 404) rethrow;
+      Log.w("permission already resolved upstream (404), reconciling tracker: ${e.endpoint}");
+    }
+    return tracker.clearPendingPermission(sessionId: sessionId, requestId: requestId);
   }
 
   bool handleSseEvent(SseEventData event, String? directory) {

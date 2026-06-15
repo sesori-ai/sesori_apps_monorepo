@@ -709,6 +709,155 @@ void main() {
       expect(result, equals(tracker.summary));
     });
   });
+
+  group("OpenCodeService pending input actions", () {
+    test("replyToQuestion 200 clears tracker and returns change", () async {
+      final repository = FakeOpenCodeRepository();
+      final tracker = FakeActiveSessionTracker(
+        sessionDirectories: const {"ses-1": "/repo"},
+        clearPendingQuestionChanged: true,
+      );
+      final service = OpenCodeService(repository, tracker);
+
+      final changed = await service.replyToQuestion(
+        questionId: "q1",
+        sessionId: "ses-1",
+        answers: const [
+          ["yes"],
+        ],
+      );
+
+      expect(changed, isTrue);
+      expect(repository.lastReplyQuestionId, equals("q1"));
+      expect(repository.lastReplyQuestionDirectory, equals("/repo"));
+      expect(
+        repository.lastReplyQuestionBody,
+        equals({
+          "answers": const [
+            ["yes"],
+          ],
+        }),
+      );
+      expect(tracker.lastClearedQuestionId, equals("q1"));
+      expect(tracker.lastClearedQuestionSessionId, equals("ses-1"));
+    });
+
+    test("regression: question reply without SSE echo clears awaitingInput", () async {
+      final repository = FakeOpenCodeRepository(
+        projects: [const Project(id: "p1", worktree: "/repo")],
+      );
+      final tracker = ActiveSessionTracker(repository);
+      await tracker.coldStart();
+      tracker.handleEvent(
+        const SseEventData.sessionCreated(
+          info: Session(id: "ses-1", projectID: "p1", directory: "/repo"),
+        ),
+        null,
+      );
+      tracker.handleEvent(const SseEventData.sessionStatus(sessionID: "ses-1", status: SessionStatus.busy()), null);
+      tracker.handleEvent(_questionAsked("q1", "ses-1"), null);
+      final service = OpenCodeService(repository, tracker);
+
+      expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
+
+      final changed = await service.replyToQuestion(
+        questionId: "q1",
+        sessionId: "ses-1",
+        answers: const [
+          ["yes"],
+        ],
+      );
+
+      expect(changed, isTrue);
+      expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isFalse);
+    });
+
+    test("replyToQuestion 404 clears tracker and returns change", () async {
+      final repository = FakeOpenCodeRepository(
+        replyToQuestionError: OpenCodeApiException("POST /question/q1/reply", 404),
+      );
+      final tracker = FakeActiveSessionTracker(
+        sessionDirectories: const {"ses-1": "/repo"},
+        clearPendingQuestionChanged: true,
+      );
+      final service = OpenCodeService(repository, tracker);
+
+      final changed = await service.replyToQuestion(questionId: "q1", sessionId: "ses-1", answers: const []);
+
+      expect(changed, isTrue);
+      expect(tracker.lastClearedQuestionId, equals("q1"));
+    });
+
+    test("replyToQuestion non-404 does not clear and rethrows", () async {
+      final error = OpenCodeApiException("POST /question/q1/reply", 500);
+      final repository = FakeOpenCodeRepository(replyToQuestionError: error);
+      final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
+      final service = OpenCodeService(repository, tracker);
+
+      await expectLater(
+        service.replyToQuestion(questionId: "q1", sessionId: "ses-1", answers: const []),
+        throwsA(same(error)),
+      );
+      expect(tracker.lastClearedQuestionId, isNull);
+    });
+
+    test("replyToQuestion timeout does not clear and rethrows", () async {
+      final error = TimeoutException("timed out");
+      final repository = FakeOpenCodeRepository(replyToQuestionError: error);
+      final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
+      final service = OpenCodeService(repository, tracker);
+
+      await expectLater(
+        service.replyToQuestion(questionId: "q1", sessionId: "ses-1", answers: const []),
+        throwsA(same(error)),
+      );
+      expect(tracker.lastClearedQuestionId, isNull);
+    });
+
+    test("rejectQuestion 404 clears tracker using optional sessionId", () async {
+      final repository = FakeOpenCodeRepository(
+        rejectQuestionError: OpenCodeApiException("POST /question/q1/reject", 404),
+      );
+      final tracker = FakeActiveSessionTracker(clearPendingQuestionChanged: true);
+      final service = OpenCodeService(repository, tracker);
+
+      final changed = await service.rejectQuestion(questionId: "q1", sessionId: null);
+
+      expect(changed, isTrue);
+      expect(tracker.lastClearedQuestionId, equals("q1"));
+      expect(tracker.lastClearedQuestionSessionId, isNull);
+    });
+
+    test("replyToPermission 200 clears tracker and returns change", () async {
+      final repository = FakeOpenCodeRepository();
+      final tracker = FakeActiveSessionTracker(clearPendingPermissionChanged: true);
+      final service = OpenCodeService(repository, tracker);
+
+      final changed = await service.replyToPermission(
+        requestId: "perm-1",
+        sessionId: "ses-1",
+        reply: PluginPermissionReply.once,
+      );
+
+      expect(changed, isTrue);
+      expect(repository.lastReplyPermissionRequestId, equals("perm-1"));
+      expect(tracker.lastClearedPermissionRequestId, equals("perm-1"));
+      expect(tracker.lastClearedPermissionSessionId, equals("ses-1"));
+    });
+
+    test("replyToPermission 400 does not clear and rethrows", () async {
+      final error = OpenCodeApiException("POST /permission/perm-1/reply", 400);
+      final repository = FakeOpenCodeRepository(replyToPermissionError: error);
+      final tracker = FakeActiveSessionTracker();
+      final service = OpenCodeService(repository, tracker);
+
+      await expectLater(
+        service.replyToPermission(requestId: "perm-1", sessionId: "ses-1", reply: PluginPermissionReply.once),
+        throwsA(same(error)),
+      );
+      expect(tracker.lastClearedPermissionRequestId, isNull);
+    });
+  });
 }
 
 plugin.MessageWithParts _msg(String role, String id) {
@@ -737,6 +886,14 @@ String? _messageId(plugin.MessageWithParts message) {
 
 PendingQuestion _question({required String id, required String sessionId}) {
   return PendingQuestion(id: id, sessionID: sessionId, questions: const []);
+}
+
+SseEventData _questionAsked(String id, String sessionId) {
+  return SseEventData.questionAsked(
+    id: id,
+    sessionID: sessionId,
+    questions: const [],
+  );
 }
 
 class FakeOpenCodeApi implements OpenCodeApi {
@@ -922,6 +1079,16 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   ({String providerID, String modelID})? lastSummarizeModel;
   String? lastDeletedSessionId;
   String? lastDeletedDirectory;
+  String? lastReplyQuestionId;
+  String? lastReplyQuestionDirectory;
+  Map<String, dynamic>? lastReplyQuestionBody;
+  Object? replyToQuestionError;
+  String? lastRejectQuestionId;
+  Object? rejectQuestionError;
+  String? lastReplyPermissionRequestId;
+  String? lastReplyPermissionSessionId;
+  PluginPermissionReply? lastReplyPermissionReply;
+  Object? replyToPermissionError;
   int getSessionCalls = 0;
   String? lastGetSessionId;
   String? lastGetSessionDirectory;
@@ -935,6 +1102,9 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     PluginSession? createdSession,
     List<plugin.MessageWithParts> messages = const [],
     Object? messagesError,
+    this.replyToQuestionError,
+    this.rejectQuestionError,
+    this.replyToPermissionError,
     Map<String, List<PendingQuestion>> pendingQuestionsByDirectory = const {},
     Map<String, List<PendingPermission>> pendingPermissionsByDirectory = const {},
   }) : _projects = projects,
@@ -1051,6 +1221,42 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   }
 
   @override
+  Future<void> replyToQuestion({
+    required String questionId,
+    required String? directory,
+    required Map<String, dynamic> body,
+  }) async {
+    if (replyToQuestionError case final error?) {
+      throw error;
+    }
+    lastReplyQuestionId = questionId;
+    lastReplyQuestionDirectory = directory;
+    lastReplyQuestionBody = body;
+  }
+
+  @override
+  Future<void> rejectQuestion({required String questionId}) async {
+    if (rejectQuestionError case final error?) {
+      throw error;
+    }
+    lastRejectQuestionId = questionId;
+  }
+
+  @override
+  Future<void> replyToPermission({
+    required String requestId,
+    required String sessionId,
+    required PluginPermissionReply reply,
+  }) async {
+    if (replyToPermissionError case final error?) {
+      throw error;
+    }
+    lastReplyPermissionRequestId = requestId;
+    lastReplyPermissionSessionId = sessionId;
+    lastReplyPermissionReply = reply;
+  }
+
+  @override
   Future<Session> getSession({
     required String sessionId,
     required String? directory,
@@ -1085,11 +1291,19 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   String? lastRegisteredDirectory;
   List<PendingQuestion> populatedQuestions = const [];
   List<PendingPermission> populatedPermissions = const [];
+  final bool clearPendingQuestionChanged;
+  final bool clearPendingPermissionChanged;
+  String? lastClearedQuestionId;
+  String? lastClearedQuestionSessionId;
+  String? lastClearedPermissionRequestId;
+  String? lastClearedPermissionSessionId;
 
   FakeActiveSessionTracker({
     this.summary = const [],
     Map<String, String> sessionDirectories = const {},
     this.resolvedWorktree,
+    this.clearPendingQuestionChanged = false,
+    this.clearPendingPermissionChanged = false,
   }) : _sessionDirectories = Map<String, String>.from(sessionDirectories),
        super(OpenCodeRepository(FakeOpenCodeApi()));
 
@@ -1128,6 +1342,20 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   @override
   void populatePendingPermissions({required List<PendingPermission> permissions}) {
     populatedPermissions = permissions;
+  }
+
+  @override
+  bool clearPendingQuestion({required String questionId, String? sessionId}) {
+    lastClearedQuestionId = questionId;
+    lastClearedQuestionSessionId = sessionId;
+    return clearPendingQuestionChanged;
+  }
+
+  @override
+  bool clearPendingPermission({required String sessionId, required String requestId}) {
+    lastClearedPermissionSessionId = sessionId;
+    lastClearedPermissionRequestId = requestId;
+    return clearPendingPermissionChanged;
   }
 
   @override

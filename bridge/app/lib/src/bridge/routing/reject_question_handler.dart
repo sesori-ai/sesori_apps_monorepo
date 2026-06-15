@@ -1,16 +1,18 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/question_repository.dart";
 import "request_handler.dart";
 
 /// Handles `POST /question/reject` — rejects a pending question.
 ///
-/// Question IDs are globally unique. No session context needed.
+/// Question IDs are globally unique. Session context is optional for backwards
+/// compatibility with older mobile clients.
 class RejectQuestionHandler extends BodyRequestHandler<RejectQuestionRequest, SuccessEmptyResponse> {
-  final BridgePluginApi _plugin;
+  final QuestionRepository _questionRepository;
 
-  RejectQuestionHandler(this._plugin)
-    : super(
+  RejectQuestionHandler({required QuestionRepository questionRepository})
+    : _questionRepository = questionRepository,
+      super(
         HttpMethod.post,
         "/question/reject",
         fromJson: RejectQuestionRequest.fromJson,
@@ -29,7 +31,10 @@ class RejectQuestionHandler extends BodyRequestHandler<RejectQuestionRequest, Su
       throw buildErrorResponse(request, 400, "empty request id");
     }
 
-    await _plugin.rejectQuestion(requestId);
+    await _questionRepository.rejectQuestion(
+      questionId: requestId,
+      sessionId: body.sessionId,
+    );
 
     return const SuccessEmptyResponse();
   }

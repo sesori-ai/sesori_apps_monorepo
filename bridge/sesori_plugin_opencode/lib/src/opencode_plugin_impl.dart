@@ -398,17 +398,15 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     required String questionId,
     required String sessionId,
     required List<List<String>> answers,
-  }) {
-    final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
-    return _call(
-      () => _service.repository.api.replyToQuestion(
+  }) async {
+    final changed = await _call(
+      () => _service.replyToQuestion(
         questionId: questionId,
-        directory: directory,
-        body: {
-          "answers": answers,
-        },
+        sessionId: sessionId,
+        answers: answers,
       ),
     );
+    if (changed) _emitProjectsSummary();
   }
 
   @override
@@ -416,23 +414,26 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     required String requestId,
     required String sessionId,
     required PluginPermissionReply reply,
-  }) {
-    return _call(
+  }) async {
+    final changed = await _call(
       () => _service.replyToPermission(
         requestId: requestId,
         sessionId: sessionId,
         reply: reply,
       ),
     );
+    if (changed) _emitProjectsSummary();
   }
 
   @override
-  Future<void> rejectQuestion(String questionId) {
-    return _call(
-      () => _service.repository.api.rejectQuestion(
+  Future<void> rejectQuestion({required String questionId, required String? sessionId}) async {
+    final changed = await _call(
+      () => _service.rejectQuestion(
         questionId: questionId,
+        sessionId: sessionId,
       ),
     );
+    if (changed) _emitProjectsSummary();
   }
 
   @override

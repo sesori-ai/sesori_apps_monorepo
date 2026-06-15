@@ -1,16 +1,17 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/question_repository.dart";
 import "request_handler.dart";
 
 /// Handles `POST /question/reply` — replies to a pending question.
 ///
 /// Question IDs are globally unique in the backend.
 class ReplyToQuestionHandler extends BodyRequestHandler<ReplyToQuestionRequest, SuccessEmptyResponse> {
-  final BridgePluginApi _plugin;
+  final QuestionRepository _questionRepository;
 
-  ReplyToQuestionHandler(this._plugin)
-    : super(
+  ReplyToQuestionHandler({required QuestionRepository questionRepository})
+    : _questionRepository = questionRepository,
+      super(
         HttpMethod.post,
         "/question/reply",
         fromJson: ReplyToQuestionRequest.fromJson,
@@ -33,12 +34,10 @@ class ReplyToQuestionHandler extends BodyRequestHandler<ReplyToQuestionRequest, 
       throw buildErrorResponse(request, 400, "empty session id");
     }
 
-    final answers = body.answers.map((answer) => answer.values).toList();
-
-    await _plugin.replyToQuestion(
+    await _questionRepository.replyToQuestion(
       questionId: requestId,
       sessionId: sessionId,
-      answers: answers,
+      answers: body.answers,
     );
 
     return const SuccessEmptyResponse();

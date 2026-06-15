@@ -13,6 +13,7 @@ import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
@@ -78,29 +79,30 @@ void main() {
         sessionRepository: sessionRepository,
         projectRepository: ProjectRepository(plugin: plugin, projectsDao: database.projectsDao),
         permissionRepository: PermissionRepository(plugin: plugin),
+        questionRepository: QuestionRepository(plugin: plugin),
         sessionPersistenceService: SessionPersistenceService(
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           db: database,
         ),
         worktreeService: WorktreeService(
-        worktreeRepository: WorktreeRepository(
-          projectsDao: database.projectsDao,
-          sessionDao: database.sessionDao,
-          gitApi: GitCliApi(
-            processRunner: FakeProcessRunner((
-              String executable,
-              List<String> arguments, {
-              Map<String, String>? environment,
-              String? workingDirectory,
-              Duration timeout = const Duration(seconds: 15),
-            }) async {
-              return ProcessResult(0, 127, "", "command not found");
-            }),
-            gitPathExists: ({required String gitPath}) => true,
+          worktreeRepository: WorktreeRepository(
+            projectsDao: database.projectsDao,
+            sessionDao: database.sessionDao,
+            gitApi: GitCliApi(
+              processRunner: FakeProcessRunner((
+                String executable,
+                List<String> arguments, {
+                Map<String, String>? environment,
+                String? workingDirectory,
+                Duration timeout = const Duration(seconds: 15),
+              }) async {
+                return ProcessResult(0, 127, "", "command not found");
+              }),
+              gitPathExists: ({required String gitPath}) => true,
+            ),
+            plugin: plugin,
           ),
-          plugin: plugin,
-        ),
         ),
         sessionEventEnrichmentService: SessionEventEnrichmentService(
           sessionRepository: sessionRepository,
@@ -191,7 +193,7 @@ class _TestHarness {
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(""),
-        bridgeIdProvider: FakeBridgeIdProvider(),
+      bridgeIdProvider: FakeBridgeIdProvider(),
     );
 
     final metadataService = FakeMetadataService();
@@ -261,6 +263,7 @@ class _TestHarness {
       sessionRepository: sessionRepository,
       projectRepository: projectRepository,
       permissionRepository: permissionRepository,
+      questionRepository: QuestionRepository(plugin: plugin),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -478,7 +481,7 @@ class _ThrowingSummaryPlugin implements BridgePluginApi {
   }) async {}
 
   @override
-  Future<void> rejectQuestion(String questionId) async {}
+  Future<void> rejectQuestion({required String questionId, required String? sessionId}) async {}
 
   @override
   Future<void> replyToPermission({

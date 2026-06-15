@@ -1207,7 +1207,7 @@ class _FakeBridgePlugin implements BridgePluginApi {
   }) async {}
 
   @override
-  Future<void> rejectQuestion(String questionId) async {}
+  Future<void> rejectQuestion({required String questionId, required String? sessionId}) async {}
 
   @override
   Future<void> replyToPermission({

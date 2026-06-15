@@ -155,6 +155,29 @@ class ActiveSessionTracker {
         return false;
     }
 
+    return _detectEmitChange(forceReemit: forceReemit);
+  }
+
+  bool clearPendingQuestion({required String questionId, String? sessionId}) {
+    if (sessionId != null) {
+      _removePendingQuestion(sessionId: sessionId, requestId: questionId);
+    } else {
+      for (final entry in _pendingQuestions.entries.toList()) {
+        entry.value.remove(questionId);
+        if (entry.value.isEmpty) {
+          _pendingQuestions.remove(entry.key);
+        }
+      }
+    }
+    return _detectEmitChange();
+  }
+
+  bool clearPendingPermission({required String sessionId, required String requestId}) {
+    _removePendingPermission(sessionId: sessionId, requestId: requestId);
+    return _detectEmitChange();
+  }
+
+  bool _detectEmitChange({bool forceReemit = false}) {
     final next = _activeSessionCounts;
     final nextRetry = _retryingSessionIds;
     final nextPendingInputSessions = _pendingInputSessions;
@@ -309,7 +332,8 @@ class ActiveSessionTracker {
         continue;
       }
       final children = activeChildrenByParent[rootId] ?? const <String>[];
-      final isRetrying = _sessionStatuses[rootId] is SessionStatusRetry ||
+      final isRetrying =
+          _sessionStatuses[rootId] is SessionStatusRetry ||
           children.any((childId) => _sessionStatuses[childId] is SessionStatusRetry);
       byWorktree
           .putIfAbsent(worktree, () => [])
@@ -355,10 +379,7 @@ class ActiveSessionTracker {
   /// Tracking individual IDs rather than counts ensures session-level swaps
   /// (A stops retrying while B starts) are also detected.
   Set<String> get _retryingSessionIds {
-    return _sessionStatuses.entries
-        .where((e) => e.value is SessionStatusRetry)
-        .map((e) => e.key)
-        .toSet();
+    return _sessionStatuses.entries.where((e) => e.value is SessionStatusRetry).map((e) => e.key).toSet();
   }
 
   /// Exposed for testing: raw count of all busy/retry sessions per worktree.

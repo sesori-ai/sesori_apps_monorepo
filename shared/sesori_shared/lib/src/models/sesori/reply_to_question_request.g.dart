@@ -24,11 +24,17 @@ Map<String, dynamic> _$ReplyToQuestionRequestToJson(
 };
 
 _RejectQuestionRequest _$RejectQuestionRequestFromJson(Map json) =>
-    _RejectQuestionRequest(requestId: json['requestId'] as String);
+    _RejectQuestionRequest(
+      requestId: json['requestId'] as String,
+      sessionId: json['sessionId'] as String?,
+    );
 
 Map<String, dynamic> _$RejectQuestionRequestToJson(
   _RejectQuestionRequest instance,
-) => <String, dynamic>{'requestId': instance.requestId};
+) => <String, dynamic>{
+  'requestId': instance.requestId,
+  'sessionId': instance.sessionId,
+};
 
 _ReplyAnswer _$ReplyAnswerFromJson(Map json) => _ReplyAnswer(
   values: (json['values'] as List<dynamic>).map((e) => e as String).toList(),
