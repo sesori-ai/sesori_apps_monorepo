@@ -183,12 +183,6 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> {
     );
     final current = _chatController.messages;
     if (_entriesMatch(current: current, target: target)) return;
-    // Structural change: drop the id → index cache so the next build can
-    // never pair the new entry set with positions cached under a
-    // colliding signature. Unreachable with today's strictly id-sorted
-    // transcripts — defense-in-depth against future backend flows that
-    // could re-introduce a previously removed message id.
-    _indexSignature = null;
     unawaited(
       _chatController.setMessages(target, animated: false).catchError(
         (Object error, StackTrace stack) => loge("Failed to sync chat controller messages", error, stack),

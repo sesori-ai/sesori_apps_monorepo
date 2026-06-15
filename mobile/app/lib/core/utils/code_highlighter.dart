@@ -40,9 +40,6 @@ class CodeHighlighter {
     return kSyntaxLanguages.containsKey(mapped) ? mapped : null;
   }
 
-  /// True when [language] resolves to a grammar we can highlight.
-  static bool supports(String? language) => _resolve(language) != null;
-
   /// Returns a highlighted [TextSpan] for [code], or null when the language is
   /// unknown/unsupported. [baseStyle] supplies the font and default colour for
   /// untokenized text; per-token colours come from the GitHub light/dark theme
