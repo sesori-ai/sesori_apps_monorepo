@@ -184,6 +184,45 @@ void main() {
       expect(cast.info.sessionID, 'ses_abc');
       expect(cast.info, isA<MessageAssistant>());
     });
+
+    test('preserves the message time through a round-trip', () {
+      const message = Message.assistant(
+        id: 'msg_002',
+        sessionID: 'ses_abc',
+        agent: null,
+        modelID: null,
+        providerID: null,
+        time: MessageTime(created: 1718400000000, completed: 1718400005000),
+      );
+      const event = SesoriSseEvent.messageUpdated(info: message);
+
+      final parsed = SesoriSseEvent.fromJson(event.toJson()) as SesoriMessageUpdated;
+      expect(parsed.info.time, const MessageTime(created: 1718400000000, completed: 1718400005000));
+    });
+
+    test('parses time from a raw message.updated payload (live SSE path)', () {
+      // Mirrors the bridge's live streaming path, where the upstream wire
+      // message JSON (which nests time under the "time" key) is re-parsed
+      // straight into the shared Message model rather than going through
+      // the plugin mapper. A drift in either side's "time" key would drop
+      // timestamps on every streaming token, so guard it explicitly.
+      final parsed =
+          SesoriSseEvent.fromJson({
+                'type': 'message.updated',
+                'info': {
+                  'role': 'assistant',
+                  'id': 'msg_003',
+                  'sessionID': 'ses_abc',
+                  'agent': null,
+                  'modelID': null,
+                  'providerID': null,
+                  'time': {'created': 1718400000000, 'completed': null},
+                },
+              })
+              as SesoriMessageUpdated;
+
+      expect(parsed.info.time, const MessageTime(created: 1718400000000, completed: null));
+    });
   });
 
   group('serverHeartbeat round-trip', () {
