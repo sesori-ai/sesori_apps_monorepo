@@ -1,5 +1,5 @@
 import "package:flutter/material.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 import "../../../core/extensions/build_context_x.dart";
 
 class BackgroundTasksHeader extends StatelessWidget {
@@ -16,7 +16,7 @@ class BackgroundTasksHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
+    final prego = context.prego;
     final loc = context.loc;
     final hasRunning = runningCount > 0;
 
@@ -33,28 +33,28 @@ class BackgroundTasksHeader extends StatelessWidget {
                 height: 16,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: zyra.colors.bgBrandSolid,
+                  color: prego.colors.bgBrandSolid,
                 ),
               )
             else
               Icon(
                 Icons.check_circle,
                 size: 16,
-                color: zyra.colors.bgBrandSolid,
+                color: prego.colors.bgBrandSolid,
               ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 hasRunning ? loc.backgroundTasksRunning(runningCount) : loc.backgroundTasksCompleted,
-                style: zyra.textTheme.textMd.bold.copyWith(
-                  color: zyra.colors.textPrimary,
+                style: prego.textTheme.textMd.bold.copyWith(
+                  color: prego.colors.textPrimary,
                 ),
               ),
             ),
             Icon(
               expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
               size: 20,
-              color: zyra.colors.textSecondary,
+              color: prego.colors.textSecondary,
             ),
           ],
         ),

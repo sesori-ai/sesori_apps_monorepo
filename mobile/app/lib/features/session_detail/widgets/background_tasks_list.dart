@@ -1,6 +1,6 @@
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 import "background_task_row.dart";
 import "background_tasks_toggle.dart";
 
@@ -24,7 +24,7 @@ class BackgroundTasksList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
+    final prego = context.prego;
     final hasRunning = runningTasks.isNotEmpty;
     final hasCompleted = completedTasks.isNotEmpty;
 
@@ -39,7 +39,7 @@ class BackgroundTasksList extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
-            color: zyra.colors.borderSecondary,
+            color: prego.colors.borderSecondary,
             width: 0.5,
           ),
         ),
@@ -51,7 +51,7 @@ class BackgroundTasksList extends StatelessWidget {
         separatorBuilder: (_, __) => Divider(
           height: 1,
           indent: 42,
-          color: zyra.colors.borderSecondary.withValues(alpha: 0.5),
+          color: prego.colors.borderSecondary.withValues(alpha: 0.5),
         ),
         itemBuilder: (context, index) {
           // Toggle button goes after visible tasks.

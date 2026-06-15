@@ -30,7 +30,7 @@ mobile/                     # Flutter workspace — mobile client
   app/                      # Flutter UI shell
   module_core/              # Pure Dart business logic
   module_auth/              # Auth & token lifecycle
-  module_zyra/              # Zyra design system — theme, fonts, icons, UI components
+  module_prego/              # Prego design system — theme, fonts, icons, UI components
 shared/
   sesori_shared/            # Shared crypto & protocol types
   no_slop_linter/           # Custom Dart lint rules (dev tooling)
@@ -49,7 +49,7 @@ graph TD
   sesori_plugin_opencode --> sesori_shared
   mobile_app[mobile/app] --> module_core[mobile/module_core]
   mobile_app --> module_auth[mobile/module_auth]
-  mobile_app --> module_zyra[mobile/module_zyra]
+  mobile_app --> module_prego[mobile/module_prego]
   mobile_app --> sesori_shared
   module_core --> module_auth
   module_core --> sesori_shared
@@ -132,12 +132,12 @@ Each directory (bridge/, mobile/, or shared/) ships a Makefile with the same cor
 | `make analyze` | Static analysis across modules |
 | `make test` | Run unit tests across modules |
 
-`mobile/` adds design-system helpers for the Zyra module:
+`mobile/` adds design-system helpers for the Prego module:
 
 | Target | What it does |
 |---|---|
 | `make generate-assets` | Regenerate the Tabler/VESPR icon-font Dart bindings |
-| `make generate-tokens` | Sync Figma design tokens into `module_zyra` |
+| `make generate-tokens` | Sync Figma design tokens into `module_prego` |
 
 The root `Makefile` manages cross-workspace versioning:
 

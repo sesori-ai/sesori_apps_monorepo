@@ -246,6 +246,61 @@ void main() {
     });
   });
 
+  group("OpenCodeService.getPendingQuestionsForSession", () {
+    test("returns root-session question with known directory", () async {
+      final repository = FakeOpenCodeRepository(
+        pendingQuestionsByDirectory: {
+          "/repo": [_question(id: "q-root", sessionId: "root")],
+        },
+      );
+      final tracker = FakeActiveSessionTracker(sessionDirectories: const {"root": "/repo"});
+      final service = OpenCodeService(repository, tracker);
+
+      final questions = await service.getPendingQuestionsForSession(sessionId: "root");
+
+      expect(questions.map((question) => question.id), equals(["q-root"]));
+      expect(repository.pendingQuestionDirectories, equals(["/repo"]));
+      expect(repository.getSessionCalls, equals(0));
+    });
+
+    test("resolves unknown directory via getSession, registers it, and returns question", () async {
+      final repository = FakeOpenCodeRepository(
+        sessions: const [Session(id: "root", projectID: "p1", directory: "/repo")],
+        pendingQuestionsByDirectory: {
+          "/repo": [_question(id: "q-root", sessionId: "root")],
+        },
+      );
+      final tracker = FakeActiveSessionTracker();
+      final service = OpenCodeService(repository, tracker);
+
+      final questions = await service.getPendingQuestionsForSession(sessionId: "root");
+
+      expect(questions.map((question) => question.id), equals(["q-root"]));
+      expect(repository.lastGetSessionId, equals("root"));
+      expect(repository.lastGetSessionDirectory, isNull);
+      expect(tracker.lastRegisteredSessionId, equals("root"));
+      expect(tracker.lastRegisteredDirectory, equals("/repo"));
+      expect(repository.pendingQuestionDirectories, equals(["/repo"]));
+    });
+
+    test("excludes sibling-root questions in the same directory", () async {
+      final repository = FakeOpenCodeRepository(
+        pendingQuestionsByDirectory: {
+          "/repo": [
+            _question(id: "q-root", sessionId: "root"),
+            _question(id: "q-sibling", sessionId: "sibling"),
+          ],
+        },
+      );
+      final tracker = FakeActiveSessionTracker(sessionDirectories: const {"root": "/repo"});
+      final service = OpenCodeService(repository, tracker);
+
+      final questions = await service.getPendingQuestionsForSession(sessionId: "root");
+
+      expect(questions.map((question) => question.id), equals(["q-root"]));
+    });
+  });
+
   group("OpenCodeService.createSession", () {
     test("creates session, registers tracker directory, sends first prompt, and returns canonical project", () async {
       final tracker = FakeActiveSessionTracker(resolvedWorktree: "/canonical-repo");
@@ -680,10 +735,11 @@ String? _messageId(plugin.MessageWithParts message) {
   return message.info.id;
 }
 
-class FakeOpenCodeApi implements OpenCodeApi {
-  @override
-  String get serverURL => "http://fake";
+PendingQuestion _question({required String id, required String sessionId}) {
+  return PendingQuestion(id: id, sessionID: sessionId, questions: const []);
+}
 
+class FakeOpenCodeApi implements OpenCodeApi {
   List<plugin.MessageWithParts> messages;
   Object? messagesError;
   String? lastRequestedSessionId;
@@ -836,6 +892,8 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   final List<Session> _sessions;
   final List<PluginCommand> _commands;
   final PluginSession? _createdSession;
+  final Map<String, List<PendingQuestion>> _pendingQuestionsByDirectory;
+  final Map<String, List<PendingPermission>> _pendingPermissionsByDirectory;
   int getProjectsCalls = 0;
   int getSessionsCalls = 0;
   String? lastWorktree;
@@ -864,6 +922,11 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   ({String providerID, String modelID})? lastSummarizeModel;
   String? lastDeletedSessionId;
   String? lastDeletedDirectory;
+  int getSessionCalls = 0;
+  String? lastGetSessionId;
+  String? lastGetSessionDirectory;
+  final List<String?> pendingQuestionDirectories = [];
+  final List<String?> pendingPermissionDirectories = [];
 
   FakeOpenCodeRepository({
     List<Project> projects = const [],
@@ -872,10 +935,14 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     PluginSession? createdSession,
     List<plugin.MessageWithParts> messages = const [],
     Object? messagesError,
+    Map<String, List<PendingQuestion>> pendingQuestionsByDirectory = const {},
+    Map<String, List<PendingPermission>> pendingPermissionsByDirectory = const {},
   }) : _projects = projects,
        _sessions = sessions,
        _commands = commands,
        _createdSession = createdSession,
+       _pendingQuestionsByDirectory = pendingQuestionsByDirectory,
+       _pendingPermissionsByDirectory = pendingPermissionsByDirectory,
        api = FakeOpenCodeApi(messages: messages, messagesError: messagesError),
        super(FakeOpenCodeApi(messages: messages, messagesError: messagesError));
 
@@ -982,6 +1049,29 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     lastDeletedSessionId = sessionId;
     lastDeletedDirectory = directory;
   }
+
+  @override
+  Future<Session> getSession({
+    required String sessionId,
+    required String? directory,
+  }) async {
+    getSessionCalls += 1;
+    lastGetSessionId = sessionId;
+    lastGetSessionDirectory = directory;
+    return _sessions.firstWhere((session) => session.id == sessionId);
+  }
+
+  @override
+  Future<List<PendingQuestion>> getPendingQuestions({required String? directory}) async {
+    pendingQuestionDirectories.add(directory);
+    return _pendingQuestionsByDirectory[directory] ?? const [];
+  }
+
+  @override
+  Future<List<PendingPermission>> getPendingPermissions({required String? directory}) async {
+    pendingPermissionDirectories.add(directory);
+    return _pendingPermissionsByDirectory[directory] ?? const [];
+  }
 }
 
 class FakeActiveSessionTracker extends ActiveSessionTracker {
@@ -993,6 +1083,8 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   final String? resolvedWorktree;
   String? lastRegisteredSessionId;
   String? lastRegisteredDirectory;
+  List<PendingQuestion> populatedQuestions = const [];
+  List<PendingPermission> populatedPermissions = const [];
 
   FakeActiveSessionTracker({
     this.summary = const [],
@@ -1026,6 +1118,16 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   @override
   String? resolveProjectWorktree({required String directory}) {
     return resolvedWorktree;
+  }
+
+  @override
+  void populatePendingQuestions({required List<PendingQuestion> questions}) {
+    populatedQuestions = questions;
+  }
+
+  @override
+  void populatePendingPermissions({required List<PendingPermission> permissions}) {
+    populatedPermissions = permissions;
   }
 
   @override

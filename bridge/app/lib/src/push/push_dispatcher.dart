@@ -76,14 +76,24 @@ class PushDispatcher {
     required String? sessionId,
     required String? projectId,
   }) {
-    final collapseKey = "${category.id}-${sessionId ?? "global"}";
+    // Rate limiting stays per category + session so a throttled completion never
+    // suppresses a more urgent question (or vice versa) for the same session.
+    final rateLimitKey = "${category.id}-${sessionId ?? "global"}";
     if (!_rateLimiter.shouldSend(
       category: category,
-      collapseKey: collapseKey,
+      rateLimitKey: rateLimitKey,
       sessionId: sessionId,
     )) {
       return;
     }
+
+    // Session-scoped identity: every notification for a session collapses to one
+    // (replace + dismiss key), independent of category. The auth server maps this
+    // collapseKey to the Android notification.tag and the iOS apns-collapse-id, and
+    // mobile derives the same value via sessionNotificationId for local rendering.
+    final collapseKey = sessionId != null
+        ? sessionNotificationId(sessionId: sessionId).toString()
+        : "${category.id}-global";
 
     final payload = _contentBuilder.buildNotificationPayload(
       category: category,

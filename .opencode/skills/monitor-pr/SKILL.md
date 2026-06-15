@@ -38,19 +38,15 @@ act as follows, addressing everything in the report in one batch:
 | Approved + CI passing + 0 unresolved threads | Nothing to fix — summarize the PR state to the user. |
 | `— MERGED` / `— CLOSED` | The monitor already stopped itself. Nothing to do. |
 
-## After handling a report — ALWAYS flush
+## After handling a report — no manual flush needed
 
-Finish every handled cycle with:
-
-```
-pr_monitor(action: "flush", pr: "owner/repo#123")
-```
-
-This returns the current full status and advances the "new since last flush" baseline
-past your own pushes and replies, so they are not echoed back as new activity. Skipping
-this step causes a redundant wake-up report about your own follow-up comments.
+A delivered `[PR Monitor]` report has **already advanced** the "new since last flush"
+baseline, so the activity it reported is not echoed back at you. The report itself acts as
+the flush. Just handle everything in the report in one batch, then wait for the next report
+(or for merge/close). Do **not** flush as a routine step after handling a report.
 
 ## Other actions
 
 - `pr_monitor(action: "status")` — list this session's monitors (also useful before ending a work session).
-- `pr_monitor(action: "stop", pr: "owner/repo#123" | "all")` — stop watching without waiting for merge.
+- `pr_monitor(action: "flush", pr: "owner/repo#123")` or `pr_monitor(action: "flush", pr: "all")` — force an immediate full status report on demand (this also advances the baseline). Use it only when you want the current state right now instead of waiting for the next scheduled report — never as a routine step after handling a report.
+- `pr_monitor(action: "stop", pr: "owner/repo#123")` or `pr_monitor(action: "stop", pr: "all")` — stop watching without waiting for merge.

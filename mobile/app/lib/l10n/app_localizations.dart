@@ -1651,6 +1651,24 @@ abstract class AppLocalizations {
   /// **'Retry'**
   String get sessionDetailRetryLabel;
 
+  /// No description provided for @sessionDetailCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get sessionDetailCopy;
+
+  /// No description provided for @sessionDetailShowMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Show more'**
+  String get sessionDetailShowMore;
+
+  /// No description provided for @sessionDetailShowLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Show less'**
+  String get sessionDetailShowLess;
+
   /// No description provided for @emptySessionDetailTitle.
   ///
   /// In en, this message translates to:

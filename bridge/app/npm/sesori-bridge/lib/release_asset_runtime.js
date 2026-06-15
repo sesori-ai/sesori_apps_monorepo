@@ -17,6 +17,7 @@ var PLATFORM_ASSETS = {
   "linux x64": "sesori-bridge-linux-x64.tar.gz",
   "linux arm64": "sesori-bridge-linux-arm64.tar.gz",
   "win32 x64": "sesori-bridge-windows-x64.zip",
+  "win32 arm64": "sesori-bridge-windows-arm64.zip",
 };
 
 function readJson(filePath) {

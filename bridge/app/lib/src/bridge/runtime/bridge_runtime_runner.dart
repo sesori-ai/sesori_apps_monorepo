@@ -9,16 +9,19 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         BridgePlugin,
         BridgePluginDescriptor,
+        Console,
         Log,
         PluginConfig,
         PluginFailed,
         PluginStartAbortedException,
+        PluginUnavailable,
         ProcessIdentity,
         ProcessUser,
         ServerClock,
         StartAbortController,
         StartAbortSignal;
 
+import "../../api/bridge_settings_api.dart";
 import "../../auth/bridge_registration_api.dart";
 import "../../auth/bridge_registration_repository.dart";
 import "../../auth/bridge_registration_service.dart";
@@ -28,6 +31,7 @@ import "../../auth/login_oauth_api.dart";
 import "../../auth/login_oauth_service.dart";
 import "../../auth/token.dart";
 import "../../auth/token_manager.dart";
+import "../../repositories/bridge_settings_repository.dart";
 import "../../server/api/loopback_port_api.dart";
 import "../../server/api/runtime_file_api.dart";
 import "../../server/api/system_process_api.dart";
@@ -49,6 +53,7 @@ import "../../updater/api/file_replacement_api.dart";
 import "../../updater/api/github_releases_api.dart";
 import "../../updater/api/update_cache_api.dart";
 import "../../updater/api/update_download_api.dart";
+import "../../updater/foundation/release_track.dart";
 import "../../updater/foundation/update_lock.dart";
 import "../../updater/foundation/update_policy.dart";
 import "../../updater/foundation/update_relaunch_client.dart";
@@ -166,6 +171,7 @@ class BridgeRuntimeRunner {
           client: httpClient,
         ),
         browserLauncher: openOAuthBrowser,
+        browserOpenability: detectBrowserOpenability,
       ),
       environment: environment,
       loadTokens: loadTokens,
@@ -183,10 +189,29 @@ class BridgeRuntimeRunner {
         return 1;
       }
 
+      // Resolve the configured release track once, here in the composition
+      // root. Constructing settings access (BridgeSettingsApi reads HOME) or
+      // reading the config can throw; a settings failure must never block the
+      // bridge from starting, so any error falls back to the stable track.
+      ReleaseTrack? configuredTrack;
+      try {
+        final settingsRepository = BridgeSettingsRepository(api: BridgeSettingsApi());
+        configuredTrack = (await settingsRepository.loadSettings()).releaseTrack;
+      } on Object catch (error) {
+        Log.w("Failed to resolve release track; defaulting to stable: $error");
+      }
+      final releaseTrack = configuredTrack ?? ReleaseTrack.stable;
+      if (releaseTrack == ReleaseTrack.internal) {
+        Log.w("Release track: internal (pre-release auto-updates enabled)");
+      } else {
+        Log.d("Release track: ${releaseTrack.wireValue}");
+      }
+
       final updateService = _createUpdateService(
         httpClient: httpClient,
         processRunner: processRunner,
         managedRuntimePaths: managedRuntimePaths,
+        releaseTrack: releaseTrack,
       );
       await updateService.checkAndApplyUpdate(cliArgs: options.cliArgs);
 
@@ -206,6 +231,29 @@ class BridgeRuntimeRunner {
       final ownerSessionId = _buildOwnerSessionId(currentBridgeIdentity: currentBridgeIdentity);
 
       final descriptor = knownPlugins.firstWhere((descriptor) => descriptor.id == pluginId);
+
+      // Fail fast with clear, user-facing guidance if the selected plugin's
+      // backend is unavailable — BEFORE the startup mutex and single-live-bridge
+      // enforcement, so a missing backend (e.g. OpenCode not installed) can
+      // never terminate a healthy resident bridge. The probe is read-only.
+      final hostProcessService = BridgeHostProcessService(
+        processStarter: io.Process.start,
+        processRepository: processRepository,
+        clock: serverClock,
+        currentUser: currentUser,
+        isWindows: io.Platform.isWindows,
+        platform: io.Platform.operatingSystem,
+      );
+      final availability = await descriptor.checkAvailability(
+        config: pluginConfig,
+        processes: hostProcessService,
+        environment: environment,
+      );
+      if (availability is PluginUnavailable) {
+        Console.error(availability.message);
+        return 1;
+      }
+
       final startAbortController = StartAbortController();
       final pluginManager = PluginManager();
       pluginManager.register(
@@ -294,7 +342,7 @@ class BridgeRuntimeRunner {
       registerSignalHandlers(session: runtime.session, subscriptions: subscriptions);
       updateService.updateAvailable
           .listen((version) {
-            Log.i("A new bridge version ($version) is available. Restart to update.");
+            Console.message("A new bridge version ($version) is available. Restart to update.");
           })
           .addTo(subscriptions);
 
@@ -437,20 +485,36 @@ class BridgeRuntimeRunner {
     required http.Client httpClient,
     required ProcessRunner processRunner,
     required ManagedRuntimePaths managedRuntimePaths,
+    required ReleaseTrack releaseTrack,
   }) {
     final installedFileRepository = InstalledFileRepository(
       fileReplacementApi: FileReplacementApi(processRunner: processRunner),
     );
 
+    // Opportunistically authenticate GitHub release checks when a token is
+    // present in the environment. Unauthenticated requests share a 60/hour
+    // per-IP budget that is easily exhausted behind shared/NAT'd networks; a
+    // token lifts the bridge to the authenticated 5000/hour limit. Resolve the
+    // first non-empty value so a blank GITHUB_TOKEN does not shadow a valid
+    // GH_TOKEN.
+    final githubToken = [
+      io.Platform.environment['GITHUB_TOKEN'],
+      io.Platform.environment['GH_TOKEN'],
+    ].map((token) => token?.trim()).firstWhere(
+      (token) => token != null && token.isNotEmpty,
+      orElse: () => null,
+    );
+
     return UpdateService(
       releaseRepository: ReleaseRepository(
-        api: GitHubReleasesApi(httpClient: httpClient),
+        api: GitHubReleasesApi(httpClient: httpClient, authToken: githubToken),
         cache: UpdateCacheApi(
           cacheDirectory: managedRuntimePaths.cacheDirectory,
           clock: const Clock(),
         ),
         currentVersion: appVersion,
         target: currentDistributionTarget(),
+        track: releaseTrack,
       ),
       updateInstallerService: UpdateInstallService(
         updateArtifactRepository: UpdateArtifactRepository(

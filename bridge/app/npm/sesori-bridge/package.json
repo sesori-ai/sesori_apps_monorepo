@@ -10,7 +10,8 @@
     "@sesori/bridge-darwin-x64": "1.0.9",
     "@sesori/bridge-linux-x64": "1.0.9",
     "@sesori/bridge-linux-arm64": "1.0.9",
-    "@sesori/bridge-win32-x64": "1.0.9"
+    "@sesori/bridge-win32-x64": "1.0.9",
+    "@sesori/bridge-win32-arm64": "1.0.9"
   },
   "sesoriBridge": {
     "bootstrapOnly": true,

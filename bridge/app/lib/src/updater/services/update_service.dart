@@ -4,8 +4,10 @@ import 'dart:io';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
 import 'package:rxdart/rxdart.dart';
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 import 'package:sesori_shared/sesori_shared.dart';
 
+import '../foundation/github_rate_limit_exception.dart';
 import '../foundation/update_lock.dart';
 import '../foundation/update_policy.dart';
 import '../foundation/update_relaunch_client.dart';
@@ -61,6 +63,12 @@ class UpdateService {
   @visibleForTesting
   void Function(String message) writeToStderr = stderr.writeln;
 
+  @visibleForTesting
+  void Function(String message) logWarning = Log.w;
+
+  @visibleForTesting
+  void Function(String message, Object error, StackTrace stackTrace) logError = Log.e;
+
   UpdateService({
     required ReleaseRepository releaseRepository,
     required UpdateInstallService updateInstallerService,
@@ -99,9 +107,54 @@ class UpdateService {
     try {
       return await _releaseRepository.checkForNewerRelease();
     } on Object catch (error, stackTrace) {
-      writeToStderr('Warning: periodic update check failed: $error\n$stackTrace');
+      _reportUpdateFailure(
+        error: error,
+        stackTrace: stackTrace,
+        stageDescription: 'Periodic update check failed',
+      );
       return null;
     }
+  }
+
+  /// Logs a failed update attempt through [Log].
+  ///
+  /// A rate limit is an expected, benign condition for a best-effort updater,
+  /// so it is surfaced as a warning with a friendly explanation (and a hint to
+  /// authenticate) and no stack trace. Genuinely unexpected failures are logged
+  /// as errors with their [error] and [stackTrace]; [Log] only appends those at
+  /// debug/verbose levels, so normal output stays clean while `--log-level
+  /// debug` still gets full context. [stageDescription] distinguishes which
+  /// stage failed (check vs. install/restart).
+  void _reportUpdateFailure({
+    required Object error,
+    required StackTrace stackTrace,
+    required String stageDescription,
+  }) {
+    if (error is GitHubRateLimitException) {
+      logWarning(_rateLimitMessage(error));
+      return;
+    }
+    // Keep the concise cause on the default line (e.g. a timeout vs. a parse
+    // error); Log only appends the error object and stack trace at
+    // debug/verbose levels.
+    logError('$stageDescription: $error', error, stackTrace);
+  }
+
+  String _rateLimitMessage(GitHubRateLimitException error) {
+    final reset = error.resetAt;
+    final resetHint = reset == null ? '' : ' Limit resets around ${_formatLocalTime(reset)}.';
+    if (error.authenticated) {
+      return 'Skipping update check — GitHub API rate limit reached for the '
+          'authenticated token (usually a temporary secondary limit).$resetHint';
+    }
+    return 'Skipping update check — GitHub API rate limit reached. '
+        'Unauthenticated requests are capped at 60/hour per IP; set GITHUB_TOKEN '
+        '(or GH_TOKEN) to raise this to 5000/hour.$resetHint';
+  }
+
+  String _formatLocalTime(DateTime time) {
+    String pad(int value) => value.toString().padLeft(2, '0');
+    return '${pad(time.hour)}:${pad(time.minute)}';
   }
 
   Future<void> checkAndApplyUpdate({required List<String> cliArgs}) async {
@@ -162,9 +215,11 @@ class UpdateService {
         );
       }
     } on Object catch (error, stackTrace) {
-      if (hasTerminal()) {
-        writeToStderr('Warning: automatic update failed: $error\n$stackTrace');
-      }
+      _reportUpdateFailure(
+        error: error,
+        stackTrace: stackTrace,
+        stageDescription: 'Automatic update failed',
+      );
     }
   }
 

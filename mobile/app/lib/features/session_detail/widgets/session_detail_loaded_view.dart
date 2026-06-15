@@ -2,7 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/agent_model_buttons.dart";
@@ -14,6 +14,9 @@ import "session_detail_scaffold_sections.dart";
 
 class SessionDetailLoadedView extends StatelessWidget {
   final String? projectId;
+  // Session id, used as the composer draft key. Null in the read-only
+  // variant, which renders no prompt input.
+  final String? sessionId;
   final SessionDetailLoaded state;
   final bool readOnly;
   final VoidCallback onShowPendingQuestions;
@@ -29,6 +32,7 @@ class SessionDetailLoadedView extends StatelessWidget {
     required this.onShowPendingQuestions,
     required this.onShowPendingPermissions,
   }) : readOnly = true,
+       sessionId = null,
        onOpenAgentPicker = _noopCallback,
        onOpenModelPicker = _noopCallback,
        onOpenVariantPicker = _noopCallback;
@@ -36,6 +40,7 @@ class SessionDetailLoadedView extends StatelessWidget {
   const SessionDetailLoadedView.editable({
     super.key,
     required this.projectId,
+    required this.sessionId,
     required this.state,
     required this.onShowPendingQuestions,
     required this.onShowPendingPermissions,
@@ -55,16 +60,16 @@ class SessionDetailLoadedView extends StatelessWidget {
         if (state.pendingQuestions.isNotEmpty)
           SessionDetailPendingBanner(
             icon: Icons.help_outline,
-            backgroundColor: context.zyra.colors.bgBrandPrimary,
-            foregroundColor: context.zyra.colors.textBrandPrimary,
+            backgroundColor: context.prego.colors.bgBrandPrimary,
+            foregroundColor: context.prego.colors.textBrandPrimary,
             label: questionCount == 1 ? loc.questionBannerSingle : loc.questionBannerMultiple(questionCount),
             onTap: onShowPendingQuestions,
           ),
         if (state.pendingPermissions.isNotEmpty)
           SessionDetailPendingBanner(
             icon: Icons.shield_outlined,
-            backgroundColor: context.zyra.colors.bgSuccessPrimary,
-            foregroundColor: context.zyra.colors.textSuccessPrimary,
+            backgroundColor: context.prego.colors.bgSuccessPrimary,
+            foregroundColor: context.prego.colors.textSuccessPrimary,
             label: state.pendingPermissions.length == 1
                 ? loc.permissionBannerSingle
                 : loc.permissionBannerMultiple(state.pendingPermissions.length),
@@ -92,6 +97,7 @@ class SessionDetailLoadedView extends StatelessWidget {
           SessionDetailQueuedMessagesSection(messages: state.queuedMessages),
         if (!readOnly)
           PromptInput(
+            draftKey: sessionId,
             isBusy: hasActiveWork(
               sessionStatus: state.sessionStatus,
               childStatuses: state.childStatuses,

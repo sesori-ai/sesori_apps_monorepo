@@ -280,6 +280,7 @@ void main() {
             id: "m1",
             sessionID: "s1",
             agent: null,
+            time: null,
           ),
           parts: [],
         ),

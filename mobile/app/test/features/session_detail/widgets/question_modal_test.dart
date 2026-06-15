@@ -4,7 +4,7 @@ import "package:go_router/go_router.dart";
 import "package:sesori_mobile/features/session_detail/widgets/question_modal.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 class _ReplyCapture {
   String? requestId;
@@ -50,8 +50,8 @@ GoRouter _createRouter({
 Widget _buildApp({required GoRouter router}) {
   return MaterialApp.router(
     routerConfig: router,
-    theme: ThemeData(extensions: [ZyraDesignSystem.light]),
-    darkTheme: ThemeData(extensions: [ZyraDesignSystem.dark]),
+    theme: ThemeData(extensions: [PregoDesignSystem.light]),
+    darkTheme: ThemeData(extensions: [PregoDesignSystem.dark]),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
   );

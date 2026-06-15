@@ -1,6 +1,6 @@
 import "package:flutter/material.dart";
-import "package:theme_zyra/components/buttons/zyra_buttons_solid.dart";
-import "package:theme_zyra/icons/vespr_icons.g.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
+import "package:theme_prego/icons/vespr_icons.g.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 
@@ -31,10 +31,10 @@ class LoginProviderButtons extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ZyraButtonsSolid(
+        PregoButtonsSolid(
           label: loc.loginWithGithub,
-          hierarchy: ZyraButtonsSolidHierarchy.primaryAlt,
-          size: ZyraButtonsSolidSize.xl,
+          hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+          size: PregoButtonsSolidSize.xl,
           leadingIcon: VESPRSolid.github,
           isLoading: isLoading,
           fullWidth: true,
@@ -42,10 +42,10 @@ class LoginProviderButtons extends StatelessWidget {
         ),
         if (showApple) ...[
           const SizedBox(height: 12),
-          ZyraButtonsSolid(
+          PregoButtonsSolid(
             label: loc.loginWithApple,
-            hierarchy: ZyraButtonsSolidHierarchy.primaryAlt,
-            size: ZyraButtonsSolidSize.xl,
+            hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+            size: PregoButtonsSolidSize.xl,
             leadingIcon: VESPRSolid.apple,
             isLoading: isLoading,
             fullWidth: true,
@@ -53,10 +53,10 @@ class LoginProviderButtons extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 12),
-        ZyraButtonsSolid(
+        PregoButtonsSolid(
           label: loc.loginWithGoogle,
-          hierarchy: ZyraButtonsSolidHierarchy.primaryAlt,
-          size: ZyraButtonsSolidSize.xl,
+          hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+          size: PregoButtonsSolidSize.xl,
           leadingIcon: VESPRSolid.google,
           isLoading: isLoading,
           fullWidth: true,
@@ -64,10 +64,10 @@ class LoginProviderButtons extends StatelessWidget {
         ),
         if (!showEmailForm) ...[
           const SizedBox(height: 12),
-          ZyraButtonsSolid(
+          PregoButtonsSolid(
             label: loc.signInWithEmail,
-            hierarchy: ZyraButtonsSolidHierarchy.tertiary,
-            size: ZyraButtonsSolidSize.xl,
+            hierarchy: PregoButtonsSolidHierarchy.tertiary,
+            size: PregoButtonsSolidSize.xl,
             isLoading: isLoading,
             fullWidth: true,
             onPressed: isLoading ? null : onShowEmailForm,

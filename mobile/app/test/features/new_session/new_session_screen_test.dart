@@ -10,7 +10,7 @@ import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dar
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
 
@@ -58,8 +58,8 @@ Widget _buildApp() {
 
   return MaterialApp.router(
     routerConfig: router,
-    theme: ThemeData(extensions: [ZyraDesignSystem.light]),
-    darkTheme: ThemeData(extensions: [ZyraDesignSystem.dark]),
+    theme: ThemeData(extensions: [PregoDesignSystem.light]),
+    darkTheme: ThemeData(extensions: [PregoDesignSystem.dark]),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
   );
@@ -97,6 +97,7 @@ void main() {
 
     GetIt.instance.registerSingleton<SessionService>(sessionService);
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
+    GetIt.instance.registerSingleton<NewSessionSelectionTracker>(NewSessionSelectionTracker());
   });
 
   tearDown(() async {
@@ -340,6 +341,9 @@ void main() {
     // Simulate system back navigation (which should be allowed while sending).
     await tester.pageBack();
     await tester.pump();
+    // The snackbar is scheduled via a post-frame callback (so it stays safe
+    // when the pop is invoked during build), so pump once more to render it.
+    await tester.pump();
 
     // Snackbar should appear before the screen pops.
     expect(find.text(loc.newSessionLaunchingInBackground), findsOneWidget);
@@ -377,6 +381,9 @@ void main() {
 
     // User leaves while the creation request is still in flight.
     await tester.pageBack();
+    await tester.pump();
+    // The launching-in-background snackbar is deferred to a post-frame
+    // callback; pump once more to render it.
     await tester.pump();
     expect(find.text(loc.newSessionLaunchingInBackground), findsOneWidget);
 
@@ -498,5 +505,27 @@ void main() {
     await tester.pump();
 
     expect(find.text("retry message"), findsOneWidget);
+  });
+
+  testWidgets("persists and restores the per-project new-session draft", (tester) async {
+    final draftStore = DraftStore();
+    GetIt.instance.registerSingleton<DraftStore>(draftStore);
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), "half-written idea");
+    await tester.pump();
+
+    // Tear the screen down (e.g. the user navigates away) before creating a
+    // session — PromptInput.dispose() should persist the unsent prompt.
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+    expect(draftStore.read("new-session:project-1"), "half-written idea");
+
+    // Re-open the new-session screen — the per-project draft is restored.
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    expect(find.text("half-written idea"), findsOneWidget);
   });
 }

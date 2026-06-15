@@ -59,19 +59,32 @@ class BridgeShutdownCoordinator {
 
   Future<void> _shutdownInternal() async {
     final orderedBudget = _orderedSteps.fold(Duration.zero, (total, step) => total + step.budget);
+    final totalSw = Stopwatch()..start();
+    Log.d(
+      "[shutdown] coordinator start: ${_orderedSteps.length} ordered step(s), "
+      "${_disposables.length} disposable(s), backstop=${(orderedBudget + _backstopSlack).inSeconds}s",
+    );
     final backstop = Timer(orderedBudget + _backstopSlack, () {
-      Log.e("Failed to finish gracefully");
+      Log.e("Failed to finish gracefully after ${totalSw.elapsedMilliseconds}ms — forcing exit");
       _exitProcess(_backstopExitCode());
     });
 
     try {
       Object? firstOrderedError;
       StackTrace? firstOrderedStackTrace;
-      for (final step in _orderedSteps) {
+      for (var i = 0; i < _orderedSteps.length; i++) {
+        final step = _orderedSteps[i];
+        final stepSw = Stopwatch()..start();
+        Log.v(
+          "[shutdown] ordered step ${i + 1}/${_orderedSteps.length} start (budget=${step.budget.inSeconds}s)",
+        );
         try {
           await step.action();
+          Log.v(
+            "[shutdown] ordered step ${i + 1}/${_orderedSteps.length} done (${stepSw.elapsedMilliseconds}ms)",
+          );
         } catch (error, stackTrace) {
-          Log.e("Ordered shutdown step failed: $error");
+          Log.e("Ordered shutdown step failed after ${stepSw.elapsedMilliseconds}ms: $error");
           firstOrderedError ??= error;
           firstOrderedStackTrace ??= stackTrace;
         }
@@ -79,14 +92,18 @@ class BridgeShutdownCoordinator {
       // Future.sync (not Future.value(disposable())): a synchronously
       // throwing disposable must become a failed future, not abort the lazy
       // map iteration inside Future.wait and skip the disposables after it.
+      final parallelSw = Stopwatch()..start();
+      Log.v("[shutdown] parallel phase start (${_disposables.length} disposable(s))");
       await Future.wait(
         _disposables.map(Future.sync),
       );
+      Log.v("[shutdown] parallel phase done (${parallelSw.elapsedMilliseconds}ms)");
       if (firstOrderedError != null) {
         Error.throwWithStackTrace(firstOrderedError, firstOrderedStackTrace!);
       }
     } finally {
       backstop.cancel();
+      Log.d("[shutdown] coordinator complete (${totalSw.elapsedMilliseconds}ms total)");
     }
   }
 }

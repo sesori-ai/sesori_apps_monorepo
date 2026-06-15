@@ -91,6 +91,7 @@ jobs:
     needs: gate
     if: needs.gate.outputs.proceed == 'true'
     runs-on: ubuntu-latest
+    environment: store-production
     timeout-minutes: 30
     permissions:
       contents: read
@@ -152,6 +153,7 @@ jobs:
           verify_archive_checksum artifacts/sesori-bridge-linux-x64.tar.gz
           verify_archive_checksum artifacts/sesori-bridge-linux-arm64.tar.gz
           verify_archive_checksum artifacts/sesori-bridge-windows-x64.zip
+          verify_archive_checksum artifacts/sesori-bridge-windows-arm64.zip
 
       - name: Extract archives and copy runtime bundles
         shell: bash
@@ -160,7 +162,7 @@ jobs:
         run: |
           mkdir -p /tmp/bridges/macos-arm64 /tmp/bridges/macos-x64 \
                    /tmp/bridges/linux-x64 /tmp/bridges/linux-arm64 \
-                   /tmp/bridges/windows-x64
+                   /tmp/bridges/windows-x64 /tmp/bridges/windows-arm64
 
           copy_runtime_bundle() {
             local source_root="$1"
@@ -261,13 +263,21 @@ jobs:
             @sesori/bridge-win32-x64 \
             sesori-bridge-windows-x64.zip
 
+          unzip artifacts/sesori-bridge-windows-arm64.zip \
+                -d /tmp/bridges/windows-arm64
+          copy_runtime_bundle \
+            /tmp/bridges/windows-arm64 \
+            bridge/app/npm/sesori-bridge-win32-arm64 \
+            @sesori/bridge-win32-arm64 \
+            sesori-bridge-windows-arm64.zip
+
       - name: Publish platform packages
         shell: bash
         working-directory: bridge/app/npm
         run: |
           for pkg in sesori-bridge-darwin-arm64 sesori-bridge-darwin-x64 \
                      sesori-bridge-linux-x64 sesori-bridge-linux-arm64 \
-                     sesori-bridge-win32-x64; do
+                     sesori-bridge-win32-x64 sesori-bridge-win32-arm64; do
             echo "Publishing $pkg..."
             (cd "$pkg" && npm publish --access public)
           done
@@ -277,6 +287,7 @@ jobs:
     needs: [gate, publish-platform]
     if: needs.gate.outputs.proceed == 'true'
     runs-on: ubuntu-latest
+    environment: store-production
     timeout-minutes: 15
     permissions:
       contents: read

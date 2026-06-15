@@ -55,6 +55,7 @@ bridge/ workspace modules (siblings of app/):
 
 - **Plugin architecture** — all backend-specific code lives in sibling plugin packages under `bridge/` (e.g. `sesori_plugin_opencode`). The bridge `lib/src/` is plugin-agnostic — it only imports from `sesori_plugin_interface`, never from concrete plugins. `bin/bridge.dart`'s registry (`plugin_registry.dart`) imports `opencode_plugin` for the const descriptor — that is the supported descriptor registration point.
 - **Explicit routing** — every supported route has a dedicated handler; `RequestRouter` returns 404 for unmatched routes (no catch-all proxy).
+- **User-facing output vs logging** — use `Console` (from `sesori_plugin_interface`) for anything the user must see to operate the bridge: prompts, requests, the login URL/code, essential startup status. `Console.message` writes to stdout, `Console.error` to stderr, and neither is gated by `--log-level`. Use `Log` only for diagnostics that can be safely ignored; all `Log` levels write to stderr and are suppressible via `--log-level`. The bridge must stay fully operable with logging silenced (`--log-level error` or `2>/dev/null`), so never put an essential prompt or actionable status behind `Log`.
 - **Crypto from `sesori_shared`** — all crypto primitives imported from shared package, not duplicated
 - **Linting**: `package:lints/recommended.yaml` (lighter than mobile's `all_lint_rules`)
 - **Binary distribution**: npm wrapper package with platform-specific optional deps (darwin/linux/windows × arm64/x64)

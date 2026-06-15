@@ -51,6 +51,11 @@ const Duration openCodeHealthPollInterval = Duration(milliseconds: 500);
 /// cold-start keeps running in the background after the budget elapses.
 const Duration openCodeColdStartBudget = Duration(seconds: 15);
 
+/// Total budget for the pre-start `opencode --version` availability probe. A
+/// binary that hangs instead of promptly printing its version must not stall
+/// bridge startup, so the probe is treated as unavailable once this elapses.
+const Duration openCodeVersionProbeTimeout = Duration(seconds: 10);
+
 /// The loopback host OpenCode binds to and is probed on.
 const String openCodeLoopbackHost = "127.0.0.1";
 

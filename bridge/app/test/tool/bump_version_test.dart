@@ -34,6 +34,7 @@ class _FixtureApp {
     'sesori-bridge-linux-x64',
     'sesori-bridge-linux-arm64',
     'sesori-bridge-win32-x64',
+    'sesori-bridge-win32-arm64',
   ];
 }
 
@@ -83,6 +84,7 @@ dependencies:
         '@sesori/bridge-linux-x64': oldVersion,
         '@sesori/bridge-linux-arm64': oldVersion,
         '@sesori/bridge-win32-x64': oldVersion,
+        '@sesori/bridge-win32-arm64': oldVersion,
         '@sesori/not-bridge': '4.5.6',
       },
     },

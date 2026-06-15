@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
+import 'package:sesori_bridge/src/updater/foundation/github_rate_limit_exception.dart';
 import 'package:sesori_bridge/src/updater/foundation/update_lock.dart';
 import 'package:sesori_bridge/src/updater/foundation/update_relaunch_client.dart';
 import 'package:sesori_bridge/src/updater/models/file_replacement_result.dart';
@@ -223,6 +224,89 @@ void main() {
 
       expect(repository.checkCallCount, equals(1));
       expect(updater.performUpdateCallCount, equals(1));
+    });
+
+    test('unauthenticated rate limit → warning hints at GITHUB_TOKEN, not an error', () async {
+      final repository = _MockReleaseRepository()
+        ..onCheckForNewerRelease = () async =>
+            throw GitHubRateLimitException(resetAt: DateTime(2030, 1, 1, 9, 5), authenticated: false);
+      final service = _buildService(
+        repository: repository,
+        updater: _MockUpdateInstallerService(),
+        installedFileRepository: _MockInstalledFileRepository(),
+        updateRelaunchClient: _MockUpdateRelaunchClient(),
+        executablePath: '/usr/local/bin/sesori-bridge',
+        environment: const {},
+      );
+      final warnings = <String>[];
+      var errorLogged = false;
+      service.logWarning = warnings.add;
+      service.logError = (_, __, ___) => errorLogged = true;
+
+      await service.checkAndApplyUpdate(cliArgs: const []);
+
+      // A rate limit is benign: a warning, never an error.
+      expect(warnings, hasLength(1));
+      expect(warnings.single, contains('rate limit'));
+      expect(warnings.single, contains('GITHUB_TOKEN'));
+      expect(warnings.single, contains('09:05'));
+      expect(errorLogged, isFalse);
+    });
+
+    test('authenticated rate limit → warning does not tell the user to set a token', () async {
+      final repository = _MockReleaseRepository()
+        ..onCheckForNewerRelease = () async =>
+            throw GitHubRateLimitException(resetAt: DateTime(2030, 1, 1, 9, 5), authenticated: true);
+      final service = _buildService(
+        repository: repository,
+        updater: _MockUpdateInstallerService(),
+        installedFileRepository: _MockInstalledFileRepository(),
+        updateRelaunchClient: _MockUpdateRelaunchClient(),
+        executablePath: '/usr/local/bin/sesori-bridge',
+        environment: const {},
+      );
+      final warnings = <String>[];
+      service.logWarning = warnings.add;
+
+      await service.checkAndApplyUpdate(cliArgs: const []);
+
+      expect(warnings, hasLength(1));
+      expect(warnings.single, contains('rate limit'));
+      expect(warnings.single, contains('authenticated'));
+      expect(warnings.single, isNot(contains('GITHUB_TOKEN')));
+    });
+
+    test('unexpected failure → logged as error with the cause and stack trace', () async {
+      final repository = _MockReleaseRepository()
+        ..onCheckForNewerRelease = () async => throw StateError('network exploded');
+      final service = _buildService(
+        repository: repository,
+        updater: _MockUpdateInstallerService(),
+        installedFileRepository: _MockInstalledFileRepository(),
+        updateRelaunchClient: _MockUpdateRelaunchClient(),
+        executablePath: '/usr/local/bin/sesori-bridge',
+        environment: const {},
+      );
+      String? errorMessage;
+      Object? loggedError;
+      StackTrace? loggedStackTrace;
+      var warned = false;
+      service.logWarning = (_) => warned = true;
+      service.logError = (message, error, stackTrace) {
+        errorMessage = message;
+        loggedError = error;
+        loggedStackTrace = stackTrace;
+      };
+
+      await service.checkAndApplyUpdate(cliArgs: const []);
+
+      // The stage label plus the concise cause are passed to Log.e, which keeps
+      // the error object and stack trace for debug/verbose output.
+      expect(errorMessage, contains('Automatic update failed'));
+      expect(errorMessage, contains('network exploded'));
+      expect(loggedError, isA<StateError>());
+      expect(loggedStackTrace, isNotNull);
+      expect(warned, isFalse);
     });
 
     test('CI guard enabled → repository is never called', () async {

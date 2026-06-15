@@ -1,7 +1,7 @@
 import "package:flutter/material.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/routing/app_router.dart";
 import "../../../core/routing/current_project_name.dart";
@@ -21,7 +21,7 @@ class BackgroundTaskRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
+    final prego = context.prego;
     final loc = context.loc;
     final title = session.title ?? loc.sessionDetailSubtaskUnnamed;
 
@@ -39,7 +39,7 @@ class BackgroundTaskRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(
           children: [
-            _statusIcon(status: status, zyra: zyra),
+            _statusIcon(status: status, prego: prego),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -47,14 +47,14 @@ class BackgroundTaskRow extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: zyra.textTheme.textSm.regular,
+                    style: prego.textTheme.textSm.regular,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   _statusTextWidget(
                     loc: loc,
                     status: status,
-                    zyra: zyra,
+                    prego: prego,
                   ),
                 ],
               ),
@@ -62,7 +62,7 @@ class BackgroundTaskRow extends StatelessWidget {
             Icon(
               Icons.chevron_right,
               size: 20,
-              color: zyra.colors.textSecondary,
+              color: prego.colors.textSecondary,
             ),
           ],
         ),
@@ -70,31 +70,31 @@ class BackgroundTaskRow extends StatelessWidget {
     );
   }
 
-  Widget _statusIcon({required SessionStatus? status, required ZyraDesignSystem zyra}) => switch (status) {
+  Widget _statusIcon({required SessionStatus? status, required PregoDesignSystem prego}) => switch (status) {
     SessionStatusBusy() || SessionStatusRetry() => SizedBox(
       width: 16,
       height: 16,
       child: CircularProgressIndicator(
         strokeWidth: 2,
-        color: zyra.colors.bgBrandSolid,
+        color: prego.colors.bgBrandSolid,
       ),
     ),
     SessionStatusIdle() || null => Icon(
       Icons.check_circle,
       size: 16,
-      color: zyra.colors.bgBrandSolid,
+      color: prego.colors.bgBrandSolid,
     ),
   };
 
   Widget _statusTextWidget({
     required AppLocalizations loc,
     required SessionStatus? status,
-    required ZyraDesignSystem zyra,
+    required PregoDesignSystem prego,
   }) => switch (status) {
     SessionStatusBusy() => Text(
       loc.backgroundTaskStatusBusy,
-      style: zyra.textTheme.textXs.regular.copyWith(
-        color: zyra.colors.textSecondary,
+      style: prego.textTheme.textXs.regular.copyWith(
+        color: prego.colors.textSecondary,
       ),
     ),
     SessionStatusRetry(:final message) => Text.rich(
@@ -102,14 +102,14 @@ class BackgroundTaskRow extends StatelessWidget {
         children: [
           TextSpan(
             text: loc.backgroundTaskStatusRetry,
-            style: zyra.textTheme.textXs.regular.copyWith(
-              color: zyra.colors.textSecondary,
+            style: prego.textTheme.textXs.regular.copyWith(
+              color: prego.colors.textSecondary,
             ),
           ),
           TextSpan(
             text: ' ($message)',
-            style: zyra.textTheme.textXs.regular.copyWith(
-              color: zyra.colors.fgErrorPrimary,
+            style: prego.textTheme.textXs.regular.copyWith(
+              color: prego.colors.fgErrorPrimary,
             ),
           ),
         ],
@@ -117,8 +117,8 @@ class BackgroundTaskRow extends StatelessWidget {
     ),
     SessionStatusIdle() || null => Text(
       _completedLabel(loc),
-      style: zyra.textTheme.textXs.regular.copyWith(
-        color: zyra.colors.textSecondary,
+      style: prego.textTheme.textXs.regular.copyWith(
+        color: prego.colors.textSecondary,
       ),
     ),
   };

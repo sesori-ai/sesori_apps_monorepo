@@ -10,7 +10,7 @@ import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dar
 import "package:sesori_mobile/core/routing/app_router.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
 
@@ -159,6 +159,8 @@ class AdaptiveSessionRouterTestHarness {
     getIt.registerSingleton<SessionDetailLoadService>(sessionDetailLoadService);
     getIt.registerSingleton<NotificationCanceller>(notificationCanceller);
     getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
+    getIt.registerLazySingleton<DraftStore>(DraftStore.new);
+    getIt.registerLazySingleton<NewSessionSelectionTracker>(NewSessionSelectionTracker.new);
     getIt.registerSingleton<AuthSession>(authSession);
 
     router = GoRouter(
@@ -175,14 +177,14 @@ class AdaptiveSessionRouterTestHarness {
     return MaterialApp.router(
       routerConfig: router,
       theme: ThemeData(
-        colorScheme: ZyraColors.light.toFlutterColorScheme(),
-        textTheme: ZyraTextTheme.light.asFlutterTextTheme(),
-        extensions: [ZyraDesignSystem.light],
+        colorScheme: PregoColors.light.toFlutterColorScheme(),
+        textTheme: PregoTextTheme.light.asFlutterTextTheme(),
+        extensions: [PregoDesignSystem.light],
       ),
       darkTheme: ThemeData(
-        colorScheme: ZyraColors.dark.toFlutterColorScheme(),
-        textTheme: ZyraTextTheme.dark.asFlutterTextTheme(),
-        extensions: [ZyraDesignSystem.dark],
+        colorScheme: PregoColors.dark.toFlutterColorScheme(),
+        textTheme: PregoTextTheme.dark.asFlutterTextTheme(),
+        extensions: [PregoDesignSystem.dark],
       ),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,

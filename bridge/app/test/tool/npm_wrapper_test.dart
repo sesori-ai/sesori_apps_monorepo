@@ -12,10 +12,13 @@ String _currentPlatformPackage() {
     'linux x64': '@sesori/bridge-linux-x64',
     'linux arm64': '@sesori/bridge-linux-arm64',
     'win32 x64': '@sesori/bridge-win32-x64',
+    'win32 arm64': '@sesori/bridge-win32-arm64',
   };
 
   if (Platform.isWindows) {
-    return '@sesori/bridge-win32-x64';
+    final nodeArchResult = Process.runSync('node', ['-p', 'process.arch']);
+    final nodeArch = nodeArchResult.exitCode == 0 ? (nodeArchResult.stdout as String).trim() : 'x64';
+    return nodeArch == 'arm64' ? '@sesori/bridge-win32-arm64' : '@sesori/bridge-win32-x64';
   }
 
   final uname = Process.runSync('uname', ['-m']);
@@ -36,10 +39,13 @@ String _currentPlatformAssetName() {
     'linux x64': 'sesori-bridge-linux-x64.tar.gz',
     'linux arm64': 'sesori-bridge-linux-arm64.tar.gz',
     'win32 x64': 'sesori-bridge-windows-x64.zip',
+    'win32 arm64': 'sesori-bridge-windows-arm64.zip',
   };
 
   if (Platform.isWindows) {
-    return 'sesori-bridge-windows-x64.zip';
+    final nodeArchResult = Process.runSync('node', ['-p', 'process.arch']);
+    final nodeArch = nodeArchResult.exitCode == 0 ? (nodeArchResult.stdout as String).trim() : 'x64';
+    return nodeArch == 'arm64' ? 'sesori-bridge-windows-arm64.zip' : 'sesori-bridge-windows-x64.zip';
   }
 
   final uname = Process.runSync('uname', ['-m']);
@@ -428,7 +434,7 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       expect(decoded['exitCode'], equals(1));
       final stderr = decoded['stderr'] as String;
       expect(stderr, contains('sesori-bridge: Unsupported platform: sunos sparc'));
-      expect(stderr, contains('Supported platforms: darwin arm64, darwin x64, linux x64, linux arm64, win32 x64'));
+      expect(stderr, contains('Supported platforms: darwin arm64, darwin x64, linux x64, linux arm64, win32 x64, win32 arm64'));
       expect(stderr, contains('npm install @sesori/bridge-darwin-arm64'));
     });
 

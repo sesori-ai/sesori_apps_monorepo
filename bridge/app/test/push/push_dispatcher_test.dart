@@ -30,6 +30,7 @@ void main() {
             agent: null,
             modelID: null,
             providerID: null,
+            time: null,
           ),
         ),
       );
@@ -52,6 +53,46 @@ void main() {
       final payload = harness.client.sentPayloads.single;
       expect(payload.category, equals(NotificationCategory.aiInteraction));
       expect(payload.data?.eventType, equals(NotificationEventType.questionAsked));
+    });
+
+    test("collapseKey is session-scoped (category-independent) for session notifications", () {
+      final harness = _newHarness();
+
+      harness.dispatcher.dispatchImmediateIfApplicable(
+        const SesoriSseEvent.questionAsked(
+          id: "q-1",
+          sessionID: "session-a",
+          questions: [QuestionInfo(header: "Prompt", question: "Continue?")],
+        ),
+      );
+      harness.dispatcher.dispatchCompletion(
+        rootSessionId: "session-a",
+        title: "Done",
+        body: "Finished the task",
+        projectId: "project-a",
+      );
+
+      // Per-category rate limiting lets both notifications through...
+      expect(harness.client.sentPayloads, hasLength(2));
+      final keys = harness.client.sentPayloads.map((p) => p.collapseKey).toList();
+      final expected = sessionNotificationId(sessionId: "session-a").toString();
+      // ...and an aiInteraction + a sessionMessage notification for the same
+      // session share one collapse key, so the newer replaces the older.
+      expect(keys, everyElement(equals(expected)));
+    });
+
+    test("collapseKey falls back to a category-scoped global key without a session", () {
+      final harness = _newHarness();
+
+      harness.dispatcher.dispatchImmediateIfApplicable(
+        const SesoriSseEvent.installationUpdateAvailable(version: "1.2.3"),
+      );
+
+      expect(harness.client.sentPayloads, hasLength(1));
+      expect(
+        harness.client.sentPayloads.single.collapseKey,
+        equals("${NotificationCategory.systemUpdate.id}-global"),
+      );
     });
 
     test("completion dispatch sends provided outbound completion payload", () {
@@ -113,6 +154,7 @@ void main() {
               agent: null,
               modelID: null,
               providerID: null,
+              time: null,
             ),
           ),
         );
@@ -231,6 +273,7 @@ void main() {
               agent: null,
               modelID: null,
               providerID: null,
+              time: null,
             ),
           ),
         );
@@ -360,13 +403,13 @@ void main() {
     test("maintenance logs telemetry snapshots", () {
       final harness = _newHarness();
 
-      final stdout = _captureStdout(
+      final logOutput = _captureLogOutput(
         level: LogLevel.debug,
         action: harness.maintenanceListener.runNow,
       );
 
       expect(harness.maintenanceListener.lastMaintenanceTelemetry, isNotNull);
-      expect(stdout, contains(harness.maintenanceListener.lastMaintenanceTelemetry!.toLogMessage()));
+      expect(logOutput, contains(harness.maintenanceListener.lastMaintenanceTelemetry!.toLogMessage()));
     });
 
     test("M3b: maintenance continues when root pruning throws", () {
@@ -382,7 +425,7 @@ void main() {
       harness.rateLimiter.shouldSend(
         category: NotificationCategory.sessionMessage,
         sessionId: "session-a",
-        collapseKey: "sessionMessage-session-a",
+        rateLimitKey: "sessionMessage-session-a",
       );
 
       harness.maintenanceListener.runNow();
@@ -536,7 +579,7 @@ class FakePushRateLimiter extends PushRateLimiter {
   bool shouldSend({
     required NotificationCategory category,
     required String? sessionId,
-    required String collapseKey,
+    required String rateLimitKey,
   }) {
     if (!shouldAllowSend) {
       return false;
@@ -545,7 +588,7 @@ class FakePushRateLimiter extends PushRateLimiter {
     return super.shouldSend(
       category: category,
       sessionId: sessionId,
-      collapseKey: collapseKey,
+      rateLimitKey: rateLimitKey,
     );
   }
 }
@@ -578,7 +621,7 @@ class _BufferingStdout implements Stdout {
   }
 }
 
-String _captureStdout({required LogLevel level, required void Function() action}) {
+String _captureLogOutput({required LogLevel level, required void Function() action}) {
   final stdoutBuffer = _BufferingStdout();
   final stderrBuffer = _BufferingStdout();
   final previousLevel = Log.level;
@@ -593,7 +636,8 @@ String _captureStdout({required LogLevel level, required void Function() action}
     Log.level = previousLevel;
   }
 
-  return stdoutBuffer.text;
+  // Diagnostic logs (including maintenance telemetry) are written to stderr.
+  return stderrBuffer.text;
 }
 
 Session _session({

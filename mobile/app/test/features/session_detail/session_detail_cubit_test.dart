@@ -547,10 +547,7 @@ void main() {
           ),
         ).called(1);
         verify(
-          () => mockNotificationCanceller.cancelForSession(
-            sessionId: sessionId,
-            category: NotificationCategory.aiInteraction,
-          ),
+          () => mockNotificationCanceller.cancelForSession(sessionId: sessionId),
         ).called(1);
       },
     );
@@ -584,16 +581,13 @@ void main() {
       verify: (_) {
         verify(() => mockSessionService.rejectQuestion(requestId: "question-1")).called(1);
         verify(
-          () => mockNotificationCanceller.cancelForSession(
-            sessionId: sessionId,
-            category: NotificationCategory.aiInteraction,
-          ),
+          () => mockNotificationCanceller.cancelForSession(sessionId: sessionId),
         ).called(1);
       },
     );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
-      "clearNotifications cancels all non-unknown notification categories",
+      "clearNotifications dismisses all notifications for the session",
       build: () => SessionDetailCubit(
         mockConnectionService,
         loadService: loadService,
@@ -612,21 +606,9 @@ void main() {
         isA<SessionDetailLoaded>(),
       ],
       verify: (_) {
-        for (final category in NotificationCategory.values) {
-          if (category == NotificationCategory.unknown) continue;
-          verify(
-            () => mockNotificationCanceller.cancelForSession(
-              sessionId: sessionId,
-              category: category,
-            ),
-          ).called(1);
-        }
-        verifyNever(
-          () => mockNotificationCanceller.cancelForSession(
-            sessionId: sessionId,
-            category: NotificationCategory.unknown,
-          ),
-        );
+        verify(
+          () => mockNotificationCanceller.cancelForSession(sessionId: sessionId),
+        ).called(1);
       },
     );
 
@@ -654,6 +636,7 @@ void main() {
           id: "msg-new",
           sessionID: sessionId,
           agent: null,
+          time: null,
         );
         sessionEvents.add(const SesoriMessageUpdated(info: message));
       },
@@ -1818,7 +1801,6 @@ void _stubAllDefaults(
   when(
     () => notificationCanceller.cancelForSession(
       sessionId: any(named: "sessionId"),
-      category: any(named: "category"),
     ),
   ).thenReturn(null);
 

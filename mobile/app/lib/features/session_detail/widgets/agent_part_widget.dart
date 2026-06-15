@@ -1,5 +1,5 @@
 import "package:flutter/material.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 
@@ -10,7 +10,7 @@ class AgentPartWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
+    final prego = context.prego;
     final loc = context.loc;
     final label = agentName ?? loc.sessionDetailAgentFallback;
 
@@ -21,13 +21,13 @@ class AgentPartWidget extends StatelessWidget {
           Icon(
             Icons.smart_toy_outlined,
             size: 14,
-            color: zyra.colors.textSecondary,
+            color: prego.colors.textSecondary,
           ),
           const SizedBox(width: 6),
           Text(
             label,
-            style: zyra.textTheme.textXs.medium.copyWith(
-              color: zyra.colors.textSecondary,
+            style: prego.textTheme.textXs.medium.copyWith(
+              color: prego.colors.textSecondary,
             ),
           ),
         ],

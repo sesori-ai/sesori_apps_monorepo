@@ -53,9 +53,11 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   }) {
     final httpClient = io.HttpClient();
     final api = OpenCodeApi(
-      serverURL: serverUrl,
-      password: password,
-      client: IOClient(httpClient),
+      client: OpenCodeRawHttpClient(
+        serverURL: serverUrl,
+        password: password,
+        client: IOClient(httpClient),
+      ),
     );
     final repository = OpenCodeRepository(api);
     final tracker = ActiveSessionTracker(repository);
@@ -162,10 +164,18 @@ class OpenCodePlugin implements OpenCodeManagedApi {
 
   @override
   Future<void> dispose() async {
+    if (_disposed) {
+      Log.v("[shutdown] OpenCodePlugin.dispose: already disposed, skipping");
+      return;
+    }
     _disposed = true;
+    Log.v("[shutdown] OpenCodePlugin.dispose: stopping SSE connection");
     _sseConnection.stop();
+    Log.v("[shutdown] OpenCodePlugin.dispose: force-closing http client");
     _httpClient.close(force: true);
+    final sw = Stopwatch()..start();
     await _eventBuffer.close();
+    Log.d("[shutdown] OpenCodePlugin.dispose: event buffer closed in ${sw.elapsedMilliseconds}ms");
   }
 
   @override
@@ -365,16 +375,10 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   Future<List<PluginPendingQuestion>> getPendingQuestions({
     required String sessionId,
   }) async {
-    final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
     final pending = await _call(
-      () => _service.repository.api.getPendingQuestions(
-        directory: directory,
-      ),
+      () => _service.getPendingQuestionsForSession(sessionId: sessionId),
     );
-    return pending //
-        .where((e) => e.sessionID == sessionId)
-        .map((question) => question.toPlugin())
-        .toList();
+    return pending.map((question) => question.toPlugin()).toList();
   }
 
   @override
@@ -584,6 +588,13 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   PluginMessageWithParts _mapMessage(MessageWithParts raw) {
     final info = raw.info;
     final parts = raw.parts;
+    final time = switch (info.time) {
+      MessageTime(:final created, :final completed) => PluginMessageTime(
+        created: created,
+        completed: completed,
+      ),
+      null => null,
+    };
     final pluginInfo = switch (info.error) {
       final error? => PluginMessage.error(
         id: info.id,
@@ -593,12 +604,14 @@ class OpenCodePlugin implements OpenCodeManagedApi {
         providerID: info.providerID,
         errorName: error.name,
         errorMessage: error.data.message,
+        time: time,
       ),
       null => switch (info.role) {
         "user" => PluginMessage.user(
           id: info.id,
           sessionID: info.sessionID,
           agent: info.agent,
+          time: time,
         ),
         "assistant" => PluginMessage.assistant(
           id: info.id,
@@ -606,6 +619,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
           agent: info.agent,
           modelID: info.modelID,
           providerID: info.providerID,
+          time: time,
         ),
         _ => throw ArgumentError('Unknown message role: ${info.role}'),
       },

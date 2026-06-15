@@ -13,9 +13,8 @@ final class DistributionTarget {
       case (DistributionPlatformOs.linux, DistributionPlatformArch.arm64):
       case (DistributionPlatformOs.linux, DistributionPlatformArch.x64):
       case (DistributionPlatformOs.windows, DistributionPlatformArch.x64):
+      case (DistributionPlatformOs.windows, DistributionPlatformArch.arm64):
         return DistributionTarget._(os: os, arch: arch);
-      case _:
-        throw ArgumentError('Unsupported platform: ${os.value} ${arch.value}');
     }
   }
 
@@ -49,8 +48,8 @@ final class DistributionTarget {
         return 'sesori-bridge-linux-arm64.tar.gz';
       case (DistributionPlatformOs.windows, DistributionPlatformArch.x64):
         return 'sesori-bridge-windows-x64.zip';
-      case _:
-        throw ArgumentError('Unsupported platform: $key');
+      case (DistributionPlatformOs.windows, DistributionPlatformArch.arm64):
+        return 'sesori-bridge-windows-arm64.zip';
     }
   }
 }

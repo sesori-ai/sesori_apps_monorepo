@@ -1326,10 +1326,7 @@ final class $$ProjectsTableTableReferences
   static MultiTypedResultKey<$SessionTableTable, List<SessionDto>>
   _sessionTableRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.sessionTable,
-    aliasName: $_aliasNameGenerator(
-      db.projectsTable.projectId,
-      db.sessionTable.projectId,
-    ),
+    aliasName: 'projects_table__project_id__sessions_table__project_id',
   );
 
   $$SessionTableTableProcessedTableManager get sessionTableRefs {
@@ -1350,10 +1347,8 @@ final class $$ProjectsTableTableReferences
   _pullRequestsTableRefsTable(_$AppDatabase db) =>
       MultiTypedResultKey.fromTable(
         db.pullRequestsTable,
-        aliasName: $_aliasNameGenerator(
-          db.projectsTable.projectId,
-          db.pullRequestsTable.projectId,
-        ),
+        aliasName:
+            'projects_table__project_id__pull_requests_table__project_id',
       );
 
   $$PullRequestsTableTableProcessedTableManager get pullRequestsTableRefs {
@@ -1735,13 +1730,9 @@ final class $$SessionTableTableReferences
     extends BaseReferences<_$AppDatabase, $SessionTableTable, SessionDto> {
   $$SessionTableTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-  static $ProjectsTableTable _projectIdTable(_$AppDatabase db) =>
-      db.projectsTable.createAlias(
-        $_aliasNameGenerator(
-          db.sessionTable.projectId,
-          db.projectsTable.projectId,
-        ),
-      );
+  static $ProjectsTableTable _projectIdTable(_$AppDatabase db) => db
+      .projectsTable
+      .createAlias('sessions_table__project_id__projects_table__project_id');
 
   $$ProjectsTableTableProcessedTableManager get projectId {
     final $_column = $_itemColumn<String>('project_id')!;
@@ -2188,10 +2179,7 @@ final class $$PullRequestsTableTableReferences
 
   static $ProjectsTableTable _projectIdTable(_$AppDatabase db) =>
       db.projectsTable.createAlias(
-        $_aliasNameGenerator(
-          db.pullRequestsTable.projectId,
-          db.projectsTable.projectId,
-        ),
+        'pull_requests_table__project_id__projects_table__project_id',
       );
 
   $$ProjectsTableTableProcessedTableManager get projectId {

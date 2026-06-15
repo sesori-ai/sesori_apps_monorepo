@@ -2,7 +2,7 @@ import "dart:async";
 
 import "package:cue/cue.dart";
 import "package:flutter/material.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../core/extensions/build_context_x.dart";
 
@@ -93,7 +93,7 @@ class _NewSessionLoadingOverlayState extends State<NewSessionLoadingOverlay> {
   }
 
   Widget _buildContent(BuildContext context, {required bool reducedMotion}) {
-    final zyra = context.zyra;
+    final prego = context.prego;
     final message = widget.messages[_messageIndex];
 
     return Card(
@@ -108,15 +108,15 @@ class _NewSessionLoadingOverlayState extends State<NewSessionLoadingOverlay> {
             children: [
               CircularProgressIndicator(
                 key: const Key("new_session_loading_progress"),
-                color: zyra.colors.bgBrandSolid,
+                color: prego.colors.bgBrandSolid,
               ),
               const SizedBox(height: 24),
               reducedMotion
                   ? Text(
                       message,
                       key: const Key("new_session_loading_message"),
-                      style: zyra.textTheme.textSm.regular.copyWith(
-                        color: zyra.colors.textPrimary,
+                      style: prego.textTheme.textSm.regular.copyWith(
+                        color: prego.colors.textPrimary,
                       ),
                       textAlign: TextAlign.center,
                     )
@@ -142,8 +142,8 @@ class _NewSessionLoadingOverlayState extends State<NewSessionLoadingOverlay> {
                       child: Text(
                         message,
                         key: ValueKey<String>(message),
-                        style: zyra.textTheme.textSm.regular.copyWith(
-                          color: zyra.colors.textPrimary,
+                        style: prego.textTheme.textSm.regular.copyWith(
+                          color: prego.colors.textPrimary,
                         ),
                         textAlign: TextAlign.center,
                       ),

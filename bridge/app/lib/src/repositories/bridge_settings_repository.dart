@@ -4,6 +4,7 @@ import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 import 'package:sesori_shared/sesori_shared.dart' show jsonDecodeMap;
 
 import '../api/bridge_settings_api.dart';
+import '../updater/foundation/release_track.dart';
 import 'bridge_settings.dart';
 
 class BridgeSettingsRepository {
@@ -64,5 +65,13 @@ class BridgeSettingsRepository {
 
   Future<void> saveSettings({required BridgeSettings settings}) {
     return _api.writeConfig(_jsonEncoder.convert(settings.toJson()));
+  }
+
+  /// Read-modify-write of the persisted [ReleaseTrack], preserving every
+  /// other setting. Loads via [loadSettings] (which creates/repairs the file
+  /// with defaults if needed) so the write always starts from a valid base.
+  Future<void> updateReleaseTrack({required ReleaseTrack track}) async {
+    final current = await loadSettings();
+    await saveSettings(settings: current.copyWith(releaseTrack: track));
   }
 }

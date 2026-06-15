@@ -1,7 +1,9 @@
 import "package:meta/meta.dart";
 
+import "../host/host_process_service.dart";
 import "../host/plugin_host.dart";
 import "bridge_plugin.dart";
+import "plugin_availability.dart";
 import "plugin_config.dart";
 import "plugin_option.dart";
 
@@ -34,6 +36,28 @@ abstract class BridgePluginDescriptor {
   ///
   /// Must be pure: no I/O, no side effects. The default accepts everything.
   void validateConfig(PluginConfig config) {}
+
+  /// Reports whether this plugin's backend is available to run.
+  ///
+  /// Runs after authentication but **before** the cross-instance startup mutex
+  /// and before [start], so an unavailable backend never terminates a healthy
+  /// resident bridge (the same invariant that keeps [validateConfig] ahead of
+  /// the mutex). Must be read-only — probe only, acquire nothing.
+  ///
+  /// Return [PluginUnavailable] with a user-facing [PluginUnavailable.message]
+  /// (install guidance plus a verification command) when the backend cannot be
+  /// used; the bridge core prints that message via `Console.error` and exits
+  /// non-zero. Return [PluginAvailable] to let startup proceed.
+  ///
+  /// [config] carries the parsed CLI options, [processes] lets a plugin probe a
+  /// local binary (e.g. run `--version`), and [environment] is the process
+  /// environment (PATH, etc.). The default accepts everything, which suits
+  /// plugins that need no local backend (e.g. remote-server plugins).
+  Future<PluginAvailability> checkAvailability({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+  }) async => const PluginAvailable();
 
   /// Starts the plugin and returns its live instance.
   ///

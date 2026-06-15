@@ -6,18 +6,22 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../capabilities/session/session_service.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
+import "../../services/new_session_selection_tracker.dart";
 import "../../utils/model_filter/default_model_selector.dart";
 import "new_session_state.dart";
 
 class NewSessionCubit extends Cubit<NewSessionState> {
   final SessionService _sessionService;
+  final NewSessionSelectionTracker _selectionTracker;
   final String _projectId;
   static const _defaultModelSelector = DefaultModelSelector();
 
   NewSessionCubit({
     required SessionService sessionService,
+    required NewSessionSelectionTracker selectionTracker,
     required String projectId,
   }) : _sessionService = sessionService,
+       _selectionTracker = selectionTracker,
        _projectId = projectId,
        super(
          const NewSessionState.idle(
@@ -94,12 +98,23 @@ class NewSessionCubit extends Cubit<NewSessionState> {
         defaultAgentModel = null;
       }
 
+      // Restore a previously chosen (non-default) agent / model / variant so a
+      // deliberate selection survives leaving and returning to the new-session
+      // screen (where this cubit is recreated). Validate every part against the
+      // freshly loaded data so a now-unavailable choice falls back to default.
+      final (:selectedAgent, :selectedAgentModel) = _resolveInitialSelection(
+        defaultAgent: defaultAgent,
+        defaultAgentModel: defaultAgentModel,
+        agents: agents,
+        providers: providers,
+      );
+
       _emitAgentModelUpdate(
         availableAgents: agents,
         availableProviders: providers,
         availableCommands: commands,
-        selectedAgent: defaultAgent,
-        selectedAgentModel: defaultAgentModel,
+        selectedAgent: selectedAgent,
+        selectedAgentModel: selectedAgentModel,
       );
     } catch (e, stackTrace) {
       loge("New session: failed to load composer data for project $_projectId", e, stackTrace);
@@ -183,6 +198,58 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     return m?.variants.where((v) => v != "none").map((v) => SessionVariant(id: v)).toList() ?? [];
   }
 
+  /// Picks the agent / model / variant to start with: a previously persisted
+  /// user selection (validated against the current [agents]/[providers]) when
+  /// present and still available, otherwise the supplied defaults. Parts that
+  /// are no longer available degrade independently to their default.
+  ({String? selectedAgent, AgentModel? selectedAgentModel}) _resolveInitialSelection({
+    required String? defaultAgent,
+    required AgentModel? defaultAgentModel,
+    required List<AgentInfo> agents,
+    required List<ProviderInfo> providers,
+  }) {
+    final saved = _selectionTracker.read(projectId: _projectId);
+    if (saved == null) {
+      return (selectedAgent: defaultAgent, selectedAgentModel: defaultAgentModel);
+    }
+
+    final savedAgent = saved.agent;
+    final selectedAgent = (savedAgent != null && agents.any((a) => a.name == savedAgent))
+        ? savedAgent
+        : defaultAgent;
+
+    final savedModel = saved.agentModel;
+    AgentModel? selectedAgentModel = defaultAgentModel;
+    if (savedModel != null && _modelIsAvailable(providers: providers, model: savedModel)) {
+      // Drop a saved variant the model no longer offers.
+      final availableVariants = _deriveAvailableVariants(providers: providers, model: savedModel);
+      final variant = savedModel.variant;
+      final validVariant = (variant != null && availableVariants.any((v) => v.id == variant)) ? variant : null;
+      selectedAgentModel = savedModel.copyWith(variant: validVariant);
+    }
+
+    return (selectedAgent: selectedAgent, selectedAgentModel: selectedAgentModel);
+  }
+
+  bool _modelIsAvailable({required List<ProviderInfo> providers, required AgentModel model}) {
+    final m = providers.firstWhereOrNull((p) => p.id == model.providerID)?.models[model.modelID];
+    // Mirror the picker / DefaultModelSelector, which both filter on
+    // `isAvailable`: a deprecated model lingers in the provider map with
+    // `isAvailable: false`, so restoring it would show a selection absent from
+    // the picker. Fall back to the default instead.
+    return m != null && m.isAvailable;
+  }
+
+  /// Persists the current agent / model / variant selection so it survives a
+  /// round-trip away from the new-session screen. Called after every explicit
+  /// user change (never for the auto-computed default), so a stale entry can
+  /// never shadow a future default.
+  void _persistSelection() {
+    final data = state.agentModelData;
+    if (data == null) return;
+    _selectionTracker.write(projectId: _projectId, agent: data.agent, agentModel: data.agentModel);
+  }
+
   void selectAgent(String agent) {
     final current = state;
     final agentInfo = switch (current) {
@@ -199,6 +266,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       availableCommands: null, // no change
       availableProviders: null, // no change
     );
+    _persistSelection();
   }
 
   void selectVariant(SessionVariant? variant) {
@@ -219,6 +287,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       case NewSessionCreated():
         return;
     }
+    _persistSelection();
   }
 
   void stageCommand(CommandInfo command) {
@@ -285,6 +354,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       availableCommands: null, // no change
       availableProviders: null, // no change
     );
+    _persistSelection();
   }
 
   AgentModel? _resolveAgentModel({
@@ -317,6 +387,10 @@ class NewSessionCubit extends Cubit<NewSessionState> {
 
     final config = state.agentModelData;
     final variantId = config?.agentModel?.variant;
+    // Snapshot the selection this request is sending with, so a late success
+    // clears only its own snapshot (see below) and never a newer selection a
+    // reopened composer wrote for the same project in the meantime.
+    final selectionAtSend = _selectionTracker.read(projectId: _projectId);
 
     emit(
       NewSessionState.sending(
@@ -340,6 +414,21 @@ class NewSessionCubit extends Cubit<NewSessionState> {
       command: normalizedCommand,
       dedicatedWorktree: dedicatedWorktree,
     );
+
+    // A created session means the composer is done, so the next new session for
+    // this project must start from the default — clear the persisted selection
+    // even when the user backed out mid-send and closed this cubit (a launch
+    // can still succeed in the background; the text draft is likewise cleared
+    // the moment the prompt is sent). Must run before the isClosed guard below.
+    //
+    // Clear only the snapshot this request was sent with: if the user reopened
+    // the composer for the same project and picked a different model/effort
+    // while this request was in flight, that newer selection must survive.
+    if (response case SuccessResponse()) {
+      if (_selectionTracker.read(projectId: _projectId) == selectionAtSend) {
+        _selectionTracker.clear(projectId: _projectId);
+      }
+    }
 
     if (isClosed) return;
 

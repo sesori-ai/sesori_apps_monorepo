@@ -60,19 +60,30 @@ class ConnectionService {
   final _compositeSubscription = CompositeSubscription();
 
   RelayClient? _relayClient;
+  RelayClient? _connectingRelayClient;
   StreamSubscription<RelaySseEvent>? _relaySseSubscription;
   StreamSubscription<BridgeStatus>? _bridgeStatusSubscription;
   Timer? _reconnectTimer;
   Completer<void>? _reconnectDelayCompleter;
   Future<bool>? _activeAuthConnect;
+  Future<void>? _activeDisconnect;
   int _requestCounter = 0;
   final Random _requestIdRandom = Random();
   int _authRetryCount = 0;
   Duration _relayReconnectBackoff = const Duration(seconds: 1);
+  int _reconnectAttemptId = 0;
   bool _isInBackground = false;
   DateTime? _backgroundedAt;
 
   static const _maxRelayReconnectBackoff = Duration(seconds: 30);
+
+  /// Once the app has been backgrounded longer than this, the relay has very
+  /// likely already closed our phone socket: it pings every 30s with a 15s
+  /// pong deadline, and a suspended app cannot answer in time. Past this point
+  /// a status that still reads "connected" can no longer be trusted, so on
+  /// resume we reconnect proactively instead of waiting to discover the dead
+  /// socket via a request timeout.
+  static const _resumeReconnectThreshold = Duration(seconds: 20);
 
   /// 90% of the bridge's SSE replay window, providing a safety margin
   /// to ensure we detect staleness before events are actually lost.
@@ -226,8 +237,18 @@ class ConnectionService {
     ServerConnectionConfig config,
   ) => _connectViaRelay(config);
 
-  Future<ApiResponse<HealthResponse>> _connectViaRelay(ServerConnectionConfig config) async {
+  Future<ApiResponse<HealthResponse>> _connectViaRelay(
+    ServerConnectionConfig config, {
+    bool Function()? isStale,
+  }) async {
     await _disconnectRelayClient();
+
+    // If a newer reconnect attempt superseded us (or we were disconnected) while
+    // the previous socket was tearing down, don't open a replacement — otherwise
+    // two sockets briefly race for the same account (relay close code 4005).
+    if (isStale?.call() ?? false) {
+      return ApiResponse.error(ApiError.generic());
+    }
 
     final relayClient = _relayClientFactory.call(
       relayHost: config.relayHost,
@@ -235,34 +256,64 @@ class ConnectionService {
       roomKeyStorage: _roomKeyStorage,
       authToken: config.authToken,
     );
+    _connectingRelayClient = relayClient;
+
+    if (isStale?.call() ?? false) {
+      _clearConnectingRelayClient(relayClient);
+      await relayClient.disconnect();
+      return ApiResponse.error(ApiError.generic());
+    }
 
     try {
       await relayClient.connect();
 
-      final response = await relayClient.sendRequest(
-        RelayRequest(
-          id: _nextRelayRequestId(),
-          method: "GET",
-          path: ApiPaths.health,
-          headers: {},
-          body: null,
-        ),
-      );
-
-      if (response.status < 200 || response.status >= 300 || response.body == null) {
+      // If this attempt was superseded while the websocket handshake awaited,
+      // stop before sending health on a socket that a newer attempt now owns.
+      if (isStale?.call() ?? false) {
+        _clearConnectingRelayClient(relayClient);
         await relayClient.disconnect();
-        return ApiResponse.error(
-          ApiError.nonSuccessCode(
-            errorCode: response.status,
-            rawErrorString: response.body,
+        return ApiResponse.error(ApiError.generic());
+      }
+
+      // A resume_ack already proves the bridge is reachable; only fresh-DH
+      // connects need the extra health round-trip.
+      if (!relayClient.didResume) {
+        final response = await relayClient.sendRequest(
+          RelayRequest(
+            id: _nextRelayRequestId(),
+            method: "GET",
+            path: ApiPaths.health,
+            headers: {},
+            body: null,
           ),
         );
+
+        if (response.status < 200 || response.status >= 300 || response.body == null) {
+          _clearConnectingRelayClient(relayClient);
+          await relayClient.disconnect();
+          return ApiResponse.error(
+            ApiError.nonSuccessCode(
+              errorCode: response.status,
+              rawErrorString: response.body,
+            ),
+          );
+        }
       }
 
       // A non-error status code is sufficient — the bridge only returns 200
       // when the underlying backend is healthy. The response body is ignored.
       const health = HealthResponse(healthy: true, version: "");
 
+      // The handshake spanned several awaits; if a newer attempt or a disconnect
+      // landed meanwhile, tear down this socket instead of committing it as the
+      // live connection.
+      if (isStale?.call() ?? false) {
+        _clearConnectingRelayClient(relayClient);
+        await relayClient.disconnect();
+        return ApiResponse.error(ApiError.generic());
+      }
+
+      _clearConnectingRelayClient(relayClient);
       _relayClient = relayClient;
       _authRetryCount = 0;
       _relayReconnectBackoff = const Duration(seconds: 1);
@@ -282,6 +333,7 @@ class ConnectionService {
       return ApiResponse.success(health);
     } catch (error, stackTrace) {
       loge("Failed to connect via relay", error, stackTrace);
+      _clearConnectingRelayClient(relayClient);
       try {
         await relayClient.disconnect().timeout(const Duration(seconds: 3));
       } catch (disconnectError, disconnectStackTrace) {
@@ -289,6 +341,12 @@ class ConnectionService {
         loge("Relay disconnect cleanup failed", disconnectError, disconnectStackTrace);
       }
       return ApiResponse.error(ApiError.generic());
+    }
+  }
+
+  void _clearConnectingRelayClient(RelayClient relayClient) {
+    if (identical(_connectingRelayClient, relayClient)) {
+      _connectingRelayClient = null;
     }
   }
 
@@ -410,23 +468,57 @@ class ConnectionService {
     }
   }
 
-  Future<void> _disconnectRelayClient() async {
-    await _relaySseSubscription?.cancel();
+  /// Tears down the active relay client, coalescing concurrent callers so an
+  /// eager teardown (e.g. on resume) and the reconnect path's own teardown share
+  /// a single in-flight operation. A replacement socket is therefore never
+  /// opened until the previous client's disconnect has fully completed, avoiding
+  /// briefly holding two phone sockets for the same account (which the relay can
+  /// reject as account-full at the device limit).
+  Future<void> _disconnectRelayClient() {
+    return _activeDisconnect ??= _doDisconnectRelayClient().whenComplete(() {
+      _activeDisconnect = null;
+    });
+  }
+
+  Future<void> _doDisconnectRelayClient() async {
+    // Detach the client synchronously first so callers (e.g. RelayHttpApiClient)
+    // stop routing requests through a socket we're tearing down, rather than
+    // during the async subscription cancellations below.
+    final relayClient = _relayClient;
+    final connectingRelayClient = _connectingRelayClient;
+    _relayClient = null;
+    _connectingRelayClient = null;
+
+    // Never let teardown complete with an error: several callers invoke this via
+    // `unawaited(...)`, so a thrown cancellation/disconnect error would surface
+    // as an uncaught async error in the zone.
+    try {
+      await _relaySseSubscription?.cancel();
+    } catch (error, stackTrace) {
+      loge("Failed to cancel relay SSE subscription", error, stackTrace);
+    }
     _relaySseSubscription = null;
 
-    await _bridgeStatusSubscription?.cancel();
+    try {
+      await _bridgeStatusSubscription?.cancel();
+    } catch (error, stackTrace) {
+      loge("Failed to cancel bridge status subscription", error, stackTrace);
+    }
     _bridgeStatusSubscription = null;
 
-    final relayClient = _relayClient;
-    _relayClient = null;
-    if (relayClient == null) {
+    if (relayClient == null && connectingRelayClient == null) {
       return;
     }
 
-    try {
-      await relayClient.disconnect();
-    } catch (error, stackTrace) {
-      loge("Failed to disconnect relay client", error, stackTrace);
+    for (final client in <RelayClient?>{
+      relayClient,
+      connectingRelayClient,
+    }.whereType<RelayClient>()) {
+      try {
+        await client.disconnect();
+      } catch (error, stackTrace) {
+        loge("Failed to disconnect relay client", error, stackTrace);
+      }
     }
   }
 
@@ -441,25 +533,46 @@ class ConnectionService {
 
     final backgroundedAt = _backgroundedAt;
     _backgroundedAt = null;
-    if (backgroundedAt != null) {
-      final elapsed = _clock().difference(backgroundedAt);
-      if (elapsed >= staleThreshold && activeConfig != null) {
-        logd("App was backgrounded for $elapsed — emitting stale reconnect signal");
-        _dataMayBeStale.add(null);
-      }
+    final backgroundedFor = backgroundedAt == null ? Duration.zero : _clock().difference(backgroundedAt);
+
+    if (backgroundedAt != null && backgroundedFor >= staleThreshold && activeConfig != null) {
+      logd("App was backgrounded for $backgroundedFor — emitting stale reconnect signal");
+      _dataMayBeStale.add(null);
     }
 
     final status = _status.value;
     final config = activeConfig;
     if (config == null) return;
 
-    final needsReconnect = status is ConnectionLost || status is ConnectionReconnecting;
+    // The relay closes backgrounded phones once its ping/pong window lapses
+    // (~30-45s). Past [_resumeReconnectThreshold], a still-"connected" status is
+    // almost certainly a dead socket, so reconnect proactively rather than
+    // discovering it later via a request timeout.
+    //
+    // ConnectionBridgeOffline is deliberately NOT treated as stale here: while
+    // the bridge is offline the E2E handshake cannot complete, so a forced
+    // reconnect would fail and drop us into the blocking ConnectionLost state,
+    // losing the watcher for the bridge's return. Bridge-offline recovery keeps
+    // relying on its relay status watcher and the socket's own drop (onDone).
+    // Re-establishing a relay-level watcher without a completed handshake is a
+    // separate, larger change (tracked in the reconnect UX plan).
+    final connectionLikelyStale =
+        status is ConnectionConnected && backgroundedFor >= _resumeReconnectThreshold;
+
+    final needsReconnect =
+        status is ConnectionLost || status is ConnectionReconnecting || connectionLikelyStale;
     if (!needsReconnect) return;
 
-    logd("App resumed with lost connection — triggering reconnect");
+    logd("App resumed — triggering reconnect (status=${status.runtimeType}, backgrounded=$backgroundedFor)");
+    // Detach the likely-dead socket immediately so requests fired right after
+    // foregrounding fail fast instead of routing through the zombie connection
+    // while the replacement socket is being established.
+    unawaited(_disconnectRelayClient());
     _relayReconnectBackoff = const Duration(seconds: 1);
     _status.add(ConnectionStatus.reconnecting(config: config));
-    unawaited(_reconnectRelayWithRefresh(config));
+    // Resume is user-visible and the prior socket is already dead, so attempt
+    // the first reconnect immediately; backoff still applies to later retries.
+    unawaited(_reconnectRelayWithRefresh(config, immediate: true));
   }
 
   void _onRelayConnectionDrop() {
@@ -504,7 +617,18 @@ class ConnectionService {
   }
 
   /// Reconnects to relay after refreshing the auth token.
-  Future<void> _reconnectRelayWithRefresh(ServerConnectionConfig config) async {
+  ///
+  /// When [immediate] is true the pre-attempt backoff delay is skipped for this
+  /// first attempt. It is used on foreground resume, where the user is waiting
+  /// and the previous socket is already known-dead, so the artificial ~1s wait
+  /// would be pure latency. The exponential backoff + jitter still applies to
+  /// every retry that follows a *failed* attempt (a failure doubles
+  /// [_relayReconnectBackoff]), so a genuinely unreachable bridge is never
+  /// hammered.
+  Future<void> _reconnectRelayWithRefresh(
+    ServerConnectionConfig config, {
+    bool immediate = false,
+  }) async {
     if (_isInBackground) {
       logd("App is backgrounded — skipping reconnect attempt");
       _status.add(ConnectionStatus.connectionLost(config: config));
@@ -512,27 +636,38 @@ class ConnectionService {
     }
     if (_status.value is ConnectionDisconnected) return;
 
-    final backoff = _relayReconnectBackoff;
-    final jitter = (backoff.inMilliseconds * 0.25 * (Random().nextDouble() * 2 - 1)).round();
-    final delayMs = backoff.inMilliseconds + jitter;
+    // Each reconnect attempt claims a generation id. A newer attempt (another
+    // drop, resume, or manual reconnect) bumps the id, so any older attempt that
+    // wakes from an await boundary below sees it has been superseded and bails —
+    // keeping two attempts from opening relay sockets concurrently.
+    final attemptId = ++_reconnectAttemptId;
 
-    logd("Relay reconnect: waiting ${delayMs}ms before attempt to ${config.relayHost}");
-    _reconnectTimer?.cancel();
-    final completer = Completer<void>();
-    _reconnectDelayCompleter = completer;
-    _reconnectTimer = Timer(Duration(milliseconds: delayMs), () {
-      if (!completer.isCompleted) {
-        completer.complete();
+    if (!immediate) {
+      final backoff = _relayReconnectBackoff;
+      final jitter = (backoff.inMilliseconds * 0.25 * (Random().nextDouble() * 2 - 1)).round();
+      final delayMs = backoff.inMilliseconds + jitter;
+
+      logd("Relay reconnect: waiting ${delayMs}ms before attempt to ${config.relayHost}");
+      _reconnectTimer?.cancel();
+      final completer = Completer<void>();
+      _reconnectDelayCompleter = completer;
+      _reconnectTimer = Timer(Duration(milliseconds: delayMs), () {
+        if (!completer.isCompleted) {
+          completer.complete();
+        }
+      });
+      await completer.future;
+      _reconnectTimer = null;
+      _reconnectDelayCompleter = null;
+      if (attemptId != _reconnectAttemptId) return;
+      if (_isInBackground) {
+        _status.add(ConnectionStatus.connectionLost(config: config));
+        return;
       }
-    });
-    await completer.future;
-    _reconnectTimer = null;
-    _reconnectDelayCompleter = null;
-    if (_isInBackground) {
-      _status.add(ConnectionStatus.connectionLost(config: config));
-      return;
+      if (_status.value is ConnectionDisconnected) return;
+    } else {
+      logd("Relay reconnect: immediate first attempt to ${config.relayHost}");
     }
-    if (_status.value is ConnectionDisconnected) return;
 
     logd("Relay reconnect: refreshing token and reconnecting to ${config.relayHost}");
 
@@ -541,6 +676,7 @@ class ConnectionService {
         minTtl: const Duration(minutes: 2),
       );
 
+      if (attemptId != _reconnectAttemptId) return;
       if (_isInBackground) {
         _status.add(ConnectionStatus.connectionLost(config: config));
         return;
@@ -558,8 +694,18 @@ class ConnectionService {
         authToken: authToken,
       );
 
-      final result = await _connectViaRelay(freshConfig);
+      final result = await _connectViaRelay(
+        freshConfig,
+        isStale: () => attemptId != _reconnectAttemptId || _status.value is ConnectionDisconnected || _isInBackground,
+      );
 
+      // A newer attempt or a disconnect during connect means that owner is now
+      // responsible for the resulting state — don't clobber it with our outcome.
+      if (attemptId != _reconnectAttemptId) return;
+      if (_isInBackground) {
+        _status.add(ConnectionStatus.connectionLost(config: config));
+        return;
+      }
       if (_status.value is ConnectionDisconnected) return;
 
       if (result is ErrorResponse<HealthResponse>) {
@@ -574,6 +720,11 @@ class ConnectionService {
       }
     } catch (error, stackTrace) {
       loge("Relay reconnect attempt failed unexpectedly", error, stackTrace);
+      if (attemptId != _reconnectAttemptId) return;
+      if (_isInBackground) {
+        _status.add(ConnectionStatus.connectionLost(config: config));
+        return;
+      }
       if (_status.value is ConnectionDisconnected) return;
       _relayReconnectBackoff = Duration(
         milliseconds: min(

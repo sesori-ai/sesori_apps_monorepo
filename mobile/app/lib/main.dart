@@ -8,7 +8,7 @@ import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "core/analytics/analytics_user_id_tracker.dart";
 import "core/di/injection.dart";
@@ -186,18 +186,18 @@ class SesoriApp extends StatelessWidget {
     return MaterialApp.router(
       onGenerateTitle: (context) => context.loc.appTitle,
       theme: ThemeData(
-        colorScheme: ZyraColors.light.toFlutterColorScheme(),
-        textTheme: ZyraTextTheme.light.asFlutterTextTheme(),
-        fontFamily: ZyraTextTheme.fontFamily,
-        fontFamilyFallback: ZyraTextTheme.fontFamilyFallback,
-        extensions: [ZyraDesignSystem.light],
+        colorScheme: PregoColors.light.toFlutterColorScheme(),
+        textTheme: PregoTextTheme.light.asFlutterTextTheme(),
+        fontFamily: PregoTextTheme.fontFamily,
+        fontFamilyFallback: PregoTextTheme.fontFamilyFallback,
+        extensions: [PregoDesignSystem.light],
       ),
       darkTheme: ThemeData(
-        colorScheme: ZyraColors.dark.toFlutterColorScheme(),
-        textTheme: ZyraTextTheme.dark.asFlutterTextTheme(),
-        fontFamily: ZyraTextTheme.fontFamily,
-        fontFamilyFallback: ZyraTextTheme.fontFamilyFallback,
-        extensions: [ZyraDesignSystem.dark],
+        colorScheme: PregoColors.dark.toFlutterColorScheme(),
+        textTheme: PregoTextTheme.dark.asFlutterTextTheme(),
+        fontFamily: PregoTextTheme.fontFamily,
+        fontFamilyFallback: PregoTextTheme.fontFamilyFallback,
+        extensions: [PregoDesignSystem.dark],
       ),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,

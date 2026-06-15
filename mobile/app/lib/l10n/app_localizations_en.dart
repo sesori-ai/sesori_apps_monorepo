@@ -863,6 +863,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailRetryLabel => 'Retry';
 
   @override
+  String get sessionDetailCopy => 'Copy';
+
+  @override
+  String get sessionDetailShowMore => 'Show more';
+
+  @override
+  String get sessionDetailShowLess => 'Show less';
+
+  @override
   String get emptySessionDetailTitle => 'Select a session';
 
   @override

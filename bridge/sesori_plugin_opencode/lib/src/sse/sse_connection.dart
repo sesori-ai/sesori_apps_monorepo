@@ -38,6 +38,7 @@ class SseConnection {
   }
 
   void stop() {
+    Log.v("[shutdown] SseConnection.stop: active=$_active -> false, closing current client");
     _active = false;
     _generation++;
     _currentClient?.close();
@@ -75,8 +76,15 @@ class SseConnection {
         // every reconnect (the lifecycle status follows the live stream).
         _onConnected?.call();
 
-        if (!isFirstConnect) {
-          await _onReconnect?.call();
+        if (!isFirstConnect && _onReconnect != null) {
+          final reconnectSw = Stopwatch()..start();
+          Log.v("[sse-conn] reconnect: running onReconnect cold-start");
+          await _onReconnect();
+          if (!_active || _generation != generation) {
+            Log.v("[sse-conn] reconnect: shutdown requested during onReconnect, dropping");
+            return;
+          }
+          Log.v("[sse-conn] reconnect: onReconnect cold-start finished in ${reconnectSw.elapsedMilliseconds}ms");
         }
         isFirstConnect = false;
         reconnectDelay = const Duration(seconds: 1);
