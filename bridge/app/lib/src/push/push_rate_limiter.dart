@@ -28,7 +28,7 @@ class PushRateLimiter {
   bool shouldSend({
     required NotificationCategory category,
     required String? sessionId,
-    required String collapseKey,
+    required String rateLimitKey,
   }) {
     final cooldown = _cooldowns[category] ?? const Duration(seconds: 30);
     if (cooldown == Duration.zero) {
@@ -36,12 +36,12 @@ class PushRateLimiter {
     }
 
     final now = _now();
-    final last = _lastSent[collapseKey];
+    final last = _lastSent[rateLimitKey];
     if (last != null && now.difference(last) < cooldown) {
       return false;
     }
 
-    _lastSent[collapseKey] = now;
+    _lastSent[rateLimitKey] = now;
     return true;
   }
 }

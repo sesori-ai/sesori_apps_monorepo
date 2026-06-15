@@ -54,6 +54,46 @@ void main() {
       expect(payload.data?.eventType, equals(NotificationEventType.questionAsked));
     });
 
+    test("collapseKey is session-scoped (category-independent) for session notifications", () {
+      final harness = _newHarness();
+
+      harness.dispatcher.dispatchImmediateIfApplicable(
+        const SesoriSseEvent.questionAsked(
+          id: "q-1",
+          sessionID: "session-a",
+          questions: [QuestionInfo(header: "Prompt", question: "Continue?")],
+        ),
+      );
+      harness.dispatcher.dispatchCompletion(
+        rootSessionId: "session-a",
+        title: "Done",
+        body: "Finished the task",
+        projectId: "project-a",
+      );
+
+      // Per-category rate limiting lets both notifications through...
+      expect(harness.client.sentPayloads, hasLength(2));
+      final keys = harness.client.sentPayloads.map((p) => p.collapseKey).toList();
+      final expected = sessionNotificationId(sessionId: "session-a").toString();
+      // ...and an aiInteraction + a sessionMessage notification for the same
+      // session share one collapse key, so the newer replaces the older.
+      expect(keys, everyElement(equals(expected)));
+    });
+
+    test("collapseKey falls back to a category-scoped global key without a session", () {
+      final harness = _newHarness();
+
+      harness.dispatcher.dispatchImmediateIfApplicable(
+        const SesoriSseEvent.installationUpdateAvailable(version: "1.2.3"),
+      );
+
+      expect(harness.client.sentPayloads, hasLength(1));
+      expect(
+        harness.client.sentPayloads.single.collapseKey,
+        equals("${NotificationCategory.systemUpdate.id}-global"),
+      );
+    });
+
     test("completion dispatch sends provided outbound completion payload", () {
       final harness = _newHarness();
       const title = "Implement user authentication for the dashboard";
@@ -382,7 +422,7 @@ void main() {
       harness.rateLimiter.shouldSend(
         category: NotificationCategory.sessionMessage,
         sessionId: "session-a",
-        collapseKey: "sessionMessage-session-a",
+        rateLimitKey: "sessionMessage-session-a",
       );
 
       harness.maintenanceListener.runNow();
@@ -536,7 +576,7 @@ class FakePushRateLimiter extends PushRateLimiter {
   bool shouldSend({
     required NotificationCategory category,
     required String? sessionId,
-    required String collapseKey,
+    required String rateLimitKey,
   }) {
     if (!shouldAllowSend) {
       return false;
@@ -545,7 +585,7 @@ class FakePushRateLimiter extends PushRateLimiter {
     return super.shouldSend(
       category: category,
       sessionId: sessionId,
-      collapseKey: collapseKey,
+      rateLimitKey: rateLimitKey,
     );
   }
 }

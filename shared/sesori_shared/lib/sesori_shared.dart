@@ -62,6 +62,7 @@ export "src/models/sesori/session_variant.dart";
 export "src/models/sesori/set_base_branch_request.dart";
 export "src/models/sesori/success_empty_response.dart";
 export "src/models/sesori/update_session_archive_request.dart";
+export "src/notifications/session_notification_id.dart";
 export "src/protocol/close_codes.dart";
 export "src/protocol/constants.dart";
 export "src/protocol/framing.dart";

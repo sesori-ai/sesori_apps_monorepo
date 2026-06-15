@@ -65,7 +65,6 @@ void main() {
     when(
       () => mockNotificationCanceller.cancelForSession(
         sessionId: any(named: "sessionId"),
-        category: any(named: "category"),
       ),
     ).thenReturn(null);
     when(
@@ -124,7 +123,6 @@ void main() {
     when(
       () => mockNotificationCanceller.cancelForSession(
         sessionId: any(named: "sessionId"),
-        category: any(named: "category"),
       ),
     ).thenReturn(null);
     when(
@@ -207,7 +205,6 @@ void main() {
     when(
       () => mockNotificationCanceller.cancelForSession(
         sessionId: any(named: "sessionId"),
-        category: any(named: "category"),
       ),
     ).thenReturn(null);
     when(

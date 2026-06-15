@@ -881,13 +881,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   /// prompt becomes visible — the notification has served its purpose once the
   /// user is already looking at the content.
   void clearNotifications() {
-    for (final category in NotificationCategory.values) {
-      if (category == NotificationCategory.unknown) continue;
-      _notificationCanceller.cancelForSession(
-        sessionId: _sessionId,
-        category: category,
-      );
-    }
+    _notificationCanceller.cancelForSession(sessionId: _sessionId);
   }
 
   // ---------------------------------------------------------------------------
@@ -952,10 +946,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     // updated state synchronously (prevents auto-chain re-opening the
     // same question).
     _onQuestionResolved(requestId);
-    _notificationCanceller.cancelForSession(
-      sessionId: sessionId,
-      category: NotificationCategory.aiInteraction,
-    );
+    _notificationCanceller.cancelForSession(sessionId: sessionId);
     try {
       final result = await _sessionRepository.replyToQuestion(
         requestId: requestId,
@@ -975,10 +966,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   Future<bool> rejectQuestion(String requestId) async {
     _onQuestionResolved(requestId);
-    _notificationCanceller.cancelForSession(
-      sessionId: _sessionId,
-      category: NotificationCategory.aiInteraction,
-    );
+    _notificationCanceller.cancelForSession(sessionId: _sessionId);
     try {
       final result = await _sessionRepository.rejectQuestion(requestId: requestId);
       if (result case ErrorResponse(:final error)) {
@@ -998,10 +986,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required PermissionReply reply,
   }) async {
     _onPermissionResolved(requestId);
-    _notificationCanceller.cancelForSession(
-      sessionId: sessionId,
-      category: NotificationCategory.aiInteraction,
-    );
+    _notificationCanceller.cancelForSession(sessionId: sessionId);
     try {
       await _permissionRepository.replyToPermission(
         requestId: requestId,
