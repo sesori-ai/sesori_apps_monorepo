@@ -39,11 +39,13 @@ switch ($detectedOsArchitecture) {
     '64-bit' { $arch = 'x64' }
     'AMD64'  { $arch = 'x64' }
     'X64'    { $arch = 'x64' }
+    'ARM64'  { $arch = 'arm64' }
+    'ARM 64-bit Processor' { $arch = 'arm64' }
     default  { $arch = $null }
 }
 
-if ($arch -ne 'x64') {
-    Write-Error "Unsupported architecture '$detectedOsArchitecture'. Only x64 (AMD64) is supported on Windows."
+if ($arch -notin @('x64', 'arm64')) {
+    Write-Error "Unsupported architecture '$detectedOsArchitecture'. Only x64 (AMD64) and arm64 are supported on Windows."
     exit 1
 }
 

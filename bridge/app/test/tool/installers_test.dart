@@ -379,16 +379,19 @@ cat "\$HOME/.zprofile"
       script = await File(_installPs1Path()).readAsString();
     });
 
-    test('limits Windows installs to x64 architecture detection paths', () {
+    test('supports x64 and arm64 architecture detection paths', () {
       expect(script, contains('function Resolve-OsArchitecture'));
       expect(script, contains(r'$env:PROCESSOR_ARCHITEW6432'));
       expect(script, contains('Get-CimInstance Win32_OperatingSystem'));
       expect(script, contains(r"'64-bit' { $arch = 'x64' }"));
       expect(script, contains(r"'X64'    { $arch = 'x64' }"));
       expect(script, contains(r"'AMD64'  { $arch = 'x64' }"));
+      expect(script, contains(r"'ARM64'  { $arch = 'arm64' }"));
+      expect(script, contains(r"'ARM 64-bit Processor' { $arch = 'arm64' }"));
       expect(script, contains(r"Unsupported architecture '$detectedOsArchitecture'"));
-      expect(script, contains('Only x64 (AMD64) is supported on Windows.'));
+      expect(script, contains('Only x64 (AMD64) and arm64 are supported on Windows.'));
       expect(script, contains(r'sesori-bridge-windows-$arch.zip'));
+      expect(script, contains(r"if ($arch -notin @('x64', 'arm64'))"));
     });
 
     test('resolves stable bridge-tagged release assets and checksum basenames', () {
