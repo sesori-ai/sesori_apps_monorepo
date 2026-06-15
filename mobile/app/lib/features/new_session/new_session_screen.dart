@@ -229,6 +229,10 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                       ),
                     ),
                     PromptInput(
+                      // Persist the unsent prompt per project so it survives
+                      // leaving and returning to the new-session screen before
+                      // a session exists; cleared once the session is created.
+                      draftKey: "new-session:${widget.projectId}",
                       isBusy: state is NewSessionSending,
                       onSend: (String text, String? command) {
                         context.read<NewSessionCubit>().createSession(

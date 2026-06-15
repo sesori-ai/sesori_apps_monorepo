@@ -95,6 +95,7 @@ void _registerDependencies({
   getIt.registerSingleton<NotificationCanceller>(notificationCanceller);
   getIt.registerSingleton<FailureReporter>(failureReporter);
   getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
+  getIt.registerLazySingleton<DraftStore>(DraftStore.new);
 }
 
 void main() {

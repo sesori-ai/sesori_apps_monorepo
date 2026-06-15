@@ -5,6 +5,7 @@ import "package:theme_zyra/module_zyra.dart";
 
 import "../di/injection.dart";
 import "../extensions/text_style_x.dart";
+import "code_block.dart";
 
 /// Shared [MarkdownBody.onTapLink] handler that opens URLs in the system
 /// browser via the DI-registered [UrlLauncher].
@@ -32,6 +33,22 @@ MarkdownStyleSheet buildSessionMarkdownStyleSheet({
       color: zyra.colors.textPrimary,
     ).monospace,
   );
+}
+
+/// Custom [MarkdownBody.builders] for session chat markdown. Replaces the
+/// default fenced-code-block rendering with a syntax-highlighted, copyable
+/// [CodeBlock]. Pass `highlightEnabled: false` while a message is streaming so
+/// code is not re-tokenized on every token delta.
+Map<String, MarkdownElementBuilder> buildSessionMarkdownBuilders({
+  required bool highlightEnabled,
+  required String? copyTooltip,
+}) {
+  return <String, MarkdownElementBuilder>{
+    "pre": CodeBlockMarkdownBuilder(
+      highlightEnabled: highlightEnabled,
+      copyTooltip: copyTooltip,
+    ),
+  };
 }
 
 MarkdownStyleSheet buildAgreementMarkdownStyleSheet({required ZyraDesignSystem zyra}) {

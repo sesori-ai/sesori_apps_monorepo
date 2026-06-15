@@ -103,6 +103,7 @@ void main() {
     when(() => voiceTranscriptionService.onMaxDurationReached).thenAnswer((_) => maxDurationReached.stream);
 
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
+    GetIt.instance.registerLazySingleton<DraftStore>(DraftStore.new);
   });
 
   tearDown(() async {

@@ -3,6 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_zyra/module_zyra.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/extensions/text_style_x.dart";
+import "../../../core/widgets/copy_icon_button.dart";
 import "../../../l10n/app_localizations.dart";
 
 class ToolPartWidget extends StatelessWidget {
@@ -59,20 +60,7 @@ class ToolPartWidget extends StatelessWidget {
             if (output != null)
               Padding(
                 padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 8),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: zyra.colors.bgQuaternary,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    _truncateOutput(output),
-                    style: zyra.textTheme.textXs.regular.copyWith(fontSize: 11).monospace,
-                    maxLines: 8,
-                    overflow: .ellipsis,
-                  ),
-                ),
+                child: _ToolOutputBlock(output: output),
               ),
             if (errorText != null)
               Padding(
@@ -121,9 +109,98 @@ class ToolPartWidget extends StatelessWidget {
     "error" => loc.sessionDetailToolError,
     _ => status,
   };
+}
 
-  String _truncateOutput(String output) {
-    if (output.length <= 500) return output;
-    return "${output.substring(0, 500)}...";
+/// Tool output panel: collapsed to 8 lines by default with a one-tap copy
+/// button, expandable to the full (previously hard-capped at 500 chars)
+/// output. Kept collapsed by default so large outputs don't grow the list
+/// or jank while streaming.
+class _ToolOutputBlock extends StatefulWidget {
+  final String output;
+
+  const _ToolOutputBlock({required this.output});
+
+  @override
+  State<_ToolOutputBlock> createState() => _ToolOutputBlockState();
+}
+
+class _ToolOutputBlockState extends State<_ToolOutputBlock> {
+  /// Collapsed line budget; mirrors the previous fixed `maxLines: 8`.
+  static const _collapsedMaxLines = 8;
+
+  bool _expanded = false;
+
+  /// Horizontal space reserved at the text's trailing edge for the overlaid
+  /// copy button, so wrapped text never runs under it and overflow is measured
+  /// against the same width the text actually lays out in.
+  static const _copyButtonReserve = 32.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final zyra = context.zyra;
+    final loc = context.loc;
+    final output = widget.output;
+    final monoStyle = zyra.textTheme.textXs.regular.copyWith(fontSize: 11).monospace;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: zyra.colors.bgQuaternary,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Measure actual overflow against the collapsed budget at the real
+          // text width (accounts for soft-wrapped long lines, not just
+          // explicit newlines). maxLines bounds the layout cost.
+          final textWidth = constraints.maxWidth - _copyButtonReserve;
+          final painter = TextPainter(
+            text: TextSpan(text: output, style: monoStyle),
+            maxLines: _collapsedMaxLines,
+            textDirection: Directionality.of(context),
+            textScaler: MediaQuery.textScalerOf(context),
+          )..layout(maxWidth: textWidth);
+          final isExpandable = painter.didExceedMaxLines;
+
+          return Column(
+            crossAxisAlignment: .start,
+            children: [
+              Stack(
+                children: [
+                  Padding(
+                    // Reserve trailing room for the overlaid copy button.
+                    padding: const EdgeInsetsDirectional.only(end: _copyButtonReserve),
+                    child: Text(
+                      output,
+                      style: monoStyle,
+                      maxLines: _expanded ? null : _collapsedMaxLines,
+                      overflow: _expanded ? TextOverflow.clip : TextOverflow.ellipsis,
+                    ),
+                  ),
+                  PositionedDirectional(
+                    top: 0,
+                    end: 0,
+                    child: CopyIconButton(text: output, tooltip: loc.sessionDetailCopy, iconSize: 14),
+                  ),
+                ],
+              ),
+              if (isExpandable)
+                GestureDetector(
+                  onTap: () => setState(() => _expanded = !_expanded),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.only(top: 4),
+                    child: Text(
+                      _expanded ? loc.sessionDetailShowLess : loc.sessionDetailShowMore,
+                      style: zyra.textTheme.textXs.medium.copyWith(color: zyra.colors.bgBrandSolid),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
   }
 }

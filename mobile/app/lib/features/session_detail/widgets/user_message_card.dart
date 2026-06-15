@@ -27,10 +27,14 @@ class UserMessageCard extends StatelessWidget {
           color: zyra.colors.bgBrandPrimary,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: SelectableText(
-          text,
-          style: zyra.textTheme.textSm.regular.copyWith(
-            color: zyra.colors.textBrandPrimary,
+        // SelectionArea (not SelectableText) to match the assistant card's
+        // selection model, so text selection behaves the same on every bubble.
+        child: SelectionArea(
+          child: Text(
+            text,
+            style: zyra.textTheme.textSm.regular.copyWith(
+              color: zyra.colors.textBrandPrimary,
+            ),
           ),
         ),
       ),

@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:theme_zyra/module_zyra.dart";
 
+import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/markdown_styles.dart";
 
 class TextPartWidget extends StatelessWidget {
@@ -25,6 +26,10 @@ class TextPartWidget extends StatelessWidget {
         selectable: false,
         onTapLink: handleMarkdownLinkTap,
         styleSheet: buildSessionMarkdownStyleSheet(zyra: context.zyra),
+        builders: buildSessionMarkdownBuilders(
+          highlightEnabled: !isStreaming,
+          copyTooltip: context.loc.sessionDetailCopy,
+        ),
       ),
     );
   }

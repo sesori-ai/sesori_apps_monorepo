@@ -95,6 +95,7 @@ export "src/repositories/session_repository.dart";
 export "src/routing/app_routes.dart";
 export "src/routing/notification_open_dispatcher.dart";
 // Services
+export "src/services/draft_store.dart";
 export "src/services/foreground_notification_dispatcher.dart";
 export "src/services/notification_registration_service.dart";
 export "src/services/session_detail_load_service.dart";
