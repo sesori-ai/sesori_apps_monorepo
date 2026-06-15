@@ -57,6 +57,14 @@ class _TestRelayClientFactory extends RelayClientFactory {
   }
 }
 
+class _TestClockProvider extends ClockProvider {
+  final DateTime Function() _now;
+  _TestClockProvider(this._now);
+
+  @override
+  DateTime call() => _now();
+}
+
 void main() {
   setUpAll(() {
     registerFallbackValue(const Duration(minutes: 1));
@@ -217,6 +225,329 @@ void main() {
       expect(service.relayClient, isNull);
       expect(service.currentStatus, isNot(isA<ConnectionConnected>()));
       verify(relayClient.disconnect).called(greaterThanOrEqualTo(1));
+    });
+
+    test(
+      "foreground resume attempts the first reconnect immediately, without the backoff delay",
+      () async {
+        // Keep the SSE stream open so the reconnected client stays Connected — an
+        // already-closed stream would immediately re-trigger a drop.
+        final sseController = StreamController<RelaySseEvent>.broadcast();
+        addTearDown(sseController.close);
+
+        final relayClient = MockRelayClient();
+        when(relayClient.connect).thenAnswer((_) async {});
+        when(() => relayClient.isConnected).thenReturn(true);
+        when(() => relayClient.sendRequest(any())).thenAnswer(
+          (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
+        );
+        when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
+        when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+        when(relayClient.disconnect).thenAnswer((_) async {});
+
+        var now = DateTime(2025, 1, 1, 12, 0, 0);
+        final factory = _TestRelayClientFactory(
+          ({
+            required String relayHost,
+            required RelayCryptoService cryptoService,
+            required RoomKeyStorage roomKeyStorage,
+            required String? authToken,
+          }) => relayClient,
+        );
+        final service = ConnectionService(
+          cryptoService,
+          roomKeyStorage,
+          authTokenProvider,
+          authSession,
+          lifecycleSource,
+          failureReporter,
+          clock: _TestClockProvider(() => now),
+          relayClientFactory: factory,
+        );
+        addTearDown(service.dispose);
+
+        // Establish the initial connection (1st factory call).
+        await service.connect(config);
+        expect(factory.callCount, 1);
+        expect(service.currentStatus, isA<ConnectionConnected>());
+
+        // Background, then resume past the relay-drop threshold so the still-
+        // "connected" socket is treated as stale and a reconnect is triggered.
+        lifecycleController.add(LifecycleState.paused);
+        await Future<void>.delayed(Duration.zero);
+        now = now.add(const Duration(seconds: 30));
+        lifecycleController.add(LifecycleState.resumed);
+
+        // Far below the 1s backoff: if the first attempt were still gated on the
+        // backoff timer the factory would not have been called again yet.
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        expect(factory.callCount, 2);
+        expect(service.currentStatus, isA<ConnectionConnected>());
+      },
+    );
+
+    test("a non-resume reconnect still waits the backoff before its first attempt", () async {
+      final sseController = StreamController<RelaySseEvent>.broadcast();
+      addTearDown(sseController.close);
+
+      final relayClient = MockRelayClient();
+      when(relayClient.connect).thenAnswer((_) async {});
+      when(() => relayClient.isConnected).thenReturn(true);
+      when(() => relayClient.sendRequest(any())).thenAnswer(
+        (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
+      );
+      when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
+      when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(relayClient.disconnect).thenAnswer((_) async {});
+
+      final factory = _TestRelayClientFactory(
+        ({
+          required String relayHost,
+          required RelayCryptoService cryptoService,
+          required RoomKeyStorage roomKeyStorage,
+          required String? authToken,
+        }) => relayClient,
+      );
+      final service = ConnectionService(
+        cryptoService,
+        roomKeyStorage,
+        authTokenProvider,
+        authSession,
+        lifecycleSource,
+        failureReporter,
+        relayClientFactory: factory,
+      );
+      addTearDown(service.dispose);
+
+      // Manual reconnect is NOT the resume path, so it keeps the exponential
+      // backoff (seeded at 1s): no attempt fires on the immediate tick.
+      service.emitStatusForTesting(const ConnectionStatus.connectionLost(config: config));
+      service.reconnect();
+
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(factory.callCount, 0);
+
+      await Future<void>.delayed(const Duration(milliseconds: 1400));
+      expect(factory.callCount, 1);
+    });
+
+    test("a superseded reconnect attempt aborts after its async gap and does not open a second socket", () async {
+      final sseController = StreamController<RelaySseEvent>.broadcast();
+      addTearDown(sseController.close);
+
+      final relayClient = MockRelayClient();
+      when(relayClient.connect).thenAnswer((_) async {});
+      when(() => relayClient.isConnected).thenReturn(true);
+      when(() => relayClient.sendRequest(any())).thenAnswer(
+        (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
+      );
+      when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
+      when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(relayClient.disconnect).thenAnswer((_) async {});
+
+      // Attempt 1's token refresh is held pending; Attempt 2's resolves
+      // immediately, so Attempt 2 supersedes Attempt 1 while it is still parked.
+      final firstToken = Completer<String?>();
+      var tokenCalls = 0;
+      when(() => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl"))).thenAnswer((_) {
+        tokenCalls++;
+        return tokenCalls == 1 ? firstToken.future : Future<String?>.value("token");
+      });
+
+      var now = DateTime(2025, 1, 1, 12, 0, 0);
+      final factory = _TestRelayClientFactory(
+        ({
+          required String relayHost,
+          required RelayCryptoService cryptoService,
+          required RoomKeyStorage roomKeyStorage,
+          required String? authToken,
+        }) => relayClient,
+      );
+      final service = ConnectionService(
+        cryptoService,
+        roomKeyStorage,
+        authTokenProvider,
+        authSession,
+        lifecycleSource,
+        failureReporter,
+        clock: _TestClockProvider(() => now),
+        relayClientFactory: factory,
+      );
+      addTearDown(service.dispose);
+
+      await service.connect(config);
+      expect(factory.callCount, 1);
+
+      // Attempt 1: resume past the threshold → immediate reconnect, parks at token.
+      lifecycleController.add(LifecycleState.paused);
+      await Future<void>.delayed(Duration.zero);
+      now = now.add(const Duration(seconds: 30));
+      lifecycleController.add(LifecycleState.resumed);
+      await Future<void>.delayed(Duration.zero);
+      expect(factory.callCount, 1);
+
+      // Attempt 2: background + resume again → supersedes Attempt 1 and connects.
+      lifecycleController.add(LifecycleState.paused);
+      await Future<void>.delayed(Duration.zero);
+      now = now.add(const Duration(seconds: 30));
+      lifecycleController.add(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(factory.callCount, 2);
+      expect(service.currentStatus, isA<ConnectionConnected>());
+
+      // Releasing Attempt 1's token must NOT open a third socket: it detects it
+      // was superseded and bails after the await.
+      firstToken.complete("token-stale");
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(factory.callCount, 2);
+      expect(service.currentStatus, isA<ConnectionConnected>());
+    });
+
+    test("a superseded in-flight handshake is disconnected before the next reconnect opens", () async {
+      final sseController = StreamController<RelaySseEvent>.broadcast();
+      addTearDown(sseController.close);
+
+      final initialClient = MockRelayClient();
+      final firstReconnectClient = MockRelayClient();
+      final secondReconnectClient = MockRelayClient();
+      final firstConnect = Completer<void>();
+      final clients = <MockRelayClient>[
+        initialClient,
+        firstReconnectClient,
+        secondReconnectClient,
+      ];
+
+      for (final client in clients) {
+        when(() => client.isConnected).thenReturn(true);
+        when(() => client.sendRequest(any())).thenAnswer(
+          (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
+        );
+        when(() => client.subscribeSse(any())).thenAnswer((_) => sseController.stream);
+        when(() => client.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+        when(client.disconnect).thenAnswer((_) async {});
+      }
+      when(initialClient.connect).thenAnswer((_) async {});
+      when(firstReconnectClient.connect).thenAnswer((_) => firstConnect.future);
+      when(secondReconnectClient.connect).thenAnswer((_) async {});
+
+      var nextClient = 0;
+      final factory = _TestRelayClientFactory(
+        ({
+          required String relayHost,
+          required RelayCryptoService cryptoService,
+          required RoomKeyStorage roomKeyStorage,
+          required String? authToken,
+        }) => clients[nextClient++],
+      );
+      var now = DateTime(2025, 1, 1, 12, 0, 0);
+      final service = ConnectionService(
+        cryptoService,
+        roomKeyStorage,
+        authTokenProvider,
+        authSession,
+        lifecycleSource,
+        failureReporter,
+        clock: _TestClockProvider(() => now),
+        relayClientFactory: factory,
+      );
+      addTearDown(service.dispose);
+
+      await service.connect(config);
+      expect(service.relayClient, same(initialClient));
+
+      lifecycleController.add(LifecycleState.paused);
+      await Future<void>.delayed(Duration.zero);
+      now = now.add(const Duration(seconds: 30));
+      lifecycleController.add(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(factory.callCount, 2);
+      expect(service.relayClient, isNull);
+
+      lifecycleController.add(LifecycleState.paused);
+      await Future<void>.delayed(Duration.zero);
+      now = now.add(const Duration(seconds: 30));
+      lifecycleController.add(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      verify(firstReconnectClient.disconnect).called(greaterThanOrEqualTo(1));
+      expect(factory.callCount, 3);
+      expect(service.relayClient, same(secondReconnectClient));
+      expect(service.currentStatus, isA<ConnectionConnected>());
+
+      firstConnect.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      verifyNever(() => firstReconnectClient.sendRequest(any()));
+      expect(service.relayClient, same(secondReconnectClient));
+      expect(service.currentStatus, isA<ConnectionConnected>());
+    });
+
+    test("backgrounding during an immediate reconnect handshake aborts without publishing connected", () async {
+      final sseController = StreamController<RelaySseEvent>.broadcast();
+      addTearDown(sseController.close);
+
+      final initialClient = MockRelayClient();
+      final reconnectClient = MockRelayClient();
+      final reconnectConnect = Completer<void>();
+      final clients = <MockRelayClient>[initialClient, reconnectClient];
+
+      for (final client in clients) {
+        when(() => client.isConnected).thenReturn(true);
+        when(() => client.sendRequest(any())).thenAnswer(
+          (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
+        );
+        when(() => client.subscribeSse(any())).thenAnswer((_) => sseController.stream);
+        when(() => client.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+        when(client.disconnect).thenAnswer((_) async {});
+      }
+      when(initialClient.connect).thenAnswer((_) async {});
+      when(reconnectClient.connect).thenAnswer((_) => reconnectConnect.future);
+
+      var nextClient = 0;
+      final factory = _TestRelayClientFactory(
+        ({
+          required String relayHost,
+          required RelayCryptoService cryptoService,
+          required RoomKeyStorage roomKeyStorage,
+          required String? authToken,
+        }) => clients[nextClient++],
+      );
+      var now = DateTime(2025, 1, 1, 12, 0, 0);
+      final service = ConnectionService(
+        cryptoService,
+        roomKeyStorage,
+        authTokenProvider,
+        authSession,
+        lifecycleSource,
+        failureReporter,
+        clock: _TestClockProvider(() => now),
+        relayClientFactory: factory,
+      );
+      addTearDown(service.dispose);
+
+      await service.connect(config);
+      expect(service.currentStatus, isA<ConnectionConnected>());
+
+      lifecycleController.add(LifecycleState.paused);
+      await Future<void>.delayed(Duration.zero);
+      now = now.add(const Duration(seconds: 30));
+      lifecycleController.add(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(factory.callCount, 2);
+
+      lifecycleController.add(LifecycleState.paused);
+      await Future<void>.delayed(Duration.zero);
+      reconnectConnect.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(service.currentStatus, const ConnectionStatus.connectionLost(config: config));
+      expect(service.relayClient, isNull);
+      verify(reconnectClient.disconnect).called(greaterThanOrEqualTo(1));
+      verifyNever(() => reconnectClient.sendRequest(any()));
     });
   });
 }
