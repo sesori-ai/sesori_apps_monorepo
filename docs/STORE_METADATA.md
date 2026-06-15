@@ -95,10 +95,22 @@ the lane separates them too:
 - **Pass 1** — metadata only (`submit_for_review: false`). A metadata error here
   fails *before* the build is attached/submitted, so it can never orphan a
   half-submitted version. The already-uploaded TestFlight binary is never
-  touched (`skip_binary_upload: true`).
+  touched (`skip_binary_upload: true`). Runs only when the listing is being
+  (re)published (HEAD untagged).
+- **Pass 1b** — release notes only (`submit_for_review: false`). Runs when Pass 1
+  is skipped (listing unchanged). "What's New" (`whatsNew`) is **version-scoped**:
+  App Store Connect requires it on every new version before review, even when the
+  store copy is identical to the last release. Pass 1 uploads it as part of the
+  full listing, but when that's skipped this pass applies just the fixed
+  `release_notes.txt` (from a temp tree containing only release notes, so nothing
+  else in the unchanged listing is touched). Without it, Pass 2 fails with
+  `appStoreVersions ... is not in valid state ... You must provide a value for
+  the attribute 'whatsNew'`. The version's release notes path is exposed via
+  `IOS_RELEASE_NOTES_PATH`, set independently of the publish gate.
 - **Pass 2** — attach the existing build (`build_number:`) and submit for review
-  (`skip_metadata: true`, since pass 1 handled it). `automatic_release: false`,
-  so a human approves the actual release after Apple's review.
+  (`skip_metadata: true`, since the earlier passes handled it).
+  `automatic_release: false`, so a human approves the actual release after
+  Apple's review.
 
 ### Android — one atomic edit (`submit_android`)
 
@@ -124,8 +136,11 @@ Two distinct sources, by intent:
   iOS uploads `ios/metadata/<locale>/release_notes.txt`; Android falls back to
   `android/<locale>/changelogs/default.txt` (a production promotion never has a
   matching `<versionCode>.txt`). **Keep those two files identical** — that single
-  copy is the production "What's new" every release. It is intentionally NOT
-  per-release: there is nothing to edit at submit time.
+  copy is the production "What's new" every release. The *text* is not edited per
+  release, but iOS **re-applies it to every new version** (App Store Connect
+  requires `whatsNew` on each version before review, even when the listing is
+  otherwise unchanged — see Pass 1b above). Keep a non-empty `release_notes.txt`
+  for every iOS locale, or production submits will be rejected.
 - **Test builds (TestFlight + Play internal): the build commit's message.**
   `deploy_testflight` / `deploy_internal` set the changelog to the message of the
   commit the build was made from, plus a `commit: <sha>` trailer, truncated to
