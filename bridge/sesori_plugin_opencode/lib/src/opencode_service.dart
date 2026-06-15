@@ -102,19 +102,7 @@ class OpenCodeService {
   Future<List<PendingQuestion>> getPendingQuestionsForSession({
     required String sessionId,
   }) async {
-    var directory = tracker.getSessionDirectory(sessionId: sessionId);
-    if (directory == null) {
-      final session = await repository.getSession(
-        sessionId: sessionId,
-        directory: null,
-      );
-      directory = session.directory;
-      tracker.registerSession(sessionId: sessionId, directory: directory);
-      Log.d(
-        "getPendingQuestionsForSession: resolved missing directory "
-        "for session $sessionId via getSession: $directory",
-      );
-    }
+    final directory = await _resolveSessionDirectory(sessionId: sessionId);
 
     // Subagent (child) sessions are non-interactive and never ask questions, so
     // only the session's own pending questions are relevant. `getPendingQuestions`
@@ -122,6 +110,29 @@ class OpenCodeService {
     // same worktree, so filter to this session.
     final all = await repository.getPendingQuestions(directory: directory);
     return all.where((question) => question.sessionID == sessionId).toList();
+  }
+
+  /// Resolves the directory for [sessionId], fetching and registering it from
+  /// the repository if the tracker has not learned it yet.
+  Future<String?> _resolveSessionDirectory({required String sessionId}) async {
+    final knownDirectory = tracker.getSessionDirectory(sessionId: sessionId);
+    if (knownDirectory != null) return knownDirectory;
+
+    try {
+      final session = await repository.getSession(
+        sessionId: sessionId,
+        directory: null,
+      );
+      tracker.registerSession(sessionId: sessionId, directory: session.directory);
+      Log.d(
+        "_resolveSessionDirectory: resolved missing directory "
+        "for session $sessionId via getSession: ${session.directory}",
+      );
+      return session.directory;
+    } catch (e) {
+      Log.w("_resolveSessionDirectory: failed to resolve directory for session $sessionId: $e");
+      return null;
+    }
   }
 
   Future<List<MessageWithParts>> getMessages({
@@ -274,7 +285,7 @@ class OpenCodeService {
     required String sessionId,
     required List<List<String>> answers,
   }) async {
-    final directory = tracker.getSessionDirectory(sessionId: sessionId);
+    final directory = await _resolveSessionDirectory(sessionId: sessionId);
     try {
       await repository.replyToQuestion(
         questionId: questionId,
@@ -282,7 +293,7 @@ class OpenCodeService {
         body: QuestionReplyBody(answers: answers),
       );
     } on OpenCodeApiException catch (e) {
-      if (e.statusCode != 404) rethrow;
+      if (e.statusCode != 404 || directory == null) rethrow;
       Log.w("question already resolved upstream (404), reconciling tracker: ${e.endpoint}", e);
     }
     return tracker.clearPendingQuestion(questionId: questionId, sessionId: sessionId);
@@ -293,14 +304,14 @@ class OpenCodeService {
     required String? sessionId,
   }) async {
     final resolvedSessionId = sessionId ?? tracker.getSessionIdForQuestion(questionId: questionId);
-    final directory = resolvedSessionId != null ? tracker.getSessionDirectory(sessionId: resolvedSessionId) : null;
+    final directory = resolvedSessionId != null ? await _resolveSessionDirectory(sessionId: resolvedSessionId) : null;
     try {
       await repository.rejectQuestion(
         questionId: questionId,
         directory: directory,
       );
     } on OpenCodeApiException catch (e) {
-      if (e.statusCode != 404) rethrow;
+      if (e.statusCode != 404 || directory == null) rethrow;
       Log.w("question already resolved upstream (404), reconciling tracker: ${e.endpoint}", e);
     }
     return tracker.clearPendingQuestion(questionId: questionId, sessionId: resolvedSessionId);
@@ -311,7 +322,7 @@ class OpenCodeService {
     required String sessionId,
     required PluginPermissionReply reply,
   }) async {
-    final directory = tracker.getSessionDirectory(sessionId: sessionId);
+    final directory = await _resolveSessionDirectory(sessionId: sessionId);
     try {
       await repository.replyToPermission(
         requestId: requestId,
@@ -319,7 +330,7 @@ class OpenCodeService {
         reply: reply,
       );
     } on OpenCodeApiException catch (e) {
-      if (e.statusCode != 404) rethrow;
+      if (e.statusCode != 404 || directory == null) rethrow;
       Log.w("permission already resolved upstream (404), reconciling tracker: ${e.endpoint}", e);
     }
     return tracker.clearPendingPermission(sessionId: sessionId, requestId: requestId);

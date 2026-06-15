@@ -15,6 +15,7 @@ class CompletionNotifier {
   final StreamController<String> _completionController = StreamController<String>.broadcast();
   final Map<String, Timer> _debounceTimers = {};
   final Set<String> _completionSentForRoots = {};
+  final Set<String> _completionBlockedByPendingInteraction = {};
   final Set<String> _pendingAbortRoots = {};
   final Set<String> _abortedRoots = {};
   final Map<String, String> _permissionRequestToSession = {};
@@ -76,30 +77,43 @@ class CompletionNotifier {
           case SessionStatusBusy():
           case SessionStatusRetry():
             _completionSentForRoots.remove(rootSessionId);
+            _completionBlockedByPendingInteraction.remove(rootSessionId);
             _pendingAbortRoots.remove(rootSessionId);
             _abortedRoots.remove(rootSessionId);
             _cancelDebounceForRoot(rootSessionId);
           case SessionStatusIdle():
-            _maybeScheduleCompletion(sessionID);
+            if (_tracker.isSessionGroupFullyIdle(rootSessionId) &&
+                _tracker.hasPendingInteraction(rootSessionId)) {
+              // The agent finished while prompts are still pending. Block
+              // completion until the user resolves all of them.
+              _completionBlockedByPendingInteraction.add(rootSessionId);
+              _cancelDebounceForRoot(rootSessionId);
+            } else {
+              _maybeScheduleCompletion(sessionID);
+            }
         }
       // Deletion clears any pending completion work for this session group.
       case SesoriSessionDeleted(:final info):
         _cancelDebounceForSessionGroup(info.id);
         _completionSentForRoots.remove(info.id);
+        _completionBlockedByPendingInteraction.remove(info.id);
         _pendingAbortRoots.remove(info.id);
         _abortedRoots.remove(info.id);
         _permissionRequestToSession.removeWhere((_, sessionId) => sessionId == info.id);
       // User already handled the question, so cancel any pending completion ping.
       case SesoriQuestionReplied(:final sessionID):
         _cancelDebounceForSessionGroup(sessionID);
+        _maybeResumeBlockedCompletion(sessionID);
       // Rejected questions are also already seen by the user.
       case SesoriQuestionRejected(:final sessionID):
         _cancelDebounceForSessionGroup(sessionID);
+        _maybeResumeBlockedCompletion(sessionID);
       // Permission replies are user actions, so cancel completion debounce.
       case SesoriPermissionReplied(:final requestID):
         final sessionId = _permissionRequestToSession.remove(requestID);
         if (sessionId != null) {
           _cancelDebounceForSessionGroup(sessionId);
+          _maybeResumeBlockedCompletion(sessionId);
         }
       // Ignore unsupported events.
       default:
@@ -116,6 +130,7 @@ class CompletionNotifier {
     for (final sessionId in prunedRootIds) {
       _cancelDebounceForRoot(sessionId);
       _completionSentForRoots.remove(sessionId);
+      _completionBlockedByPendingInteraction.remove(sessionId);
       _pendingAbortRoots.remove(sessionId);
       _abortedRoots.remove(sessionId);
     }
@@ -134,6 +149,7 @@ class CompletionNotifier {
   void reset() {
     _cancelAllDebounceTimers();
     _completionSentForRoots.clear();
+    _completionBlockedByPendingInteraction.clear();
     _pendingAbortRoots.clear();
     _abortedRoots.clear();
     _permissionRequestToSession.clear();
@@ -145,6 +161,23 @@ class CompletionNotifier {
       timer.cancel();
     }
     _debounceTimers.clear();
+  }
+
+  /// Schedules completion for [sessionId] only if its group was previously busy,
+  /// is fully idle, and has no pending interactions. Used after question/permission
+  /// replies so an already-idle session can still fire completion once the user
+  /// resolves the last prompt.
+  void _maybeResumeBlockedCompletion(String sessionId) {
+    final rootSessionId = _tracker.resolveRootSessionId(sessionId);
+    if (!_completionBlockedByPendingInteraction.contains(rootSessionId)) {
+      return;
+    }
+    if (_tracker.wasPreviouslyBusy(rootSessionId) &&
+        _tracker.isSessionGroupFullyIdle(rootSessionId) &&
+        !_tracker.hasPendingInteraction(rootSessionId)) {
+      _completionBlockedByPendingInteraction.remove(rootSessionId);
+      _maybeScheduleCompletion(sessionId);
+    }
   }
 
   /// Schedules (or reschedules) completion emission for [sessionId]'s root.

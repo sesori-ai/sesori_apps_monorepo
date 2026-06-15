@@ -216,6 +216,96 @@ void main() {
       });
     });
 
+    test("question asked keeps blocking completion after another question is replied", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.questionAsked(
+            id: "q-1",
+            sessionID: "session-a",
+            questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
+          ),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.questionAsked(
+            id: "q-2",
+            sessionID: "session-a",
+            questions: [QuestionInfo(header: "Prompt", question: "Also?")],
+          ),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
+        );
+        async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
+
+        harness.dispatch(
+          const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "session-a"),
+        );
+
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
+
+        harness.dispatch(
+          const SesoriSseEvent.questionReplied(requestID: "q-2", sessionID: "session-a"),
+        );
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, equals(["session-a"]));
+      });
+    });
+
+    test("permission asked keeps blocking completion after another permission is replied", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.permissionAsked(
+            requestID: "perm-1",
+            sessionID: "session-a",
+            tool: "bash",
+            description: "Run command",
+          ),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.permissionAsked(
+            requestID: "perm-2",
+            sessionID: "session-a",
+            tool: "bash",
+            description: "Run another command",
+          ),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
+        );
+        async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
+
+        harness.dispatch(
+          const SesoriSseEvent.permissionReplied(requestID: "perm-1", sessionID: "session-a", reply: "allow"),
+        );
+
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
+
+        harness.dispatch(
+          const SesoriSseEvent.permissionReplied(requestID: "perm-2", sessionID: "session-a", reply: "allow"),
+        );
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, equals(["session-a"]));
+      });
+    });
+
     test("parent+child completion fires only when whole group is idle", () {
       fakeAsync((async) {
         final harness = _newHarness();
