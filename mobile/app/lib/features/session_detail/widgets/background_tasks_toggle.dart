@@ -1,5 +1,5 @@
 import "package:flutter/material.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 import "../../../core/extensions/build_context_x.dart";
 
 class BackgroundTasksToggle extends StatelessWidget {
@@ -16,7 +16,7 @@ class BackgroundTasksToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
+    final prego = context.prego;
     final loc = context.loc;
 
     return InkWell(
@@ -28,14 +28,14 @@ class BackgroundTasksToggle extends StatelessWidget {
             Icon(
               showCompleted ? Icons.visibility_off_outlined : Icons.visibility_outlined,
               size: 16,
-              color: zyra.colors.bgBrandSolid,
+              color: prego.colors.bgBrandSolid,
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 showCompleted ? loc.backgroundTasksHideCompleted : loc.backgroundTasksShowCompleted(completedCount),
-                style: zyra.textTheme.textSm.bold.copyWith(
-                  color: zyra.colors.bgBrandSolid,
+                style: prego.textTheme.textSm.bold.copyWith(
+                  color: prego.colors.bgBrandSolid,
                 ),
               ),
             ),

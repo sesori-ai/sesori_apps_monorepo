@@ -2,7 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
@@ -88,7 +88,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   }
 
   Widget? _buildErrorBanner(NewSessionState state) {
-    final zyra = context.zyra;
+    final prego = context.prego;
     final loc = context.loc;
     return switch (state) {
       NewSessionError(:final reason) => Padding(
@@ -98,7 +98,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
             Expanded(
               child: Text(
                 reason.localizedMessage(loc),
-                style: TextStyle(color: zyra.colors.fgErrorPrimary),
+                style: TextStyle(color: prego.colors.fgErrorPrimary),
               ),
             ),
           ],
@@ -146,7 +146,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   Widget build(BuildContext context) {
     final state = context.watch<NewSessionCubit>().state;
     final loc = context.loc;
-    final zyra = context.zyra;
+    final prego = context.prego;
     final isSending = state is NewSessionSending;
     // Captured at build time: the callbacks below can run while this route is
     // being torn down, where an ancestor lookup on a deactivated context
@@ -218,8 +218,8 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                               title: Text(loc.newSessionDedicatedWorktree),
                               subtitle: Text(
                                 loc.newSessionDedicatedWorktreeDescription,
-                                style: zyra.textTheme.textXs.regular.copyWith(
-                                  color: zyra.colors.textSecondary,
+                                style: prego.textTheme.textXs.regular.copyWith(
+                                  color: prego.colors.textSecondary,
                                 ),
                               ),
                               value: _dedicatedWorktree,

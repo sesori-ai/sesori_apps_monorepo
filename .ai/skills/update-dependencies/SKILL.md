@@ -16,7 +16,7 @@ The repo has two Dart workspaces and two standalone packages. Workspace members 
 - `mobile/pubspec.yaml` — workspace root, env only
 - `mobile/module_auth/pubspec.yaml`
 - `mobile/module_core/pubspec.yaml`
-- `mobile/module_zyra/pubspec.yaml` (Flutter package — theme/assets)
+- `mobile/module_prego/pubspec.yaml` (Flutter package — theme/assets)
 - `mobile/app/pubspec.yaml` (Flutter app — Firebase, flutter_bloc, etc.)
 
 **Bridge workspace** (`bridge/pubspec.yaml` is the workspace root, pure Dart):
@@ -29,7 +29,7 @@ The repo has two Dart workspaces and two standalone packages. Workspace members 
 **Standalone packages** (NOT in any workspace — resolve independently with their own lockfile):
 
 - `shared/sesori_shared/pubspec.yaml` — pure Dart; consumed by both workspaces via `path:` dep
-- `shared/no_slop_linter/pubspec.yaml` — pure Dart analyzer plugin; consumed by `module_zyra` via `path:` dev_dep
+- `shared/no_slop_linter/pubspec.yaml` — pure Dart analyzer plugin; consumed by `module_prego` via `path:` dev_dep
 
 **IMPORTANT**: Update `shared/sesori_shared` FIRST because both workspaces depend on it.
 
@@ -86,7 +86,7 @@ For each pubspec.yaml below, read its `environment` section and update only the 
 | `mobile/app/pubspec.yaml` | ✅ | — | caret |
 | `mobile/module_auth/pubspec.yaml` | ✅ | — | caret |
 | `mobile/module_core/pubspec.yaml` | ✅ | — | caret |
-| `mobile/module_zyra/pubspec.yaml` | ✅ | — | caret |
+| `mobile/module_prego/pubspec.yaml` | ✅ | — | caret |
 | `bridge/pubspec.yaml` | ✅ | — | caret |
 | `bridge/app/pubspec.yaml` | ✅ | — | caret |
 | `bridge/sesori_plugin_interface/pubspec.yaml` | ✅ | — | caret |
@@ -148,7 +148,7 @@ set -e
 (cd mobile && flutter pub get)
 (cd mobile/module_auth && dart pub outdated)       # pure Dart
 (cd mobile/module_core && dart pub outdated)       # pure Dart
-(cd mobile/module_zyra && flutter pub outdated)    # Flutter (flutter: sdk: flutter)
+(cd mobile/module_prego && flutter pub outdated)    # Flutter (flutter: sdk: flutter)
 (cd mobile/app && flutter pub outdated)            # Flutter app
 ```
 
@@ -187,7 +187,7 @@ set -e
 
 1. `shared/sesori_shared/pubspec.yaml` (consumed by both workspaces)
 2. Bridge workspace members: `bridge/sesori_plugin_interface`, `bridge/sesori_plugin_opencode`, `bridge/app`
-3. Mobile workspace members: `mobile/module_auth`, `mobile/module_core`, `mobile/module_zyra`, `mobile/app`
+3. Mobile workspace members: `mobile/module_auth`, `mobile/module_core`, `mobile/module_prego`, `mobile/app`
 
 **SKIP** `shared/no_slop_linter/pubspec.yaml` — analyzer-plugin constraints are bumped manually (see the project structure note). Do not edit it here even if `pub outdated` reports newer versions.
 
@@ -242,7 +242,7 @@ git diff --name-only -- '*.yaml'
 set -e
 (cd shared && make analyze)   # sesori_shared + no_slop_linter
 (cd bridge && make analyze)   # sesori_plugin_interface, sesori_plugin_opencode, app
-(cd mobile && make analyze)   # module_auth, module_core, module_zyra, app (with --fatal-infos)
+(cd mobile && make analyze)   # module_auth, module_core, module_prego, app (with --fatal-infos)
 ```
 
 </step>
@@ -272,7 +272,7 @@ set -e
 set -e
 (cd shared && make codegen)   # sesori_shared
 (cd bridge && make codegen)   # sesori_plugin_interface, sesori_plugin_opencode, app
-(cd mobile && make codegen)   # module_auth, module_core, module_zyra, app
+(cd mobile && make codegen)   # module_auth, module_core, module_prego, app
 ```
 
 If a generator dependency is later added to a currently-skipped package, update `CODEGEN_MODULES` in the matching Makefile rather than re-introducing per-package commands here.

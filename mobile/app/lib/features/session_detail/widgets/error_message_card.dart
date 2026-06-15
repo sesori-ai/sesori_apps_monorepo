@@ -1,6 +1,6 @@
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 /// Inline error display for a [MessageError].
 ///
@@ -23,7 +23,7 @@ class ErrorMessageCard extends StatelessWidget {
           message.errorMessage,
           textAlign: TextAlign.center,
           style: TextStyle(
-              color: context.zyra.colors.fgErrorPrimary,
+            color: context.prego.colors.fgErrorPrimary,
             fontSize: 14,
           ),
         ),

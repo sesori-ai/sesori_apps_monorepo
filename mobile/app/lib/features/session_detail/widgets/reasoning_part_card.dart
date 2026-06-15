@@ -2,7 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:markdown/markdown.dart" as md;
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/app_modal_bottom_sheet.dart";
@@ -53,7 +53,7 @@ class _ReasoningPartCardState extends State<ReasoningPartCard> {
       return const SizedBox.shrink();
     }
 
-    final zyra = context.zyra;
+    final prego = context.prego;
     final loc = context.loc;
 
     return Padding(
@@ -63,9 +63,9 @@ class _ReasoningPartCardState extends State<ReasoningPartCard> {
         onTap: () => _showFullText(context: context),
         child: Container(
           decoration: BoxDecoration(
-            color: zyra.colors.bgSecondary,
+            color: prego.colors.bgSecondary,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: zyra.colors.borderSecondary),
+            border: Border.all(color: prego.colors.borderSecondary),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -81,16 +81,14 @@ class _ReasoningPartCardState extends State<ReasoningPartCard> {
                     Icon(
                       Icons.psychology,
                       size: 18,
-                      color: zyra.colors.textSecondary,
+                      color: prego.colors.textSecondary,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        widget.isStreaming
-                            ? loc.sessionDetailThinking
-                            : loc.sessionDetailThought,
-                        style: zyra.textTheme.textXs.regular.copyWith(
-                          color: zyra.colors.textSecondary,
+                        widget.isStreaming ? loc.sessionDetailThinking : loc.sessionDetailThought,
+                        style: prego.textTheme.textXs.regular.copyWith(
+                          color: prego.colors.textSecondary,
                           fontStyle: FontStyle.italic,
                         ),
                       ),
@@ -98,7 +96,7 @@ class _ReasoningPartCardState extends State<ReasoningPartCard> {
                     Icon(
                       Icons.unfold_more,
                       size: 16,
-                      color: zyra.colors.textSecondary,
+                      color: prego.colors.textSecondary,
                     ),
                   ],
                 ),
@@ -124,8 +122,8 @@ class _ReasoningPartCardState extends State<ReasoningPartCard> {
                         maxHeight: double.infinity,
                         child: Text(
                           widget.text,
-                          style: zyra.textTheme.textXs.regular.copyWith(
-                            color: zyra.colors.textSecondary,
+                          style: prego.textTheme.textXs.regular.copyWith(
+                            color: prego.colors.textSecondary,
                           ),
                         ),
                       ),
@@ -139,9 +137,9 @@ class _ReasoningPartCardState extends State<ReasoningPartCard> {
                     _previewText,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                      style: zyra.textTheme.textXs.regular.copyWith(
-                        color: zyra.colors.textSecondary,
-                      ),
+                    style: prego.textTheme.textXs.regular.copyWith(
+                      color: prego.colors.textSecondary,
+                    ),
                   ),
                 ),
             ],

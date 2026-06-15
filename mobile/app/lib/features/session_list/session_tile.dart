@@ -1,6 +1,6 @@
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../core/extensions/build_context_x.dart";
 import "../../core/status_colors.dart";
@@ -46,26 +46,26 @@ class SessionTile extends StatelessWidget {
         return false;
       },
       background: ColoredBox(
-        color: context.zyra.colors.bgPrimary,
+        color: context.prego.colors.bgPrimary,
         child: Align(
           alignment: Alignment.centerLeft,
           child: Padding(
             padding: const EdgeInsetsDirectional.only(start: 24),
             child: Icon(
               isArchived ? Icons.unarchive_outlined : Icons.archive_outlined,
-              color: context.zyra.colors.textPrimary,
+              color: context.prego.colors.textPrimary,
             ),
           ),
         ),
       ),
       child: ListTile(
         selected: selected,
-        selectedTileColor: context.zyra.colors.bgBrandSolid.withValues(alpha: 0.08),
+        selectedTileColor: context.prego.colors.bgBrandSolid.withValues(alpha: 0.08),
         leading: CircleAvatar(
-          backgroundColor: context.zyra.colors.bgBrandSolid,
+          backgroundColor: context.prego.colors.bgBrandSolid,
           child: Icon(
             Icons.chat_outlined,
-            color: context.zyra.colors.fgWhite,
+            color: context.prego.colors.fgWhite,
           ),
         ),
         title: Text(session.title ?? loc.sessionListUntitled),
@@ -75,14 +75,14 @@ class SessionTile extends StatelessWidget {
             if (updatedAt != null)
               Text(
                 loc.sessionListUpdated(context.formatTimestamp(updatedAt)),
-                style: context.zyra.textTheme.textXs.regular.copyWith(
-                  color: context.zyra.colors.textSecondary,
+                style: context.prego.textTheme.textXs.regular.copyWith(
+                  color: context.prego.colors.textSecondary,
                 ),
               ),
             if (filesChanged > 0)
               Text(
                 loc.sessionListFilesChanged(filesChanged),
-                style: context.zyra.textTheme.textXs.regular,
+                style: context.prego.textTheme.textXs.regular,
               ),
             if (session.pullRequest case final pr?) PrStatusRow(pr: pr),
             if (isActive)
@@ -93,12 +93,14 @@ class SessionTile extends StatelessWidget {
               ),
           ],
         ),
-        isThreeLine: [
-          updatedAt != null,
-          filesChanged > 0,
-          session.pullRequest != null,
-          isActive,
-        ].where((v) => v).length >= 2,
+        isThreeLine:
+            [
+              updatedAt != null,
+              filesChanged > 0,
+              session.pullRequest != null,
+              isActive,
+            ].where((v) => v).length >=
+            2,
         trailing: const Icon(Icons.chevron_right),
         onTap: onTap,
         onLongPress: onLongPress,
@@ -119,8 +121,8 @@ class _ActivityRow extends StatelessWidget {
     final loc = context.loc;
     final color = switch ((awaitingInput, isRetrying)) {
       (true, _) => kStatusAmber,
-      (_, true) => context.zyra.colors.fgErrorPrimary,
-      _ => context.zyra.colors.bgBrandSolid,
+      (_, true) => context.prego.colors.fgErrorPrimary,
+      _ => context.prego.colors.bgBrandSolid,
     };
     final label = switch ((awaitingInput, isRetrying)) {
       (true, _) => loc.sessionListAwaitingInput,
@@ -134,7 +136,7 @@ class _ActivityRow extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           label,
-          style: context.zyra.textTheme.textXs.regular.copyWith(color: color),
+          style: context.prego.textTheme.textXs.regular.copyWith(color: color),
         ),
         if (backgroundTaskCount > 0) ...[
           Padding(
@@ -143,7 +145,7 @@ class _ActivityRow extends StatelessWidget {
           ),
           Text(
             loc.sessionListBackgroundTasks(backgroundTaskCount),
-            style: context.zyra.textTheme.textXs.regular.copyWith(color: color),
+            style: context.prego.textTheme.textXs.regular.copyWith(color: color),
           ),
         ],
       ],

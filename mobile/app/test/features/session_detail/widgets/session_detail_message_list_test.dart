@@ -5,7 +5,7 @@ import "package:sesori_mobile/features/session_detail/widgets/retry_error_messag
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_message_list.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 class _SessionDetailMessageListHarness extends StatefulWidget {
   final List<MessageWithParts> initialMessages;
@@ -55,8 +55,8 @@ class _SessionDetailMessageListHarnessState extends State<_SessionDetailMessageL
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      theme: ThemeData(extensions: [ZyraDesignSystem.light]),
-      darkTheme: ThemeData(extensions: [ZyraDesignSystem.dark]),
+      theme: ThemeData(extensions: [PregoDesignSystem.light]),
+      darkTheme: ThemeData(extensions: [PregoDesignSystem.dark]),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(

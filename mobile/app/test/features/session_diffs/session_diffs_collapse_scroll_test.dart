@@ -11,7 +11,7 @@ import "package:sesori_mobile/features/session_diffs/session_diffs_body.dart";
 import "package:sesori_mobile/features/session_diffs/session_diffs_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
 
@@ -45,7 +45,7 @@ FileDiff _makeDiff(String file, {required int lineCount}) {
 Future<void> _pumpLoadedScreen(WidgetTester tester) async {
   await tester.pumpWidget(
     MaterialApp(
-      theme: ThemeData(extensions: [ZyraDesignSystem.light]),
+      theme: ThemeData(extensions: [PregoDesignSystem.light]),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: const SessionDiffsScreen(projectId: "project-1", sessionId: "session-1"),
@@ -156,11 +156,13 @@ void main() {
       // pinned position and bbb's header takes over.
       when(() => mockRepo.getSessionDiffs(sessionId: any(named: "sessionId"))).thenAnswer(
         (_) async => ApiResponse.success(
-          SessionDiffsResponse(diffs: [
-            _makeDiff("aaa.dart", lineCount: 30),
-            _makeDiff("bbb.dart", lineCount: 30),
-            _makeDiff("ccc.dart", lineCount: 10),
-          ]),
+          SessionDiffsResponse(
+            diffs: [
+              _makeDiff("aaa.dart", lineCount: 30),
+              _makeDiff("bbb.dart", lineCount: 30),
+              _makeDiff("ccc.dart", lineCount: 10),
+            ],
+          ),
         ),
       );
 
@@ -245,7 +247,7 @@ void main() {
         MaterialApp(
           theme: ThemeData(
             brightness: tester.platformDispatcher.platformBrightness,
-            extensions: [ZyraDesignSystem.light],
+            extensions: [PregoDesignSystem.light],
           ),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,

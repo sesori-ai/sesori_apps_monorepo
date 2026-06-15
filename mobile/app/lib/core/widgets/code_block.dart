@@ -1,7 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:markdown/markdown.dart" as md;
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../extensions/text_style_x.dart";
 import "../utils/code_highlighter.dart";
@@ -105,10 +105,10 @@ class _CodeBlockState extends State<CodeBlock> {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
+    final prego = context.prego;
     final brightness = Theme.of(context).brightness;
     final baseStyle = const TextStyle(fontSize: 13, height: 1.4).monospace.copyWith(
-      color: zyra.colors.textPrimary,
+      color: prego.colors.textPrimary,
     );
     final span = _spanFor(brightness: brightness, baseStyle: baseStyle);
     final language = widget.language;
@@ -118,16 +118,16 @@ class _CodeBlockState extends State<CodeBlock> {
       child: Container(
         clipBehavior: Clip.hardEdge,
         decoration: BoxDecoration(
-          color: zyra.colors.bgQuaternary,
+          color: prego.colors.bgQuaternary,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: zyra.colors.borderSecondary),
+          border: Border.all(color: prego.colors.borderSecondary),
         ),
         child: Column(
           crossAxisAlignment: .start,
           children: [
             Container(
               decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: zyra.colors.borderSecondary)),
+                border: Border(bottom: BorderSide(color: prego.colors.borderSecondary)),
               ),
               padding: const EdgeInsetsDirectional.only(start: 12, end: 4, top: 2, bottom: 2),
               child: Row(
@@ -135,8 +135,8 @@ class _CodeBlockState extends State<CodeBlock> {
                   Expanded(
                     child: Text(
                       (language == null || language.isEmpty) ? "code" : language,
-                      style: zyra.textTheme.textXs.medium.copyWith(
-                        color: zyra.colors.textSecondary,
+                      style: prego.textTheme.textXs.medium.copyWith(
+                        color: prego.colors.textSecondary,
                       ),
                     ),
                   ),

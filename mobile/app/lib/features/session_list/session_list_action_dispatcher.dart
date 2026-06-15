@@ -39,10 +39,10 @@ class SessionListActionDispatcher {
               },
             ),
             ListTile(
-              leading: Icon(Icons.delete_outlined, color: context.zyra.colors.fgErrorPrimary),
+              leading: Icon(Icons.delete_outlined, color: context.prego.colors.fgErrorPrimary),
               title: Text(
                 loc.sessionListDelete,
-                style: TextStyle(color: context.zyra.colors.fgErrorPrimary),
+                style: TextStyle(color: context.prego.colors.fgErrorPrimary),
               ),
               onTap: () {
                 sheetContext.pop();

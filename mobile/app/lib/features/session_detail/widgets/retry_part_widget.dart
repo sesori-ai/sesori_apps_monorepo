@@ -1,5 +1,5 @@
 import "package:flutter/material.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 
@@ -15,7 +15,7 @@ class RetryPartWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
+    final prego = context.prego;
     final loc = context.loc;
     final label = StringBuffer(loc.sessionDetailRetryLabel);
     if (attempt != null) {
@@ -32,14 +32,14 @@ class RetryPartWidget extends StatelessWidget {
           Icon(
             Icons.refresh,
             size: 14,
-            color: zyra.colors.fgSuccessPrimary,
+            color: prego.colors.fgSuccessPrimary,
           ),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
               label.toString(),
-              style: zyra.textTheme.textXs.medium.copyWith(
-                color: zyra.colors.fgSuccessPrimary,
+              style: prego.textTheme.textXs.medium.copyWith(
+                color: prego.colors.fgSuccessPrimary,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,

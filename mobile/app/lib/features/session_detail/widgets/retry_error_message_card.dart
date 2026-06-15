@@ -1,5 +1,5 @@
 import "package:flutter/material.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 /// Inline retry error display for transient provider errors
 /// (e.g. "Provider is overloaded").
@@ -18,8 +18,7 @@ class RetryErrorMessageCard extends StatefulWidget {
   State<RetryErrorMessageCard> createState() => _RetryErrorMessageCardState();
 }
 
-class _RetryErrorMessageCardState extends State<RetryErrorMessageCard>
-    with SingleTickerProviderStateMixin {
+class _RetryErrorMessageCardState extends State<RetryErrorMessageCard> with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _animation;
 
@@ -44,7 +43,7 @@ class _RetryErrorMessageCardState extends State<RetryErrorMessageCard>
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
+    final prego = context.prego;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -70,9 +69,9 @@ class _RetryErrorMessageCardState extends State<RetryErrorMessageCard>
                     0.0,
                   ),
                   colors: [
-                    zyra.colors.fgErrorPrimary.withValues(alpha: opacity * 0.5),
-                    zyra.colors.fgErrorPrimary.withValues(alpha: opacity),
-                    zyra.colors.fgErrorPrimary.withValues(alpha: opacity * 0.5),
+                    prego.colors.fgErrorPrimary.withValues(alpha: opacity * 0.5),
+                    prego.colors.fgErrorPrimary.withValues(alpha: opacity),
+                    prego.colors.fgErrorPrimary.withValues(alpha: opacity * 0.5),
                   ],
                   stops: const [0.0, 0.5, 1.0],
                 ).createShader(bounds);
@@ -81,7 +80,7 @@ class _RetryErrorMessageCardState extends State<RetryErrorMessageCard>
               child: Text(
                 widget.message,
                 textAlign: TextAlign.center,
-                style: zyra.textTheme.textSm.regular.copyWith(
+                style: prego.textTheme.textSm.regular.copyWith(
                   fontSize: 14,
                 ),
               ),

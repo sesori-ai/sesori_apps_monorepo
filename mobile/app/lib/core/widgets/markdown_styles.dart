@@ -1,7 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../di/injection.dart";
 import "../extensions/text_style_x.dart";
@@ -19,18 +19,18 @@ void handleMarkdownLinkTap(String text, String? href, String title) {
 
 // ignore: no_slop_linter/prefer_required_named_parameters, paragraphStyle is an optional override
 MarkdownStyleSheet buildSessionMarkdownStyleSheet({
-  required ZyraDesignSystem zyra,
+  required PregoDesignSystem prego,
   TextStyle? paragraphStyle,
 }) {
   return MarkdownStyleSheet(
-    p: paragraphStyle ?? zyra.textTheme.textSm.regular,
+    p: paragraphStyle ?? prego.textTheme.textSm.regular,
     codeblockDecoration: BoxDecoration(
-      color: zyra.colors.bgQuaternary,
+      color: prego.colors.bgQuaternary,
       borderRadius: BorderRadius.circular(8),
     ),
     code: TextStyle(
       fontSize: 13,
-      color: zyra.colors.textPrimary,
+      color: prego.colors.textPrimary,
     ).monospace,
   );
 }
@@ -51,9 +51,9 @@ Map<String, MarkdownElementBuilder> buildSessionMarkdownBuilders({
   };
 }
 
-MarkdownStyleSheet buildAgreementMarkdownStyleSheet({required ZyraDesignSystem zyra}) {
-  final paragraph = zyra.textTheme.textSm.regular.copyWith(
-    color: zyra.colors.textPrimary,
+MarkdownStyleSheet buildAgreementMarkdownStyleSheet({required PregoDesignSystem prego}) {
+  final paragraph = prego.textTheme.textSm.regular.copyWith(
+    color: prego.colors.textPrimary,
   );
   return MarkdownStyleSheet(
     p: paragraph,

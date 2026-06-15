@@ -1,6 +1,6 @@
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 import "background_tasks_header.dart";
 import "background_tasks_list.dart";
 
@@ -45,13 +45,13 @@ class _BackgroundTasksBarState extends State<BackgroundTasksBar> {
   Widget build(BuildContext context) {
     if (widget.children.isEmpty) return const SizedBox.shrink();
 
-    final zyra = context.zyra;
+    final prego = context.prego;
     final running = _runningTasks;
     final completed = _completedTasks;
 
     return Material(
       elevation: 2,
-      color: zyra.colors.bgTertiary,
+      color: prego.colors.bgTertiary,
       borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
       child: Column(
         mainAxisSize: MainAxisSize.min,
