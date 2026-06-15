@@ -22,16 +22,23 @@ function Resolve-OsArchitecture {
         return $env:PROCESSOR_ARCHITEW6432
     }
 
+    # PROCESSOR_ARCHITECTURE is non-localized, whereas Win32_OperatingSystem.OSArchitecture
+    # returns localizable strings on non-English Windows (e.g. "ARM 64-bit Processor").
+    # Prefer the environment variable so ARM64 machines are never rejected because of localization.
+    if ($env:PROCESSOR_ARCHITECTURE) {
+        return $env:PROCESSOR_ARCHITECTURE
+    }
+
     try {
         $osArch = (Get-CimInstance Win32_OperatingSystem -ErrorAction Stop).OSArchitecture
         if ($osArch) {
             return $osArch
         }
     } catch {
-        # Fall back to environment-based detection below.
+        # CIM unavailable; return $null and let the caller reject the unknown architecture.
     }
 
-    return $env:PROCESSOR_ARCHITECTURE
+    return $null
 }
 
 $detectedOsArchitecture = Resolve-OsArchitecture
