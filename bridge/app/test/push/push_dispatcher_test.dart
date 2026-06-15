@@ -360,13 +360,13 @@ void main() {
     test("maintenance logs telemetry snapshots", () {
       final harness = _newHarness();
 
-      final stdout = _captureStdout(
+      final logOutput = _captureLogOutput(
         level: LogLevel.debug,
         action: harness.maintenanceListener.runNow,
       );
 
       expect(harness.maintenanceListener.lastMaintenanceTelemetry, isNotNull);
-      expect(stdout, contains(harness.maintenanceListener.lastMaintenanceTelemetry!.toLogMessage()));
+      expect(logOutput, contains(harness.maintenanceListener.lastMaintenanceTelemetry!.toLogMessage()));
     });
 
     test("M3b: maintenance continues when root pruning throws", () {
@@ -578,7 +578,7 @@ class _BufferingStdout implements Stdout {
   }
 }
 
-String _captureStdout({required LogLevel level, required void Function() action}) {
+String _captureLogOutput({required LogLevel level, required void Function() action}) {
   final stdoutBuffer = _BufferingStdout();
   final stderrBuffer = _BufferingStdout();
   final previousLevel = Log.level;
@@ -593,7 +593,8 @@ String _captureStdout({required LogLevel level, required void Function() action}
     Log.level = previousLevel;
   }
 
-  return stdoutBuffer.text;
+  // Diagnostic logs (including maintenance telemetry) are written to stderr.
+  return stderrBuffer.text;
 }
 
 Session _session({

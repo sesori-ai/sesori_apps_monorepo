@@ -33,7 +33,7 @@ import 'package:sesori_bridge/src/services/sleep_prevention_service.dart';
 import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
 import 'package:sesori_bridge/src/version.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart'
-    show BridgePluginDescriptor, Log, LogLevel, PluginConfig, PluginConfigException, ProcessUser, ServerClock;
+    show BridgePluginDescriptor, Console, Log, LogLevel, PluginConfig, PluginConfigException, ProcessUser, ServerClock;
 
 const String _defaultRelayURL = 'wss://relay.sesori.com';
 const String _defaultAuthURL = 'https://api.sesori.com';
@@ -209,18 +209,18 @@ class LogoutCommand extends cli.Command<void> {
     final result = await logoutRunner.logout(currentPid: pid);
     switch (result.status) {
       case BridgeLogoutStatus.loggedOut:
-        stdout.writeln('Authentication cleared. You will be asked to log in on next start.');
+        Console.message('Authentication cleared. You will be asked to log in on next start.');
       case BridgeLogoutStatus.loggedOutWithRunningBridges:
-        stdout.writeln('Authentication cleared. You will be asked to log in on next start.');
-        stdout.writeln(
+        Console.message('Authentication cleared. You will be asked to log in on next start.');
+        Console.message(
           'Warning: ${result.runningBridgeCount} bridge instance(s) are still running '
           'and may re-create tokens when they refresh their session.',
         );
       case BridgeLogoutStatus.cancelled:
-        stdout.writeln('Logout cancelled; stored tokens were not cleared.');
+        Console.message('Logout cancelled; stored tokens were not cleared.');
         exitCode = 1;
       case BridgeLogoutStatus.failed:
-        stderr.writeln('Error: Failed to clear authentication tokens: ${result.error}');
+        Console.error('Error: Failed to clear authentication tokens: ${result.error}');
         exitCode = 1;
     }
   }
@@ -302,7 +302,7 @@ class ConfigEditCommand extends cli.Command<void> {
     );
 
     final configFilePath = await configService.openConfigFile();
-    stdout.writeln('Opening config file at $configFilePath');
+    Console.message('Opening config file at $configFilePath');
   }
 }
 

@@ -9,6 +9,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         BridgePlugin,
         BridgePluginDescriptor,
+        Console,
         Log,
         PluginConfig,
         PluginFailed,
@@ -314,7 +315,7 @@ class BridgeRuntimeRunner {
       registerSignalHandlers(session: runtime.session, subscriptions: subscriptions);
       updateService.updateAvailable
           .listen((version) {
-            Log.i("A new bridge version ($version) is available. Restart to update.");
+            Console.message("A new bridge version ($version) is available. Restart to update.");
           })
           .addTo(subscriptions);
 

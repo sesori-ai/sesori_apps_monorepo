@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Console, Log;
 
 import 'package:sesori_shared/sesori_shared.dart';
 import '../../auth/login_email_repository.dart';
@@ -115,7 +115,7 @@ class BridgeRuntimeAuthService {
   }) async {
     try {
       final username = await fetchUsername(authBackendUrl, accessToken);
-      Log.i('Authenticated as $username');
+      Console.message('Authenticated as $username');
     } catch (error) {
       Log.w('Authenticated (unable to fetch profile username: $error)');
     }
