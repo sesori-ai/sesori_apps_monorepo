@@ -1,9 +1,10 @@
 import "package:injectable/injectable.dart";
 
-/// In-memory store for unsent composer drafts, keyed by a stable key
-/// (the session id).
+/// In-memory store for unsent composer drafts, keyed by a stable key — the
+/// session id for an existing session, or `"new-session:<projectId>"` for the
+/// not-yet-created session composer.
 ///
-/// Lets a half-written prompt survive navigating away from a session and
+/// Lets a half-written prompt survive navigating away from a composer and
 /// back, or backgrounding the app — cases where the composer widget's state
 /// is disposed and recreated. A lazy-singleton so it outlives any single
 /// session screen.

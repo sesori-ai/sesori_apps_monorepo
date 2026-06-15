@@ -499,4 +499,26 @@ void main() {
 
     expect(find.text("retry message"), findsOneWidget);
   });
+
+  testWidgets("persists and restores the per-project new-session draft", (tester) async {
+    final draftStore = DraftStore();
+    GetIt.instance.registerSingleton<DraftStore>(draftStore);
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), "half-written idea");
+    await tester.pump();
+
+    // Tear the screen down (e.g. the user navigates away) before creating a
+    // session — PromptInput.dispose() should persist the unsent prompt.
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+    expect(draftStore.read("new-session:project-1"), "half-written idea");
+
+    // Re-open the new-session screen — the per-project draft is restored.
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    expect(find.text("half-written idea"), findsOneWidget);
+  });
 }
