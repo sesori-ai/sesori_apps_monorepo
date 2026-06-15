@@ -22,16 +22,23 @@ function Resolve-OsArchitecture {
         return $env:PROCESSOR_ARCHITEW6432
     }
 
+    # PROCESSOR_ARCHITECTURE is non-localized, whereas Win32_OperatingSystem.OSArchitecture
+    # returns localizable strings on non-English Windows (e.g. "ARM 64-bit Processor").
+    # Prefer the environment variable so ARM64 machines are never rejected because of localization.
+    if ($env:PROCESSOR_ARCHITECTURE) {
+        return $env:PROCESSOR_ARCHITECTURE
+    }
+
     try {
         $osArch = (Get-CimInstance Win32_OperatingSystem -ErrorAction Stop).OSArchitecture
         if ($osArch) {
             return $osArch
         }
     } catch {
-        # Fall back to environment-based detection below.
+        # CIM unavailable; return $null and let the caller reject the unknown architecture.
     }
 
-    return $env:PROCESSOR_ARCHITECTURE
+    return $null
 }
 
 $detectedOsArchitecture = Resolve-OsArchitecture
@@ -39,11 +46,13 @@ switch ($detectedOsArchitecture) {
     '64-bit' { $arch = 'x64' }
     'AMD64'  { $arch = 'x64' }
     'X64'    { $arch = 'x64' }
+    'ARM64'  { $arch = 'arm64' }
+    'ARM 64-bit Processor' { $arch = 'arm64' }
     default  { $arch = $null }
 }
 
-if ($arch -ne 'x64') {
-    Write-Error "Unsupported architecture '$detectedOsArchitecture'. Only x64 (AMD64) is supported on Windows."
+if ($arch -notin @('x64', 'arm64')) {
+    Write-Error "Unsupported architecture '$detectedOsArchitecture'. Only x64 (AMD64) and arm64 are supported on Windows."
     exit 1
 }
 
@@ -101,7 +110,19 @@ function Resolve-BridgeRelease {
     throw "Could not resolve a published bridge release for $ArchiveName."
 }
 
-$Release = Resolve-BridgeRelease -ArchiveName $ArchiveName
+try {
+    $Release = Resolve-BridgeRelease -ArchiveName $ArchiveName
+} catch {
+    $noReleaseFound = $_.Exception.Message -like '*Could not resolve a published bridge release*'
+    if ($arch -eq 'arm64' -and $noReleaseFound) {
+        Write-Warning "No native arm64 bridge release found yet; falling back to the x64 build (runs under emulation on Windows arm64). Re-run this installer after a native arm64 release to switch to the native build."
+        $arch = 'x64'
+        $ArchiveName = "sesori-bridge-windows-$arch.zip"
+        $Release = Resolve-BridgeRelease -ArchiveName $ArchiveName
+    } else {
+        throw
+    }
+}
 $AssetUrl = $Release.AssetUrl
 $ChecksumsUrl = $Release.ChecksumsUrl
 

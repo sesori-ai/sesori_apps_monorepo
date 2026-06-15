@@ -9,6 +9,7 @@ const List<String> _platformPackages = <String>[
   'sesori-bridge-darwin-x64',
   'sesori-bridge-linux-arm64',
   'sesori-bridge-linux-x64',
+  'sesori-bridge-win32-arm64',
   'sesori-bridge-win32-x64',
 ];
 
@@ -52,6 +53,7 @@ Future<_FixtureApp> _createFixtureApp({required String mobileVersion, String? br
     ['bridge', 'app', 'npm', 'sesori-bridge-darwin-x64'],
     ['bridge', 'app', 'npm', 'sesori-bridge-linux-arm64'],
     ['bridge', 'app', 'npm', 'sesori-bridge-linux-x64'],
+    ['bridge', 'app', 'npm', 'sesori-bridge-win32-arm64'],
     ['bridge', 'app', 'npm', 'sesori-bridge-win32-x64'],
     ['mobile', 'app'],
   ]) {
@@ -86,6 +88,7 @@ resolution: workspace
         '@sesori/bridge-darwin-x64': resolvedBridgeVersion,
         '@sesori/bridge-linux-arm64': resolvedBridgeVersion,
         '@sesori/bridge-linux-x64': resolvedBridgeVersion,
+        '@sesori/bridge-win32-arm64': resolvedBridgeVersion,
         '@sesori/bridge-win32-x64': resolvedBridgeVersion,
         '@sesori/not-bridge': '4.5.6',
       },
@@ -206,6 +209,7 @@ environment:
               '@sesori/bridge-darwin-x64': '1.0.6',
               '@sesori/bridge-linux-arm64': '1.0.6',
               '@sesori/bridge-linux-x64': '1.0.6',
+              '@sesori/bridge-win32-arm64': '1.0.6',
               '@sesori/bridge-win32-x64': '1.0.6',
               '@sesori/not-bridge': '4.5.6',
             },
@@ -248,6 +252,7 @@ environment:
         expect(optionalDependencies['@sesori/bridge-darwin-x64'], equals(testCase.bridgeVersion));
         expect(optionalDependencies['@sesori/bridge-linux-arm64'], equals(testCase.bridgeVersion));
         expect(optionalDependencies['@sesori/bridge-linux-x64'], equals(testCase.bridgeVersion));
+        expect(optionalDependencies['@sesori/bridge-win32-arm64'], equals(testCase.bridgeVersion));
         expect(optionalDependencies['@sesori/bridge-win32-x64'], equals(testCase.bridgeVersion));
         expect(optionalDependencies['@sesori/not-bridge'], equals('4.5.6'));
 
