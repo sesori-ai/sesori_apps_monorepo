@@ -12,7 +12,7 @@ void main() {
         limiter.shouldSend(
           category: NotificationCategory.aiInteraction,
           sessionId: "session-a",
-          collapseKey: "ai_interaction-session-a",
+          rateLimitKey: "ai_interaction-session-a",
         ),
         isTrue,
       );
@@ -20,7 +20,7 @@ void main() {
         limiter.shouldSend(
           category: NotificationCategory.sessionMessage,
           sessionId: "session-b",
-          collapseKey: "session_message-session-b",
+          rateLimitKey: "session_message-session-b",
         ),
         isTrue,
       );
@@ -40,7 +40,7 @@ void main() {
         limiter.shouldSend(
           category: NotificationCategory.aiInteraction,
           sessionId: "session-a",
-          collapseKey: "ai_interaction-session-a",
+          rateLimitKey: "ai_interaction-session-a",
         ),
         isTrue,
       );
@@ -59,7 +59,7 @@ void main() {
         limiter.shouldSend(
           category: NotificationCategory.aiInteraction,
           sessionId: "session-a",
-          collapseKey: "ai_interaction-session-a",
+          rateLimitKey: "ai_interaction-session-a",
         ),
         isTrue,
       );
@@ -69,7 +69,7 @@ void main() {
         limiter.shouldSend(
           category: NotificationCategory.aiInteraction,
           sessionId: "session-a",
-          collapseKey: "ai_interaction-session-a",
+          rateLimitKey: "ai_interaction-session-a",
         ),
         isFalse,
       );
@@ -82,7 +82,7 @@ void main() {
         limiter.shouldSend(
           category: NotificationCategory.sessionMessage,
           sessionId: "session-a",
-          collapseKey: "session_message-session-a",
+          rateLimitKey: "session_message-session-a",
         ),
         isTrue,
       );
@@ -90,7 +90,7 @@ void main() {
         limiter.shouldSend(
           category: NotificationCategory.sessionMessage,
           sessionId: "session-b",
-          collapseKey: "session_message-session-b",
+          rateLimitKey: "session_message-session-b",
         ),
         isTrue,
       );
@@ -103,7 +103,7 @@ void main() {
         limiter.shouldSend(
           category: NotificationCategory.systemUpdate,
           sessionId: null,
-          collapseKey: "system_update-global",
+          rateLimitKey: "system_update-global",
         ),
         isTrue,
       );
@@ -111,7 +111,7 @@ void main() {
         limiter.shouldSend(
           category: NotificationCategory.systemUpdate,
           sessionId: null,
-          collapseKey: "system_update-global",
+          rateLimitKey: "system_update-global",
         ),
         isTrue,
       );
@@ -126,7 +126,7 @@ void main() {
         limiter.shouldSend(
           category: NotificationCategory.aiInteraction,
           sessionId: "session-a",
-          collapseKey: "ai_interaction-session-a",
+          rateLimitKey: "ai_interaction-session-a",
         ),
         isTrue,
       );
@@ -134,7 +134,7 @@ void main() {
         limiter.shouldSend(
           category: NotificationCategory.sessionMessage,
           sessionId: "session-b",
-          collapseKey: "session_message-session-b",
+          rateLimitKey: "session_message-session-b",
         ),
         isTrue,
       );
@@ -149,7 +149,7 @@ void main() {
         limiter.shouldSend(
           category: NotificationCategory.aiInteraction,
           sessionId: "session-a",
-          collapseKey: "ai_interaction-session-a",
+          rateLimitKey: "ai_interaction-session-a",
         ),
         isTrue,
       );
@@ -161,7 +161,7 @@ void main() {
         limiter.shouldSend(
           category: NotificationCategory.aiInteraction,
           sessionId: "session-a",
-          collapseKey: "ai_interaction-session-a",
+          rateLimitKey: "ai_interaction-session-a",
         ),
         isFalse,
       );

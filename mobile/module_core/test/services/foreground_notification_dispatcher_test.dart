@@ -114,7 +114,7 @@ class RecordingLocalNotificationClient implements LocalNotificationClient {
   final List<ShownNotification> shownNotifications = <ShownNotification>[];
 
   @override
-  Future<void> cancelForSession({required String sessionId, required NotificationCategory category}) async {}
+  Future<void> cancelForSession({required String sessionId}) async {}
 
   Future<void> dispose() async => _notificationOpenedController.close();
 

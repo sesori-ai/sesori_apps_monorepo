@@ -75,7 +75,6 @@ void main() {
       when(
         () => mockNotificationCanceller.cancelForSession(
           sessionId: any(named: "sessionId"),
-          category: any(named: "category"),
         ),
       ).thenReturn(null);
       when(
@@ -223,10 +222,7 @@ void main() {
         ),
       ).called(1);
       verify(
-        () => mockNotificationCanceller.cancelForSession(
-          sessionId: "ses-456",
-          category: NotificationCategory.aiInteraction,
-        ),
+        () => mockNotificationCanceller.cancelForSession(sessionId: "ses-456"),
       ).called(1);
 
       completer.complete(ApiResponse<void>.success(null));

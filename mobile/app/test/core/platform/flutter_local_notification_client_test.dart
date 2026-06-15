@@ -4,7 +4,6 @@ import "package:flutter_local_notifications/flutter_local_notifications.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_mobile/core/platform/flutter_local_notification_client.dart";
-import "package:sesori_mobile/core/platform/notification_id_utils.dart";
 import "package:sesori_mobile/core/platform/notification_tap_event.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -20,24 +19,27 @@ void main() {
   });
 
   group("cancel", () {
-    test("calls plugin.cancel with correct notification ID", () async {
-      when(() => mockPlugin.cancel(id: 42)).thenAnswer((_) async => true);
+    test("calls plugin.cancel with the notification ID", () async {
+      when(() => mockPlugin.cancel(id: 42, tag: null)).thenAnswer((_) async {});
 
-      await client.cancel(42);
+      await client.cancel(id: 42, tag: null);
 
-      verify(() => mockPlugin.cancel(id: 42)).called(1);
+      verify(() => mockPlugin.cancel(id: 42, tag: null)).called(1);
     });
 
-    test("cancelForSession uses the deterministic session notification ID", () async {
+    test("cancelForSession dismisses the deterministic session notification ID", () async {
       const sessionId = "ses_abc";
-      const category = NotificationCategory.aiInteraction;
-      final expectedId = computeNotificationId(sessionId: sessionId, category: category);
-      when(() => mockPlugin.cancel(id: expectedId)).thenAnswer((_) async => true);
+      final expectedId = sessionNotificationId(sessionId: sessionId);
+      when(
+        () => mockPlugin.cancel(id: any(named: "id"), tag: any(named: "tag")),
+      ).thenAnswer((_) async {});
 
-      client.cancelForSession(sessionId: sessionId, category: category);
+      client.cancelForSession(sessionId: sessionId);
       await Future<void>.delayed(Duration.zero);
 
-      verify(() => mockPlugin.cancel(id: expectedId)).called(1);
+      // On a non-Android host the integer id covers foreground + iOS/macOS
+      // delivered notifications; the Android (tag, 0) sweep is a no-op here.
+      verify(() => mockPlugin.cancel(id: expectedId, tag: null)).called(1);
     });
   });
 
@@ -59,7 +61,7 @@ void main() {
 
       const sessionId = "ses_abc";
       const category = NotificationCategory.aiInteraction;
-      final expectedId = computeNotificationId(sessionId: sessionId, category: category);
+      final expectedId = sessionNotificationId(sessionId: sessionId);
 
       await client.show(
         title: "Test Title",
