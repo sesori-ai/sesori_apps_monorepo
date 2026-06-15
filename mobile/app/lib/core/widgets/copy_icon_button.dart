@@ -2,7 +2,7 @@ import "dart:async";
 
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 /// Small icon button that copies [text] to the clipboard and briefly confirms
 /// with a check mark plus light haptic feedback. Self-contained — no snackbar
@@ -60,7 +60,7 @@ class _CopyIconButtonState extends State<CopyIconButton> {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
+    final prego = context.prego;
 
     return IconButton(
       onPressed: _copy,
@@ -72,7 +72,7 @@ class _CopyIconButtonState extends State<CopyIconButton> {
       icon: Icon(
         _copied ? Icons.check : Icons.copy,
         size: widget.iconSize,
-        color: _copied ? zyra.colors.fgSuccessPrimary : zyra.colors.textSecondary,
+        color: _copied ? prego.colors.fgSuccessPrimary : prego.colors.textSecondary,
       ),
     );
   }

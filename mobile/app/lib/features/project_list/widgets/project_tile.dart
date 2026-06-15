@@ -15,7 +15,7 @@ class _ProjectTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final zyra = context.zyra;
+    final prego = context.prego;
     final lastSegment = project.id.split("/").last;
     final displayName = project.name ?? (lastSegment.isNotEmpty ? lastSegment : loc.projectListDefaultName);
     final updatedAt = project.time?.updated;
@@ -23,10 +23,10 @@ class _ProjectTile extends StatelessWidget {
 
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: zyra.colors.bgBrandSolid,
+        backgroundColor: prego.colors.bgBrandSolid,
         child: Icon(
           Icons.folder_outlined,
-          color: zyra.colors.fgWhite,
+          color: prego.colors.fgWhite,
         ),
       ),
       title: Text(displayName),
@@ -35,26 +35,26 @@ class _ProjectTile extends StatelessWidget {
         children: [
           Text(
             project.id,
-            style: zyra.textTheme.textXs.regular,
+            style: prego.textTheme.textXs.regular,
             maxLines: 1,
             overflow: .ellipsis,
           ),
           if (updatedAt != null)
             Text(
               loc.projectListUpdated(context.formatTimestamp(updatedAt)),
-              style: zyra.textTheme.textXs.regular.copyWith(
-                color: zyra.colors.textSecondary,
+              style: prego.textTheme.textXs.regular.copyWith(
+                color: prego.colors.textSecondary,
               ),
             ),
           if (isActive)
             Row(
               children: [
-                Icon(Icons.circle, size: 8, color: zyra.colors.bgBrandSolid),
+                Icon(Icons.circle, size: 8, color: prego.colors.bgBrandSolid),
                 const SizedBox(width: 4),
                 Text(
                   loc.projectListActiveSessions(activeSessions),
-                  style: zyra.textTheme.textXs.regular.copyWith(
-                    color: zyra.colors.bgBrandSolid,
+                  style: prego.textTheme.textXs.regular.copyWith(
+                    color: prego.colors.bgBrandSolid,
                     fontWeight: FontWeight.w500,
                   ),
                 ),

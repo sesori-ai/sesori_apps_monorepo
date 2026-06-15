@@ -1,5 +1,5 @@
 import "package:flutter/material.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 
@@ -45,7 +45,7 @@ class MessageTimestampReveal extends StatelessWidget {
     // Formatting is locale-dependent but progress-independent, so resolve
     // the label once here rather than inside the per-frame builder.
     final label = createdAtMs == null ? null : context.formatMessageTimestamp(createdAtMs);
-    final zyra = context.zyra;
+    final prego = context.prego;
 
     return AnimatedBuilder(
       animation: progress,
@@ -78,8 +78,8 @@ class MessageTimestampReveal extends StatelessWidget {
                       // large text scaling) degrades gracefully instead of
                       // being silently cut mid-character.
                       overflow: TextOverflow.ellipsis,
-                      style: zyra.textTheme.textXs.regular.copyWith(
-                        color: zyra.colors.textTertiary,
+                      style: prego.textTheme.textXs.regular.copyWith(
+                        color: prego.colors.textTertiary,
                       ),
                     ),
                   ),

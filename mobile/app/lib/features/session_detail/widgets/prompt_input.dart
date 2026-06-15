@@ -5,7 +5,7 @@ import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../../capabilities/voice/voice_transcription_service.dart";
 import "../../../core/constants.dart";
@@ -273,14 +273,14 @@ class _PromptInputState extends State<PromptInput> {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
+    final prego = context.prego;
     final loc = context.loc;
 
     return Container(
       decoration: BoxDecoration(
-        color: zyra.colors.bgPrimary,
+        color: prego.colors.bgPrimary,
         border: Border(
-          top: BorderSide(color: zyra.colors.borderSecondary),
+          top: BorderSide(color: prego.colors.borderSecondary),
         ),
       ),
       child: Column(
@@ -296,11 +296,11 @@ class _PromptInputState extends State<PromptInput> {
                 child: InputChip(
                   label: Text("/${commandInfo.name}"),
                   avatar: CircleAvatar(
-                    backgroundColor: zyra.colors.bgBrandPrimary,
+                    backgroundColor: prego.colors.bgBrandPrimary,
                     child: Text(
                       "/",
-                      style: zyra.textTheme.textMd.bold.copyWith(
-                        color: zyra.colors.textBrandPrimary,
+                      style: prego.textTheme.textMd.bold.copyWith(
+                        color: prego.colors.textBrandPrimary,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -351,7 +351,7 @@ class _PromptInputState extends State<PromptInput> {
                             borderSide: BorderSide.none,
                           ),
                           filled: true,
-                          fillColor: zyra.colors.bgQuaternary,
+                          fillColor: prego.colors.bgQuaternary,
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 10,
@@ -371,14 +371,14 @@ class _PromptInputState extends State<PromptInput> {
                   IconButton(
                     onPressed: _handleSend,
                     icon: const Icon(Icons.send),
-                    color: zyra.colors.bgBrandSolid,
+                    color: prego.colors.bgBrandSolid,
                     tooltip: loc.sessionDetailSend,
                   ),
                   if (widget.isBusy)
                     IconButton(
                       onPressed: widget.onAbort,
                       icon: const Icon(Icons.stop_circle),
-                    color: zyra.colors.fgErrorPrimary,
+                    color: prego.colors.fgErrorPrimary,
                       tooltip: loc.sessionDetailAbort,
                     ),
                 ],
@@ -406,12 +406,12 @@ class _SlashButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
+    final prego = context.prego;
 
     return Material(
       color: enabled
-          ? zyra.colors.bgQuaternary
-          : zyra.colors.bgQuaternary.withValues(alpha: 0.5),
+          ? prego.colors.bgQuaternary
+          : prego.colors.bgQuaternary.withValues(alpha: 0.5),
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),
@@ -422,8 +422,8 @@ class _SlashButton extends StatelessWidget {
           child: Center(
             child: Text(
               "/",
-              style: zyra.textTheme.textMd.bold.copyWith(
-                color: enabled ? zyra.colors.textSecondary : zyra.colors.borderPrimary,
+              style: prego.textTheme.textMd.bold.copyWith(
+                color: enabled ? prego.colors.textSecondary : prego.colors.borderPrimary,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -446,26 +446,26 @@ class _MicButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
+    final prego = context.prego;
     final loc = context.loc;
 
     return switch (voiceState) {
       _VoiceState.idle => IconButton(
         onPressed: onTap,
         icon: const Icon(Icons.mic_none),
-        color: zyra.colors.textSecondary,
+        color: prego.colors.textSecondary,
         tooltip: loc.voiceRecord,
       ),
       _VoiceState.recording => IconButton(
         onPressed: onTap,
         icon: const Icon(Icons.stop_circle_outlined),
-        color: zyra.colors.fgErrorPrimary,
+        color: prego.colors.fgErrorPrimary,
         tooltip: loc.voiceStopRecording,
       ),
       _VoiceState.transcribing => IconButton(
         onPressed: onTap,
         icon: const Icon(Icons.close),
-        color: zyra.colors.fgErrorPrimary,
+        color: prego.colors.fgErrorPrimary,
         tooltip: loc.voiceCancelTranscription,
       ),
     };
@@ -514,13 +514,13 @@ class _RecordingIndicatorState extends State<_RecordingIndicator> {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
-    final barColor = zyra.colors.fgErrorPrimary;
+    final prego = context.prego;
+    final barColor = prego.colors.fgErrorPrimary;
 
     return Container(
       height: 48,
       decoration: BoxDecoration(
-        color: zyra.colors.bgErrorPrimary.withValues(alpha: 0.3),
+        color: prego.colors.bgErrorPrimary.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(24),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -546,13 +546,13 @@ class _TranscribingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
+    final prego = context.prego;
     final loc = context.loc;
 
     return Container(
       height: 48,
       decoration: BoxDecoration(
-        color: zyra.colors.bgBrandPrimary.withValues(alpha: 0.3),
+        color: prego.colors.bgBrandPrimary.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(24),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -563,14 +563,14 @@ class _TranscribingIndicator extends StatelessWidget {
             height: 16,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              color: zyra.colors.bgBrandSolid,
+              color: prego.colors.bgBrandSolid,
             ),
           ),
           const SizedBox(width: 12),
           Text(
             loc.voiceTranscribing,
-            style: zyra.textTheme.textSm.regular.copyWith(
-              color: zyra.colors.bgBrandSolid,
+            style: prego.textTheme.textSm.regular.copyWith(
+              color: prego.colors.bgBrandSolid,
             ),
           ),
         ],

@@ -12,7 +12,7 @@ import "package:sesori_mobile/core/widgets/session_split/session_split_scope.dar
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../../helpers/test_helpers.dart";
 import "../../routing/adaptive_session_router_test_harness.dart";
@@ -254,7 +254,7 @@ void main() {
     testWidgets("renders with stable key and localized text", (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: ThemeData(extensions: [ZyraDesignSystem.light]),
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: const EmptySessionDetailPanel(),

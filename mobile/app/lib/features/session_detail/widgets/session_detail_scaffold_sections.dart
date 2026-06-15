@@ -1,7 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/extensions/remote_failure_x.dart";
@@ -34,8 +34,8 @@ class SessionDetailTitle extends StatelessWidget {
         if (subtitle.isNotEmpty)
           Text(
             subtitle,
-            style: context.zyra.textTheme.textXs.regular.copyWith(
-              color: context.zyra.colors.textSecondary,
+            style: context.prego.textTheme.textXs.regular.copyWith(
+              color: context.prego.colors.textSecondary,
             ),
           ),
       ],
@@ -75,7 +75,7 @@ class SessionDetailPendingBanner extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: context.zyra.textTheme.textMd.bold.copyWith(color: foregroundColor),
+                  style: context.prego.textTheme.textMd.bold.copyWith(color: foregroundColor),
                 ),
               ),
               Icon(Icons.chevron_right, size: 20, color: foregroundColor),
@@ -123,9 +123,9 @@ class SessionDetailErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline, size: 48, color: context.zyra.colors.fgErrorPrimary),
+            Icon(Icons.error_outline, size: 48, color: context.prego.colors.fgErrorPrimary),
             const SizedBox(height: 16),
-            Text(loc.sessionDetailErrorTitle, style: context.zyra.textTheme.textMd.bold),
+            Text(loc.sessionDetailErrorTitle, style: context.prego.textTheme.textMd.bold),
             const SizedBox(height: 8),
             Text(
               reason.localizedMessage(loc),

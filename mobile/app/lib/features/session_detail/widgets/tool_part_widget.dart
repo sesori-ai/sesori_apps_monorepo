@@ -1,6 +1,6 @@
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/extensions/text_style_x.dart";
 import "../../../core/widgets/copy_icon_button.dart";
@@ -13,7 +13,7 @@ class ToolPartWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
+    final prego = context.prego;
     final loc = context.loc;
     final state = part.state;
     final toolName = part.state?.title ?? part.tool ?? loc.sessionDetailToolUnknown;
@@ -25,9 +25,9 @@ class ToolPartWidget extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Container(
         decoration: BoxDecoration(
-          color: zyra.colors.bgSecondary,
+          color: prego.colors.bgSecondary,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: zyra.colors.borderSecondary),
+          border: Border.all(color: prego.colors.borderSecondary),
         ),
         child: Column(
           crossAxisAlignment: .start,
@@ -36,12 +36,12 @@ class ToolPartWidget extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(
                 children: [
-                  _statusIcon(status: status, zyra: zyra),
+                  _statusIcon(status: status, prego: prego),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       toolName,
-                      style: zyra.textTheme.textSm.regular.copyWith(
+                      style: prego.textTheme.textSm.regular.copyWith(
                         fontWeight: FontWeight.w500,
                       ),
                       maxLines: 1,
@@ -50,8 +50,8 @@ class ToolPartWidget extends StatelessWidget {
                   ),
                   Text(
                     _statusLabel(loc: loc, status: status),
-                    style: zyra.textTheme.textXs.medium.copyWith(
-                      color: zyra.colors.textSecondary,
+                    style: prego.textTheme.textXs.medium.copyWith(
+                      color: prego.colors.textSecondary,
                     ),
                   ),
                 ],
@@ -67,8 +67,8 @@ class ToolPartWidget extends StatelessWidget {
                 padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 8),
                 child: Text(
                   errorText,
-                    style: zyra.textTheme.textXs.regular.copyWith(
-                      color: zyra.colors.fgErrorPrimary,
+                    style: prego.textTheme.textXs.regular.copyWith(
+                      color: prego.colors.fgErrorPrimary,
                   ),
                   maxLines: 4,
                   overflow: .ellipsis,
@@ -80,25 +80,25 @@ class ToolPartWidget extends StatelessWidget {
     );
   }
 
-  Widget _statusIcon({required String status, required ZyraDesignSystem zyra}) => switch (status) {
+  Widget _statusIcon({required String status, required PregoDesignSystem prego}) => switch (status) {
     "pending" || "running" => SizedBox(
       width: 16,
       height: 16,
       child: CircularProgressIndicator(
         strokeWidth: 2,
-        color: zyra.colors.bgBrandSolid,
+        color: prego.colors.bgBrandSolid,
       ),
     ),
     "completed" => Icon(
       Icons.check_circle,
       size: 16,
-      color: zyra.colors.bgBrandSolid,
+      color: prego.colors.bgBrandSolid,
     ),
-    "error" => Icon(Icons.error, size: 16, color: zyra.colors.fgErrorPrimary),
+    "error" => Icon(Icons.error, size: 16, color: prego.colors.fgErrorPrimary),
     _ => Icon(
       Icons.circle_outlined,
       size: 16,
-      color: zyra.colors.borderPrimary,
+      color: prego.colors.borderPrimary,
     ),
   };
 
@@ -137,16 +137,16 @@ class _ToolOutputBlockState extends State<_ToolOutputBlock> {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
+    final prego = context.prego;
     final loc = context.loc;
     final output = widget.output;
-    final monoStyle = zyra.textTheme.textXs.regular.copyWith(fontSize: 11).monospace;
+    final monoStyle = prego.textTheme.textXs.regular.copyWith(fontSize: 11).monospace;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: zyra.colors.bgQuaternary,
+        color: prego.colors.bgQuaternary,
         borderRadius: BorderRadius.circular(4),
       ),
       child: LayoutBuilder(
@@ -193,7 +193,7 @@ class _ToolOutputBlockState extends State<_ToolOutputBlock> {
                     padding: const EdgeInsetsDirectional.only(top: 4),
                     child: Text(
                       _expanded ? loc.sessionDetailShowLess : loc.sessionDetailShowMore,
-                      style: zyra.textTheme.textXs.medium.copyWith(color: zyra.colors.bgBrandSolid),
+                      style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.bgBrandSolid),
                     ),
                   ),
                 ),
