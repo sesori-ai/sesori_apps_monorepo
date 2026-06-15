@@ -728,6 +728,60 @@ void main() {
     expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
   });
 
+  testWidgets("a trackpad pan during a touch peek does not hijack or cancel it", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final created = DateTime.now().millisecondsSinceEpoch;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: [
+          for (var i = 0; i < 12; i++)
+            _message(
+              messageId: "u$i",
+              role: "user",
+              text: _multilineText(label: "Message $i", lines: 6),
+              createdAtMs: created,
+            ),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final textFinder = find.textContaining("Message 11").first;
+    final restX = tester.getTopLeft(textFinder).dx;
+
+    // A finger drag engages the peek.
+    final finger = await tester.startGesture(const Offset(450, 350));
+    await finger.moveBy(const Offset(-160, 0));
+    await tester.pump();
+    final peekedX = tester.getTopLeft(textFinder).dx;
+    expect(peekedX, lessThan(restX));
+
+    // On a device with both a touchscreen and a trackpad, a stray trackpad
+    // pan-zoom must not seize the shared reveal state from the active touch
+    // drag — the finger owns the peek until it lifts.
+    final trackpad = await tester.createGesture(kind: PointerDeviceKind.trackpad);
+    await trackpad.panZoomStart(const Offset(200, 300));
+    await trackpad.panZoomUpdate(const Offset(200, 300), pan: const Offset(-120, 0));
+    await trackpad.panZoomEnd();
+    // Settle so that any spurious spring-back the stray pan triggered would
+    // run to completion (and fail the assertion) rather than hide behind an
+    // in-flight animation.
+    await tester.pumpAndSettle();
+    expect(
+      tester.getTopLeft(textFinder).dx,
+      peekedX,
+      reason: "trackpad pan must not hijack or close the active touch peek",
+    );
+
+    // The owning finger lifts: now it springs back.
+    await finger.up();
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
+  });
+
   testWidgets("a rightward drag does not engage the peek (gutter is on the right)", (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));

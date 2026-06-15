@@ -132,6 +132,15 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
   bool _revealRejected = false;
   bool _revealStartedFollowing = false;
 
+  /// True while a trackpad pan-zoom owns the reveal. The pointer-drag and
+  /// pan-zoom paths share the engage/reject latches above, so exactly one
+  /// may drive the peek at a time: whichever gesture starts first claims
+  /// ownership (`_revealPointer` for finger/stylus, this flag for
+  /// trackpad) and the other path no-ops until it releases. Guards against
+  /// a stray pan on a touchscreen-plus-trackpad device resetting the
+  /// latches — or springing the gutter shut — mid touch drag.
+  bool _revealPanActive = false;
+
   /// Snapshot taken at the moment of detach. `null` means "not frozen
   /// — use live `widget.*` props".
   _DetachedSnapshot? _snapshot;
@@ -425,6 +434,9 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
     // secondary touches so a stray second finger can't strand the
     // gesture state (and the detach suppression) on the wrong pointer.
     if (_revealPointer != null) return;
+    // A trackpad pan already owns the reveal — don't let a concurrent
+    // touch claim the shared latches out from under it.
+    if (_revealPanActive) return;
     // A mouse press-and-drag is the text-selection gesture, so never
     // hijack it for the peek — regardless of OS. (A trackpad click also
     // reports as a mouse pointer; its two-finger swipe arrives separately
@@ -492,19 +504,24 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
   // pointer-drag path above (slop, horizontal-dominant gating, detach
   // suppression, spring-back) but reads the cumulative `pan` and
   // per-event `panDelta` from the pan-zoom stream instead of raw pointer
-  // positions. Reuses the same engage/reject/started-following latches —
-  // pan-zoom (trackpad) and pointer drags (finger/stylus) never arrive
-  // from the same device at once, so they never overlap.
+  // positions. Reuses the same engage/reject/started-following latches as
+  // the pointer path, so a [_revealPanActive] / `_revealPointer`
+  // ownership handshake keeps the two from clobbering each other when a
+  // device has both a touchscreen and a trackpad.
   // ---------------------------------------------------------------------------
 
   void _onRevealPanZoomStart(PointerPanZoomStartEvent event) {
+    // A finger/stylus drag already owns the reveal — don't reset its
+    // latches from under it (see [_revealPanActive]).
+    if (_revealPointer != null) return;
+    _revealPanActive = true;
     _revealEngaged = false;
     _revealRejected = false;
     _revealStartedFollowing = _follow.following;
   }
 
   void _onRevealPanZoomUpdate(PointerPanZoomUpdateEvent event) {
-    if (_revealRejected) return;
+    if (!_revealPanActive || _revealRejected) return;
 
     if (!_revealEngaged) {
       // Same direction disambiguation as the touch path: only a clear
@@ -531,10 +548,15 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
     _revealController.value = next;
   }
 
-  void _onRevealPanZoomEnd(PointerPanZoomEndEvent event) => _endReveal();
+  void _onRevealPanZoomEnd(PointerPanZoomEndEvent event) {
+    // Ignore a pan that never claimed the reveal (a finger drag owned it).
+    if (!_revealPanActive) return;
+    _endReveal();
+  }
 
   void _endReveal() {
     _revealPointer = null;
+    _revealPanActive = false;
     _revealEngaged = false;
     _revealRejected = false;
     _follow.releaseDetachSuppression();
