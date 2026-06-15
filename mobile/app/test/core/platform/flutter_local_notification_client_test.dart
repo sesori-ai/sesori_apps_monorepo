@@ -37,8 +37,8 @@ void main() {
       client.cancelForSession(sessionId: sessionId);
       await Future<void>.delayed(Duration.zero);
 
-      // On a non-Android host the integer id covers foreground + iOS/macOS
-      // delivered notifications; the Android (tag, 0) sweep is a no-op here.
+      // On a non-Android host the identity is (sessionKey, no tag), so one
+      // cancel by integer id clears the foreground + iOS/macOS notifications.
       verify(() => mockPlugin.cancel(id: expectedId, tag: null)).called(1);
     });
 
@@ -51,6 +51,28 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       verify(() => mockPlugin.cancel(id: any(named: "id"), tag: any(named: "tag"))).called(1);
+    });
+  });
+
+  group("notificationIdentityForSession", () {
+    test("Android reuses the FCM (tag, 0) identity: id 0 + session key as tag", () {
+      final identity = FlutterLocalNotificationClient.notificationIdentityForSession(
+        sessionId: "ses_abc",
+        isAndroid: true,
+      );
+
+      expect(identity.id, 0);
+      expect(identity.androidTag, sessionNotificationId(sessionId: "ses_abc").toString());
+    });
+
+    test("iOS/macOS use the session id as the notification id with no tag", () {
+      final identity = FlutterLocalNotificationClient.notificationIdentityForSession(
+        sessionId: "ses_abc",
+        isAndroid: false,
+      );
+
+      expect(identity.id, sessionNotificationId(sessionId: "ses_abc"));
+      expect(identity.androidTag, isNull);
     });
   });
 
