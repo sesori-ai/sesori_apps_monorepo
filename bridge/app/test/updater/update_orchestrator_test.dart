@@ -151,6 +151,9 @@ UpdateService _buildService({
 
 void main() {
   setUp(() async {
+    // Pin a deterministic log level: these tests capture Log output, and the
+    // ambient level can otherwise vary across the suite/CI (filtering Log.w).
+    Log.level = LogLevel.info;
     await Directory(_testManagedPaths.installRoot).create(recursive: true);
     final lockFile = File('${_testManagedPaths.installRoot}/.update.lock');
     if (lockFile.existsSync()) {
