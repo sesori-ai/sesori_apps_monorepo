@@ -271,16 +271,21 @@ class LoginOAuthService {
 
     const bottomLine = "└──────────────────────────────────────────┘";
 
-    Console.message("");
-    Console.message(line);
-    Console.message(empty);
-    Console.message(codeLine);
-    Console.message(empty);
-    Console.message(confirmLine);
-    Console.message(beforeLine);
-    Console.message(empty);
-    Console.message(bottomLine);
-    Console.message("");
+    // Printed as a single write so the box renders atomically as one block.
+    Console.message(
+      [
+        "",
+        line,
+        empty,
+        codeLine,
+        empty,
+        confirmLine,
+        beforeLine,
+        empty,
+        bottomLine,
+        "",
+      ].join("\n"),
+    );
   }
 
   String _generateSessionToken() {
