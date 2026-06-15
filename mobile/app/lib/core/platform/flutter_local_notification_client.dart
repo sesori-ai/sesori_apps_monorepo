@@ -135,7 +135,18 @@ class FlutterLocalNotificationClient implements LocalNotificationClient {
     required String? projectId,
     required String? sessionTitle,
   }) async {
-    final identity = _notificationIdentity(sessionId);
+    final id = sessionId == null
+        ? DateTime.now().millisecondsSinceEpoch.remainder(2147483647)
+        : sessionNotificationId(sessionId: sessionId);
+
+    // A new notification for a session replaces any older one. On Android a
+    // background notification rendered by the OS from an FCM message is posted
+    // as (tag, 0); drop it before showing the foreground notification so only
+    // the latest remains. iOS/macOS replace automatically because the local
+    // notification reuses the same identifier as the FCM apns-collapse-id.
+    if (sessionId != null) {
+      await _cancelAndroidBackgroundNotification(id);
+    }
 
     final payload = jsonEncode(
       NotificationTapEvent(
@@ -145,18 +156,14 @@ class FlutterLocalNotificationClient implements LocalNotificationClient {
       ).toJson(),
     );
 
-    // A session notification reuses the same per-platform identity as the
-    // background FCM notification, so showing the foreground one replaces any
-    // existing notification for the session (and vice versa) on its own.
     await _plugin.show(
-      id: identity.id,
+      id: id,
       title: title,
       body: body,
       notificationDetails: NotificationDetails(
         android: AndroidNotificationDetails(
           category.id,
           category.displayName,
-          tag: identity.androidTag,
           largeIcon: const DrawableResourceAndroidBitmap("@mipmap/ic_launcher"),
         ),
         iOS: const DarwinNotificationDetails(),
@@ -172,42 +179,42 @@ class FlutterLocalNotificationClient implements LocalNotificationClient {
 
   @override
   void cancelForSession({required String sessionId}) {
-    final identity = _notificationIdentity(sessionId);
-    unawaited(_safeCancel(id: identity.id, tag: identity.androidTag));
+    unawaited(_cancelForSession(sessionNotificationId(sessionId: sessionId)));
   }
 
-  ({int id, String? androidTag}) _notificationIdentity(String? sessionId) {
-    if (sessionId == null) {
-      return (id: DateTime.now().millisecondsSinceEpoch.remainder(2147483647), androidTag: null);
-    }
-    return notificationIdentityForSession(sessionId: sessionId, isAndroid: Platform.isAndroid);
-  }
-
-  /// The notification identity shared by [show] and [cancelForSession] so a
-  /// foreground notification and the background notification the OS renders from
-  /// FCM are the *same* notification (one per session).
+  /// Dismisses every notification for a session, across the surfaces that may
+  /// have rendered it:
+  ///  - the local plugin (foreground) plus iOS/macOS delivered notifications,
+  ///    keyed by the integer id: `cancel(id)`.
+  ///  - the Android OS notification rendered from an FCM background message,
+  ///    posted as `(tag, 0)`: `cancel(0, tag: id)`.
   ///
-  /// Android identifies notifications by the `(tag, id)` pair and FCM posts
-  /// background notifications as `(tag, 0)`, so the local notification uses the
-  /// same `(sessionKey, 0)`. iOS/macOS identify by the id alone, which equals
-  /// the FCM `apns-collapse-id`, so they use `sessionKey` as the id.
-  @visibleForTesting
-  static ({int id, String? androidTag}) notificationIdentityForSession({
-    required String sessionId,
-    required bool isAndroid,
-  }) {
-    final sessionKey = sessionNotificationId(sessionId: sessionId);
-    if (isAndroid) {
-      return (id: 0, androidTag: sessionKey.toString());
+  /// Each surface is cancelled independently and best-effort, so a failure on
+  /// one is logged and never blocks the other or escapes this fire-and-forget call.
+  Future<void> _cancelForSession(int id) async {
+    try {
+      await cancel(id: id, tag: null);
+    } on Object catch (error, stackTrace) {
+      logw("Failed to cancel foreground notification for session", error, stackTrace);
     }
-    return (id: sessionKey, androidTag: null);
+    await _cancelAndroidBackgroundNotification(id);
   }
 
-  Future<void> _safeCancel({required int id, required String? tag}) async {
+  /// Android renders background FCM notifications via `notify(tag, 0)`, where the
+  /// tag is the session-scoped id string the auth server sets. Removing
+  /// `(tag, 0)` clears that notification. No-op elsewhere: on iOS/macOS the
+  /// shared integer identifier already covers both foreground and background.
+  ///
+  /// Best-effort: failures are logged, never thrown, so the pre-show cleanup in
+  /// [show] always proceeds to post the new notification.
+  Future<void> _cancelAndroidBackgroundNotification(int id) async {
+    if (!Platform.isAndroid) {
+      return;
+    }
     try {
-      await cancel(id: id, tag: tag);
+      await cancel(id: 0, tag: id.toString());
     } on Object catch (error, stackTrace) {
-      logw("Failed to cancel notification for session", error, stackTrace);
+      logw("Failed to cancel Android background notification for session", error, stackTrace);
     }
   }
 
