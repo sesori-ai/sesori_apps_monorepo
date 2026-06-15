@@ -141,10 +141,11 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
         if (requestTimeout <= Duration.zero) break;
 
         final uri = Uri.parse("$authBaseUrl/auth/session/status");
-        final response = await _get(
-          uri,
-          headers: {_sessionTokenHeader: sessionToken},
-        ).timeout(requestTimeout);
+        final response = await _getSessionStatus(
+          uri: uri,
+          sessionToken: sessionToken,
+          requestTimeout: requestTimeout,
+        );
 
         final status = _parseSessionStatus(response);
         switch (status) {
@@ -164,6 +165,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
               refreshToken: refreshToken,
               user: user,
             );
+            await _ackOAuthCompletion(sessionToken: sessionToken);
             return user;
           case AuthSessionStatusResponseDenied():
             await _oAuthStorage.clearOAuthSession();
@@ -181,6 +183,24 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
       throw TimeoutException("OAuth authorization timed out");
     } finally {
       _oAuthSessionToken = null;
+    }
+  }
+
+  Future<http.Response> _getSessionStatus({
+    required Uri uri,
+    required String sessionToken,
+    required Duration requestTimeout,
+  }) async {
+    try {
+      return await _get(
+        uri,
+        headers: {_sessionTokenHeader: sessionToken},
+      ).timeout(requestTimeout);
+    } on TimeoutException catch (_, stackTrace) {
+      Error.throwWithStackTrace(
+        http.ClientException("OAuth session status request timed out", uri),
+        stackTrace,
+      );
     }
   }
 
@@ -204,6 +224,24 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     ]);
 
     _authState.add(AuthState.authenticated(user: user));
+  }
+
+  Future<void> _ackOAuthCompletion({required String sessionToken}) async {
+    try {
+      final uri = Uri.parse("$authBaseUrl/auth/session/status/ack");
+      final response = await _post(
+        uri,
+        headers: {_sessionTokenHeader: sessionToken},
+      );
+      _ensureSuccess(response, context: "Failed to acknowledge OAuth session completion");
+    } catch (error, stackTrace) {
+      developer.log(
+        "Failed to acknowledge OAuth session completion; server will expire it",
+        error: error,
+        stackTrace: stackTrace,
+        name: "sesori_auth",
+      );
+    }
   }
 
   /// Persists [user] to local storage, swallowing (and logging) any failure.
