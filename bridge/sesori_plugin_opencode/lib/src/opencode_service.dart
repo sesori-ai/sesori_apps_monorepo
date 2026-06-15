@@ -311,7 +311,10 @@ class OpenCodeService {
         directory: directory,
       );
     } on OpenCodeApiException catch (e) {
-      if (e.statusCode != 404 || directory == null) rethrow;
+      // For an explicit user reject we clear local pending state even when the
+      // request was unscoped (older mobile clients may omit sessionId). Other
+      // errors still propagate so genuine failures are not silently swallowed.
+      if (e.statusCode != 404) rethrow;
       Log.w("question already resolved upstream (404), reconciling tracker: ${e.endpoint}", e);
     }
     return tracker.clearPendingQuestion(questionId: questionId, sessionId: resolvedSessionId);

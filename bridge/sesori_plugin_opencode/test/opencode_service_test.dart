@@ -859,6 +859,28 @@ void main() {
       expect(tracker.lastClearedQuestionSessionId, equals("ses-1"));
     });
 
+    test("rejectQuestion 404 without resolvable sessionId still clears tracker for backwards compatibility", () async {
+      final repository = FakeOpenCodeRepository(
+        rejectQuestionError: OpenCodeApiException("POST /question/q1/reject", 404),
+      );
+      final tracker = FakeActiveSessionTracker(
+        clearPendingQuestionFound: true,
+        clearPendingQuestionChanged: true,
+      );
+      final service = OpenCodeService(repository, tracker);
+
+      final result = await service.rejectQuestion(questionId: "q1", sessionId: null);
+
+      expect(result.found, isTrue);
+      expect(result.resolvedSessionId, isNull);
+      expect(result.summaryChanged, isTrue);
+      expect(tracker.lastGetSessionIdForQuestionQuestionId, equals("q1"));
+      expect(repository.lastRejectQuestionId, equals("q1"));
+      expect(repository.lastRejectQuestionDirectory, isNull);
+      expect(tracker.lastClearedQuestionId, equals("q1"));
+      expect(tracker.lastClearedQuestionSessionId, isNull);
+    });
+
     test("replyToPermission 200 clears tracker and returns change", () async {
       final repository = FakeOpenCodeRepository();
       final tracker = FakeActiveSessionTracker(
