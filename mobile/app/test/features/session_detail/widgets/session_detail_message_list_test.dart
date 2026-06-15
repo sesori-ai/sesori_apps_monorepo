@@ -1,3 +1,4 @@
+import "package:flutter/foundation.dart";
 import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -762,5 +763,103 @@ void main() {
 
     await gesture.up();
     await tester.pumpAndSettle();
+  });
+
+  testWidgets("on desktop a mouse click-and-drag does not peek (left free for text selection)", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    // Reset in `finally` rather than `addTearDown`: the binding's
+    // end-of-test invariant check (which runs before tear-downs) asserts
+    // foundation debug vars are unset.
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    try {
+      final created = DateTime.now().millisecondsSinceEpoch;
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          initialMessages: [
+            for (var i = 0; i < 12; i++)
+              _message(
+                messageId: "u$i",
+                role: "user",
+                text: _multilineText(label: "Message $i", lines: 6),
+                createdAtMs: created,
+              ),
+          ],
+          initialStreamingText: const {},
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final textFinder = find.textContaining("Message 11").first;
+      final restX = tester.getTopLeft(textFinder).dx;
+
+      // A mouse press-and-drag is the text-selection gesture on desktop;
+      // it must NOT slide the transcript, or selecting message text
+      // becomes impossible.
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byKey(_listViewKey)),
+        kind: PointerDeviceKind.mouse,
+      );
+      await gesture.moveBy(const Offset(-160, 0));
+      await tester.pump();
+
+      expect(tester.getTopLeft(textFinder).dx, restX, reason: "click-drag must not open the gutter on desktop");
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets("on desktop a horizontal trackpad pan peeks timestamps without scrolling", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    try {
+      final created = DateTime.now().millisecondsSinceEpoch;
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          initialMessages: [
+            for (var i = 0; i < 12; i++)
+              _message(
+                messageId: "u$i",
+                role: "user",
+                text: _multilineText(label: "Message $i", lines: 6),
+                createdAtMs: created,
+              ),
+          ],
+          initialStreamingText: const {},
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final textFinder = find.textContaining("Message 11").first;
+      final restX = tester.getTopLeft(textFinder).dx;
+      final restPixels = _position(tester).pixels;
+
+      // A horizontal two-finger trackpad swipe (pan-zoom) is the desktop
+      // peek gesture — it slides the content left without scrolling the
+      // list or detaching follow mode.
+      final center = tester.getCenter(find.byKey(_listViewKey));
+      final gesture = await tester.createGesture(kind: PointerDeviceKind.trackpad);
+      await gesture.panZoomStart(center);
+      await gesture.panZoomUpdate(center, pan: const Offset(-160, 0));
+      await tester.pump();
+
+      expect(
+        tester.getTopLeft(textFinder).dx,
+        lessThan(restX),
+        reason: "horizontal trackpad pan should slide the content to expose the timestamp",
+      );
+      expect(_position(tester).pixels, restPixels, reason: "horizontal peek must not scroll the list");
+      expect(find.byKey(_jumpToLatestKey), findsNothing, reason: "horizontal peek must not detach follow mode");
+
+      await gesture.panZoomEnd();
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 }

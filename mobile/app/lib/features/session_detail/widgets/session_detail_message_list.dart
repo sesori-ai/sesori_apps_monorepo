@@ -1,5 +1,7 @@
 import "dart:async";
 
+import "package:flutter/foundation.dart";
+import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
 import "package:flutter_chat_core/flutter_chat_core.dart" as chat_core;
 import "package:flutter_chat_ui/flutter_chat_ui.dart" as chat_ui;
@@ -280,7 +282,7 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
         label: loc.sessionDetailJumpToLatest,
         onTap: () => _follow.animateToEdge(),
       ),
-      // Horizontal "peek" gesture: drag the transcript left to reveal
+      // Horizontal "peek" gesture: slide the transcript left to reveal
       // each message's timestamp on the right. Driven by a raw [Listener]
       // rather than a drag GestureDetector on purpose — a competing
       // horizontal drag recognizer would join the gesture arena and stop
@@ -288,14 +290,25 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
       // which would break small-drag detach. The Listener never joins the
       // arena, so vertical scrolling is untouched; we disambiguate
       // direction ourselves and only steer the reveal on horizontal-
-      // dominant drags. `translucent` so the whole list area is tracked
+      // dominant gestures. `translucent` so the whole list area is tracked
       // while taps and selection still reach the cards below.
+      //
+      // Input source depends on the platform ([_usePointerDragReveal]):
+      //
+      // - Touch (iOS/Android): a finger drag — pointer down/move/up.
+      // - Desktop (macOS/Windows/Linux): a horizontal trackpad/mouse
+      //   gesture — pointer pan-zoom. A button press-and-drag is left
+      //   untouched there so it keeps selecting message text; hijacking it
+      //   for the peek would make text selection impossible.
       child: Listener(
         behavior: HitTestBehavior.translucent,
-        onPointerDown: _onRevealPointerDown,
-        onPointerMove: _onRevealPointerMove,
-        onPointerUp: _onRevealPointerUp,
-        onPointerCancel: _onRevealPointerCancel,
+        onPointerDown: _usePointerDragReveal ? _onRevealPointerDown : null,
+        onPointerMove: _usePointerDragReveal ? _onRevealPointerMove : null,
+        onPointerUp: _usePointerDragReveal ? _onRevealPointerUp : null,
+        onPointerCancel: _usePointerDragReveal ? _onRevealPointerCancel : null,
+        onPointerPanZoomStart: _usePointerDragReveal ? null : _onRevealPanZoomStart,
+        onPointerPanZoomUpdate: _usePointerDragReveal ? null : _onRevealPanZoomUpdate,
+        onPointerPanZoomEnd: _usePointerDragReveal ? null : _onRevealPanZoomEnd,
         child: chat_ui.Chat(
           key: _kListViewKey,
           currentUserId: _kUserAuthorId,
@@ -403,6 +416,27 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
     );
   }
 
+  /// Whether the timestamp peek is driven by a finger drag (pointer
+  /// down/move/up) rather than a horizontal trackpad/mouse pan-zoom.
+  ///
+  /// Touch platforms have no separate pan-zoom stream and no competing
+  /// text-selection drag, so a finger drag is the natural input. Desktop
+  /// platforms reserve button press-and-drag for selecting message text
+  /// and expose the peek through a horizontal trackpad swipe / mouse
+  /// gesture instead.
+  bool get _usePointerDragReveal {
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.iOS:
+      case TargetPlatform.android:
+      case TargetPlatform.fuchsia:
+        return true;
+      case TargetPlatform.macOS:
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
+        return false;
+    }
+  }
+
   void _onRevealPointerDown(PointerDownEvent event) {
     // The first pointer owns the peek for its whole lifetime; ignore
     // secondary touches so a stray second finger can't strand the
@@ -464,6 +498,52 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
     if (event.pointer != _revealPointer) return;
     _endReveal();
   }
+
+  // ---------------------------------------------------------------------------
+  // Desktop reveal: horizontal trackpad / mouse pan-zoom. Mirrors the
+  // touch pointer-drag path above (slop, horizontal-dominant gating,
+  // detach suppression, spring-back) but reads the cumulative `pan` and
+  // per-event `panDelta` from the pan-zoom stream instead of raw pointer
+  // positions. Reuses the same engage/reject/started-following latches —
+  // only one input path is wired at a time (see [_usePointerDragReveal]),
+  // so they never overlap.
+  // ---------------------------------------------------------------------------
+
+  void _onRevealPanZoomStart(PointerPanZoomStartEvent event) {
+    _revealEngaged = false;
+    _revealRejected = false;
+    _revealStartedFollowing = _follow.following;
+  }
+
+  void _onRevealPanZoomUpdate(PointerPanZoomUpdateEvent event) {
+    if (_revealRejected) return;
+
+    if (!_revealEngaged) {
+      // Same direction disambiguation as the touch path: only a clear
+      // leftward pan opens the right-hand gutter; vertical, ambiguous and
+      // rightward pans are left for the list's own scroll handling.
+      final dx = event.pan.dx;
+      final dy = event.pan.dy;
+      if (dx.abs() < _kRevealEngageSlop && dy.abs() < _kRevealEngageSlop) return;
+      if (dy.abs() >= dx.abs() || dx > 0) {
+        _revealRejected = true;
+        return;
+      }
+      _revealEngaged = true;
+      _revealController.stop();
+      // The list's scroll plumbing detaches on pan-zoom start; undo that
+      // for a horizontal peek, but only when we began following (see the
+      // touch path for the rationale).
+      if (_revealStartedFollowing) {
+        _follow.suppressDetach();
+      }
+    }
+
+    final next = (_revealController.value - event.panDelta.dx / _kMaxReveal).clamp(0.0, 1.0);
+    _revealController.value = next;
+  }
+
+  void _onRevealPanZoomEnd(PointerPanZoomEndEvent event) => _endReveal();
 
   void _endReveal() {
     _revealPointer = null;
