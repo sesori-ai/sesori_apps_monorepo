@@ -1,6 +1,5 @@
 import "dart:async";
 
-import "package:flutter/foundation.dart";
 import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
 import "package:flutter_chat_core/flutter_chat_core.dart" as chat_core;
@@ -293,22 +292,27 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
       // dominant gestures. `translucent` so the whole list area is tracked
       // while taps and selection still reach the cards below.
       //
-      // Input source depends on the platform ([_usePointerDragReveal]):
+      // Input source is chosen by the pointer's *device kind*, not the
+      // OS — so a desktop touchscreen still peeks by finger and an
+      // attached mouse on mobile still selects text:
       //
-      // - Touch (iOS/Android): a finger drag — pointer down/move/up.
-      // - Desktop (macOS/Windows/Linux): a horizontal trackpad/mouse
-      //   gesture — pointer pan-zoom. A button press-and-drag is left
-      //   untouched there so it keeps selecting message text; hijacking it
-      //   for the peek would make text selection impossible.
+      // - Touch / stylus: a finger drag — pointer down/move/up.
+      // - Trackpad: a horizontal two-finger swipe — pointer pan-zoom.
+      // - Mouse: a button press-and-drag is left untouched (the pointer
+      //   path ignores the mouse kind) so it keeps selecting message
+      //   text; hijacking it for the peek would make selection impossible.
+      //
+      // Both handler sets are always bound; each only fires for its own
+      // device kind, so they never compete.
       child: Listener(
         behavior: HitTestBehavior.translucent,
-        onPointerDown: _usePointerDragReveal ? _onRevealPointerDown : null,
-        onPointerMove: _usePointerDragReveal ? _onRevealPointerMove : null,
-        onPointerUp: _usePointerDragReveal ? _onRevealPointerUp : null,
-        onPointerCancel: _usePointerDragReveal ? _onRevealPointerCancel : null,
-        onPointerPanZoomStart: _usePointerDragReveal ? null : _onRevealPanZoomStart,
-        onPointerPanZoomUpdate: _usePointerDragReveal ? null : _onRevealPanZoomUpdate,
-        onPointerPanZoomEnd: _usePointerDragReveal ? null : _onRevealPanZoomEnd,
+        onPointerDown: _onRevealPointerDown,
+        onPointerMove: _onRevealPointerMove,
+        onPointerUp: _onRevealPointerUp,
+        onPointerCancel: _onRevealPointerCancel,
+        onPointerPanZoomStart: _onRevealPanZoomStart,
+        onPointerPanZoomUpdate: _onRevealPanZoomUpdate,
+        onPointerPanZoomEnd: _onRevealPanZoomEnd,
         child: chat_ui.Chat(
           key: _kListViewKey,
           currentUserId: _kUserAuthorId,
@@ -416,32 +420,16 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
     );
   }
 
-  /// Whether the timestamp peek is driven by a finger drag (pointer
-  /// down/move/up) rather than a horizontal trackpad/mouse pan-zoom.
-  ///
-  /// Touch platforms have no separate pan-zoom stream and no competing
-  /// text-selection drag, so a finger drag is the natural input. Desktop
-  /// platforms reserve button press-and-drag for selecting message text
-  /// and expose the peek through a horizontal trackpad swipe / mouse
-  /// gesture instead.
-  bool get _usePointerDragReveal {
-    switch (defaultTargetPlatform) {
-      case TargetPlatform.iOS:
-      case TargetPlatform.android:
-      case TargetPlatform.fuchsia:
-        return true;
-      case TargetPlatform.macOS:
-      case TargetPlatform.windows:
-      case TargetPlatform.linux:
-        return false;
-    }
-  }
-
   void _onRevealPointerDown(PointerDownEvent event) {
     // The first pointer owns the peek for its whole lifetime; ignore
     // secondary touches so a stray second finger can't strand the
     // gesture state (and the detach suppression) on the wrong pointer.
     if (_revealPointer != null) return;
+    // A mouse press-and-drag is the text-selection gesture, so never
+    // hijack it for the peek — regardless of OS. (A trackpad click also
+    // reports as a mouse pointer; its two-finger swipe arrives separately
+    // via the pan-zoom path.) Finger and stylus drags drive the peek.
+    if (event.kind == PointerDeviceKind.mouse) return;
     _revealPointer = event.pointer;
     _revealStart = event.position;
     _revealEngaged = false;
@@ -500,13 +488,13 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
   }
 
   // ---------------------------------------------------------------------------
-  // Desktop reveal: horizontal trackpad / mouse pan-zoom. Mirrors the
-  // touch pointer-drag path above (slop, horizontal-dominant gating,
-  // detach suppression, spring-back) but reads the cumulative `pan` and
+  // Trackpad reveal: horizontal two-finger pan-zoom. Mirrors the touch
+  // pointer-drag path above (slop, horizontal-dominant gating, detach
+  // suppression, spring-back) but reads the cumulative `pan` and
   // per-event `panDelta` from the pan-zoom stream instead of raw pointer
   // positions. Reuses the same engage/reject/started-following latches —
-  // only one input path is wired at a time (see [_usePointerDragReveal]),
-  // so they never overlap.
+  // pan-zoom (trackpad) and pointer drags (finger/stylus) never arrive
+  // from the same device at once, so they never overlap.
   // ---------------------------------------------------------------------------
 
   void _onRevealPanZoomStart(PointerPanZoomStartEvent event) {
