@@ -103,18 +103,12 @@ class OpenCodeService {
     required String sessionId,
   }) async {
     final directory = await _resolveSessionDirectory(sessionId: sessionId);
-    if (directory == null) {
-      throw PluginApiException(
-        "GET /session/$sessionId/question",
-        502,
-        message: "could not resolve session directory",
-      );
-    }
 
     // Subagent (child) sessions are non-interactive and never ask questions, so
     // only the session's own pending questions are relevant. `getPendingQuestions`
     // is directory-scoped and may return questions for sibling sessions in the
-    // same worktree, so filter to this session.
+    // same worktree, so filter to this session. If the directory cannot be
+    // resolved, fall back to an unscoped query and filter by sessionID.
     final all = await repository.getPendingQuestions(directory: directory);
     return all.where((question) => question.sessionID == sessionId).toList();
   }
