@@ -50,9 +50,10 @@ extension BuildContextLocalization on BuildContext {
 
   /// Compact, glanceable timestamp for an individual chat message
   /// (revealed by swiping the transcript). Shows the localized
-  /// time-of-day (e.g. "9:41 AM") for messages from today and prefixes
-  /// the localized short date (e.g. "Jun 14, 9:41 AM") for older ones so
-  /// the time isn't ambiguous across days.
+  /// time-of-day (e.g. "9:41 AM") for messages from today, prefixes the
+  /// localized short date (e.g. "Jun 14, 9:41 AM") for earlier days this
+  /// year, and includes the year (e.g. "Jun 14, 2025, 9:41 AM") for
+  /// messages from previous years so the date is never ambiguous.
   String formatMessageTimestamp(int ms) {
     final date = DateTime.fromMillisecondsSinceEpoch(ms);
     final now = DateTime.now();
@@ -61,6 +62,9 @@ extension BuildContextLocalization on BuildContext {
 
     final isToday = date.year == now.year && date.month == now.month && date.day == now.day;
     if (isToday) return time;
-    return "${DateFormat.MMMd(locale).format(date)}, $time";
+    // Include the year for previous-year messages so "Jun 14" can't be
+    // mistaken for the current year.
+    final datePattern = date.year == now.year ? DateFormat.MMMd(locale) : DateFormat.yMMMd(locale);
+    return "${datePattern.format(date)}, $time";
   }
 }

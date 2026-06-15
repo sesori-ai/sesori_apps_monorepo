@@ -73,7 +73,11 @@ class MessageTimestampReveal extends StatelessWidget {
                       label,
                       maxLines: 1,
                       softWrap: false,
-                      overflow: TextOverflow.clip,
+                      // Ellipsize rather than hard-clip so an unusually
+                      // long label (e.g. a dated cross-year timestamp, or
+                      // large text scaling) degrades gracefully instead of
+                      // being silently cut mid-character.
+                      overflow: TextOverflow.ellipsis,
                       style: zyra.textTheme.textXs.regular.copyWith(
                         color: zyra.colors.textTertiary,
                       ),

@@ -727,4 +727,40 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
   });
+
+  testWidgets("a rightward drag does not engage the peek (gutter is on the right)", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final created = DateTime.now().millisecondsSinceEpoch;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: [
+          for (var i = 0; i < 12; i++)
+            _message(
+              messageId: "u$i",
+              role: "user",
+              text: _multilineText(label: "Message $i", lines: 6),
+              createdAtMs: created,
+            ),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final textFinder = find.textContaining("Message 11").first;
+    final restX = tester.getTopLeft(textFinder).dx;
+
+    // A rightward drag must be left for the system back-swipe / other
+    // gestures — it must not slide the transcript.
+    final gesture = await tester.startGesture(tester.getCenter(find.byKey(_listViewKey)));
+    await gesture.moveBy(const Offset(160, 0));
+    await tester.pump();
+
+    expect(tester.getTopLeft(textFinder).dx, restX, reason: "rightward drag must not open the timestamp gutter");
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
 }

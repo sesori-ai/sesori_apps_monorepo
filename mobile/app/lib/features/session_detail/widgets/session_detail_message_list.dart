@@ -95,7 +95,9 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
 
   /// Width of the per-message timestamp gutter revealed by the horizontal
   /// "peek" gesture, and the distance rows slide left at full reveal.
-  static const double _kMaxReveal = 76;
+  /// Wide enough for a dated label this year (e.g. "Jun 14, 9:41 AM");
+  /// rarer/longer labels ellipsize in [MessageTimestampReveal].
+  static const double _kMaxReveal = 108;
 
   /// Horizontal travel before a drag is treated as a timestamp peek
   /// rather than a scroll. Kept below `kTouchSlop` so the peek engages
@@ -419,17 +421,23 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
     if (event.pointer != _revealPointer || _revealRejected) return;
 
     if (!_revealEngaged) {
-      // Disambiguate direction. A vertical or ambiguous drag is left to
-      // the scrollable untouched (so its eager small-drag detach still
-      // works); only a clear horizontal drag becomes a timestamp peek.
+      // Disambiguate direction once the pointer clears the slop. Vertical,
+      // ambiguous, and rightward drags are left untouched: the scrollable
+      // keeps its eager small-drag detach, and a rightward drag stays free
+      // for the system back-swipe and any future gestures. The gutter is
+      // on the right, so only a clear leftward drag opens it.
       final dx = event.position.dx - _revealStart.dx;
       final dy = event.position.dy - _revealStart.dy;
-      if (dy.abs() >= _kRevealEngageSlop && dy.abs() > dx.abs()) {
+      if (dx.abs() < _kRevealEngageSlop && dy.abs() < _kRevealEngageSlop) return;
+      if (dy.abs() >= dx.abs() || dx > 0) {
         _revealRejected = true;
         return;
       }
-      if (dx.abs() < _kRevealEngageSlop || dx.abs() <= dy.abs()) return;
       _revealEngaged = true;
+      // Take over any in-flight spring-back so the manual drag doesn't
+      // fight the closing animation. (Done here, not on pointer-down, so a
+      // vertical scroll that follows a release still springs shut.)
+      _revealController.stop();
       // The scrollable fires a spurious drag-start as it claims the
       // pointer. Only undo/suppress the resulting detach when we began
       // the gesture following — otherwise the user was deliberately
@@ -440,9 +448,9 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
       }
     }
 
-    // Dragging left (negative dx) opens the gutter; dragging right closes
-    // it. The controller value is the reveal fraction, so normalise the
-    // per-move pixel delta by the gutter width and clamp to [0, 1].
+    // Dragging left (negative dx) opens the gutter further; dragging back
+    // right closes it. Normalise the per-move pixel delta by the gutter
+    // width and clamp to [0, 1].
     final next = (_revealController.value - event.delta.dx / _kMaxReveal).clamp(0.0, 1.0);
     _revealController.value = next;
   }
