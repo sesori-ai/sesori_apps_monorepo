@@ -96,16 +96,21 @@ class CompletionNotifier {
       case SesoriSessionDeleted(:final info):
         _cancelDebounceForSessionGroup(info.id);
         _completionSentForRoots.remove(info.id);
-        _completionBlockedByPendingInteraction.remove(info.id);
         _pendingAbortRoots.remove(info.id);
         _abortedRoots.remove(info.id);
         _permissionRequestToSession.removeWhere((_, sessionId) => sessionId == info.id);
         // The deleted session may have been the last pending interaction
         // blocking its root. Resume completion for the root if it is still
-        // reachable via the parent and now eligible.
+        // reachable via the parent and now eligible. Pass the deleted sessionId
+        // so the helper can find a blocked key recorded before reparenting.
         if (info.parentID case final parentId?) {
-          _maybeResumeBlockedCompletion(parentId);
+          _maybeResumeBlockedCompletionForRoot(
+            rootSessionId: parentId,
+            originalSessionId: info.id,
+          );
         }
+        // Clean up any stale blocked key for the deleted session itself.
+        _completionBlockedByPendingInteraction.remove(info.id);
       // User already handled the question; resume completion if this was the
       // last blocker for an idle session group.
       case SesoriQuestionReplied(:final sessionID):
@@ -175,13 +180,27 @@ class CompletionNotifier {
   /// is removed.
   void _maybeResumeBlockedCompletion(String sessionId) {
     final rootSessionId = _tracker.resolveRootSessionId(sessionId);
+    _maybeResumeBlockedCompletionForRoot(
+      rootSessionId: rootSessionId,
+      originalSessionId: sessionId,
+    );
+  }
+
+  /// Schedules completion for [rootSessionId] only if its group was previously
+  /// busy, is fully idle, has no pending interactions, and was blocked by a
+  /// pending interaction. [originalSessionId] is checked as a fallback blocked
+  /// key for sessions that were reparented after going idle.
+  void _maybeResumeBlockedCompletionForRoot({
+    required String rootSessionId,
+    required String originalSessionId,
+  }) {
     // The blocked key may have been recorded under the original sessionId
     // before a parent link was learned (reparenting). Find either key and
     // remove it only when we are actually going to schedule completion.
     final blockedKey = _completionBlockedByPendingInteraction.contains(rootSessionId)
         ? rootSessionId
-        : _completionBlockedByPendingInteraction.contains(sessionId)
-            ? sessionId
+        : _completionBlockedByPendingInteraction.contains(originalSessionId)
+            ? originalSessionId
             : null;
     if (blockedKey == null) {
       return;
@@ -190,7 +209,7 @@ class CompletionNotifier {
         _tracker.isSessionGroupFullyIdle(rootSessionId) &&
         !_tracker.hasPendingInteraction(rootSessionId)) {
       _completionBlockedByPendingInteraction.remove(blockedKey);
-      _maybeScheduleCompletion(sessionId);
+      _maybeScheduleCompletion(rootSessionId);
     }
   }
 
