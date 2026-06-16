@@ -1,10 +1,11 @@
 import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../di/injection.dart";
 import "../extensions/text_style_x.dart";
+import "code_block.dart";
 
 /// Shared [MarkdownBody.onTapLink] handler that opens URLs in the system
 /// browser via the DI-registered [UrlLauncher].
@@ -18,25 +19,41 @@ void handleMarkdownLinkTap(String text, String? href, String title) {
 
 // ignore: no_slop_linter/prefer_required_named_parameters, paragraphStyle is an optional override
 MarkdownStyleSheet buildSessionMarkdownStyleSheet({
-  required ZyraDesignSystem zyra,
+  required PregoDesignSystem prego,
   TextStyle? paragraphStyle,
 }) {
   return MarkdownStyleSheet(
-    p: paragraphStyle ?? zyra.textTheme.textSm.regular,
+    p: paragraphStyle ?? prego.textTheme.textSm.regular,
     codeblockDecoration: BoxDecoration(
-      color: zyra.colors.bgQuaternary,
+      color: prego.colors.bgQuaternary,
       borderRadius: BorderRadius.circular(8),
     ),
     code: TextStyle(
       fontSize: 13,
-      color: zyra.colors.textPrimary,
+      color: prego.colors.textPrimary,
     ).monospace,
   );
 }
 
-MarkdownStyleSheet buildAgreementMarkdownStyleSheet({required ZyraDesignSystem zyra}) {
-  final paragraph = zyra.textTheme.textSm.regular.copyWith(
-    color: zyra.colors.textPrimary,
+/// Custom [MarkdownBody.builders] for session chat markdown. Replaces the
+/// default fenced-code-block rendering with a syntax-highlighted, copyable
+/// [CodeBlock]. Pass `highlightEnabled: false` while a message is streaming so
+/// code is not re-tokenized on every token delta.
+Map<String, MarkdownElementBuilder> buildSessionMarkdownBuilders({
+  required bool highlightEnabled,
+  required String? copyTooltip,
+}) {
+  return <String, MarkdownElementBuilder>{
+    "pre": CodeBlockMarkdownBuilder(
+      highlightEnabled: highlightEnabled,
+      copyTooltip: copyTooltip,
+    ),
+  };
+}
+
+MarkdownStyleSheet buildAgreementMarkdownStyleSheet({required PregoDesignSystem prego}) {
+  final paragraph = prego.textTheme.textSm.regular.copyWith(
+    color: prego.colors.textPrimary,
   );
   return MarkdownStyleSheet(
     p: paragraph,

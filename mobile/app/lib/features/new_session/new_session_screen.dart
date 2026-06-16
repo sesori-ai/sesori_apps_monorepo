@@ -2,7 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
@@ -30,6 +30,7 @@ class NewSessionScreen extends StatelessWidget {
     return BlocProvider(
       create: (_) => NewSessionCubit(
         sessionService: getIt<SessionService>(),
+        selectionTracker: getIt<NewSessionSelectionTracker>(),
         projectId: projectId,
       ),
       child: _NewSessionBody(projectId: projectId, projectName: projectName),
@@ -87,7 +88,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   }
 
   Widget? _buildErrorBanner(NewSessionState state) {
-    final zyra = context.zyra;
+    final prego = context.prego;
     final loc = context.loc;
     return switch (state) {
       NewSessionError(:final reason) => Padding(
@@ -97,7 +98,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
             Expanded(
               child: Text(
                 reason.localizedMessage(loc),
-                style: TextStyle(color: zyra.colors.fgErrorPrimary),
+                style: TextStyle(color: prego.colors.fgErrorPrimary),
               ),
             ),
           ],
@@ -145,7 +146,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
   Widget build(BuildContext context) {
     final state = context.watch<NewSessionCubit>().state;
     final loc = context.loc;
-    final zyra = context.zyra;
+    final prego = context.prego;
     final isSending = state is NewSessionSending;
     // Captured at build time: the callbacks below can run while this route is
     // being torn down, where an ancestor lookup on a deactivated context
@@ -180,12 +181,22 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
         canPop: true,
         onPopInvokedWithResult: (didPop, result) {
           if (didPop && isSending && !_navigatingToCreatedSession) {
-            scaffoldMessenger.showSnackBar(
-              SnackBar(
-                content: Text(loc.newSessionLaunchingInBackground),
-                duration: const Duration(seconds: 3),
-              ),
-            );
+            // This pop can fire during the Navigator's build phase — e.g. when
+            // opening another session from the split-view list while creation
+            // is in flight, go_router swaps the underlying detail route in
+            // place and pops this pushed new-session route in the same frame.
+            // showSnackBar throws if called during build, so defer it to the
+            // next frame. The captured root messenger outlives this route;
+            // guard it with `mounted` since the route may already be gone.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!scaffoldMessenger.mounted) return;
+              scaffoldMessenger.showSnackBar(
+                SnackBar(
+                  content: Text(loc.newSessionLaunchingInBackground),
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            });
           }
         },
         child: Scaffold(
@@ -207,8 +218,8 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                               title: Text(loc.newSessionDedicatedWorktree),
                               subtitle: Text(
                                 loc.newSessionDedicatedWorktreeDescription,
-                                style: zyra.textTheme.textXs.regular.copyWith(
-                                  color: zyra.colors.textSecondary,
+                                style: prego.textTheme.textXs.regular.copyWith(
+                                  color: prego.colors.textSecondary,
                                 ),
                               ),
                               value: _dedicatedWorktree,
@@ -219,6 +230,10 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                       ),
                     ),
                     PromptInput(
+                      // Persist the unsent prompt per project so it survives
+                      // leaving and returning to the new-session screen before
+                      // a session exists; cleared once the session is created.
+                      draftKey: "new-session:${widget.projectId}",
                       isBusy: state is NewSessionSending,
                       onSend: (String text, String? command) {
                         context.read<NewSessionCubit>().createSession(

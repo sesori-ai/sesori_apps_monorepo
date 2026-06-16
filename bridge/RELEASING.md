@@ -4,7 +4,7 @@
 
 - **Enabled by default:** GitHub Releases
 - **Enabled by default:** npm publish via npm trusted publishing
-- **Release selector:** installers and updater accept stable GitHub releases tagged `v*`.
+- **Release selector:** installers always use the newest stable GitHub release tagged `v*`. The runtime auto-updater follows the configured update track — `stable` (default) uses stable `v*` releases, while `internal` also picks up `v*-internal.*` pre-releases (see `config track` in [INSTALL.md](INSTALL.md)).
 
 ## Release tag
 
@@ -94,7 +94,7 @@ That bump step is the source of truth for the release version. It must keep `bri
 
 ### 2. Merge to main
 
-Every main merge runs `release-all-platforms.yml`: it uploads the mobile apps to TestFlight / Play internal, builds all five bridge platform archives with `X.Y.Z-internal.<N>` baked in, and — only when everything succeeded — pushes a `v<X.Y.Z>-internal.<N>` tag and rolls the single internal GitHub pre-release onto it (binaries + `checksums.txt` + regenerated notes). The auto-updater ignores pre-releases.
+Every main merge runs `release-all-platforms.yml`: it uploads the mobile apps to TestFlight / Play internal, builds all five bridge platform archives with `X.Y.Z-internal.<N>` baked in, and — only when everything succeeded — pushes a `v<X.Y.Z>-internal.<N>` tag and rolls the single internal GitHub pre-release onto it (binaries + `checksums.txt` + regenerated notes). The auto-updater ignores pre-releases on the default `stable` track; bridges switched to the `internal` track (`sesori-bridge config track internal`) pick up these `-internal.<N>` pre-releases.
 
 ### 3. Submit to production
 
@@ -109,12 +109,12 @@ When the stable `v<X.Y.Z>` release goes live, `bridge-npm-publish.yml` publishes
 
 ## What the release pipeline does
 
-1. builds binaries for macOS arm64/x64, Linux x64/arm64, Windows x64 (`_reusable-bridge-build.yml`)
+1. builds binaries for macOS arm64/x64, Linux x64/arm64, Windows x64/arm64 (`_reusable-bridge-build.yml`)
 2. renames `bridge` to `sesori-bridge` and signs the macOS binaries
 3. creates release archives
 4. generates basename-based `checksums.txt`
 5. creates the `v<X.Y.Z>` GitHub Release and uploads all assets (`submit-release.yml`)
-6. publishes the five platform npm bootstrap packages from those tagged release assets
+6. publishes the six platform npm bootstrap packages from those tagged release assets
 7. publishes the `@sesori/bridge` wrapper package through npm trusted publishing
 
 ## Manual test release and install
@@ -127,7 +127,7 @@ Use this sequence when you want to test the real packaged distribution flow end 
 2. Merge to main and wait for `release-all-platforms.yml` to roll the internal pre-release.
 3. Run `Submit Release` for production (use `platforms: bridge-only` to skip the app stores).
 4. Wait for the `v<X.Y.Z>` GitHub Release to be published with its assets and `checksums.txt`.
-5. Verify the release contains all five platform archives plus `checksums.txt`.
+5. Verify the release contains all six platform archives plus `checksums.txt`.
 6. Test the shell installer against that release:
 
 ```bash
@@ -194,6 +194,7 @@ Check the GitHub Release contains:
 - `sesori-bridge-linux-x64.tar.gz`
 - `sesori-bridge-linux-arm64.tar.gz`
 - `sesori-bridge-windows-x64.zip`
+- `sesori-bridge-windows-arm64.zip`
 - `checksums.txt`
 
 `checksums.txt` must use archive basenames as keys, for example:
@@ -213,7 +214,7 @@ Managed installs from these installers are the supported long-lived runtime and 
 
 ## npm trusted publishing prerequisites
 
-Configure npm trusted publishing for all six packages in this repo against the exact workflow file `.github/workflows/bridge-npm-publish.yml`:
+Configure npm trusted publishing for all seven packages in this repo against the exact workflow file `.github/workflows/bridge-npm-publish.yml`:
 
 - `@sesori/bridge`
 - `@sesori/bridge-darwin-arm64`
@@ -221,5 +222,9 @@ Configure npm trusted publishing for all six packages in this repo against the e
 - `@sesori/bridge-linux-x64`
 - `@sesori/bridge-linux-arm64`
 - `@sesori/bridge-win32-x64`
+- `@sesori/bridge-win32-arm64`
 
 Those trusted publisher entries must match the GitHub owner, repository, and workflow filename exactly. The workflow verifies the archived GitHub Release assets against `checksums.txt`, derives each platform npm payload from those exact release artifacts, and then publishes through npm trusted publishing on `ubuntu-latest`.
+Each of the seven trusted-publisher entries must also set the **Environment** field to `store-production`, because the `publish-platform` and `publish-wrapper` jobs in `bridge-npm-publish.yml` run in that GitHub environment, so the OIDC subject includes it; a mismatch makes publishing fail.
+
+> **First publish of a brand-new package.** A package that has never been published (for example `@sesori/bridge-win32-arm64`) does not exist on the registry yet, and npm trusted publishing can only be attached to a package that already exists. So the package must be published once manually first. That first manual publish MUST use a throwaway placeholder version — never the committed release version: from the package directory run `npm pkg set version=0.0.1`, then `npm publish --access public`, then `git checkout -- package.json` to discard the placeholder bump. Using a placeholder avoids two problems: it does not burn the real release version (the release workflow publishes that exact version later, with `lib/runtime` bundled), and it does not ship a real version with an empty runtime. After the placeholder publish exists, attach the trusted publisher entry and let the release workflow publish the real version.

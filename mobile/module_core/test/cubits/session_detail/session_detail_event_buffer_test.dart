@@ -71,7 +71,6 @@ void main() {
       when(
         () => mockNotificationCanceller.cancelForSession(
           sessionId: any(named: "sessionId"),
-          category: any(named: "category"),
         ),
       ).thenReturn(null);
       when(
@@ -101,7 +100,10 @@ void main() {
       final completer = Completer<SessionDetailLoadResult>();
 
       when(
-        () => mockLoadService.load(sessionId: _sessionId, projectId: any(named: "projectId")),
+        () => mockLoadService.load(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
       ).thenAnswer((_) => completer.future);
 
       final cubit = createCubit(loadService: mockLoadService);
@@ -116,6 +118,7 @@ void main() {
         agent: "build",
         modelID: "gpt-4",
         providerID: "openai",
+        time: null,
       );
       sessionEvents.add(const SesoriMessageUpdated(info: updatedMessage));
       await Future<void>.delayed(Duration.zero);
@@ -157,7 +160,10 @@ void main() {
       final completer = Completer<SessionDetailLoadResult>();
 
       when(
-        () => mockLoadService.load(sessionId: _sessionId, projectId: any(named: "projectId")),
+        () => mockLoadService.load(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
       ).thenAnswer((_) => completer.future);
 
       final cubit = createCubit(loadService: mockLoadService);
@@ -215,7 +221,10 @@ void main() {
       final completer = Completer<SessionDetailLoadResult>();
 
       when(
-        () => mockLoadService.load(sessionId: _sessionId, projectId: any(named: "projectId")),
+        () => mockLoadService.load(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
       ).thenAnswer((_) => completer.future);
 
       final cubit = createCubit(loadService: mockLoadService);
@@ -227,6 +236,7 @@ void main() {
         agent: "build",
         modelID: "gpt-4",
         providerID: "openai",
+        time: null,
       );
       sessionEvents.add(const SesoriMessageUpdated(info: updatedMessage));
       await Future<void>.delayed(Duration.zero);
@@ -246,7 +256,10 @@ void main() {
       // Now reload manually — the old buffered event should NOT be replayed
       final reloadedCompleter = Completer<SessionDetailLoadResult>();
       when(
-        () => mockLoadService.reload(sessionId: _sessionId, projectId: any(named: "projectId")),
+        () => mockLoadService.reload(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
       ).thenAnswer((_) => reloadedCompleter.future);
 
       unawaited(cubit.reload());
@@ -281,7 +294,10 @@ void main() {
       final mockLoadService = MockSessionDetailLoadService();
 
       when(
-        () => mockLoadService.load(sessionId: _sessionId, projectId: any(named: "projectId")),
+        () => mockLoadService.load(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
       ).thenAnswer(
         (_) async => SessionDetailLoadResult.failed(
           error: ApiError.generic(),
@@ -302,6 +318,7 @@ void main() {
         agent: "build",
         modelID: "gpt-4",
         providerID: "openai",
+        time: null,
       );
       sessionEvents.add(const SesoriMessageUpdated(info: updatedMessage));
       await Future<void>.delayed(Duration.zero);
@@ -309,7 +326,10 @@ void main() {
       // Now reload successfully
       final reloadedCompleter = Completer<SessionDetailLoadResult>();
       when(
-        () => mockLoadService.reload(sessionId: _sessionId, projectId: any(named: "projectId")),
+        () => mockLoadService.reload(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
       ).thenAnswer((_) => reloadedCompleter.future);
 
       unawaited(cubit.reload());
@@ -344,7 +364,10 @@ void main() {
       final mockLoadService = MockSessionDetailLoadService();
 
       when(
-        () => mockLoadService.load(sessionId: _sessionId, projectId: any(named: "projectId")),
+        () => mockLoadService.load(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
       ).thenAnswer(
         (_) async => const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
@@ -375,6 +398,7 @@ void main() {
         agent: "build",
         modelID: "gpt-4",
         providerID: "openai",
+        time: null,
       );
       sessionEvents.add(const SesoriMessageUpdated(info: updatedMessage));
       await Future<void>.delayed(Duration.zero);
@@ -389,7 +413,10 @@ void main() {
       final completer = Completer<SessionDetailLoadResult>();
 
       when(
-        () => mockLoadService.load(sessionId: _sessionId, projectId: any(named: "projectId")),
+        () => mockLoadService.load(
+          sessionId: _sessionId,
+          projectId: any(named: "projectId"),
+        ),
       ).thenAnswer((_) => completer.future);
 
       final cubit = createCubit(loadService: mockLoadService);

@@ -1,7 +1,8 @@
-import "package:sesori_shared/sesori_shared.dart";
-
-/// Abstract interface for cancelling notifications by session context.
-/// Implemented by Flutter platform adapter in `app/`.
+/// Abstract interface for dismissing all notifications for a session.
+///
+/// One notification identity per session (category-independent), so a single
+/// call clears every notification for that session. Implemented by the Flutter
+/// platform adapter in `app/`.
 abstract interface class NotificationCanceller {
-  void cancelForSession({required String sessionId, required NotificationCategory category});
+  void cancelForSession({required String sessionId});
 }

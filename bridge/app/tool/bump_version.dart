@@ -126,7 +126,7 @@ Future<void> main(final List<String> args) async {
   }
 
   try {
-    // Update all 8 files
+    // Update all 9 files
     await updatePubspec(appDir: appDir, oldVersion: oldVersion, newVersion: newVersion);
     await updateVersionDart(appDir: appDir, oldVersion: oldVersion, newVersion: newVersion);
 
@@ -163,6 +163,11 @@ Future<void> main(final List<String> args) async {
       oldVersion: oldVersion,
       newVersion: newVersion,
     );
+    await updatePackageJson(
+      path: p.join(appDir, 'npm', 'sesori-bridge-win32-arm64', 'package.json'),
+      oldVersion: oldVersion,
+      newVersion: newVersion,
+    );
 
     // Print summary
     stdout.writeln('✓ Version bumped from $oldVersion to $newVersion');
@@ -176,6 +181,7 @@ Future<void> main(final List<String> args) async {
     stdout.writeln('  6. npm/sesori-bridge-linux-x64/package.json');
     stdout.writeln('  7. npm/sesori-bridge-linux-arm64/package.json');
     stdout.writeln('  8. npm/sesori-bridge-win32-x64/package.json');
+    stdout.writeln('  9. npm/sesori-bridge-win32-arm64/package.json');
 
     exit(0);
   } on Object catch (e) {

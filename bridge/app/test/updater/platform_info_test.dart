@@ -45,6 +45,13 @@ void main() {
           ),
           'sesori-bridge-windows-x64.zip',
         ),
+        (
+          DistributionTarget(
+            os: DistributionPlatformOs.windows,
+            arch: DistributionPlatformArch.arm64,
+          ),
+          'sesori-bridge-windows-arm64.zip',
+        ),
       ];
 
       for (final (target, expectedAssetName) in targets) {
@@ -52,12 +59,11 @@ void main() {
       }
     });
 
-    test('throws ArgumentError for unsupported combination', () {
+    // All six os×arch combinations are now supported; unsupported-os handling
+    // is already covered by the DistributionPlatformOs group below.
+    test('throws ArgumentError for unsupported operating system', () {
       expect(
-        () => DistributionTarget(
-          os: DistributionPlatformOs.windows,
-          arch: DistributionPlatformArch.arm64,
-        ),
+        () => DistributionPlatformOs.fromPlatform(operatingSystem: 'freebsd'),
         throwsA(isA<ArgumentError>()),
       );
     });

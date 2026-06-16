@@ -425,6 +425,9 @@
   "sessionDetailModelFallback": "Model",
   "sessionDetailAgentFallback": "Agent",
   "sessionDetailRetryLabel": "Retry",
+  "sessionDetailCopy": "Copy",
+  "sessionDetailShowMore": "Show more",
+  "sessionDetailShowLess": "Show less",
   "emptySessionDetailTitle": "Select a session",
   "emptySessionDetailSubtitle": "Choose a session from the list to view details"
 }

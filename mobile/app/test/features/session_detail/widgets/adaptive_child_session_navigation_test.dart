@@ -6,7 +6,7 @@ import "package:sesori_mobile/features/session_detail/widgets/background_tasks_b
 import "package:sesori_mobile/features/session_detail/widgets/subtask_part_widget.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 Widget _buildApp({
   required Widget child,
@@ -44,8 +44,8 @@ Widget _buildApp({
 
   return MaterialApp.router(
     routerConfig: router,
-    theme: ThemeData(extensions: [ZyraDesignSystem.light]),
-    darkTheme: ThemeData(extensions: [ZyraDesignSystem.dark]),
+    theme: ThemeData(extensions: [PregoDesignSystem.light]),
+    darkTheme: ThemeData(extensions: [PregoDesignSystem.dark]),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
   );

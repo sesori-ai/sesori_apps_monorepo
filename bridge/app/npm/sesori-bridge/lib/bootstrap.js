@@ -13,6 +13,7 @@ var PLATFORM_PACKAGES = {
   "linux x64": "@sesori/bridge-linux-x64",
   "linux arm64": "@sesori/bridge-linux-arm64",
   "win32 x64": "@sesori/bridge-win32-x64",
+  "win32 arm64": "@sesori/bridge-win32-arm64",
 };
 
 function fail(message) {

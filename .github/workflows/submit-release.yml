@@ -231,6 +231,13 @@ jobs:
           # nothing (binary submit only). Empty also when the checkout was skipped.
           IOS_METADATA_PATH:                 ${{ steps.gate.outputs.publish == 'true' && format('{0}/store-metadata/ios/metadata', github.workspace) || '' }}
           IOS_SCREENSHOTS_PATH:              ${{ steps.gate.outputs.publish == 'true' && format('{0}/store-metadata/ios/screenshots', github.workspace) || '' }}
+          # Release notes ("What's New") are version-scoped: Apple requires them on
+          # every new version before review, even when the listing copy is unchanged
+          # and the gated upload above is skipped. Expose the cloned metadata dir
+          # whenever the repo was checked out (independent of the publish gate) so
+          # submit_ios can apply the fixed release_notes.txt to the version being
+          # submitted. Empty when no metadata repo is configured (checkout skipped).
+          IOS_RELEASE_NOTES_PATH:            ${{ steps.cometa.outcome == 'success' && format('{0}/store-metadata/ios/metadata', github.workspace) || '' }}
         run: bundle exec fastlane submit_ios
 
       - name: Summary

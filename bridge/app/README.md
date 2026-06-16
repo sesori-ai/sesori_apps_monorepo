@@ -75,6 +75,7 @@ Both paths install the same managed runtime under `~/.local/share/sesori/` on ma
 - Auto-update is skipped in CI.
 - Auto-update is skipped when `SESORI_NO_UPDATE=1` is set.
 - If you want to refresh immediately, rerun either the shell installer or `npx @sesori/bridge`.
+- The **update track** selects which releases the auto-updater follows. `stable` (the default) follows stable `vX.Y.Z` releases; `internal` additionally follows the `vX.Y.Z-internal.N` pre-releases. Set it with `sesori-bridge config track internal` and restart the bridge to apply. The shell/npm installers always install the latest stable release regardless of track.
 
 Direct execution from npm-owned package payloads inside `node_modules` is unsupported. The supported steady-state command is always the managed `sesori-bridge` launcher.
 
@@ -122,8 +123,10 @@ Bridge core flags:
 | `--plugin` | `opencode` | Plugin backend to run |
 | `--auth-backend` | `https://api.sesori.com` | Auth backend URL (also reads `AUTH_BACKEND_URL` env var) |
 | `--debug-port` | *(disabled)* | Start a debug HTTP server on this port for Postman/curl testing |
-| `--log-level` | `info` | Minimum log level: `verbose`, `debug`, `info`, `warning`, `error` |
+| `--log-level` | `info` | Minimum **diagnostic log** level (written to stderr): `verbose`, `debug`, `info`, `warning`, `error` |
 | `--version` | — | Print the bridge version and exit |
+
+> `--log-level` controls **diagnostic logging only**. Logs are written to stderr and can be silenced freely. User-facing messages — login prompts, the authorization URL and code, startup status, "Authenticated as…" — are written to stdout and are **always shown regardless of `--log-level`**, so the bridge stays operable even with logging disabled (`--log-level error`, or redirecting stderr with `2>/dev/null`).
 
 The selected plugin contributes its own options, parsed after `--plugin` resolves the backend. Run `--help` to see the options for the selected plugin. The OpenCode plugin adds:
 
@@ -141,7 +144,8 @@ In addition to flags, the bridge supports subcommands:
 | Command | Description |
 |---------|-------------|
 | `help` | Show the help message (also available via `--help` or `-h`) |
-| `config` | Open the bridge configuration file in your default editor |
+| `config track [stable\|internal]` | Show or set the update track. With no argument, prints the current track. |
+| `config edit` | Open the bridge configuration file in your default editor |
 | `logout` | Clear stored authentication tokens. You will be asked to log in again on next start. |
 
 ## Examples

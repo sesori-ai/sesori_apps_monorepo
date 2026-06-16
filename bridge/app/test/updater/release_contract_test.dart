@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:sesori_bridge/src/updater/api/github_releases_api.dart';
 import 'package:sesori_bridge/src/updater/api/update_cache_api.dart';
 import 'package:sesori_bridge/src/updater/foundation/platform_info.dart';
+import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
 import 'package:sesori_bridge/src/updater/models/cached_release.dart';
 import 'package:sesori_bridge/src/updater/models/distribution_target.dart';
 import 'package:sesori_bridge/src/updater/repositories/release_repository.dart';
@@ -120,10 +121,11 @@ void main() {
       });
 
       repository = ReleaseRepository(
-        api: GitHubReleasesApi(httpClient: client),
+        api: GitHubReleasesApi(httpClient: client, authToken: null),
         cache: _NoCache(),
         currentVersion: '0.2.0',
         target: target,
+        track: ReleaseTrack.stable,
       );
     });
 
@@ -190,6 +192,8 @@ void main() {
       expect(npmWorkflow, contains('needs: gate'));
       expect(npmWorkflow, contains('needs: [gate, publish-platform]'));
       expect(npmWorkflow, contains('id-token: write'));
+      // Both publish jobs run in the gated `store-production` environment.
+      expect(npmWorkflow, contains('environment: store-production'));
       expect(npmWorkflow, contains('registry-url: "https://registry.npmjs.org"'));
       expect(npmWorkflow, contains(r'gh release download "$RELEASE_TAG"'));
       expect(npmWorkflow, contains('--pattern "*.tar.gz" --pattern "*.zip" --pattern "checksums.txt"'));
@@ -214,7 +218,7 @@ void main() {
       expect(internalWorkflow, contains('artifacts/checksums.txt'));
 
       expect(docs, contains('## What the release pipeline does'));
-      expect(docs, contains('6. publishes the five platform npm bootstrap packages from those tagged release assets'));
+      expect(docs, contains('6. publishes the six platform npm bootstrap packages from those tagged release assets'));
       expect(docs, contains('7. publishes the `@sesori/bridge` wrapper package through npm trusted publishing'));
       expect(
         docs,
@@ -226,7 +230,7 @@ void main() {
       expect(
         docs,
         contains(
-          'Configure npm trusted publishing for all six packages in this repo against the exact workflow file `.github/workflows/bridge-npm-publish.yml`',
+          'Configure npm trusted publishing for all seven packages in this repo against the exact workflow file `.github/workflows/bridge-npm-publish.yml`',
         ),
       );
     });
@@ -245,6 +249,7 @@ void main() {
         '@sesori/bridge-linux-x64': 'sesori-bridge-linux-x64.tar.gz',
         '@sesori/bridge-linux-arm64': 'sesori-bridge-linux-arm64.tar.gz',
         '@sesori/bridge-win32-x64': 'sesori-bridge-windows-x64.zip',
+        '@sesori/bridge-win32-arm64': 'sesori-bridge-windows-arm64.zip',
       };
 
       for (final entry in workflowAssets.entries) {
@@ -298,6 +303,7 @@ void main() {
         '@sesori/bridge-linux-x64',
         '@sesori/bridge-linux-arm64',
         '@sesori/bridge-win32-x64',
+        '@sesori/bridge-win32-arm64',
       ];
 
       for (final packageName in packageNames) {

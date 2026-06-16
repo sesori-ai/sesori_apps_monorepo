@@ -1,5 +1,5 @@
 import "package:flutter/material.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 /// Provider name header above a group of models in the model picker list.
 class ModelPickerProviderHeader extends StatelessWidget {
@@ -9,13 +9,13 @@ class ModelPickerProviderHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
+    final prego = context.prego;
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 4),
       child: Text(
         name,
-        style: zyra.textTheme.textXs.medium.copyWith(
-          color: zyra.colors.bgBrandSolid,
+        style: prego.textTheme.textXs.medium.copyWith(
+          color: prego.colors.bgBrandSolid,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -40,7 +40,7 @@ class ModelPickerModelTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
+    final prego = context.prego;
 
     return ListTile(
       dense: true,
@@ -53,8 +53,8 @@ class ModelPickerModelTile extends StatelessWidget {
         null => null,
       },
       leading: isSelected
-          ? Icon(Icons.radio_button_checked, color: zyra.colors.bgBrandSolid)
-          : Icon(Icons.radio_button_unchecked, color: zyra.colors.borderPrimary),
+          ? Icon(Icons.radio_button_checked, color: prego.colors.bgBrandSolid)
+          : Icon(Icons.radio_button_unchecked, color: prego.colors.borderPrimary),
       onTap: onTap,
     );
   }

@@ -65,7 +65,6 @@ void main() {
     when(
       () => mockNotificationCanceller.cancelForSession(
         sessionId: any(named: "sessionId"),
-        category: any(named: "category"),
       ),
     ).thenReturn(null);
     when(
@@ -124,7 +123,6 @@ void main() {
     when(
       () => mockNotificationCanceller.cancelForSession(
         sessionId: any(named: "sessionId"),
-        category: any(named: "category"),
       ),
     ).thenReturn(null);
     when(
@@ -207,7 +205,6 @@ void main() {
     when(
       () => mockNotificationCanceller.cancelForSession(
         sessionId: any(named: "sessionId"),
-        category: any(named: "category"),
       ),
     ).thenReturn(null);
     when(
@@ -229,11 +226,11 @@ void main() {
         agents: <AgentInfo?>[],
         providerData: null,
         commands: <CommandInfo>[],
-          canonicalSessionTitle: null,
-          promptDefaults: null,
-          isRootSession: true,
-        ),
-        isBridgeConnected: true,
+        canonicalSessionTitle: null,
+        promptDefaults: null,
+        isRootSession: true,
+      ),
+      isBridgeConnected: true,
     );
 
     when(
@@ -322,7 +319,14 @@ void _stubLoadApis(MockSessionService service) {
 
 MessageWithParts _messageWithParts() {
   return const MessageWithParts(
-    info: Message.assistant(id: "msg-1", sessionID: _sessionId, agent: null, modelID: null, providerID: null),
+    info: Message.assistant(
+      id: "msg-1",
+      sessionID: _sessionId,
+      agent: null,
+      modelID: null,
+      providerID: null,
+      time: null,
+    ),
     parts: <MessagePart>[],
   );
 }

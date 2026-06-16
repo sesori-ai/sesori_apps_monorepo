@@ -1,4 +1,4 @@
-import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Console, Log;
 import 'package:sesori_shared/sesori_shared.dart';
 
 import 'login_email_api.dart';
@@ -22,9 +22,9 @@ class LoginEmailRepository {
         password: credentials.password,
       );
       if (username.isNotEmpty) {
-        Log.i('Login successful! Welcome, $username');
+        Console.message('Login successful! Welcome, $username');
       } else {
-        Log.i('Login successful!');
+        Console.message('Login successful!');
       }
       return tokens;
     } on EmailLoginException catch (e) {

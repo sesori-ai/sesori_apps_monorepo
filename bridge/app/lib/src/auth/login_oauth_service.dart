@@ -4,7 +4,7 @@ import "dart:math";
 import "dart:typed_data";
 
 import "package:meta/meta.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Console;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "login_oauth_api.dart";
@@ -161,7 +161,7 @@ class LoginOAuthService {
   ///
   /// The temporary session token is generated in memory, sent only through the
   /// `X-Sesori-Session-Token` header, and never persisted or placed in URLs.
-  Future<TokenData> performOAuthLogin(OAuthProvider provider) async {
+  Future<({TokenData tokens, String sessionToken})> performOAuthLogin(OAuthProvider provider) async {
     final sessionToken = _generateSessionToken();
     final initResp = await _api.initOAuthSession(
       provider: provider,
@@ -180,26 +180,31 @@ class LoginOAuthService {
     final openability = _browserOpenability();
     switch (openability) {
       case BrowserOpenability.yes:
-        Log.i("Opening your browser to complete ${provider.label} login...");
-        Log.i("If it doesn't open automatically, open this URL manually to continue:");
+        Console.message("Opening your browser to complete ${provider.label} login...");
+        Console.message("If it doesn't open automatically, open this URL manually to continue:");
       case BrowserOpenability.unknown:
-        Log.i("Attempting to open your browser to complete ${provider.label} login...");
-        Log.i("If it doesn't open, open this URL manually to continue:");
+        Console.message("Attempting to open your browser to complete ${provider.label} login...");
+        Console.message("If it doesn't open, open this URL manually to continue:");
       case BrowserOpenability.no:
-        Log.i("No graphical browser detected (e.g. a headless or SSH session).");
-        Log.i("Open this URL to complete ${provider.label} login:");
+        Console.message("No graphical browser detected (e.g. a headless or SSH session).");
+        Console.message("Open this URL to complete ${provider.label} login:");
     }
-    Log.i(initResp.authUrl);
+    Console.message(initResp.authUrl);
     if (openability != BrowserOpenability.no) {
       try {
         await _browserLauncher(initResp.authUrl);
       } catch (e) {
-        Log.w("Could not open a browser automatically; open the URL above manually: $e");
+        Console.message("Could not open a browser automatically; open the URL above manually: $e");
       }
     }
 
-    Log.i("Waiting for authorization...");
-    return _pollForCompletion(provider: provider, sessionToken: sessionToken);
+    Console.message("Waiting for authorization...");
+    final tokens = await _pollForCompletion(provider: provider, sessionToken: sessionToken);
+    return (tokens: tokens, sessionToken: sessionToken);
+  }
+
+  Future<void> ackOAuthSessionCompletion({required String sessionToken}) {
+    return _api.ackOAuthSessionCompletion(sessionToken: sessionToken);
   }
 
   Future<TokenData> _pollForCompletion({
@@ -226,9 +231,9 @@ class LoginOAuthService {
             }
             final username = user.providerUsername ?? "";
             if (username.isNotEmpty) {
-              Log.i("Login successful! Welcome, $username");
+              Console.message("Login successful! Welcome, $username");
             } else {
-              Log.i("Login successful!");
+              Console.message("Login successful!");
             }
             return TokenData(
               accessToken: accessToken,
@@ -271,16 +276,21 @@ class LoginOAuthService {
 
     const bottomLine = "└──────────────────────────────────────────┘";
 
-    Log.i("");
-    Log.i(line);
-    Log.i(empty);
-    Log.i(codeLine);
-    Log.i(empty);
-    Log.i(confirmLine);
-    Log.i(beforeLine);
-    Log.i(empty);
-    Log.i(bottomLine);
-    Log.i("");
+    // Printed as a single write so the box renders atomically as one block.
+    Console.message(
+      [
+        "",
+        line,
+        empty,
+        codeLine,
+        empty,
+        confirmLine,
+        beforeLine,
+        empty,
+        bottomLine,
+        "",
+      ].join("\n"),
+    );
   }
 
   String _generateSessionToken() {

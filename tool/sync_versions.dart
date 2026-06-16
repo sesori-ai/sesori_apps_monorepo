@@ -7,6 +7,7 @@ const List<String> _bridgePackageManifests = <String>[
   'bridge/app/npm/sesori-bridge-darwin-x64/package.json',
   'bridge/app/npm/sesori-bridge-linux-arm64/package.json',
   'bridge/app/npm/sesori-bridge-linux-x64/package.json',
+  'bridge/app/npm/sesori-bridge-win32-arm64/package.json',
   'bridge/app/npm/sesori-bridge-win32-x64/package.json',
 ];
 

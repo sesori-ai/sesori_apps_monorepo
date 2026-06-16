@@ -166,6 +166,7 @@ void main() {
         agent: null,
         modelID: null,
         providerID: null,
+        time: null,
       );
       const event = SesoriSseEvent.messageUpdated(info: message);
       final json = event.toJson();
@@ -182,6 +183,45 @@ void main() {
       expect(cast.info.id, 'msg_001');
       expect(cast.info.sessionID, 'ses_abc');
       expect(cast.info, isA<MessageAssistant>());
+    });
+
+    test('preserves the message time through a round-trip', () {
+      const message = Message.assistant(
+        id: 'msg_002',
+        sessionID: 'ses_abc',
+        agent: null,
+        modelID: null,
+        providerID: null,
+        time: MessageTime(created: 1718400000000, completed: 1718400005000),
+      );
+      const event = SesoriSseEvent.messageUpdated(info: message);
+
+      final parsed = SesoriSseEvent.fromJson(event.toJson()) as SesoriMessageUpdated;
+      expect(parsed.info.time, const MessageTime(created: 1718400000000, completed: 1718400005000));
+    });
+
+    test('parses time from a raw message.updated payload (live SSE path)', () {
+      // Mirrors the bridge's live streaming path, where the upstream wire
+      // message JSON (which nests time under the "time" key) is re-parsed
+      // straight into the shared Message model rather than going through
+      // the plugin mapper. A drift in either side's "time" key would drop
+      // timestamps on every streaming token, so guard it explicitly.
+      final parsed =
+          SesoriSseEvent.fromJson({
+                'type': 'message.updated',
+                'info': {
+                  'role': 'assistant',
+                  'id': 'msg_003',
+                  'sessionID': 'ses_abc',
+                  'agent': null,
+                  'modelID': null,
+                  'providerID': null,
+                  'time': {'created': 1718400000000, 'completed': null},
+                },
+              })
+              as SesoriMessageUpdated;
+
+      expect(parsed.info.time, const MessageTime(created: 1718400000000, completed: null));
     });
   });
 
@@ -234,8 +274,20 @@ void main() {
       final first = (json['projects'] as List)[0] as Map<String, dynamic>;
       expect(first['id'], '/foo');
       expect(first['activeSessions'], <Map<String, dynamic>>[
-        {'id': 's1', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-        {'id': 's2', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
+        {
+          'id': 's1',
+          'mainAgentRunning': false,
+          'awaitingInput': false,
+          'isRetrying': false,
+          'childSessionIds': <String>[],
+        },
+        {
+          'id': 's2',
+          'mainAgentRunning': false,
+          'awaitingInput': false,
+          'isRetrying': false,
+          'childSessionIds': <String>[],
+        },
       ]);
       final second = (json['projects'] as List)[1] as Map<String, dynamic>;
       expect(second['id'], '/bar');
@@ -249,9 +301,27 @@ void main() {
           <String, dynamic>{
             'id': '/foo',
             'activeSessions': <Map<String, dynamic>>[
-              {'id': 's1', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-              {'id': 's2', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-              {'id': 's3', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
+              {
+                'id': 's1',
+                'mainAgentRunning': false,
+                'awaitingInput': false,
+                'isRetrying': false,
+                'childSessionIds': <String>[],
+              },
+              {
+                'id': 's2',
+                'mainAgentRunning': false,
+                'awaitingInput': false,
+                'isRetrying': false,
+                'childSessionIds': <String>[],
+              },
+              {
+                'id': 's3',
+                'mainAgentRunning': false,
+                'awaitingInput': false,
+                'isRetrying': false,
+                'childSessionIds': <String>[],
+              },
             ],
           },
         ],
@@ -382,7 +452,7 @@ void main() {
 
     test('messageUpdated implements SesoriSessionEvent', () {
       const event = SesoriSseEvent.messageUpdated(
-        info: Message.user(id: 'm', sessionID: 's', agent: null),
+        info: Message.user(id: 'm', sessionID: 's', agent: null, time: null),
       );
       expect(event, isA<SesoriSessionEvent>());
     });
@@ -444,10 +514,34 @@ void main() {
       final json = summary.toJson();
       expect(json['id'], '/my/path');
       expect(json['activeSessions'], <Map<String, dynamic>>[
-        {'id': 's1', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-        {'id': 's2', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-        {'id': 's3', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-        {'id': 's4', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
+        {
+          'id': 's1',
+          'mainAgentRunning': false,
+          'awaitingInput': false,
+          'isRetrying': false,
+          'childSessionIds': <String>[],
+        },
+        {
+          'id': 's2',
+          'mainAgentRunning': false,
+          'awaitingInput': false,
+          'isRetrying': false,
+          'childSessionIds': <String>[],
+        },
+        {
+          'id': 's3',
+          'mainAgentRunning': false,
+          'awaitingInput': false,
+          'isRetrying': false,
+          'childSessionIds': <String>[],
+        },
+        {
+          'id': 's4',
+          'mainAgentRunning': false,
+          'awaitingInput': false,
+          'isRetrying': false,
+          'childSessionIds': <String>[],
+        },
       ]);
     });
 
@@ -455,15 +549,69 @@ void main() {
       final json = <String, dynamic>{
         'id': '/from/json',
         'activeSessions': <Map<String, dynamic>>[
-          {'id': 's1', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-          {'id': 's2', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-          {'id': 's3', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-          {'id': 's4', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-          {'id': 's5', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-          {'id': 's6', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-          {'id': 's7', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-          {'id': 's8', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
-          {'id': 's9', 'mainAgentRunning': false, 'awaitingInput': false, 'isRetrying': false, 'childSessionIds': <String>[]},
+          {
+            'id': 's1',
+            'mainAgentRunning': false,
+            'awaitingInput': false,
+            'isRetrying': false,
+            'childSessionIds': <String>[],
+          },
+          {
+            'id': 's2',
+            'mainAgentRunning': false,
+            'awaitingInput': false,
+            'isRetrying': false,
+            'childSessionIds': <String>[],
+          },
+          {
+            'id': 's3',
+            'mainAgentRunning': false,
+            'awaitingInput': false,
+            'isRetrying': false,
+            'childSessionIds': <String>[],
+          },
+          {
+            'id': 's4',
+            'mainAgentRunning': false,
+            'awaitingInput': false,
+            'isRetrying': false,
+            'childSessionIds': <String>[],
+          },
+          {
+            'id': 's5',
+            'mainAgentRunning': false,
+            'awaitingInput': false,
+            'isRetrying': false,
+            'childSessionIds': <String>[],
+          },
+          {
+            'id': 's6',
+            'mainAgentRunning': false,
+            'awaitingInput': false,
+            'isRetrying': false,
+            'childSessionIds': <String>[],
+          },
+          {
+            'id': 's7',
+            'mainAgentRunning': false,
+            'awaitingInput': false,
+            'isRetrying': false,
+            'childSessionIds': <String>[],
+          },
+          {
+            'id': 's8',
+            'mainAgentRunning': false,
+            'awaitingInput': false,
+            'isRetrying': false,
+            'childSessionIds': <String>[],
+          },
+          {
+            'id': 's9',
+            'mainAgentRunning': false,
+            'awaitingInput': false,
+            'isRetrying': false,
+            'childSessionIds': <String>[],
+          },
         ],
       };
       final summary = ProjectActivitySummary.fromJson(json);
@@ -546,7 +694,7 @@ void main() {
 
     test('messageUpdated uses message.updated', () {
       final json = const SesoriSseEvent.messageUpdated(
-        info: Message.user(id: 'm', sessionID: 's', agent: null),
+        info: Message.user(id: 'm', sessionID: 's', agent: null, time: null),
       ).toJson();
       expect(json['type'], 'message.updated');
     });

@@ -1,6 +1,6 @@
 {
   "name": "@sesori/bridge-linux-arm64",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "description": "Bootstrap payload for the managed Sesori Bridge runtime on Linux ARM64",
   "os": [
     "linux"
@@ -14,7 +14,7 @@
   "sesoriBridge": {
     "bootstrapOnly": true,
     "managedRuntimeOwner": false,
-    "releaseTag": "v1.0.9",
+    "releaseTag": "v1.1.0",
     "releaseArtifact": "sesori-bridge-linux-arm64.tar.gz",
     "runtimeBundlePath": "lib/runtime"
   },

@@ -69,6 +69,10 @@ jobs:
             asset_name: sesori-bridge-windows-x64
             archive_ext: zip
             use_asdf: false
+          - runner: windows-11-arm
+            asset_name: sesori-bridge-windows-arm64
+            archive_ext: zip
+            use_asdf: false
     steps:
       - uses: actions/checkout@v6
         with:

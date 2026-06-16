@@ -9,11 +9,11 @@ environment:
 dependencies:
   freezed_annotation: ^3.1.0
   json_annotation: ^4.12.0
-  meta: ^1.0.0
+  meta: ^1.18.3
 
 dev_dependencies:
   lints: ^6.1.0
   freezed: ^3.2.5
   json_serializable: ^6.14.0
   build_runner: any
-  test: ^1.25.0
+  test: ^1.31.1

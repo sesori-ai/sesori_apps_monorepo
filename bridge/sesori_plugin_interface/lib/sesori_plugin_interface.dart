@@ -1,6 +1,7 @@
 export "src/bridge_plugin.dart";
 export "src/bridge_sse_event.dart";
 export "src/buffered_stream.dart";
+export "src/console.dart";
 export "src/host/bridge_host_info.dart";
 export "src/host/host_json_store.dart";
 export "src/host/host_port_service.dart";
@@ -8,6 +9,7 @@ export "src/host/host_process_service.dart";
 export "src/host/plugin_host.dart";
 export "src/lifecycle/bridge_plugin.dart";
 export "src/lifecycle/bridge_plugin_descriptor.dart";
+export "src/lifecycle/plugin_availability.dart";
 export "src/lifecycle/plugin_config.dart";
 export "src/lifecycle/plugin_diagnostics.dart";
 export "src/lifecycle/plugin_option.dart";

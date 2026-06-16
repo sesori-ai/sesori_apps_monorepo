@@ -52,6 +52,7 @@ void main() {
         '@sesori/bridge-linux-x64': 'sesori-bridge-linux-x64',
         '@sesori/bridge-linux-arm64': 'sesori-bridge-linux-arm64',
         '@sesori/bridge-win32-x64': 'sesori-bridge-win32-x64',
+        '@sesori/bridge-win32-arm64': 'sesori-bridge-win32-arm64',
       };
 
       expect(optionalDependencies.keys, equals(packageDirs.keys));
@@ -75,6 +76,7 @@ void main() {
               '@sesori/bridge-linux-x64': 'sesori-bridge-linux-x64.tar.gz',
               '@sesori/bridge-linux-arm64': 'sesori-bridge-linux-arm64.tar.gz',
               '@sesori/bridge-win32-x64': 'sesori-bridge-windows-x64.zip',
+              '@sesori/bridge-win32-arm64': 'sesori-bridge-windows-arm64.zip',
             }[entry.key],
             'runtimeBundlePath': 'lib/runtime',
           }),

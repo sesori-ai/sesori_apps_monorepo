@@ -758,6 +758,185 @@ void main() {
     });
   });
 
+  group("OpenCodeService parent-ID resolution", () {
+    Future<void> pump() => Future<void>.delayed(const Duration(milliseconds: 10));
+
+    Future<(OpenCodeService, FakeOpenCodeRepository, List<void>)> build({
+      List<Session> sessions = const [],
+    }) async {
+      final repository = FakeOpenCodeRepository(
+        projects: [const Project(id: "p1", worktree: "/repo")],
+        sessions: sessions,
+      );
+      final tracker = ActiveSessionTracker(repository);
+      await tracker.coldStart();
+      final service = OpenCodeService(repository, tracker);
+      final emissions = <void>[];
+      service.summaryInvalidations.listen((_) => emissions.add(null));
+      return (service, repository, emissions);
+    }
+
+    test("busy status with unknown parent resolves parent and invalidates summary", () async {
+      final (service, repository, emissions) = await build(
+        sessions: [
+          const Session(id: "c1", projectID: "p1", directory: "/repo", parentID: "root"),
+        ],
+      );
+
+      service.handleSseEvent(
+        const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatusBusy()),
+        "/repo",
+      );
+      await pump();
+
+      expect(repository.getSessionCalls, equals(1));
+      expect(repository.lastGetSessionId, equals("c1"));
+      expect(emissions, hasLength(1));
+
+      final summary = service.buildSummary();
+      expect(summary, hasLength(1));
+      expect(summary.first.activeSessions.first.id, equals("root"));
+      expect(summary.first.activeSessions.first.childSessionIds, equals(["c1"]));
+    });
+
+    test("busy status with no directory resolves worktree via getSession and surfaces root", () async {
+      // Regression for the dropped-session.created recovery path: a bare status
+      // frame carries no directory, so the worktree is only learned during the
+      // one-shot getSession lookup. registerSession must resolve it into a
+      // worktree, otherwise buildSummary produces no row and the badge stays
+      // missing.
+      final (service, repository, emissions) = await build(
+        sessions: [
+          const Session(id: "c1", projectID: "p1", directory: "/repo", parentID: "root"),
+        ],
+      );
+
+      service.handleSseEvent(
+        const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatusBusy()),
+        null,
+      );
+      await pump();
+
+      expect(repository.getSessionCalls, equals(1));
+      expect(emissions, hasLength(1));
+
+      final summary = service.buildSummary();
+      expect(summary, hasLength(1));
+      expect(summary.first.id, equals("/repo"));
+      expect(summary.first.activeSessions.first.id, equals("root"));
+      expect(summary.first.activeSessions.first.childSessionIds, equals(["c1"]));
+    });
+
+    test("busy root with no directory resolves worktree and invalidates summary", () async {
+      // A root session (parentID == null) whose status arrives with no
+      // directory: the parent does not change during resolution, but the
+      // worktree is newly learned, so the summary must still be invalidated —
+      // otherwise the empty -> {worktree: 1} transition goes unannounced and the
+      // badge stays missing until a later SSE event.
+      final (service, repository, emissions) = await build(
+        sessions: [
+          const Session(id: "s1", projectID: "p1", directory: "/repo"),
+        ],
+      );
+
+      service.handleSseEvent(
+        const SseEventData.sessionStatus(sessionID: "s1", status: SessionStatusBusy()),
+        null,
+      );
+      await pump();
+
+      expect(repository.getSessionCalls, equals(1));
+      expect(emissions, hasLength(1));
+
+      final summary = service.buildSummary();
+      expect(summary, hasLength(1));
+      expect(summary.first.id, equals("/repo"));
+      expect(summary.first.activeSessions.first.id, equals("s1"));
+      expect(summary.first.activeSessions.first.mainAgentRunning, isTrue);
+    });
+
+    test("concurrent busy statuses for the same session trigger a single lookup", () async {
+      final (service, repository, _) = await build(
+        sessions: [
+          const Session(id: "c1", projectID: "p1", directory: "/repo", parentID: "root"),
+        ],
+      );
+
+      // Both events are dispatched synchronously, before the first lookup
+      // settles, so the in-flight dedupe must collapse them to one call.
+      service.handleSseEvent(
+        const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatusBusy()),
+        "/repo",
+      );
+      service.handleSseEvent(
+        const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatusBusy()),
+        "/repo",
+      );
+      await pump();
+
+      expect(repository.getSessionCalls, equals(1));
+    });
+
+    test("busy status for a session with a known parent does not trigger a lookup", () async {
+      final (service, repository, _) = await build();
+
+      service.handleSseEvent(
+        const SseEventData.sessionCreated(
+          info: Session(id: "c1", projectID: "p1", directory: "/repo", parentID: "root"),
+        ),
+        "/repo",
+      );
+      service.handleSseEvent(
+        const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatusBusy()),
+        "/repo",
+      );
+      await pump();
+
+      expect(repository.getSessionCalls, equals(0));
+    });
+
+    test("a known root busy status does not trigger a lookup", () async {
+      final (service, repository, _) = await build();
+
+      service.handleSseEvent(
+        const SseEventData.sessionCreated(
+          info: Session(id: "s1", projectID: "p1", directory: "/repo"),
+        ),
+        "/repo",
+      );
+      service.handleSseEvent(
+        const SseEventData.sessionStatus(sessionID: "s1", status: SessionStatusBusy()),
+        "/repo",
+      );
+      await pump();
+
+      expect(repository.getSessionCalls, equals(0));
+    });
+
+    test("a failed lookup is swallowed and a later status event retries", () async {
+      // No sessions seeded → FakeOpenCodeRepository.getSession throws.
+      final (service, repository, emissions) = await build();
+
+      service.handleSseEvent(
+        const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatusBusy()),
+        "/repo",
+      );
+      await pump();
+
+      expect(repository.getSessionCalls, equals(1));
+      expect(emissions, isEmpty);
+
+      // Parent still unknown, so the next status event is allowed to retry.
+      service.handleSseEvent(
+        const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatusBusy()),
+        "/repo",
+      );
+      await pump();
+
+      expect(repository.getSessionCalls, equals(2));
+    });
+  });
+
   group("OpenCodeService tracker delegation", () {
     test("coldStart delegates to tracker", () async {
       final tracker = FakeActiveSessionTracker();
@@ -847,9 +1026,6 @@ QuestionRequest _question({required String id, required String sessionId}) {
 }
 
 class FakeOpenCodeApi implements OpenCodeApi {
-  @override
-  String get serverURL => "http://fake";
-
   List<SessionMessagesResponseItem> messages;
   Object? messagesError;
   String? lastRequestedSessionId;
@@ -1224,6 +1400,8 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   final String? resolvedWorktree;
   String? lastRegisteredSessionId;
   String? lastRegisteredDirectory;
+  String? lastRegisteredParentId;
+  bool registerSessionReturns = false;
   List<QuestionRequest> populatedQuestions = const [];
   List<PermissionRequest> populatedPermissions = const [];
 
@@ -1245,10 +1423,16 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   }
 
   @override
-  void registerSession({required String sessionId, required String directory}) {
+  bool registerSession({
+    required String sessionId,
+    required String directory,
+    required String? parentId,
+  }) {
     lastRegisteredSessionId = sessionId;
     lastRegisteredDirectory = directory;
+    lastRegisteredParentId = parentId;
     _sessionDirectories[sessionId] = directory;
+    return registerSessionReturns;
   }
 
   @override

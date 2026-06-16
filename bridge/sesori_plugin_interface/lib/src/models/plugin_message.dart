@@ -35,8 +35,7 @@ enum PluginMessagePartType {
   @JsonValue("compaction")
   compaction,
   @JsonValue("unknown")
-  unknown
-  ;
+  unknown;
 
   /// Whether this part type is visible to mobile (rendered in the UI).
   bool get isVisible => this != file && this != snapshot && this != patch && this != compaction && this != unknown;
@@ -98,6 +97,7 @@ sealed class PluginMessage with _$PluginMessage {
     required String id,
     required String sessionID,
     required String? agent,
+    required PluginMessageTime? time,
   }) = PluginMessageUser;
 
   const factory PluginMessage.assistant({
@@ -106,6 +106,7 @@ sealed class PluginMessage with _$PluginMessage {
     required String? agent,
     required String? modelID,
     required String? providerID,
+    required PluginMessageTime? time,
   }) = PluginMessageAssistant;
 
   const factory PluginMessage.error({
@@ -116,5 +117,16 @@ sealed class PluginMessage with _$PluginMessage {
     required String? providerID,
     required String errorName,
     required String errorMessage,
+    required PluginMessageTime? time,
   }) = PluginMessageError;
+}
+
+/// Lifecycle timestamps for a [PluginMessage], in milliseconds since the
+/// Unix epoch. Mirrors [PluginSessionTime].
+@freezed
+sealed class PluginMessageTime with _$PluginMessageTime {
+  const factory PluginMessageTime({
+    required int created,
+    required int? completed,
+  }) = _PluginMessageTime;
 }

@@ -33,6 +33,7 @@ class RelayClient {
 
   RelayClientConnectionState _connectionState = RelayClientConnectionState.disconnected;
   bool _disposed = false;
+  bool _didResume = false;
 
   static const int _messageVersion = 0x01;
   static const Duration _handshakeTimeout = Duration(seconds: 15);
@@ -50,6 +51,7 @@ class RelayClient {
 
   RelayClientConnectionState get connectionState => _connectionState;
   bool get isConnected => _connectionState == RelayClientConnectionState.connected;
+  bool get didResume => _didResume;
 
   /// Stream of bridge online/offline events sent as text control frames by the relay.
   Stream<BridgeStatus> get bridgeStatus => _bridgeStatusController.stream;
@@ -66,6 +68,7 @@ class RelayClient {
     }
 
     _connectionState = RelayClientConnectionState.connecting;
+    _didResume = false;
     _lastCloseCode = null;
     final uri = Uri.parse("wss://$relayHost/ws");
 
@@ -117,6 +120,7 @@ class RelayClient {
         if (resumed) {
           if (_disposed) return;
           _connectionState = RelayClientConnectionState.connected;
+          _didResume = true;
           logd("Relay resumed with stored room key");
           return;
         }

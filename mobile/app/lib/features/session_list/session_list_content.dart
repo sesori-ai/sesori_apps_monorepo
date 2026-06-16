@@ -2,7 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../core/constants.dart";
 import "../../core/extensions/build_context_x.dart";
@@ -127,9 +127,9 @@ class _StaleProjectView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.folder_off_outlined, size: 48, color: context.zyra.colors.fgErrorPrimary),
+            Icon(Icons.folder_off_outlined, size: 48, color: context.prego.colors.fgErrorPrimary),
             const SizedBox(height: 16),
-            Text(loc.sessionListStaleProjectTitle, style: context.zyra.textTheme.textMd.bold),
+            Text(loc.sessionListStaleProjectTitle, style: context.prego.textTheme.textMd.bold),
             const SizedBox(height: 8),
             Text(loc.sessionListStaleProjectMessage, textAlign: TextAlign.center),
             const SizedBox(height: 24),
@@ -161,9 +161,9 @@ class _ErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline, size: 48, color: context.zyra.colors.fgErrorPrimary),
+            Icon(Icons.error_outline, size: 48, color: context.prego.colors.fgErrorPrimary),
             const SizedBox(height: 16),
-            Text(loc.sessionListErrorTitle, style: context.zyra.textTheme.textMd.bold),
+            Text(loc.sessionListErrorTitle, style: context.prego.textTheme.textMd.bold),
             const SizedBox(height: 8),
             Text(
               reason.localizedMessage(loc),

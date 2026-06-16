@@ -111,12 +111,13 @@ class PluginModelMapper {
   PluginMessageWithParts mapMessageWithParts(SessionMessagesResponseItem raw) {
     final info = raw.info;
     final pluginInfo = switch (info) {
-      UserMessage(:final id, :final sessionID, :final agent) => PluginMessage.user(
+      UserMessage(:final id, :final sessionID, :final agent, :final time) => PluginMessage.user(
         id: id,
         sessionID: sessionID,
         agent: agent,
+        time: _mapUserMessageTime(time),
       ),
-      AssistantMessage(:final id, :final sessionID, :final agent, :final modelID, :final providerID, :final error) =>
+      AssistantMessage(:final id, :final sessionID, :final agent, :final modelID, :final providerID, :final error, :final time) =>
         _mapAssistantMessage(
           id: id,
           sessionID: sessionID,
@@ -124,6 +125,7 @@ class PluginModelMapper {
           modelID: modelID,
           providerID: providerID,
           error: error,
+          time: time,
         ),
       MessageUnknown(:final raw) => throw FormatException("Unknown message role: $raw"),
       _ => throw FormatException("Unknown message role: $info"),
@@ -141,7 +143,9 @@ class PluginModelMapper {
     required String modelID,
     required String providerID,
     required Object? error,
+    required AssistantMessageTime time,
   }) {
+    final pluginTime = _mapAssistantMessageTime(time);
     final errorMap = error is Map<String, dynamic> ? error : null;
     if (errorMap == null) {
       return PluginMessage.assistant(
@@ -150,6 +154,7 @@ class PluginModelMapper {
         agent: agent,
         modelID: modelID,
         providerID: providerID,
+        time: pluginTime,
       );
     }
     final data = errorMap["data"];
@@ -162,7 +167,16 @@ class PluginModelMapper {
       providerID: providerID,
       errorName: errorMap["name"]?.toString() ?? "UnknownError",
       errorMessage: dataMap["message"]?.toString() ?? "Unknown error",
+      time: pluginTime,
     );
+  }
+
+  PluginMessageTime _mapUserMessageTime(UserMessageTime time) {
+    return PluginMessageTime(created: time.created.toInt(), completed: null);
+  }
+
+  PluginMessageTime _mapAssistantMessageTime(AssistantMessageTime time) {
+    return PluginMessageTime(created: time.created, completed: time.completed);
   }
 
   String? _effectiveProjectName(Project project) {

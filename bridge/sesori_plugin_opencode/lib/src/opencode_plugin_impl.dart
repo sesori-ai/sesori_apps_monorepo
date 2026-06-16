@@ -34,6 +34,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   final SseEventMapper _mapper = SseEventMapper();
   final PluginModelMapper _pluginModelMapper = const PluginModelMapper(messagePartMapper: MessagePartMapper());
   late final SseConnection _sseConnection;
+  late final StreamSubscription<void> _summarySubscription;
   Future<void>? _initializeFuture;
   bool _disposed = false;
 
@@ -54,9 +55,11 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   }) {
     final httpClient = io.HttpClient();
     final api = OpenCodeApi(
-      serverURL: serverUrl,
-      password: password,
-      client: IOClient(httpClient),
+      client: OpenCodeRawHttpClient(
+        serverURL: serverUrl,
+        password: password,
+        client: IOClient(httpClient),
+      ),
     );
     final repository = OpenCodeRepository(api);
     final tracker = ActiveSessionTracker(repository);
@@ -95,6 +98,10 @@ class OpenCodePlugin implements OpenCodeManagedApi {
       onConnected: onConnected,
       onDisconnected: onDisconnected,
     );
+    // The service resolves missing parent IDs out-of-band (after handleSseEvent
+    // has already returned); re-emit the activity summary when it does so the
+    // running badge surfaces on the correct root session.
+    _summarySubscription = _service.summaryInvalidations.listen((_) => _emitProjectsSummary());
     if (autoInitialize) {
       // Legacy behavior: cold-start fire-and-forget so direct construction never
       // throws (the descriptor awaits initialize() instead). The failure is
@@ -163,10 +170,30 @@ class OpenCodePlugin implements OpenCodeManagedApi {
 
   @override
   Future<void> dispose() async {
+    if (_disposed) {
+      Log.v("[shutdown] OpenCodePlugin.dispose: already disposed, skipping");
+      return;
+    }
     _disposed = true;
+    Log.v("[shutdown] OpenCodePlugin.dispose: stopping SSE connection");
     _sseConnection.stop();
+    // Each teardown step is isolated so a failure in one does not prevent the
+    // remaining cleanup (http client + event buffer below) from running.
+    try {
+      await _summarySubscription.cancel();
+    } on Object catch (e, st) {
+      Log.w("[shutdown] OpenCodePlugin.dispose: failed to cancel summary subscription", e, st);
+    }
+    try {
+      await _service.dispose();
+    } on Object catch (e, st) {
+      Log.w("[shutdown] OpenCodePlugin.dispose: failed to dispose service", e, st);
+    }
+    Log.v("[shutdown] OpenCodePlugin.dispose: force-closing http client");
     _httpClient.close(force: true);
+    final sw = Stopwatch()..start();
     await _eventBuffer.close();
+    Log.d("[shutdown] OpenCodePlugin.dispose: event buffer closed in ${sw.elapsedMilliseconds}ms");
   }
 
   @override
@@ -196,6 +223,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
       _service.tracker.registerSession(
         sessionId: session.id,
         directory: session.directory,
+        parentId: session.parentID,
       );
     }
     return sessions
@@ -577,6 +605,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
       _ => event,
     };
   }
+
 
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() {
