@@ -710,6 +710,34 @@ void main() {
       expect(summary.first.activeSessions.first.childSessionIds, equals(["c1"]));
     });
 
+    test("busy status with no directory resolves worktree via getSession and surfaces root", () async {
+      // Regression for the dropped-session.created recovery path: a bare status
+      // frame carries no directory, so the worktree is only learned during the
+      // one-shot getSession lookup. registerSession must resolve it into a
+      // worktree, otherwise buildSummary produces no row and the badge stays
+      // missing.
+      final (service, repository, emissions) = await build(
+        sessions: [
+          const Session(id: "c1", projectID: "p1", directory: "/repo", parentID: "root"),
+        ],
+      );
+
+      service.handleSseEvent(
+        const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatus.busy()),
+        null,
+      );
+      await pump();
+
+      expect(repository.getSessionCalls, equals(1));
+      expect(emissions, hasLength(1));
+
+      final summary = service.buildSummary();
+      expect(summary, hasLength(1));
+      expect(summary.first.id, equals("/repo"));
+      expect(summary.first.activeSessions.first.id, equals("root"));
+      expect(summary.first.activeSessions.first.childSessionIds, equals(["c1"]));
+    });
+
     test("concurrent busy statuses for the same session trigger a single lookup", () async {
       final (service, repository, _) = await build(
         sessions: [

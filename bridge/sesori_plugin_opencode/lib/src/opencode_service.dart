@@ -352,7 +352,7 @@ class OpenCodeService {
       }
     } catch (e, st) {
       // Best-effort: leave the parent unknown so a later status event can retry.
-      Log.w("failed to resolve parentID for session $sessionId: $e\n$st");
+      Log.w("failed to resolve parentID for session $sessionId", e, st);
     } finally {
       _parentIdLookupsInFlight.remove(sessionId);
     }

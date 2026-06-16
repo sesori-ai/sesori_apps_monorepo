@@ -717,6 +717,32 @@ void main() {
         );
       });
 
+      test("registerSession resolves the worktree so a recovered root surfaces", () async {
+        // Busy status with no directory: the worktree is never learned from the
+        // status event, so the busy child produces no row yet.
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/repo")],
+        );
+
+        tracker.handleEvent(_sessionBusy("c1"), null);
+        expect(tracker.buildSummary(), isEmpty);
+
+        // Resolution supplies the directory; registerSession must resolve it
+        // into a worktree, otherwise buildSummary still yields no row.
+        final changed = tracker.registerSession(
+          sessionId: "c1",
+          directory: "/repo",
+          parentId: "root",
+        );
+        expect(changed, isTrue);
+
+        final summary = tracker.buildSummary();
+        expect(summary, hasLength(1));
+        expect(summary.first.id, equals("/repo"));
+        expect(summary.first.activeSessions.first.id, equals("root"));
+        expect(summary.first.activeSessions.first.childSessionIds, equals(["c1"]));
+      });
+
       test("registerSession returns false when the session is not active", () async {
         final tracker = await _coldStartedTracker(
           projects: [const Project(id: "p1", worktree: "/repo")],

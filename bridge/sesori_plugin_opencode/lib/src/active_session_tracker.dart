@@ -256,12 +256,21 @@ class ActiveSessionTracker {
     required String? parentId,
   }) {
     _sessionDirectories[sessionId] = directory;
+    // Resolve the directory into a worktree now. On the dropped-`session.created`
+    // recovery path a bare `session.status` frame carries no directory, so this
+    // call is the only place that learns it. buildSummary and
+    // _activeSessionCounts key off _sessionWorktrees, so without this the
+    // recovered root would still have no worktree and produce no summary row.
+    _updateSessionWorktree(sessionId, directory);
 
-    final hadParent = _sessionParentIds.containsKey(sessionId);
     final previousParent = _sessionParentIds[sessionId];
     _sessionParentIds[sessionId] = parentId;
 
-    final parentChanged = !hadParent || previousParent != parentId;
+    // A missing entry already resolves to null in buildSummary, so comparing
+    // against the previous lookup (null when absent) is sufficient: an
+    // unobserved→root (null) transition is not a grouping change and must not
+    // trigger a redundant re-emit.
+    final parentChanged = previousParent != parentId;
     // Only an active session affects the summary grouping.
     return parentChanged && _sessionStatuses.containsKey(sessionId);
   }

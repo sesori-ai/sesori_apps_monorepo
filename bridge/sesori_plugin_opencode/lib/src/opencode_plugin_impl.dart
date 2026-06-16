@@ -176,8 +176,18 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     _disposed = true;
     Log.v("[shutdown] OpenCodePlugin.dispose: stopping SSE connection");
     _sseConnection.stop();
-    await _summarySubscription.cancel();
-    await _service.dispose();
+    // Each teardown step is isolated so a failure in one does not prevent the
+    // remaining cleanup (http client + event buffer below) from running.
+    try {
+      await _summarySubscription.cancel();
+    } on Object catch (e, st) {
+      Log.w("[shutdown] OpenCodePlugin.dispose: failed to cancel summary subscription", e, st);
+    }
+    try {
+      await _service.dispose();
+    } on Object catch (e, st) {
+      Log.w("[shutdown] OpenCodePlugin.dispose: failed to dispose service", e, st);
+    }
     Log.v("[shutdown] OpenCodePlugin.dispose: force-closing http client");
     _httpClient.close(force: true);
     final sw = Stopwatch()..start();
