@@ -182,11 +182,17 @@ class CompletionNotifier {
   /// transition (see [SessionStatusIdle]) so the eventual reply/rejection can
   /// still fire the deferred completion. Without it, this late-prompt ordering
   /// would silently drop the completion that the prompt-before-idle ordering
-  /// delivers. A subsequent busy event (the agent resuming on reply) cancels
-  /// the rescheduled debounce, so this does not cause a premature notification.
+  /// delivers. Both orderings then behave identically on reply: if the agent
+  /// resumes, its busy event clears the block and cancels the rescheduled
+  /// debounce; if it does not, the deferred completion fires.
   void _blockCompletionForPendingInteraction(String sessionId) {
     final rootSessionId = _tracker.resolveRootSessionId(sessionId);
-    if (_tracker.isSessionGroupFullyIdle(rootSessionId)) {
+    // Same guard as the idle transition: only record the block when the group
+    // is idle AND the tracker actually sees a pending interaction. Blocking a
+    // root with no pending prompt would strand it — no reply would arrive to
+    // resume completion until the next busy cycle.
+    if (_tracker.isSessionGroupFullyIdle(rootSessionId) &&
+        _tracker.hasPendingInteraction(rootSessionId)) {
       _completionBlockedByPendingInteraction.add(rootSessionId);
     }
     _cancelDebounceForSessionGroup(sessionId);

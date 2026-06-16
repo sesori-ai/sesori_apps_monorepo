@@ -193,6 +193,56 @@ void main() {
       });
     });
 
+    test("reparented child deletion resumes blocked root completion", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        // The root ran (so completion is warranted) and the child is known only
+        // via status events, so it is its own root when it goes idle with a
+        // pending question — the block is recorded under "child".
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.questionAsked(
+            id: "q-1",
+            sessionID: "child",
+            questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
+          ),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+        );
+        // The parent link is learned after the block was recorded under "child".
+        harness.dispatch(
+          const SesoriSseEvent.projectsSummary(
+            projects: [
+              ProjectActivitySummary(
+                id: "project-a",
+                activeSessions: [
+                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"]),
+                ],
+              ),
+            ],
+          ),
+        );
+        // Deleting the last pending child must resume the reparented root via
+        // the originalSessionId fallback, even though resolving the now-removed
+        // child no longer reaches the parent.
+        harness.dispatch(SesoriSseEvent.sessionDeleted(info: _session(id: "child", parentID: "root")));
+
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, equals(["root"]));
+      });
+    });
+
     test("duplicate question reply does not lose completion", () {
       fakeAsync((async) {
         final harness = _newHarness();
