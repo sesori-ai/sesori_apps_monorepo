@@ -67,33 +67,46 @@ Use this ONLY when the user explicitly says not to use the existing notes.
 
 ### Step B1: Resolve the version range
 
-Find the previous release tag (immediately preceding the requested version by semver):
+Find the previous **stable** release tag (immediately preceding the requested version by semver). The release workflow keeps internal/prerelease tags like `v<X.Y.Z>-internal.<N>` around forever (they act as a build-number map — see `.github/workflows/release-all-platforms.yml`), so they MUST be excluded or the range will be wrong:
 
 ```bash
 git fetch --tags
-git tag -l "v*" --sort=-v:refname
+# Stable tags only: vX.Y.Z with no prerelease suffix (-internal.N, -rc.N, etc.)
+git tag -l "v*" --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$'
 ```
 
-Identify the requested tag and the tag directly below it in that sorted list = `<previous-tag>`. State the resolved range to the user (`<previous-tag>..<version>`) before proceeding.
+From that filtered list, identify the requested tag and the stable tag directly below it = `<previous-tag>`. This matches how the canonical generator (`tool/generate_release_notes.dart`) resolves the previous stable, non-prerelease tag — reuse that resolution if available. State the resolved range to the user (`<previous-tag>..<version>`) before proceeding.
 
 ### Step B2: Enumerate merged PRs in the range
 
-Prefer PR-level data (gives clean titles, authors, and the App/Bridge attribution):
+Drive enumeration off the commits in the resolved range — **do not** rely on `gh pr list --limit N`, which is just the most-recent-N merged PRs and is neither scoped to the range nor reliable for older/backfilled releases:
 
 ```bash
 # Commits in range with their messages
 git log <previous-tag>..<version> --oneline
-
-# Merged PRs (cross-reference numbers found in commit messages)
-gh pr list --repo sesori-ai/sesori_apps_monorepo --state merged --base main --limit 200 \
-  --json number,title,author,mergedAt,labels,files
 ```
 
-For each merged-PR squash commit, extract the `(#NNN)` number so every entry can link to its PR. If a commit has no PR number, keep it but link to the commit instead.
+For each merged-PR squash commit, extract the `(#NNN)` number from the commit subject. If a commit has no PR number, keep it but link to the commit instead.
+
+Then fetch metadata for **exactly those PR numbers** (replace `<N>` per PR). Note `gh pr list --json` does **not** support a `files` field — request the supported fields here and get changed files separately in Step B3:
+
+```bash
+# Per-PR metadata (title, author, url, labels, merge time)
+gh pr view <N> --repo sesori-ai/sesori_apps_monorepo \
+  --json number,title,author,url,mergedAt,labels
+```
 
 ### Step B3: Attribute each PR to App / Bridge / shared
 
-Use the conventional-commit scope and changed paths:
+Use the conventional-commit scope and changed paths. Get the changed files per commit/PR (since `gh pr list`/`pr view --json files` is the only place files are available, or use git directly):
+
+```bash
+# Changed paths for a given merged commit
+git show --name-only --pretty=format: <commit-sha>
+# or, per PR:
+gh pr view <N> --repo sesori-ai/sesori_apps_monorepo --json files
+```
+
 - Touches `mobile/` → **App**
 - Touches `bridge/` → **Bridge**
 - Touches both (or `shared/`) → list in both, tag *(shared)*.
