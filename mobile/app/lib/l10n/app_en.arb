@@ -271,6 +271,8 @@
   "attachImage": "Attach image",
   "attachFromGallery": "Photo Library",
   "attachFromCamera": "Camera",
+  "attachFromClipboard": "Paste Image",
+  "attachClipboardEmpty": "No image to paste from the clipboard",
   "attachRemove": "Remove attachment",
   "attachErrorPermission": "Photo and camera access is required to attach images",
   "attachError": "Could not attach image. Please try again.",

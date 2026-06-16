@@ -15,7 +15,7 @@ import "../../../core/widgets/command_picker_sheet.dart";
 
 enum _VoiceState { idle, recording, transcribing }
 
-enum _AttachmentAction { gallery, camera }
+enum _AttachmentAction { gallery, camera, clipboard }
 
 class PromptInput extends StatefulWidget {
   final bool isBusy;
@@ -61,12 +61,21 @@ class _PromptInputState extends State<PromptInput> {
   StreamSubscription<void>? _maxDurationSub;
   final List<PickedMedia> _attachments = [];
 
+  /// Guards against overlapping clipboard reads (e.g. a rapid second Cmd+V
+  /// firing before the first read resolves) staging the same image twice.
+  bool _pasteInFlight = false;
+
   VoiceTranscriptionService get _voiceService => getIt<VoiceTranscriptionService>();
+
+  ClipboardImageReader get _clipboardReader => getIt<ClipboardImageReader>();
 
   @override
   void initState() {
     super.initState();
     _restoreDraft();
+    // Intercept Cmd/Ctrl+V (hardware keyboards) to attach a pasted image without
+    // consuming the event, so any plain-text content still pastes normally.
+    _focusNode.onKeyEvent = (_, event) => _handlePasteShortcut(event);
     _maxDurationSub = _voiceService.onMaxDurationReached.listen((_) {
       if (_voiceState == _VoiceState.recording && mounted) {
         _showRecordingLimitReached();
@@ -165,6 +174,11 @@ class _PromptInputState extends State<PromptInput> {
               title: Text(sheetContext.loc.attachFromCamera),
               onTap: () => Navigator.pop(sheetContext, _AttachmentAction.camera),
             ),
+            ListTile(
+              leading: const Icon(Icons.content_paste_outlined),
+              title: Text(sheetContext.loc.attachFromClipboard),
+              onTap: () => Navigator.pop(sheetContext, _AttachmentAction.clipboard),
+            ),
           ],
         ),
       ),
@@ -176,6 +190,8 @@ class _PromptInputState extends State<PromptInput> {
         await _addImage(() => getIt<MediaPicker>().pickImageFromGallery());
       case _AttachmentAction.camera:
         await _addImage(() => getIt<MediaPicker>().pickImageFromCamera());
+      case _AttachmentAction.clipboard:
+        await _pasteFromClipboard(announceEmpty: true);
     }
   }
 
@@ -189,6 +205,99 @@ class _PromptInputState extends State<PromptInput> {
       if (!mounted) return;
       _showError(context.loc.attachError);
     }
+  }
+
+  /// Reads an image from the clipboard and stages it as an attachment.
+  ///
+  /// When [announceEmpty] is true (an explicit "Paste" action), shows a message
+  /// if the clipboard holds no image. When false (a Cmd/Ctrl+V keystroke that may
+  /// also be pasting text), stays silent on an empty result.
+  Future<void> _pasteFromClipboard({required bool announceEmpty}) async {
+    if (_pasteInFlight) return;
+    _pasteInFlight = true;
+    try {
+      final media = await _clipboardReader.readImage();
+      if (!mounted) return;
+      if (media == null) {
+        if (announceEmpty) _showError(context.loc.attachClipboardEmpty);
+        return;
+      }
+      setState(() => _attachments.add(media));
+    } on MediaPickerException catch (error) {
+      loge("Failed to paste image", error);
+      // Stay silent on the keystroke path (announceEmpty == false): the user may
+      // only be pasting text, so a clipboard error shouldn't surface a toast.
+      if (mounted && announceEmpty) _showError(context.loc.attachError);
+    } finally {
+      _pasteInFlight = false;
+    }
+  }
+
+  /// Handles Cmd/Ctrl+V from a hardware keyboard. Always lets the event continue
+  /// (returns [KeyEventResult.ignored]) so the field's default text paste still
+  /// runs; in parallel it attaches a clipboard image when one is present.
+  KeyEventResult _handlePasteShortcut(KeyEvent event) {
+    final isPaste = event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.keyV &&
+        (HardwareKeyboard.instance.isMetaPressed || HardwareKeyboard.instance.isControlPressed);
+    if (isPaste) {
+      unawaited(_pasteFromClipboard(announceEmpty: false));
+    }
+    return KeyEventResult.ignored;
+  }
+
+  /// Replaces the selection toolbar's "Paste" so it attaches a clipboard image
+  /// when present, falling back to the default text paste otherwise. This covers
+  /// the case where a copied image also carries text (e.g. an image + its URL).
+  Widget _buildContextMenu(EditableTextState editableState) {
+    final items = editableState.contextMenuButtonItems.map((item) {
+      if (item.type != ContextMenuButtonType.paste) return item;
+      final defaultPaste = item.onPressed;
+      return item.copyWith(
+        onPressed: () {
+          editableState.hideToolbar();
+          unawaited(_pasteImageOrFallback(defaultPaste));
+        },
+      );
+    }).toList();
+    return AdaptiveTextSelectionToolbar.buttonItems(
+      buttonItems: items,
+      anchors: editableState.contextMenuAnchors,
+    );
+  }
+
+  Future<void> _pasteImageOrFallback(VoidCallback? defaultPaste) async {
+    if (_pasteInFlight) {
+      defaultPaste?.call();
+      return;
+    }
+    _pasteInFlight = true;
+    try {
+      final media = await _clipboardReader.readImage();
+      if (mounted && media != null) {
+        setState(() => _attachments.add(media));
+        return;
+      }
+    } on MediaPickerException catch (error) {
+      loge("Failed to paste image", error);
+    } finally {
+      _pasteInFlight = false;
+    }
+    defaultPaste?.call();
+  }
+
+  /// Attaches an image inserted via the system keyboard (e.g. Gboard image insert).
+  void _handleContentInserted(KeyboardInsertedContent content) {
+    final data = content.data;
+    if (data == null || data.isEmpty || !mounted) return;
+    final name = content.uri.split("/").last;
+    setState(() {
+      _attachments.add(PickedMedia(
+        bytes: data,
+        mimeType: content.mimeType,
+        filename: name.isEmpty ? null : name,
+      ));
+    });
   }
 
   void _removeAttachment(int index) {
@@ -423,6 +532,10 @@ class _PromptInputState extends State<PromptInput> {
                         minLines: 1,
                         maxLines: 5,
                         textInputAction: TextInputAction.newline,
+                        contextMenuBuilder: (_, editableState) => _buildContextMenu(editableState),
+                        contentInsertionConfiguration: ContentInsertionConfiguration(
+                          onContentInserted: _handleContentInserted,
+                        ),
                         decoration: InputDecoration(
                           hintText: _commandHintText(context),
                           border: OutlineInputBorder(

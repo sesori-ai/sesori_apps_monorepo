@@ -574,6 +574,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get attachFromCamera => 'Camera';
 
   @override
+  String get attachFromClipboard => 'Paste Image';
+
+  @override
+  String get attachClipboardEmpty => 'No image to paste from the clipboard';
+
+  @override
   String get attachRemove => 'Remove attachment';
 
   @override

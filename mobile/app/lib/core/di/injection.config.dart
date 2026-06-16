@@ -34,6 +34,8 @@ import 'package:sesori_mobile/core/platform/crashlytics_failure_reporter.dart'
     as _i534;
 import 'package:sesori_mobile/core/platform/firebase_push_messaging_source.dart'
     as _i1042;
+import 'package:sesori_mobile/core/platform/flutter_clipboard_image_reader.dart'
+    as _i222;
 import 'package:sesori_mobile/core/platform/flutter_local_notification_client.dart'
     as _i636;
 import 'package:sesori_mobile/core/platform/flutter_media_picker.dart' as _i897;
@@ -99,6 +101,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i948.PushMessagingSource>(
       () => _i1042.FirebasePushMessagingSource(),
+    );
+    gh.lazySingleton<_i948.ClipboardImageReader>(
+      () => const _i222.FlutterClipboardImageReader(),
     );
     gh.lazySingleton<_i948.SecureStorage>(
       () => _i816.FlutterSecureStorageAdapter(gh<_i558.FlutterSecureStorage>()),

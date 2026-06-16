@@ -1117,6 +1117,18 @@ abstract class AppLocalizations {
   /// **'Camera'**
   String get attachFromCamera;
 
+  /// No description provided for @attachFromClipboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste Image'**
+  String get attachFromClipboard;
+
+  /// No description provided for @attachClipboardEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No image to paste from the clipboard'**
+  String get attachClipboardEmpty;
+
   /// No description provided for @attachRemove.
   ///
   /// In en, this message translates to:

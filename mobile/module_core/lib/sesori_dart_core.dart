@@ -76,6 +76,7 @@ export "src/errors/remote_failure_reason.dart";
 // Logging
 export "src/logging/logging.dart";
 // Platform interfaces
+export "src/platform/clipboard_image_reader.dart";
 export "src/platform/deep_link_source.dart";
 export "src/platform/lifecycle_source.dart";
 export "src/platform/local_notification_client.dart";
