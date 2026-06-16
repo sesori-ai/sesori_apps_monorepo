@@ -13,7 +13,9 @@ import "../../../core/extensions/build_context_x.dart";
 /// `progress * maxReveal` while the timestamp gutter slides in from
 /// off-screen on the right by the same amount: the two meet exactly at
 /// the content's new right edge, so the timestamp never overlaps the
-/// message and never bleeds through transparent rows while closed.
+/// message and never bleeds through transparent rows while closed. The
+/// label is bottom-aligned within the gutter so it reads as belonging to
+/// the foot of its message.
 ///
 /// Rows without a timestamp ([createdAtMs] is null — e.g. the synthetic
 /// retry-error row) still translate in lockstep but render no gutter.
@@ -66,9 +68,12 @@ class MessageTimestampReveal extends StatelessWidget {
                 // right edge when fully revealed.
                 right: -maxReveal * (1 - p),
                 child: Align(
-                  alignment: Alignment.centerLeft,
+                  // Bottom-aligned so the timestamp sits at the foot of the
+                  // message it belongs to (matching the iMessage reveal),
+                  // rather than floating at the row's vertical centre.
+                  alignment: Alignment.bottomLeft,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    padding: const EdgeInsetsDirectional.fromSTEB(8, 0, 8, 6),
                     child: Text(
                       label,
                       maxLines: 1,

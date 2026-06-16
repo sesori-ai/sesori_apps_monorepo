@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
 import "package:flutter_chat_core/flutter_chat_core.dart" as chat_core;
 import "package:flutter_chat_ui/flutter_chat_ui.dart" as chat_ui;
@@ -130,6 +131,15 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
   bool _revealEngaged = false;
   bool _revealRejected = false;
   bool _revealStartedFollowing = false;
+
+  /// True while a trackpad pan-zoom owns the reveal. The pointer-drag and
+  /// pan-zoom paths share the engage/reject latches above, so exactly one
+  /// may drive the peek at a time: whichever gesture starts first claims
+  /// ownership (`_revealPointer` for finger/stylus, this flag for
+  /// trackpad) and the other path no-ops until it releases. Guards against
+  /// a stray pan on a touchscreen-plus-trackpad device resetting the
+  /// latches — or springing the gutter shut — mid touch drag.
+  bool _revealPanActive = false;
 
   /// Snapshot taken at the moment of detach. `null` means "not frozen
   /// — use live `widget.*` props".
@@ -280,7 +290,7 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
         label: loc.sessionDetailJumpToLatest,
         onTap: () => _follow.animateToEdge(),
       ),
-      // Horizontal "peek" gesture: drag the transcript left to reveal
+      // Horizontal "peek" gesture: slide the transcript left to reveal
       // each message's timestamp on the right. Driven by a raw [Listener]
       // rather than a drag GestureDetector on purpose — a competing
       // horizontal drag recognizer would join the gesture arena and stop
@@ -288,14 +298,30 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
       // which would break small-drag detach. The Listener never joins the
       // arena, so vertical scrolling is untouched; we disambiguate
       // direction ourselves and only steer the reveal on horizontal-
-      // dominant drags. `translucent` so the whole list area is tracked
+      // dominant gestures. `translucent` so the whole list area is tracked
       // while taps and selection still reach the cards below.
+      //
+      // Input source is chosen by the pointer's *device kind*, not the
+      // OS — so a desktop touchscreen still peeks by finger and an
+      // attached mouse on mobile still selects text:
+      //
+      // - Touch / stylus: a finger drag — pointer down/move/up.
+      // - Trackpad: a horizontal two-finger swipe — pointer pan-zoom.
+      // - Mouse: a button press-and-drag is left untouched (the pointer
+      //   path ignores the mouse kind) so it keeps selecting message
+      //   text; hijacking it for the peek would make selection impossible.
+      //
+      // Both handler sets are always bound; each only fires for its own
+      // device kind, so they never compete.
       child: Listener(
         behavior: HitTestBehavior.translucent,
         onPointerDown: _onRevealPointerDown,
         onPointerMove: _onRevealPointerMove,
         onPointerUp: _onRevealPointerUp,
         onPointerCancel: _onRevealPointerCancel,
+        onPointerPanZoomStart: _onRevealPanZoomStart,
+        onPointerPanZoomUpdate: _onRevealPanZoomUpdate,
+        onPointerPanZoomEnd: _onRevealPanZoomEnd,
         child: chat_ui.Chat(
           key: _kListViewKey,
           currentUserId: _kUserAuthorId,
@@ -408,6 +434,14 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
     // secondary touches so a stray second finger can't strand the
     // gesture state (and the detach suppression) on the wrong pointer.
     if (_revealPointer != null) return;
+    // A trackpad pan already owns the reveal — don't let a concurrent
+    // touch claim the shared latches out from under it.
+    if (_revealPanActive) return;
+    // A mouse press-and-drag is the text-selection gesture, so never
+    // hijack it for the peek — regardless of OS. (A trackpad click also
+    // reports as a mouse pointer; its two-finger swipe arrives separately
+    // via the pan-zoom path.) Finger and stylus drags drive the peek.
+    if (event.kind == PointerDeviceKind.mouse) return;
     _revealPointer = event.pointer;
     _revealStart = event.position;
     _revealEngaged = false;
@@ -465,8 +499,64 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
     _endReveal();
   }
 
+  // ---------------------------------------------------------------------------
+  // Trackpad reveal: horizontal two-finger pan-zoom. Mirrors the touch
+  // pointer-drag path above (slop, horizontal-dominant gating, detach
+  // suppression, spring-back) but reads the cumulative `pan` and
+  // per-event `panDelta` from the pan-zoom stream instead of raw pointer
+  // positions. Reuses the same engage/reject/started-following latches as
+  // the pointer path, so a [_revealPanActive] / `_revealPointer`
+  // ownership handshake keeps the two from clobbering each other when a
+  // device has both a touchscreen and a trackpad.
+  // ---------------------------------------------------------------------------
+
+  void _onRevealPanZoomStart(PointerPanZoomStartEvent event) {
+    // A finger/stylus drag already owns the reveal — don't reset its
+    // latches from under it (see [_revealPanActive]).
+    if (_revealPointer != null) return;
+    _revealPanActive = true;
+    _revealEngaged = false;
+    _revealRejected = false;
+    _revealStartedFollowing = _follow.following;
+  }
+
+  void _onRevealPanZoomUpdate(PointerPanZoomUpdateEvent event) {
+    if (!_revealPanActive || _revealRejected) return;
+
+    if (!_revealEngaged) {
+      // Same direction disambiguation as the touch path: only a clear
+      // leftward pan opens the right-hand gutter; vertical, ambiguous and
+      // rightward pans are left for the list's own scroll handling.
+      final dx = event.pan.dx;
+      final dy = event.pan.dy;
+      if (dx.abs() < _kRevealEngageSlop && dy.abs() < _kRevealEngageSlop) return;
+      if (dy.abs() >= dx.abs() || dx > 0) {
+        _revealRejected = true;
+        return;
+      }
+      _revealEngaged = true;
+      _revealController.stop();
+      // The list's scroll plumbing detaches on pan-zoom start; undo that
+      // for a horizontal peek, but only when we began following (see the
+      // touch path for the rationale).
+      if (_revealStartedFollowing) {
+        _follow.suppressDetach();
+      }
+    }
+
+    final next = (_revealController.value - event.panDelta.dx / _kMaxReveal).clamp(0.0, 1.0);
+    _revealController.value = next;
+  }
+
+  void _onRevealPanZoomEnd(PointerPanZoomEndEvent event) {
+    // Ignore a pan that never claimed the reveal (a finger drag owned it).
+    if (!_revealPanActive) return;
+    _endReveal();
+  }
+
   void _endReveal() {
     _revealPointer = null;
+    _revealPanActive = false;
     _revealEngaged = false;
     _revealRejected = false;
     _follow.releaseDetachSuppression();
