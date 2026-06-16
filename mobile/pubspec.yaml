@@ -9,4 +9,4 @@ workspace:
   - app
   - module_core
   - module_auth
-  - module_zyra
+  - module_prego

@@ -77,6 +77,33 @@ def build_commit_changelog(max_length: nil)
   text
 end
 
+# App Store "What's New" (the `whatsNew` attribute) is VERSION-scoped: every new
+# marketing version must carry release notes before Apple accepts it for review,
+# even when the copy is identical to the previous release. Our submit flow only
+# uploads the listing (release notes included) when the store copy changed (see
+# submit-release.yml's tag-driven metadata gate). On the common "version bump,
+# same copy" release that upload is skipped, leaving the new version with empty
+# release notes so `submit_for_review` fails with:
+#   appStoreVersions ... is not in valid state. ... You must provide a value for
+#   the attribute 'whatsNew' with this request
+# This reads the fixed production release notes (ios/metadata/<locale>/
+# release_notes.txt) from the cloned metadata repo into a { locale => text }
+# hash so submit_ios can apply them to the version under review. Returns nil
+# when the directory is unset or holds no non-empty release_notes.txt.
+def release_notes_by_locale(dir)
+  return nil if dir.nil?
+
+  notes = {}
+  Dir.children(dir).each do |entry|
+    path = File.join(dir, entry, "release_notes.txt")
+    next unless File.file?(path)
+
+    text = File.read(path).strip
+    notes[entry] = text unless text.empty?
+  end
+  notes.empty? ? nil : notes
+end
+
 platform :ios do
   # Reads the marketing version (e.g. "1.0.6") from pubspec.yaml two dirs up.
   # The build-number suffix after `+` is intentionally ignored — store APIs
@@ -258,6 +285,51 @@ platform :ios do
           meta_opts[:overwrite_screenshots] = true # deterministic set in the targeted locales
         end
         deliver(meta_opts)
+      end
+
+      # Pass 1b — release notes only. "What's New" (the `whatsNew` attribute) is
+      # version-scoped: Apple requires it on every NEW version before review,
+      # even when the listing copy is unchanged. Pass 1 only uploads it when the
+      # full listing is (re)published (metadata_dir present); on the common
+      # "version bump, same copy" release that pass is skipped, so we apply the
+      # fixed production release_notes.txt here. IOS_RELEASE_NOTES_PATH points at
+      # the cloned metadata repo regardless of the publish gate (see
+      # submit-release.yml). Uploaded from a temp tree holding only
+      # release_notes.txt, with submit_for_review:false, so nothing else in the
+      # unchanged listing is touched and a metadata error can't orphan a
+      # half-submitted version. Without this, Pass 2 fails with
+      # "You must provide a value for the attribute 'whatsNew'".
+      if metadata_dir.nil?
+        release_notes_dir = metadata_dir_from_env("IOS_RELEASE_NOTES_PATH")
+        notes = release_notes_by_locale(release_notes_dir)
+        if notes
+          require "tmpdir"
+          require "fileutils"
+          Dir.mktmpdir("ios_release_notes") do |notes_dir|
+            notes.each do |locale, text|
+              FileUtils.mkdir_p(File.join(notes_dir, locale))
+              File.write(File.join(notes_dir, locale, "release_notes.txt"), text)
+            end
+            UI.message("Applying release notes (#{notes.keys.join(', ')}) to v#{version} before submission")
+            deliver(
+              api_key: api_key,
+              app_version: version,
+              metadata_path: notes_dir,
+              skip_binary_upload: true,
+              skip_screenshots: true,
+              skip_metadata: false,
+              submit_for_review: false,
+              force: true,
+              run_precheck_before_submit: false
+            )
+          end
+        elsif release_notes_dir
+          UI.important(
+            "No release_notes.txt in the metadata repo — submitting without setting " \
+            "'What's New'. If this version has none on App Store Connect yet, Apple " \
+            "will reject the submission."
+          )
+        end
       end
 
       # Pass 2 — attach the already-uploaded build and submit for review.

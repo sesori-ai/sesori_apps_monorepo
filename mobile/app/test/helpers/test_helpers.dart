@@ -323,6 +323,7 @@ MessageWithParts testMessageWithParts({String? id}) {
       agent: null,
       modelID: null,
       providerID: null,
+      time: null,
     ),
     parts: [
       MessagePart(

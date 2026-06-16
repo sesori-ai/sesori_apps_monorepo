@@ -4,7 +4,7 @@ import "package:go_router/go_router.dart";
 import "package:sesori_mobile/core/widgets/variant_picker_sheet.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 Widget _buildApp({required ValueChanged<SessionVariant?> onVariantChanged}) {
   final router = GoRouter(
@@ -32,7 +32,7 @@ Widget _buildApp({required ValueChanged<SessionVariant?> onVariantChanged}) {
   return MaterialApp.router(
     routerConfig: router,
     theme: ThemeData(
-      extensions: [ZyraDesignSystem.light],
+      extensions: [PregoDesignSystem.light],
     ),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,

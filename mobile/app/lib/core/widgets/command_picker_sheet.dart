@@ -5,7 +5,7 @@ import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart" show CommandPickerEntry, CommandPickerEntryBuilder, loge;
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../l10n/app_localizations.dart";
 import "../extensions/build_context_x.dart";
@@ -29,11 +29,11 @@ class CommandPickerSheet extends StatefulWidget {
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
         final height = MediaQuery.sizeOf(sheetContext).height * 0.7;
-        final zyra = sheetContext.zyra;
+        final prego = sheetContext.prego;
         // Material (not a decorated Container) so the ListTiles inside can
         // paint their ink effects on the sheet surface.
         return Material(
-          color: zyra.colors.bgPrimary,
+          color: prego.colors.bgPrimary,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           clipBehavior: Clip.antiAlias,
           child: SizedBox(
@@ -106,7 +106,7 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
+    final prego = context.prego;
     final loc = context.loc;
 
     return Column(
@@ -117,7 +117,7 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
             width: 32,
             height: 4,
             decoration: BoxDecoration(
-              color: zyra.colors.textSecondary.withValues(alpha: 0.4),
+              color: prego.colors.textSecondary.withValues(alpha: 0.4),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -126,7 +126,7 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Text(
             loc.sessionDetailCommandPickerTitle,
-            style: zyra.textTheme.textMd.bold,
+            style: prego.textTheme.textMd.bold,
           ),
         ),
         Padding(
@@ -142,7 +142,7 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
                 borderSide: BorderSide.none,
               ),
               filled: true,
-              fillColor: zyra.colors.bgPrimary,
+              fillColor: prego.colors.bgPrimary,
             ),
             onChanged: (value) => setState(() {
               _query = value;
@@ -161,8 +161,8 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
                 child: Text(
                   loc.sessionDetailNoCommands,
                   textAlign: TextAlign.center,
-                  style: zyra.textTheme.textSm.regular.copyWith(
-                    color: zyra.colors.textSecondary,
+                  style: prego.textTheme.textSm.regular.copyWith(
+                    color: prego.colors.textSecondary,
                   ),
                 ),
               ),
@@ -172,7 +172,7 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
               itemCount: filtered.length,
               separatorBuilder: (_, _) => Divider(
                 height: 1,
-                color: zyra.colors.borderPrimary,
+                color: prego.colors.borderPrimary,
               ),
               itemBuilder: (context, index) {
                 final entry = filtered[index];
@@ -197,8 +197,8 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
                             hints,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: zyra.textTheme.textXs.regular.copyWith(
-                              color: zyra.colors.textSecondary,
+                            style: prego.textTheme.textXs.regular.copyWith(
+                              color: prego.colors.textSecondary,
                             ),
                           ),
                         ),
@@ -207,13 +207,13 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: zyra.colors.bgBrandPrimary,
+                      color: prego.colors.bgBrandPrimary,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       _sourceLabel(entry.command.source, loc: loc),
-                      style: zyra.textTheme.textXs.medium.copyWith(
-                        color: zyra.colors.textBrandPrimary,
+                      style: prego.textTheme.textXs.medium.copyWith(
+                        color: prego.colors.textBrandPrimary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

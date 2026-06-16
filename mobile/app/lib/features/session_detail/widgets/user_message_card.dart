@@ -1,6 +1,6 @@
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 class UserMessageCard extends StatelessWidget {
   final MessageWithParts message;
@@ -9,7 +9,7 @@ class UserMessageCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
+    final prego = context.prego;
     final text = message.parts
         .where((part) => part.type == MessagePartType.text)
         .map((part) => part.text ?? "")
@@ -24,7 +24,7 @@ class UserMessageCard extends StatelessWidget {
           maxWidth: MediaQuery.of(context).size.width * 0.85,
         ),
         decoration: BoxDecoration(
-          color: zyra.colors.bgBrandPrimary,
+          color: prego.colors.bgBrandPrimary,
           borderRadius: BorderRadius.circular(16),
         ),
         // SelectionArea (not SelectableText) to match the assistant card's
@@ -32,8 +32,8 @@ class UserMessageCard extends StatelessWidget {
         child: SelectionArea(
           child: Text(
             text,
-            style: zyra.textTheme.textSm.regular.copyWith(
-              color: zyra.colors.textBrandPrimary,
+            style: prego.textTheme.textSm.regular.copyWith(
+              color: prego.colors.textBrandPrimary,
             ),
           ),
         ),

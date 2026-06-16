@@ -30,13 +30,13 @@ class _DeleteSessionSheetState extends State<_DeleteSessionSheet> {
         children: [
           Text(
             loc.sessionListDeleteConfirmTitle,
-            style: context.zyra.textTheme.textMd.bold,
+            style: context.prego.textTheme.textMd.bold,
           ),
           const SizedBox(height: 8),
           Text(
             loc.sessionListDeleteConfirmMessage,
-            style: context.zyra.textTheme.textSm.regular.copyWith(
-              color: context.zyra.colors.textSecondary,
+            style: context.prego.textTheme.textSm.regular.copyWith(
+              color: context.prego.colors.textSecondary,
             ),
           ),
           const SizedBox(height: 12),
@@ -66,7 +66,7 @@ class _DeleteSessionSheetState extends State<_DeleteSessionSheet> {
               ),
               const SizedBox(width: 8),
               FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: context.zyra.colors.fgErrorPrimary),
+                style: FilledButton.styleFrom(backgroundColor: context.prego.colors.fgErrorPrimary),
                 onPressed: () {
                   context.pop();
                   widget.onConfirm(
@@ -114,13 +114,13 @@ class _ArchiveSessionSheetState extends State<_ArchiveSessionSheet> {
         children: [
           Text(
             loc.sessionListArchiveConfirmTitle,
-            style: context.zyra.textTheme.textMd.bold,
+            style: context.prego.textTheme.textMd.bold,
           ),
           const SizedBox(height: 8),
           Text(
             loc.sessionListArchiveConfirmMessage,
-            style: context.zyra.textTheme.textSm.regular.copyWith(
-              color: context.zyra.colors.textSecondary,
+            style: context.prego.textTheme.textSm.regular.copyWith(
+              color: context.prego.colors.textSecondary,
             ),
           ),
           const SizedBox(height: 12),

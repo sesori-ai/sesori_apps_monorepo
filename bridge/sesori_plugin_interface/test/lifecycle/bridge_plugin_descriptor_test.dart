@@ -23,6 +23,18 @@ void main() {
         throwsA(isA<PluginConfigException>()),
       );
     });
+
+    test('checkAvailability reports available by default', () async {
+      const descriptor = _MinimalDescriptor();
+
+      final availability = await descriptor.checkAvailability(
+        config: const PluginConfig.empty(),
+        processes: const _UnusedProcessService(),
+        environment: const <String, String>{},
+      );
+
+      expect(availability, isA<PluginAvailable>());
+    });
   });
 
   group('PluginOption', () {
@@ -131,6 +143,33 @@ class _MinimalDescriptor extends BridgePluginDescriptor {
   Future<BridgePlugin> start(PluginHost host) {
     throw UnsupportedError('start is not exercised in this test');
   }
+}
+
+/// The default `checkAvailability` ignores its process service, so this fake
+/// throws on every call to prove the default never touches it.
+class _UnusedProcessService implements HostProcessService {
+  const _UnusedProcessService();
+
+  @override
+  Future<SpawnedProcess> spawn({
+    required String executable,
+    required List<String> arguments,
+    required Map<String, String>? environment,
+    required String? workingDirectory,
+    required bool runInShell,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<ProcessIdentity?> inspect({required int pid}) => throw UnimplementedError();
+
+  @override
+  Future<List<ProcessIdentity>> list({required int? excludePid}) => throw UnimplementedError();
+
+  @override
+  Future<SignalResult> signalGraceful({required int pid}) => throw UnimplementedError();
+
+  @override
+  Future<SignalResult> signalForce({required int pid}) => throw UnimplementedError();
 }
 
 class _ValidatingDescriptor extends BridgePluginDescriptor {

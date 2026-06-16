@@ -33,6 +33,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   final io.HttpClient _httpClient;
   final SseEventMapper _mapper = SseEventMapper();
   late final SseConnection _sseConnection;
+  late final StreamSubscription<void> _summarySubscription;
   Future<void>? _initializeFuture;
   bool _disposed = false;
 
@@ -96,6 +97,10 @@ class OpenCodePlugin implements OpenCodeManagedApi {
       onConnected: onConnected,
       onDisconnected: onDisconnected,
     );
+    // The service resolves missing parent IDs out-of-band (after handleSseEvent
+    // has already returned); re-emit the activity summary when it does so the
+    // running badge surfaces on the correct root session.
+    _summarySubscription = _service.summaryInvalidations.listen((_) => _emitProjectsSummary());
     if (autoInitialize) {
       // Legacy behavior: cold-start fire-and-forget so direct construction never
       // throws (the descriptor awaits initialize() instead). The failure is
@@ -171,6 +176,18 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     _disposed = true;
     Log.v("[shutdown] OpenCodePlugin.dispose: stopping SSE connection");
     _sseConnection.stop();
+    // Each teardown step is isolated so a failure in one does not prevent the
+    // remaining cleanup (http client + event buffer below) from running.
+    try {
+      await _summarySubscription.cancel();
+    } on Object catch (e, st) {
+      Log.w("[shutdown] OpenCodePlugin.dispose: failed to cancel summary subscription", e, st);
+    }
+    try {
+      await _service.dispose();
+    } on Object catch (e, st) {
+      Log.w("[shutdown] OpenCodePlugin.dispose: failed to dispose service", e, st);
+    }
     Log.v("[shutdown] OpenCodePlugin.dispose: force-closing http client");
     _httpClient.close(force: true);
     final sw = Stopwatch()..start();
@@ -205,6 +222,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
       _service.tracker.registerSession(
         sessionId: session.id,
         directory: session.directory,
+        parentId: session.parentID,
       );
     }
     return sessions
@@ -606,6 +624,13 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   PluginMessageWithParts _mapMessage(MessageWithParts raw) {
     final info = raw.info;
     final parts = raw.parts;
+    final time = switch (info.time) {
+      MessageTime(:final created, :final completed) => PluginMessageTime(
+        created: created,
+        completed: completed,
+      ),
+      null => null,
+    };
     final pluginInfo = switch (info.error) {
       final error? => PluginMessage.error(
         id: info.id,
@@ -615,12 +640,14 @@ class OpenCodePlugin implements OpenCodeManagedApi {
         providerID: info.providerID,
         errorName: error.name,
         errorMessage: error.data.message,
+        time: time,
       ),
       null => switch (info.role) {
         "user" => PluginMessage.user(
           id: info.id,
           sessionID: info.sessionID,
           agent: info.agent,
+          time: time,
         ),
         "assistant" => PluginMessage.assistant(
           id: info.id,
@@ -628,6 +655,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
           agent: info.agent,
           modelID: info.modelID,
           providerID: info.providerID,
+          time: time,
         ),
         _ => throw ArgumentError('Unknown message role: ${info.role}'),
       },

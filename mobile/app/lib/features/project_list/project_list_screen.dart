@@ -8,7 +8,7 @@ import "package:flutter_svg/flutter_svg.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 import "../../core/bridge_install.dart";
 import "../../core/constants.dart";
 import "../../core/di/injection.dart";
@@ -118,10 +118,10 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
   Widget build(BuildContext context) {
     final loc = context.loc;
     final state = context.watch<ProjectListCubit>().state;
-    final zyra = context.zyra;
+    final prego = context.prego;
 
     return Scaffold(
-      backgroundColor: zyra.colors.bgPrimaryAlt,
+      backgroundColor: prego.colors.bgPrimaryAlt,
       // TODO: we need to have app wide navigation bar component
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -129,15 +129,15 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
         scrolledUnderElevation: 0,
         elevation: 0,
         centerTitle: false,
-        titleSpacing: ZyraSpacing.xl,
+        titleSpacing: PregoSpacing.xl,
         title: Text(
           loc.projectListTitle,
-          style: zyra.textTheme.textXl.medium.copyWith(color: zyra.colors.textPrimary),
+          style: prego.textTheme.textXl.medium.copyWith(color: prego.colors.textPrimary),
         ),
         actions: [
           Padding(
-            padding: const EdgeInsetsDirectional.only(end: ZyraSpacing.xl),
-            child: ZyraButtonsIconGlass(
+            padding: const EdgeInsetsDirectional.only(end: PregoSpacing.xl),
+            child: PregoButtonsIconGlass(
               icon: VESPRSolid.gear,
               semanticLabel: loc.settingsTitle,
               onPressed: () => context.pushRoute(const AppRoute.settings()),
@@ -151,9 +151,9 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
       // the connected-but-empty state, where the inline Step 3 folder button is
       // the add-project affordance.
       floatingActionButton: state is ProjectListLoaded && state.projects.isNotEmpty
-          ? ZyraButtonsIconGlass(
+          ? PregoButtonsIconGlass(
               icon: TablerRegular.folder_plus,
-              size: ZyraButtonsIconGlassSize.lg,
+              size: PregoButtonsIconGlassSize.lg,
               iconSize: 22,
               onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
             )

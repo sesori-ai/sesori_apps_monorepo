@@ -77,32 +77,32 @@ class _OnboardingChecklistState extends State<_OnboardingChecklist> {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final zyra = context.zyra;
+    final prego = context.prego;
     final connected = widget.connected;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: ZyraSpacing.md),
+        const SizedBox(height: PregoSpacing.md),
         Center(
           child: ExcludeSemantics(
             child: connected ? const _OnboardingHero.cli() : const _OnboardingHero.offline(),
           ),
         ),
-        const SizedBox(height: ZyraSpacing.x2l),
+        const SizedBox(height: PregoSpacing.x2l),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: ZyraSpacing.xl),
+          padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
           child: Text(
             connected ? loc.projectsConnectedTitle : loc.projectsOnboardingTitle,
             textAlign: TextAlign.center,
-            style: zyra.textTheme.displayXs.medium.copyWith(color: zyra.colors.textPrimary),
+            style: prego.textTheme.displayXs.medium.copyWith(color: prego.colors.textPrimary),
           ),
         ),
         // 68px hero/title-block → steps gap from Figma (no exact spacing token:
         // sits between x7l=64 and x8l=80).
         const SizedBox(height: 68),
         Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(ZyraSpacing.xl, 0, ZyraSpacing.xl, ZyraSpacing.x3l),
+          padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.xl, 0, PregoSpacing.xl, PregoSpacing.x3l),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -120,7 +120,7 @@ class _OnboardingChecklistState extends State<_OnboardingChecklist> {
                   onCopy: _copyCommand,
                 ),
               ),
-              const SizedBox(height: ZyraSpacing.x4l),
+              const SizedBox(height: PregoSpacing.x4l),
               _OnboardingStep(
                 number: 2,
                 completed: connected,
@@ -128,7 +128,7 @@ class _OnboardingChecklistState extends State<_OnboardingChecklist> {
                 titleAccent: loc.projectsOnboardingStep2Accent,
                 child: _AccountLine(connected: connected),
               ),
-              const SizedBox(height: ZyraSpacing.x4l),
+              const SizedBox(height: PregoSpacing.x4l),
               _OnboardingStep(
                 number: 3,
                 titleAction: loc.projectsOnboardingStep3Title,
@@ -138,10 +138,10 @@ class _OnboardingChecklistState extends State<_OnboardingChecklist> {
                     Expanded(
                       child: Text(
                         connected ? loc.projectsConnectedStep3Detail : loc.projectsOnboardingStep3Detail,
-                        style: zyra.textTheme.textSm.regular.copyWith(color: zyra.colors.textSecondary),
+                        style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
                       ),
                     ),
-                    const SizedBox(width: ZyraSpacing.lg),
+                    const SizedBox(width: PregoSpacing.lg),
                     // Folder button: disabled (dimmed) while disconnected, since
                     // adding a project isn't possible yet; live and wired to
                     // [onOpenFolder] once the bridge is connected. It always
@@ -150,9 +150,9 @@ class _OnboardingChecklistState extends State<_OnboardingChecklist> {
                     // plain label (no tap handler, so it isn't announced as an
                     // actionable button); when live it is also the sole add-
                     // project CTA, as the FAB is hidden here.
-                    ZyraButtonsIconGlass(
+                    PregoButtonsIconGlass(
                       icon: TablerRegular.folder_plus,
-                      size: ZyraButtonsIconGlassSize.lg,
+                      size: PregoButtonsIconGlassSize.lg,
                       iconSize: 30,
                       semanticLabel: loc.projectsOnboardingOpenFolder,
                       onPressed: widget.onOpenFolder,
@@ -191,10 +191,10 @@ class _OnboardingStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
-    final colors = zyra.colors;
+    final prego = context.prego;
+    final colors = prego.colors;
     final loc = context.loc;
-    final titleStyle = zyra.textTheme.textLg.medium;
+    final titleStyle = prego.textTheme.textLg.medium;
 
     // Leading marker sized to the title's line box so the check mark sits on
     // the title's baseline, matching the number it replaces.
@@ -222,7 +222,7 @@ class _OnboardingStep extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             leading,
-            const SizedBox(width: ZyraSpacing.lg),
+            const SizedBox(width: PregoSpacing.lg),
             Expanded(
               child: Text.rich(
                 TextSpan(
@@ -242,7 +242,7 @@ class _OnboardingStep extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: ZyraSpacing.sm),
+        const SizedBox(height: PregoSpacing.sm),
         child,
       ],
     );
@@ -263,10 +263,10 @@ class _AccountLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
-    final colors = zyra.colors;
+    final prego = context.prego;
+    final colors = prego.colors;
     final loc = context.loc;
-    final baseStyle = zyra.textTheme.textSm.regular.copyWith(color: colors.textSecondary);
+    final baseStyle = prego.textTheme.textSm.regular.copyWith(color: colors.textSecondary);
 
     // Subscribe to auth state rather than reading a one-shot snapshot: the
     // session is restored asynchronously on launch (see AuthManager), so the

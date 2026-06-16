@@ -11,18 +11,29 @@ import '../../auth/validate.dart';
 import '../foundation/post_update_restart_flag.dart';
 import 'bridge_cli_options.dart';
 
+const Duration _oAuthAckTimeout = Duration(seconds: 5);
+
 class BridgeRuntimeAuthService {
   final LoginEmailRepository _loginEmailRepository;
   final LoginOAuthService _loginOAuthService;
   final Map<String, String> _environment;
+  final Future<TokenData> Function() _loadTokens;
+  final Future<void> Function(TokenData tokens) _saveTokens;
+  final Future<void> Function() _clearTokens;
 
   const BridgeRuntimeAuthService({
     required LoginEmailRepository loginEmailRepository,
     required LoginOAuthService loginOAuthService,
     required Map<String, String> environment,
+    required Future<TokenData> Function() loadTokens,
+    required Future<void> Function(TokenData tokens) saveTokens,
+    required Future<void> Function() clearTokens,
   }) : _loginEmailRepository = loginEmailRepository,
        _loginOAuthService = loginOAuthService,
-       _environment = environment;
+       _environment = environment,
+       _loadTokens = loadTokens,
+       _saveTokens = saveTokens,
+       _clearTokens = clearTokens;
 
   Future<AuthProvider> promptForProvider() async {
     if (_environment[sesoriPostUpdateRestartEnvVar] == '1') {
@@ -57,7 +68,7 @@ class BridgeRuntimeAuthService {
 
   Future<TokenData> ensureAuthenticated({required BridgeCliOptions options}) async {
     try {
-      final storedTokens = await loadTokens();
+      final storedTokens = await _loadTokens();
       try {
         final validation = await validateToken(
           authBackendURL: options.authBackendUrl,
@@ -71,7 +82,7 @@ class BridgeRuntimeAuthService {
             bridgeId: storedTokens.bridgeId,
             lastProvider: storedTokens.lastProvider,
           );
-          await saveTokens(tokensToSave);
+          await _saveTokens(tokensToSave);
           return tokensToSave;
         }
       } catch (error) {
@@ -87,13 +98,13 @@ class BridgeRuntimeAuthService {
       throw Exception('load stored tokens: $error');
     } on FormatException {
       // Invalid token data (e.g., missing/invalid lastProvider) — treat as no valid tokens
-      await clearTokens();
+      await _clearTokens();
       // Fall through to login below
     }
 
     AuthProvider provider;
     try {
-      final storedTokens = await loadTokens();
+      final storedTokens = await _loadTokens();
       provider = storedTokens.lastProvider;
     } on PathNotFoundException {
       provider = await promptForProvider();
@@ -125,10 +136,17 @@ class BridgeRuntimeAuthService {
     required String authBackendUrl,
     required AuthProvider provider,
   }) async {
-    final TokenData tokens = await switch (provider) {
-      OAuthProvider() => _loginOAuthService.performOAuthLogin(provider),
-      EmailAuthProvider() => _loginEmailRepository.performEmailLogin(),
-    };
+    final TokenData tokens;
+    final String? oAuthSessionToken;
+    switch (provider) {
+      case OAuthProvider():
+        final result = await _loginOAuthService.performOAuthLogin(provider);
+        tokens = result.tokens;
+        oAuthSessionToken = result.sessionToken;
+      case EmailAuthProvider():
+        tokens = await _loginEmailRepository.performEmailLogin();
+        oAuthSessionToken = null;
+    }
 
     // A fresh login response never carries a bridge id, so carry over the one
     // persisted by a previous registration. Otherwise an interactive re-login
@@ -138,7 +156,7 @@ class BridgeRuntimeAuthService {
     // bridge id not owned by the new account just gets a fresh mint.
     String? existingBridgeId;
     try {
-      final existingTokens = await loadTokens();
+      final existingTokens = await _loadTokens();
       existingBridgeId = existingTokens.bridgeId;
     } on PathNotFoundException {
       // Token file missing — no previous bridge id to carry over.
@@ -156,7 +174,14 @@ class BridgeRuntimeAuthService {
       bridgeId: tokens.bridgeId ?? existingBridgeId,
       lastProvider: provider,
     );
-    await saveTokens(tokensToSave);
+    await _saveTokens(tokensToSave);
+    if (oAuthSessionToken != null) {
+      try {
+        await _loginOAuthService.ackOAuthSessionCompletion(sessionToken: oAuthSessionToken).timeout(_oAuthAckTimeout);
+      } catch (error) {
+        Log.w('Failed to acknowledge OAuth session completion; server will expire it: $error');
+      }
+    }
     return tokensToSave;
   }
 }

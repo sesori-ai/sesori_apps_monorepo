@@ -17,7 +17,7 @@ resolution: workspace
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.9+1
+version: 1.1.0+1
 environment:
   sdk: ^3.12.2
 
@@ -54,8 +54,8 @@ dependencies:
     path: ../module_auth
   sesori_dart_core:
     path: ../module_core
-  theme_zyra:
-    path: ../module_zyra
+  theme_prego:
+    path: ../module_prego
   cryptography: ^2.9.0
   cryptography_flutter: ^2.3.4
   web_socket_channel: ^3.0.3
@@ -65,7 +65,7 @@ dependencies:
   universal_platform: ^1.1.0
   record: ^7.1.0
   path: any
-  path_provider: ^2.1.5
+  path_provider: ^2.1.6
   re_highlight: ^0.0.3
   wakelock_plus: ^1.6.1
   firebase_core: ^4.10.0

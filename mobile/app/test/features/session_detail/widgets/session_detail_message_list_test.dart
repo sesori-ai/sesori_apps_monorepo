@@ -1,11 +1,12 @@
 import "package:flutter/gestures.dart";
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:sesori_mobile/features/session_detail/widgets/message_timestamp_reveal.dart";
 import "package:sesori_mobile/features/session_detail/widgets/retry_error_message_card.dart";
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_message_list.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 class _SessionDetailMessageListHarness extends StatefulWidget {
   final List<MessageWithParts> initialMessages;
@@ -55,8 +56,8 @@ class _SessionDetailMessageListHarnessState extends State<_SessionDetailMessageL
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      theme: ThemeData(extensions: [ZyraDesignSystem.light]),
-      darkTheme: ThemeData(extensions: [ZyraDesignSystem.dark]),
+      theme: ThemeData(extensions: [PregoDesignSystem.light]),
+      darkTheme: ThemeData(extensions: [PregoDesignSystem.dark]),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
@@ -78,12 +79,21 @@ MessageWithParts _message({
   required String role,
   required String text,
   String? partId,
+  int? createdAtMs,
 }) {
   final resolvedPartId = partId ?? "$messageId-part";
+  final time = createdAtMs == null ? null : MessageTime(created: createdAtMs, completed: null);
 
   final info = role == "user"
-      ? Message.user(id: messageId, sessionID: "session-1", agent: null)
-      : Message.assistant(id: messageId, sessionID: "session-1", agent: null, modelID: null, providerID: null);
+      ? Message.user(id: messageId, sessionID: "session-1", agent: null, time: time)
+      : Message.assistant(
+          id: messageId,
+          sessionID: "session-1",
+          agent: null,
+          modelID: null,
+          providerID: null,
+          time: time,
+        );
   return MessageWithParts(
     info: info,
     parts: [
@@ -577,5 +587,321 @@ void main() {
     expect(find.textContaining("freshly streamed token", findRichText: true), findsOneWidget);
     expect(_position(tester).pixels, 0);
     expect(find.byKey(_jumpToLatestKey), findsNothing);
+  });
+
+  testWidgets("horizontal drag peeks timestamps without scrolling, then springs back", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final created = DateTime.now().millisecondsSinceEpoch;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: [
+          for (var i = 0; i < 12; i++)
+            _message(
+              messageId: "u$i",
+              role: "user",
+              text: _multilineText(label: "Message $i", lines: 6),
+              createdAtMs: created,
+            ),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Every row is wrapped with the reveal widget, carrying its message's
+    // creation time through to the timestamp gutter.
+    final reveals = tester.widgetList<MessageTimestampReveal>(find.byType(MessageTimestampReveal));
+    expect(reveals, isNotEmpty);
+    expect(reveals.every((r) => r.createdAtMs == created), isTrue);
+    expect(find.byKey(_jumpToLatestKey), findsNothing);
+
+    final textFinder = find.textContaining("Message 11").first;
+    final restX = tester.getTopLeft(textFinder).dx;
+    final restPixels = _position(tester).pixels;
+
+    // A horizontal drag should peek the timestamp — sliding the content
+    // left — without scrolling the list or detaching follow mode.
+    final gesture = await tester.startGesture(tester.getCenter(find.byKey(_listViewKey)));
+    await gesture.moveBy(const Offset(-160, 0));
+    await tester.pump();
+
+    expect(
+      tester.getTopLeft(textFinder).dx,
+      lessThan(restX),
+      reason: "content should slide left to expose the timestamp",
+    );
+    expect(_position(tester).pixels, restPixels, reason: "horizontal peek must not scroll the list");
+    expect(find.byKey(_jumpToLatestKey), findsNothing, reason: "horizontal peek must not detach follow mode");
+
+    // Releasing springs the transcript back to its resting position.
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
+  });
+
+  testWidgets("peeking timestamps while detached does not snap back to the latest edge", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final created = DateTime.now().millisecondsSinceEpoch;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: [
+          for (var i = 0; i < 12; i++)
+            _message(
+              messageId: "u$i",
+              role: "user",
+              text: _multilineText(label: "Message $i", lines: 6),
+              createdAtMs: created,
+            ),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Scroll up into history so the list is detached from the edge.
+    await _detachViewport(tester);
+    final detachedPixels = _position(tester).pixels;
+
+    // A horizontal peek must reveal timestamps without re-attaching follow
+    // mode or moving the reader's scroll position.
+    final gesture = await tester.startGesture(tester.getCenter(find.byKey(_listViewKey)));
+    await gesture.moveBy(const Offset(-160, 0));
+    await tester.pump();
+
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget, reason: "peek must not re-attach follow mode while detached");
+    expect(_position(tester).pixels, detachedPixels, reason: "peek must not move the scroll position");
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(_jumpToLatestKey),
+      findsOneWidget,
+      reason: "still detached at the same spot after the peek closes",
+    );
+  });
+
+  testWidgets("a second finger during a peek does not hijack or cancel it", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final created = DateTime.now().millisecondsSinceEpoch;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: [
+          for (var i = 0; i < 12; i++)
+            _message(
+              messageId: "u$i",
+              role: "user",
+              text: _multilineText(label: "Message $i", lines: 6),
+              createdAtMs: created,
+            ),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final textFinder = find.textContaining("Message 11").first;
+    final restX = tester.getTopLeft(textFinder).dx;
+
+    // Finger A engages the peek.
+    final pointerA = await tester.startGesture(const Offset(450, 350));
+    await pointerA.moveBy(const Offset(-160, 0));
+    await tester.pump();
+    final peekedX = tester.getTopLeft(textFinder).dx;
+    expect(peekedX, lessThan(restX));
+
+    // A stray second finger lands and lifts; it must not hijack the
+    // gesture or spring the peek shut.
+    final pointerB = await tester.startGesture(const Offset(200, 300));
+    await pointerB.up();
+    await tester.pump();
+    expect(tester.getTopLeft(textFinder).dx, peekedX, reason: "secondary pointer must not cancel the active peek");
+
+    // The owning finger lifts: now it springs back.
+    await pointerA.up();
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
+  });
+
+  testWidgets("a trackpad pan during a touch peek does not hijack or cancel it", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final created = DateTime.now().millisecondsSinceEpoch;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: [
+          for (var i = 0; i < 12; i++)
+            _message(
+              messageId: "u$i",
+              role: "user",
+              text: _multilineText(label: "Message $i", lines: 6),
+              createdAtMs: created,
+            ),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final textFinder = find.textContaining("Message 11").first;
+    final restX = tester.getTopLeft(textFinder).dx;
+
+    // A finger drag engages the peek.
+    final finger = await tester.startGesture(const Offset(450, 350));
+    await finger.moveBy(const Offset(-160, 0));
+    await tester.pump();
+    final peekedX = tester.getTopLeft(textFinder).dx;
+    expect(peekedX, lessThan(restX));
+
+    // On a device with both a touchscreen and a trackpad, a stray trackpad
+    // pan-zoom must not seize the shared reveal state from the active touch
+    // drag — the finger owns the peek until it lifts.
+    final trackpad = await tester.createGesture(kind: PointerDeviceKind.trackpad);
+    await trackpad.panZoomStart(const Offset(200, 300));
+    await trackpad.panZoomUpdate(const Offset(200, 300), pan: const Offset(-120, 0));
+    await trackpad.panZoomEnd();
+    // Settle so that any spurious spring-back the stray pan triggered would
+    // run to completion (and fail the assertion) rather than hide behind an
+    // in-flight animation.
+    await tester.pumpAndSettle();
+    expect(
+      tester.getTopLeft(textFinder).dx,
+      peekedX,
+      reason: "trackpad pan must not hijack or close the active touch peek",
+    );
+
+    // The owning finger lifts: now it springs back.
+    await finger.up();
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
+  });
+
+  testWidgets("a rightward drag does not engage the peek (gutter is on the right)", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final created = DateTime.now().millisecondsSinceEpoch;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: [
+          for (var i = 0; i < 12; i++)
+            _message(
+              messageId: "u$i",
+              role: "user",
+              text: _multilineText(label: "Message $i", lines: 6),
+              createdAtMs: created,
+            ),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final textFinder = find.textContaining("Message 11").first;
+    final restX = tester.getTopLeft(textFinder).dx;
+
+    // A rightward drag must be left for the system back-swipe / other
+    // gestures — it must not slide the transcript.
+    final gesture = await tester.startGesture(tester.getCenter(find.byKey(_listViewKey)));
+    await gesture.moveBy(const Offset(160, 0));
+    await tester.pump();
+
+    expect(tester.getTopLeft(textFinder).dx, restX, reason: "rightward drag must not open the timestamp gutter");
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets("a mouse click-and-drag does not peek (left free for text selection)", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final created = DateTime.now().millisecondsSinceEpoch;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: [
+          for (var i = 0; i < 12; i++)
+            _message(
+              messageId: "u$i",
+              role: "user",
+              text: _multilineText(label: "Message $i", lines: 6),
+              createdAtMs: created,
+            ),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final textFinder = find.textContaining("Message 11").first;
+    final restX = tester.getTopLeft(textFinder).dx;
+
+    // A mouse press-and-drag is the text-selection gesture; it must NOT
+    // slide the transcript, or selecting message text becomes impossible.
+    // Gated by pointer device kind, so this holds on every platform.
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byKey(_listViewKey)),
+      kind: PointerDeviceKind.mouse,
+    );
+    await gesture.moveBy(const Offset(-160, 0));
+    await tester.pump();
+
+    expect(tester.getTopLeft(textFinder).dx, restX, reason: "mouse click-drag must not open the gutter");
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets("a horizontal trackpad pan peeks timestamps without scrolling", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final created = DateTime.now().millisecondsSinceEpoch;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: [
+          for (var i = 0; i < 12; i++)
+            _message(
+              messageId: "u$i",
+              role: "user",
+              text: _multilineText(label: "Message $i", lines: 6),
+              createdAtMs: created,
+            ),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final textFinder = find.textContaining("Message 11").first;
+    final restX = tester.getTopLeft(textFinder).dx;
+    final restPixels = _position(tester).pixels;
+
+    // A horizontal two-finger trackpad swipe (pan-zoom) is the trackpad
+    // peek gesture — it slides the content left without scrolling the
+    // list or detaching follow mode.
+    final center = tester.getCenter(find.byKey(_listViewKey));
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.trackpad);
+    await gesture.panZoomStart(center);
+    await gesture.panZoomUpdate(center, pan: const Offset(-160, 0));
+    await tester.pump();
+
+    expect(
+      tester.getTopLeft(textFinder).dx,
+      lessThan(restX),
+      reason: "horizontal trackpad pan should slide the content to expose the timestamp",
+    );
+    expect(_position(tester).pixels, restPixels, reason: "horizontal peek must not scroll the list");
+    expect(find.byKey(_jumpToLatestKey), findsNothing, reason: "horizontal peek must not detach follow mode");
+
+    await gesture.panZoomEnd();
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
   });
 }

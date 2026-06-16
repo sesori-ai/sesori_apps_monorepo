@@ -10,7 +10,7 @@ class _ErrorView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final zyra = context.zyra;
+    final prego = context.prego;
 
     return Center(
       child: Padding(
@@ -21,12 +21,12 @@ class _ErrorView extends StatelessWidget {
             Icon(
               Icons.error_outline,
               size: 48,
-              color: zyra.colors.fgErrorPrimary,
+              color: prego.colors.fgErrorPrimary,
             ),
             const SizedBox(height: 16),
             Text(
               loc.projectListErrorTitle,
-              style: zyra.textTheme.textMd.bold,
+              style: prego.textTheme.textMd.bold,
             ),
             const SizedBox(height: 8),
             Text(

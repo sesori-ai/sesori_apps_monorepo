@@ -1,5 +1,5 @@
 import "package:flutter/material.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
 import "../sesori_background_widget.dart";
@@ -11,7 +11,7 @@ class EmptySessionDetailPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final zyra = context.zyra;
+    final prego = context.prego;
     final brightness = Theme.of(context).brightness;
     final scrimColor = brightness == Brightness.light ? Colors.white : Colors.black;
 
@@ -31,20 +31,20 @@ class EmptySessionDetailPanel extends StatelessWidget {
                 Icon(
                   Icons.chat_bubble_outline,
                   size: 48,
-                  color: zyra.colors.textTertiary,
+                  color: prego.colors.textTertiary,
                 ),
-                SizedBox(height: zyra.spacing.md),
+                SizedBox(height: prego.spacing.md),
                 Text(
                   context.loc.emptySessionDetailTitle,
-                  style: zyra.textTheme.textMd.bold.copyWith(
-                    color: zyra.colors.textSecondary,
+                  style: prego.textTheme.textMd.bold.copyWith(
+                    color: prego.colors.textSecondary,
                   ),
                 ),
-                SizedBox(height: zyra.spacing.xs),
+                SizedBox(height: prego.spacing.xs),
                 Text(
                   context.loc.emptySessionDetailSubtitle,
-                  style: zyra.textTheme.textSm.regular.copyWith(
-                    color: zyra.colors.textTertiary,
+                  style: prego.textTheme.textSm.regular.copyWith(
+                    color: prego.colors.textTertiary,
                   ),
                 ),
               ],

@@ -14,6 +14,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginConfig,
         PluginFailed,
         PluginStartAbortedException,
+        PluginUnavailable,
         ProcessIdentity,
         ProcessUser,
         ServerClock,
@@ -173,6 +174,9 @@ class BridgeRuntimeRunner {
         browserOpenability: detectBrowserOpenability,
       ),
       environment: environment,
+      loadTokens: loadTokens,
+      saveTokens: saveTokens,
+      clearTokens: clearTokens,
     );
 
     try {
@@ -227,6 +231,29 @@ class BridgeRuntimeRunner {
       final ownerSessionId = _buildOwnerSessionId(currentBridgeIdentity: currentBridgeIdentity);
 
       final descriptor = knownPlugins.firstWhere((descriptor) => descriptor.id == pluginId);
+
+      // Fail fast with clear, user-facing guidance if the selected plugin's
+      // backend is unavailable — BEFORE the startup mutex and single-live-bridge
+      // enforcement, so a missing backend (e.g. OpenCode not installed) can
+      // never terminate a healthy resident bridge. The probe is read-only.
+      final hostProcessService = BridgeHostProcessService(
+        processStarter: io.Process.start,
+        processRepository: processRepository,
+        clock: serverClock,
+        currentUser: currentUser,
+        isWindows: io.Platform.isWindows,
+        platform: io.Platform.operatingSystem,
+      );
+      final availability = await descriptor.checkAvailability(
+        config: pluginConfig,
+        processes: hostProcessService,
+        environment: environment,
+      );
+      if (availability is PluginUnavailable) {
+        Console.error(availability.message);
+        return 1;
+      }
+
       final startAbortController = StartAbortController();
       final pluginManager = PluginManager();
       pluginManager.register(

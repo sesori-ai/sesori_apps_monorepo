@@ -101,6 +101,7 @@ void main() {
             agent: null,
             modelID: null,
             providerID: null,
+            time: null,
           ),
         ),
       );
@@ -139,6 +140,7 @@ void main() {
             agent: null,
             modelID: null,
             providerID: null,
+            time: null,
           ),
         ),
       );
@@ -441,6 +443,7 @@ void main() {
             agent: null,
             modelID: null,
             providerID: null,
+            time: null,
           ),
         ),
       );
@@ -528,6 +531,7 @@ void main() {
               agent: null,
               modelID: null,
               providerID: null,
+              time: null,
             ),
           ),
         )
@@ -644,6 +648,7 @@ void main() {
             agent: null,
             modelID: null,
             providerID: null,
+            time: null,
           ),
         ),
       );
@@ -655,6 +660,7 @@ void main() {
             agent: null,
             modelID: null,
             providerID: null,
+            time: null,
           ),
         ),
       );
@@ -718,6 +724,7 @@ void main() {
               agent: null,
               modelID: null,
               providerID: null,
+              time: null,
             ),
           ),
         )
@@ -754,6 +761,7 @@ void main() {
               id: "m-1",
               sessionID: "session-a",
               agent: null,
+              time: null,
             ),
           ),
         )
@@ -1057,6 +1065,7 @@ void main() {
             agent: null,
             modelID: null,
             providerID: null,
+            time: null,
           ),
         ),
       );
@@ -1135,6 +1144,7 @@ void main() {
             agent: null,
             modelID: null,
             providerID: null,
+            time: null,
           ),
         ),
       );
@@ -1146,6 +1156,7 @@ void main() {
             agent: null,
             modelID: null,
             providerID: null,
+            time: null,
           ),
         ),
       );
@@ -1271,6 +1282,7 @@ void main() {
             agent: null,
             modelID: null,
             providerID: null,
+            time: null,
           ),
         ),
       );
@@ -1316,6 +1328,7 @@ void main() {
             agent: null,
             modelID: null,
             providerID: null,
+            time: null,
           ),
         ),
       );
@@ -1352,6 +1365,7 @@ void main() {
               agent: null,
               modelID: null,
               providerID: null,
+              time: null,
             ),
           ),
         );
@@ -1419,6 +1433,7 @@ void main() {
             agent: null,
             modelID: null,
             providerID: null,
+            time: null,
           ),
         ),
       );

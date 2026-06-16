@@ -1,6 +1,6 @@
 import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../core/extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
@@ -22,9 +22,9 @@ class PrStatusRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final stateColor = _stateColor(colors: context.zyra.colors, state: pr.state);
+    final stateColor = _stateColor(colors: context.prego.colors, state: pr.state);
     final mergeIcon = _mergeIcon(status: pr.mergeableStatus);
-    final mergeColor = _mergeColor(colors: context.zyra.colors, status: pr.mergeableStatus) ?? stateColor;
+    final mergeColor = _mergeColor(colors: context.prego.colors, status: pr.mergeableStatus) ?? stateColor;
 
     return Row(
       children: [
@@ -35,16 +35,16 @@ class PrStatusRow extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           loc.prLabel(pr.number),
-          style: context.zyra.textTheme.textXs.medium,
+          style: context.prego.textTheme.textXs.medium,
         ),
         const SizedBox(width: 6),
         Text(
           _stateText(loc: loc, state: pr.state),
-          style: context.zyra.textTheme.textXs.regular.copyWith(color: stateColor),
+          style: context.prego.textTheme.textXs.regular.copyWith(color: stateColor),
         ),
         // Review/check indicators are only relevant for open PRs.
         if (pr.state == PrState.open) ...[
-          if (_reviewIndicator(colors: context.zyra.colors, loc: loc, decision: pr.reviewDecision)
+          if (_reviewIndicator(colors: context.prego.colors, loc: loc, decision: pr.reviewDecision)
               case (:final icon, :final color, :final tooltip)?) ...[
             const SizedBox(width: 8),
             Tooltip(
@@ -52,7 +52,7 @@ class PrStatusRow extends StatelessWidget {
               child: Icon(icon, size: 12, color: color),
             ),
           ],
-          if (_checkIndicator(colors: context.zyra.colors, loc: loc, status: pr.checkStatus)
+          if (_checkIndicator(colors: context.prego.colors, loc: loc, status: pr.checkStatus)
               case (:final icon, :final color, :final tooltip)?) ...[
             const SizedBox(width: 4),
             Tooltip(
@@ -70,7 +70,7 @@ class PrStatusRow extends StatelessWidget {
 // State helpers
 // ---------------------------------------------------------------------------
 
-Color _stateColor({required ZyraColors colors, required PrState state}) => switch (state) {
+Color _stateColor({required PregoColors colors, required PrState state}) => switch (state) {
   PrState.open => _kPrGreen,
   PrState.merged => _kPrPurple,
   PrState.closed => colors.borderPrimary,
@@ -89,7 +89,7 @@ String _stateText({required AppLocalizations loc, required PrState state}) => sw
 // ---------------------------------------------------------------------------
 
 /// Returns a color for the merge icon, or null to fall back to the state color.
-Color? _mergeColor({required ZyraColors colors, required PrMergeableStatus status}) => switch (status) {
+Color? _mergeColor({required PregoColors colors, required PrMergeableStatus status}) => switch (status) {
   PrMergeableStatus.mergeable => _kPrGreen,
   PrMergeableStatus.conflicting => colors.fgErrorPrimary,
   PrMergeableStatus.unknown => null,
@@ -113,7 +113,7 @@ String _mergeTooltip({required AppLocalizations loc, required PrMergeableStatus 
 
 /// Returns icon, color, and tooltip for the review decision, or null to hide it.
 ({IconData icon, Color color, String tooltip})? _reviewIndicator({
-  required ZyraColors colors,
+  required PregoColors colors,
   required AppLocalizations loc,
   required PrReviewDecision decision,
 }) => switch (decision) {
@@ -137,7 +137,7 @@ String _mergeTooltip({required AppLocalizations loc, required PrMergeableStatus 
 
 /// Returns icon, color, and tooltip for the check status, or null to hide it.
 ({IconData icon, Color color, String tooltip})? _checkIndicator({
-  required ZyraColors colors,
+  required PregoColors colors,
   required AppLocalizations loc,
   required PrCheckStatus status,
 }) => switch (status) {

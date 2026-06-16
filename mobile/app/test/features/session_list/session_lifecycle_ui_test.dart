@@ -11,7 +11,7 @@ import "package:sesori_mobile/features/session_list/session_list_panel.dart";
 import "package:sesori_mobile/features/session_list/session_list_screen.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_zyra/module_zyra.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
 
@@ -36,14 +36,14 @@ class MockSessionListCubit extends MockCubit<SessionListState> implements Sessio
 Widget _buildApp({required SessionListCubit cubit}) {
   return MaterialApp(
     theme: ThemeData(
-      colorScheme: ZyraColors.light.toFlutterColorScheme(),
-      textTheme: ZyraTextTheme.light.asFlutterTextTheme(),
-      extensions: [ZyraDesignSystem.light],
+      colorScheme: PregoColors.light.toFlutterColorScheme(),
+      textTheme: PregoTextTheme.light.asFlutterTextTheme(),
+      extensions: [PregoDesignSystem.light],
     ),
     darkTheme: ThemeData(
-      colorScheme: ZyraColors.dark.toFlutterColorScheme(),
-      textTheme: ZyraTextTheme.dark.asFlutterTextTheme(),
-      extensions: [ZyraDesignSystem.dark],
+      colorScheme: PregoColors.dark.toFlutterColorScheme(),
+      textTheme: PregoTextTheme.dark.asFlutterTextTheme(),
+      extensions: [PregoDesignSystem.dark],
     ),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
@@ -57,14 +57,14 @@ Widget _buildApp({required SessionListCubit cubit}) {
 Widget _buildScreenApp({required Widget child}) {
   return MaterialApp(
     theme: ThemeData(
-      colorScheme: ZyraColors.light.toFlutterColorScheme(),
-      textTheme: ZyraTextTheme.light.asFlutterTextTheme(),
-      extensions: [ZyraDesignSystem.light],
+      colorScheme: PregoColors.light.toFlutterColorScheme(),
+      textTheme: PregoTextTheme.light.asFlutterTextTheme(),
+      extensions: [PregoDesignSystem.light],
     ),
     darkTheme: ThemeData(
-      colorScheme: ZyraColors.dark.toFlutterColorScheme(),
-      textTheme: ZyraTextTheme.dark.asFlutterTextTheme(),
-      extensions: [ZyraDesignSystem.dark],
+      colorScheme: PregoColors.dark.toFlutterColorScheme(),
+      textTheme: PregoTextTheme.dark.asFlutterTextTheme(),
+      extensions: [PregoDesignSystem.dark],
     ),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,

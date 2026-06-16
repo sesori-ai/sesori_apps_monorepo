@@ -2,7 +2,7 @@ part of "../project_list_screen.dart";
 
 // Asset paths for the "connect your computer" onboarding illustration.
 // The aurora backdrop and laptop each ship light/dark variants, picked by the
-// active Zyra brightness in build(); the remaining assets are theme-agnostic.
+// active Prego brightness in build(); the remaining assets are theme-agnostic.
 const _kAuroraDarkAsset = "assets/images/projects_onboarding/aurora_bg-dark.jpeg";
 const _kAuroraLightAsset = "assets/images/projects_onboarding/aurora_bg-light.jpeg";
 const _kSignalArcsAsset = "assets/images/projects_onboarding/signal_arcs.svg";
@@ -62,7 +62,7 @@ enum _OnboardingHeroVariant {
 
 /// The hero illustration: an aurora landscape behind a laptop, with a badge
 /// on the laptop and scattered firefly dots. The aurora backdrop and laptop
-/// swap between light/dark artwork to match the active Zyra brightness.
+/// swap between light/dark artwork to match the active Prego brightness.
 ///
 /// Comes in two [variant]s, one per empty onboarding state:
 /// * [_OnboardingHeroVariant.offline] — bridge not connected yet: a
@@ -83,9 +83,9 @@ class _OnboardingHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Read brightness off the same ZyraColors instance that supplies the
+    // Read brightness off the same PregoColors instance that supplies the
     // vignette edge below, so the artwork and the fade colour can't disagree.
-    final colors = context.zyra.colors;
+    final colors = context.prego.colors;
     final auroraEdge = colors.bgPrimaryAlt;
     final isDark = colors.brightness == Brightness.dark;
     final auroraAsset = isDark ? _kAuroraDarkAsset : _kAuroraLightAsset;
@@ -166,7 +166,7 @@ class _OnboardingHero extends StatelessWidget {
   /// or the terminal-window illustration in the CLI variant.
   Widget _badge() {
     return switch (variant) {
-      _OnboardingHeroVariant.offline => ZyraButtonsIconGlass(
+      _OnboardingHeroVariant.offline => PregoButtonsIconGlass(
         icon: TablerRegular.cloud_off,
         onPressed: () {},
       ),
