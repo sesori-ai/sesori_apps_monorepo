@@ -18,7 +18,7 @@ void main() {
       test("registerSession stores directory for lookup", () {
         final tracker = ActiveSessionTracker(_fakeRepository());
 
-        tracker.registerSession(sessionId: "s1", directory: "/projects/foo");
+        tracker.registerSession(sessionId: "s1", directory: "/projects/foo", parentId: null);
 
         expect(tracker.getSessionDirectory(sessionId: "s1"), equals("/projects/foo"));
       });
@@ -32,7 +32,11 @@ void main() {
       test("registerSession preserves raw directory without worktree normalization", () {
         final tracker = ActiveSessionTracker(_fakeRepository());
 
-        tracker.registerSession(sessionId: "s1", directory: "/projects/foo/packages/bar");
+        tracker.registerSession(
+          sessionId: "s1",
+          directory: "/projects/foo/packages/bar",
+          parentId: null,
+        );
 
         expect(
           tracker.getSessionDirectory(sessionId: "s1"),
@@ -105,7 +109,7 @@ void main() {
       test("reset clears session directories", () {
         final tracker = ActiveSessionTracker(_fakeRepository());
 
-        tracker.registerSession(sessionId: "s1", directory: "/projects/foo");
+        tracker.registerSession(sessionId: "s1", directory: "/projects/foo", parentId: null);
         expect(tracker.getSessionDirectory(sessionId: "s1"), isNotNull);
 
         tracker.reset();
@@ -588,14 +592,19 @@ void main() {
       expect(summary.first.activeSessions.first.childSessionIds, equals(["c1"]));
     });
 
-    test("orphan child sessions are ignored", () async {
+    test("busy child surfaces its parent row even when the parent was never observed", () async {
+      // Two-level model: a busy session with a non-null parent ID is always a
+      // direct child of a root, so its parent row is surfaced directly — even
+      // if the parent session itself was never observed by the tracker. This is
+      // the core of the phantom-root fix: the real root lights up instead of
+      // the child becoming its own (phantom) root.
       final tracker = await _coldStartedTracker(
         projects: [const Project(id: "p1", worktree: "/repo")],
       );
 
       tracker.handleEvent(
         const SseEventData.sessionCreated(
-          info: Session(id: "c1", projectID: "project", directory: "/repo", parentID: "unknown"),
+          info: Session(id: "c1", projectID: "project", directory: "/repo", parentID: "root"),
         ),
         null,
       );
@@ -603,7 +612,10 @@ void main() {
 
       final summary = tracker.buildSummary();
 
-      expect(summary, isEmpty);
+      expect(summary, hasLength(1));
+      expect(summary.first.activeSessions.first.id, equals("root"));
+      expect(summary.first.activeSessions.first.mainAgentRunning, isFalse);
+      expect(summary.first.activeSessions.first.childSessionIds, equals(["c1"]));
     });
 
     test("coldStart resolves busy child sessions not in root list", () async {
@@ -628,7 +640,12 @@ void main() {
       expect(summary.first.activeSessions.first.childSessionIds, equals(["c1"]));
     });
 
-    test("deeply nested children are ignored", () async {
+    test("each busy session is attributed to its immediate parent (two-level model)", () async {
+      // Product scope tracks only root + direct children; grandchildren do not
+      // occur in practice. The tracker therefore models exactly two levels:
+      // every busy session is either a root (parentID == null) or a direct
+      // child surfaced under its immediate parent. A hypothetical grandchild is
+      // attributed to its immediate parent rather than walked up to the root.
       final tracker = await _coldStartedTracker(
         projects: [const Project(id: "p1", worktree: "/repo")],
       );
@@ -653,9 +670,85 @@ void main() {
       final summary = tracker.buildSummary();
 
       expect(summary, hasLength(1));
-      expect(summary.first.activeSessions.length, equals(1));
-      expect(summary.first.activeSessions.first.id, equals("s1"));
-      expect(summary.first.activeSessions.first.childSessionIds, equals(["c1"]));
+      final byId = {for (final a in summary.first.activeSessions) a.id: a};
+      // s1 is a root with direct child c1.
+      expect(byId["s1"]!.mainAgentRunning, isTrue);
+      expect(byId["s1"]!.childSessionIds, equals(["c1"]));
+      // g1's immediate parent c1 is surfaced as its own row (no deep walk-up).
+      expect(byId["c1"]!.childSessionIds, equals(["g1"]));
+    });
+
+    group("parent-ID resolution (phantom-root fix)", () {
+      test("busy child with unknown parent is a phantom root until resolved", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/repo")],
+        );
+
+        // Busy status arrives for a child with no preceding session.created, so
+        // its parent ID is unknown — it transiently surfaces as its own root.
+        final changedOnBusy = tracker.handleEvent(_sessionBusy("c1"), "/repo");
+        expect(changedOnBusy, isTrue);
+
+        final phantom = tracker.buildSummary();
+        expect(phantom, hasLength(1));
+        expect(phantom.first.activeSessions.first.id, equals("c1"));
+        expect(phantom.first.activeSessions.first.mainAgentRunning, isTrue);
+        expect(tracker.knowsParent(sessionId: "c1"), isFalse);
+
+        // Resolving the parent (as OpenCodeService does via getSession)
+        // re-attributes the busy child to its real root and removes the phantom.
+        final changed = tracker.registerSession(
+          sessionId: "c1",
+          directory: "/repo",
+          parentId: "root",
+        );
+        expect(changed, isTrue, reason: "active child re-parented must invalidate the summary");
+        expect(tracker.knowsParent(sessionId: "c1"), isTrue);
+
+        final resolved = tracker.buildSummary();
+        expect(resolved, hasLength(1));
+        expect(resolved.first.activeSessions.first.id, equals("root"));
+        expect(resolved.first.activeSessions.first.mainAgentRunning, isFalse);
+        expect(resolved.first.activeSessions.first.childSessionIds, equals(["c1"]));
+        // The phantom "c1" root is gone.
+        expect(
+          resolved.first.activeSessions.map((s) => s.id),
+          isNot(contains("c1")),
+        );
+      });
+
+      test("registerSession returns false when the session is not active", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/repo")],
+        );
+
+        final changed = tracker.registerSession(
+          sessionId: "c1",
+          directory: "/repo",
+          parentId: "root",
+        );
+
+        expect(changed, isFalse, reason: "idle sessions do not affect the summary");
+        expect(tracker.knowsParent(sessionId: "c1"), isTrue);
+      });
+
+      test("registerSession returns false when the parent is unchanged", () async {
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/repo")],
+        );
+
+        tracker.handleEvent(_sessionBusy("c1"), "/repo");
+        expect(
+          tracker.registerSession(sessionId: "c1", directory: "/repo", parentId: "root"),
+          isTrue,
+        );
+
+        // Re-registering the same parent must not re-invalidate the summary.
+        expect(
+          tracker.registerSession(sessionId: "c1", directory: "/repo", parentId: "root"),
+          isFalse,
+        );
+      });
     });
 
     group("pending input tracking", () {

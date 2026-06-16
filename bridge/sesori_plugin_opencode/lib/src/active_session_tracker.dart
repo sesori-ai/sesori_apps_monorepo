@@ -237,9 +237,42 @@ class ActiveSessionTracker {
     return true;
   }
 
-  /// Register a known session -> directory mapping (e.g., after session creation).
-  void registerSession({required String sessionId, required String directory}) {
+  /// Registers what we know about a session: its directory and its parent ID.
+  ///
+  /// Used both at request time (session creation, listing, pending-question
+  /// lookups) and after a one-shot parent-ID resolution. Recording the parent
+  /// ID here is the defense-in-depth half of the phantom-root fix: whenever any
+  /// flow already holds the session object, we capture [parentId] so a later
+  /// busy status for this session is attributed to the correct root instead of
+  /// being misclassified as its own root.
+  ///
+  /// Returns `true` when this call changes the activity summary grouping — i.e.
+  /// the session is currently active (busy/retry) and its recorded parent ID
+  /// actually changed. Callers that drive summary re-emits (the SSE-resolution
+  /// path) use this; request-time callers may ignore it.
+  bool registerSession({
+    required String sessionId,
+    required String directory,
+    required String? parentId,
+  }) {
     _sessionDirectories[sessionId] = directory;
+
+    final hadParent = _sessionParentIds.containsKey(sessionId);
+    final previousParent = _sessionParentIds[sessionId];
+    _sessionParentIds[sessionId] = parentId;
+
+    final parentChanged = !hadParent || previousParent != parentId;
+    // Only an active session affects the summary grouping.
+    return parentChanged && _sessionStatuses.containsKey(sessionId);
+  }
+
+  /// Whether the tracker already knows this session's parent attribution.
+  ///
+  /// Distinguishes "known root" (recorded value is `null`) from "never
+  /// observed" (no entry). The SSE-resolution path uses this to decide whether
+  /// a busy session still needs a one-shot parent-ID lookup.
+  bool knowsParent({required String sessionId}) {
+    return _sessionParentIds.containsKey(sessionId);
   }
 
   /// Look up the directory for a session. Returns null if unknown.
@@ -270,17 +303,17 @@ class ActiveSessionTracker {
     for (final sessionId in _sessionStatuses.keys) {
       final parentId = _sessionParentIds[sessionId];
       if (parentId == null) {
-        // Root session (or unknown parent — treated as root).
+        // Root session, or parent not yet resolved — treat as root. A busy
+        // session whose parent is still unknown surfaces as its own root row
+        // transiently; the one-shot parent-ID resolution re-emits the summary
+        // once the real root is known (see OpenCodeService).
         activeRoots.add(sessionId);
       } else {
-        // Child session — only include if parent is a known root (direct descendant).
-        // A "known root" is a session we've observed whose own parentId is null.
-        // Use containsKey to distinguish "known root" from "never observed".
-        if (_sessionParentIds.containsKey(parentId) && _sessionParentIds[parentId] == null) {
-          activeChildrenByParent.putIfAbsent(parentId, () => []).add(sessionId);
-        }
-        // Parent not in _sessionParentIds → never observed → orphan → ignore.
-        // Parent's parentId != null → deeper nesting → ignore.
+        // Direct child — surface its parent as the active root row directly.
+        // We intentionally model only two levels (root + direct child): a
+        // non-null parent ID is always treated as a direct child of a root,
+        // with no grandchild/deep-descendant handling.
+        activeChildrenByParent.putIfAbsent(parentId, () => []).add(sessionId);
       }
     }
 

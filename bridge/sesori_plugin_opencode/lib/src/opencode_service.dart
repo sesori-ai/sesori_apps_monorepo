@@ -39,6 +39,18 @@ class OpenCodeService {
   final ActiveSessionTracker tracker;
   final Duration _commandDispatchFastFailWindow;
 
+  /// Signals that an out-of-band parent-ID resolution changed the activity
+  /// summary and the consumer (the plugin) should re-emit it. Broadcast so the
+  /// single plugin subscriber can attach in its constructor; the service never
+  /// emits SSE events itself (the plugin owns that decision).
+  final StreamController<void> _summaryInvalidations = StreamController<void>.broadcast();
+
+  /// Session IDs with an in-flight one-shot parent-ID lookup, used to dedupe
+  /// concurrent resolutions. This is event-driven, not polling: a lookup fires
+  /// only when a busy/retry status arrives for a session whose parent is still
+  /// unknown, and the entry is cleared once the lookup settles.
+  final Set<String> _parentIdLookupsInFlight = {};
+
   /// [commandDispatchFastFailWindow] bounds how long [sendCommand] waits on
   /// OpenCode's synchronous command/summarize endpoints before treating the run
   /// as accepted and detaching (see [sendCommand]). Genuine dispatch rejections
@@ -109,7 +121,11 @@ class OpenCodeService {
         directory: null,
       );
       directory = session.directory;
-      tracker.registerSession(sessionId: sessionId, directory: directory);
+      tracker.registerSession(
+        sessionId: sessionId,
+        directory: directory,
+        parentId: session.parentID,
+      );
       Log.d(
         "getPendingQuestionsForSession: resolved missing directory "
         "for session $sessionId via getSession: $directory",
@@ -172,7 +188,11 @@ class OpenCodeService {
       }
     }
 
-    tracker.registerSession(sessionId: session.id, directory: session.directory);
+    tracker.registerSession(
+      sessionId: session.id,
+      directory: session.directory,
+      parentId: session.parentID,
+    );
     return session;
   }
 
@@ -281,8 +301,61 @@ class OpenCodeService {
     );
   }
 
+  /// Fires when an out-of-band parent-ID resolution updates the activity
+  /// summary grouping. The plugin subscribes and re-emits the summary.
+  Stream<void> get summaryInvalidations => _summaryInvalidations.stream;
+
   bool handleSseEvent(SseEventData event, String? directory) {
-    return tracker.handleEvent(event, directory);
+    final changed = tracker.handleEvent(event, directory);
+    _maybeResolveParentId(event, directory);
+    return changed;
+  }
+
+  /// When a busy/retry status arrives for a session whose parent attribution is
+  /// still unknown, kick off a one-shot lookup so the session is grouped under
+  /// its real root instead of becoming a phantom root.
+  ///
+  /// OpenCode emits `session.created` (which carries `parentID`) before
+  /// `session.status:busy`, but a dropped/late `session.created` frame leaves
+  /// the tracker without the parent ID — and `session.status` has no `parentID`
+  /// field to recover it. This resolves the gap on demand.
+  void _maybeResolveParentId(SseEventData event, String? directory) {
+    if (event is! SseSessionStatus) return;
+    final status = event.status;
+    if (status is! SessionStatusBusy && status is! SessionStatusRetry) return;
+
+    final sessionId = event.sessionID;
+    if (tracker.knowsParent(sessionId: sessionId)) return;
+    if (_parentIdLookupsInFlight.contains(sessionId)) return;
+
+    _parentIdLookupsInFlight.add(sessionId);
+    unawaited(_resolveParentId(sessionId: sessionId, directory: directory));
+  }
+
+  Future<void> _resolveParentId({
+    required String sessionId,
+    required String? directory,
+  }) async {
+    try {
+      final lookupDirectory = directory ?? tracker.getSessionDirectory(sessionId: sessionId);
+      final session = await repository.getSession(
+        sessionId: sessionId,
+        directory: lookupDirectory,
+      );
+      final changed = tracker.registerSession(
+        sessionId: sessionId,
+        directory: session.directory,
+        parentId: session.parentID,
+      );
+      if (changed && !_summaryInvalidations.isClosed) {
+        _summaryInvalidations.add(null);
+      }
+    } catch (e, st) {
+      // Best-effort: leave the parent unknown so a later status event can retry.
+      Log.w("failed to resolve parentID for session $sessionId: $e\n$st");
+    } finally {
+      _parentIdLookupsInFlight.remove(sessionId);
+    }
   }
 
   Future<void> coldStart() async {
@@ -321,6 +394,13 @@ class OpenCodeService {
 
   void reset() {
     tracker.reset();
+  }
+
+  /// Releases the summary-invalidation stream. Called by the plugin on dispose.
+  /// Distinct from [reset] (invoked on SSE reconnect), which must keep the
+  /// stream alive so the plugin's subscription survives reconnects.
+  Future<void> dispose() async {
+    await _summaryInvalidations.close();
   }
 
   List<ProjectActivitySummary> buildSummary() {
