@@ -21,12 +21,16 @@
 //
 // When --from is omitted, the previous stable tag is auto-resolved: the
 // highest-semver published (non-draft, non-prerelease) release whose tag is a
-// plain vX.Y.Z, excluding the version being released; if no such release
+// plain vX.Y.Z strictly below the version being released; if no such release
 // exists yet (first release on the unified v* scheme), it falls back to the
 // highest plain vX.Y.Z git tag strictly below the version being released.
+// "Strictly below" (not merely "excluding the target") keeps backfilled or
+// out-of-order regenerations from picking a newer release as the base.
 
 import 'dart:convert';
 import 'dart:io';
+
+import 'release_notes_resolver.dart';
 
 const String _ignoreLabel = 'ignore-for-release';
 const Set<String> _excludedAuthors = {'dependabot', 'dependabot[bot]'};
@@ -146,96 +150,46 @@ class _GitHubApi {
   }
 }
 
-final RegExp _stableTagPattern = RegExp(r'^v(\d+)\.(\d+)\.(\d+)$');
-
-List<int>? _parseStableTag({required String tag}) {
-  final match = _stableTagPattern.firstMatch(tag);
-  if (match == null) {
-    return null;
-  }
-  return [
-    int.parse(match.group(1)!),
-    int.parse(match.group(2)!),
-    int.parse(match.group(3)!),
-  ];
-}
-
-int _compareSemver(final List<int> a, final List<int> b) {
-  for (var i = 0; i < 3; i++) {
-    final diff = a[i].compareTo(b[i]);
-    if (diff != 0) {
-      return diff;
-    }
-  }
-  return 0;
-}
-
 Future<String> _resolvePreviousStableTag({
   required _GitHubApi api,
   required String version,
 }) async {
-  // Base version being released (strip any pre-release suffix) so the
-  // previous-stable lookup never picks the release we are creating notes for.
-  final baseVersion = version.split('-').first;
-  final excludedTag = 'v$baseVersion';
-
-  String? best;
-  List<int>? bestParts;
-
-  void consider({required String tag}) {
-    if (tag == excludedTag) {
-      return;
-    }
-    final parts = _parseStableTag(tag: tag);
-    if (parts == null) {
-      return;
-    }
-    if (bestParts == null || _compareSemver(parts, bestParts!) > 0) {
-      best = tag;
-      bestParts = parts;
-    }
-  }
-
   // Preferred source: published stable releases (what the bridge updater and
-  // end users actually received last).
+  // end users actually received last). Drafts and prereleases are filtered out
+  // here so an unpromoted vX.Y.Z tag never becomes the comparison base.
+  final releaseTags = <String>[];
   for (var page = 1; page <= 3; page++) {
     final releases = await api.getJson(path: '/repos/${api.repo}/releases?per_page=100&page=$page') as List<dynamic>;
     for (final release in releases.cast<Map<String, dynamic>>()) {
       if (release['draft'] == true || release['prerelease'] == true) {
         continue;
       }
-      consider(tag: release['tag_name'] as String);
+      releaseTags.add(release['tag_name'] as String);
     }
     if (releases.length < 100) {
       break;
     }
   }
-  if (best != null) {
-    return best!;
+  final fromRelease = selectPreviousStableTag(candidateTags: releaseTags, version: version);
+  if (fromRelease != null) {
+    return fromRelease;
   }
 
   // Fallback for the first release on the unified v* scheme: plain stable
   // tags (beta submits tag without creating a release).
-  final currentParts = _parseStableTag(tag: excludedTag);
+  final tagNames = <String>[];
   for (var page = 1; page <= 5; page++) {
     final tags = await api.getJson(path: '/repos/${api.repo}/tags?per_page=100&page=$page') as List<dynamic>;
     for (final tag in tags.cast<Map<String, dynamic>>()) {
-      final name = tag['name'] as String;
-      final parts = _parseStableTag(tag: name);
-      if (parts == null) {
-        continue;
-      }
-      if (currentParts != null && _compareSemver(parts, currentParts) >= 0) {
-        continue;
-      }
-      consider(tag: name);
+      tagNames.add(tag['name'] as String);
     }
     if (tags.length < 100) {
       break;
     }
   }
-  if (best != null) {
-    return best!;
+  final fromTag = selectPreviousStableTag(candidateTags: tagNames, version: version);
+  if (fromTag != null) {
+    return fromTag;
   }
 
   throw StateError('Could not resolve a previous stable v* release or tag to diff against. '
