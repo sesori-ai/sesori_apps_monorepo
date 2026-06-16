@@ -743,6 +743,48 @@ void main() {
         expect(summary.first.activeSessions.first.childSessionIds, equals(["c1"]));
       });
 
+      test("registerSession returns true when a root's worktree is newly resolved", () async {
+        // Root recovery: parentId stays null, but the worktree is learned for
+        // the first time, so the active session goes from no row to a visible
+        // root row and registerSession must report the change.
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/repo")],
+        );
+
+        tracker.handleEvent(_sessionBusy("s1"), null);
+        expect(tracker.buildSummary(), isEmpty);
+
+        final changed = tracker.registerSession(
+          sessionId: "s1",
+          directory: "/repo",
+          parentId: null,
+        );
+        expect(changed, isTrue);
+
+        final summary = tracker.buildSummary();
+        expect(summary, hasLength(1));
+        expect(summary.first.activeSessions.first.id, equals("s1"));
+        expect(summary.first.activeSessions.first.mainAgentRunning, isTrue);
+      });
+
+      test("registerSession returns false when neither worktree nor parent changes", () async {
+        // The genuinely redundant case: the worktree was already resolved (the
+        // busy status carried a directory) and the parent is unchanged, so a
+        // re-registration must not trigger a redundant re-emit.
+        final tracker = await _coldStartedTracker(
+          projects: [const Project(id: "p1", worktree: "/repo")],
+        );
+
+        tracker.handleEvent(_sessionBusy("s1"), "/repo");
+
+        final changed = tracker.registerSession(
+          sessionId: "s1",
+          directory: "/repo",
+          parentId: null,
+        );
+        expect(changed, isFalse);
+      });
+
       test("registerSession returns false when the session is not active", () async {
         final tracker = await _coldStartedTracker(
           projects: [const Project(id: "p1", worktree: "/repo")],

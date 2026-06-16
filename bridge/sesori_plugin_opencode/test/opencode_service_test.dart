@@ -738,6 +738,34 @@ void main() {
       expect(summary.first.activeSessions.first.childSessionIds, equals(["c1"]));
     });
 
+    test("busy root with no directory resolves worktree and invalidates summary", () async {
+      // A root session (parentID == null) whose status arrives with no
+      // directory: the parent does not change during resolution, but the
+      // worktree is newly learned, so the summary must still be invalidated —
+      // otherwise the empty -> {worktree: 1} transition goes unannounced and the
+      // badge stays missing until a later SSE event.
+      final (service, repository, emissions) = await build(
+        sessions: [
+          const Session(id: "s1", projectID: "p1", directory: "/repo"),
+        ],
+      );
+
+      service.handleSseEvent(
+        const SseEventData.sessionStatus(sessionID: "s1", status: SessionStatus.busy()),
+        null,
+      );
+      await pump();
+
+      expect(repository.getSessionCalls, equals(1));
+      expect(emissions, hasLength(1));
+
+      final summary = service.buildSummary();
+      expect(summary, hasLength(1));
+      expect(summary.first.id, equals("/repo"));
+      expect(summary.first.activeSessions.first.id, equals("s1"));
+      expect(summary.first.activeSessions.first.mainAgentRunning, isTrue);
+    });
+
     test("concurrent busy statuses for the same session trigger a single lookup", () async {
       final (service, repository, _) = await build(
         sessions: [

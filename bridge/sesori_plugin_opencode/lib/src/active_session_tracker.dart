@@ -261,18 +261,25 @@ class ActiveSessionTracker {
     // call is the only place that learns it. buildSummary and
     // _activeSessionCounts key off _sessionWorktrees, so without this the
     // recovered root would still have no worktree and produce no summary row.
+    final previousWorktree = _sessionWorktrees[sessionId];
     _updateSessionWorktree(sessionId, directory);
+    final worktreeChanged = _sessionWorktrees[sessionId] != previousWorktree;
 
     final previousParent = _sessionParentIds[sessionId];
     _sessionParentIds[sessionId] = parentId;
-
-    // A missing entry already resolves to null in buildSummary, so comparing
-    // against the previous lookup (null when absent) is sufficient: an
-    // unobserved→root (null) transition is not a grouping change and must not
-    // trigger a redundant re-emit.
     final parentChanged = previousParent != parentId;
+
+    // Re-emit when this call changes how an active session appears in the
+    // summary: either its grouping (parent) changed, or it just gained/changed a
+    // worktree. The latter matters for a root recovered on the no-directory
+    // path: its parent stays null, but it transitions from "no worktree / no
+    // row" to a visible root row, so a worktree-only change must still
+    // invalidate. A missing parent entry already resolves to null in
+    // buildSummary, so an unobserved→root transition whose worktree is unchanged
+    // is correctly NOT a change and avoids a redundant re-emit.
+    final summaryChanged = parentChanged || worktreeChanged;
     // Only an active session affects the summary grouping.
-    return parentChanged && _sessionStatuses.containsKey(sessionId);
+    return summaryChanged && _sessionStatuses.containsKey(sessionId);
   }
 
   /// Whether the tracker already knows this session's parent attribution.
