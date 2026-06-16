@@ -10,6 +10,16 @@
 
 - No changes
 
+## [1.1.0] - 2026-06-16
+
+### App
+
+- No changes
+
+### Bridge
+
+- No changes
+
 ## [1.0.8] - 2026-06-10
 
 ### App
