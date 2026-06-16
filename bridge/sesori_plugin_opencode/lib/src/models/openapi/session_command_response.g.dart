@@ -10,13 +10,13 @@ import 'part.g.dart';
 class SessionCommandResponse {
   const SessionCommandResponse({
     required this.info,
-    this.parts = const [],
+    required this.parts,
   });
 
   factory SessionCommandResponse.fromJson(Map<String, dynamic> json) {
     return SessionCommandResponse(
-      info: AssistantMessage.fromJson((json["info"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
-      parts: ((json["parts"] ?? const []) as List<dynamic>).map((e) => Part.fromJson(e as Map<String, dynamic>)).toList(),
+      info: AssistantMessage.fromJson(json["info"] as Map<String, dynamic>),
+      parts: (json["parts"] as List<dynamic>).map((e) => Part.fromJson(e as Map<String, dynamic>)).toList(),
     );
   }
 

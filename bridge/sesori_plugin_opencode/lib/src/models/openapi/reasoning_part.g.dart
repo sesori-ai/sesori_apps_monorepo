@@ -8,22 +8,22 @@ import 'part.g.dart';
 @immutable
 class ReasoningPart implements Part {
   const ReasoningPart({
-    this.id = '',
-    this.sessionID = '',
-    this.messageID = '',
-    this.text = '',
-    this.metadata,
+    required this.id,
+    required this.sessionID,
+    required this.messageID,
+    required this.text,
+    required this.metadata,
     required this.time,
   });
 
   factory ReasoningPart.fromJson(Map<String, dynamic> json) {
     return ReasoningPart(
-      id: (json["id"] ?? '') as String,
-      sessionID: (json["sessionID"] ?? '') as String,
-      messageID: (json["messageID"] ?? '') as String,
-      text: (json["text"] ?? '') as String,
+      id: json["id"] as String,
+      sessionID: json["sessionID"] as String,
+      messageID: json["messageID"] as String,
+      text: json["text"] as String,
       metadata: json["metadata"] as Map<String, dynamic>?,
-      time: ReasoningPartTime.fromJson((json["time"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      time: ReasoningPartTime.fromJson(json["time"] as Map<String, dynamic>),
     );
   }
 
@@ -85,13 +85,13 @@ class ReasoningPart implements Part {
 @immutable
 class ReasoningPartTime {
   const ReasoningPartTime({
-    this.start = 0,
-    this.end,
+    required this.start,
+    required this.end,
   });
 
   factory ReasoningPartTime.fromJson(Map<String, dynamic> json) {
     return ReasoningPartTime(
-      start: ((json["start"] ?? 0) as num).toInt(),
+      start: (json["start"] as num).toInt(),
       end: (json["end"] as num?)?.toInt(),
     );
   }

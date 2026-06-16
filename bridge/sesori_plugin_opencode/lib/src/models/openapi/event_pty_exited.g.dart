@@ -7,14 +7,14 @@ import 'event.g.dart';
 @immutable
 class EventPtyExited implements Event {
   const EventPtyExited({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventPtyExited.fromJson(Map<String, dynamic> json) {
     return EventPtyExited(
-      id: (json["id"] ?? '') as String,
-      properties: EventPtyExitedProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventPtyExitedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -56,14 +56,14 @@ class EventPtyExited implements Event {
 @immutable
 class EventPtyExitedProperties {
   const EventPtyExitedProperties({
-    this.id = '',
-    this.exitCode = 0,
+    required this.id,
+    required this.exitCode,
   });
 
   factory EventPtyExitedProperties.fromJson(Map<String, dynamic> json) {
     return EventPtyExitedProperties(
-      id: (json["id"] ?? '') as String,
-      exitCode: ((json["exitCode"] ?? 0) as num).toInt(),
+      id: json["id"] as String,
+      exitCode: (json["exitCode"] as num).toInt(),
     );
   }
 

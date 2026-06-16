@@ -1,20 +1,21 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.17.3 (8c8011336163d7e7fb24a6a4a049cdb1f6e6ee74)
 
+import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 import 'event.g.dart';
 
 @immutable
 class EventPermissionReplied implements Event {
   const EventPermissionReplied({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventPermissionReplied.fromJson(Map<String, dynamic> json) {
     return EventPermissionReplied(
-      id: (json["id"] ?? '') as String,
-      properties: EventPermissionRepliedProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventPermissionRepliedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -56,16 +57,16 @@ class EventPermissionReplied implements Event {
 @immutable
 class EventPermissionRepliedProperties {
   const EventPermissionRepliedProperties({
-    this.sessionID = '',
-    this.requestID = '',
-    this.reply = '',
+    required this.sessionID,
+    required this.requestID,
+    required this.reply,
   });
 
   factory EventPermissionRepliedProperties.fromJson(Map<String, dynamic> json) {
     return EventPermissionRepliedProperties(
-      sessionID: (json["sessionID"] ?? '') as String,
-      requestID: (json["requestID"] ?? '') as String,
-      reply: (json["reply"] ?? '') as String,
+      sessionID: json["sessionID"] as String,
+      requestID: json["requestID"] as String,
+      reply: EventPermissionRepliedPropertiesReply.fromJson(json["reply"] as String),
     );
   }
 
@@ -73,7 +74,7 @@ class EventPermissionRepliedProperties {
     return <String, dynamic>{
       "sessionID": sessionID,
       "requestID": requestID,
-      "reply": reply,
+      "reply": reply.toJson(),
     };
   }
 
@@ -82,7 +83,7 @@ class EventPermissionRepliedProperties {
   EventPermissionRepliedProperties copyWith({
     String? sessionID,
     String? requestID,
-    String? reply,
+    EventPermissionRepliedPropertiesReply? reply,
   }) {
     return EventPermissionRepliedProperties(
       sessionID: sessionID ?? this.sessionID,
@@ -104,5 +105,45 @@ class EventPermissionRepliedProperties {
 
   final String sessionID;
   final String requestID;
-  final String reply;
+  final EventPermissionRepliedPropertiesReply reply;
+}
+
+enum EventPermissionRepliedPropertiesReply {
+  @JsonValue("once")
+  once,
+  @JsonValue("always")
+  always,
+  @JsonValue("reject")
+  reject,
+
+  /// Fallback for values introduced by newer OpenCode servers.
+  /// Encodes back to the literal string `unknown`.
+  unknown,
+  ;
+
+  static EventPermissionRepliedPropertiesReply fromJson(String value) {
+    switch (value) {
+      case "once":
+        return EventPermissionRepliedPropertiesReply.once;
+      case "always":
+        return EventPermissionRepliedPropertiesReply.always;
+      case "reject":
+        return EventPermissionRepliedPropertiesReply.reject;
+      default:
+        return EventPermissionRepliedPropertiesReply.unknown;
+    }
+  }
+
+  String toJson() {
+    switch (this) {
+      case EventPermissionRepliedPropertiesReply.once:
+        return "once";
+      case EventPermissionRepliedPropertiesReply.always:
+        return "always";
+      case EventPermissionRepliedPropertiesReply.reject:
+        return "reject";
+      case EventPermissionRepliedPropertiesReply.unknown:
+        return 'unknown';
+    }
+  }
 }

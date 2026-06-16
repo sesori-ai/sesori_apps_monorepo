@@ -2,43 +2,44 @@
 // Source: anomalyco/opencode@v1.17.3 (8c8011336163d7e7fb24a6a4a049cdb1f6e6ee74)
 
 import 'package:collection/collection.dart';
+import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 import 'permission_ruleset.g.dart';
 
 @immutable
 class Agent {
   const Agent({
-    this.name = '',
-    this.description,
-    this.mode = '',
-    this.native,
-    this.hidden,
-    this.topP,
-    this.temperature,
-    this.color,
+    required this.name,
+    required this.description,
+    required this.mode,
+    required this.native,
+    required this.hidden,
+    required this.topP,
+    required this.temperature,
+    required this.color,
     required this.permission,
-    this.model,
-    this.variant,
-    this.prompt,
-    this.options = const {},
-    this.steps,
+    required this.model,
+    required this.variant,
+    required this.prompt,
+    required this.options,
+    required this.steps,
   });
 
   factory Agent.fromJson(Map<String, dynamic> json) {
     return Agent(
-      name: (json["name"] ?? '') as String,
+      name: json["name"] as String,
       description: json["description"] as String?,
-      mode: (json["mode"] ?? '') as String,
+      mode: AgentMode.fromJson(json["mode"] as String),
       native: json["native"] as bool?,
       hidden: json["hidden"] as bool?,
       topP: (json["topP"] as num?)?.toDouble(),
       temperature: (json["temperature"] as num?)?.toDouble(),
       color: json["color"] as String?,
-      permission: PermissionRuleset.fromJson((json["permission"] ?? const []) as List<dynamic>),
+      permission: PermissionRuleset.fromJson(json["permission"] as List<dynamic>),
       model: json["model"] == null ? null : AgentModel.fromJson(json["model"] as Map<String, dynamic>),
       variant: json["variant"] as String?,
       prompt: json["prompt"] as String?,
-      options: (json["options"] ?? const <String, dynamic>{}) as Map<String, dynamic>,
+      options: json["options"] as Map<String, dynamic>,
       steps: (json["steps"] as num?)?.toDouble(),
     );
   }
@@ -47,7 +48,7 @@ class Agent {
     return <String, dynamic>{
       "name": name,
       "description": ?description,
-      "mode": mode,
+      "mode": mode.toJson(),
       "native": ?native,
       "hidden": ?hidden,
       "topP": ?topP,
@@ -67,7 +68,7 @@ class Agent {
   Agent copyWith({
     String? name,
     String? description,
-    String? mode,
+    AgentMode? mode,
     bool? native,
     bool? hidden,
     double? topP,
@@ -122,7 +123,7 @@ class Agent {
 
   final String name;
   final String? description;
-  final String mode;
+  final AgentMode mode;
   final bool? native;
   final bool? hidden;
   final double? topP;
@@ -139,14 +140,14 @@ class Agent {
 @immutable
 class AgentModel {
   const AgentModel({
-    this.modelID = '',
-    this.providerID = '',
+    required this.modelID,
+    required this.providerID,
   });
 
   factory AgentModel.fromJson(Map<String, dynamic> json) {
     return AgentModel(
-      modelID: (json["modelID"] ?? '') as String,
-      providerID: (json["providerID"] ?? '') as String,
+      modelID: json["modelID"] as String,
+      providerID: json["providerID"] as String,
     );
   }
 
@@ -181,4 +182,44 @@ class AgentModel {
 
   final String modelID;
   final String providerID;
+}
+
+enum AgentMode {
+  @JsonValue("subagent")
+  subagent,
+  @JsonValue("primary")
+  primary,
+  @JsonValue("all")
+  all,
+
+  /// Fallback for values introduced by newer OpenCode servers.
+  /// Encodes back to the literal string `unknown`.
+  unknown,
+  ;
+
+  static AgentMode fromJson(String value) {
+    switch (value) {
+      case "subagent":
+        return AgentMode.subagent;
+      case "primary":
+        return AgentMode.primary;
+      case "all":
+        return AgentMode.all;
+      default:
+        return AgentMode.unknown;
+    }
+  }
+
+  String toJson() {
+    switch (this) {
+      case AgentMode.subagent:
+        return "subagent";
+      case AgentMode.primary:
+        return "primary";
+      case AgentMode.all:
+        return "all";
+      case AgentMode.unknown:
+        return 'unknown';
+    }
+  }
 }

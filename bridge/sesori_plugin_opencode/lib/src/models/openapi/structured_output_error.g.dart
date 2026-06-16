@@ -6,14 +6,14 @@ import 'package:meta/meta.dart';
 @immutable
 class StructuredOutputError {
   const StructuredOutputError({
-    this.name = '',
+    required this.name,
     required this.data,
   });
 
   factory StructuredOutputError.fromJson(Map<String, dynamic> json) {
     return StructuredOutputError(
-      name: (json["name"] ?? '') as String,
-      data: StructuredOutputErrorData.fromJson((json["data"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      name: json["name"] as String,
+      data: StructuredOutputErrorData.fromJson(json["data"] as Map<String, dynamic>),
     );
   }
 
@@ -53,14 +53,14 @@ class StructuredOutputError {
 @immutable
 class StructuredOutputErrorData {
   const StructuredOutputErrorData({
-    this.message = '',
-    this.retries = 0,
+    required this.message,
+    required this.retries,
   });
 
   factory StructuredOutputErrorData.fromJson(Map<String, dynamic> json) {
     return StructuredOutputErrorData(
-      message: (json["message"] ?? '') as String,
-      retries: ((json["retries"] ?? 0) as num).toInt(),
+      message: json["message"] as String,
+      retries: (json["retries"] as num).toInt(),
     );
   }
 

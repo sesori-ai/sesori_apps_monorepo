@@ -8,39 +8,39 @@ import 'message.g.dart';
 @immutable
 class AssistantMessage implements Message {
   const AssistantMessage({
-    this.id = '',
-    this.sessionID = '',
+    required this.id,
+    required this.sessionID,
     required this.time,
-    this.error,
-    this.parentID = '',
-    this.modelID = '',
-    this.providerID = '',
-    this.mode = '',
-    this.agent = '',
+    required this.error,
+    required this.parentID,
+    required this.modelID,
+    required this.providerID,
+    required this.mode,
+    required this.agent,
     required this.path,
-    this.summary,
-    this.cost = 0,
+    required this.summary,
+    required this.cost,
     required this.tokens,
-    this.structured,
-    this.variant,
-    this.finish,
+    required this.structured,
+    required this.variant,
+    required this.finish,
   });
 
   factory AssistantMessage.fromJson(Map<String, dynamic> json) {
     return AssistantMessage(
-      id: (json["id"] ?? '') as String,
-      sessionID: (json["sessionID"] ?? '') as String,
-      time: AssistantMessageTime.fromJson((json["time"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      sessionID: json["sessionID"] as String,
+      time: AssistantMessageTime.fromJson(json["time"] as Map<String, dynamic>),
       error: json["error"] as Object?,
-      parentID: (json["parentID"] ?? '') as String,
-      modelID: (json["modelID"] ?? '') as String,
-      providerID: (json["providerID"] ?? '') as String,
-      mode: (json["mode"] ?? '') as String,
-      agent: (json["agent"] ?? '') as String,
-      path: AssistantMessagePath.fromJson((json["path"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      parentID: json["parentID"] as String,
+      modelID: json["modelID"] as String,
+      providerID: json["providerID"] as String,
+      mode: json["mode"] as String,
+      agent: json["agent"] as String,
+      path: AssistantMessagePath.fromJson(json["path"] as Map<String, dynamic>),
       summary: json["summary"] as bool?,
-      cost: ((json["cost"] ?? 0) as num).toDouble(),
-      tokens: AssistantMessageTokens.fromJson((json["tokens"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      cost: (json["cost"] as num).toDouble(),
+      tokens: AssistantMessageTokens.fromJson(json["tokens"] as Map<String, dynamic>),
       structured: json["structured"] as Object?,
       variant: json["variant"] as String?,
       finish: json["finish"] as String?,
@@ -155,13 +155,13 @@ class AssistantMessage implements Message {
 @immutable
 class AssistantMessageTime {
   const AssistantMessageTime({
-    this.created = 0,
-    this.completed,
+    required this.created,
+    required this.completed,
   });
 
   factory AssistantMessageTime.fromJson(Map<String, dynamic> json) {
     return AssistantMessageTime(
-      created: ((json["created"] ?? 0) as num).toInt(),
+      created: (json["created"] as num).toInt(),
       completed: (json["completed"] as num?)?.toInt(),
     );
   }
@@ -202,14 +202,14 @@ class AssistantMessageTime {
 @immutable
 class AssistantMessagePath {
   const AssistantMessagePath({
-    this.cwd = '',
-    this.root = '',
+    required this.cwd,
+    required this.root,
   });
 
   factory AssistantMessagePath.fromJson(Map<String, dynamic> json) {
     return AssistantMessagePath(
-      cwd: (json["cwd"] ?? '') as String,
-      root: (json["root"] ?? '') as String,
+      cwd: json["cwd"] as String,
+      root: json["root"] as String,
     );
   }
 
@@ -249,20 +249,20 @@ class AssistantMessagePath {
 @immutable
 class AssistantMessageTokens {
   const AssistantMessageTokens({
-    this.total,
-    this.input = 0,
-    this.output = 0,
-    this.reasoning = 0,
+    required this.total,
+    required this.input,
+    required this.output,
+    required this.reasoning,
     required this.cache,
   });
 
   factory AssistantMessageTokens.fromJson(Map<String, dynamic> json) {
     return AssistantMessageTokens(
       total: (json["total"] as num?)?.toDouble(),
-      input: ((json["input"] ?? 0) as num).toDouble(),
-      output: ((json["output"] ?? 0) as num).toDouble(),
-      reasoning: ((json["reasoning"] ?? 0) as num).toDouble(),
-      cache: AssistantMessageTokensCache.fromJson((json["cache"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      input: (json["input"] as num).toDouble(),
+      output: (json["output"] as num).toDouble(),
+      reasoning: (json["reasoning"] as num).toDouble(),
+      cache: AssistantMessageTokensCache.fromJson(json["cache"] as Map<String, dynamic>),
     );
   }
 
@@ -317,14 +317,14 @@ class AssistantMessageTokens {
 @immutable
 class AssistantMessageTokensCache {
   const AssistantMessageTokensCache({
-    this.read = 0,
-    this.write = 0,
+    required this.read,
+    required this.write,
   });
 
   factory AssistantMessageTokensCache.fromJson(Map<String, dynamic> json) {
     return AssistantMessageTokensCache(
-      read: ((json["read"] ?? 0) as num).toDouble(),
-      write: ((json["write"] ?? 0) as num).toDouble(),
+      read: (json["read"] as num).toDouble(),
+      write: (json["write"] as num).toDouble(),
     );
   }
 

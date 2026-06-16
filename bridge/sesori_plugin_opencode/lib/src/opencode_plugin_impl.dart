@@ -138,7 +138,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
       _sseConnection.start();
     }
     if (coldStartError != null) {
-      Error.throwWithStackTrace(coldStartError, coldStartStackTrace!);
+      Error.throwWithStackTrace(coldStartError, coldStartStackTrace ?? StackTrace.current);
     }
   }
 

@@ -8,14 +8,14 @@ import 'tool_state.g.dart';
 @immutable
 class ToolStatePending implements ToolState {
   const ToolStatePending({
-    this.input = const {},
-    this.raw = '',
+    required this.input,
+    required this.raw,
   });
 
   factory ToolStatePending.fromJson(Map<String, dynamic> json) {
     return ToolStatePending(
-      input: (json["input"] ?? const <String, dynamic>{}) as Map<String, dynamic>,
-      raw: (json["raw"] ?? '') as String,
+      input: json["input"] as Map<String, dynamic>,
+      raw: json["raw"] as String,
     );
   }
 

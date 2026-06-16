@@ -10,6 +10,13 @@ import "models/sse_event_data.g.dart";
 class SseEventMapper {
   final MessagePartMapper _messagePartMapper = const MessagePartMapper();
 
+  /// Narrows a union's `Object? toJson()` result to the JSON map the bridge
+  /// model carries — without a null-assertion (`!`). Known variants always
+  /// encode to a map; the fallback only covers an unknown variant whose raw
+  /// payload is not a map.
+  static Map<String, dynamic> _asMap(Object? json) =>
+      json is Map<String, dynamic> ? json : const <String, dynamic>{};
+
   /// Maps an [SseEventData] to a [BridgeSseEvent], or null if the event
   /// type has no plugin representation.
   BridgeSseEvent? map(SseEventData event) {
@@ -28,7 +35,7 @@ class SseEventMapper {
       SseSessionCompacted(:final sessionID) => BridgeSseSessionCompacted(sessionID: sessionID),
       SseSessionStatus(:final sessionID, :final status) => BridgeSseSessionStatus(
         sessionID: sessionID,
-        status: status.toJson()! as Map<String, dynamic>,
+        status: _asMap(status.toJson()),
       ),
       // ignore: deprecated_member_use, forwards legacy idle event for backward compatibility
       SseSessionIdle(:final sessionID) => BridgeSseSessionIdle(sessionID: sessionID),
@@ -38,7 +45,7 @@ class SseEventMapper {
         arguments: arguments,
         messageID: messageID,
       ),
-      SseMessageUpdated(:final info) => BridgeSseMessageUpdated(info: info.toJson()! as Map<String, dynamic>),
+      SseMessageUpdated(:final info) => BridgeSseMessageUpdated(info: _asMap(info.toJson())),
       SseMessageRemoved(:final sessionID, :final messageID) => BridgeSseMessageRemoved(
         sessionID: sessionID,
         messageID: messageID,
@@ -67,12 +74,16 @@ class SseEventMapper {
       SsePtyUpdated() => const BridgeSsePtyUpdated(),
       SsePtyExited(:final id, :final exitCode) => BridgeSsePtyExited(id: id, exitCode: exitCode),
       SsePtyDeleted(:final id) => BridgeSsePtyDeleted(id: id),
-      SsePermissionAsked(:final requestID, :final sessionID, :final tool, :final description) =>
+      // OpenCode's permission.asked payload carries `id` (the permission
+      // request id), `permission` (the tool/permission identifier) and the
+      // requested `patterns`; there is no separate `description` field, so
+      // the requested patterns stand in for the human-readable detail.
+      SsePermissionAsked(:final id, :final sessionID, :final permission, :final patterns) =>
         BridgeSsePermissionAsked(
-          requestID: requestID,
+          requestID: id,
           sessionID: sessionID,
-          tool: tool,
-          description: description,
+          tool: permission,
+          description: patterns.join(", "),
         ),
       SsePermissionReplied(:final requestID, :final sessionID, :final reply) => BridgeSsePermissionReplied(
         requestID: requestID,

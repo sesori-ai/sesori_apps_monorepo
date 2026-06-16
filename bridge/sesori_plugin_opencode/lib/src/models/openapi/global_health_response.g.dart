@@ -6,14 +6,14 @@ import 'package:meta/meta.dart';
 @immutable
 class GlobalHealthResponse {
   const GlobalHealthResponse({
-    this.healthy = false,
-    this.version = '',
+    required this.healthy,
+    required this.version,
   });
 
   factory GlobalHealthResponse.fromJson(Map<String, dynamic> json) {
     return GlobalHealthResponse(
-      healthy: (json["healthy"] ?? false) as bool,
-      version: (json["version"] ?? '') as String,
+      healthy: json["healthy"] as bool,
+      version: json["version"] as String?,
     );
   }
 
@@ -47,5 +47,5 @@ class GlobalHealthResponse {
   int get hashCode => Object.hash(healthy, version);
 
   final bool healthy;
-  final String version;
+  final String? version;
 }

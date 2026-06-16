@@ -283,8 +283,8 @@ void _emitVariant(StringBuffer out, Map<String, dynamic> ev) {
 
 String _dartType(Map<String, dynamic> f, {required bool required}) {
   final ref = f['ref'] as String?;
+  final isList = f['list'] == true;
   if (ref != null) {
-    final isList = f['list'] == true;
     if (isList) return 'List<$ref>';
     return ref;
   }
@@ -296,6 +296,9 @@ String _dartType(Map<String, dynamic> f, {required bool required}) {
     'double' => 'double',
     _ => 'dynamic',
   };
+  if (isList) {
+    return required ? 'List<$base>' : 'List<$base>?';
+  }
   return required ? base : (base == 'dynamic' ? 'dynamic' : '$base?');
 }
 
@@ -322,6 +325,22 @@ String _decodeField(String name, Map<String, dynamic> f, bool required) {
     return '$ref.fromJson(json[$jsonName] as Map<String, dynamic>)';
   }
   final t = f['type'] as String;
+  if (isList) {
+    final base = switch (t) {
+      'string' => 'String',
+      'int' => 'int',
+      'bool' => 'bool',
+      'double' => 'double',
+      _ => 'dynamic',
+    };
+    final listExpr = base == 'dynamic'
+        ? 'json[$jsonName] as List<dynamic>'
+        : '(json[$jsonName] as List<dynamic>).cast<$base>()';
+    if (!required) {
+      return 'json[$jsonName] == null ? null : ($listExpr)';
+    }
+    return listExpr;
+  }
   final rawExpr = 'json[$jsonName]';
   if (!required) {
     return '$rawExpr == null ? null : ${_castExpr(t, rawExpr)}';

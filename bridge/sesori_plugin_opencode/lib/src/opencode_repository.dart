@@ -255,26 +255,31 @@ class OpenCodeRepository {
           parentID: global.parentID,
           title: global.title,
           cost: global.cost,
-          tokens: global.tokens == null
-              ? null
-              : SessionTokens(
-                  input: global.tokens!.input,
-                  output: global.tokens!.output,
-                  reasoning: global.tokens!.reasoning,
-                  cache: SessionTokensCache(
-                    read: global.tokens!.cache.read,
-                    write: global.tokens!.cache.write,
-                  ),
-                ),
-          share: global.share == null ? null : SessionShare(url: global.share!.url),
+          tokens: switch (global.tokens) {
+            null => null,
+            final t => SessionTokens(
+              input: t.input,
+              output: t.output,
+              reasoning: t.reasoning,
+              cache: SessionTokensCache(
+                read: t.cache.read,
+                write: t.cache.write,
+              ),
+            ),
+          },
+          share: switch (global.share) {
+            null => null,
+            final s => SessionShare(url: s.url),
+          },
           agent: global.agent,
-          model: global.model == null
-              ? null
-              : SessionModel(
-                  id: global.model!.id,
-                  providerID: global.model!.providerID,
-                  variant: global.model!.variant,
-                ),
+          model: switch (global.model) {
+            null => null,
+            final m => SessionModel(
+              id: m.id,
+              providerID: m.providerID,
+              variant: m.variant,
+            ),
+          },
           version: global.version,
           metadata: global.metadata,
           time: SessionTime(
@@ -283,23 +288,25 @@ class OpenCodeRepository {
             compacting: global.time.compacting,
             archived: global.time.archived,
           ),
-          summary: global.summary == null
-              ? null
-              : SessionSummary(
-                  additions: global.summary!.additions,
-                  deletions: global.summary!.deletions,
-                  files: global.summary!.files,
-                  diffs: global.summary!.diffs,
-                ),
+          summary: switch (global.summary) {
+            null => null,
+            final s => SessionSummary(
+              additions: s.additions,
+              deletions: s.deletions,
+              files: s.files,
+              diffs: s.diffs,
+            ),
+          },
           permission: global.permission,
-          revert: global.revert == null
-              ? null
-              : SessionRevert(
-                  messageID: global.revert!.messageID,
-                  partID: global.revert!.partID,
-                  snapshot: global.revert!.snapshot,
-                  diff: global.revert!.diff,
-                ),
+          revert: switch (global.revert) {
+            null => null,
+            final r => SessionRevert(
+              messageID: r.messageID,
+              partID: r.partID,
+              snapshot: r.snapshot,
+              diff: r.diff,
+            ),
+          },
         ),
       );
     }
@@ -422,7 +429,11 @@ class OpenCodeRepository {
         Project(
           id: _globalProjectId,
           worktree: directory,
-          time: time ?? const ProjectTime(created: 0, updated: 0),
+          vcs: null,
+          name: null,
+          icon: null,
+          commands: null,
+          time: time ?? const ProjectTime(created: 0, updated: 0, initialized: null),
           sandboxes: const [],
         ),
       );
@@ -455,6 +466,7 @@ class OpenCodeRepository {
     final mergedTime = ProjectTime(
       created: createdCandidates.reduce((a, b) => a < b ? a : b),
       updated: updatedCandidates.reduce((a, b) => a > b ? a : b),
+      initialized: projectTime.initialized,
     );
 
     return project.copyWith(time: mergedTime);
@@ -478,6 +490,7 @@ class OpenCodeRepository {
     return ProjectTime(
       created: created.reduce((a, b) => a < b ? a : b),
       updated: updated.reduce((a, b) => a > b ? a : b),
+      initialized: null,
     );
   }
 
@@ -502,10 +515,10 @@ class OpenCodeRepository {
       model: command.model,
       provider: command.provider,
       source: switch (command.source) {
-        "command" => PluginCommandSource.command,
-        "mcp" => PluginCommandSource.mcp,
-        "skill" => PluginCommandSource.skill,
-        _ => PluginCommandSource.unknown,
+        CommandSource.command => PluginCommandSource.command,
+        CommandSource.mcp => PluginCommandSource.mcp,
+        CommandSource.skill => PluginCommandSource.skill,
+        CommandSource.unknown || null => PluginCommandSource.unknown,
       },
       subtask: command.subtask,
     );

@@ -6,8 +6,8 @@ import 'package:meta/meta.dart';
 @immutable
 class WorktreeCreateInput {
   const WorktreeCreateInput({
-    this.name,
-    this.startCommand,
+    required this.name,
+    required this.startCommand,
   });
 
   factory WorktreeCreateInput.fromJson(Map<String, dynamic> json) {

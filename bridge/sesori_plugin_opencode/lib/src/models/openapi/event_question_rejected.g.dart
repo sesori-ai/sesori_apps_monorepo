@@ -7,14 +7,14 @@ import 'event.g.dart';
 @immutable
 class EventQuestionRejected implements Event {
   const EventQuestionRejected({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventQuestionRejected.fromJson(Map<String, dynamic> json) {
     return EventQuestionRejected(
-      id: (json["id"] ?? '') as String,
-      properties: EventQuestionRejectedProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventQuestionRejectedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -56,14 +56,14 @@ class EventQuestionRejected implements Event {
 @immutable
 class EventQuestionRejectedProperties {
   const EventQuestionRejectedProperties({
-    this.sessionID = '',
-    this.requestID = '',
+    required this.sessionID,
+    required this.requestID,
   });
 
   factory EventQuestionRejectedProperties.fromJson(Map<String, dynamic> json) {
     return EventQuestionRejectedProperties(
-      sessionID: (json["sessionID"] ?? '') as String,
-      requestID: (json["requestID"] ?? '') as String,
+      sessionID: json["sessionID"] as String,
+      requestID: json["requestID"] as String,
     );
   }
 

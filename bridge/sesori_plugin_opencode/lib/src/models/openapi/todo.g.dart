@@ -6,16 +6,16 @@ import 'package:meta/meta.dart';
 @immutable
 class Todo {
   const Todo({
-    this.content = '',
-    this.status = '',
-    this.priority = '',
+    required this.content,
+    required this.status,
+    required this.priority,
   });
 
   factory Todo.fromJson(Map<String, dynamic> json) {
     return Todo(
-      content: (json["content"] ?? '') as String,
-      status: (json["status"] ?? '') as String,
-      priority: (json["priority"] ?? '') as String,
+      content: json["content"] as String,
+      status: json["status"] as String,
+      priority: json["priority"] as String,
     );
   }
 

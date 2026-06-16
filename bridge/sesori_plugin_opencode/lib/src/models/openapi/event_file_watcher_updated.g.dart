@@ -1,20 +1,21 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.17.3 (8c8011336163d7e7fb24a6a4a049cdb1f6e6ee74)
 
+import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 import 'event.g.dart';
 
 @immutable
 class EventFileWatcherUpdated implements Event {
   const EventFileWatcherUpdated({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventFileWatcherUpdated.fromJson(Map<String, dynamic> json) {
     return EventFileWatcherUpdated(
-      id: (json["id"] ?? '') as String,
-      properties: EventFileWatcherUpdatedProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventFileWatcherUpdatedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -56,21 +57,21 @@ class EventFileWatcherUpdated implements Event {
 @immutable
 class EventFileWatcherUpdatedProperties {
   const EventFileWatcherUpdatedProperties({
-    this.file = '',
-    this.event = '',
+    required this.file,
+    required this.event,
   });
 
   factory EventFileWatcherUpdatedProperties.fromJson(Map<String, dynamic> json) {
     return EventFileWatcherUpdatedProperties(
-      file: (json["file"] ?? '') as String,
-      event: (json["event"] ?? '') as String,
+      file: json["file"] as String,
+      event: EventFileWatcherUpdatedPropertiesEvent.fromJson(json["event"] as String),
     );
   }
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "file": file,
-      "event": event,
+      "event": event.toJson(),
     };
   }
 
@@ -78,7 +79,7 @@ class EventFileWatcherUpdatedProperties {
   /// Nullable fields cannot be set to null through this helper; null means keep.
   EventFileWatcherUpdatedProperties copyWith({
     String? file,
-    String? event,
+    EventFileWatcherUpdatedPropertiesEvent? event,
   }) {
     return EventFileWatcherUpdatedProperties(
       file: file ?? this.file,
@@ -97,5 +98,45 @@ class EventFileWatcherUpdatedProperties {
   int get hashCode => Object.hash(file, event);
 
   final String file;
-  final String event;
+  final EventFileWatcherUpdatedPropertiesEvent event;
+}
+
+enum EventFileWatcherUpdatedPropertiesEvent {
+  @JsonValue("add")
+  add,
+  @JsonValue("change")
+  change,
+  @JsonValue("unlink")
+  unlink,
+
+  /// Fallback for values introduced by newer OpenCode servers.
+  /// Encodes back to the literal string `unknown`.
+  unknown,
+  ;
+
+  static EventFileWatcherUpdatedPropertiesEvent fromJson(String value) {
+    switch (value) {
+      case "add":
+        return EventFileWatcherUpdatedPropertiesEvent.add;
+      case "change":
+        return EventFileWatcherUpdatedPropertiesEvent.change;
+      case "unlink":
+        return EventFileWatcherUpdatedPropertiesEvent.unlink;
+      default:
+        return EventFileWatcherUpdatedPropertiesEvent.unknown;
+    }
+  }
+
+  String toJson() {
+    switch (this) {
+      case EventFileWatcherUpdatedPropertiesEvent.add:
+        return "add";
+      case EventFileWatcherUpdatedPropertiesEvent.change:
+        return "change";
+      case EventFileWatcherUpdatedPropertiesEvent.unlink:
+        return "unlink";
+      case EventFileWatcherUpdatedPropertiesEvent.unknown:
+        return 'unknown';
+    }
+  }
 }

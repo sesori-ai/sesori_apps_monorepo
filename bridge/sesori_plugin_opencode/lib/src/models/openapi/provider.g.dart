@@ -2,30 +2,31 @@
 // Source: anomalyco/opencode@v1.17.3 (8c8011336163d7e7fb24a6a4a049cdb1f6e6ee74)
 
 import 'package:collection/collection.dart';
+import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 import 'model.g.dart';
 
 @immutable
 class Provider {
   const Provider({
-    this.id = '',
-    this.name = '',
-    this.source = '',
-    this.env = const [],
-    this.key,
-    this.options = const {},
-    this.models = const {},
+    required this.id,
+    required this.name,
+    required this.source,
+    required this.env,
+    required this.key,
+    required this.options,
+    required this.models,
   });
 
   factory Provider.fromJson(Map<String, dynamic> json) {
     return Provider(
-      id: (json["id"] ?? '') as String,
-      name: (json["name"] ?? '') as String,
-      source: (json["source"] ?? '') as String,
-      env: ((json["env"] ?? const []) as List<dynamic>).cast<String>(),
+      id: json["id"] as String,
+      name: json["name"] as String,
+      source: ProviderSource.fromJson(json["source"] as String),
+      env: (json["env"] as List<dynamic>).cast<String>(),
       key: json["key"] as String?,
-      options: (json["options"] ?? const <String, dynamic>{}) as Map<String, dynamic>,
-      models: ((json["models"] ?? const <String, dynamic>{}) as Map<String, dynamic>).map((k, v) => MapEntry(k, Model.fromJson(v as Map<String, dynamic>))),
+      options: json["options"] as Map<String, dynamic>,
+      models: (json["models"] as Map<String, dynamic>).map((k, v) => MapEntry(k, Model.fromJson(v as Map<String, dynamic>))),
     );
   }
 
@@ -33,7 +34,7 @@ class Provider {
     return <String, dynamic>{
       "id": id,
       "name": name,
-      "source": source,
+      "source": source.toJson(),
       "env": env,
       "key": ?key,
       "options": options,
@@ -46,7 +47,7 @@ class Provider {
   Provider copyWith({
     String? id,
     String? name,
-    String? source,
+    ProviderSource? source,
     List<String>? env,
     String? key,
     Map<String, dynamic>? options,
@@ -80,9 +81,55 @@ class Provider {
 
   final String id;
   final String name;
-  final String source;
+  final ProviderSource source;
   final List<String> env;
   final String? key;
   final Map<String, dynamic> options;
   final Map<String, Model> models;
+}
+
+enum ProviderSource {
+  @JsonValue("env")
+  env,
+  @JsonValue("config")
+  config,
+  @JsonValue("custom")
+  custom,
+  @JsonValue("api")
+  api,
+
+  /// Fallback for values introduced by newer OpenCode servers.
+  /// Encodes back to the literal string `unknown`.
+  unknown,
+  ;
+
+  static ProviderSource fromJson(String value) {
+    switch (value) {
+      case "env":
+        return ProviderSource.env;
+      case "config":
+        return ProviderSource.config;
+      case "custom":
+        return ProviderSource.custom;
+      case "api":
+        return ProviderSource.api;
+      default:
+        return ProviderSource.unknown;
+    }
+  }
+
+  String toJson() {
+    switch (this) {
+      case ProviderSource.env:
+        return "env";
+      case ProviderSource.config:
+        return "config";
+      case ProviderSource.custom:
+        return "custom";
+      case ProviderSource.api:
+        return "api";
+      case ProviderSource.unknown:
+        return 'unknown';
+    }
+  }
 }

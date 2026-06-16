@@ -8,14 +8,14 @@ import 'provider.g.dart';
 @immutable
 class ConfigProvidersResponse {
   const ConfigProvidersResponse({
-    this.providers = const [],
-    this.defaultValue = const {},
+    required this.providers,
+    required this.defaultValue,
   });
 
   factory ConfigProvidersResponse.fromJson(Map<String, dynamic> json) {
     return ConfigProvidersResponse(
-      providers: ((json["providers"] ?? const []) as List<dynamic>).map((e) => Provider.fromJson(e as Map<String, dynamic>)).toList(),
-      defaultValue: ((json["default"] ?? const <String, dynamic>{}) as Map<String, dynamic>).map((k, v) => MapEntry(k, v as String)),
+      providers: (json["providers"] as List<dynamic>).map((e) => Provider.fromJson(e as Map<String, dynamic>)).toList(),
+      defaultValue: (json["default"] as Map<String, dynamic>).map((k, v) => MapEntry(k, v as String)),
     );
   }
 

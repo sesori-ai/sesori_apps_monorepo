@@ -8,14 +8,14 @@ import 'event.g.dart';
 @immutable
 class EventSessionError implements Event {
   const EventSessionError({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventSessionError.fromJson(Map<String, dynamic> json) {
     return EventSessionError(
-      id: (json["id"] ?? '') as String,
-      properties: EventSessionErrorProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventSessionErrorProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -57,8 +57,8 @@ class EventSessionError implements Event {
 @immutable
 class EventSessionErrorProperties {
   const EventSessionErrorProperties({
-    this.sessionID,
-    this.error,
+    required this.sessionID,
+    required this.error,
   });
 
   factory EventSessionErrorProperties.fromJson(Map<String, dynamic> json) {

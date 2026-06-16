@@ -8,14 +8,14 @@ import 'event.g.dart';
 @immutable
 class EventLspUpdated implements Event {
   const EventLspUpdated({
-    this.id = '',
-    this.properties = const {},
+    required this.id,
+    required this.properties,
   });
 
   factory EventLspUpdated.fromJson(Map<String, dynamic> json) {
     return EventLspUpdated(
-      id: (json["id"] ?? '') as String,
-      properties: (json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>,
+      id: json["id"] as String,
+      properties: json["properties"] as Map<String, dynamic>,
     );
   }
 

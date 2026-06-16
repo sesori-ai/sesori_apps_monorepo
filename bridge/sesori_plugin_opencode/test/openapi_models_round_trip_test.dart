@@ -101,13 +101,14 @@ void main() {
       expect(command, equals(Command.fromJson(json)));
     });
 
-    test("coerces non-string template payloads to empty template", () {
+    test("decodes non-string template payloads as null", () {
       final command = Command.fromJson(const <String, dynamic>{
         "name": "mcp-tool",
         "template": <String, dynamic>{},
+        "hints": <String>[],
       });
 
-      expect(command.template, isEmpty);
+      expect(command.template, isNull);
     });
   });
 
@@ -133,7 +134,7 @@ void main() {
     test("implement the generated Event base interface", () {
       final event = EventQuestionRejected.fromJson(const <String, dynamic>{
         "id": "event_1",
-        "properties": <String, dynamic>{"sessionID": "ses_1"},
+        "properties": <String, dynamic>{"sessionID": "ses_1", "requestID": "req_1"},
       });
 
       expect(event, isA<Event>());

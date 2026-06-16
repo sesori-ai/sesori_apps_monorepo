@@ -8,22 +8,22 @@ import 'part.g.dart';
 @immutable
 class TextPart implements Part {
   const TextPart({
-    this.id = '',
-    this.sessionID = '',
-    this.messageID = '',
-    this.text = '',
-    this.synthetic,
-    this.ignored,
-    this.time,
-    this.metadata,
+    required this.id,
+    required this.sessionID,
+    required this.messageID,
+    required this.text,
+    required this.synthetic,
+    required this.ignored,
+    required this.time,
+    required this.metadata,
   });
 
   factory TextPart.fromJson(Map<String, dynamic> json) {
     return TextPart(
-      id: (json["id"] ?? '') as String,
-      sessionID: (json["sessionID"] ?? '') as String,
-      messageID: (json["messageID"] ?? '') as String,
-      text: (json["text"] ?? '') as String,
+      id: json["id"] as String,
+      sessionID: json["sessionID"] as String,
+      messageID: json["messageID"] as String,
+      text: json["text"] as String,
       synthetic: json["synthetic"] as bool?,
       ignored: json["ignored"] as bool?,
       time: json["time"] == null ? null : TextPartTime.fromJson(json["time"] as Map<String, dynamic>),
@@ -99,13 +99,13 @@ class TextPart implements Part {
 @immutable
 class TextPartTime {
   const TextPartTime({
-    this.start = 0,
-    this.end,
+    required this.start,
+    required this.end,
   });
 
   factory TextPartTime.fromJson(Map<String, dynamic> json) {
     return TextPartTime(
-      start: ((json["start"] ?? 0) as num).toInt(),
+      start: (json["start"] as num).toInt(),
       end: (json["end"] as num?)?.toInt(),
     );
   }

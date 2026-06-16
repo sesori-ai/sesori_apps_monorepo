@@ -38,7 +38,13 @@ void main() {
         "payload": {
           "type": "session.created",
           "properties": {
-            "info": {"id": "s1", "projectID": "p1", "directory": "/repo"},
+            "info": {
+              "id": "s1",
+              "slug": "ses-1",
+              "projectID": "p1",
+              "directory": "/repo",
+              "time": {"created": 0, "updated": 0},
+            },
           },
         },
       });

@@ -2,40 +2,41 @@
 // Source: anomalyco/opencode@v1.17.3 (8c8011336163d7e7fb24a6a4a049cdb1f6e6ee74)
 
 import 'package:collection/collection.dart';
+import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 
 @immutable
 class Model {
   const Model({
-    this.id = '',
-    this.providerID = '',
+    required this.id,
+    required this.providerID,
     required this.api,
-    this.name = '',
-    this.family,
+    required this.name,
+    required this.family,
     required this.capabilities,
     required this.cost,
     required this.limit,
-    this.status = '',
-    this.options = const {},
-    this.headers = const {},
-    this.releaseDate = '',
-    this.variants,
+    required this.status,
+    required this.options,
+    required this.headers,
+    required this.releaseDate,
+    required this.variants,
   });
 
   factory Model.fromJson(Map<String, dynamic> json) {
     return Model(
-      id: (json["id"] ?? '') as String,
-      providerID: (json["providerID"] ?? '') as String,
-      api: ModelApi.fromJson((json["api"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
-      name: (json["name"] ?? '') as String,
+      id: json["id"] as String,
+      providerID: json["providerID"] as String,
+      api: ModelApi.fromJson(json["api"] as Map<String, dynamic>),
+      name: json["name"] as String,
       family: json["family"] as String?,
-      capabilities: ModelCapabilities.fromJson((json["capabilities"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
-      cost: ModelCost.fromJson((json["cost"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
-      limit: ModelLimit.fromJson((json["limit"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
-      status: (json["status"] ?? '') as String,
-      options: (json["options"] ?? const <String, dynamic>{}) as Map<String, dynamic>,
-      headers: ((json["headers"] ?? const <String, dynamic>{}) as Map<String, dynamic>).map((k, v) => MapEntry(k, v as String)),
-      releaseDate: (json["release_date"] ?? '') as String,
+      capabilities: ModelCapabilities.fromJson(json["capabilities"] as Map<String, dynamic>),
+      cost: ModelCost.fromJson(json["cost"] as Map<String, dynamic>),
+      limit: ModelLimit.fromJson(json["limit"] as Map<String, dynamic>),
+      status: ModelStatus.fromJson(json["status"] as String),
+      options: json["options"] as Map<String, dynamic>,
+      headers: (json["headers"] as Map<String, dynamic>).map((k, v) => MapEntry(k, v as String)),
+      releaseDate: json["release_date"] as String,
       variants: (json["variants"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as Map<String, dynamic>)),
     );
   }
@@ -50,7 +51,7 @@ class Model {
       "capabilities": capabilities.toJson(),
       "cost": cost.toJson(),
       "limit": limit.toJson(),
-      "status": status,
+      "status": status.toJson(),
       "options": options,
       "headers": headers,
       "release_date": releaseDate,
@@ -69,7 +70,7 @@ class Model {
     ModelCapabilities? capabilities,
     ModelCost? cost,
     ModelLimit? limit,
-    String? status,
+    ModelStatus? status,
     Map<String, dynamic>? options,
     Map<String, String>? headers,
     String? releaseDate,
@@ -121,7 +122,7 @@ class Model {
   final ModelCapabilities capabilities;
   final ModelCost cost;
   final ModelLimit limit;
-  final String status;
+  final ModelStatus status;
   final Map<String, dynamic> options;
   final Map<String, String> headers;
   final String releaseDate;
@@ -131,16 +132,16 @@ class Model {
 @immutable
 class ModelApi {
   const ModelApi({
-    this.id = '',
-    this.url = '',
-    this.npm = '',
+    required this.id,
+    required this.url,
+    required this.npm,
   });
 
   factory ModelApi.fromJson(Map<String, dynamic> json) {
     return ModelApi(
-      id: (json["id"] ?? '') as String,
-      url: (json["url"] ?? '') as String,
-      npm: (json["npm"] ?? '') as String,
+      id: json["id"] as String,
+      url: json["url"] as String,
+      npm: json["npm"] as String,
     );
   }
 
@@ -185,24 +186,24 @@ class ModelApi {
 @immutable
 class ModelCapabilities {
   const ModelCapabilities({
-    this.temperature = false,
-    this.reasoning = false,
-    this.attachment = false,
-    this.toolcall = false,
+    required this.temperature,
+    required this.reasoning,
+    required this.attachment,
+    required this.toolcall,
     required this.input,
     required this.output,
-    this.interleaved = const <String, dynamic>{},
+    required this.interleaved,
   });
 
   factory ModelCapabilities.fromJson(Map<String, dynamic> json) {
     return ModelCapabilities(
-      temperature: (json["temperature"] ?? false) as bool,
-      reasoning: (json["reasoning"] ?? false) as bool,
-      attachment: (json["attachment"] ?? false) as bool,
-      toolcall: (json["toolcall"] ?? false) as bool,
-      input: ModelCapabilitiesInput.fromJson((json["input"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
-      output: ModelCapabilitiesOutput.fromJson((json["output"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
-      interleaved: (json["interleaved"] ?? const <String, dynamic>{}) as Object,
+      temperature: json["temperature"] as bool,
+      reasoning: json["reasoning"] as bool,
+      attachment: json["attachment"] as bool,
+      toolcall: json["toolcall"] as bool,
+      input: ModelCapabilitiesInput.fromJson(json["input"] as Map<String, dynamic>),
+      output: ModelCapabilitiesOutput.fromJson(json["output"] as Map<String, dynamic>),
+      interleaved: json["interleaved"] as Object,
     );
   }
 
@@ -267,18 +268,18 @@ class ModelCapabilities {
 @immutable
 class ModelCost {
   const ModelCost({
-    this.input = 0,
-    this.output = 0,
+    required this.input,
+    required this.output,
     required this.cache,
-    this.tiers,
-    this.experimentalOver200K,
+    required this.tiers,
+    required this.experimentalOver200K,
   });
 
   factory ModelCost.fromJson(Map<String, dynamic> json) {
     return ModelCost(
-      input: ((json["input"] ?? 0) as num).toDouble(),
-      output: ((json["output"] ?? 0) as num).toDouble(),
-      cache: ModelCostCache.fromJson((json["cache"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      input: (json["input"] as num).toDouble(),
+      output: (json["output"] as num).toDouble(),
+      cache: ModelCostCache.fromJson(json["cache"] as Map<String, dynamic>),
       tiers: (json["tiers"] as List<dynamic>?)?.map((e) => ModelCostTiersItem.fromJson(e as Map<String, dynamic>)).toList(),
       experimentalOver200K: json["experimentalOver200K"] == null ? null : ModelCostExperimentalOver200K.fromJson(json["experimentalOver200K"] as Map<String, dynamic>),
     );
@@ -335,16 +336,16 @@ class ModelCost {
 @immutable
 class ModelLimit {
   const ModelLimit({
-    this.context = 0,
-    this.input,
-    this.output = 0,
+    required this.context,
+    required this.input,
+    required this.output,
   });
 
   factory ModelLimit.fromJson(Map<String, dynamic> json) {
     return ModelLimit(
-      context: ((json["context"] ?? 0) as num).toDouble(),
+      context: (json["context"] as num).toDouble(),
       input: (json["input"] as num?)?.toDouble(),
-      output: ((json["output"] ?? 0) as num).toDouble(),
+      output: (json["output"] as num).toDouble(),
     );
   }
 
@@ -389,20 +390,20 @@ class ModelLimit {
 @immutable
 class ModelCapabilitiesInput {
   const ModelCapabilitiesInput({
-    this.text = false,
-    this.audio = false,
-    this.image = false,
-    this.video = false,
-    this.pdf = false,
+    required this.text,
+    required this.audio,
+    required this.image,
+    required this.video,
+    required this.pdf,
   });
 
   factory ModelCapabilitiesInput.fromJson(Map<String, dynamic> json) {
     return ModelCapabilitiesInput(
-      text: (json["text"] ?? false) as bool,
-      audio: (json["audio"] ?? false) as bool,
-      image: (json["image"] ?? false) as bool,
-      video: (json["video"] ?? false) as bool,
-      pdf: (json["pdf"] ?? false) as bool,
+      text: json["text"] as bool,
+      audio: json["audio"] as bool,
+      image: json["image"] as bool,
+      video: json["video"] as bool,
+      pdf: json["pdf"] as bool,
     );
   }
 
@@ -457,20 +458,20 @@ class ModelCapabilitiesInput {
 @immutable
 class ModelCapabilitiesOutput {
   const ModelCapabilitiesOutput({
-    this.text = false,
-    this.audio = false,
-    this.image = false,
-    this.video = false,
-    this.pdf = false,
+    required this.text,
+    required this.audio,
+    required this.image,
+    required this.video,
+    required this.pdf,
   });
 
   factory ModelCapabilitiesOutput.fromJson(Map<String, dynamic> json) {
     return ModelCapabilitiesOutput(
-      text: (json["text"] ?? false) as bool,
-      audio: (json["audio"] ?? false) as bool,
-      image: (json["image"] ?? false) as bool,
-      video: (json["video"] ?? false) as bool,
-      pdf: (json["pdf"] ?? false) as bool,
+      text: json["text"] as bool,
+      audio: json["audio"] as bool,
+      image: json["image"] as bool,
+      video: json["video"] as bool,
+      pdf: json["pdf"] as bool,
     );
   }
 
@@ -525,14 +526,14 @@ class ModelCapabilitiesOutput {
 @immutable
 class ModelCostCache {
   const ModelCostCache({
-    this.read = 0,
-    this.write = 0,
+    required this.read,
+    required this.write,
   });
 
   factory ModelCostCache.fromJson(Map<String, dynamic> json) {
     return ModelCostCache(
-      read: ((json["read"] ?? 0) as num).toDouble(),
-      write: ((json["write"] ?? 0) as num).toDouble(),
+      read: (json["read"] as num).toDouble(),
+      write: (json["write"] as num).toDouble(),
     );
   }
 
@@ -572,18 +573,18 @@ class ModelCostCache {
 @immutable
 class ModelCostTiersItem {
   const ModelCostTiersItem({
-    this.input = 0,
-    this.output = 0,
+    required this.input,
+    required this.output,
     required this.cache,
     required this.tier,
   });
 
   factory ModelCostTiersItem.fromJson(Map<String, dynamic> json) {
     return ModelCostTiersItem(
-      input: ((json["input"] ?? 0) as num).toDouble(),
-      output: ((json["output"] ?? 0) as num).toDouble(),
-      cache: ModelCostTiersItemCache.fromJson((json["cache"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
-      tier: ModelCostTiersItemTier.fromJson((json["tier"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      input: (json["input"] as num).toDouble(),
+      output: (json["output"] as num).toDouble(),
+      cache: ModelCostTiersItemCache.fromJson(json["cache"] as Map<String, dynamic>),
+      tier: ModelCostTiersItemTier.fromJson(json["tier"] as Map<String, dynamic>),
     );
   }
 
@@ -633,16 +634,16 @@ class ModelCostTiersItem {
 @immutable
 class ModelCostExperimentalOver200K {
   const ModelCostExperimentalOver200K({
-    this.input = 0,
-    this.output = 0,
+    required this.input,
+    required this.output,
     required this.cache,
   });
 
   factory ModelCostExperimentalOver200K.fromJson(Map<String, dynamic> json) {
     return ModelCostExperimentalOver200K(
-      input: ((json["input"] ?? 0) as num).toDouble(),
-      output: ((json["output"] ?? 0) as num).toDouble(),
-      cache: ModelCostExperimentalOver200KCache.fromJson((json["cache"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      input: (json["input"] as num).toDouble(),
+      output: (json["output"] as num).toDouble(),
+      cache: ModelCostExperimentalOver200KCache.fromJson(json["cache"] as Map<String, dynamic>),
     );
   }
 
@@ -687,14 +688,14 @@ class ModelCostExperimentalOver200K {
 @immutable
 class ModelCostTiersItemCache {
   const ModelCostTiersItemCache({
-    this.read = 0,
-    this.write = 0,
+    required this.read,
+    required this.write,
   });
 
   factory ModelCostTiersItemCache.fromJson(Map<String, dynamic> json) {
     return ModelCostTiersItemCache(
-      read: ((json["read"] ?? 0) as num).toDouble(),
-      write: ((json["write"] ?? 0) as num).toDouble(),
+      read: (json["read"] as num).toDouble(),
+      write: (json["write"] as num).toDouble(),
     );
   }
 
@@ -734,14 +735,14 @@ class ModelCostTiersItemCache {
 @immutable
 class ModelCostTiersItemTier {
   const ModelCostTiersItemTier({
-    this.type = '',
-    this.size = 0,
+    required this.type,
+    required this.size,
   });
 
   factory ModelCostTiersItemTier.fromJson(Map<String, dynamic> json) {
     return ModelCostTiersItemTier(
-      type: (json["type"] ?? '') as String,
-      size: ((json["size"] ?? 0) as num).toDouble(),
+      type: json["type"] as String,
+      size: (json["size"] as num).toDouble(),
     );
   }
 
@@ -781,14 +782,14 @@ class ModelCostTiersItemTier {
 @immutable
 class ModelCostExperimentalOver200KCache {
   const ModelCostExperimentalOver200KCache({
-    this.read = 0,
-    this.write = 0,
+    required this.read,
+    required this.write,
   });
 
   factory ModelCostExperimentalOver200KCache.fromJson(Map<String, dynamic> json) {
     return ModelCostExperimentalOver200KCache(
-      read: ((json["read"] ?? 0) as num).toDouble(),
-      write: ((json["write"] ?? 0) as num).toDouble(),
+      read: (json["read"] as num).toDouble(),
+      write: (json["write"] as num).toDouble(),
     );
   }
 
@@ -823,4 +824,50 @@ class ModelCostExperimentalOver200KCache {
 
   final double read;
   final double write;
+}
+
+enum ModelStatus {
+  @JsonValue("alpha")
+  alpha,
+  @JsonValue("beta")
+  beta,
+  @JsonValue("deprecated")
+  deprecated,
+  @JsonValue("active")
+  active,
+
+  /// Fallback for values introduced by newer OpenCode servers.
+  /// Encodes back to the literal string `unknown`.
+  unknown,
+  ;
+
+  static ModelStatus fromJson(String value) {
+    switch (value) {
+      case "alpha":
+        return ModelStatus.alpha;
+      case "beta":
+        return ModelStatus.beta;
+      case "deprecated":
+        return ModelStatus.deprecated;
+      case "active":
+        return ModelStatus.active;
+      default:
+        return ModelStatus.unknown;
+    }
+  }
+
+  String toJson() {
+    switch (this) {
+      case ModelStatus.alpha:
+        return "alpha";
+      case ModelStatus.beta:
+        return "beta";
+      case ModelStatus.deprecated:
+        return "deprecated";
+      case ModelStatus.active:
+        return "active";
+      case ModelStatus.unknown:
+        return 'unknown';
+    }
+  }
 }

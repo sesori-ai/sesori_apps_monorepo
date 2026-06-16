@@ -151,7 +151,9 @@ class ActiveSessionTracker {
       case SseQuestionRejected():
         _removePendingQuestion(sessionId: event.sessionID, requestId: event.requestID);
       case SsePermissionAsked():
-        _pendingPermissions.putIfAbsent(event.sessionID, () => <String>{}).add(event.requestID);
+        // The permission's `id` is what `permission.replied` later echoes as
+        // its `requestID`, so it is the key we track pending permissions by.
+        _pendingPermissions.putIfAbsent(event.sessionID, () => <String>{}).add(event.id);
       case SsePermissionReplied():
         _removePendingPermission(sessionId: event.sessionID, requestId: event.requestID);
       default:

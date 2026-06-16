@@ -8,18 +8,18 @@ import 'tool_state.g.dart';
 @immutable
 class ToolStateRunning implements ToolState {
   const ToolStateRunning({
-    this.input = const {},
-    this.title,
-    this.metadata,
+    required this.input,
+    required this.title,
+    required this.metadata,
     required this.time,
   });
 
   factory ToolStateRunning.fromJson(Map<String, dynamic> json) {
     return ToolStateRunning(
-      input: (json["input"] ?? const <String, dynamic>{}) as Map<String, dynamic>,
+      input: json["input"] as Map<String, dynamic>,
       title: json["title"] as String?,
       metadata: json["metadata"] as Map<String, dynamic>?,
-      time: ToolStateRunningTime.fromJson((json["time"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      time: ToolStateRunningTime.fromJson(json["time"] as Map<String, dynamic>),
     );
   }
 
@@ -71,12 +71,12 @@ class ToolStateRunning implements ToolState {
 @immutable
 class ToolStateRunningTime {
   const ToolStateRunningTime({
-    this.start = 0,
+    required this.start,
   });
 
   factory ToolStateRunningTime.fromJson(Map<String, dynamic> json) {
     return ToolStateRunningTime(
-      start: ((json["start"] ?? 0) as num).toInt(),
+      start: (json["start"] as num).toInt(),
     );
   }
 

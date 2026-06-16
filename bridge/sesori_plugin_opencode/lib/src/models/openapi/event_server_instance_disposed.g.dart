@@ -7,14 +7,14 @@ import 'event.g.dart';
 @immutable
 class EventServerInstanceDisposed implements Event {
   const EventServerInstanceDisposed({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventServerInstanceDisposed.fromJson(Map<String, dynamic> json) {
     return EventServerInstanceDisposed(
-      id: (json["id"] ?? '') as String,
-      properties: EventServerInstanceDisposedProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventServerInstanceDisposedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -56,12 +56,12 @@ class EventServerInstanceDisposed implements Event {
 @immutable
 class EventServerInstanceDisposedProperties {
   const EventServerInstanceDisposedProperties({
-    this.directory = '',
+    required this.directory,
   });
 
   factory EventServerInstanceDisposedProperties.fromJson(Map<String, dynamic> json) {
     return EventServerInstanceDisposedProperties(
-      directory: (json["directory"] ?? '') as String,
+      directory: json["directory"] as String,
     );
   }
 

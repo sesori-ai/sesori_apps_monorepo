@@ -8,16 +8,16 @@ import 'provider.g.dart';
 @immutable
 class ProviderListResponse {
   const ProviderListResponse({
-    this.all = const [],
-    this.defaultValue = const {},
-    this.connected = const [],
+    required this.all,
+    required this.defaultValue,
+    required this.connected,
   });
 
   factory ProviderListResponse.fromJson(Map<String, dynamic> json) {
     return ProviderListResponse(
-      all: ((json["all"] ?? const []) as List<dynamic>).map((e) => Provider.fromJson(e as Map<String, dynamic>)).toList(),
-      defaultValue: ((json["default"] ?? const <String, dynamic>{}) as Map<String, dynamic>).map((k, v) => MapEntry(k, v as String)),
-      connected: ((json["connected"] ?? const []) as List<dynamic>).cast<String>(),
+      all: (json["all"] as List<dynamic>).map((e) => Provider.fromJson(e as Map<String, dynamic>)).toList(),
+      defaultValue: (json["default"] as Map<String, dynamic>).map((k, v) => MapEntry(k, v as String)),
+      connected: (json["connected"] as List<dynamic>).cast<String>(),
     );
   }
 

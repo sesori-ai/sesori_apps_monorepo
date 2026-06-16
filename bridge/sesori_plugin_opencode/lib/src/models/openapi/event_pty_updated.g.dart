@@ -8,14 +8,14 @@ import 'pty.g.dart';
 @immutable
 class EventPtyUpdated implements Event {
   const EventPtyUpdated({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventPtyUpdated.fromJson(Map<String, dynamic> json) {
     return EventPtyUpdated(
-      id: (json["id"] ?? '') as String,
-      properties: EventPtyUpdatedProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventPtyUpdatedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -62,7 +62,7 @@ class EventPtyUpdatedProperties {
 
   factory EventPtyUpdatedProperties.fromJson(Map<String, dynamic> json) {
     return EventPtyUpdatedProperties(
-      info: Pty.fromJson((json["info"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      info: Pty.fromJson(json["info"] as Map<String, dynamic>),
     );
   }
 

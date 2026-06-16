@@ -12,8 +12,8 @@ class Range {
 
   factory Range.fromJson(Map<String, dynamic> json) {
     return Range(
-      start: RangeStart.fromJson((json["start"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
-      end: RangeEnd.fromJson((json["end"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      start: RangeStart.fromJson(json["start"] as Map<String, dynamic>),
+      end: RangeEnd.fromJson(json["end"] as Map<String, dynamic>),
     );
   }
 
@@ -53,14 +53,14 @@ class Range {
 @immutable
 class RangeStart {
   const RangeStart({
-    this.line = 0,
-    this.character = 0,
+    required this.line,
+    required this.character,
   });
 
   factory RangeStart.fromJson(Map<String, dynamic> json) {
     return RangeStart(
-      line: ((json["line"] ?? 0) as num).toInt(),
-      character: ((json["character"] ?? 0) as num).toInt(),
+      line: (json["line"] as num).toInt(),
+      character: (json["character"] as num).toInt(),
     );
   }
 
@@ -100,14 +100,14 @@ class RangeStart {
 @immutable
 class RangeEnd {
   const RangeEnd({
-    this.line = 0,
-    this.character = 0,
+    required this.line,
+    required this.character,
   });
 
   factory RangeEnd.fromJson(Map<String, dynamic> json) {
     return RangeEnd(
-      line: ((json["line"] ?? 0) as num).toInt(),
-      character: ((json["character"] ?? 0) as num).toInt(),
+      line: (json["line"] as num).toInt(),
+      character: (json["character"] as num).toInt(),
     );
   }
 

@@ -8,14 +8,14 @@ import 'event.g.dart';
 @immutable
 class EventProjectUpdated implements Event {
   const EventProjectUpdated({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventProjectUpdated.fromJson(Map<String, dynamic> json) {
     return EventProjectUpdated(
-      id: (json["id"] ?? '') as String,
-      properties: EventProjectUpdatedProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventProjectUpdatedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -57,26 +57,26 @@ class EventProjectUpdated implements Event {
 @immutable
 class EventProjectUpdatedProperties {
   const EventProjectUpdatedProperties({
-    this.id = '',
-    this.worktree = '',
-    this.vcs,
-    this.name,
-    this.icon,
-    this.commands,
+    required this.id,
+    required this.worktree,
+    required this.vcs,
+    required this.name,
+    required this.icon,
+    required this.commands,
     required this.time,
-    this.sandboxes = const [],
+    required this.sandboxes,
   });
 
   factory EventProjectUpdatedProperties.fromJson(Map<String, dynamic> json) {
     return EventProjectUpdatedProperties(
-      id: (json["id"] ?? '') as String,
-      worktree: (json["worktree"] ?? '') as String,
+      id: json["id"] as String,
+      worktree: json["worktree"] as String,
       vcs: json["vcs"] as String?,
       name: json["name"] as String?,
       icon: json["icon"] == null ? null : EventProjectUpdatedPropertiesIcon.fromJson(json["icon"] as Map<String, dynamic>),
       commands: json["commands"] == null ? null : EventProjectUpdatedPropertiesCommands.fromJson(json["commands"] as Map<String, dynamic>),
-      time: EventProjectUpdatedPropertiesTime.fromJson((json["time"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
-      sandboxes: ((json["sandboxes"] ?? const []) as List<dynamic>).cast<String>(),
+      time: EventProjectUpdatedPropertiesTime.fromJson(json["time"] as Map<String, dynamic>),
+      sandboxes: (json["sandboxes"] as List<dynamic>).cast<String>(),
     );
   }
 
@@ -146,9 +146,9 @@ class EventProjectUpdatedProperties {
 @immutable
 class EventProjectUpdatedPropertiesIcon {
   const EventProjectUpdatedPropertiesIcon({
-    this.url,
-    this.overrideValue,
-    this.color,
+    required this.url,
+    required this.overrideValue,
+    required this.color,
   });
 
   factory EventProjectUpdatedPropertiesIcon.fromJson(Map<String, dynamic> json) {
@@ -200,7 +200,7 @@ class EventProjectUpdatedPropertiesIcon {
 @immutable
 class EventProjectUpdatedPropertiesCommands {
   const EventProjectUpdatedPropertiesCommands({
-    this.start,
+    required this.start,
   });
 
   factory EventProjectUpdatedPropertiesCommands.fromJson(Map<String, dynamic> json) {
@@ -240,15 +240,15 @@ class EventProjectUpdatedPropertiesCommands {
 @immutable
 class EventProjectUpdatedPropertiesTime {
   const EventProjectUpdatedPropertiesTime({
-    this.created = 0,
-    this.updated = 0,
-    this.initialized,
+    required this.created,
+    required this.updated,
+    required this.initialized,
   });
 
   factory EventProjectUpdatedPropertiesTime.fromJson(Map<String, dynamic> json) {
     return EventProjectUpdatedPropertiesTime(
-      created: ((json["created"] ?? 0) as num).toInt(),
-      updated: ((json["updated"] ?? 0) as num).toInt(),
+      created: (json["created"] as num).toInt(),
+      updated: (json["updated"] as num).toInt(),
       initialized: (json["initialized"] as num?)?.toInt(),
     );
   }

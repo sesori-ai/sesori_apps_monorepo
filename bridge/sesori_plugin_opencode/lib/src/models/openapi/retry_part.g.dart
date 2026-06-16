@@ -8,22 +8,22 @@ import 'part.g.dart';
 @immutable
 class RetryPart implements Part {
   const RetryPart({
-    this.id = '',
-    this.sessionID = '',
-    this.messageID = '',
-    this.attempt = 0,
+    required this.id,
+    required this.sessionID,
+    required this.messageID,
+    required this.attempt,
     required this.error,
     required this.time,
   });
 
   factory RetryPart.fromJson(Map<String, dynamic> json) {
     return RetryPart(
-      id: (json["id"] ?? '') as String,
-      sessionID: (json["sessionID"] ?? '') as String,
-      messageID: (json["messageID"] ?? '') as String,
-      attempt: ((json["attempt"] ?? 0) as num).toInt(),
-      error: APIError.fromJson((json["error"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
-      time: RetryPartTime.fromJson((json["time"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      sessionID: json["sessionID"] as String,
+      messageID: json["messageID"] as String,
+      attempt: (json["attempt"] as num).toInt(),
+      error: APIError.fromJson(json["error"] as Map<String, dynamic>),
+      time: RetryPartTime.fromJson(json["time"] as Map<String, dynamic>),
     );
   }
 
@@ -85,12 +85,12 @@ class RetryPart implements Part {
 @immutable
 class RetryPartTime {
   const RetryPartTime({
-    this.created = 0,
+    required this.created,
   });
 
   factory RetryPartTime.fromJson(Map<String, dynamic> json) {
     return RetryPartTime(
-      created: ((json["created"] ?? 0) as num).toInt(),
+      created: (json["created"] as num).toInt(),
     );
   }
 

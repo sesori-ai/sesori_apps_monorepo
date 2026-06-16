@@ -7,14 +7,14 @@ import 'event.g.dart';
 @immutable
 class EventSessionIdle implements Event {
   const EventSessionIdle({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventSessionIdle.fromJson(Map<String, dynamic> json) {
     return EventSessionIdle(
-      id: (json["id"] ?? '') as String,
-      properties: EventSessionIdleProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventSessionIdleProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -56,12 +56,12 @@ class EventSessionIdle implements Event {
 @immutable
 class EventSessionIdleProperties {
   const EventSessionIdleProperties({
-    this.sessionID = '',
+    required this.sessionID,
   });
 
   factory EventSessionIdleProperties.fromJson(Map<String, dynamic> json) {
     return EventSessionIdleProperties(
-      sessionID: (json["sessionID"] ?? '') as String,
+      sessionID: json["sessionID"] as String,
     );
   }
 

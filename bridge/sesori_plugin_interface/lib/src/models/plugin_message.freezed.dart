@@ -377,7 +377,7 @@ $PluginToolStateCopyWith<$Res>? get state {
 /// @nodoc
 mixin _$PluginToolState {
 
- String get status; String? get title; String? get output; String? get error;
+ PluginToolStatus get status; String? get title; String? get output; String? get error;
 /// Create a copy of PluginToolState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -410,7 +410,7 @@ abstract mixin class $PluginToolStateCopyWith<$Res>  {
   factory $PluginToolStateCopyWith(PluginToolState value, $Res Function(PluginToolState) _then) = _$PluginToolStateCopyWithImpl;
 @useResult
 $Res call({
- String status, String? title, String? output, String? error
+ PluginToolStatus status, String? title, String? output, String? error
 });
 
 
@@ -430,7 +430,7 @@ class _$PluginToolStateCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') @override $Res call({Object? status = null,Object? title = freezed,Object? output = freezed,Object? error = freezed,}) {
   return _then(_self.copyWith(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as String,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
+as PluginToolStatus,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String?,output: freezed == output ? _self.output : output // ignore: cast_nullable_to_non_nullable
 as String?,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -448,7 +448,7 @@ class _PluginToolState implements PluginToolState {
   const _PluginToolState({required this.status, required this.title, required this.output, required this.error});
   
 
-@override final  String status;
+@override final  PluginToolStatus status;
 @override final  String? title;
 @override final  String? output;
 @override final  String? error;
@@ -486,7 +486,7 @@ abstract mixin class _$PluginToolStateCopyWith<$Res> implements $PluginToolState
   factory _$PluginToolStateCopyWith(_PluginToolState value, $Res Function(_PluginToolState) _then) = __$PluginToolStateCopyWithImpl;
 @override @useResult
 $Res call({
- String status, String? title, String? output, String? error
+ PluginToolStatus status, String? title, String? output, String? error
 });
 
 
@@ -506,7 +506,7 @@ class __$PluginToolStateCopyWithImpl<$Res>
 @override @pragma('vm:prefer-inline') $Res call({Object? status = null,Object? title = freezed,Object? output = freezed,Object? error = freezed,}) {
   return _then(_PluginToolState(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as String,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
+as PluginToolStatus,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String?,output: freezed == output ? _self.output : output // ignore: cast_nullable_to_non_nullable
 as String?,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
 as String?,

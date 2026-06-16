@@ -7,14 +7,14 @@ import 'event.g.dart';
 @immutable
 class EventMessagePartDelta implements Event {
   const EventMessagePartDelta({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventMessagePartDelta.fromJson(Map<String, dynamic> json) {
     return EventMessagePartDelta(
-      id: (json["id"] ?? '') as String,
-      properties: EventMessagePartDeltaProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventMessagePartDeltaProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -56,20 +56,20 @@ class EventMessagePartDelta implements Event {
 @immutable
 class EventMessagePartDeltaProperties {
   const EventMessagePartDeltaProperties({
-    this.sessionID = '',
-    this.messageID = '',
-    this.partID = '',
-    this.field = '',
-    this.delta = '',
+    required this.sessionID,
+    required this.messageID,
+    required this.partID,
+    required this.field,
+    required this.delta,
   });
 
   factory EventMessagePartDeltaProperties.fromJson(Map<String, dynamic> json) {
     return EventMessagePartDeltaProperties(
-      sessionID: (json["sessionID"] ?? '') as String,
-      messageID: (json["messageID"] ?? '') as String,
-      partID: (json["partID"] ?? '') as String,
-      field: (json["field"] ?? '') as String,
-      delta: (json["delta"] ?? '') as String,
+      sessionID: json["sessionID"] as String,
+      messageID: json["messageID"] as String,
+      partID: json["partID"] as String,
+      field: json["field"] as String,
+      delta: json["delta"] as String,
     );
   }
 

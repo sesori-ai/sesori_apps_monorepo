@@ -7,16 +7,16 @@ import 'permission_action.g.dart';
 @immutable
 class PermissionRule {
   const PermissionRule({
-    this.permission = '',
-    this.pattern = '',
+    required this.permission,
+    required this.pattern,
     required this.action,
   });
 
   factory PermissionRule.fromJson(Map<String, dynamic> json) {
     return PermissionRule(
-      permission: (json["permission"] ?? '') as String,
-      pattern: (json["pattern"] ?? '') as String,
-      action: PermissionAction.fromJson((json["action"] ?? 'unknown') as String),
+      permission: json["permission"] as String,
+      pattern: json["pattern"] as String,
+      action: PermissionAction.fromJson(json["action"] as String),
     );
   }
 

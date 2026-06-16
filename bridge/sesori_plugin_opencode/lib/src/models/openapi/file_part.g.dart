@@ -8,23 +8,23 @@ import 'part.g.dart';
 @immutable
 class FilePart implements Part {
   const FilePart({
-    this.id = '',
-    this.sessionID = '',
-    this.messageID = '',
-    this.mime = '',
-    this.filename,
-    this.url = '',
-    this.source,
+    required this.id,
+    required this.sessionID,
+    required this.messageID,
+    required this.mime,
+    required this.filename,
+    required this.url,
+    required this.source,
   });
 
   factory FilePart.fromJson(Map<String, dynamic> json) {
     return FilePart(
-      id: (json["id"] ?? '') as String,
-      sessionID: (json["sessionID"] ?? '') as String,
-      messageID: (json["messageID"] ?? '') as String,
-      mime: (json["mime"] ?? '') as String,
+      id: json["id"] as String,
+      sessionID: json["sessionID"] as String,
+      messageID: json["messageID"] as String,
+      mime: json["mime"] as String,
       filename: json["filename"] as String?,
-      url: (json["url"] ?? '') as String,
+      url: json["url"] as String,
       source: json["source"] == null ? null : FilePartSource.fromJson(json["source"] as Object),
     );
   }

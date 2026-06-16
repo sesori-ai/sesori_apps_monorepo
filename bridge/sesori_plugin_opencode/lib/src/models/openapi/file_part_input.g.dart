@@ -7,21 +7,21 @@ import 'file_part_source.g.dart';
 @immutable
 class FilePartInput {
   const FilePartInput({
-    this.id,
-    this.type = '',
-    this.mime = '',
-    this.filename,
-    this.url = '',
-    this.source,
+    required this.id,
+    required this.type,
+    required this.mime,
+    required this.filename,
+    required this.url,
+    required this.source,
   });
 
   factory FilePartInput.fromJson(Map<String, dynamic> json) {
     return FilePartInput(
       id: json["id"] as String?,
-      type: (json["type"] ?? '') as String,
-      mime: (json["mime"] ?? '') as String,
+      type: json["type"] as String,
+      mime: json["mime"] as String,
       filename: json["filename"] as String?,
-      url: (json["url"] ?? '') as String,
+      url: json["url"] as String,
       source: json["source"] == null ? null : FilePartSource.fromJson(json["source"] as Object),
     );
   }

@@ -9,21 +9,21 @@ import 'tool_state.g.dart';
 @immutable
 class ToolStateCompleted implements ToolState {
   const ToolStateCompleted({
-    this.input = const {},
-    this.output = '',
-    this.title = '',
-    this.metadata = const {},
+    required this.input,
+    required this.output,
+    required this.title,
+    required this.metadata,
     required this.time,
-    this.attachments,
+    required this.attachments,
   });
 
   factory ToolStateCompleted.fromJson(Map<String, dynamic> json) {
     return ToolStateCompleted(
-      input: (json["input"] ?? const <String, dynamic>{}) as Map<String, dynamic>,
-      output: (json["output"] ?? '') as String,
-      title: (json["title"] ?? '') as String,
-      metadata: (json["metadata"] ?? const <String, dynamic>{}) as Map<String, dynamic>,
-      time: ToolStateCompletedTime.fromJson((json["time"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      input: json["input"] as Map<String, dynamic>,
+      output: json["output"] as String,
+      title: json["title"] as String?,
+      metadata: json["metadata"] as Map<String, dynamic>,
+      time: ToolStateCompletedTime.fromJson(json["time"] as Map<String, dynamic>),
       attachments: (json["attachments"] as List<dynamic>?)?.map((e) => FilePart.fromJson(e as Map<String, dynamic>)).toList(),
     );
   }
@@ -77,7 +77,7 @@ class ToolStateCompleted implements ToolState {
 
   final Map<String, dynamic> input;
   final String output;
-  final String title;
+  final String? title;
   final Map<String, dynamic> metadata;
   final ToolStateCompletedTime time;
   final List<FilePart>? attachments;
@@ -86,15 +86,15 @@ class ToolStateCompleted implements ToolState {
 @immutable
 class ToolStateCompletedTime {
   const ToolStateCompletedTime({
-    this.start = 0,
-    this.end = 0,
-    this.compacted,
+    required this.start,
+    required this.end,
+    required this.compacted,
   });
 
   factory ToolStateCompletedTime.fromJson(Map<String, dynamic> json) {
     return ToolStateCompletedTime(
-      start: ((json["start"] ?? 0) as num).toInt(),
-      end: ((json["end"] ?? 0) as num).toInt(),
+      start: (json["start"] as num).toInt(),
+      end: (json["end"] as num).toInt(),
       compacted: (json["compacted"] as num?)?.toInt(),
     );
   }

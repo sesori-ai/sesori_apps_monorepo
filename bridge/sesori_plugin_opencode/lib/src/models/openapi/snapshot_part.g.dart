@@ -7,18 +7,18 @@ import 'part.g.dart';
 @immutable
 class SnapshotPart implements Part {
   const SnapshotPart({
-    this.id = '',
-    this.sessionID = '',
-    this.messageID = '',
-    this.snapshot = '',
+    required this.id,
+    required this.sessionID,
+    required this.messageID,
+    required this.snapshot,
   });
 
   factory SnapshotPart.fromJson(Map<String, dynamic> json) {
     return SnapshotPart(
-      id: (json["id"] ?? '') as String,
-      sessionID: (json["sessionID"] ?? '') as String,
-      messageID: (json["messageID"] ?? '') as String,
-      snapshot: (json["snapshot"] ?? '') as String,
+      id: json["id"] as String,
+      sessionID: json["sessionID"] as String,
+      messageID: json["messageID"] as String,
+      snapshot: json["snapshot"] as String,
     );
   }
 

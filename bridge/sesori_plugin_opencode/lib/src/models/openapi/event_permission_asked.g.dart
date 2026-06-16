@@ -8,14 +8,14 @@ import 'event.g.dart';
 @immutable
 class EventPermissionAsked implements Event {
   const EventPermissionAsked({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventPermissionAsked.fromJson(Map<String, dynamic> json) {
     return EventPermissionAsked(
-      id: (json["id"] ?? '') as String,
-      properties: EventPermissionAskedProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventPermissionAskedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -57,23 +57,23 @@ class EventPermissionAsked implements Event {
 @immutable
 class EventPermissionAskedProperties {
   const EventPermissionAskedProperties({
-    this.id = '',
-    this.sessionID = '',
-    this.permission = '',
-    this.patterns = const [],
-    this.metadata = const {},
-    this.always = const [],
-    this.tool,
+    required this.id,
+    required this.sessionID,
+    required this.permission,
+    required this.patterns,
+    required this.metadata,
+    required this.always,
+    required this.tool,
   });
 
   factory EventPermissionAskedProperties.fromJson(Map<String, dynamic> json) {
     return EventPermissionAskedProperties(
-      id: (json["id"] ?? '') as String,
-      sessionID: (json["sessionID"] ?? '') as String,
-      permission: (json["permission"] ?? '') as String,
-      patterns: ((json["patterns"] ?? const []) as List<dynamic>).cast<String>(),
-      metadata: (json["metadata"] ?? const <String, dynamic>{}) as Map<String, dynamic>,
-      always: ((json["always"] ?? const []) as List<dynamic>).cast<String>(),
+      id: json["id"] as String,
+      sessionID: json["sessionID"] as String,
+      permission: json["permission"] as String,
+      patterns: (json["patterns"] as List<dynamic>).cast<String>(),
+      metadata: json["metadata"] as Map<String, dynamic>,
+      always: (json["always"] as List<dynamic>).cast<String>(),
       tool: json["tool"] == null ? null : EventPermissionAskedPropertiesTool.fromJson(json["tool"] as Map<String, dynamic>),
     );
   }
@@ -139,14 +139,14 @@ class EventPermissionAskedProperties {
 @immutable
 class EventPermissionAskedPropertiesTool {
   const EventPermissionAskedPropertiesTool({
-    this.messageID = '',
-    this.callID = '',
+    required this.messageID,
+    required this.callID,
   });
 
   factory EventPermissionAskedPropertiesTool.fromJson(Map<String, dynamic> json) {
     return EventPermissionAskedPropertiesTool(
-      messageID: (json["messageID"] ?? '') as String,
-      callID: (json["callID"] ?? '') as String,
+      messageID: json["messageID"] as String,
+      callID: json["callID"] as String,
     );
   }
 

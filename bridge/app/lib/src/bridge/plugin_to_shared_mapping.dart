@@ -27,7 +27,9 @@ extension PluginMessagePartTypeMapping on PluginMessagePartType {
 /// Maps [PluginToolState] to the shared [ToolState].
 extension PluginToolStateMapping on PluginToolState {
   ToolState toShared() => ToolState(
-    status: status,
+    // The shared model still carries the wire string; the [PluginToolStatus]
+    // member names match the OpenCode status values 1:1.
+    status: status.name,
     title: title,
     output: output,
     error: error,

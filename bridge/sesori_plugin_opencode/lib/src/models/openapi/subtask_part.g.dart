@@ -7,24 +7,24 @@ import 'part.g.dart';
 @immutable
 class SubtaskPart implements Part {
   const SubtaskPart({
-    this.id = '',
-    this.sessionID = '',
-    this.messageID = '',
-    this.prompt = '',
-    this.description = '',
-    this.agent = '',
-    this.model,
-    this.command,
+    required this.id,
+    required this.sessionID,
+    required this.messageID,
+    required this.prompt,
+    required this.description,
+    required this.agent,
+    required this.model,
+    required this.command,
   });
 
   factory SubtaskPart.fromJson(Map<String, dynamic> json) {
     return SubtaskPart(
-      id: (json["id"] ?? '') as String,
-      sessionID: (json["sessionID"] ?? '') as String,
-      messageID: (json["messageID"] ?? '') as String,
-      prompt: (json["prompt"] ?? '') as String,
-      description: (json["description"] ?? '') as String,
-      agent: (json["agent"] ?? '') as String,
+      id: json["id"] as String,
+      sessionID: json["sessionID"] as String,
+      messageID: json["messageID"] as String,
+      prompt: json["prompt"] as String,
+      description: json["description"] as String,
+      agent: json["agent"] as String,
       model: json["model"] == null ? null : SubtaskPartModel.fromJson(json["model"] as Map<String, dynamic>),
       command: json["command"] as String?,
     );
@@ -98,14 +98,14 @@ class SubtaskPart implements Part {
 @immutable
 class SubtaskPartModel {
   const SubtaskPartModel({
-    this.providerID = '',
-    this.modelID = '',
+    required this.providerID,
+    required this.modelID,
   });
 
   factory SubtaskPartModel.fromJson(Map<String, dynamic> json) {
     return SubtaskPartModel(
-      providerID: (json["providerID"] ?? '') as String,
-      modelID: (json["modelID"] ?? '') as String,
+      providerID: json["providerID"] as String,
+      modelID: json["modelID"] as String,
     );
   }
 

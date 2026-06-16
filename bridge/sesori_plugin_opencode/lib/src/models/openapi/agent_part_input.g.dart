@@ -6,17 +6,17 @@ import 'package:meta/meta.dart';
 @immutable
 class AgentPartInput {
   const AgentPartInput({
-    this.id,
-    this.type = '',
-    this.name = '',
-    this.source,
+    required this.id,
+    required this.type,
+    required this.name,
+    required this.source,
   });
 
   factory AgentPartInput.fromJson(Map<String, dynamic> json) {
     return AgentPartInput(
       id: json["id"] as String?,
-      type: (json["type"] ?? '') as String,
-      name: (json["name"] ?? '') as String,
+      type: json["type"] as String,
+      name: json["name"] as String,
       source: json["source"] == null ? null : AgentPartInputSource.fromJson(json["source"] as Map<String, dynamic>),
     );
   }
@@ -67,16 +67,16 @@ class AgentPartInput {
 @immutable
 class AgentPartInputSource {
   const AgentPartInputSource({
-    this.value = '',
-    this.start = 0,
-    this.end = 0,
+    required this.value,
+    required this.start,
+    required this.end,
   });
 
   factory AgentPartInputSource.fromJson(Map<String, dynamic> json) {
     return AgentPartInputSource(
-      value: (json["value"] ?? '') as String,
-      start: ((json["start"] ?? 0) as num).toInt(),
-      end: ((json["end"] ?? 0) as num).toInt(),
+      value: json["value"] as String,
+      start: (json["start"] as num).toInt(),
+      end: (json["end"] as num).toInt(),
     );
   }
 

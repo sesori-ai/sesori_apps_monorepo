@@ -1,25 +1,26 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.17.3 (8c8011336163d7e7fb24a6a4a049cdb1f6e6ee74)
 
+import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 
 @immutable
 class SnapshotFileDiff {
   const SnapshotFileDiff({
-    this.file,
-    this.patch,
-    this.additions = 0,
-    this.deletions = 0,
-    this.status,
+    required this.file,
+    required this.patch,
+    required this.additions,
+    required this.deletions,
+    required this.status,
   });
 
   factory SnapshotFileDiff.fromJson(Map<String, dynamic> json) {
     return SnapshotFileDiff(
       file: json["file"] as String?,
       patch: json["patch"] as String?,
-      additions: ((json["additions"] ?? 0) as num).toDouble(),
-      deletions: ((json["deletions"] ?? 0) as num).toDouble(),
-      status: json["status"] as String?,
+      additions: (json["additions"] as num).toDouble(),
+      deletions: (json["deletions"] as num).toDouble(),
+      status: json["status"] == null ? null : SnapshotFileDiffStatus.fromJson(json["status"] as String),
     );
   }
 
@@ -29,7 +30,7 @@ class SnapshotFileDiff {
       "patch": ?patch,
       "additions": additions,
       "deletions": deletions,
-      "status": ?status,
+      "status": ?status?.toJson(),
     };
   }
 
@@ -40,7 +41,7 @@ class SnapshotFileDiff {
     String? patch,
     double? additions,
     double? deletions,
-    String? status,
+    SnapshotFileDiffStatus? status,
   }) {
     return SnapshotFileDiff(
       file: file ?? this.file,
@@ -68,5 +69,45 @@ class SnapshotFileDiff {
   final String? patch;
   final double additions;
   final double deletions;
-  final String? status;
+  final SnapshotFileDiffStatus? status;
+}
+
+enum SnapshotFileDiffStatus {
+  @JsonValue("added")
+  added,
+  @JsonValue("deleted")
+  deleted,
+  @JsonValue("modified")
+  modified,
+
+  /// Fallback for values introduced by newer OpenCode servers.
+  /// Encodes back to the literal string `unknown`.
+  unknown,
+  ;
+
+  static SnapshotFileDiffStatus fromJson(String value) {
+    switch (value) {
+      case "added":
+        return SnapshotFileDiffStatus.added;
+      case "deleted":
+        return SnapshotFileDiffStatus.deleted;
+      case "modified":
+        return SnapshotFileDiffStatus.modified;
+      default:
+        return SnapshotFileDiffStatus.unknown;
+    }
+  }
+
+  String toJson() {
+    switch (this) {
+      case SnapshotFileDiffStatus.added:
+        return "added";
+      case SnapshotFileDiffStatus.deleted:
+        return "deleted";
+      case SnapshotFileDiffStatus.modified:
+        return "modified";
+      case SnapshotFileDiffStatus.unknown:
+        return 'unknown';
+    }
+  }
 }

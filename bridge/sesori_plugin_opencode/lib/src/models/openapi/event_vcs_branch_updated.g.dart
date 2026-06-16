@@ -7,14 +7,14 @@ import 'event.g.dart';
 @immutable
 class EventVcsBranchUpdated implements Event {
   const EventVcsBranchUpdated({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventVcsBranchUpdated.fromJson(Map<String, dynamic> json) {
     return EventVcsBranchUpdated(
-      id: (json["id"] ?? '') as String,
-      properties: EventVcsBranchUpdatedProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventVcsBranchUpdatedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -56,7 +56,7 @@ class EventVcsBranchUpdated implements Event {
 @immutable
 class EventVcsBranchUpdatedProperties {
   const EventVcsBranchUpdatedProperties({
-    this.branch,
+    required this.branch,
   });
 
   factory EventVcsBranchUpdatedProperties.fromJson(Map<String, dynamic> json) {

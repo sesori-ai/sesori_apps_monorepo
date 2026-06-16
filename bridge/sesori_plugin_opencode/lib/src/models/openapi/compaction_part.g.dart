@@ -7,20 +7,20 @@ import 'part.g.dart';
 @immutable
 class CompactionPart implements Part {
   const CompactionPart({
-    this.id = '',
-    this.sessionID = '',
-    this.messageID = '',
-    this.auto = false,
-    this.overflow,
-    this.tailStartId,
+    required this.id,
+    required this.sessionID,
+    required this.messageID,
+    required this.auto,
+    required this.overflow,
+    required this.tailStartId,
   });
 
   factory CompactionPart.fromJson(Map<String, dynamic> json) {
     return CompactionPart(
-      id: (json["id"] ?? '') as String,
-      sessionID: (json["sessionID"] ?? '') as String,
-      messageID: (json["messageID"] ?? '') as String,
-      auto: (json["auto"] ?? false) as bool,
+      id: json["id"] as String,
+      sessionID: json["sessionID"] as String,
+      messageID: json["messageID"] as String,
+      auto: json["auto"] as bool,
       overflow: json["overflow"] as bool?,
       tailStartId: json["tail_start_id"] as String?,
     );

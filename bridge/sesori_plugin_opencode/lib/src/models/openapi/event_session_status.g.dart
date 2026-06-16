@@ -8,14 +8,14 @@ import 'session_status.g.dart';
 @immutable
 class EventSessionStatus implements Event {
   const EventSessionStatus({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventSessionStatus.fromJson(Map<String, dynamic> json) {
     return EventSessionStatus(
-      id: (json["id"] ?? '') as String,
-      properties: EventSessionStatusProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventSessionStatusProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -57,14 +57,14 @@ class EventSessionStatus implements Event {
 @immutable
 class EventSessionStatusProperties {
   const EventSessionStatusProperties({
-    this.sessionID = '',
+    required this.sessionID,
     required this.status,
   });
 
   factory EventSessionStatusProperties.fromJson(Map<String, dynamic> json) {
     return EventSessionStatusProperties(
-      sessionID: (json["sessionID"] ?? '') as String,
-      status: SessionStatus.fromJson((json["status"] ?? const <String, dynamic>{}) as Object),
+      sessionID: json["sessionID"] as String,
+      status: SessionStatus.fromJson(json["status"] as Object),
     );
   }
 

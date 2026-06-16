@@ -6,14 +6,14 @@ import 'package:meta/meta.dart';
 @immutable
 class MessageAbortedError {
   const MessageAbortedError({
-    this.name = '',
+    required this.name,
     required this.data,
   });
 
   factory MessageAbortedError.fromJson(Map<String, dynamic> json) {
     return MessageAbortedError(
-      name: (json["name"] ?? '') as String,
-      data: MessageAbortedErrorData.fromJson((json["data"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      name: json["name"] as String,
+      data: MessageAbortedErrorData.fromJson(json["data"] as Map<String, dynamic>),
     );
   }
 
@@ -53,12 +53,12 @@ class MessageAbortedError {
 @immutable
 class MessageAbortedErrorData {
   const MessageAbortedErrorData({
-    this.message = '',
+    required this.message,
   });
 
   factory MessageAbortedErrorData.fromJson(Map<String, dynamic> json) {
     return MessageAbortedErrorData(
-      message: (json["message"] ?? '') as String,
+      message: json["message"] as String,
     );
   }
 

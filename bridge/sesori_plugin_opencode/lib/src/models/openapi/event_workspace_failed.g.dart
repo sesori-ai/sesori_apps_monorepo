@@ -7,14 +7,14 @@ import 'event.g.dart';
 @immutable
 class EventWorkspaceFailed implements Event {
   const EventWorkspaceFailed({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventWorkspaceFailed.fromJson(Map<String, dynamic> json) {
     return EventWorkspaceFailed(
-      id: (json["id"] ?? '') as String,
-      properties: EventWorkspaceFailedProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventWorkspaceFailedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -56,12 +56,12 @@ class EventWorkspaceFailed implements Event {
 @immutable
 class EventWorkspaceFailedProperties {
   const EventWorkspaceFailedProperties({
-    this.message = '',
+    required this.message,
   });
 
   factory EventWorkspaceFailedProperties.fromJson(Map<String, dynamic> json) {
     return EventWorkspaceFailedProperties(
-      message: (json["message"] ?? '') as String,
+      message: json["message"] as String,
     );
   }
 

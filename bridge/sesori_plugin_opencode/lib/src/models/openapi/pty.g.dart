@@ -2,29 +2,30 @@
 // Source: anomalyco/opencode@v1.17.3 (8c8011336163d7e7fb24a6a4a049cdb1f6e6ee74)
 
 import 'package:collection/collection.dart';
+import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 
 @immutable
 class Pty {
   const Pty({
-    this.id = '',
-    this.title = '',
-    this.command = '',
-    this.args = const [],
-    this.cwd = '',
-    this.status = '',
-    this.pid = 0,
+    required this.id,
+    required this.title,
+    required this.command,
+    required this.args,
+    required this.cwd,
+    required this.status,
+    required this.pid,
   });
 
   factory Pty.fromJson(Map<String, dynamic> json) {
     return Pty(
-      id: (json["id"] ?? '') as String,
-      title: (json["title"] ?? '') as String,
-      command: (json["command"] ?? '') as String,
-      args: ((json["args"] ?? const []) as List<dynamic>).cast<String>(),
-      cwd: (json["cwd"] ?? '') as String,
-      status: (json["status"] ?? '') as String,
-      pid: ((json["pid"] ?? 0) as num).toInt(),
+      id: json["id"] as String,
+      title: json["title"] as String?,
+      command: json["command"] as String,
+      args: (json["args"] as List<dynamic>).cast<String>(),
+      cwd: json["cwd"] as String,
+      status: PtyStatus.fromJson(json["status"] as String),
+      pid: (json["pid"] as num).toInt(),
     );
   }
 
@@ -35,7 +36,7 @@ class Pty {
       "command": command,
       "args": args,
       "cwd": cwd,
-      "status": status,
+      "status": status.toJson(),
       "pid": pid,
     };
   }
@@ -48,7 +49,7 @@ class Pty {
     String? command,
     List<String>? args,
     String? cwd,
-    String? status,
+    PtyStatus? status,
     int? pid,
   }) {
     return Pty(
@@ -78,10 +79,44 @@ class Pty {
   int get hashCode => Object.hash(id, title, command, const DeepCollectionEquality().hash(args), cwd, status, pid);
 
   final String id;
-  final String title;
+  final String? title;
   final String command;
   final List<String> args;
   final String cwd;
-  final String status;
+  final PtyStatus status;
   final int pid;
+}
+
+enum PtyStatus {
+  @JsonValue("running")
+  running,
+  @JsonValue("exited")
+  exited,
+
+  /// Fallback for values introduced by newer OpenCode servers.
+  /// Encodes back to the literal string `unknown`.
+  unknown,
+  ;
+
+  static PtyStatus fromJson(String value) {
+    switch (value) {
+      case "running":
+        return PtyStatus.running;
+      case "exited":
+        return PtyStatus.exited;
+      default:
+        return PtyStatus.unknown;
+    }
+  }
+
+  String toJson() {
+    switch (this) {
+      case PtyStatus.running:
+        return "running";
+      case PtyStatus.exited:
+        return "exited";
+      case PtyStatus.unknown:
+        return 'unknown';
+    }
+  }
 }

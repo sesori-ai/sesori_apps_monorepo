@@ -9,15 +9,15 @@ import 'file_part_source_text.g.dart';
 class ResourceSource implements FilePartSource {
   const ResourceSource({
     required this.text,
-    this.clientName = '',
-    this.uri = '',
+    required this.clientName,
+    required this.uri,
   });
 
   factory ResourceSource.fromJson(Map<String, dynamic> json) {
     return ResourceSource(
-      text: FilePartSourceText.fromJson((json["text"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
-      clientName: (json["clientName"] ?? '') as String,
-      uri: (json["uri"] ?? '') as String,
+      text: FilePartSourceText.fromJson(json["text"] as Map<String, dynamic>),
+      clientName: json["clientName"] as String,
+      uri: json["uri"] as String,
     );
   }
 

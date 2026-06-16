@@ -7,14 +7,14 @@ import 'package:meta/meta.dart';
 @immutable
 class MessageOutputLengthError {
   const MessageOutputLengthError({
-    this.name = '',
-    this.data = const {},
+    required this.name,
+    required this.data,
   });
 
   factory MessageOutputLengthError.fromJson(Map<String, dynamic> json) {
     return MessageOutputLengthError(
-      name: (json["name"] ?? '') as String,
-      data: (json["data"] ?? const <String, dynamic>{}) as Map<String, dynamic>,
+      name: json["name"] as String,
+      data: json["data"] as Map<String, dynamic>,
     );
   }
 

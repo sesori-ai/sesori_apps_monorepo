@@ -7,14 +7,14 @@ import 'package:meta/meta.dart';
 @immutable
 class APIError {
   const APIError({
-    this.name = '',
+    required this.name,
     required this.data,
   });
 
   factory APIError.fromJson(Map<String, dynamic> json) {
     return APIError(
-      name: (json["name"] ?? '') as String,
-      data: APIErrorData.fromJson((json["data"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      name: json["name"] as String,
+      data: APIErrorData.fromJson(json["data"] as Map<String, dynamic>),
     );
   }
 
@@ -54,19 +54,19 @@ class APIError {
 @immutable
 class APIErrorData {
   const APIErrorData({
-    this.message = '',
-    this.statusCode,
-    this.isRetryable = false,
-    this.responseHeaders,
-    this.responseBody,
-    this.metadata,
+    required this.message,
+    required this.statusCode,
+    required this.isRetryable,
+    required this.responseHeaders,
+    required this.responseBody,
+    required this.metadata,
   });
 
   factory APIErrorData.fromJson(Map<String, dynamic> json) {
     return APIErrorData(
-      message: (json["message"] ?? '') as String,
+      message: json["message"] as String,
       statusCode: (json["statusCode"] as num?)?.toInt(),
-      isRetryable: (json["isRetryable"] ?? false) as bool,
+      isRetryable: json["isRetryable"] as bool,
       responseHeaders: (json["responseHeaders"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as String)),
       responseBody: json["responseBody"] as String?,
       metadata: (json["metadata"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as String)),

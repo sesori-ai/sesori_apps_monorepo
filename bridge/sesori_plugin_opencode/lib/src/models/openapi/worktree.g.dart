@@ -6,16 +6,16 @@ import 'package:meta/meta.dart';
 @immutable
 class Worktree {
   const Worktree({
-    this.name = '',
-    this.branch,
-    this.directory = '',
+    required this.name,
+    required this.branch,
+    required this.directory,
   });
 
   factory Worktree.fromJson(Map<String, dynamic> json) {
     return Worktree(
-      name: (json["name"] ?? '') as String,
+      name: json["name"] as String,
       branch: json["branch"] as String?,
-      directory: (json["directory"] ?? '') as String,
+      directory: json["directory"] as String,
     );
   }
 

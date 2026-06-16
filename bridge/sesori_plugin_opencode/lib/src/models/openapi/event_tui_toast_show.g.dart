@@ -1,20 +1,21 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
 // Source: anomalyco/opencode@v1.17.3 (8c8011336163d7e7fb24a6a4a049cdb1f6e6ee74)
 
+import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 import 'event.g.dart';
 
 @immutable
 class EventTuiToastShow190ap9t implements Event {
   const EventTuiToastShow190ap9t({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventTuiToastShow190ap9t.fromJson(Map<String, dynamic> json) {
     return EventTuiToastShow190ap9t(
-      id: (json["id"] ?? '') as String,
-      properties: EventTuiToastShow190ap9tProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventTuiToastShow190ap9tProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -56,17 +57,17 @@ class EventTuiToastShow190ap9t implements Event {
 @immutable
 class EventTuiToastShow190ap9tProperties {
   const EventTuiToastShow190ap9tProperties({
-    this.title,
-    this.message = '',
-    this.variant = '',
-    this.duration,
+    required this.title,
+    required this.message,
+    required this.variant,
+    required this.duration,
   });
 
   factory EventTuiToastShow190ap9tProperties.fromJson(Map<String, dynamic> json) {
     return EventTuiToastShow190ap9tProperties(
       title: json["title"] as String?,
-      message: (json["message"] ?? '') as String,
-      variant: (json["variant"] ?? '') as String,
+      message: json["message"] as String,
+      variant: EventTuiToastShow190ap9tPropertiesVariant.fromJson(json["variant"] as String),
       duration: (json["duration"] as num?)?.toInt(),
     );
   }
@@ -75,7 +76,7 @@ class EventTuiToastShow190ap9tProperties {
     return <String, dynamic>{
       "title": ?title,
       "message": message,
-      "variant": variant,
+      "variant": variant.toJson(),
       "duration": ?duration,
     };
   }
@@ -85,7 +86,7 @@ class EventTuiToastShow190ap9tProperties {
   EventTuiToastShow190ap9tProperties copyWith({
     String? title,
     String? message,
-    String? variant,
+    EventTuiToastShow190ap9tPropertiesVariant? variant,
     int? duration,
   }) {
     return EventTuiToastShow190ap9tProperties(
@@ -110,6 +111,52 @@ class EventTuiToastShow190ap9tProperties {
 
   final String? title;
   final String message;
-  final String variant;
+  final EventTuiToastShow190ap9tPropertiesVariant variant;
   final int? duration;
+}
+
+enum EventTuiToastShow190ap9tPropertiesVariant {
+  @JsonValue("info")
+  info,
+  @JsonValue("success")
+  success,
+  @JsonValue("warning")
+  warning,
+  @JsonValue("error")
+  error,
+
+  /// Fallback for values introduced by newer OpenCode servers.
+  /// Encodes back to the literal string `unknown`.
+  unknown,
+  ;
+
+  static EventTuiToastShow190ap9tPropertiesVariant fromJson(String value) {
+    switch (value) {
+      case "info":
+        return EventTuiToastShow190ap9tPropertiesVariant.info;
+      case "success":
+        return EventTuiToastShow190ap9tPropertiesVariant.success;
+      case "warning":
+        return EventTuiToastShow190ap9tPropertiesVariant.warning;
+      case "error":
+        return EventTuiToastShow190ap9tPropertiesVariant.error;
+      default:
+        return EventTuiToastShow190ap9tPropertiesVariant.unknown;
+    }
+  }
+
+  String toJson() {
+    switch (this) {
+      case EventTuiToastShow190ap9tPropertiesVariant.info:
+        return "info";
+      case EventTuiToastShow190ap9tPropertiesVariant.success:
+        return "success";
+      case EventTuiToastShow190ap9tPropertiesVariant.warning:
+        return "warning";
+      case EventTuiToastShow190ap9tPropertiesVariant.error:
+        return "error";
+      case EventTuiToastShow190ap9tPropertiesVariant.unknown:
+        return 'unknown';
+    }
+  }
 }

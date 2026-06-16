@@ -9,17 +9,17 @@ import 'question_tool.g.dart';
 @immutable
 class QuestionRequest {
   const QuestionRequest({
-    this.id = '',
-    this.sessionID = '',
-    this.questions = const [],
-    this.tool,
+    required this.id,
+    required this.sessionID,
+    required this.questions,
+    required this.tool,
   });
 
   factory QuestionRequest.fromJson(Map<String, dynamic> json) {
     return QuestionRequest(
-      id: (json["id"] ?? '') as String,
-      sessionID: (json["sessionID"] ?? '') as String,
-      questions: ((json["questions"] ?? const []) as List<dynamic>).map((e) => QuestionInfo.fromJson(e as Map<String, dynamic>)).toList(),
+      id: json["id"] as String,
+      sessionID: json["sessionID"] as String,
+      questions: (json["questions"] as List<dynamic>).map((e) => QuestionInfo.fromJson(e as Map<String, dynamic>)).toList(),
       tool: json["tool"] == null ? null : QuestionTool.fromJson(json["tool"] as Map<String, dynamic>),
     );
   }

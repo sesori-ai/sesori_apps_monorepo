@@ -6,14 +6,14 @@ import 'package:meta/meta.dart';
 @immutable
 class UnknownError {
   const UnknownError({
-    this.name = '',
+    required this.name,
     required this.data,
   });
 
   factory UnknownError.fromJson(Map<String, dynamic> json) {
     return UnknownError(
-      name: (json["name"] ?? '') as String,
-      data: UnknownErrorData.fromJson((json["data"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      name: json["name"] as String,
+      data: UnknownErrorData.fromJson(json["data"] as Map<String, dynamic>),
     );
   }
 
@@ -53,13 +53,13 @@ class UnknownError {
 @immutable
 class UnknownErrorData {
   const UnknownErrorData({
-    this.message = '',
-    this.ref,
+    required this.message,
+    required this.ref,
   });
 
   factory UnknownErrorData.fromJson(Map<String, dynamic> json) {
     return UnknownErrorData(
-      message: (json["message"] ?? '') as String,
+      message: json["message"] as String,
       ref: json["ref"] as String?,
     );
   }

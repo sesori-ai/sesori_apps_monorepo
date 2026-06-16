@@ -6,14 +6,14 @@ import 'package:meta/meta.dart';
 @immutable
 class ContextOverflowError {
   const ContextOverflowError({
-    this.name = '',
+    required this.name,
     required this.data,
   });
 
   factory ContextOverflowError.fromJson(Map<String, dynamic> json) {
     return ContextOverflowError(
-      name: (json["name"] ?? '') as String,
-      data: ContextOverflowErrorData.fromJson((json["data"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      name: json["name"] as String,
+      data: ContextOverflowErrorData.fromJson(json["data"] as Map<String, dynamic>),
     );
   }
 
@@ -53,13 +53,13 @@ class ContextOverflowError {
 @immutable
 class ContextOverflowErrorData {
   const ContextOverflowErrorData({
-    this.message = '',
-    this.responseBody,
+    required this.message,
+    required this.responseBody,
   });
 
   factory ContextOverflowErrorData.fromJson(Map<String, dynamic> json) {
     return ContextOverflowErrorData(
-      message: (json["message"] ?? '') as String,
+      message: json["message"] as String,
       responseBody: json["responseBody"] as String?,
     );
   }

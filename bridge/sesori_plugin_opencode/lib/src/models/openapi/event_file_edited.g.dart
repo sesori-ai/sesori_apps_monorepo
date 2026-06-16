@@ -7,14 +7,14 @@ import 'event.g.dart';
 @immutable
 class EventFileEdited implements Event {
   const EventFileEdited({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventFileEdited.fromJson(Map<String, dynamic> json) {
     return EventFileEdited(
-      id: (json["id"] ?? '') as String,
-      properties: EventFileEditedProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventFileEditedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -56,12 +56,12 @@ class EventFileEdited implements Event {
 @immutable
 class EventFileEditedProperties {
   const EventFileEditedProperties({
-    this.file = '',
+    required this.file,
   });
 
   factory EventFileEditedProperties.fromJson(Map<String, dynamic> json) {
     return EventFileEditedProperties(
-      file: (json["file"] ?? '') as String,
+      file: json["file"] as String,
     );
   }
 

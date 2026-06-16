@@ -6,22 +6,22 @@ import 'package:meta/meta.dart';
 @immutable
 class SubtaskPartInput {
   const SubtaskPartInput({
-    this.id,
-    this.type = '',
-    this.prompt = '',
-    this.description = '',
-    this.agent = '',
-    this.model,
-    this.command,
+    required this.id,
+    required this.type,
+    required this.prompt,
+    required this.description,
+    required this.agent,
+    required this.model,
+    required this.command,
   });
 
   factory SubtaskPartInput.fromJson(Map<String, dynamic> json) {
     return SubtaskPartInput(
       id: json["id"] as String?,
-      type: (json["type"] ?? '') as String,
-      prompt: (json["prompt"] ?? '') as String,
-      description: (json["description"] ?? '') as String,
-      agent: (json["agent"] ?? '') as String,
+      type: json["type"] as String,
+      prompt: json["prompt"] as String,
+      description: json["description"] as String,
+      agent: json["agent"] as String,
       model: json["model"] == null ? null : SubtaskPartInputModel.fromJson(json["model"] as Map<String, dynamic>),
       command: json["command"] as String?,
     );
@@ -88,14 +88,14 @@ class SubtaskPartInput {
 @immutable
 class SubtaskPartInputModel {
   const SubtaskPartInputModel({
-    this.providerID = '',
-    this.modelID = '',
+    required this.providerID,
+    required this.modelID,
   });
 
   factory SubtaskPartInputModel.fromJson(Map<String, dynamic> json) {
     return SubtaskPartInputModel(
-      providerID: (json["providerID"] ?? '') as String,
-      modelID: (json["modelID"] ?? '') as String,
+      providerID: json["providerID"] as String,
+      modelID: json["modelID"] as String,
     );
   }
 

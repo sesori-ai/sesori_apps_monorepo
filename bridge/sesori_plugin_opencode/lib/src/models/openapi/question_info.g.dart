@@ -8,18 +8,18 @@ import 'question_option.g.dart';
 @immutable
 class QuestionInfo {
   const QuestionInfo({
-    this.question = '',
-    this.header = '',
-    this.options = const [],
-    this.multiple,
-    this.custom,
+    required this.question,
+    required this.header,
+    required this.options,
+    required this.multiple,
+    required this.custom,
   });
 
   factory QuestionInfo.fromJson(Map<String, dynamic> json) {
     return QuestionInfo(
-      question: (json["question"] ?? '') as String,
-      header: (json["header"] ?? '') as String,
-      options: ((json["options"] ?? const []) as List<dynamic>).map((e) => QuestionOption.fromJson(e as Map<String, dynamic>)).toList(),
+      question: json["question"] as String,
+      header: json["header"] as String,
+      options: (json["options"] as List<dynamic>).map((e) => QuestionOption.fromJson(e as Map<String, dynamic>)).toList(),
       multiple: json["multiple"] as bool?,
       custom: json["custom"] as bool?,
     );

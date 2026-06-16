@@ -7,19 +7,19 @@ import 'part.g.dart';
 @immutable
 class AgentPart implements Part {
   const AgentPart({
-    this.id = '',
-    this.sessionID = '',
-    this.messageID = '',
-    this.name = '',
-    this.source,
+    required this.id,
+    required this.sessionID,
+    required this.messageID,
+    required this.name,
+    required this.source,
   });
 
   factory AgentPart.fromJson(Map<String, dynamic> json) {
     return AgentPart(
-      id: (json["id"] ?? '') as String,
-      sessionID: (json["sessionID"] ?? '') as String,
-      messageID: (json["messageID"] ?? '') as String,
-      name: (json["name"] ?? '') as String,
+      id: json["id"] as String,
+      sessionID: json["sessionID"] as String,
+      messageID: json["messageID"] as String,
+      name: json["name"] as String,
       source: json["source"] == null ? null : AgentPartSource.fromJson(json["source"] as Map<String, dynamic>),
     );
   }
@@ -77,16 +77,16 @@ class AgentPart implements Part {
 @immutable
 class AgentPartSource {
   const AgentPartSource({
-    this.value = '',
-    this.start = 0,
-    this.end = 0,
+    required this.value,
+    required this.start,
+    required this.end,
   });
 
   factory AgentPartSource.fromJson(Map<String, dynamic> json) {
     return AgentPartSource(
-      value: (json["value"] ?? '') as String,
-      start: ((json["start"] ?? 0) as num).toInt(),
-      end: ((json["end"] ?? 0) as num).toInt(),
+      value: json["value"] as String,
+      start: (json["start"] as num).toInt(),
+      end: (json["end"] as num).toInt(),
     );
   }
 

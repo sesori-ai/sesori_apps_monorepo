@@ -7,14 +7,14 @@ import 'event.g.dart';
 @immutable
 class EventMcpToolsChanged implements Event {
   const EventMcpToolsChanged({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventMcpToolsChanged.fromJson(Map<String, dynamic> json) {
     return EventMcpToolsChanged(
-      id: (json["id"] ?? '') as String,
-      properties: EventMcpToolsChangedProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventMcpToolsChangedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -56,12 +56,12 @@ class EventMcpToolsChanged implements Event {
 @immutable
 class EventMcpToolsChangedProperties {
   const EventMcpToolsChangedProperties({
-    this.server = '',
+    required this.server,
   });
 
   factory EventMcpToolsChangedProperties.fromJson(Map<String, dynamic> json) {
     return EventMcpToolsChangedProperties(
-      server: (json["server"] ?? '') as String,
+      server: json["server"] as String,
     );
   }
 

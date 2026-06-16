@@ -9,12 +9,12 @@ import 'output_format.g.dart';
 class OutputFormatJsonSchema implements OutputFormat {
   const OutputFormatJsonSchema({
     required this.schema,
-    this.retryCount,
+    required this.retryCount,
   });
 
   factory OutputFormatJsonSchema.fromJson(Map<String, dynamic> json) {
     return OutputFormatJsonSchema(
-      schema: JSONSchema.fromJson((json["schema"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      schema: JSONSchema.fromJson(json["schema"] as Map<String, dynamic>),
       retryCount: (json["retryCount"] as num?)?.toInt(),
     );
   }

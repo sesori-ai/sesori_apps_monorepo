@@ -6,14 +6,14 @@ import 'package:meta/meta.dart';
 @immutable
 class ProviderAuthError {
   const ProviderAuthError({
-    this.name = '',
+    required this.name,
     required this.data,
   });
 
   factory ProviderAuthError.fromJson(Map<String, dynamic> json) {
     return ProviderAuthError(
-      name: (json["name"] ?? '') as String,
-      data: ProviderAuthErrorData.fromJson((json["data"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      name: json["name"] as String,
+      data: ProviderAuthErrorData.fromJson(json["data"] as Map<String, dynamic>),
     );
   }
 
@@ -53,14 +53,14 @@ class ProviderAuthError {
 @immutable
 class ProviderAuthErrorData {
   const ProviderAuthErrorData({
-    this.providerID = '',
-    this.message = '',
+    required this.providerID,
+    required this.message,
   });
 
   factory ProviderAuthErrorData.fromJson(Map<String, dynamic> json) {
     return ProviderAuthErrorData(
-      providerID: (json["providerID"] ?? '') as String,
-      message: (json["message"] ?? '') as String,
+      providerID: json["providerID"] as String,
+      message: json["message"] as String,
     );
   }
 

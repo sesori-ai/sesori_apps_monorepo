@@ -9,14 +9,14 @@ import 'snapshot_file_diff.g.dart';
 @immutable
 class EventSessionDiff implements Event {
   const EventSessionDiff({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventSessionDiff.fromJson(Map<String, dynamic> json) {
     return EventSessionDiff(
-      id: (json["id"] ?? '') as String,
-      properties: EventSessionDiffProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventSessionDiffProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -58,14 +58,14 @@ class EventSessionDiff implements Event {
 @immutable
 class EventSessionDiffProperties {
   const EventSessionDiffProperties({
-    this.sessionID = '',
-    this.diff = const [],
+    required this.sessionID,
+    required this.diff,
   });
 
   factory EventSessionDiffProperties.fromJson(Map<String, dynamic> json) {
     return EventSessionDiffProperties(
-      sessionID: (json["sessionID"] ?? '') as String,
-      diff: ((json["diff"] ?? const []) as List<dynamic>).map((e) => SnapshotFileDiff.fromJson(e as Map<String, dynamic>)).toList(),
+      sessionID: json["sessionID"] as String,
+      diff: (json["diff"] as List<dynamic>).map((e) => SnapshotFileDiff.fromJson(e as Map<String, dynamic>)).toList(),
     );
   }
 

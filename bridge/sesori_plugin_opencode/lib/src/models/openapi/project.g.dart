@@ -7,26 +7,26 @@ import 'package:meta/meta.dart';
 @immutable
 class Project {
   const Project({
-    this.id = '',
-    this.worktree = '',
-    this.vcs,
-    this.name,
-    this.icon,
-    this.commands,
-    this.time = const ProjectTime(created: 0, updated: 0),
-    this.sandboxes = const [],
+    required this.id,
+    required this.worktree,
+    required this.vcs,
+    required this.name,
+    required this.icon,
+    required this.commands,
+    required this.time,
+    required this.sandboxes,
   });
 
   factory Project.fromJson(Map<String, dynamic> json) {
     return Project(
-      id: (json["id"] ?? '') as String,
-      worktree: (json["worktree"] ?? '') as String,
+      id: json["id"] as String,
+      worktree: json["worktree"] as String,
       vcs: json["vcs"] as String?,
       name: json["name"] as String?,
       icon: json["icon"] == null ? null : ProjectIcon.fromJson(json["icon"] as Map<String, dynamic>),
       commands: json["commands"] == null ? null : ProjectCommands.fromJson(json["commands"] as Map<String, dynamic>),
-      time: ProjectTime.fromJson((json["time"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
-      sandboxes: ((json["sandboxes"] ?? const []) as List<dynamic>).cast<String>(),
+      time: ProjectTime.fromJson(json["time"] as Map<String, dynamic>),
+      sandboxes: (json["sandboxes"] as List<dynamic>).cast<String>(),
     );
   }
 
@@ -96,9 +96,9 @@ class Project {
 @immutable
 class ProjectIcon {
   const ProjectIcon({
-    this.url,
-    this.overrideValue,
-    this.color,
+    required this.url,
+    required this.overrideValue,
+    required this.color,
   });
 
   factory ProjectIcon.fromJson(Map<String, dynamic> json) {
@@ -150,7 +150,7 @@ class ProjectIcon {
 @immutable
 class ProjectCommands {
   const ProjectCommands({
-    this.start,
+    required this.start,
   });
 
   factory ProjectCommands.fromJson(Map<String, dynamic> json) {
@@ -190,15 +190,15 @@ class ProjectCommands {
 @immutable
 class ProjectTime {
   const ProjectTime({
-    this.created = 0,
-    this.updated = 0,
-    this.initialized,
+    required this.created,
+    required this.updated,
+    required this.initialized,
   });
 
   factory ProjectTime.fromJson(Map<String, dynamic> json) {
     return ProjectTime(
-      created: ((json["created"] ?? 0) as num).toInt(),
-      updated: ((json["updated"] ?? 0) as num).toInt(),
+      created: (json["created"] as num).toInt(),
+      updated: (json["updated"] as num).toInt(),
       initialized: (json["initialized"] as num?)?.toInt(),
     );
   }

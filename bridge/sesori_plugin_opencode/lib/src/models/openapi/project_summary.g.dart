@@ -6,16 +6,16 @@ import 'package:meta/meta.dart';
 @immutable
 class ProjectSummary {
   const ProjectSummary({
-    this.id = '',
-    this.name,
-    this.worktree = '',
+    required this.id,
+    required this.name,
+    required this.worktree,
   });
 
   factory ProjectSummary.fromJson(Map<String, dynamic> json) {
     return ProjectSummary(
-      id: (json["id"] ?? '') as String,
+      id: json["id"] as String,
       name: json["name"] as String?,
-      worktree: (json["worktree"] ?? '') as String,
+      worktree: json["worktree"] as String,
     );
   }
 

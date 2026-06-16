@@ -8,20 +8,20 @@ import 'part.g.dart';
 @immutable
 class PatchPart implements Part {
   const PatchPart({
-    this.id = '',
-    this.sessionID = '',
-    this.messageID = '',
-    this.hash = '',
-    this.files = const [],
+    required this.id,
+    required this.sessionID,
+    required this.messageID,
+    required this.hash,
+    required this.files,
   });
 
   factory PatchPart.fromJson(Map<String, dynamic> json) {
     return PatchPart(
-      id: (json["id"] ?? '') as String,
-      sessionID: (json["sessionID"] ?? '') as String,
-      messageID: (json["messageID"] ?? '') as String,
-      hash: (json["hash"] ?? '') as String,
-      files: ((json["files"] ?? const []) as List<dynamic>).cast<String>(),
+      id: json["id"] as String,
+      sessionID: json["sessionID"] as String,
+      messageID: json["messageID"] as String,
+      hash: json["hash"] as String,
+      files: (json["files"] as List<dynamic>).cast<String>(),
     );
   }
 

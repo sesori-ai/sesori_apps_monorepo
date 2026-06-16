@@ -9,14 +9,14 @@ import 'todo.g.dart';
 @immutable
 class EventTodoUpdated implements Event {
   const EventTodoUpdated({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventTodoUpdated.fromJson(Map<String, dynamic> json) {
     return EventTodoUpdated(
-      id: (json["id"] ?? '') as String,
-      properties: EventTodoUpdatedProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventTodoUpdatedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -58,14 +58,14 @@ class EventTodoUpdated implements Event {
 @immutable
 class EventTodoUpdatedProperties {
   const EventTodoUpdatedProperties({
-    this.sessionID = '',
-    this.todos = const [],
+    required this.sessionID,
+    required this.todos,
   });
 
   factory EventTodoUpdatedProperties.fromJson(Map<String, dynamic> json) {
     return EventTodoUpdatedProperties(
-      sessionID: (json["sessionID"] ?? '') as String,
-      todos: ((json["todos"] ?? const []) as List<dynamic>).map((e) => Todo.fromJson(e as Map<String, dynamic>)).toList(),
+      sessionID: json["sessionID"] as String,
+      todos: (json["todos"] as List<dynamic>).map((e) => Todo.fromJson(e as Map<String, dynamic>)).toList(),
     );
   }
 

@@ -10,14 +10,14 @@ import 'question_tool.g.dart';
 @immutable
 class EventQuestionAsked implements Event {
   const EventQuestionAsked({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventQuestionAsked.fromJson(Map<String, dynamic> json) {
     return EventQuestionAsked(
-      id: (json["id"] ?? '') as String,
-      properties: EventQuestionAskedProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventQuestionAskedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -59,17 +59,17 @@ class EventQuestionAsked implements Event {
 @immutable
 class EventQuestionAskedProperties {
   const EventQuestionAskedProperties({
-    this.id = '',
-    this.sessionID = '',
-    this.questions = const [],
-    this.tool,
+    required this.id,
+    required this.sessionID,
+    required this.questions,
+    required this.tool,
   });
 
   factory EventQuestionAskedProperties.fromJson(Map<String, dynamic> json) {
     return EventQuestionAskedProperties(
-      id: (json["id"] ?? '') as String,
-      sessionID: (json["sessionID"] ?? '') as String,
-      questions: ((json["questions"] ?? const []) as List<dynamic>).map((e) => QuestionInfo.fromJson(e as Map<String, dynamic>)).toList(),
+      id: json["id"] as String,
+      sessionID: json["sessionID"] as String,
+      questions: (json["questions"] as List<dynamic>).map((e) => QuestionInfo.fromJson(e as Map<String, dynamic>)).toList(),
       tool: json["tool"] == null ? null : QuestionTool.fromJson(json["tool"] as Map<String, dynamic>),
     );
   }

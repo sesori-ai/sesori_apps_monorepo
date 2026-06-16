@@ -104,10 +104,10 @@ sealed class SseEventData {
     String? id,
   }) = SsePtyDeleted;
   const factory SseEventData.permissionAsked({
-    required String requestID,
+    required String id,
     required String sessionID,
-    required String tool,
-    required String description,
+    required String permission,
+    required List<String> patterns,
   }) = SsePermissionAsked;
   const factory SseEventData.permissionReplied({
     required String requestID,
@@ -737,16 +737,16 @@ class SsePtyDeleted extends SseEventData {
 }
 class SsePermissionAsked extends SseEventData implements SseSessionEventData {
   const SsePermissionAsked({
-    required this.requestID,
+    required this.id,
     required this.sessionID,
-    required this.tool,
-    required this.description,
+    required this.permission,
+    required this.patterns,
   });
 
-  final String requestID;
+  final String id;
   final String sessionID;
-  final String tool;
-  final String description;
+  final String permission;
+  final List<String> patterns;
 
   @override
   String get type => "permission.asked";
@@ -754,18 +754,18 @@ class SsePermissionAsked extends SseEventData implements SseSessionEventData {
   @override
   Map<String, dynamic> toJson() => <String, dynamic>{
     "type": type,
-    "requestID": requestID,
+    "id": id,
     "sessionID": sessionID,
-    "tool": tool,
-    "description": description,
+    "permission": permission,
+    "patterns": patterns,
   };
 
   factory SsePermissionAsked.fromJson(Map<String, dynamic> json) {
     return SsePermissionAsked(
-      requestID: json["requestID"] as String,
+      id: json["id"] as String,
       sessionID: json["sessionID"] as String,
-      tool: json["tool"] as String,
-      description: json["description"] as String,
+      permission: json["permission"] as String,
+      patterns: (json["patterns"] as List<dynamic>).cast<String>(),
     );
   }
 }

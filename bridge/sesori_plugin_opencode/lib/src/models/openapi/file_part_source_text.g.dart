@@ -6,16 +6,16 @@ import 'package:meta/meta.dart';
 @immutable
 class FilePartSourceText {
   const FilePartSourceText({
-    this.value = '',
-    this.start = 0,
-    this.end = 0,
+    required this.value,
+    required this.start,
+    required this.end,
   });
 
   factory FilePartSourceText.fromJson(Map<String, dynamic> json) {
     return FilePartSourceText(
-      value: (json["value"] ?? '') as String,
-      start: ((json["start"] ?? 0) as num).toDouble(),
-      end: ((json["end"] ?? 0) as num).toDouble(),
+      value: json["value"] as String,
+      start: (json["start"] as num).toDouble(),
+      end: (json["end"] as num).toDouble(),
     );
   }
 

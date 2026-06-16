@@ -7,23 +7,23 @@ import 'package:meta/meta.dart';
 @immutable
 class PermissionRequest {
   const PermissionRequest({
-    this.id = '',
-    this.sessionID = '',
-    this.permission = '',
-    this.patterns = const [],
-    this.metadata = const {},
-    this.always = const [],
-    this.tool,
+    required this.id,
+    required this.sessionID,
+    required this.permission,
+    required this.patterns,
+    required this.metadata,
+    required this.always,
+    required this.tool,
   });
 
   factory PermissionRequest.fromJson(Map<String, dynamic> json) {
     return PermissionRequest(
-      id: (json["id"] ?? '') as String,
-      sessionID: (json["sessionID"] ?? '') as String,
-      permission: (json["permission"] ?? '') as String,
-      patterns: ((json["patterns"] ?? const []) as List<dynamic>).cast<String>(),
-      metadata: (json["metadata"] ?? const <String, dynamic>{}) as Map<String, dynamic>,
-      always: ((json["always"] ?? const []) as List<dynamic>).cast<String>(),
+      id: json["id"] as String,
+      sessionID: json["sessionID"] as String,
+      permission: json["permission"] as String,
+      patterns: (json["patterns"] as List<dynamic>).cast<String>(),
+      metadata: json["metadata"] as Map<String, dynamic>,
+      always: (json["always"] as List<dynamic>).cast<String>(),
       tool: json["tool"] == null ? null : PermissionRequestTool.fromJson(json["tool"] as Map<String, dynamic>),
     );
   }
@@ -89,14 +89,14 @@ class PermissionRequest {
 @immutable
 class PermissionRequestTool {
   const PermissionRequestTool({
-    this.messageID = '',
-    this.callID = '',
+    required this.messageID,
+    required this.callID,
   });
 
   factory PermissionRequestTool.fromJson(Map<String, dynamic> json) {
     return PermissionRequestTool(
-      messageID: (json["messageID"] ?? '') as String,
-      callID: (json["callID"] ?? '') as String,
+      messageID: json["messageID"] as String,
+      callID: json["callID"] as String,
     );
   }
 

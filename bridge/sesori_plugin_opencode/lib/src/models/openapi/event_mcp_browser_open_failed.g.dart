@@ -7,14 +7,14 @@ import 'event.g.dart';
 @immutable
 class EventMcpBrowserOpenFailed implements Event {
   const EventMcpBrowserOpenFailed({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventMcpBrowserOpenFailed.fromJson(Map<String, dynamic> json) {
     return EventMcpBrowserOpenFailed(
-      id: (json["id"] ?? '') as String,
-      properties: EventMcpBrowserOpenFailedProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventMcpBrowserOpenFailedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -56,14 +56,14 @@ class EventMcpBrowserOpenFailed implements Event {
 @immutable
 class EventMcpBrowserOpenFailedProperties {
   const EventMcpBrowserOpenFailedProperties({
-    this.mcpName = '',
-    this.url = '',
+    required this.mcpName,
+    required this.url,
   });
 
   factory EventMcpBrowserOpenFailedProperties.fromJson(Map<String, dynamic> json) {
     return EventMcpBrowserOpenFailedProperties(
-      mcpName: (json["mcpName"] ?? '') as String,
-      url: (json["url"] ?? '') as String,
+      mcpName: json["mcpName"] as String,
+      url: json["url"] as String,
     );
   }
 

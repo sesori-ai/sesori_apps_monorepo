@@ -6,14 +6,14 @@ import 'package:meta/meta.dart';
 @immutable
 class QuestionTool {
   const QuestionTool({
-    this.messageID = '',
-    this.callID = '',
+    required this.messageID,
+    required this.callID,
   });
 
   factory QuestionTool.fromJson(Map<String, dynamic> json) {
     return QuestionTool(
-      messageID: (json["messageID"] ?? '') as String,
-      callID: (json["callID"] ?? '') as String,
+      messageID: json["messageID"] as String,
+      callID: json["callID"] as String,
     );
   }
 

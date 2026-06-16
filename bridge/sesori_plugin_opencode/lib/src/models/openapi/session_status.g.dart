@@ -55,18 +55,18 @@ class SessionStatusIdle implements SessionStatus {
 @immutable
 class SessionStatusRetry implements SessionStatus {
   const SessionStatusRetry({
-    this.attempt = 0,
-    this.message = '',
-    this.action,
-    this.next = 0,
+    required this.attempt,
+    required this.message,
+    required this.action,
+    required this.next,
   });
 
   factory SessionStatusRetry.fromJson(Map<String, dynamic> json) {
     return SessionStatusRetry(
-      attempt: ((json["attempt"] ?? 0) as num).toInt(),
-      message: (json["message"] ?? '') as String,
+      attempt: (json["attempt"] as num).toInt(),
+      message: json["message"] as String,
       action: json["action"] == null ? null : SessionStatusRetryAction.fromJson(json["action"] as Map<String, dynamic>),
-      next: ((json["next"] ?? 0) as num).toInt(),
+      next: (json["next"] as num).toInt(),
     );
   }
 
@@ -160,21 +160,21 @@ class SessionStatusUnknown implements SessionStatus {
 @immutable
 class SessionStatusRetryAction {
   const SessionStatusRetryAction({
-    this.reason = '',
-    this.provider = '',
-    this.title = '',
-    this.message = '',
-    this.label = '',
-    this.link,
+    required this.reason,
+    required this.provider,
+    required this.title,
+    required this.message,
+    required this.label,
+    required this.link,
   });
 
   factory SessionStatusRetryAction.fromJson(Map<String, dynamic> json) {
     return SessionStatusRetryAction(
-      reason: (json["reason"] ?? '') as String,
-      provider: (json["provider"] ?? '') as String,
-      title: (json["title"] ?? '') as String,
-      message: (json["message"] ?? '') as String,
-      label: (json["label"] ?? '') as String,
+      reason: json["reason"] as String,
+      provider: json["provider"] as String,
+      title: json["title"] as String?,
+      message: json["message"] as String,
+      label: json["label"] as String,
       link: json["link"] as String?,
     );
   }
@@ -226,7 +226,7 @@ class SessionStatusRetryAction {
 
   final String reason;
   final String provider;
-  final String title;
+  final String? title;
   final String message;
   final String label;
   final String? link;

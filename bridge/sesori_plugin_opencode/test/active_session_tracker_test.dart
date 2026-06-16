@@ -48,8 +48,12 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/projects/foo",
             ),
@@ -71,8 +75,12 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/projects/foo",
             ),
@@ -98,8 +106,12 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/projects/foo",
             ),
@@ -118,8 +130,12 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/projects/foo",
             ),
@@ -168,8 +184,12 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/projects/foo",
             ),
@@ -182,7 +202,7 @@ void main() {
           statuses: {
             "s1": const SessionStatusBusy(),
             "s2": const SessionStatusIdle(),
-            "s3": const SessionStatusRetry(attempt: 1, message: "fail", next: 123),
+            "s3": const SessionStatusRetry(attempt: 1, message: "fail", action: null, next: 123),
           },
         );
 
@@ -198,8 +218,12 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/projects/foo",
             ),
@@ -219,8 +243,12 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/projects/foo",
             ),
@@ -247,8 +275,12 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/projects/foo",
             ),
@@ -268,8 +300,12 @@ void main() {
       final tracker = await _coldStartedTracker(
         projects: [
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p1",
             worktree: "/projects/foo",
           ),
@@ -287,8 +323,12 @@ void main() {
       final tracker = await _coldStartedTracker(
         projects: [
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p1",
             worktree: "/projects/foo",
           ),
@@ -306,8 +346,12 @@ void main() {
       final tracker = await _coldStartedTracker(
         projects: [
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p1",
             worktree: "/projects/foo",
           ),
@@ -325,8 +369,12 @@ void main() {
       final tracker = await _coldStartedTracker(
         projects: [
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p1",
             worktree: "/projects/foo",
           ),
@@ -344,14 +392,22 @@ void main() {
       final tracker = await _coldStartedTracker(
         projects: [
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p1",
             worktree: "/projects/foo",
           ),
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p2",
             worktree: "/projects/foo/packages/bar",
           ),
@@ -377,8 +433,12 @@ void main() {
       final tracker = await _coldStartedTracker(
         projects: [
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p1",
             worktree: r"C:\repo\foo",
           ),
@@ -396,8 +456,12 @@ void main() {
       final tracker = await _coldStartedTracker(
         projects: [
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p1",
             worktree: "/repo",
           ),
@@ -419,8 +483,12 @@ void main() {
       final tracker = await _coldStartedTracker(
         projects: [
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p1",
             worktree: "/repo",
           ),
@@ -434,6 +502,7 @@ void main() {
           status: SessionStatusRetry(
             attempt: 2,
             message: "retrying",
+            action: null,
             next: 123,
           ),
         ),
@@ -448,8 +517,12 @@ void main() {
       final tracker = await _coldStartedTracker(
         projects: [
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p1",
             worktree: "/repo",
           ),
@@ -471,8 +544,12 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/repo",
             ),
@@ -502,8 +579,12 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/repo",
             ),
@@ -521,8 +602,12 @@ void main() {
       final tracker = await _coldStartedTracker(
         projects: [
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p1",
             worktree: "/repo",
           ),
@@ -543,14 +628,22 @@ void main() {
       final tracker = await _coldStartedTracker(
         projects: [
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p1",
             worktree: "/repo-a",
           ),
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p2",
             worktree: "/repo-b",
           ),
@@ -570,8 +663,12 @@ void main() {
       final tracker = await _coldStartedTracker(
         projects: [
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p1",
             worktree: "/repo",
           ),
@@ -600,14 +697,22 @@ void main() {
       final tracker = await _coldStartedTracker(
         projects: [
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p1",
             worktree: "/foo",
           ),
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p2",
             worktree: "/bar",
           ),
@@ -617,7 +722,19 @@ void main() {
             slug: "slug",
             title: "title",
             version: "v",
-            time: SessionTime(created: 0, updated: 0),
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: null,
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
             id: "s1",
             projectID: "p1",
             directory: "/foo",
@@ -626,7 +743,19 @@ void main() {
             slug: "slug",
             title: "title",
             version: "v",
-            time: SessionTime(created: 0, updated: 0),
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: null,
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
             id: "s2",
             projectID: "p2",
             directory: "/bar",
@@ -642,8 +771,12 @@ void main() {
       final tracker = await _coldStartedTracker(
         projects: [
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p1",
             worktree: "/repo",
           ),
@@ -653,7 +786,19 @@ void main() {
             slug: "slug",
             title: "title",
             version: "v",
-            time: SessionTime(created: 0, updated: 0),
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: null,
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
             id: "s1",
             projectID: "p1",
             directory: "/repo",
@@ -674,8 +819,12 @@ void main() {
       final tracker = await _coldStartedTracker(
         projects: [
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p1",
             worktree: "/repo",
           ),
@@ -685,7 +834,19 @@ void main() {
             slug: "slug",
             title: "title",
             version: "v",
-            time: SessionTime(created: 0, updated: 0),
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: null,
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
             id: "s1",
             projectID: "p1",
             directory: "/repo",
@@ -694,11 +855,22 @@ void main() {
             slug: "slug",
             title: "title",
             version: "v",
-            time: SessionTime(created: 0, updated: 0),
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: "s1",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
             id: "c1",
             projectID: "p1",
             directory: "/repo",
-            parentID: "s1",
           ),
         ],
         statuses: {"c1": const SessionStatusBusy()},
@@ -716,8 +888,12 @@ void main() {
       final tracker = await _coldStartedTracker(
         projects: [
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p1",
             worktree: "/projects/foo",
           ),
@@ -740,8 +916,12 @@ void main() {
       final tracker = await _coldStartedTracker(
         projects: [
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p1",
             worktree: "/projects/foo",
           ),
@@ -764,14 +944,22 @@ void main() {
       final tracker = await _coldStartedTracker(
         projects: [
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p1",
             worktree: "/projects/foo",
           ),
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p2",
             worktree: "/projects/bar",
           ),
@@ -798,8 +986,12 @@ void main() {
       final tracker = await _coldStartedTracker(
         projects: [
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p1",
             worktree: "/repo",
           ),
@@ -814,11 +1006,22 @@ void main() {
             slug: "slug",
             title: "title",
             version: "v",
-            time: SessionTime(created: 0, updated: 0),
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: "s1",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
             id: "c1",
             projectID: "project",
             directory: "/repo",
-            parentID: "s1",
           ),
         ),
         null,
@@ -838,8 +1041,12 @@ void main() {
       final tracker = await _coldStartedTracker(
         projects: [
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p1",
             worktree: "/repo",
           ),
@@ -853,11 +1060,22 @@ void main() {
             slug: "slug",
             title: "title",
             version: "v",
-            time: SessionTime(created: 0, updated: 0),
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: "s1",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
             id: "c1",
             projectID: "project",
             directory: "/repo",
-            parentID: "s1",
           ),
         ),
         null,
@@ -882,8 +1100,12 @@ void main() {
       final tracker = await _coldStartedTracker(
         projects: [
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p1",
             worktree: "/repo",
           ),
@@ -896,11 +1118,22 @@ void main() {
             slug: "slug",
             title: "title",
             version: "v",
-            time: SessionTime(created: 0, updated: 0),
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: "root",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
             id: "c1",
             projectID: "project",
             directory: "/repo",
-            parentID: "root",
           ),
         ),
         null,
@@ -923,8 +1156,12 @@ void main() {
       final tracker = await _coldStartedTracker(
         projects: [
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p1",
             worktree: "/repo",
           ),
@@ -934,7 +1171,19 @@ void main() {
             slug: "slug",
             title: "title",
             version: "v",
-            time: SessionTime(created: 0, updated: 0),
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: null,
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
             id: "s1",
             projectID: "p1",
             directory: "/repo",
@@ -943,11 +1192,22 @@ void main() {
             slug: "slug",
             title: "title",
             version: "v",
-            time: SessionTime(created: 0, updated: 0),
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: "s1",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
             id: "c1",
             projectID: "p1",
             directory: "/repo",
-            parentID: "s1",
           ),
         ],
         statuses: {"c1": const SessionStatusBusy()},
@@ -970,8 +1230,12 @@ void main() {
       final tracker = await _coldStartedTracker(
         projects: [
           const Project(
-            time: ProjectTime(created: 0, updated: 0),
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
             sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
             id: "p1",
             worktree: "/repo",
           ),
@@ -986,11 +1250,22 @@ void main() {
             slug: "slug",
             title: "title",
             version: "v",
-            time: SessionTime(created: 0, updated: 0),
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: "s1",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
             id: "c1",
             projectID: "project",
             directory: "/repo",
-            parentID: "s1",
           ),
         ),
         null,
@@ -1002,11 +1277,22 @@ void main() {
             slug: "slug",
             title: "title",
             version: "v",
-            time: SessionTime(created: 0, updated: 0),
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: "c1",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
             id: "g1",
             projectID: "project",
             directory: "/repo",
-            parentID: "c1",
           ),
         ),
         null,
@@ -1027,7 +1313,18 @@ void main() {
     group("parent-ID resolution (phantom-root fix)", () {
       test("busy child with unknown parent is a phantom root until resolved", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              id: "p1",
+              worktree: "/repo",
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+            ),
+          ],
         );
 
         // Busy status arrives for a child with no preceding session.created, so
@@ -1067,7 +1364,18 @@ void main() {
         // Busy status with no directory: the worktree is never learned from the
         // status event, so the busy child produces no row yet.
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              id: "p1",
+              worktree: "/repo",
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionBusy("c1"), null);
@@ -1094,7 +1402,18 @@ void main() {
         // the first time, so the active session goes from no row to a visible
         // root row and registerSession must report the change.
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              id: "p1",
+              worktree: "/repo",
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionBusy("s1"), null);
@@ -1118,7 +1437,18 @@ void main() {
         // busy status carried a directory) and the parent is unchanged, so a
         // re-registration must not trigger a redundant re-emit.
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              id: "p1",
+              worktree: "/repo",
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionBusy("s1"), "/repo");
@@ -1133,7 +1463,18 @@ void main() {
 
       test("registerSession returns false when the session is not active", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              id: "p1",
+              worktree: "/repo",
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+            ),
+          ],
         );
 
         final changed = tracker.registerSession(
@@ -1148,7 +1489,18 @@ void main() {
 
       test("registerSession returns false when the parent is unchanged", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              id: "p1",
+              worktree: "/repo",
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionBusy("c1"), "/repo");
@@ -1170,8 +1522,12 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/repo",
             ),
@@ -1196,8 +1552,12 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/repo",
             ),
@@ -1219,8 +1579,12 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/repo",
             ),
@@ -1243,8 +1607,12 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/repo",
             ),
@@ -1273,8 +1641,12 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/repo",
             ),
@@ -1297,8 +1669,12 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/repo",
             ),
@@ -1321,8 +1697,12 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/repo",
             ),
@@ -1342,8 +1722,12 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/repo",
             ),
@@ -1354,7 +1738,7 @@ void main() {
 
         tracker.populatePendingQuestions(
           questions: [
-            const QuestionRequest(id: "q1", sessionID: "s1", questions: []),
+            const QuestionRequest(id: "q1", sessionID: "s1", questions: [], tool: null),
           ],
         );
 
@@ -1366,8 +1750,12 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/repo",
             ),
@@ -1388,8 +1776,12 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/repo",
             ),
@@ -1416,8 +1808,12 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/repo",
             ),
@@ -1446,8 +1842,12 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/repo",
             ),
@@ -1458,7 +1858,19 @@ void main() {
               slug: "slug",
               title: "title",
               version: "v",
-              time: SessionTime(created: 0, updated: 0),
+              workspaceID: null,
+              path: null,
+              summary: null,
+              cost: null,
+              tokens: null,
+              share: null,
+              agent: null,
+              model: null,
+              metadata: null,
+              permission: null,
+              revert: null,
+              parentID: null,
+              time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
               id: "s1",
               projectID: "p1",
               directory: "/repo",
@@ -1468,7 +1880,15 @@ void main() {
 
         tracker.populatePendingPermissions(
           permissions: [
-            const PermissionRequest(id: "perm1", sessionID: "s1", permission: "bash"),
+            const PermissionRequest(
+              id: "perm1",
+              sessionID: "s1",
+              permission: "bash",
+              patterns: [],
+              metadata: {},
+              always: [],
+              tool: null,
+            ),
           ],
         );
 
@@ -1482,14 +1902,22 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/repo-a",
             ),
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p2",
               worktree: "/repo-b",
             ),
@@ -1522,14 +1950,22 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/repo-a",
             ),
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p2",
               worktree: "/repo-b",
             ),
@@ -1572,8 +2008,12 @@ void main() {
         final tracker = await _coldStartedTracker(
           projects: [
             const Project(
-              time: ProjectTime(created: 0, updated: 0),
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
               sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
               id: "p1",
               worktree: "/old-repo",
             ),
@@ -1603,7 +2043,19 @@ SseEventData _sessionCreated(String id, String directory) {
       slug: "slug",
       title: "title",
       version: "v",
-      time: const SessionTime(created: 0, updated: 0),
+      workspaceID: null,
+      path: null,
+      summary: null,
+      cost: null,
+      tokens: null,
+      share: null,
+      agent: null,
+      model: null,
+      metadata: null,
+      permission: null,
+      revert: null,
+      parentID: null,
+      time: const SessionTime(created: 0, updated: 0, compacting: null, archived: null),
       id: id,
       projectID: "project",
       directory: directory,
@@ -1617,11 +2069,22 @@ SseEventData _childSessionCreated(String id, String parentId, String directory) 
       slug: "slug",
       title: "title",
       version: "v",
-      time: const SessionTime(created: 0, updated: 0),
+      workspaceID: null,
+      path: null,
+      summary: null,
+      cost: null,
+      tokens: null,
+      share: null,
+      agent: null,
+      model: null,
+      metadata: null,
+      permission: null,
+      revert: null,
+      parentID: parentId,
+      time: const SessionTime(created: 0, updated: 0, compacting: null, archived: null),
       id: id,
       projectID: "project",
       directory: directory,
-      parentID: parentId,
     ),
   );
 }
@@ -1632,7 +2095,19 @@ SseEventData _sessionUpdated(String id, String directory) {
       slug: "slug",
       title: "title",
       version: "v",
-      time: const SessionTime(created: 0, updated: 0),
+      workspaceID: null,
+      path: null,
+      summary: null,
+      cost: null,
+      tokens: null,
+      share: null,
+      agent: null,
+      model: null,
+      metadata: null,
+      permission: null,
+      revert: null,
+      parentID: null,
+      time: const SessionTime(created: 0, updated: 0, compacting: null, archived: null),
       id: id,
       projectID: "project",
       directory: directory,
@@ -1646,7 +2121,19 @@ SseEventData _sessionDeleted(String id, [String directory = ""]) {
       slug: "slug",
       title: "title",
       version: "v",
-      time: const SessionTime(created: 0, updated: 0),
+      workspaceID: null,
+      path: null,
+      summary: null,
+      cost: null,
+      tokens: null,
+      share: null,
+      agent: null,
+      model: null,
+      metadata: null,
+      permission: null,
+      revert: null,
+      parentID: null,
+      time: const SessionTime(created: 0, updated: 0, compacting: null, archived: null),
       id: id,
       projectID: "project",
       directory: directory,
@@ -1659,7 +2146,19 @@ Session _session(String id, String directory) {
     slug: "slug",
     title: "title",
     version: "v",
-    time: const SessionTime(created: 0, updated: 0),
+    workspaceID: null,
+    path: null,
+    parentID: null,
+    summary: null,
+    cost: null,
+    tokens: null,
+    share: null,
+    agent: null,
+    model: null,
+    metadata: null,
+    permission: null,
+    revert: null,
+    time: const SessionTime(created: 0, updated: 0, compacting: null, archived: null),
     id: id,
     projectID: "project",
     directory: directory,
@@ -1704,10 +2203,10 @@ SseEventData _questionRejected(String requestId, String sessionId) {
 
 SseEventData _permissionAsked(String requestId, String sessionId) {
   return SseEventData.permissionAsked(
-    requestID: requestId,
+    id: requestId,
     sessionID: sessionId,
-    tool: "test-tool",
-    description: "test permission",
+    permission: "test-tool",
+    patterns: const ["test permission"],
   );
 }
 
@@ -1885,7 +2384,8 @@ class _FakeApi implements OpenCodeApi {
   }
 
   @override
-  Future<ProviderListResponse> listProviders() async => const ProviderListResponse();
+  Future<ProviderListResponse> listProviders() async =>
+      const ProviderListResponse(all: [], defaultValue: {}, connected: []);
 
   @override
   Future<ConfigProvidersResponse> listConfigProviders({required String? directory}) async =>

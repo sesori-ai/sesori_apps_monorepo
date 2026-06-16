@@ -7,17 +7,17 @@ import 'part.g.dart';
 @immutable
 class StepStartPart implements Part {
   const StepStartPart({
-    this.id = '',
-    this.sessionID = '',
-    this.messageID = '',
-    this.snapshot,
+    required this.id,
+    required this.sessionID,
+    required this.messageID,
+    required this.snapshot,
   });
 
   factory StepStartPart.fromJson(Map<String, dynamic> json) {
     return StepStartPart(
-      id: (json["id"] ?? '') as String,
-      sessionID: (json["sessionID"] ?? '') as String,
-      messageID: (json["messageID"] ?? '') as String,
+      id: json["id"] as String,
+      sessionID: json["sessionID"] as String,
+      messageID: json["messageID"] as String,
       snapshot: json["snapshot"] as String?,
     );
   }

@@ -73,10 +73,28 @@ sealed class PluginMessagePart with _$PluginMessagePart {
   }) = _PluginMessagePart;
 }
 
+/// Lifecycle status of a tool invocation. Mirrors the OpenCode `ToolState`
+/// union discriminator so consumers switch on enum members instead of
+/// matching magic strings. The `@JsonValue`s keep the wire form
+/// (`"pending"`, `"running"`, …) unchanged.
+@JsonEnum()
+enum PluginToolStatus {
+  @JsonValue("pending")
+  pending,
+  @JsonValue("running")
+  running,
+  @JsonValue("completed")
+  completed,
+  @JsonValue("error")
+  error,
+  @JsonValue("unknown")
+  unknown,
+}
+
 @freezed
 sealed class PluginToolState with _$PluginToolState {
   const factory PluginToolState({
-    required String status,
+    required PluginToolStatus status,
     required String? title,
     required String? output,
     required String? error,

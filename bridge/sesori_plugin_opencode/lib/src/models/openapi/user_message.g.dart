@@ -10,26 +10,26 @@ import 'snapshot_file_diff.g.dart';
 @immutable
 class UserMessage implements Message {
   const UserMessage({
-    this.id = '',
-    this.sessionID = '',
+    required this.id,
+    required this.sessionID,
     required this.time,
-    this.format,
-    this.summary,
-    this.agent = '',
+    required this.format,
+    required this.summary,
+    required this.agent,
     required this.model,
-    this.system,
-    this.tools,
+    required this.system,
+    required this.tools,
   });
 
   factory UserMessage.fromJson(Map<String, dynamic> json) {
     return UserMessage(
-      id: (json["id"] ?? '') as String,
-      sessionID: (json["sessionID"] ?? '') as String,
-      time: UserMessageTime.fromJson((json["time"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      sessionID: json["sessionID"] as String,
+      time: UserMessageTime.fromJson(json["time"] as Map<String, dynamic>),
       format: json["format"] == null ? null : OutputFormat.fromJson(json["format"] as Object),
       summary: json["summary"] == null ? null : UserMessageSummary.fromJson(json["summary"] as Map<String, dynamic>),
-      agent: (json["agent"] ?? '') as String,
-      model: UserMessageModel.fromJson((json["model"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      agent: json["agent"] as String,
+      model: UserMessageModel.fromJson(json["model"] as Map<String, dynamic>),
       system: json["system"] as String?,
       tools: (json["tools"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as bool)),
     );
@@ -108,12 +108,12 @@ class UserMessage implements Message {
 @immutable
 class UserMessageTime {
   const UserMessageTime({
-    this.created = 0,
+    required this.created,
   });
 
   factory UserMessageTime.fromJson(Map<String, dynamic> json) {
     return UserMessageTime(
-      created: ((json["created"] ?? 0) as num).toDouble(),
+      created: (json["created"] as num).toDouble(),
     );
   }
 
@@ -148,16 +148,16 @@ class UserMessageTime {
 @immutable
 class UserMessageSummary {
   const UserMessageSummary({
-    this.title,
-    this.body,
-    this.diffs = const [],
+    required this.title,
+    required this.body,
+    required this.diffs,
   });
 
   factory UserMessageSummary.fromJson(Map<String, dynamic> json) {
     return UserMessageSummary(
       title: json["title"] as String?,
       body: json["body"] as String?,
-      diffs: ((json["diffs"] ?? const []) as List<dynamic>).map((e) => SnapshotFileDiff.fromJson(e as Map<String, dynamic>)).toList(),
+      diffs: (json["diffs"] as List<dynamic>).map((e) => SnapshotFileDiff.fromJson(e as Map<String, dynamic>)).toList(),
     );
   }
 
@@ -202,15 +202,15 @@ class UserMessageSummary {
 @immutable
 class UserMessageModel {
   const UserMessageModel({
-    this.providerID = '',
-    this.modelID = '',
-    this.variant,
+    required this.providerID,
+    required this.modelID,
+    required this.variant,
   });
 
   factory UserMessageModel.fromJson(Map<String, dynamic> json) {
     return UserMessageModel(
-      providerID: (json["providerID"] ?? '') as String,
-      modelID: (json["modelID"] ?? '') as String,
+      providerID: json["providerID"] as String,
+      modelID: json["modelID"] as String,
       variant: json["variant"] as String?,
     );
   }

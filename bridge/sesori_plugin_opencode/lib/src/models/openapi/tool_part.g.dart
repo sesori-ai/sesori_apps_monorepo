@@ -9,23 +9,23 @@ import 'tool_state.g.dart';
 @immutable
 class ToolPart implements Part {
   const ToolPart({
-    this.id = '',
-    this.sessionID = '',
-    this.messageID = '',
-    this.callID = '',
-    this.tool = '',
+    required this.id,
+    required this.sessionID,
+    required this.messageID,
+    required this.callID,
+    required this.tool,
     required this.state,
-    this.metadata,
+    required this.metadata,
   });
 
   factory ToolPart.fromJson(Map<String, dynamic> json) {
     return ToolPart(
-      id: (json["id"] ?? '') as String,
-      sessionID: (json["sessionID"] ?? '') as String,
-      messageID: (json["messageID"] ?? '') as String,
-      callID: (json["callID"] ?? '') as String,
-      tool: (json["tool"] ?? '') as String,
-      state: ToolState.fromJson((json["state"] ?? const <String, dynamic>{}) as Object),
+      id: json["id"] as String,
+      sessionID: json["sessionID"] as String,
+      messageID: json["messageID"] as String,
+      callID: json["callID"] as String,
+      tool: json["tool"] as String,
+      state: ToolState.fromJson(json["state"] as Object),
       metadata: json["metadata"] as Map<String, dynamic>?,
     );
   }

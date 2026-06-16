@@ -8,18 +8,18 @@ import 'tool_state.g.dart';
 @immutable
 class ToolStateError implements ToolState {
   const ToolStateError({
-    this.input = const {},
-    this.error = '',
-    this.metadata,
+    required this.input,
+    required this.error,
+    required this.metadata,
     required this.time,
   });
 
   factory ToolStateError.fromJson(Map<String, dynamic> json) {
     return ToolStateError(
-      input: (json["input"] ?? const <String, dynamic>{}) as Map<String, dynamic>,
-      error: (json["error"] ?? '') as String,
+      input: json["input"] as Map<String, dynamic>,
+      error: json["error"] as String,
       metadata: json["metadata"] as Map<String, dynamic>?,
-      time: ToolStateErrorTime.fromJson((json["time"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      time: ToolStateErrorTime.fromJson(json["time"] as Map<String, dynamic>),
     );
   }
 
@@ -71,14 +71,14 @@ class ToolStateError implements ToolState {
 @immutable
 class ToolStateErrorTime {
   const ToolStateErrorTime({
-    this.start = 0,
-    this.end = 0,
+    required this.start,
+    required this.end,
   });
 
   factory ToolStateErrorTime.fromJson(Map<String, dynamic> json) {
     return ToolStateErrorTime(
-      start: ((json["start"] ?? 0) as num).toInt(),
-      end: ((json["end"] ?? 0) as num).toInt(),
+      start: (json["start"] as num).toInt(),
+      end: (json["end"] as num).toInt(),
     );
   }
 

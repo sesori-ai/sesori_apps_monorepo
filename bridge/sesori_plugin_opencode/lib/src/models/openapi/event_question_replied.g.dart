@@ -9,14 +9,14 @@ import 'question_answer.g.dart';
 @immutable
 class EventQuestionReplied implements Event {
   const EventQuestionReplied({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventQuestionReplied.fromJson(Map<String, dynamic> json) {
     return EventQuestionReplied(
-      id: (json["id"] ?? '') as String,
-      properties: EventQuestionRepliedProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventQuestionRepliedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -58,16 +58,16 @@ class EventQuestionReplied implements Event {
 @immutable
 class EventQuestionRepliedProperties {
   const EventQuestionRepliedProperties({
-    this.sessionID = '',
-    this.requestID = '',
-    this.answers = const [],
+    required this.sessionID,
+    required this.requestID,
+    required this.answers,
   });
 
   factory EventQuestionRepliedProperties.fromJson(Map<String, dynamic> json) {
     return EventQuestionRepliedProperties(
-      sessionID: (json["sessionID"] ?? '') as String,
-      requestID: (json["requestID"] ?? '') as String,
-      answers: ((json["answers"] ?? const []) as List<dynamic>).map((e) => QuestionAnswer.fromJson(e as List<dynamic>)).toList(),
+      sessionID: json["sessionID"] as String,
+      requestID: json["requestID"] as String,
+      answers: (json["answers"] as List<dynamic>).map((e) => QuestionAnswer.fromJson(e as List<dynamic>)).toList(),
     );
   }
 

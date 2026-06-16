@@ -1320,6 +1320,19 @@ class ModelWriter {
   final List<InlineEnum> _inlineEnums = [];
   final Set<String> _emittedEnumKeys = {};
 
+  /// Inline enums generated for multi-value `type: string` + `enum`
+  /// properties, named after the field context (e.g. `CommandSource`).
+  /// De-duped by class name so computing a field's type more than once
+  /// (type pass, then decode) does not emit the enum twice.
+  final Set<String> _inlineEnumNames = {};
+
+  /// String properties OpenCode marks `required` but omits at runtime
+  /// (untitled / unversioned sessions), so the generated field must stay
+  /// nullable rather than default to `''`. Mirrors the v1 hand-written
+  /// models. (`Command.template`, a required string that can arrive as a
+  /// non-string payload, is handled separately via its field context.)
+  static const _alwaysNullableStringFields = {'title', 'version'};
+
   /// Synthesized classes for inline `type: object` schemas with
   /// `properties` (e.g. `Session.time` → `SessionTime`). Registered by
   /// [_dartTypeForInline] while computing field types; emitted as
@@ -2022,15 +2035,25 @@ class ModelWriter {
       final fieldName = entry.key;
       final psch = entry.value as Map<String, dynamic>;
       final isRequired = required.contains(fieldName);
-      final isNullable = _isNullableSchema(psch);
+      final isSchemaNullable = _isNullableSchema(psch);
       // Synthesized-class name for this field if it turns out to be an
       // inline object (e.g. `Session` + `time` -> `SessionTime`).
       final context = '$className${_pascalCore(fieldName)}';
       final baseType = _dartTypeForInline(psch, context: context);
-      // A field is a `required` constructor param whenever the schema
-      // marks it as required, even when the type is nullable. Optional
-      // fields need `?` so callers can omit them.
-      final isNonNull = isRequired && !isNullable;
+      // Nullability follows the spec's `required` array. A small curated
+      // set of string fields is the exception: OpenCode marks
+      // `title`/`version` as `required` yet omits them for
+      // untitled/unversioned sessions, and `Command.template` can arrive
+      // as a non-string. The v1 hand-written models kept these nullable;
+      // defaulting a missing value to `''` renders e.g. a blank session
+      // title on mobile instead of the untitled fallback. Every other
+      // required field (including identity strings like `id`/`sessionID`)
+      // stays non-nullable — a missing value there is a real contract
+      // violation that should surface loudly rather than be papered over
+      // with a synthetic default.
+      final isOmittableString =
+          baseType == 'String' && (_alwaysNullableStringFields.contains(fieldName) || context == 'CommandTemplate');
+      final isNonNull = isRequired && !isSchemaNullable && !isOmittableString;
       fields.add(
         _FieldRecord(
           jsonName: fieldName,
@@ -2065,14 +2088,12 @@ class ModelWriter {
     } else {
       b.writeln('  const $className({');
       for (final f in fields) {
-        final defaultValue = _constructorDefaultValue(className: className, field: f);
-        if (f.isRequired && defaultValue == null) {
-          b.writeln('    required this.${f.safeName},');
-        } else if (defaultValue != null) {
-          b.writeln('    this.${f.safeName} = $defaultValue,');
-        } else {
-          b.writeln('    this.${f.safeName},');
-        }
+        // Every field is a `required` named parameter — even nullable
+        // ones. OpenCode may omit a value from JSON (handled by
+        // `fromJson` passing `null`), but in Dart we force every caller
+        // to acknowledge each field explicitly rather than silently
+        // defaulting it to `''`/`0`/`{}`.
+        b.writeln('    required this.${f.safeName},');
       }
       b.writeln('  });');
     }
@@ -2097,7 +2118,7 @@ class ModelWriter {
       b.writeln('    return $className(');
       for (final f in fields) {
         b.writeln(
-          '      ${_decodeField(f.jsonName, f.schema, f.isRequired, context: f.context)},',
+          '      ${_decodeField(f.jsonName, f.schema, f.isNullable, context: f.context)},',
         );
       }
       b.writeln('    );');
@@ -2120,9 +2141,12 @@ class ModelWriter {
         continue;
       }
       final f = fields.firstWhere((x) => x.jsonName == entry.key);
-      final isNullable = _isNullableSchema(f.schema) || !f.isRequired;
+      // `omitWhenNull` stays keyed on the spec `required` array (not the
+      // Dart nullability): a required-but-nullable field like
+      // `GlobalSession.project` must still serialize its key as `null`
+      // rather than vanish, so round-trips preserve the explicit null.
       b.writeln(
-        '      ${_encodeField(f.jsonName, f.schema, isNullable: isNullable, omitWhenNull: !f.isRequired, context: f.context)},',
+        '      ${_encodeField(f.jsonName, f.schema, isNullable: f.isNullable, omitWhenNull: !f.isRequired, context: f.context)},',
       );
     }
     for (final f in fields.where((field) => !properties.containsKey(field.jsonName))) {
@@ -2214,29 +2238,15 @@ class ModelWriter {
     return dartType.endsWith('?') ? dartType : '$dartType?';
   }
 
-  static String? _constructorDefaultValue({
-    required String className,
-    required _FieldRecord field,
-  }) {
-    final type = field.dartType;
-    if (type.endsWith('?')) return null;
-    if (type == 'String') return "''";
-    if (type == 'int') return '0';
-    if (type == 'double') return '0';
-    if (type == 'bool') return 'false';
-    if (type == 'Object') return 'const <String, dynamic>{}';
-    if (type.startsWith('List<')) return 'const []';
-    if (type.startsWith('Map<')) return 'const {}';
-    if (type == 'SessionTime') return 'const SessionTime(created: 0, updated: 0)';
-    if (type == 'GlobalSessionTime') return 'const GlobalSessionTime(created: 0, updated: 0)';
-    if (type == 'ProjectTime') return 'const ProjectTime(created: 0, updated: 0)';
-    return null;
-  }
-
   void _registerInlineObject(String className, Map<String, dynamic> sch) {
     if (_inlineObjectNames.contains(className)) return;
     _inlineObjectNames.add(className);
     _inlineObjects.add(_InlineObjectEntry(className: className, schema: sch));
+  }
+
+  void _registerInlineEnum(String className, List<String> values) {
+    if (!_inlineEnumNames.add(className)) return;
+    _inlineEnums.add(InlineEnum(className: className, values: values));
   }
 
   /// Emit a class for a top-level map-typed schema (no `properties`, but
@@ -2387,8 +2397,16 @@ class ModelWriter {
     if (type == 'string') {
       if (format == 'date-time') return 'DateTime';
       if (format == 'uri' || format == 'url') return 'Uri';
-      // Inline enum — use String (avoid generating enum classes that may
-      // collide with top-level types or have invalid Dart identifiers).
+      final enumVals = sch['enum'];
+      if (enumVals is List && enumVals.length > 1) {
+        // Multi-value inline enum → a real Dart enum named after the
+        // field context (e.g. `Command.source` -> `CommandSource`), so
+        // consumers switch on enum members instead of magic strings.
+        _registerInlineEnum(context, enumVals.cast<String>());
+        return context;
+      }
+      // Plain string, or a single-value enum (a constant/discriminator,
+      // already hidden as a literal on union variants) — use String.
       return 'String';
     }
     if (type == 'integer') return 'int';
@@ -2481,13 +2499,16 @@ class ModelWriter {
   String _decodeField(
     String name,
     Map<String, dynamic> sch,
-    bool isRequired, {
+    bool isNullable, {
     required String context,
   }) {
     final keyExpr = _safeKey(name);
     final safeName = _safeIdentifier(name);
-    final isNullable = _isNullableSchema(sch) || !isRequired;
-    final jsonValue = _jsonValueExpr(keyExpr: keyExpr, schema: sch, isNullable: isNullable);
+    // No `?? <fallback>` defaults: a non-nullable field reads
+    // `json[key] as T` and throws if the server violates the contract by
+    // omitting it; a nullable field reads `json[key] as T?` (null when
+    // absent). Coercing a missing value into `''`/`0`/`{}` hides bugs.
+    final jsonValue = 'json[$keyExpr]';
     final r = sch[r'$ref'];
     if (r is String) {
       final refName = _schemaNameFromRef(r);
@@ -2530,7 +2551,7 @@ class ModelWriter {
       final variants = (sch['anyOf'] as List).cast<Map<String, dynamic>>();
       final nonNull = variants.where((v) => v['type'] != 'null').toList();
       if (nonNull.length == 1) {
-        return _decodeField(name, nonNull.first, false, context: context);
+        return _decodeField(name, nonNull.first, isNullable, context: context);
       }
     }
     final type = sch['type'];
@@ -2547,7 +2568,17 @@ class ModelWriter {
       return '$safeName: Uri.parse($jsonValue as String)';
     }
     if (type == 'string' && sch['enum'] is List) {
-      // Inline enums use plain String; no separate enum class.
+      final enumVals = (sch['enum'] as List).cast<String>();
+      if (enumVals.length > 1) {
+        // Multi-value inline enum → generated Dart enum named after the
+        // field context (e.g. `CommandSource`). `fromJson` maps values
+        // introduced by newer servers to the enum's `unknown` member.
+        if (isNullable) {
+          return '$safeName: json[$keyExpr] == null ? null : $context.fromJson(json[$keyExpr] as String)';
+        }
+        return '$safeName: $context.fromJson($jsonValue as String)';
+      }
+      // Single-value enum (a constant/discriminator) stays a plain String.
       if (isNullable) {
         return '$safeName: json[$keyExpr] as String?';
       }
@@ -2662,7 +2693,10 @@ class ModelWriter {
     if (type == 'boolean' || type == 'string') {
       final dartType = _dartTypeForInline(sch, context: context);
       if (context == 'CommandTemplate') {
-        return "$safeName: json[$keyExpr] is String ? json[$keyExpr] as String : ''";
+        // `Command.template` is documented as a string but some servers
+        // send a non-string shape. Fall back to `null` (the field is
+        // nullable) rather than a misleading empty string.
+        return "$safeName: json[$keyExpr] is String ? json[$keyExpr] as String : null";
       }
       if (isNullable) {
         return '$safeName: json[$keyExpr] as $dartType?';
@@ -2677,42 +2711,6 @@ class ModelWriter {
       return '$safeName: $jsonValue as Object';
     }
     return '$safeName: json[$keyExpr]';
-  }
-
-  String _jsonValueExpr({
-    required String keyExpr,
-    required Map<String, dynamic> schema,
-    required bool isNullable,
-  }) {
-    if (isNullable) return 'json[$keyExpr]';
-    final fallback = _jsonFallbackLiteral(schema);
-    if (fallback == null) return 'json[$keyExpr]';
-    return '(json[$keyExpr] ?? $fallback)';
-  }
-
-  String? _jsonFallbackLiteral(Map<String, dynamic> schema) {
-    final ref = schema[r'$ref'];
-    if (ref is String) {
-      final refName = _schemaNameFromRef(ref);
-      final refSchema = schemas[refName] as Map<String, dynamic>?;
-      if (refSchema != null && refSchema['type'] == 'array') return 'const []';
-      if (refSchema != null && refSchema['type'] == 'string' && refSchema['enum'] is List) return "'unknown'";
-      return 'const <String, dynamic>{}';
-    }
-    if (schema['anyOf'] is List) {
-      final variants = (schema['anyOf'] as List).cast<Map<String, dynamic>>();
-      final nonNull = variants.where((v) => v['type'] != 'null').toList();
-      if (nonNull.length == 1) return _jsonFallbackLiteral(nonNull.first);
-    }
-    final type = schema['type'];
-    if (type == 'array') return 'const []';
-    if (type == 'object') return 'const <String, dynamic>{}';
-    if (type == 'number' || type == 'integer') return '0';
-    if (type == 'boolean') return 'false';
-    if (type == 'string' && schema['format'] == 'date-time') return "'1970-01-01T00:00:00.000Z'";
-    if (type == 'string' && (schema['format'] == 'uri' || schema['format'] == 'url')) return "'about:blank'";
-    if (type == 'string') return "''";
-    return 'const <String, dynamic>{}';
   }
 
   String _encodeField(
@@ -2778,7 +2776,12 @@ class ModelWriter {
         }
       }
     }
-    // Inline enums (and any other string fields) just use the raw value.
+    if (type == 'string' && sch['enum'] is List && (sch['enum'] as List).length > 1) {
+      // Multi-value inline enum is a generated Dart enum — encode via its
+      // `toJson()` (which returns the wire string).
+      return '$keyExpr: $entryOp$safeName$callOp.toJson()';
+    }
+    // Plain strings and single-value enum constants use the raw value.
     return '$keyExpr: $entryOp$safeName';
   }
 
@@ -2982,6 +2985,11 @@ class _FieldRecord {
 
   /// Final Dart type INCLUDING nullability marker.
   final String dartType;
+
+  /// Whether the Dart field type is nullable (`dartType` ends with `?`).
+  /// This is the single source of truth fromJson/toJson decode use, so
+  /// the field declaration and the (de)serialization always agree.
+  bool get isNullable => dartType.endsWith('?');
 
   /// Synthesized-class name context for inline objects under this field.
   final String context;

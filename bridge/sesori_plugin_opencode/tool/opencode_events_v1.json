@@ -144,12 +144,13 @@
       ]
     },
     {
+      "_comment": "Matches the OpenCode EventPermissionAsked payload: `id` (the permission/request id), `sessionID`, `permission` (the tool/permission identifier), and `patterns` (the requested patterns). The older `requestID`/`description` fields and string `tool` no longer exist on the wire; declaring them caused this event to be dropped as a malformed payload. Extra payload fields (`metadata`, `always`, object `tool`) are present on the wire but unused, so they are intentionally omitted here.",
       "type": "permission.asked",
       "fields": [
-        { "name": "requestID", "type": "string" },
+        { "name": "id", "type": "string" },
         { "name": "sessionID", "type": "string" },
-        { "name": "tool", "type": "string" },
-        { "name": "description", "type": "string" }
+        { "name": "permission", "type": "string" },
+        { "name": "patterns", "type": "string", "list": true }
       ]
     },
     {

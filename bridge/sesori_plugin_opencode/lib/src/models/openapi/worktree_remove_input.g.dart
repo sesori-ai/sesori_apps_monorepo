@@ -6,12 +6,12 @@ import 'package:meta/meta.dart';
 @immutable
 class WorktreeRemoveInput {
   const WorktreeRemoveInput({
-    this.directory = '',
+    required this.directory,
   });
 
   factory WorktreeRemoveInput.fromJson(Map<String, dynamic> json) {
     return WorktreeRemoveInput(
-      directory: (json["directory"] ?? '') as String,
+      directory: json["directory"] as String,
     );
   }
 

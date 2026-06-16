@@ -79,10 +79,10 @@ class PluginModelMapper {
         null => null,
       },
       mode: switch (agent.mode) {
-        "all" => PluginAgentMode.all,
-        "primary" => PluginAgentMode.primary,
-        "subagent" => PluginAgentMode.subagent,
-        _ => PluginAgentMode.unknown,
+        AgentMode.all => PluginAgentMode.all,
+        AgentMode.primary => PluginAgentMode.primary,
+        AgentMode.subagent => PluginAgentMode.subagent,
+        AgentMode.unknown => PluginAgentMode.unknown,
       },
       hidden: agent.hidden ?? false,
     );

@@ -7,14 +7,14 @@ import 'event.g.dart';
 @immutable
 class EventInstallationUpdated implements Event {
   const EventInstallationUpdated({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventInstallationUpdated.fromJson(Map<String, dynamic> json) {
     return EventInstallationUpdated(
-      id: (json["id"] ?? '') as String,
-      properties: EventInstallationUpdatedProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventInstallationUpdatedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -56,12 +56,12 @@ class EventInstallationUpdated implements Event {
 @immutable
 class EventInstallationUpdatedProperties {
   const EventInstallationUpdatedProperties({
-    this.version = '',
+    required this.version,
   });
 
   factory EventInstallationUpdatedProperties.fromJson(Map<String, dynamic> json) {
     return EventInstallationUpdatedProperties(
-      version: (json["version"] ?? '') as String,
+      version: json["version"] as String?,
     );
   }
 
@@ -90,5 +90,5 @@ class EventInstallationUpdatedProperties {
   @override
   int get hashCode => version.hashCode;
 
-  final String version;
+  final String? version;
 }

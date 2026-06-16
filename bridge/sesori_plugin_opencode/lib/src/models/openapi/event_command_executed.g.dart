@@ -7,14 +7,14 @@ import 'event.g.dart';
 @immutable
 class EventCommandExecuted implements Event {
   const EventCommandExecuted({
-    this.id = '',
+    required this.id,
     required this.properties,
   });
 
   factory EventCommandExecuted.fromJson(Map<String, dynamic> json) {
     return EventCommandExecuted(
-      id: (json["id"] ?? '') as String,
-      properties: EventCommandExecutedProperties.fromJson((json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      id: json["id"] as String,
+      properties: EventCommandExecutedProperties.fromJson(json["properties"] as Map<String, dynamic>),
     );
   }
 
@@ -56,18 +56,18 @@ class EventCommandExecuted implements Event {
 @immutable
 class EventCommandExecutedProperties {
   const EventCommandExecutedProperties({
-    this.name = '',
-    this.sessionID = '',
-    this.arguments = '',
-    this.messageID = '',
+    required this.name,
+    required this.sessionID,
+    required this.arguments,
+    required this.messageID,
   });
 
   factory EventCommandExecutedProperties.fromJson(Map<String, dynamic> json) {
     return EventCommandExecutedProperties(
-      name: (json["name"] ?? '') as String,
-      sessionID: (json["sessionID"] ?? '') as String,
-      arguments: (json["arguments"] ?? '') as String,
-      messageID: (json["messageID"] ?? '') as String,
+      name: json["name"] as String,
+      sessionID: json["sessionID"] as String,
+      arguments: json["arguments"] as String,
+      messageID: json["messageID"] as String,
     );
   }
 

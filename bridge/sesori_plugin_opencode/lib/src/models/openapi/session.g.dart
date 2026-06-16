@@ -9,46 +9,46 @@ import 'snapshot_file_diff.g.dart';
 @immutable
 class Session {
   const Session({
-    this.id = '',
-    this.slug = '',
-    this.projectID = '',
-    this.workspaceID,
-    this.directory = '',
-    this.path,
-    this.parentID,
-    this.summary,
-    this.cost,
-    this.tokens,
-    this.share,
-    this.title = '',
-    this.agent,
-    this.model,
-    this.version = '',
-    this.metadata,
-    this.time = const SessionTime(created: 0, updated: 0),
-    this.permission,
-    this.revert,
+    required this.id,
+    required this.slug,
+    required this.projectID,
+    required this.workspaceID,
+    required this.directory,
+    required this.path,
+    required this.parentID,
+    required this.summary,
+    required this.cost,
+    required this.tokens,
+    required this.share,
+    required this.title,
+    required this.agent,
+    required this.model,
+    required this.version,
+    required this.metadata,
+    required this.time,
+    required this.permission,
+    required this.revert,
   });
 
   factory Session.fromJson(Map<String, dynamic> json) {
     return Session(
-      id: (json["id"] ?? '') as String,
-      slug: (json["slug"] ?? '') as String,
-      projectID: (json["projectID"] ?? '') as String,
+      id: json["id"] as String,
+      slug: json["slug"] as String,
+      projectID: json["projectID"] as String,
       workspaceID: json["workspaceID"] as String?,
-      directory: (json["directory"] ?? '') as String,
+      directory: json["directory"] as String,
       path: json["path"] as String?,
       parentID: json["parentID"] as String?,
       summary: json["summary"] == null ? null : SessionSummary.fromJson(json["summary"] as Map<String, dynamic>),
       cost: (json["cost"] as num?)?.toDouble(),
       tokens: json["tokens"] == null ? null : SessionTokens.fromJson(json["tokens"] as Map<String, dynamic>),
       share: json["share"] == null ? null : SessionShare.fromJson(json["share"] as Map<String, dynamic>),
-      title: (json["title"] ?? '') as String,
+      title: json["title"] as String?,
       agent: json["agent"] as String?,
       model: json["model"] == null ? null : SessionModel.fromJson(json["model"] as Map<String, dynamic>),
-      version: (json["version"] ?? '') as String,
+      version: json["version"] as String?,
       metadata: json["metadata"] as Map<String, dynamic>?,
-      time: SessionTime.fromJson((json["time"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      time: SessionTime.fromJson(json["time"] as Map<String, dynamic>),
       permission: json["permission"] == null ? null : PermissionRuleset.fromJson(json["permission"] as List<dynamic>),
       revert: json["revert"] == null ? null : SessionRevert.fromJson(json["revert"] as Map<String, dynamic>),
     );
@@ -162,10 +162,10 @@ class Session {
   final double? cost;
   final SessionTokens? tokens;
   final SessionShare? share;
-  final String title;
+  final String? title;
   final String? agent;
   final SessionModel? model;
-  final String version;
+  final String? version;
   final Map<String, dynamic>? metadata;
   final SessionTime time;
   final PermissionRuleset? permission;
@@ -175,17 +175,17 @@ class Session {
 @immutable
 class SessionSummary {
   const SessionSummary({
-    this.additions = 0,
-    this.deletions = 0,
-    this.files = 0,
-    this.diffs,
+    required this.additions,
+    required this.deletions,
+    required this.files,
+    required this.diffs,
   });
 
   factory SessionSummary.fromJson(Map<String, dynamic> json) {
     return SessionSummary(
-      additions: ((json["additions"] ?? 0) as num).toDouble(),
-      deletions: ((json["deletions"] ?? 0) as num).toDouble(),
-      files: ((json["files"] ?? 0) as num).toDouble(),
+      additions: (json["additions"] as num).toDouble(),
+      deletions: (json["deletions"] as num).toDouble(),
+      files: (json["files"] as num).toDouble(),
       diffs: (json["diffs"] as List<dynamic>?)?.map((e) => SnapshotFileDiff.fromJson(e as Map<String, dynamic>)).toList(),
     );
   }
@@ -236,18 +236,18 @@ class SessionSummary {
 @immutable
 class SessionTokens {
   const SessionTokens({
-    this.input = 0,
-    this.output = 0,
-    this.reasoning = 0,
+    required this.input,
+    required this.output,
+    required this.reasoning,
     required this.cache,
   });
 
   factory SessionTokens.fromJson(Map<String, dynamic> json) {
     return SessionTokens(
-      input: ((json["input"] ?? 0) as num).toDouble(),
-      output: ((json["output"] ?? 0) as num).toDouble(),
-      reasoning: ((json["reasoning"] ?? 0) as num).toDouble(),
-      cache: SessionTokensCache.fromJson((json["cache"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      input: (json["input"] as num).toDouble(),
+      output: (json["output"] as num).toDouble(),
+      reasoning: (json["reasoning"] as num).toDouble(),
+      cache: SessionTokensCache.fromJson(json["cache"] as Map<String, dynamic>),
     );
   }
 
@@ -297,12 +297,12 @@ class SessionTokens {
 @immutable
 class SessionShare {
   const SessionShare({
-    this.url = '',
+    required this.url,
   });
 
   factory SessionShare.fromJson(Map<String, dynamic> json) {
     return SessionShare(
-      url: (json["url"] ?? '') as String,
+      url: json["url"] as String,
     );
   }
 
@@ -337,15 +337,15 @@ class SessionShare {
 @immutable
 class SessionModel {
   const SessionModel({
-    this.id = '',
-    this.providerID = '',
-    this.variant,
+    required this.id,
+    required this.providerID,
+    required this.variant,
   });
 
   factory SessionModel.fromJson(Map<String, dynamic> json) {
     return SessionModel(
-      id: (json["id"] ?? '') as String,
-      providerID: (json["providerID"] ?? '') as String,
+      id: json["id"] as String,
+      providerID: json["providerID"] as String,
       variant: json["variant"] as String?,
     );
   }
@@ -391,16 +391,16 @@ class SessionModel {
 @immutable
 class SessionTime {
   const SessionTime({
-    this.created = 0,
-    this.updated = 0,
-    this.compacting,
-    this.archived,
+    required this.created,
+    required this.updated,
+    required this.compacting,
+    required this.archived,
   });
 
   factory SessionTime.fromJson(Map<String, dynamic> json) {
     return SessionTime(
-      created: ((json["created"] ?? 0) as num).toInt(),
-      updated: ((json["updated"] ?? 0) as num).toInt(),
+      created: (json["created"] as num).toInt(),
+      updated: (json["updated"] as num).toInt(),
       compacting: (json["compacting"] as num?)?.toInt(),
       archived: (json["archived"] as num?)?.toDouble(),
     );
@@ -452,15 +452,15 @@ class SessionTime {
 @immutable
 class SessionRevert {
   const SessionRevert({
-    this.messageID = '',
-    this.partID,
-    this.snapshot,
-    this.diff,
+    required this.messageID,
+    required this.partID,
+    required this.snapshot,
+    required this.diff,
   });
 
   factory SessionRevert.fromJson(Map<String, dynamic> json) {
     return SessionRevert(
-      messageID: (json["messageID"] ?? '') as String,
+      messageID: json["messageID"] as String,
       partID: json["partID"] as String?,
       snapshot: json["snapshot"] as String?,
       diff: json["diff"] as String?,
@@ -513,14 +513,14 @@ class SessionRevert {
 @immutable
 class SessionTokensCache {
   const SessionTokensCache({
-    this.read = 0,
-    this.write = 0,
+    required this.read,
+    required this.write,
   });
 
   factory SessionTokensCache.fromJson(Map<String, dynamic> json) {
     return SessionTokensCache(
-      read: ((json["read"] ?? 0) as num).toDouble(),
-      write: ((json["write"] ?? 0) as num).toDouble(),
+      read: (json["read"] as num).toDouble(),
+      write: (json["write"] as num).toDouble(),
     );
   }
 

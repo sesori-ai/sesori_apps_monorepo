@@ -8,14 +8,14 @@ import 'event.g.dart';
 @immutable
 class EventGlobalDisposed implements Event {
   const EventGlobalDisposed({
-    this.id = '',
-    this.properties = const {},
+    required this.id,
+    required this.properties,
   });
 
   factory EventGlobalDisposed.fromJson(Map<String, dynamic> json) {
     return EventGlobalDisposed(
-      id: (json["id"] ?? '') as String,
-      properties: (json["properties"] ?? const <String, dynamic>{}) as Map<String, dynamic>,
+      id: json["id"] as String,
+      properties: json["properties"] as Map<String, dynamic>,
     );
   }
 

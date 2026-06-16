@@ -9,13 +9,13 @@ import 'file_part_source_text.g.dart';
 class FileSource implements FilePartSource {
   const FileSource({
     required this.text,
-    this.path = '',
+    required this.path,
   });
 
   factory FileSource.fromJson(Map<String, dynamic> json) {
     return FileSource(
-      text: FilePartSourceText.fromJson((json["text"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
-      path: (json["path"] ?? '') as String,
+      text: FilePartSourceText.fromJson(json["text"] as Map<String, dynamic>),
+      path: json["path"] as String,
     );
   }
 

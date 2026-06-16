@@ -7,20 +7,20 @@ import 'package:meta/meta.dart';
 @immutable
 class TextPartInput {
   const TextPartInput({
-    this.id,
-    this.type = '',
-    this.text = '',
-    this.synthetic,
-    this.ignored,
-    this.time,
-    this.metadata,
+    required this.id,
+    required this.type,
+    required this.text,
+    required this.synthetic,
+    required this.ignored,
+    required this.time,
+    required this.metadata,
   });
 
   factory TextPartInput.fromJson(Map<String, dynamic> json) {
     return TextPartInput(
       id: json["id"] as String?,
-      type: (json["type"] ?? '') as String,
-      text: (json["text"] ?? '') as String,
+      type: json["type"] as String,
+      text: json["text"] as String,
       synthetic: json["synthetic"] as bool?,
       ignored: json["ignored"] as bool?,
       time: json["time"] == null ? null : TextPartInputTime.fromJson(json["time"] as Map<String, dynamic>),
@@ -89,13 +89,13 @@ class TextPartInput {
 @immutable
 class TextPartInputTime {
   const TextPartInputTime({
-    this.start = 0,
-    this.end,
+    required this.start,
+    required this.end,
   });
 
   factory TextPartInputTime.fromJson(Map<String, dynamic> json) {
     return TextPartInputTime(
-      start: ((json["start"] ?? 0) as num).toInt(),
+      start: (json["start"] as num).toInt(),
       end: (json["end"] as num?)?.toInt(),
     );
   }

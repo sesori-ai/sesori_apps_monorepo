@@ -7,24 +7,24 @@ import 'part.g.dart';
 @immutable
 class StepFinishPart implements Part {
   const StepFinishPart({
-    this.id = '',
-    this.sessionID = '',
-    this.messageID = '',
-    this.reason = '',
-    this.snapshot,
-    this.cost = 0,
+    required this.id,
+    required this.sessionID,
+    required this.messageID,
+    required this.reason,
+    required this.snapshot,
+    required this.cost,
     required this.tokens,
   });
 
   factory StepFinishPart.fromJson(Map<String, dynamic> json) {
     return StepFinishPart(
-      id: (json["id"] ?? '') as String,
-      sessionID: (json["sessionID"] ?? '') as String,
-      messageID: (json["messageID"] ?? '') as String,
-      reason: (json["reason"] ?? '') as String,
+      id: json["id"] as String,
+      sessionID: json["sessionID"] as String,
+      messageID: json["messageID"] as String,
+      reason: json["reason"] as String,
       snapshot: json["snapshot"] as String?,
-      cost: ((json["cost"] ?? 0) as num).toDouble(),
-      tokens: StepFinishPartTokens.fromJson((json["tokens"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      cost: (json["cost"] as num).toDouble(),
+      tokens: StepFinishPartTokens.fromJson(json["tokens"] as Map<String, dynamic>),
     );
   }
 
@@ -91,20 +91,20 @@ class StepFinishPart implements Part {
 @immutable
 class StepFinishPartTokens {
   const StepFinishPartTokens({
-    this.total,
-    this.input = 0,
-    this.output = 0,
-    this.reasoning = 0,
+    required this.total,
+    required this.input,
+    required this.output,
+    required this.reasoning,
     required this.cache,
   });
 
   factory StepFinishPartTokens.fromJson(Map<String, dynamic> json) {
     return StepFinishPartTokens(
       total: (json["total"] as num?)?.toDouble(),
-      input: ((json["input"] ?? 0) as num).toDouble(),
-      output: ((json["output"] ?? 0) as num).toDouble(),
-      reasoning: ((json["reasoning"] ?? 0) as num).toDouble(),
-      cache: StepFinishPartTokensCache.fromJson((json["cache"] ?? const <String, dynamic>{}) as Map<String, dynamic>),
+      input: (json["input"] as num).toDouble(),
+      output: (json["output"] as num).toDouble(),
+      reasoning: (json["reasoning"] as num).toDouble(),
+      cache: StepFinishPartTokensCache.fromJson(json["cache"] as Map<String, dynamic>),
     );
   }
 
@@ -159,14 +159,14 @@ class StepFinishPartTokens {
 @immutable
 class StepFinishPartTokensCache {
   const StepFinishPartTokensCache({
-    this.read = 0,
-    this.write = 0,
+    required this.read,
+    required this.write,
   });
 
   factory StepFinishPartTokensCache.fromJson(Map<String, dynamic> json) {
     return StepFinishPartTokensCache(
-      read: ((json["read"] ?? 0) as num).toDouble(),
-      write: ((json["write"] ?? 0) as num).toDouble(),
+      read: (json["read"] as num).toDouble(),
+      write: (json["write"] as num).toDouble(),
     );
   }
 

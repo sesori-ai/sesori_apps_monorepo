@@ -2,6 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show Log, PluginModel, PluginProvider, PluginProviderAuthType, PluginProvidersResult;
 
 import "models/openapi/config_providers_response.g.dart";
+import "models/openapi/model.g.dart";
 
 enum _ProviderModelStatus {
   active,
@@ -44,16 +45,16 @@ PluginProvidersResult mapProviderResponse({
 }
 
 _ProviderModelStatus _parseProviderModelStatus({
-  required String rawStatus,
+  required ModelStatus rawStatus,
   required String modelId,
 }) {
   return switch (rawStatus) {
-    "active" => _ProviderModelStatus.active,
-    "alpha" => _ProviderModelStatus.alpha,
-    "beta" => _ProviderModelStatus.beta,
-    "deprecated" => _ProviderModelStatus.deprecated,
-    final unknown => () {
-      Log.w("Unknown model status: $unknown for model $modelId, treating as available");
+    ModelStatus.active => _ProviderModelStatus.active,
+    ModelStatus.alpha => _ProviderModelStatus.alpha,
+    ModelStatus.beta => _ProviderModelStatus.beta,
+    ModelStatus.deprecated => _ProviderModelStatus.deprecated,
+    ModelStatus.unknown => () {
+      Log.w("Unknown model status for model $modelId, treating as available");
       return _ProviderModelStatus.unknown;
     }(),
   };

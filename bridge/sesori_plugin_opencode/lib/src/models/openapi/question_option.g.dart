@@ -6,14 +6,14 @@ import 'package:meta/meta.dart';
 @immutable
 class QuestionOption {
   const QuestionOption({
-    this.label = '',
-    this.description = '',
+    required this.label,
+    required this.description,
   });
 
   factory QuestionOption.fromJson(Map<String, dynamic> json) {
     return QuestionOption(
-      label: (json["label"] ?? '') as String,
-      description: (json["description"] ?? '') as String,
+      label: json["label"] as String,
+      description: json["description"] as String,
     );
   }
 
