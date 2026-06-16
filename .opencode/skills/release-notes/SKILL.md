@@ -87,8 +87,20 @@ GITHUB_TOKEN="$(gh auth token)" dart tool/generate_release_notes.dart \
 ```
 
 - `--to` is the tag/sha being released (e.g. `v1.1.0`); `--version` is the bare semver.
-- Omit `--from` to let the tool auto-resolve the previous stable release; pass `--from <tag>` only if the user explicitly gives a range.
-- The tool prints the resolved `from...to` range to stderr — surface it to the user before proceeding.
+- **Latest-release case:** if `<version>` is the newest stable release, omit `--from` — the tool auto-resolves the correct previous stable release.
+- **Backfill guard (REQUIRED for older targets):** the tool's auto-resolution picks the highest published stable release that merely isn't the target — it does **not** enforce "strictly below the target" in the published-releases path (only the tag fallback does). So if a newer stable release than `<version>` already exists (you're regenerating notes for an *older* release), omitting `--from` would compare against that newer release and produce empty/wrong notes. In that case you MUST pass `--from <previous-stable-tag>` explicitly. Detect and compute it:
+
+```bash
+git fetch --tags
+# Latest stable tag overall — if this is NOT <version>, you're on a backfill target.
+git tag -l "v*" --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1
+# The stable tag immediately BELOW <version> — pass this as --from for backfills.
+git tag -l "v*" --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+  | grep -A1 -x "<version>" | tail -n1
+```
+
+- **User-supplied range:** if the user explicitly gives a previous tag/ref, pass it as `--from` and skip the auto-resolution entirely.
+- The tool prints the resolved `from...to` range to stderr — always surface it to the user and confirm it looks right before proceeding.
 
 This produces the same structure Mode A consumes: `### App`, `### Bridge`, and `### All PRs merged` (plus a `**Full Changelog**` link).
 
