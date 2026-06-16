@@ -22,6 +22,7 @@ This skill **only writes a file** (`RELEASE_NOTES_<version>.md` in the repo root
 ## Prerequisites
 
 - `gh` CLI authenticated (`gh auth status`).
+- For **Mode B** only: `dart` on PATH (to run `tool/generate_release_notes.dart`).
 - Run from inside the repo (the worktree root is fine).
 
 ---
@@ -61,70 +62,45 @@ Write `RELEASE_NOTES_<version>.md` using the **Output Format** below. The **All 
 
 ---
 
-## Mode B — Analyze commits/PRs since previous release
+## Mode B — Generate raw notes from commits/PRs, then post-process
 
 Use this ONLY when the user explicitly says not to use the existing notes.
 
-### Step B1: Resolve the version range
+**Do NOT hand-roll the range resolution, PR enumeration, or App/Bridge classification in shell.** The repo already ships a deterministic, dependency-free generator — `tool/generate_release_notes.dart` — that CI uses for both the rolling internal pre-release and the production release. It already handles every tricky case correctly:
 
-Find the previous **stable** release tag (immediately preceding the requested version by semver). The release workflow keeps internal/prerelease tags like `v<X.Y.Z>-internal.<N>` around forever (they act as a build-number map — see `.github/workflows/release-all-platforms.yml`), so they MUST be excluded or the range will be wrong:
+- **Previous-stable resolution** prefers the highest published (non-draft, non-prerelease) `vX.Y.Z` GitHub release (what users actually received), and only falls back to plain `vX.Y.Z` git tags — internal/prerelease tags like `v<X.Y.Z>-internal.<N>` are excluded.
+- **PR enumeration** walks the full `compare` API (paged, no arbitrary cap) and refuses to emit truncated notes.
+- **Exclusions**: drops `dependabot` / `dependabot[bot]` authors and any PR labelled `ignore-for-release`.
+- **App/Bridge classification** pages `/pulls/<n>/files` fully and degrades conservatively (lists under both) when a PR is too large to enumerate.
 
-```bash
-git fetch --tags
-# Stable tags only: vX.Y.Z with no prerelease suffix (-internal.N, -rc.N, etc.)
-git tag -l "v*" --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$'
-```
+Reusing it means Mode B and CI can never drift, so just run it instead of re-deriving the same data.
 
-From that filtered list, identify the requested tag and the stable tag directly below it = `<previous-tag>`. This matches how the canonical generator (`tool/generate_release_notes.dart`) resolves the previous stable, non-prerelease tag — reuse that resolution if available. State the resolved range to the user (`<previous-tag>..<version>`) before proceeding.
-
-### Step B2: Enumerate merged PRs in the range
-
-Drive enumeration off the commits in the resolved range — **do not** rely on `gh pr list --limit N`, which is just the most-recent-N merged PRs and is neither scoped to the range nor reliable for older/backfilled releases:
+### Step B1: Generate the raw auto-notes with the canonical tool
 
 ```bash
-# Commits in range with their messages
-git log <previous-tag>..<version> --oneline
+# GITHUB_TOKEN/GH_TOKEN must be set (gh auth token works).
+GITHUB_TOKEN="$(gh auth token)" dart tool/generate_release_notes.dart \
+  --repo sesori-ai/sesori_apps_monorepo \
+  --to <version> \
+  --version <X.Y.Z> \
+  --output /tmp/raw_release_notes_<version>.md
 ```
 
-For each merged-PR squash commit, extract the `(#NNN)` number from the commit subject. If a commit has no PR number, keep it but link to the commit instead.
+- `--to` is the tag/sha being released (e.g. `v1.1.0`); `--version` is the bare semver.
+- Omit `--from` to let the tool auto-resolve the previous stable release; pass `--from <tag>` only if the user explicitly gives a range.
+- The tool prints the resolved `from...to` range to stderr — surface it to the user before proceeding.
 
-Then fetch metadata for **exactly those PR numbers** (replace `<N>` per PR). Note `gh pr list --json` does **not** support a `files` field — request the supported fields here and get changed files separately in Step B3:
+This produces the same structure Mode A consumes: `### App`, `### Bridge`, and `### All PRs merged` (plus a `**Full Changelog**` link).
 
-```bash
-# Per-PR metadata (title, author, url, labels, merge time)
-gh pr view <N> --repo sesori-ai/sesori_apps_monorepo \
-  --json number,title,author,url,mergedAt,labels
-```
+### Step B2: Parse, post-process, and write the file
 
-### Step B3: Attribute each PR to App / Bridge / shared
+From here the flow is identical to Mode A:
 
-Use the conventional-commit scope and changed paths. Get the changed files per commit/PR (since `gh pr list`/`pr view --json files` is the only place files are available, or use git directly):
+1. Parse the generated `### App`, `### Bridge`, and `### All PRs merged` sections (same as Step A2).
+2. Apply the **Post-Processing Rules** to the App/Bridge entries (same as Step A3).
+3. Write `RELEASE_NOTES_<version>.md` using the **Output Format**, copying the **All PRs merged** section verbatim from the generated output.
 
-```bash
-# Changed paths for a given merged commit
-git show --name-only --pretty=format: <commit-sha>
-# or, per PR:
-gh pr view <N> --repo sesori-ai/sesori_apps_monorepo --json files
-```
-
-- Touches `mobile/` → **App**
-- Touches `bridge/` → **Bridge**
-- Touches both (or `shared/`) → list in both, tag *(shared)*.
-- `feat:`→New, `fix:`→Fixed (or Improved per rules), `refactor:`/`chore:`/`docs:`/`ci:`→Other or omit per rules.
-
-### Step B4: Build the "All PRs merged" section
-
-Since there is no pre-existing list, generate one in the same style as the GitHub auto-notes:
-
-```
-- <conventional commit title> by [@<author>](https://github.com/<author>) in [#NNN](<pr-url>)
-```
-
-Order by merge time ascending.
-
-### Step B5: Apply post-processing + write file
-
-Apply the **Post-Processing Rules**, then write `RELEASE_NOTES_<version>.md` using the **Output Format**.
+This guarantees Mode B's range, exclusions, and classification exactly match what GitHub would have shown — the only difference from Mode A is that the raw notes come from the generator instead of an already-published release.
 
 ---
 
@@ -210,7 +186,7 @@ Omit any subsection (New/Improved/Fixed/Other) that has no entries. If a target 
 ## Workflow Summary
 
 1. Determine **version** and **mode** (default = Mode A). Capture any highlight hints the user gave.
-2. **Mode A:** `gh release view <version>` → parse App/Bridge/All-PRs. **Mode B:** resolve `<previous-tag>..<version>`, enumerate PRs via `git log` + `gh pr list`, attribute to App/Bridge, build the All-PRs list.
+2. **Mode A:** `gh release view <version>` → parse App/Bridge/All-PRs. **Mode B:** run `dart tool/generate_release_notes.dart` (with `GITHUB_TOKEN`) to produce the raw App/Bridge/All-PRs notes, then parse them the same way as Mode A. Do not re-derive the range, exclusions, or classification by hand.
 3. Apply the **Post-Processing Rules** (merge clusters, drop noise, flag never-shipped fixes, reframe perf/UX, order by impact, build Highlights).
 4. For unclear-benefit PRs: inspect the diff (`gh pr diff <n>`) or ask the user. For likely never-shipped fixes: present as omission candidates (default omit) unless the user already decided.
 5. Write `RELEASE_NOTES_<version>.md`. Report the path and a short summary of editorial decisions made (what was merged, dropped, flagged).
