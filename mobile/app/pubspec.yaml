@@ -65,7 +65,7 @@ dependencies:
   universal_platform: ^1.1.0
   record: ^7.1.0
   path: any
-  path_provider: ^2.1.5
+  path_provider: ^2.1.6
   re_highlight: ^0.0.3
   wakelock_plus: ^1.6.1
   firebase_core: ^4.10.0
