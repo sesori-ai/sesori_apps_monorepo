@@ -10,6 +10,7 @@ import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
+import "../../platform/media_picker.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
@@ -747,13 +748,17 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     unawaited(_drainQueuedMessages());
   }
 
-  Future<void> sendMessage({required String text, required String? command}) async {
+  Future<void> sendMessage({
+    required String text,
+    required String? command,
+    List<PickedMedia> attachments = const [],
+  }) async {
     final current = state;
     final trimmed = text.trim();
     final normalizedCommand = command?.normalize();
-    if (trimmed.isEmpty && normalizedCommand == null) return;
+    if (trimmed.isEmpty && normalizedCommand == null && attachments.isEmpty) return;
 
-    final submission = QueuedSessionSubmission(text: trimmed, command: normalizedCommand);
+    final submission = QueuedSessionSubmission(text: trimmed, command: normalizedCommand, attachments: attachments);
     if (current is! SessionDetailLoaded || !_isConnected || _promptQueue.isNotEmpty || _isSending) {
       _promptQueue.enqueue(submission);
       _emitQueueUpdate(current is SessionDetailLoaded ? current : null);
@@ -766,6 +771,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final result = await _sessionRepository.sendMessage(
       sessionId: _sessionId,
       text: trimmed,
+      attachments: attachments,
       agent: current.selectedAgent,
       model: _agentModelToPromptModel(current.selectedAgentModel),
       variant: switch (current.selectedAgentModel?.variant) {
@@ -816,6 +822,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       final result = await _sessionRepository.sendMessage(
         sessionId: _sessionId,
         text: submission.text,
+        attachments: submission.attachments,
         agent: current.selectedAgent,
         model: _agentModelToPromptModel(current.selectedAgentModel),
         variant: switch (current.selectedAgentModel?.variant) {

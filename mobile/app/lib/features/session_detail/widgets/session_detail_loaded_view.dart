@@ -102,9 +102,10 @@ class SessionDetailLoadedView extends StatelessWidget {
               sessionStatus: state.sessionStatus,
               childStatuses: state.childStatuses,
             ),
-            onSend: (text, command) => context.read<SessionDetailCubit>().sendMessage(
+            onSend: (text, command, attachments) => context.read<SessionDetailCubit>().sendMessage(
               text: text,
               command: command,
+              attachments: attachments,
             ),
             onAbort: () => context.read<SessionDetailCubit>().abort(),
             header: null,

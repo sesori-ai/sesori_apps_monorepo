@@ -43,7 +43,7 @@ class SessionApi {
 
   Future<ApiResponse<Session>> createSessionWithMessage({
     required String projectId,
-    required String text,
+    required List<PromptPart> parts,
     required String? agent,
     required PromptModel? model,
     required SessionVariant? variant,
@@ -55,7 +55,7 @@ class SessionApi {
       fromJson: Session.fromJson,
       body: CreateSessionRequest(
         projectId: projectId,
-        parts: [PromptPart.text(text: text)],
+        parts: parts,
         agent: agent,
         model: model,
         variant: variant,
@@ -67,7 +67,7 @@ class SessionApi {
 
   Future<ApiResponse<void>> sendMessage({
     required String sessionId,
-    required String text,
+    required List<PromptPart> parts,
     required String? agent,
     required PromptModel? model,
     required SessionVariant? variant,
@@ -78,7 +78,7 @@ class SessionApi {
       fromJson: SuccessEmptyResponse.fromJson,
       body: SendPromptRequest(
         sessionId: sessionId,
-        parts: [PromptPart.text(text: text)],
+        parts: parts,
         agent: agent,
         model: model,
         variant: variant,

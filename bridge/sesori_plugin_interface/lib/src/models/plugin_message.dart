@@ -38,7 +38,10 @@ enum PluginMessagePartType {
   unknown;
 
   /// Whether this part type is visible to mobile (rendered in the UI).
-  bool get isVisible => this != file && this != snapshot && this != patch && this != compaction && this != unknown;
+  ///
+  /// `file` is visible: image file parts render as thumbnails on mobile, and
+  /// other file parts render as a filename chip.
+  bool get isVisible => this != snapshot && this != patch && this != compaction && this != unknown;
 }
 
 @freezed
@@ -70,6 +73,10 @@ sealed class PluginMessagePart with _$PluginMessagePart {
     // retry
     required int? attempt,
     required String? retryError,
+    // file
+    required String? mime,
+    required String? url,
+    required String? filename,
   }) = _PluginMessagePart;
 }
 

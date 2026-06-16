@@ -112,7 +112,7 @@ void main() {
       expect(event.messageID, equals("m1"));
     });
 
-    test("filters file message part updates", () async {
+    test("maps file message part updates carrying file fields", () async {
       final result = mapper.map(
         const BridgeSseMessagePartUpdated(
           part: PluginMessagePart(
@@ -129,11 +129,19 @@ void main() {
             agentName: null,
             attempt: null,
             retryError: null,
+            mime: "image/png",
+            url: "data:image/png;base64,AAAA",
+            filename: "shot.png",
           ),
         ),
       );
 
-      expect(result, isNull);
+      expect(result, isA<SesoriMessagePartUpdated>());
+      final event = result! as SesoriMessagePartUpdated;
+      expect(event.part.type, equals(MessagePartType.file));
+      expect(event.part.mime, equals("image/png"));
+      expect(event.part.url, equals("data:image/png;base64,AAAA"));
+      expect(event.part.filename, equals("shot.png"));
     });
 
     test("filters snapshot message part updates", () async {
@@ -152,7 +160,7 @@ void main() {
             agent: null,
             agentName: null,
             attempt: null,
-            retryError: null,
+            retryError: null, mime: null, url: null, filename: null,
           ),
         ),
       );
@@ -176,7 +184,7 @@ void main() {
             agent: null,
             agentName: null,
             attempt: null,
-            retryError: null,
+            retryError: null, mime: null, url: null, filename: null,
           ),
         ),
       );
@@ -200,7 +208,7 @@ void main() {
             agent: null,
             agentName: null,
             attempt: null,
-            retryError: null,
+            retryError: null, mime: null, url: null, filename: null,
           ),
         ),
       );
@@ -224,7 +232,7 @@ void main() {
             agent: null,
             agentName: "test-agent",
             attempt: null,
-            retryError: null,
+            retryError: null, mime: null, url: null, filename: null,
           ),
         ),
       );
@@ -249,7 +257,7 @@ void main() {
             agent: null,
             agentName: null,
             attempt: 2,
-            retryError: "timeout",
+            retryError: "timeout", mime: null, url: null, filename: null,
           ),
         ),
       );
@@ -280,7 +288,7 @@ void main() {
             agent: null,
             agentName: null,
             attempt: null,
-            retryError: null,
+            retryError: null, mime: null, url: null, filename: null,
           ),
         ),
       );
@@ -307,7 +315,7 @@ void main() {
             agent: null,
             agentName: null,
             attempt: null,
-            retryError: null,
+            retryError: null, mime: null, url: null, filename: null,
           ),
         ),
       );
@@ -339,7 +347,7 @@ void main() {
             agent: null,
             agentName: null,
             attempt: null,
-            retryError: null,
+            retryError: null, mime: null, url: null, filename: null,
           ),
         ),
       );

@@ -15,6 +15,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart'
 import 'package:flutter_secure_storage/flutter_secure_storage.dart' as _i558;
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:http/http.dart' as _i519;
+import 'package:image_picker/image_picker.dart' as _i183;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:record/record.dart' as _i1039;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
@@ -35,6 +36,7 @@ import 'package:sesori_mobile/core/platform/firebase_push_messaging_source.dart'
     as _i1042;
 import 'package:sesori_mobile/core/platform/flutter_local_notification_client.dart'
     as _i636;
+import 'package:sesori_mobile/core/platform/flutter_media_picker.dart' as _i897;
 import 'package:sesori_mobile/core/platform/flutter_secure_storage_adapter.dart'
     as _i816;
 import 'package:sesori_mobile/core/platform/flutter_url_launcher.dart' as _i10;
@@ -61,6 +63,7 @@ extension GetItInjectableX on _i174.GetIt {
       () => registerModule.relayCryptoService,
     );
     gh.lazySingleton<_i1039.AudioRecorder>(() => registerModule.audioRecorder);
+    gh.lazySingleton<_i183.ImagePicker>(() => registerModule.imagePicker);
     gh.lazySingleton<_i163.FlutterLocalNotificationsPlugin>(
       () => registerModule.flutterLocalNotificationsPlugin,
     );
@@ -90,6 +93,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i62.RecordingFileProvider>(
       () => _i62.RecordingFileProvider(gh<_i430.AudioFormatConfig>()),
+    );
+    gh.lazySingleton<_i948.MediaPicker>(
+      () => _i897.FlutterMediaPicker(picker: gh<_i183.ImagePicker>()),
     );
     gh.lazySingleton<_i948.PushMessagingSource>(
       () => _i1042.FirebasePushMessagingSource(),

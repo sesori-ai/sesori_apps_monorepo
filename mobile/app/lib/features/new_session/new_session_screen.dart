@@ -235,11 +235,12 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                       // a session exists; cleared once the session is created.
                       draftKey: "new-session:${widget.projectId}",
                       isBusy: state is NewSessionSending,
-                      onSend: (String text, String? command) {
+                      onSend: (String text, String? command, List<PickedMedia> attachments) {
                         context.read<NewSessionCubit>().createSession(
                           text: text,
                           command: command,
                           dedicatedWorktree: _dedicatedWorktree,
+                          attachments: attachments,
                         );
                       },
                       onAbort: _dismissScreen,

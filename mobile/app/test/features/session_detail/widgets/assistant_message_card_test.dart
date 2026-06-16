@@ -82,7 +82,7 @@ MessagePart _textPart({required String id, required String text}) {
     agent: null,
     agentName: null,
     attempt: null,
-    retryError: null,
+    retryError: null, mime: null, url: null, filename: null,
   );
 }
 
@@ -100,7 +100,7 @@ MessagePart _toolPart({required String id, required String toolName}) {
     agent: null,
     agentName: null,
     attempt: null,
-    retryError: null,
+    retryError: null, mime: null, url: null, filename: null,
   );
 }
 

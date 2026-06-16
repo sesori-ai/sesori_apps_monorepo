@@ -11,6 +11,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/capabilities/session/session_service.dart";
 import "package:sesori_dart_core/src/capabilities/sse/session_activity_info.dart";
 import "package:sesori_dart_core/src/capabilities/sse/sse_event_repository.dart";
+import "package:sesori_dart_core/src/platform/media_picker.dart";
 import "package:sesori_dart_core/src/platform/route_source.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
@@ -135,6 +136,7 @@ void delegateSessionRepositoryToService({
     () => repository.sendMessage(
       sessionId: any(named: "sessionId"),
       text: any(named: "text"),
+      attachments: any(named: "attachments"),
       agent: any(named: "agent"),
       model: any(named: "model"),
       variant: any(named: "variant"),
@@ -144,6 +146,7 @@ void delegateSessionRepositoryToService({
     (invocation) => service.sendMessage(
       sessionId: invocation.namedArguments[#sessionId]! as String,
       text: invocation.namedArguments[#text]! as String,
+      attachments: invocation.namedArguments[#attachments]! as List<PickedMedia>,
       agent: invocation.namedArguments[#agent] as String?,
       providerID: (invocation.namedArguments[#model] as PromptModel?)?.providerID,
       modelID: (invocation.namedArguments[#model] as PromptModel?)?.modelID,
@@ -167,6 +170,8 @@ void registerAllFallbackValues() {
   registerFallbackValue(const ServerConnectionConfig(relayHost: "fake.example.com"));
   registerFallbackValue(FakeUri());
   registerFallbackValue(StackTrace.empty);
+  registerFallbackValue(<PickedMedia>[]);
+  registerFallbackValue(<PromptPart>[]);
 }
 
 Project testProject({String? id, String? path, String? name}) {

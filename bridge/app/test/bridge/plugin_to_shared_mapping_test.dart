@@ -41,7 +41,7 @@ void main() {
         agent: null,
         agentName: "my-agent",
         attempt: null,
-        retryError: null,
+        retryError: null, mime: null, url: null, filename: null,
       );
 
       final shared = part.toShared();
@@ -63,7 +63,7 @@ void main() {
         agent: null,
         agentName: null,
         attempt: 3,
-        retryError: null,
+        retryError: null, mime: null, url: null, filename: null,
       );
 
       final shared = part.toShared();
@@ -85,7 +85,7 @@ void main() {
         agent: null,
         agentName: null,
         attempt: 1,
-        retryError: "connection timeout",
+        retryError: "connection timeout", mime: null, url: null, filename: null,
       );
 
       final shared = part.toShared();
@@ -107,7 +107,7 @@ void main() {
         agent: null,
         agentName: null,
         attempt: null,
-        retryError: null,
+        retryError: null, mime: null, url: null, filename: null,
       );
 
       final shared = part.toShared();

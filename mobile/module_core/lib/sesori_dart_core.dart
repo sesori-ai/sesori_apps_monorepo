@@ -79,6 +79,7 @@ export "src/logging/logging.dart";
 export "src/platform/deep_link_source.dart";
 export "src/platform/lifecycle_source.dart";
 export "src/platform/local_notification_client.dart";
+export "src/platform/media_picker.dart";
 export "src/platform/notification_canceller.dart";
 export "src/platform/notification_open_request.dart";
 export "src/platform/push_messaging_source.dart";

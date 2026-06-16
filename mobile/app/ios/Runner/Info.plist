@@ -86,6 +86,10 @@
 		</array>
 		<key>NSMicrophoneUsageDescription</key>
 		<string>Microphone access is needed for voice-to-text transcription</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Photo library access is needed to attach images to your messages</string>
+		<key>NSCameraUsageDescription</key>
+		<string>Camera access is needed to attach photos to your messages</string>
 		<key>CFBundleURLTypes</key>
 		<array>
 			<dict>

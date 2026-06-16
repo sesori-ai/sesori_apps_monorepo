@@ -2,6 +2,7 @@ import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../platform/media_picker.dart";
 import "../../repositories/session_repository.dart";
 
 @lazySingleton
@@ -108,9 +109,11 @@ class SessionService {
     required SessionVariant? variant,
     required String? command,
     required bool dedicatedWorktree,
+    List<PickedMedia> attachments = const [],
   }) => _repository.createSessionWithMessage(
     projectId: projectId,
     text: text,
+    attachments: attachments,
     agent: agent,
     model: _resolveModel(providerID: providerID, modelID: modelID),
     variant: variant,
@@ -126,9 +129,11 @@ class SessionService {
     required String? modelID,
     required SessionVariant? variant,
     required String? command,
+    List<PickedMedia> attachments = const [],
   }) => _repository.sendMessage(
     sessionId: sessionId,
     text: text,
+    attachments: attachments,
     agent: agent,
     model: _resolveModel(providerID: providerID, modelID: modelID),
     variant: variant,

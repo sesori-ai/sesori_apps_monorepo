@@ -1099,6 +1099,42 @@ abstract class AppLocalizations {
   /// **'Recording limit reached (15 minutes)'**
   String get voiceRecordingLimitReached;
 
+  /// No description provided for @attachImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach image'**
+  String get attachImage;
+
+  /// No description provided for @attachFromGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo Library'**
+  String get attachFromGallery;
+
+  /// No description provided for @attachFromCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera'**
+  String get attachFromCamera;
+
+  /// No description provided for @attachRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove attachment'**
+  String get attachRemove;
+
+  /// No description provided for @attachErrorPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo and camera access is required to attach images'**
+  String get attachErrorPermission;
+
+  /// No description provided for @attachError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not attach image. Please try again.'**
+  String get attachError;
+
   /// No description provided for @addProject.
   ///
   /// In en, this message translates to:

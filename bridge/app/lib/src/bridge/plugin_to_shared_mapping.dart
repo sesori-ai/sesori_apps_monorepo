@@ -50,5 +50,8 @@ extension PluginMessagePartMapping on PluginMessagePart {
     agentName: agentName,
     attempt: attempt,
     retryError: retryError,
+    mime: mime,
+    url: url,
+    filename: filename,
   );
 }

@@ -48,6 +48,10 @@ sealed class MessagePart with _$MessagePart {
     required String? agentName,
     required int? attempt,
     required String? retryError,
+    // file
+    required String? mime,
+    required String? url,
+    required String? filename,
   }) = _MessagePart;
 
   factory MessagePart.fromJson(Map<String, dynamic> json) => _$MessagePartFromJson(json);

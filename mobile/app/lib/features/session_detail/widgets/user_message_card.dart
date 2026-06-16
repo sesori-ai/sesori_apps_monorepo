@@ -2,6 +2,8 @@ import "package:flutter/material.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_zyra/module_zyra.dart";
 
+import "message_image_part.dart";
+
 class UserMessageCard extends StatelessWidget {
   final MessageWithParts message;
 
@@ -10,6 +12,9 @@ class UserMessageCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final zyra = context.zyra;
+    final imageParts = message.parts
+        .where((part) => part.type == MessagePartType.file && (part.mime?.startsWith("image/") ?? false))
+        .toList();
     final text = message.parts
         .where((part) => part.type == MessagePartType.text)
         .map((part) => part.text ?? "")
@@ -17,26 +22,37 @@ class UserMessageCard extends StatelessWidget {
 
     return Align(
       alignment: .centerRight,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.85,
-        ),
-        decoration: BoxDecoration(
-          color: zyra.colors.bgBrandPrimary,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        // SelectionArea (not SelectableText) to match the assistant card's
-        // selection model, so text selection behaves the same on every bubble.
-        child: SelectionArea(
-          child: Text(
-            text,
-            style: zyra.textTheme.textSm.regular.copyWith(
-              color: zyra.colors.textBrandPrimary,
+      child: Column(
+        crossAxisAlignment: .end,
+        children: [
+          for (final part in imageParts)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: MessageImagePart(key: ValueKey(part.id), part: part),
             ),
-          ),
-        ),
+          if (text.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.85,
+              ),
+              decoration: BoxDecoration(
+                color: zyra.colors.bgBrandPrimary,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              // SelectionArea (not SelectableText) to match the assistant card's
+              // selection model, so text selection behaves the same on every bubble.
+              child: SelectionArea(
+                child: Text(
+                  text,
+                  style: zyra.textTheme.textSm.regular.copyWith(
+                    color: zyra.colors.textBrandPrimary,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

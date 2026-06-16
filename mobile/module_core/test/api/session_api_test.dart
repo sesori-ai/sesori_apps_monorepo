@@ -40,7 +40,7 @@ void main() {
 
       await api.createSessionWithMessage(
         projectId: "project-1",
-        text: "hello",
+        parts: const [PromptPart.text(text: "hello")],
         agent: "build",
         model: const PromptModel(providerID: "openai", modelID: "gpt-5.4"),
         variant: null,
@@ -70,7 +70,7 @@ void main() {
 
       await api.sendMessage(
         sessionId: "session-1",
-        text: "hello",
+        parts: const [PromptPart.text(text: "hello")],
         agent: "build",
         model: const PromptModel(providerID: "openai", modelID: "gpt-5.4"),
         variant: null,

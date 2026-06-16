@@ -269,6 +269,7 @@ void main() {
         () => mockSessionRepository.sendMessage(
           sessionId: sessionId,
           text: "hello",
+          attachments: const [],
           agent: "coder",
           model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
           variant: const SessionVariant(id: "low"),
@@ -291,12 +292,13 @@ void main() {
       await _awaitLoaded(cubit);
       cubit.selectVariant(const SessionVariant(id: "low"));
 
-      await cubit.sendMessage(text: "hello", command: null);
+      await cubit.sendMessage(text: "hello", command: null, attachments: const []);
 
       verify(
         () => mockSessionRepository.sendMessage(
           sessionId: sessionId,
           text: "hello",
+          attachments: const [],
           agent: "coder",
           model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
           variant: const SessionVariant(id: "low"),

@@ -187,7 +187,7 @@ void main() {
       expect((assistant.info as PluginMessageAssistant).providerID, equals("openai"));
     });
 
-    test("getSessionMessages filters file and snapshot parts", () async {
+    test("getSessionMessages keeps file parts and filters snapshot parts", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
 
       final messages = await plugin.getSessionMessages("ses-filter");
@@ -196,8 +196,17 @@ void main() {
       final parts = messages.last.parts;
       expect(
         parts.map((part) => part.type).toList(),
-        equals([PluginMessagePartType.text, PluginMessagePartType.tool, PluginMessagePartType.reasoning]),
+        equals([
+          PluginMessagePartType.text,
+          PluginMessagePartType.tool,
+          PluginMessagePartType.file,
+          PluginMessagePartType.reasoning,
+        ]),
       );
+      final filePart = parts.firstWhere((part) => part.type == PluginMessagePartType.file);
+      expect(filePart.mime, equals("image/png"));
+      expect(filePart.url, equals("data:image/png;base64,AAAA"));
+      expect(filePart.filename, equals("shot.png"));
     });
 
     test("getSessionMessages filters patch and compaction parts", () async {
@@ -1015,6 +1024,9 @@ class _FakeOpenCodeServer {
                 "sessionID": "ses-filter",
                 "messageID": "m-filter",
                 "type": "file",
+                "mime": "image/png",
+                "url": "data:image/png;base64,AAAA",
+                "filename": "shot.png",
                 "text": "ignored",
               },
               {

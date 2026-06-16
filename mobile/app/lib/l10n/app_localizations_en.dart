@@ -565,6 +565,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get voiceRecordingLimitReached => 'Recording limit reached (15 minutes)';
 
   @override
+  String get attachImage => 'Attach image';
+
+  @override
+  String get attachFromGallery => 'Photo Library';
+
+  @override
+  String get attachFromCamera => 'Camera';
+
+  @override
+  String get attachRemove => 'Remove attachment';
+
+  @override
+  String get attachErrorPermission => 'Photo and camera access is required to attach images';
+
+  @override
+  String get attachError => 'Could not attach image. Please try again.';
+
+  @override
   String get addProject => 'Add Project';
 
   @override

@@ -3,6 +3,8 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/session_api.dart";
+import "../platform/media_picker.dart";
+import "mappers/prompt_part_mapper.dart";
 
 @lazySingleton
 class SessionRepository {
@@ -123,10 +125,11 @@ class SessionRepository {
     required SessionVariant? variant,
     required String? command,
     required bool dedicatedWorktree,
+    List<PickedMedia> attachments = const [],
   }) {
     return _api.createSessionWithMessage(
       projectId: projectId,
-      text: text,
+      parts: _buildParts(text: text, attachments: attachments),
       agent: agent,
       model: model,
       variant: variant,
@@ -142,14 +145,24 @@ class SessionRepository {
     required PromptModel? model,
     required SessionVariant? variant,
     required String? command,
+    List<PickedMedia> attachments = const [],
   }) {
     return _api.sendMessage(
       sessionId: sessionId,
-      text: text,
+      parts: _buildParts(text: text, attachments: attachments),
       agent: agent,
       model: model,
       variant: variant,
       command: command,
     );
+  }
+
+  /// Builds the wire prompt parts from the user's text and attachments. The
+  /// text part is omitted when empty so an attachment-only message is valid.
+  List<PromptPart> _buildParts({required String text, required List<PickedMedia> attachments}) {
+    return [
+      if (text.isNotEmpty) PromptPart.text(text: text),
+      for (final attachment in attachments) attachment.toPromptPart(),
+    ];
   }
 }

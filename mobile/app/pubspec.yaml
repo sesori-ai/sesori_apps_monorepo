@@ -64,6 +64,8 @@ dependencies:
   url_launcher: ^6.3.2
   universal_platform: ^1.1.0
   record: ^7.1.0
+  image_picker: ^1.1.2
+  mime: ^2.0.0
   path: any
   path_provider: ^2.1.5
   re_highlight: ^0.0.3

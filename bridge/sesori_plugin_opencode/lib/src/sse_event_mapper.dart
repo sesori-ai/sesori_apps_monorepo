@@ -143,6 +143,9 @@ class SseEventMapper {
       agentName: raw.name,
       attempt: raw.attempt,
       retryError: (raw.error?['data'] as Map<String, dynamic>?)?['message']?.toString(),
+      mime: raw.mime,
+      url: raw.url,
+      filename: raw.filename,
     );
   }
 

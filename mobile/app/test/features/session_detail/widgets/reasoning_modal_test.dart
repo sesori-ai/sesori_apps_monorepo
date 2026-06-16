@@ -82,7 +82,7 @@ MessageWithParts _messageWithPart({
         agent: null,
         agentName: null,
         attempt: null,
-        retryError: null,
+        retryError: null, mime: null, url: null, filename: null,
       ),
     ],
   );

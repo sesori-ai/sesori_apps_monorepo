@@ -6,6 +6,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../capabilities/session/session_service.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
+import "../../platform/media_picker.dart";
 import "../../services/new_session_selection_tracker.dart";
 import "../../utils/model_filter/default_model_selector.dart";
 import "new_session_state.dart";
@@ -377,13 +378,14 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     required String text,
     required bool dedicatedWorktree,
     required String? command,
+    List<PickedMedia> attachments = const [],
   }) async {
     if (state is NewSessionSending) return;
 
     final normalizedCommand = command?.trim();
     final hasCommand = normalizedCommand != null && normalizedCommand.isNotEmpty;
     final trimmed = text.trim();
-    if (trimmed.isEmpty && !hasCommand) return;
+    if (trimmed.isEmpty && !hasCommand && attachments.isEmpty) return;
 
     final config = state.agentModelData;
     final variantId = config?.agentModel?.variant;
@@ -407,6 +409,7 @@ class NewSessionCubit extends Cubit<NewSessionState> {
     final response = await _sessionService.createSessionWithMessage(
       projectId: _projectId,
       text: trimmed,
+      attachments: attachments,
       agent: config?.agent,
       providerID: config?.agentModel?.providerID,
       modelID: config?.agentModel?.modelID,

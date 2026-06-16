@@ -1,5 +1,8 @@
+import "dart:typed_data";
+
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/platform/media_picker.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -40,7 +43,7 @@ void main() {
     when(
       () => api.sendMessage(
         sessionId: "session-1",
-        text: "hello",
+        parts: any(named: "parts"),
         agent: "build",
         model: const PromptModel(providerID: "openai", modelID: "gpt-4.1"),
         variant: const SessionVariant(id: "xhigh"),
@@ -71,6 +74,7 @@ void main() {
     await repository.sendMessage(
       sessionId: "session-1",
       text: "hello",
+      attachments: const [],
       agent: "build",
       model: const PromptModel(providerID: "openai", modelID: "gpt-4.1"),
       variant: const SessionVariant(id: "xhigh"),
@@ -96,7 +100,7 @@ void main() {
     verify(
       () => api.sendMessage(
         sessionId: "session-1",
-        text: "hello",
+        parts: any(named: "parts"),
         agent: "build",
         model: const PromptModel(providerID: "openai", modelID: "gpt-4.1"),
         variant: const SessionVariant(id: "xhigh"),
@@ -114,5 +118,91 @@ void main() {
       ),
     ).called(1);
     verify(() => api.rejectQuestion(requestId: "question-1")).called(1);
+  });
+
+  test("sendMessage builds text and fileData parts from attachments", () async {
+    final api = MockSessionApi();
+    final repository = SessionRepository(api: api);
+
+    when(
+      () => api.sendMessage(
+        sessionId: any(named: "sessionId"),
+        parts: any(named: "parts"),
+        agent: any(named: "agent"),
+        model: any(named: "model"),
+        variant: any(named: "variant"),
+        command: any(named: "command"),
+      ),
+    ).thenAnswer((_) async => ApiResponse<void>.success(null));
+
+    await repository.sendMessage(
+      sessionId: "session-1",
+      text: "look at this",
+      attachments: [
+        PickedMedia(bytes: Uint8List.fromList([1, 2, 3]), mimeType: "image/png", filename: "shot.png"),
+      ],
+      agent: null,
+      model: null,
+      variant: null,
+      command: null,
+    );
+
+    final captured = verify(
+      () => api.sendMessage(
+        sessionId: "session-1",
+        parts: captureAny(named: "parts"),
+        agent: null,
+        model: null,
+        variant: null,
+        command: null,
+      ),
+    ).captured.single as List<PromptPart>;
+
+    expect(captured, hasLength(2));
+    expect(captured[0], isA<PromptPartText>());
+    expect(captured[1], isA<PromptPartFileData>());
+    expect((captured[1] as PromptPartFileData).mime, equals("image/png"));
+  });
+
+  test("sendMessage omits the text part when text is empty (attachment-only)", () async {
+    final api = MockSessionApi();
+    final repository = SessionRepository(api: api);
+
+    when(
+      () => api.sendMessage(
+        sessionId: any(named: "sessionId"),
+        parts: any(named: "parts"),
+        agent: any(named: "agent"),
+        model: any(named: "model"),
+        variant: any(named: "variant"),
+        command: any(named: "command"),
+      ),
+    ).thenAnswer((_) async => ApiResponse<void>.success(null));
+
+    await repository.sendMessage(
+      sessionId: "session-1",
+      text: "",
+      attachments: [
+        PickedMedia(bytes: Uint8List.fromList([9]), mimeType: "image/jpeg", filename: null),
+      ],
+      agent: null,
+      model: null,
+      variant: null,
+      command: null,
+    );
+
+    final captured = verify(
+      () => api.sendMessage(
+        sessionId: "session-1",
+        parts: captureAny(named: "parts"),
+        agent: null,
+        model: null,
+        variant: null,
+        command: null,
+      ),
+    ).captured.single as List<PromptPart>;
+
+    expect(captured, hasLength(1));
+    expect(captured.single, isA<PromptPartFileData>());
   });
 }

@@ -15,9 +15,11 @@ import "../../../core/widgets/command_picker_sheet.dart";
 
 enum _VoiceState { idle, recording, transcribing }
 
+enum _AttachmentAction { gallery, camera }
+
 class PromptInput extends StatefulWidget {
   final bool isBusy;
-  final void Function(String text, String? command) onSend;
+  final void Function(String text, String? command, List<PickedMedia> attachments) onSend;
   final VoidCallback onAbort;
   final Widget? composerHeader;
   final List<CommandInfo> availableCommands;
@@ -57,6 +59,7 @@ class _PromptInputState extends State<PromptInput> {
   final _focusNode = FocusNode();
   _VoiceState _voiceState = _VoiceState.idle;
   StreamSubscription<void>? _maxDurationSub;
+  final List<PickedMedia> _attachments = [];
 
   VoiceTranscriptionService get _voiceService => getIt<VoiceTranscriptionService>();
 
@@ -127,18 +130,81 @@ class _PromptInputState extends State<PromptInput> {
 
   void _handleSend() {
     final stagedCommand = widget.stagedCommand;
+    final attachments = List<PickedMedia>.of(_attachments);
     if (stagedCommand != null) {
-      widget.onSend(_controller.text, stagedCommand.name);
+      widget.onSend(_controller.text, stagedCommand.name, attachments);
       widget.onCommandCleared();
     } else {
       final text = _controller.text.trim();
-      if (text.isEmpty) return;
-      widget.onSend(text, null);
+      if (text.isEmpty && attachments.isEmpty) return;
+      widget.onSend(text, null, attachments);
     }
 
     _controller.clear();
+    if (_attachments.isNotEmpty) {
+      setState(_attachments.clear);
+    }
     _clearDraft();
     _focusNode.requestFocus();
+  }
+
+  Future<void> _showAttachmentSheet() async {
+    final action = await showModalBottomSheet<_AttachmentAction>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: .min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: Text(sheetContext.loc.attachFromGallery),
+              onTap: () => Navigator.pop(sheetContext, _AttachmentAction.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: Text(sheetContext.loc.attachFromCamera),
+              onTap: () => Navigator.pop(sheetContext, _AttachmentAction.camera),
+            ),
+          ],
+        ),
+      ),
+    );
+    switch (action) {
+      case null:
+        return;
+      case _AttachmentAction.gallery:
+        await _addImage(() => getIt<MediaPicker>().pickImageFromGallery());
+      case _AttachmentAction.camera:
+        await _addImage(() => getIt<MediaPicker>().pickImageFromCamera());
+    }
+  }
+
+  Future<void> _addImage(Future<PickedMedia?> Function() pick) async {
+    try {
+      final media = await pick();
+      if (media == null || !mounted) return;
+      setState(() => _attachments.add(media));
+    } on MediaPickerException catch (error) {
+      loge("Failed to attach image", error);
+      if (!mounted) return;
+      _showError(context.loc.attachError);
+    }
+  }
+
+  void _removeAttachment(int index) {
+    if (index < 0 || index >= _attachments.length) return;
+    setState(() => _attachments.removeAt(index));
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: kSnackBarDuration,
+        ),
+      );
   }
 
   @override
@@ -312,6 +378,12 @@ class _PromptInputState extends State<PromptInput> {
             ),
           },
 
+          if (_attachments.isNotEmpty)
+            _AttachmentsPreview(
+              attachments: _attachments,
+              onRemove: _removeAttachment,
+            ),
+
           Padding(
             padding: EdgeInsetsDirectional.only(
               start: 12,
@@ -327,6 +399,13 @@ class _PromptInputState extends State<PromptInput> {
                   onTap: _openCommandPicker,
                 ),
                 const SizedBox(width: 8),
+                if (widget.stagedCommand == null) ...[
+                  _AttachButton(
+                    enabled: _voiceState == _VoiceState.idle,
+                    onTap: _showAttachmentSheet,
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 Expanded(
                   child: switch (_voiceState) {
                     _VoiceState.recording => _RecordingIndicator(amplitudeStream: _voiceService.amplitudeStream),
@@ -429,6 +508,104 @@ class _SlashButton extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Attach button
+// -----------------------------------------------------------------------------
+
+class _AttachButton extends StatelessWidget {
+  final bool enabled;
+  final Future<void> Function() onTap;
+
+  const _AttachButton({required this.enabled, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final zyra = context.zyra;
+
+    return Material(
+      color: enabled ? zyra.colors.bgQuaternary : zyra.colors.bgQuaternary.withValues(alpha: 0.5),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: enabled ? onTap : null,
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Icon(
+            Icons.add_photo_alternate_outlined,
+            size: 22,
+            color: enabled ? zyra.colors.textSecondary : zyra.colors.borderPrimary,
+            semanticLabel: context.loc.attachImage,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Attachments preview strip
+// -----------------------------------------------------------------------------
+
+class _AttachmentsPreview extends StatelessWidget {
+  final List<PickedMedia> attachments;
+  final void Function(int index) onRemove;
+
+  const _AttachmentsPreview({required this.attachments, required this.onRemove});
+
+  @override
+  Widget build(BuildContext context) {
+    final zyra = context.zyra;
+    final loc = context.loc;
+
+    return SizedBox(
+      height: 76,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 12, 4),
+        itemCount: attachments.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final media = attachments[index];
+          return Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.memory(
+                  media.bytes,
+                  width: 64,
+                  height: 64,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              PositionedDirectional(
+                top: 0,
+                end: 0,
+                child: GestureDetector(
+                  onTap: () => onRemove(index),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: zyra.colors.bgPrimary.withValues(alpha: 0.85),
+                      shape: BoxShape.circle,
+                    ),
+                    padding: const EdgeInsets.all(2),
+                    child: Icon(
+                      Icons.close,
+                      size: 14,
+                      color: zyra.colors.textPrimary,
+                      semanticLabel: loc.attachRemove,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
