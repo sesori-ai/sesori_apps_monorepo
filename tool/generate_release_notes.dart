@@ -30,8 +30,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'release_notes_resolver.dart';
-
 const String _ignoreLabel = 'ignore-for-release';
 const Set<String> _excludedAuthors = {'dependabot', 'dependabot[bot]'};
 
@@ -150,6 +148,63 @@ class _GitHubApi {
   }
 }
 
+final RegExp _stableTagPattern = RegExp(r'^v(\d+)\.(\d+)\.(\d+)$');
+
+List<int>? _parseStableTag({required String tag}) {
+  final match = _stableTagPattern.firstMatch(tag);
+  if (match == null) {
+    return null;
+  }
+  return [
+    int.parse(match.group(1)!),
+    int.parse(match.group(2)!),
+    int.parse(match.group(3)!),
+  ];
+}
+
+int _compareSemver({required List<int> a, required List<int> b}) {
+  for (var i = 0; i < 3; i++) {
+    final diff = a[i].compareTo(b[i]);
+    if (diff != 0) {
+      return diff;
+    }
+  }
+  return 0;
+}
+
+// Picks the highest plain vX.Y.Z tag strictly below the version being released
+// (any prerelease suffix on [version] is ignored). "Strictly below" — not just
+// "!= target" — is what keeps backfilled/out-of-order regenerations from
+// picking a newer release as the base. Returns null when no candidate qualifies
+// so the caller can fall back to the next source.
+String? _selectPreviousStableTag({
+  required Iterable<String> candidateTags,
+  required String version,
+}) {
+  final excludedTag = 'v${version.split('-').first}';
+  final targetParts = _parseStableTag(tag: excludedTag);
+
+  String? best;
+  List<int>? bestParts;
+  for (final tag in candidateTags) {
+    if (tag == excludedTag) {
+      continue;
+    }
+    final parts = _parseStableTag(tag: tag);
+    if (parts == null) {
+      continue;
+    }
+    if (targetParts != null && _compareSemver(a: parts, b: targetParts) >= 0) {
+      continue;
+    }
+    if (bestParts == null || _compareSemver(a: parts, b: bestParts) > 0) {
+      best = tag;
+      bestParts = parts;
+    }
+  }
+  return best;
+}
+
 Future<String> _resolvePreviousStableTag({
   required _GitHubApi api,
   required String version,
@@ -170,7 +225,7 @@ Future<String> _resolvePreviousStableTag({
       break;
     }
   }
-  final fromRelease = selectPreviousStableTag(candidateTags: releaseTags, version: version);
+  final fromRelease = _selectPreviousStableTag(candidateTags: releaseTags, version: version);
   if (fromRelease != null) {
     return fromRelease;
   }
@@ -187,7 +242,7 @@ Future<String> _resolvePreviousStableTag({
       break;
     }
   }
-  final fromTag = selectPreviousStableTag(candidateTags: tagNames, version: version);
+  final fromTag = _selectPreviousStableTag(candidateTags: tagNames, version: version);
   if (fromTag != null) {
     return fromTag;
   }
