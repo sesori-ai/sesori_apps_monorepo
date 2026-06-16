@@ -65,11 +65,11 @@ class CompletionNotifier {
     switch (event) {
       // A new question blocks completion for this session group.
       case SesoriQuestionAsked(:final sessionID):
-        _blockCompletionForPendingInteraction(sessionID);
+        _cancelDebounceForSessionGroup(sessionID);
       // A new permission request blocks completion for this session group.
       case SesoriPermissionAsked(:final requestID, :final sessionID):
         _permissionRequestToSession[requestID] = sessionID;
-        _blockCompletionForPendingInteraction(sessionID);
+        _cancelDebounceForSessionGroup(sessionID);
       // Session status transitions determine when completion can fire.
       case SesoriSessionStatus(:final sessionID, :final status):
         final rootSessionId = _tracker.resolveRootSessionId(sessionID);
@@ -171,31 +171,6 @@ class CompletionNotifier {
       timer.cancel();
     }
     _debounceTimers.clear();
-  }
-
-  /// Records that a newly-arrived question/permission blocks completion for
-  /// [sessionId]'s group, and cancels any in-flight completion debounce.
-  ///
-  /// When the group is already fully idle the agent finished before this prompt
-  /// was observed — e.g. the idle status frame was delivered (or processed)
-  /// ahead of the prompt frame. Marking the root blocked here mirrors the idle
-  /// transition (see [SessionStatusIdle]) so the eventual reply/rejection can
-  /// still fire the deferred completion. Without it, this late-prompt ordering
-  /// would silently drop the completion that the prompt-before-idle ordering
-  /// delivers. Both orderings then behave identically on reply: if the agent
-  /// resumes, its busy event clears the block and cancels the rescheduled
-  /// debounce; if it does not, the deferred completion fires.
-  void _blockCompletionForPendingInteraction(String sessionId) {
-    final rootSessionId = _tracker.resolveRootSessionId(sessionId);
-    // Same guard as the idle transition: only record the block when the group
-    // is idle AND the tracker actually sees a pending interaction. Blocking a
-    // root with no pending prompt would strand it — no reply would arrive to
-    // resume completion until the next busy cycle.
-    if (_tracker.isSessionGroupFullyIdle(rootSessionId) &&
-        _tracker.hasPendingInteraction(rootSessionId)) {
-      _completionBlockedByPendingInteraction.add(rootSessionId);
-    }
-    _cancelDebounceForSessionGroup(sessionId);
   }
 
   /// Schedules completion for [sessionId] only if its group was previously busy,

@@ -303,7 +303,7 @@ void main() {
       });
     });
 
-    test("question asked after idle still fires deferred completion on reply", () {
+    test("question replied cancels any pending completion", () {
       fakeAsync((async) {
         final harness = _newHarness();
 
@@ -315,9 +315,6 @@ void main() {
         );
         async.elapse(const Duration(milliseconds: 200));
         async.flushMicrotasks();
-        // The prompt is observed after the idle frame (e.g. out-of-order SSE
-        // delivery). Completion must be deferred — not silently dropped — and
-        // resume on reply just like a prompt seen before the idle transition.
         harness.dispatch(
           const SesoriSseEvent.questionAsked(
             id: "q-1",
@@ -325,20 +322,17 @@ void main() {
             questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
           ),
         );
-        async.elapse(const Duration(milliseconds: 500));
-        async.flushMicrotasks();
-        expect(harness.completedRoots, isEmpty);
-
         harness.dispatch(
           const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "session-a"),
         );
+
         async.elapse(const Duration(milliseconds: 500));
         async.flushMicrotasks();
-        expect(harness.completedRoots, equals(["session-a"]));
+        expect(harness.completedRoots, isEmpty);
       });
     });
 
-    test("question asked after idle still fires deferred completion on rejection", () {
+    test("question rejected cancels any pending completion", () {
       fakeAsync((async) {
         final harness = _newHarness();
 
@@ -357,20 +351,17 @@ void main() {
             questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
           ),
         );
-        async.elapse(const Duration(milliseconds: 500));
-        async.flushMicrotasks();
-        expect(harness.completedRoots, isEmpty);
-
         harness.dispatch(
           const SesoriSseEvent.questionRejected(requestID: "q-1", sessionID: "session-a"),
         );
+
         async.elapse(const Duration(milliseconds: 500));
         async.flushMicrotasks();
-        expect(harness.completedRoots, equals(["session-a"]));
+        expect(harness.completedRoots, isEmpty);
       });
     });
 
-    test("permission asked after idle still fires deferred completion on reply", () {
+    test("permission replied cancels any pending completion", () {
       fakeAsync((async) {
         final harness = _newHarness();
 
@@ -390,16 +381,13 @@ void main() {
             description: "Run command",
           ),
         );
+        harness.dispatch(
+          const SesoriSseEvent.permissionReplied(requestID: "perm-1", sessionID: "s1", reply: "allow"),
+        );
+
         async.elapse(const Duration(milliseconds: 500));
         async.flushMicrotasks();
         expect(harness.completedRoots, isEmpty);
-
-        harness.dispatch(
-          const SesoriSseEvent.permissionReplied(requestID: "perm-1", sessionID: "session-a", reply: "allow"),
-        );
-        async.elapse(const Duration(milliseconds: 500));
-        async.flushMicrotasks();
-        expect(harness.completedRoots, equals(["session-a"]));
       });
     });
 
