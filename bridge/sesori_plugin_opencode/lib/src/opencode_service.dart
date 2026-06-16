@@ -115,12 +115,24 @@ class OpenCodeService {
     required String sessionId,
   }) async {
     final directory = await _resolveSessionDirectory(sessionId: sessionId);
+    if (directory == null) {
+      // `getPendingQuestions` is directory-scoped: OpenCode defaults an omitted
+      // directory header to its own cwd. An unscoped query would therefore only
+      // ever return the cwd instance's questions, so a session whose worktree
+      // differs would be reported as having no pending questions — silently
+      // dropping a prompt that may still exist upstream. Fail loudly instead,
+      // consistent with `rejectQuestion`.
+      throw PluginApiException(
+        "GET /session/$sessionId/question",
+        502,
+        message: "could not resolve session directory",
+      );
+    }
 
     // Subagent (child) sessions are non-interactive and never ask questions, so
     // only the session's own pending questions are relevant. `getPendingQuestions`
     // is directory-scoped and may return questions for sibling sessions in the
-    // same worktree, so filter to this session. If the directory cannot be
-    // resolved, fall back to an unscoped query and filter by sessionID.
+    // same worktree, so filter to this session.
     final all = await repository.getPendingQuestions(directory: directory);
     return all.where((question) => question.sessionID == sessionId).toList();
   }

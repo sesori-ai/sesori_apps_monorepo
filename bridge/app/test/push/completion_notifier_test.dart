@@ -143,6 +143,56 @@ void main() {
       });
     });
 
+    test("reparented child still resumes blocked completion on reply", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        // The child is known only via status events at first, so it is its own
+        // root when it goes idle with a pending question — the blocked key is
+        // recorded under "child", before any parent link is learned.
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.questionAsked(
+            id: "q-1",
+            sessionID: "child",
+            questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
+          ),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+        );
+        async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
+
+        // A later summary establishes the parent link (reparents "child").
+        harness.dispatch(
+          const SesoriSseEvent.projectsSummary(
+            projects: [
+              ProjectActivitySummary(
+                id: "project-a",
+                activeSessions: [
+                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"]),
+                ],
+              ),
+            ],
+          ),
+        );
+
+        // Replying resolves the current root ("root"), but the blocked key is
+        // still "child"; the originalSessionId fallback must find it and fire
+        // completion for the real root.
+        harness.dispatch(
+          const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "child"),
+        );
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, equals(["root"]));
+      });
+    });
+
     test("duplicate question reply does not lose completion", () {
       fakeAsync((async) {
         final harness = _newHarness();
@@ -203,7 +253,7 @@ void main() {
       });
     });
 
-    test("question replied cancels any pending completion", () {
+    test("question asked after idle still fires deferred completion on reply", () {
       fakeAsync((async) {
         final harness = _newHarness();
 
@@ -215,6 +265,9 @@ void main() {
         );
         async.elapse(const Duration(milliseconds: 200));
         async.flushMicrotasks();
+        // The prompt is observed after the idle frame (e.g. out-of-order SSE
+        // delivery). Completion must be deferred — not silently dropped — and
+        // resume on reply just like a prompt seen before the idle transition.
         harness.dispatch(
           const SesoriSseEvent.questionAsked(
             id: "q-1",
@@ -222,17 +275,20 @@ void main() {
             questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
           ),
         );
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
+
         harness.dispatch(
           const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "session-a"),
         );
-
         async.elapse(const Duration(milliseconds: 500));
         async.flushMicrotasks();
-        expect(harness.completedRoots, isEmpty);
+        expect(harness.completedRoots, equals(["session-a"]));
       });
     });
 
-    test("question rejected cancels any pending completion", () {
+    test("question asked after idle still fires deferred completion on rejection", () {
       fakeAsync((async) {
         final harness = _newHarness();
 
@@ -251,17 +307,20 @@ void main() {
             questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
           ),
         );
-        harness.dispatch(
-          const SesoriSseEvent.questionRejected(requestID: "q-1", sessionID: "session-a"),
-        );
-
         async.elapse(const Duration(milliseconds: 500));
         async.flushMicrotasks();
         expect(harness.completedRoots, isEmpty);
+
+        harness.dispatch(
+          const SesoriSseEvent.questionRejected(requestID: "q-1", sessionID: "session-a"),
+        );
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, equals(["session-a"]));
       });
     });
 
-    test("permission replied cancels any pending completion", () {
+    test("permission asked after idle still fires deferred completion on reply", () {
       fakeAsync((async) {
         final harness = _newHarness();
 
@@ -281,13 +340,16 @@ void main() {
             description: "Run command",
           ),
         );
-        harness.dispatch(
-          const SesoriSseEvent.permissionReplied(requestID: "perm-1", sessionID: "s1", reply: "allow"),
-        );
-
         async.elapse(const Duration(milliseconds: 500));
         async.flushMicrotasks();
         expect(harness.completedRoots, isEmpty);
+
+        harness.dispatch(
+          const SesoriSseEvent.permissionReplied(requestID: "perm-1", sessionID: "session-a", reply: "allow"),
+        );
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, equals(["session-a"]));
       });
     });
 

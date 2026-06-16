@@ -299,6 +299,31 @@ void main() {
 
       expect(questions.map((question) => question.id), equals(["q-root"]));
     });
+
+    test("throws 502 when the session directory cannot be resolved", () async {
+      // No tracked directory and getSession fails (session not in repository),
+      // so the directory is unresolved. An unscoped query would hit the wrong
+      // (cwd) instance and silently report no pending questions, dropping a
+      // prompt that may still exist upstream — so we must fail loudly instead.
+      final repository = FakeOpenCodeRepository(
+        pendingQuestionsByDirectory: {
+          "/repo": [_question(id: "q-root", sessionId: "root")],
+        },
+      );
+      final tracker = FakeActiveSessionTracker();
+      final service = OpenCodeService(repository, tracker);
+
+      await expectLater(
+        () => service.getPendingQuestionsForSession(sessionId: "out-of-cwd"),
+        throwsA(
+          isA<PluginApiException>()
+              .having((error) => error.statusCode, "statusCode", equals(502))
+              .having((error) => error.endpoint, "endpoint", equals("GET /session/out-of-cwd/question")),
+        ),
+      );
+      // Never falls back to an unscoped (directory: null) query.
+      expect(repository.pendingQuestionDirectories, isEmpty);
+    });
   });
 
   group("OpenCodeService.createSession", () {
