@@ -68,7 +68,7 @@ Use this ONLY when the user explicitly says not to use the existing notes.
 
 **Do NOT hand-roll the range resolution, PR enumeration, or App/Bridge classification in shell.** The repo already ships a deterministic, dependency-free generator — `tool/generate_release_notes.dart` — that CI uses for both the rolling internal pre-release and the production release. It already handles every tricky case correctly:
 
-- **Previous-stable resolution** prefers the highest published (non-draft, non-prerelease) `vX.Y.Z` GitHub release (what users actually received), and only falls back to plain `vX.Y.Z` git tags — internal/prerelease tags like `v<X.Y.Z>-internal.<N>` are excluded.
+- **Previous-stable resolution** prefers the highest published (non-draft, non-prerelease) `vX.Y.Z` GitHub release strictly below the target (what users actually received), and only falls back to plain `vX.Y.Z` git tags — internal/prerelease tags like `v<X.Y.Z>-internal.<N>` are excluded.
 - **PR enumeration** walks the full `compare` API (paged, no arbitrary cap) and refuses to emit truncated notes.
 - **Exclusions**: drops `dependabot` / `dependabot[bot]` authors and any PR labelled `ignore-for-release`.
 - **App/Bridge classification** pages `/pulls/<n>/files` fully and degrades conservatively (lists under both) when a PR is too large to enumerate.
@@ -87,19 +87,8 @@ GITHUB_TOKEN="$(gh auth token)" dart tool/generate_release_notes.dart \
 ```
 
 - `--to` is the tag/sha being released (e.g. `v1.1.0`); `--version` is the bare semver.
-- **Latest-release case:** if `<version>` is the newest stable release, omit `--from` — the tool auto-resolves the correct previous stable release.
-- **Backfill guard (REQUIRED for older targets):** the tool's auto-resolution picks the highest published stable release that merely isn't the target — it does **not** enforce "strictly below the target" in the published-releases path (only the tag fallback does). So if a newer stable release than `<version>` already exists (you're regenerating notes for an *older* release), omitting `--from` would compare against that newer release and produce empty/wrong notes. In that case you MUST pass `--from <previous-stable-tag>` explicitly. Detect and compute it:
-
-```bash
-git fetch --tags
-# Latest stable tag overall — if this is NOT <version>, you're on a backfill target.
-git tag -l "v*" --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1
-# The stable tag immediately BELOW <version> — pass this as --from for backfills.
-git tag -l "v*" --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
-  | grep -A1 -x "<version>" | tail -n1
-```
-
-- **User-supplied range:** if the user explicitly gives a previous tag/ref, pass it as `--from` and skip the auto-resolution entirely.
+- **Omit `--from`** in normal use. The generator resolves the previous stable release itself: it prefers the highest *published* (non-draft, non-prerelease) `vX.Y.Z` release **strictly below the target**, and only falls back to plain `vX.Y.Z` git tags. Because it is strictly-below and published-release-aware, this is correct for both the latest release and older/backfill targets — do **not** compute a range by hand.
+- **User-supplied range:** if the user explicitly gives a previous tag/ref, pass it as `--from` to override auto-resolution.
 - The tool prints the resolved `from...to` range to stderr — always surface it to the user and confirm it looks right before proceeding.
 
 This produces the same structure Mode A consumes: `### App`, `### Bridge`, and `### All PRs merged` (plus a `**Full Changelog**` link).
