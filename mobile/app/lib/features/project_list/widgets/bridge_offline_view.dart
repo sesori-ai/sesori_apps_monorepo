@@ -69,27 +69,40 @@ class _BridgeOfflineViewState extends State<_BridgeOfflineView> {
                     onPressed: _reconnect,
                   ),
                   const SizedBox(height: 18),
-                  PregoButtonsSolid(
-                    label: loc.projectsBridgeOfflineInstallCommands,
-                    hierarchy: PregoButtonsSolidHierarchy.tertiary,
-                    size: PregoButtonsSolidSize.xl,
-                    trailingIcon: _showInstallCommands ? TablerRegular.chevron_up : TablerRegular.chevron_down,
-                    fullWidth: true,
-                    onPressed: () => setState(() => _showInstallCommands = !_showInstallCommands),
+                  // expanded semantics so screen readers announce the
+                  // open/closed state of the install-commands disclosure;
+                  // MergeSemantics folds it onto the button's own node.
+                  MergeSemantics(
+                    child: Semantics(
+                      expanded: _showInstallCommands,
+                      child: PregoButtonsSolid(
+                        label: loc.projectsBridgeOfflineInstallCommands,
+                        hierarchy: PregoButtonsSolidHierarchy.tertiary,
+                        size: PregoButtonsSolidSize.xl,
+                        trailingIcon: _showInstallCommands ? TablerRegular.chevron_up : TablerRegular.chevron_down,
+                        fullWidth: true,
+                        onPressed: () => setState(() => _showInstallCommands = !_showInstallCommands),
+                      ),
+                    ),
                   ),
                   AnimatedSize(
                     duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220),
                     curve: Curves.easeInOut,
                     alignment: Alignment.topCenter,
-                    child: _showInstallCommands
-                        ? const Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              SizedBox(height: PregoSpacing.lg),
-                              _CommandBlock(),
-                            ],
-                          )
-                        : const SizedBox.shrink(),
+                    // maintainState keeps _CommandBlock mounted while collapsed so
+                    // the selected install platform survives closing and reopening
+                    // the disclosure.
+                    child: Visibility(
+                      visible: _showInstallCommands,
+                      maintainState: true,
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          SizedBox(height: PregoSpacing.lg),
+                          _CommandBlock(),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),

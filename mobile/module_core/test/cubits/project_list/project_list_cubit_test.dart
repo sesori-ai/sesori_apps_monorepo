@@ -466,6 +466,28 @@ void main() {
       );
 
       blocTest<ProjectListCubit, ProjectListState>(
+        "bridges lookup throwing is caught and defaults to the setup onboarding",
+        build: () {
+          statusController.add(const ConnectionStatus.disconnected());
+          when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => false);
+          // An unexpected throw (network/deserialization), not an ErrorResponse.
+          // Without the internal try-catch this surfaces as an uncaught async
+          // error via unawaited(_emitBridgeDisconnected()).
+          when(() => mockBridgeRepository.getRegisteredBridges()).thenAnswer(
+            (_) async => throw Exception("network blew up"),
+          );
+          return buildCubit();
+        },
+        expect: () => [
+          isA<ProjectListBridgeDisconnected>().having(
+            (s) => s.hasRegisteredBridges,
+            "hasRegisteredBridges",
+            isFalse,
+          ),
+        ],
+      );
+
+      blocTest<ProjectListCubit, ProjectListState>(
         "bridges lookup failure falls back to the last successful answer",
         build: () {
           statusController.add(const ConnectionStatus.disconnected());

@@ -205,14 +205,22 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   }
 
   Future<bool> _lookupHasRegisteredBridges() async {
-    final response = await _bridgeRepository.getRegisteredBridges();
-    switch (response) {
-      case SuccessResponse(:final data):
-        _hasRegisteredBridgesFallback = data.isNotEmpty;
-        return _hasRegisteredBridgesFallback;
-      case ErrorResponse(:final error):
-        logw("Failed to fetch registered bridges: ${error.toString()}");
-        return _hasRegisteredBridgesFallback;
+    // Reached via unawaited(_emitBridgeDisconnected()), so an unexpected throw
+    // (network timeout, deserialization failure) — rather than an ErrorResponse —
+    // would surface as an uncaught async error. Fail soft to the last-known answer.
+    try {
+      final response = await _bridgeRepository.getRegisteredBridges();
+      switch (response) {
+        case SuccessResponse(:final data):
+          _hasRegisteredBridgesFallback = data.isNotEmpty;
+          return _hasRegisteredBridgesFallback;
+        case ErrorResponse(:final error):
+          logw("Failed to fetch registered bridges: ${error.toString()}");
+          return _hasRegisteredBridgesFallback;
+      }
+    } on Object catch (error, stackTrace) {
+      logw("Failed to fetch registered bridges (unexpected error)", error, stackTrace);
+      return _hasRegisteredBridgesFallback;
     }
   }
 

@@ -22,7 +22,13 @@ class _CommandBlockState extends State<_CommandBlock> {
   Future<void> _copyCommand() async {
     final messenger = ScaffoldMessenger.of(context);
     final loc = context.loc;
-    await Clipboard.setData(ClipboardData(text: _installCommand));
+    // Clipboard can throw on restricted platforms/states; fail soft and skip
+    // the success snackbar, matching CopyIconButton.
+    try {
+      await Clipboard.setData(ClipboardData(text: _installCommand));
+    } on Object catch (_) {
+      return;
+    }
     messenger.showSnackBar(
       SnackBar(
         content: Text(loc.projectsOnboardingCommandCopied),
