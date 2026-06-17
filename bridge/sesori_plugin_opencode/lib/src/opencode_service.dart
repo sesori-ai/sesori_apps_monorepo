@@ -318,12 +318,14 @@ class OpenCodeService {
     required String sessionId,
     required List<List<String>> answers,
   }) async {
-    // Best-effort directory scoping: unlike reject/getPending (which fail loud
-    // with a 502 when the directory is unresolved), reply proceeds with a null
-    // directory, which OpenCode routes to its cwd instance. The rethrow-on-404
-    // guard below (gated on `directory == null`) ensures a misrouted reply never
-    // falsely clears local pending state — it surfaces the 404 to the caller.
     final directory = await _resolveSessionDirectory(sessionId: sessionId);
+    if (directory == null) {
+      throw PluginApiException(
+        "POST /question/$questionId/reply",
+        502,
+        message: "could not resolve session directory",
+      );
+    }
     try {
       await repository.replyToQuestion(
         questionId: questionId,
@@ -331,7 +333,7 @@ class OpenCodeService {
         body: QuestionReplyBody(answers: answers),
       );
     } on OpenCodeApiException catch (e) {
-      if (e.statusCode != 404 || directory == null) rethrow;
+      if (e.statusCode != 404) rethrow;
       Log.w("question already resolved upstream (404), reconciling tracker: ${e.endpoint}", e);
     }
     return tracker.clearPendingQuestion(questionId: questionId, sessionId: sessionId);
@@ -377,10 +379,14 @@ class OpenCodeService {
     required String sessionId,
     required PluginPermissionReply reply,
   }) async {
-    // Best-effort directory scoping; see replyToQuestion for why a null
-    // directory is tolerated here (rethrow-on-404 guard) while reject/getPending
-    // fail loud instead.
     final directory = await _resolveSessionDirectory(sessionId: sessionId);
+    if (directory == null) {
+      throw PluginApiException(
+        "POST /permission/$requestId/reply",
+        502,
+        message: "could not resolve session directory",
+      );
+    }
     try {
       await repository.replyToPermission(
         requestId: requestId,
@@ -388,7 +394,7 @@ class OpenCodeService {
         reply: reply,
       );
     } on OpenCodeApiException catch (e) {
-      if (e.statusCode != 404 || directory == null) rethrow;
+      if (e.statusCode != 404) rethrow;
       Log.w("permission already resolved upstream (404), reconciling tracker: ${e.endpoint}", e);
     }
     return tracker.clearPendingPermission(sessionId: sessionId, requestId: requestId);

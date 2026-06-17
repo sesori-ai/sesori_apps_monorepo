@@ -1108,12 +1108,44 @@ void main() {
     test("replyToPermission 400 does not clear and rethrows", () async {
       final error = OpenCodeApiException("POST /permission/perm-1/reply", 400);
       final repository = FakeOpenCodeRepository(replyToPermissionError: error);
-      final tracker = FakeActiveSessionTracker();
+      final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
       final service = OpenCodeService(repository, tracker);
 
       await expectLater(
         service.replyToPermission(requestId: "perm-1", sessionId: "ses-1", reply: PluginPermissionReply.once),
         throwsA(same(error)),
+      );
+      expect(tracker.lastClearedPermissionRequestId, isNull);
+    });
+
+    test("replyToQuestion throws 502 when session directory cannot be resolved", () async {
+      final repository = FakeOpenCodeRepository();
+      final tracker = FakeActiveSessionTracker();
+      final service = OpenCodeService(repository, tracker);
+
+      await expectLater(
+        service.replyToQuestion(questionId: "q1", sessionId: "unknown-session", answers: const []),
+        throwsA(
+          isA<PluginApiException>()
+              .having((e) => e.statusCode, "statusCode", 502)
+              .having((e) => e.endpoint, "endpoint", "POST /question/q1/reply"),
+        ),
+      );
+      expect(tracker.lastClearedQuestionId, isNull);
+    });
+
+    test("replyToPermission throws 502 when session directory cannot be resolved", () async {
+      final repository = FakeOpenCodeRepository();
+      final tracker = FakeActiveSessionTracker();
+      final service = OpenCodeService(repository, tracker);
+
+      await expectLater(
+        service.replyToPermission(requestId: "perm-1", sessionId: "unknown-session", reply: PluginPermissionReply.once),
+        throwsA(
+          isA<PluginApiException>()
+              .having((e) => e.statusCode, "statusCode", 502)
+              .having((e) => e.endpoint, "endpoint", "POST /permission/perm-1/reply"),
+        ),
       );
       expect(tracker.lastClearedPermissionRequestId, isNull);
     });
