@@ -1,5 +1,5 @@
 import "package:freezed_annotation/freezed_annotation.dart";
-import "package:sesori_shared/sesori_shared.dart";
+import "package:sesori_auth/sesori_auth.dart";
 
 part "settings_state.freezed.dart";
 
