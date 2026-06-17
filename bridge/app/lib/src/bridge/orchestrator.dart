@@ -22,6 +22,7 @@ import "repositories/agent_repository.dart";
 import "repositories/permission_repository.dart";
 import "repositories/project_repository.dart";
 import "repositories/provider_repository.dart";
+import "repositories/question_repository.dart";
 import "repositories/session_repository.dart";
 import "routing/abort_session_handler.dart";
 import "routing/get_agents_handler.dart";
@@ -58,6 +59,7 @@ class Orchestrator {
   final SessionRepository _sessionRepository;
   final ProjectRepository _projectRepository;
   final PermissionRepository _permissionRepository;
+  final QuestionRepository _questionRepository;
   final SessionPersistenceService _sessionPersistenceService;
   final WorktreeService _worktreeService;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
@@ -77,6 +79,7 @@ class Orchestrator {
     required SessionRepository sessionRepository,
     required ProjectRepository projectRepository,
     required PermissionRepository permissionRepository,
+    required QuestionRepository questionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
@@ -93,6 +96,7 @@ class Orchestrator {
        _prSyncService = prSyncService,
        _projectRepository = projectRepository,
        _permissionRepository = permissionRepository,
+       _questionRepository = questionRepository,
        _sessionPersistenceService = sessionPersistenceService,
        _worktreeService = worktreeService,
        _sessionEventEnrichmentService = sessionEventEnrichmentService;
@@ -136,6 +140,7 @@ class Orchestrator {
       prSyncService: _prSyncService,
       projectRepository: _projectRepository,
       permissionRepository: _permissionRepository,
+      questionRepository: _questionRepository,
       sessionPersistenceService: _sessionPersistenceService,
       worktreeService: _worktreeService,
       sessionCreationService: sessionCreationService,
@@ -210,6 +215,7 @@ class OrchestratorSession {
     required PrSyncService prSyncService,
     required ProjectRepository projectRepository,
     required PermissionRepository permissionRepository,
+    required QuestionRepository questionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
     required SessionCreationService sessionCreationService,
@@ -254,6 +260,7 @@ class OrchestratorSession {
            AgentRepository(plugin: plugin),
          ),
          permissionRepository: permissionRepository,
+         questionRepository: questionRepository,
          sessionPersistenceService: sessionPersistenceService,
          worktreeService: worktreeService,
          sessionDiffsHandler: GetSessionDiffsHandler(

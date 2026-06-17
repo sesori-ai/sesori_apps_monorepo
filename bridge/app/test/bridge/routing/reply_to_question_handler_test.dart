@@ -1,3 +1,4 @@
+import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/reply_to_question_handler.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -11,7 +12,7 @@ void main() {
 
     setUp(() {
       plugin = FakeBridgePlugin();
-      handler = ReplyToQuestionHandler(plugin);
+      handler = ReplyToQuestionHandler(questionRepository: QuestionRepository(plugin: plugin));
     });
 
     tearDown(() => plugin.close());

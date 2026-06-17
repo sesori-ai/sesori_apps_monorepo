@@ -419,17 +419,18 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     required String questionId,
     required String sessionId,
     required List<List<String>> answers,
-  }) {
-    final directory = _service.tracker.getSessionDirectory(sessionId: sessionId);
-    return _call(
-      () => _service.repository.api.replyToQuestion(
+  }) async {
+    final result = await _call(
+      () => _service.replyToQuestion(
         questionId: questionId,
-        directory: directory,
-        body: {
-          "answers": answers,
-        },
+        sessionId: sessionId,
+        answers: answers,
       ),
     );
+    if (result.found) {
+      _eventBuffer.add(BridgeSseQuestionReplied(requestID: questionId, sessionID: sessionId));
+    }
+    if (result.summaryChanged) _emitProjectsSummary();
   }
 
   @override
@@ -437,23 +438,40 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     required String requestId,
     required String sessionId,
     required PluginPermissionReply reply,
-  }) {
-    return _call(
+  }) async {
+    final result = await _call(
       () => _service.replyToPermission(
         requestId: requestId,
         sessionId: sessionId,
         reply: reply,
       ),
     );
+    if (result.found) {
+      _eventBuffer.add(
+        BridgeSsePermissionReplied(
+          requestID: requestId,
+          sessionID: sessionId,
+          reply: reply.name,
+        ),
+      );
+    }
+    if (result.summaryChanged) _emitProjectsSummary();
   }
 
   @override
-  Future<void> rejectQuestion(String questionId) {
-    return _call(
-      () => _service.repository.api.rejectQuestion(
+  Future<void> rejectQuestion({required String questionId, required String? sessionId}) async {
+    final result = await _call(
+      () => _service.rejectQuestion(
         questionId: questionId,
+        sessionId: sessionId,
       ),
     );
+    if (result.found) {
+      if (result.resolvedSessionId case final sessionID?) {
+        _eventBuffer.add(BridgeSseQuestionRejected(requestID: questionId, sessionID: sessionID));
+      }
+    }
+    if (result.summaryChanged) _emitProjectsSummary();
   }
 
   @override

@@ -349,6 +349,12 @@ abstract class AppLocalizations {
   /// **'Settings'**
   String get settingsTitle;
 
+  /// No description provided for @settingsAccountSignedInWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in with {provider}'**
+  String settingsAccountSignedInWith(String provider);
+
   /// No description provided for @settingsLogout.
   ///
   /// In en, this message translates to:

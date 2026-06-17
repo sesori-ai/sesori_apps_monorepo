@@ -14,6 +14,7 @@ import "models/openapi/question_request.g.dart";
 import "models/openapi/session.g.dart";
 import "models/openapi/session_messages_response_item.g.dart";
 import "models/openapi/session_status.g.dart";
+import "models/question_reply_body.dart";
 import "models/send_command_body.dart";
 import "models/send_prompt_body.dart";
 import "models/summarize_body.dart";
@@ -370,9 +371,9 @@ class OpenCodeApi {
   Future<void> replyToQuestion({
     required String questionId,
     required String? directory,
-    required Map<String, dynamic> body,
+    required QuestionReplyBody body,
   }) async {
-    final encodedBody = jsonEncode(body);
+    final encodedBody = jsonEncode(body.toJson());
     Log.d("[question-api] POST /question/$questionId/reply body=$encodedBody");
     final response = await _client.post(
       path: "/question/$questionId/reply",
@@ -387,14 +388,15 @@ class OpenCodeApi {
 
   Future<void> replyToPermission({
     required String requestId,
-    required String sessionId,
+    required String? directory,
     required PluginPermissionReply reply,
   }) async {
     final body = jsonEncode({"reply": reply.name});
-    Log.d("[permission-api] POST /permission/$requestId/reply for session $sessionId");
+    Log.d("[permission-api] POST /permission/$requestId/reply for session directory $directory");
     await _client.post(
       path: "/permission/$requestId/reply",
       headers: {
+        _directoryOpenCodeHeader: ?directory,
         "content-type": "application/json",
       },
       body: body,
@@ -403,10 +405,14 @@ class OpenCodeApi {
 
   Future<void> rejectQuestion({
     required String questionId,
+    required String? directory,
   }) async {
-    Log.d("[question-api] POST /question/$questionId/reject");
+    Log.d("[question-api] POST /question/$questionId/reject for session directory $directory");
     final response = await _client.post(
       path: "/question/$questionId/reject",
+      headers: {
+        _directoryOpenCodeHeader: ?directory,
+      },
       body: "",
     );
     Log.d("[question-api] POST /question/$questionId/reject => ${response.statusCode} body=${response.body}");

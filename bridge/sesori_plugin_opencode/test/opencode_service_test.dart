@@ -419,6 +419,31 @@ void main() {
 
       expect(questions.map((question) => question.id), equals(["q-root"]));
     });
+
+    test("throws 502 when the session directory cannot be resolved", () async {
+      // No tracked directory and getSession fails (session not in repository),
+      // so the directory is unresolved. An unscoped query would hit the wrong
+      // (cwd) instance and silently report no pending questions, dropping a
+      // prompt that may still exist upstream — so we must fail loudly instead.
+      final repository = FakeOpenCodeRepository(
+        pendingQuestionsByDirectory: {
+          "/repo": [_question(id: "q-root", sessionId: "root")],
+        },
+      );
+      final tracker = FakeActiveSessionTracker();
+      final service = OpenCodeService(repository, tracker);
+
+      await expectLater(
+        () => service.getPendingQuestionsForSession(sessionId: "out-of-cwd"),
+        throwsA(
+          isA<PluginApiException>()
+              .having((error) => error.statusCode, "statusCode", equals(502))
+              .having((error) => error.endpoint, "endpoint", equals("GET /session/out-of-cwd/question")),
+        ),
+      );
+      // Never falls back to an unscoped (directory: null) query.
+      expect(repository.pendingQuestionDirectories, isEmpty);
+    });
   });
 
   group("OpenCodeService.createSession", () {
@@ -1250,6 +1275,274 @@ void main() {
       expect(result, equals(tracker.summary));
     });
   });
+
+  group("OpenCodeService pending input actions", () {
+    test("replyToQuestion 200 clears tracker and returns change", () async {
+      final repository = FakeOpenCodeRepository();
+      final tracker = FakeActiveSessionTracker(
+        sessionDirectories: const {"ses-1": "/repo"},
+        clearPendingQuestionChanged: true,
+      );
+      final service = OpenCodeService(repository, tracker);
+
+      final result = await service.replyToQuestion(
+        questionId: "q1",
+        sessionId: "ses-1",
+        answers: const [
+          ["yes"],
+        ],
+      );
+
+      expect(result.summaryChanged, isTrue);
+      expect(repository.lastReplyQuestionId, equals("q1"));
+      expect(repository.lastReplyQuestionDirectory, equals("/repo"));
+      expect(
+        repository.lastReplyQuestionBody?.toJson(),
+        equals({
+          "answers": const [
+            ["yes"],
+          ],
+        }),
+      );
+      expect(tracker.lastClearedQuestionId, equals("q1"));
+      expect(tracker.lastClearedQuestionSessionId, equals("ses-1"));
+    });
+
+    test("regression: question reply without SSE echo clears awaitingInput", () async {
+      final repository = FakeOpenCodeRepository(
+        projects: [
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/repo",
+          ),
+        ],
+      );
+      final tracker = ActiveSessionTracker(repository);
+      await tracker.coldStart();
+      tracker.handleEvent(
+        const SseEventData.sessionCreated(
+          info: Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "ses-1",
+            projectID: "p1",
+            directory: "/repo",
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
+        ),
+        null,
+      );
+      tracker.handleEvent(const SseEventData.sessionStatus(sessionID: "ses-1", status: SessionStatusBusy()), null);
+      tracker.handleEvent(_questionAsked("q1", "ses-1"), null);
+      final service = OpenCodeService(repository, tracker);
+
+      expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isTrue);
+
+      final result = await service.replyToQuestion(
+        questionId: "q1",
+        sessionId: "ses-1",
+        answers: const [
+          ["yes"],
+        ],
+      );
+
+      expect(result.summaryChanged, isTrue);
+      expect(tracker.buildSummary().first.activeSessions.first.awaitingInput, isFalse);
+    });
+
+    test("replyToQuestion 404 clears tracker and returns change", () async {
+      final repository = FakeOpenCodeRepository(
+        replyToQuestionError: OpenCodeApiException("POST /question/q1/reply", 404),
+      );
+      final tracker = FakeActiveSessionTracker(
+        sessionDirectories: const {"ses-1": "/repo"},
+        clearPendingQuestionChanged: true,
+      );
+      final service = OpenCodeService(repository, tracker);
+
+      final result = await service.replyToQuestion(questionId: "q1", sessionId: "ses-1", answers: const []);
+
+      expect(result.summaryChanged, isTrue);
+      expect(tracker.lastClearedQuestionId, equals("q1"));
+    });
+
+    test("replyToQuestion non-404 does not clear and rethrows", () async {
+      final error = OpenCodeApiException("POST /question/q1/reply", 500);
+      final repository = FakeOpenCodeRepository(replyToQuestionError: error);
+      final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
+      final service = OpenCodeService(repository, tracker);
+
+      await expectLater(
+        service.replyToQuestion(questionId: "q1", sessionId: "ses-1", answers: const []),
+        throwsA(same(error)),
+      );
+      expect(tracker.lastClearedQuestionId, isNull);
+    });
+
+    test("replyToQuestion timeout does not clear and rethrows", () async {
+      final error = TimeoutException("timed out");
+      final repository = FakeOpenCodeRepository(replyToQuestionError: error);
+      final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
+      final service = OpenCodeService(repository, tracker);
+
+      await expectLater(
+        service.replyToQuestion(questionId: "q1", sessionId: "ses-1", answers: const []),
+        throwsA(same(error)),
+      );
+      expect(tracker.lastClearedQuestionId, isNull);
+    });
+
+    test("rejectQuestion 404 clears tracker using optional sessionId and directory", () async {
+      final repository = FakeOpenCodeRepository(
+        rejectQuestionError: OpenCodeApiException("POST /question/q1/reject", 404),
+      );
+      final tracker = FakeActiveSessionTracker(
+        sessionDirectories: const {"ses-1": "/repo"},
+        clearPendingQuestionFound: true,
+        clearPendingQuestionChanged: true,
+      );
+      final service = OpenCodeService(repository, tracker);
+
+      final result = await service.rejectQuestion(questionId: "q1", sessionId: "ses-1");
+
+      expect(result.summaryChanged, isTrue);
+      expect(result.resolvedSessionId, equals("ses-1"));
+      expect(repository.lastRejectQuestionId, equals("q1"));
+      expect(repository.lastRejectQuestionDirectory, equals("/repo"));
+      expect(tracker.lastClearedQuestionId, equals("q1"));
+      expect(tracker.lastClearedQuestionSessionId, equals("ses-1"));
+    });
+
+    test("rejectQuestion without sessionId resolves directory from tracker", () async {
+      final repository = FakeOpenCodeRepository(
+        rejectQuestionError: OpenCodeApiException("POST /question/q1/reject", 404),
+      );
+      final tracker = FakeActiveSessionTracker(
+        sessionDirectories: const {"ses-1": "/repo"},
+        clearPendingQuestionFound: true,
+        clearPendingQuestionChanged: true,
+        clearPendingQuestionResolvedSessionId: "ses-1",
+      );
+      final service = OpenCodeService(repository, tracker);
+
+      final result = await service.rejectQuestion(questionId: "q1", sessionId: null);
+
+      expect(result.found, isTrue);
+      expect(result.resolvedSessionId, equals("ses-1"));
+      expect(result.summaryChanged, isTrue);
+      expect(tracker.lastGetSessionIdForQuestionQuestionId, equals("q1"));
+      expect(repository.lastRejectQuestionId, equals("q1"));
+      expect(repository.lastRejectQuestionDirectory, equals("/repo"));
+      expect(tracker.lastClearedQuestionId, equals("q1"));
+      expect(tracker.lastClearedQuestionSessionId, equals("ses-1"));
+    });
+
+    test("rejectQuestion 404 without resolvable sessionId clears local state without upstream call", () async {
+      final repository = FakeOpenCodeRepository(
+        rejectQuestionError: OpenCodeApiException("POST /question/q1/reject", 404),
+      );
+      final tracker = FakeActiveSessionTracker(
+        clearPendingQuestionFound: true,
+        clearPendingQuestionChanged: true,
+      );
+      final service = OpenCodeService(repository, tracker);
+
+      final result = await service.rejectQuestion(questionId: "q1", sessionId: null);
+
+      expect(result.found, isTrue);
+      expect(result.resolvedSessionId, isNull);
+      expect(result.summaryChanged, isTrue);
+      expect(tracker.lastGetSessionIdForQuestionQuestionId, equals("q1"));
+      expect(repository.lastRejectQuestionId, isNull);
+      expect(tracker.lastClearedQuestionId, equals("q1"));
+      expect(tracker.lastClearedQuestionSessionId, isNull);
+    });
+
+    test("replyToPermission 200 clears tracker and returns change", () async {
+      final repository = FakeOpenCodeRepository();
+      final tracker = FakeActiveSessionTracker(
+        sessionDirectories: const {"ses-1": "/repo"},
+        clearPendingPermissionChanged: true,
+      );
+      final service = OpenCodeService(repository, tracker);
+
+      final result = await service.replyToPermission(
+        requestId: "perm-1",
+        sessionId: "ses-1",
+        reply: PluginPermissionReply.once,
+      );
+
+      expect(result.summaryChanged, isTrue);
+      expect(repository.lastReplyPermissionRequestId, equals("perm-1"));
+      expect(repository.lastReplyPermissionDirectory, equals("/repo"));
+      expect(tracker.lastClearedPermissionRequestId, equals("perm-1"));
+      expect(tracker.lastClearedPermissionSessionId, equals("ses-1"));
+    });
+
+    test("replyToPermission 400 does not clear and rethrows", () async {
+      final error = OpenCodeApiException("POST /permission/perm-1/reply", 400);
+      final repository = FakeOpenCodeRepository(replyToPermissionError: error);
+      final tracker = FakeActiveSessionTracker(sessionDirectories: const {"ses-1": "/repo"});
+      final service = OpenCodeService(repository, tracker);
+
+      await expectLater(
+        service.replyToPermission(requestId: "perm-1", sessionId: "ses-1", reply: PluginPermissionReply.once),
+        throwsA(same(error)),
+      );
+      expect(tracker.lastClearedPermissionRequestId, isNull);
+    });
+
+    test("replyToQuestion throws 502 when session directory cannot be resolved", () async {
+      final repository = FakeOpenCodeRepository();
+      final tracker = FakeActiveSessionTracker();
+      final service = OpenCodeService(repository, tracker);
+
+      await expectLater(
+        service.replyToQuestion(questionId: "q1", sessionId: "unknown-session", answers: const []),
+        throwsA(
+          isA<PluginApiException>()
+              .having((e) => e.statusCode, "statusCode", 502)
+              .having((e) => e.endpoint, "endpoint", "POST /question/q1/reply"),
+        ),
+      );
+      expect(tracker.lastClearedQuestionId, isNull);
+    });
+
+    test("replyToPermission throws 502 when session directory cannot be resolved", () async {
+      final repository = FakeOpenCodeRepository();
+      final tracker = FakeActiveSessionTracker();
+      final service = OpenCodeService(repository, tracker);
+
+      await expectLater(
+        service.replyToPermission(requestId: "perm-1", sessionId: "unknown-session", reply: PluginPermissionReply.once),
+        throwsA(
+          isA<PluginApiException>()
+              .having((e) => e.statusCode, "statusCode", 502)
+              .having((e) => e.endpoint, "endpoint", "POST /permission/perm-1/reply"),
+        ),
+      );
+      expect(tracker.lastClearedPermissionRequestId, isNull);
+    });
+  });
 }
 
 SessionMessagesResponseItem _msg(String role, String id) {
@@ -1296,6 +1589,14 @@ String? _messageId(PluginMessageWithParts message) {
 
 QuestionRequest _question({required String id, required String sessionId}) {
   return QuestionRequest(id: id, sessionID: sessionId, questions: const [], tool: null);
+}
+
+SseEventData _questionAsked(String id, String sessionId) {
+  return SseEventData.questionAsked(
+    id: id,
+    sessionID: sessionId,
+    questions: const [],
+  );
 }
 
 class FakeOpenCodeApi implements OpenCodeApi {
@@ -1390,18 +1691,21 @@ class FakeOpenCodeApi implements OpenCodeApi {
   Future<void> replyToQuestion({
     required String questionId,
     required String? directory,
-    required Map<String, dynamic> body,
+    required QuestionReplyBody body,
   }) async {}
 
   @override
   Future<void> replyToPermission({
     required String requestId,
-    required String sessionId,
+    required String? directory,
     required PluginPermissionReply reply,
   }) async {}
 
   @override
-  Future<void> rejectQuestion({required String questionId}) async {}
+  Future<void> rejectQuestion({
+    required String questionId,
+    required String? directory,
+  }) async {}
 
   @override
   Future<Project> getProject({required String directory}) async => throw UnimplementedError();
@@ -1481,6 +1785,17 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   ({String providerID, String modelID})? lastSummarizeModel;
   String? lastDeletedSessionId;
   String? lastDeletedDirectory;
+  String? lastReplyQuestionId;
+  String? lastReplyQuestionDirectory;
+  QuestionReplyBody? lastReplyQuestionBody;
+  Object? replyToQuestionError;
+  String? lastRejectQuestionId;
+  String? lastRejectQuestionDirectory;
+  Object? rejectQuestionError;
+  String? lastReplyPermissionRequestId;
+  String? lastReplyPermissionDirectory;
+  PluginPermissionReply? lastReplyPermissionReply;
+  Object? replyToPermissionError;
   int getSessionCalls = 0;
   String? lastGetSessionId;
   String? lastGetSessionDirectory;
@@ -1494,6 +1809,9 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     PluginSession? createdSession,
     List<SessionMessagesResponseItem> messages = const [],
     Object? messagesError,
+    Object? replyToQuestionError,
+    Object? rejectQuestionError,
+    Object? replyToPermissionError,
     Map<String, List<QuestionRequest>> pendingQuestionsByDirectory = const {},
     Map<String, List<PermissionRequest>> pendingPermissionsByDirectory = const {},
   }) {
@@ -1504,6 +1822,9 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
       sessions: sessions,
       commands: commands,
       createdSession: createdSession,
+      replyToQuestionError: replyToQuestionError,
+      rejectQuestionError: rejectQuestionError,
+      replyToPermissionError: replyToPermissionError,
       pendingQuestionsByDirectory: pendingQuestionsByDirectory,
       pendingPermissionsByDirectory: pendingPermissionsByDirectory,
     );
@@ -1515,6 +1836,9 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
     required List<Session> sessions,
     required List<PluginCommand> commands,
     required PluginSession? createdSession,
+    this.replyToQuestionError,
+    this.rejectQuestionError,
+    this.replyToPermissionError,
     required Map<String, List<QuestionRequest>> pendingQuestionsByDirectory,
     required Map<String, List<PermissionRequest>> pendingPermissionsByDirectory,
   }) : _projects = projects,
@@ -1642,6 +1966,46 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   }
 
   @override
+  Future<void> replyToQuestion({
+    required String questionId,
+    required String? directory,
+    required QuestionReplyBody body,
+  }) async {
+    lastReplyQuestionId = questionId;
+    lastReplyQuestionDirectory = directory;
+    lastReplyQuestionBody = body;
+    if (replyToQuestionError case final error?) {
+      throw error;
+    }
+  }
+
+  @override
+  Future<void> rejectQuestion({
+    required String questionId,
+    required String? directory,
+  }) async {
+    lastRejectQuestionId = questionId;
+    lastRejectQuestionDirectory = directory;
+    if (rejectQuestionError case final error?) {
+      throw error;
+    }
+  }
+
+  @override
+  Future<void> replyToPermission({
+    required String requestId,
+    required String? directory,
+    required PluginPermissionReply reply,
+  }) async {
+    lastReplyPermissionRequestId = requestId;
+    lastReplyPermissionDirectory = directory;
+    lastReplyPermissionReply = reply;
+    if (replyToPermissionError case final error?) {
+      throw error;
+    }
+  }
+
+  @override
   Future<Session> getSession({
     required String sessionId,
     required String? directory,
@@ -1678,11 +2042,26 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   bool registerSessionReturns = false;
   List<QuestionRequest> populatedQuestions = const [];
   List<PermissionRequest> populatedPermissions = const [];
+  final bool clearPendingQuestionFound;
+  final String? clearPendingQuestionResolvedSessionId;
+  final bool clearPendingQuestionChanged;
+  final bool clearPendingPermissionFound;
+  final bool clearPendingPermissionChanged;
+  String? lastClearedQuestionId;
+  String? lastClearedQuestionSessionId;
+  String? lastClearedPermissionRequestId;
+  String? lastClearedPermissionSessionId;
+  String? lastGetSessionIdForQuestionQuestionId;
 
   FakeActiveSessionTracker({
     this.summary = const [],
     Map<String, String> sessionDirectories = const {},
     this.resolvedWorktree,
+    this.clearPendingQuestionFound = false,
+    this.clearPendingQuestionResolvedSessionId,
+    this.clearPendingQuestionChanged = false,
+    this.clearPendingPermissionFound = false,
+    this.clearPendingPermissionChanged = false,
   }) : _sessionDirectories = Map<String, String>.from(sessionDirectories),
        super(OpenCodeRepository(FakeOpenCodeApi()));
 
@@ -1715,6 +2094,12 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   }
 
   @override
+  String? getSessionIdForQuestion({required String questionId}) {
+    lastGetSessionIdForQuestionQuestionId = questionId;
+    return clearPendingQuestionResolvedSessionId;
+  }
+
+  @override
   String? resolveProjectWorktree({required String directory}) {
     return resolvedWorktree;
   }
@@ -1727,6 +2112,34 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   @override
   void populatePendingPermissions({required List<PermissionRequest> permissions}) {
     populatedPermissions = permissions;
+  }
+
+  @override
+  ({bool found, String? resolvedSessionId, bool summaryChanged}) clearPendingQuestion({
+    required String questionId,
+    String? sessionId,
+  }) {
+    lastClearedQuestionId = questionId;
+    lastClearedQuestionSessionId = sessionId;
+    return (
+      found: clearPendingQuestionFound,
+      resolvedSessionId: clearPendingQuestionResolvedSessionId ?? sessionId,
+      summaryChanged: clearPendingQuestionChanged,
+    );
+  }
+
+  @override
+  ({bool found, String? resolvedSessionId, bool summaryChanged}) clearPendingPermission({
+    required String sessionId,
+    required String requestId,
+  }) {
+    lastClearedPermissionSessionId = sessionId;
+    lastClearedPermissionRequestId = requestId;
+    return (
+      found: clearPendingPermissionFound,
+      resolvedSessionId: sessionId,
+      summaryChanged: clearPendingPermissionChanged,
+    );
   }
 
   @override

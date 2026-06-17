@@ -32,6 +32,7 @@ import "../repositories/permission_repository.dart";
 import "../repositories/pr_source_repository.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/pull_request_repository.dart";
+import "../repositories/question_repository.dart";
 import "../repositories/session_repository.dart";
 import "../repositories/worktree_repository.dart";
 import "../services/pr_sync_service.dart";
@@ -150,6 +151,7 @@ class BridgeRuntime {
         sessionRepository: sessionRepository,
         projectRepository: ProjectRepository(plugin: plugin, projectsDao: database.projectsDao),
         permissionRepository: PermissionRepository(plugin: plugin),
+        questionRepository: QuestionRepository(plugin: plugin),
         sessionPersistenceService: SessionPersistenceService(
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,

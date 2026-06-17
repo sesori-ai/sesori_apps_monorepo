@@ -150,6 +150,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsTitle => 'Settings';
 
   @override
+  String settingsAccountSignedInWith(String provider) {
+    return 'Signed in with $provider';
+  }
+
+  @override
   String get settingsLogout => 'Log Out';
 
   @override

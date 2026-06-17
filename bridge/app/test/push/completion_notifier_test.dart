@@ -105,6 +105,232 @@ void main() {
       });
     });
 
+    test("deletion of last pending child resumes blocked root completion", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        harness.dispatch(SesoriSseEvent.sessionCreated(info: _session(id: "parent")));
+        harness.dispatch(
+          SesoriSseEvent.sessionCreated(
+            info: _session(id: "child", parentID: "parent"),
+          ),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "parent", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.questionAsked(
+            id: "q-1",
+            sessionID: "child",
+            questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
+          ),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "parent", status: SessionStatus.idle()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+        );
+        async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
+
+        harness.dispatch(SesoriSseEvent.sessionDeleted(info: _session(id: "child", parentID: "parent")));
+
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, equals(["parent"]));
+      });
+    });
+
+    test("deletion of last pending grandchild resumes blocked root completion", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        // A 3-level hierarchy: root <- child <- grandchild. The grandchild holds
+        // the only pending question, so the block is recorded under the resolved
+        // root ("root"), not the grandchild's immediate parent ("child").
+        harness.dispatch(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
+        harness.dispatch(
+          SesoriSseEvent.sessionCreated(info: _session(id: "child", parentID: "root")),
+        );
+        harness.dispatch(
+          SesoriSseEvent.sessionCreated(info: _session(id: "grandchild", parentID: "child")),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.questionAsked(
+            id: "q-1",
+            sessionID: "grandchild",
+            questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
+          ),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "grandchild", status: SessionStatus.idle()),
+        );
+        async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
+
+        // Deleting the grandchild — whose parentID is the mid-level "child", not
+        // the true root — must still resume completion for the real root. This
+        // only works if the deletion handler resolves parentID to its root
+        // rather than using it verbatim.
+        harness.dispatch(
+          SesoriSseEvent.sessionDeleted(info: _session(id: "grandchild", parentID: "child")),
+        );
+
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, equals(["root"]));
+      });
+    });
+
+    test("reparented child still resumes blocked completion on reply", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        // The child is known only via status events at first, so it is its own
+        // root when it goes idle with a pending question — the blocked key is
+        // recorded under "child", before any parent link is learned.
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.questionAsked(
+            id: "q-1",
+            sessionID: "child",
+            questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
+          ),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+        );
+        async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
+
+        // A later summary establishes the parent link (reparents "child").
+        harness.dispatch(
+          const SesoriSseEvent.projectsSummary(
+            projects: [
+              ProjectActivitySummary(
+                id: "project-a",
+                activeSessions: [
+                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"]),
+                ],
+              ),
+            ],
+          ),
+        );
+
+        // Replying resolves the current root ("root"), but the blocked key is
+        // still "child"; the originalSessionId fallback must find it and fire
+        // completion for the real root.
+        harness.dispatch(
+          const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "child"),
+        );
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, equals(["root"]));
+      });
+    });
+
+    test("reparented child deletion resumes blocked root completion", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        // The root ran (so completion is warranted) and the child is known only
+        // via status events, so it is its own root when it goes idle with a
+        // pending question — the block is recorded under "child".
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.questionAsked(
+            id: "q-1",
+            sessionID: "child",
+            questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
+          ),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+        );
+        // The parent link is learned after the block was recorded under "child".
+        harness.dispatch(
+          const SesoriSseEvent.projectsSummary(
+            projects: [
+              ProjectActivitySummary(
+                id: "project-a",
+                activeSessions: [
+                  ActiveSession(id: "root", mainAgentRunning: false, childSessionIds: ["child"]),
+                ],
+              ),
+            ],
+          ),
+        );
+        // Deleting the last pending child must resume the reparented root via
+        // the originalSessionId fallback, even though resolving the now-removed
+        // child no longer reaches the parent.
+        harness.dispatch(SesoriSseEvent.sessionDeleted(info: _session(id: "child", parentID: "root")));
+
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, equals(["root"]));
+      });
+    });
+
+    test("duplicate question reply does not lose completion", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.questionAsked(
+            id: "q-1",
+            sessionID: "session-a",
+            questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
+          ),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
+        );
+        async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
+
+        harness.dispatch(
+          const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "session-a"),
+        );
+        async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
+
+        // Duplicate reply arrives before debounce fires.
+        harness.dispatch(
+          const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "session-a"),
+        );
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, equals(["session-a"]));
+      });
+    });
     test("session deleted during debounce cancels pending callback", () {
       fakeAsync((async) {
         final harness = _newHarness();
@@ -213,6 +439,96 @@ void main() {
         async.elapse(const Duration(milliseconds: 500));
         async.flushMicrotasks();
         expect(harness.completedRoots, isEmpty);
+      });
+    });
+
+    test("question asked keeps blocking completion after another question is replied", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.questionAsked(
+            id: "q-1",
+            sessionID: "session-a",
+            questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
+          ),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.questionAsked(
+            id: "q-2",
+            sessionID: "session-a",
+            questions: [QuestionInfo(header: "Prompt", question: "Also?")],
+          ),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
+        );
+        async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
+
+        harness.dispatch(
+          const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "session-a"),
+        );
+
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
+
+        harness.dispatch(
+          const SesoriSseEvent.questionReplied(requestID: "q-2", sessionID: "session-a"),
+        );
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, equals(["session-a"]));
+      });
+    });
+
+    test("permission asked keeps blocking completion after another permission is replied", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.permissionAsked(
+            requestID: "perm-1",
+            sessionID: "session-a",
+            tool: "bash",
+            description: "Run command",
+          ),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.permissionAsked(
+            requestID: "perm-2",
+            sessionID: "session-a",
+            tool: "bash",
+            description: "Run another command",
+          ),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
+        );
+        async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
+
+        harness.dispatch(
+          const SesoriSseEvent.permissionReplied(requestID: "perm-1", sessionID: "session-a", reply: "allow"),
+        );
+
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
+
+        harness.dispatch(
+          const SesoriSseEvent.permissionReplied(requestID: "perm-2", sessionID: "session-a", reply: "allow"),
+        );
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, equals(["session-a"]));
       });
     });
 

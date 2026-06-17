@@ -59,15 +59,15 @@ class PushSessionStateTracker {
         }
         _stateForSession(sessionId: part.sessionID, touchedAt: now);
         _updateLatestAssistantText(part: part);
-      case SesoriQuestionAsked(:final sessionID):
-        _stateForSession(sessionId: sessionID, touchedAt: now).hasPendingQuestion = true;
-      case SesoriQuestionReplied(:final sessionID):
-        _clearPendingQuestion(sessionId: sessionID, touchedAt: now);
-      case SesoriQuestionRejected(:final sessionID):
-        _clearPendingQuestion(sessionId: sessionID, touchedAt: now);
+      case SesoriQuestionAsked(:final id, :final sessionID):
+        _stateForSession(sessionId: sessionID, touchedAt: now).pendingQuestionIds.add(id);
+      case SesoriQuestionReplied(:final requestID, :final sessionID):
+        _clearPendingQuestion(sessionId: sessionID, questionId: requestID, touchedAt: now);
+      case SesoriQuestionRejected(:final requestID, :final sessionID):
+        _clearPendingQuestion(sessionId: sessionID, questionId: requestID, touchedAt: now);
       case SesoriPermissionAsked(:final requestID, :final sessionID):
         _permissionRequestToSession[requestID] = sessionID;
-        _stateForSession(sessionId: sessionID, touchedAt: now).hasPendingPermission = true;
+        _stateForSession(sessionId: sessionID, touchedAt: now).pendingPermissionRequestIds.add(requestID);
       case SesoriPermissionReplied(:final requestID):
         _clearPendingPermission(requestId: requestID, touchedAt: now);
       case SesoriProjectsSummary(:final projects):
@@ -85,7 +85,9 @@ class PushSessionStateTracker {
 
   bool hasPendingInteraction(String sessionId) {
     return _collectSubtreeStates(rootSessionId: sessionId).any(
-      (sessionState) => sessionState.hasPendingQuestion || sessionState.hasPendingPermission,
+      (sessionState) =>
+          sessionState.pendingQuestionIds.isNotEmpty ||
+          sessionState.pendingPermissionRequestIds.isNotEmpty,
     );
   }
 
@@ -238,10 +240,10 @@ class PushSessionStateTracker {
       if (sessionState.status != null) {
         busySessionCount += 1;
       }
-      if (sessionState.hasPendingQuestion) {
+      if (sessionState.pendingQuestionIds.isNotEmpty) {
         pendingQuestionCount += 1;
       }
-      if (sessionState.hasPendingPermission) {
+      if (sessionState.pendingPermissionRequestIds.isNotEmpty) {
         pendingPermissionCount += 1;
       }
       if (sessionState.previouslyBusy) {
@@ -369,15 +371,19 @@ class PushSessionStateTracker {
 
     final sessionState = _sessions[sessionId];
     if (sessionState != null) {
-      sessionState.hasPendingPermission = false;
+      sessionState.pendingPermissionRequestIds.remove(requestId);
       sessionState.lastTouchedAt = touchedAt;
     }
   }
 
-  void _clearPendingQuestion({required String sessionId, required DateTime touchedAt}) {
+  void _clearPendingQuestion({
+    required String sessionId,
+    required String questionId,
+    required DateTime touchedAt,
+  }) {
     final sessionState = _sessions[sessionId];
     if (sessionState != null) {
-      sessionState.hasPendingQuestion = false;
+      sessionState.pendingQuestionIds.remove(questionId);
       sessionState.lastTouchedAt = touchedAt;
     }
   }
@@ -444,7 +450,9 @@ class PushSessionStateTracker {
       if (sessionState == null) {
         continue;
       }
-      if (sessionState.status != null || sessionState.hasPendingQuestion || sessionState.hasPendingPermission) {
+      if (sessionState.status != null ||
+          sessionState.pendingQuestionIds.isNotEmpty ||
+          sessionState.pendingPermissionRequestIds.isNotEmpty) {
         return null;
       }
 
@@ -533,8 +541,8 @@ final class _PushTrackedSessionState {
   final Set<String> childIds = <String>{};
   final Set<String> messageIds = <String>{};
   String? latestAssistantText;
-  bool hasPendingQuestion = false;
-  bool hasPendingPermission = false;
+  final Set<String> pendingQuestionIds = <String>{};
+  final Set<String> pendingPermissionRequestIds = <String>{};
   DateTime? lastTouchedAt;
 }
 

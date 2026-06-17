@@ -336,7 +336,7 @@ void main() {
 
       await api.replyToPermission(
         requestId: "perm-123",
-        sessionId: "ses-456",
+        directory: "/repo",
         reply: .once,
       );
 
@@ -348,6 +348,7 @@ void main() {
       expect(jsonDecode(capturedBody), equals({"reply": "once"}));
       expect(capturedRequest.headers["authorization"], isNotNull);
       expect(capturedRequest.headers["content-type"], equals("application/json"));
+      expect(capturedRequest.headers["x-opencode-directory"], equals("/repo"));
     });
 
     test("throws OpenCodeApiException on server error", () async {
@@ -366,7 +367,7 @@ void main() {
       expect(
         () => api.replyToPermission(
           requestId: "perm-123",
-          sessionId: "ses-456",
+          directory: "/repo",
           reply: .once,
         ),
         throwsA(isA<OpenCodeApiException>()),

@@ -18,6 +18,7 @@ export "src/models/openapi/question_request.g.dart";
 export "src/models/openapi/session.g.dart";
 export "src/models/openapi/session_messages_response_item.g.dart";
 export "src/models/openapi/session_status.g.dart";
+export "src/models/question_reply_body.dart";
 export "src/models/send_command_body.dart";
 export "src/models/send_prompt_body.dart";
 export "src/models/sse_event_data.g.dart";

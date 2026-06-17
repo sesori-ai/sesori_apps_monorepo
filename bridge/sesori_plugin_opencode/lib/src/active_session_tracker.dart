@@ -160,6 +160,51 @@ class ActiveSessionTracker {
         return false;
     }
 
+    return _detectEmitChange(forceReemit: forceReemit);
+  }
+
+  /// Looks up the session ID that currently owns the pending [questionId].
+  /// Returns null if the question is not tracked.
+  String? getSessionIdForQuestion({required String questionId}) {
+    for (final entry in _pendingQuestions.entries) {
+      if (entry.value.contains(questionId)) return entry.key;
+    }
+    return null;
+  }
+
+  ({bool found, String? resolvedSessionId, bool summaryChanged}) clearPendingQuestion({
+    required String questionId,
+    String? sessionId,
+  }) {
+    bool found;
+    var resolvedSessionId = sessionId;
+    if (sessionId != null) {
+      found = _removePendingQuestion(sessionId: sessionId, requestId: questionId);
+    } else {
+      found = false;
+      for (final entry in _pendingQuestions.entries.toList()) {
+        if (entry.value.remove(questionId)) {
+          found = true;
+          resolvedSessionId = entry.key;
+          if (entry.value.isEmpty) {
+            _pendingQuestions.remove(entry.key);
+          }
+          break;
+        }
+      }
+    }
+    return (found: found, resolvedSessionId: resolvedSessionId, summaryChanged: _detectEmitChange());
+  }
+
+  ({bool found, String? resolvedSessionId, bool summaryChanged}) clearPendingPermission({
+    required String sessionId,
+    required String requestId,
+  }) {
+    final found = _removePendingPermission(sessionId: sessionId, requestId: requestId);
+    return (found: found, resolvedSessionId: sessionId, summaryChanged: _detectEmitChange());
+  }
+
+  bool _detectEmitChange({bool forceReemit = false}) {
     final next = _activeSessionCounts;
     final nextRetry = _retryingSessionIds;
     final nextPendingInputSessions = _pendingInputSessions;
@@ -363,7 +408,8 @@ class ActiveSessionTracker {
         continue;
       }
       final children = activeChildrenByParent[rootId] ?? const <String>[];
-      final isRetrying = _sessionStatuses[rootId] is SessionStatusRetry ||
+      final isRetrying =
+          _sessionStatuses[rootId] is SessionStatusRetry ||
           children.any((childId) => _sessionStatuses[childId] is SessionStatusRetry);
       byWorktree
           .putIfAbsent(worktree, () => [])
@@ -409,10 +455,7 @@ class ActiveSessionTracker {
   /// Tracking individual IDs rather than counts ensures session-level swaps
   /// (A stops retrying while B starts) are also detected.
   Set<String> get _retryingSessionIds {
-    return _sessionStatuses.entries
-        .where((e) => e.value is SessionStatusRetry)
-        .map((e) => e.key)
-        .toSet();
+    return _sessionStatuses.entries.where((e) => e.value is SessionStatusRetry).map((e) => e.key).toSet();
   }
 
   /// Exposed for testing: raw count of all busy/retry sessions per worktree.
@@ -473,22 +516,24 @@ class ActiveSessionTracker {
     return grouped;
   }
 
-  void _removePendingQuestion({required String sessionId, required String requestId}) {
+  bool _removePendingQuestion({required String sessionId, required String requestId}) {
     final questionIds = _pendingQuestions[sessionId];
-    if (questionIds == null) return;
-    questionIds.remove(requestId);
+    if (questionIds == null) return false;
+    final removed = questionIds.remove(requestId);
     if (questionIds.isEmpty) {
       _pendingQuestions.remove(sessionId);
     }
+    return removed;
   }
 
-  void _removePendingPermission({required String sessionId, required String requestId}) {
+  bool _removePendingPermission({required String sessionId, required String requestId}) {
     final requestIds = _pendingPermissions[sessionId];
-    if (requestIds == null) return;
-    requestIds.remove(requestId);
+    if (requestIds == null) return false;
+    final removed = requestIds.remove(requestId);
     if (requestIds.isEmpty) {
       _pendingPermissions.remove(sessionId);
     }
+    return removed;
   }
 
   void _clearPendingInputForSession(String sessionId) {

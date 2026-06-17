@@ -18,6 +18,7 @@ import "models/openapi/permission_request.g.dart";
 import "models/openapi/project.g.dart";
 import "models/openapi/question_request.g.dart";
 import "models/openapi/session.g.dart";
+import "models/question_reply_body.dart";
 import "models/send_command_body.dart";
 import "models/send_prompt_body.dart";
 import "models/summarize_body.dart";
@@ -217,13 +218,35 @@ class OpenCodeRepository {
 
   Future<void> replyToPermission({
     required String requestId,
-    required String sessionId,
+    required String? directory,
     required PluginPermissionReply reply,
   }) {
     return _api.replyToPermission(
       requestId: requestId,
-      sessionId: sessionId,
+      directory: directory?.normalize(),
       reply: reply,
+    );
+  }
+
+  Future<void> replyToQuestion({
+    required String questionId,
+    required String? directory,
+    required QuestionReplyBody body,
+  }) {
+    return _api.replyToQuestion(
+      questionId: questionId,
+      directory: directory?.normalize(),
+      body: body,
+    );
+  }
+
+  Future<void> rejectQuestion({
+    required String questionId,
+    required String? directory,
+  }) {
+    return _api.rejectQuestion(
+      questionId: questionId,
+      directory: directory?.normalize(),
     );
   }
 

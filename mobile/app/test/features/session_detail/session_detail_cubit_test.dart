@@ -579,7 +579,7 @@ void main() {
         isA<SessionDetailLoaded>().having((state) => state.pendingQuestions, "pendingQuestions", isEmpty),
       ],
       verify: (_) {
-        verify(() => mockSessionService.rejectQuestion(requestId: "question-1")).called(1);
+        verify(() => mockSessionService.rejectQuestion(requestId: "question-1", sessionId: sessionId)).called(1);
         verify(
           () => mockNotificationCanceller.cancelForSession(sessionId: sessionId),
         ).called(1);
@@ -1826,6 +1826,9 @@ void _stubAllDefaults(
     ),
   ).thenAnswer((_) async => ApiResponse<void>.success(null));
   when(
-    () => service.rejectQuestion(requestId: any(named: "requestId")),
+    () => service.rejectQuestion(
+      requestId: any(named: "requestId"),
+      sessionId: any(named: "sessionId"),
+    ),
   ).thenAnswer((_) async => ApiResponse<void>.success(null));
 }

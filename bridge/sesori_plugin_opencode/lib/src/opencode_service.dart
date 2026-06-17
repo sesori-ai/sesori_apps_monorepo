@@ -115,21 +115,18 @@ class OpenCodeService {
   Future<List<QuestionRequest>> getPendingQuestionsForSession({
     required String sessionId,
   }) async {
-    var directory = tracker.getSessionDirectory(sessionId: sessionId);
+    final directory = await _resolveSessionDirectory(sessionId: sessionId);
     if (directory == null) {
-      final session = await repository.getSession(
-        sessionId: sessionId,
-        directory: null,
-      );
-      directory = session.directory;
-      tracker.registerSession(
-        sessionId: sessionId,
-        directory: directory,
-        parentId: session.parentID,
-      );
-      Log.d(
-        "getPendingQuestionsForSession: resolved missing directory "
-        "for session $sessionId via getSession: $directory",
+      // `getPendingQuestions` is directory-scoped: OpenCode defaults an omitted
+      // directory header to its own cwd. An unscoped query would therefore only
+      // ever return the cwd instance's questions, so a session whose worktree
+      // differs would be reported as having no pending questions — silently
+      // dropping a prompt that may still exist upstream. Fail loudly instead,
+      // consistent with `rejectQuestion`.
+      throw PluginApiException(
+        "GET /session/$sessionId/question",
+        502,
+        message: "could not resolve session directory",
       );
     }
 
@@ -139,6 +136,33 @@ class OpenCodeService {
     // same worktree, so filter to this session.
     final all = await repository.getPendingQuestions(directory: directory);
     return all.where((question) => question.sessionID == sessionId).toList();
+  }
+
+  /// Resolves the directory for [sessionId], fetching and registering it from
+  /// the repository if the tracker has not learned it yet.
+  Future<String?> _resolveSessionDirectory({required String sessionId}) async {
+    final knownDirectory = tracker.getSessionDirectory(sessionId: sessionId);
+    if (knownDirectory != null) return knownDirectory;
+
+    try {
+      final session = await repository.getSession(
+        sessionId: sessionId,
+        directory: null,
+      );
+      tracker.registerSession(
+        sessionId: sessionId,
+        directory: session.directory,
+        parentId: session.parentID,
+      );
+      Log.d(
+        "_resolveSessionDirectory: resolved missing directory "
+        "for session $sessionId via getSession: ${session.directory}",
+      );
+      return session.directory;
+    } catch (e) {
+      Log.w("_resolveSessionDirectory: failed to resolve directory for session $sessionId: $e");
+      return null;
+    }
   }
 
   Future<List<PluginMessageWithParts>> getMessages({
@@ -290,16 +314,91 @@ class OpenCodeService {
     return model;
   }
 
-  Future<void> replyToPermission({
+  Future<({bool found, String? resolvedSessionId, bool summaryChanged})> replyToQuestion({
+    required String questionId,
+    required String sessionId,
+    required List<List<String>> answers,
+  }) async {
+    final directory = await _resolveSessionDirectory(sessionId: sessionId);
+    if (directory == null) {
+      throw PluginApiException(
+        "POST /question/$questionId/reply",
+        502,
+        message: "could not resolve session directory",
+      );
+    }
+    try {
+      await repository.replyToQuestion(
+        questionId: questionId,
+        directory: directory,
+        body: QuestionReplyBody(answers: answers),
+      );
+    } on OpenCodeApiException catch (e) {
+      if (e.statusCode != 404) rethrow;
+      Log.w("question already resolved upstream (404), reconciling tracker: ${e.endpoint}", e);
+    }
+    return tracker.clearPendingQuestion(questionId: questionId, sessionId: sessionId);
+  }
+
+  Future<({bool found, String? resolvedSessionId, bool summaryChanged})> rejectQuestion({
+    required String questionId,
+    required String? sessionId,
+  }) async {
+    final resolvedSessionId = sessionId ?? tracker.getSessionIdForQuestion(questionId: questionId);
+
+    // Older mobile clients may omit sessionId. We accept that in those cases
+    // we can only clear local pending state; the upstream question may remain.
+    if (resolvedSessionId == null) {
+      return tracker.clearPendingQuestion(questionId: questionId, sessionId: null);
+    }
+
+    final directory = await _resolveSessionDirectory(sessionId: resolvedSessionId);
+    if (directory == null) {
+      throw PluginApiException(
+        "POST /question/$questionId/reject",
+        502,
+        message: "could not resolve session directory",
+      );
+    }
+
+    try {
+      await repository.rejectQuestion(
+        questionId: questionId,
+        directory: directory,
+      );
+    } on OpenCodeApiException catch (e) {
+      // A 404 after a scoped request means the question is already gone
+      // upstream; reconcile local state so the UI does not stay stuck.
+      if (e.statusCode != 404) rethrow;
+      Log.w("question already resolved upstream (404), reconciling tracker: ${e.endpoint}", e);
+    }
+    return tracker.clearPendingQuestion(questionId: questionId, sessionId: resolvedSessionId);
+  }
+
+  Future<({bool found, String? resolvedSessionId, bool summaryChanged})> replyToPermission({
     required String requestId,
     required String sessionId,
     required PluginPermissionReply reply,
-  }) {
-    return repository.replyToPermission(
-      requestId: requestId,
-      sessionId: sessionId,
-      reply: reply,
-    );
+  }) async {
+    final directory = await _resolveSessionDirectory(sessionId: sessionId);
+    if (directory == null) {
+      throw PluginApiException(
+        "POST /permission/$requestId/reply",
+        502,
+        message: "could not resolve session directory",
+      );
+    }
+    try {
+      await repository.replyToPermission(
+        requestId: requestId,
+        directory: directory,
+        reply: reply,
+      );
+    } on OpenCodeApiException catch (e) {
+      if (e.statusCode != 404) rethrow;
+      Log.w("permission already resolved upstream (404), reconciling tracker: ${e.endpoint}", e);
+    }
+    return tracker.clearPendingPermission(sessionId: sessionId, requestId: requestId);
   }
 
   /// Fires when an out-of-band parent-ID resolution updates the activity
@@ -395,6 +494,11 @@ class OpenCodeService {
 
   void reset() {
     tracker.reset();
+    // Drop any in-flight parent lookups so a post-reconnect status event can
+    // re-resolve immediately instead of being suppressed by a stale entry. The
+    // orphaned lookups still settle harmlessly: their `finally` is a no-op on an
+    // already-absent key and their tracker writes target the post-reset state.
+    _parentIdLookupsInFlight.clear();
   }
 
   /// Releases the summary-invalidation stream. Called by the plugin on dispose.

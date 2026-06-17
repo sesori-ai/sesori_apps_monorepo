@@ -1124,18 +1124,21 @@ class _FakeApi implements OpenCodeApi {
   Future<void> replyToQuestion({
     required String questionId,
     required String? directory,
-    required Map<String, dynamic> body,
+    required QuestionReplyBody body,
   }) async {}
 
   @override
   Future<void> replyToPermission({
     required String requestId,
-    required String sessionId,
+    required String? directory,
     required PluginPermissionReply reply,
   }) async {}
 
   @override
-  Future<void> rejectQuestion({required String questionId}) async {}
+  Future<void> rejectQuestion({
+    required String questionId,
+    required String? directory,
+  }) async {}
 
   @override
   Future<Project> getProject({required String directory}) async => throw UnimplementedError();

@@ -1,3 +1,4 @@
+import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/reject_question_handler.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -11,7 +12,7 @@ void main() {
 
     setUp(() {
       plugin = FakeBridgePlugin();
-      handler = RejectQuestionHandler(plugin);
+      handler = RejectQuestionHandler(questionRepository: QuestionRepository(plugin: plugin));
     });
 
     tearDown(() => plugin.close());
@@ -23,19 +24,33 @@ void main() {
     test("extracts requestId and records reject call", () async {
       await handler.handle(
         makeRequest("POST", "/question/reject"),
-        body: const RejectQuestionRequest(requestId: "q1"),
+        body: const RejectQuestionRequest(requestId: "q1", sessionId: "ses-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
       );
 
       expect(plugin.lastRejectQuestionId, equals("q1"));
+      expect(plugin.lastRejectSessionId, equals("ses-1"));
+    });
+
+    test("allows null sessionId for backwards compatibility", () async {
+      await handler.handle(
+        makeRequest("POST", "/question/reject"),
+        body: const RejectQuestionRequest(requestId: "q1", sessionId: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+
+      expect(plugin.lastRejectQuestionId, equals("q1"));
+      expect(plugin.lastRejectSessionId, isNull);
     });
 
     test("returns 200", () async {
       final response = await handler.handle(
         makeRequest("POST", "/question/reject"),
-        body: const RejectQuestionRequest(requestId: "q1"),
+        body: const RejectQuestionRequest(requestId: "q1", sessionId: "ses-1"),
         pathParams: {},
         queryParams: {},
         fragment: null,
@@ -48,7 +63,7 @@ void main() {
       expect(
         () => handler.handle(
           makeRequest("POST", "/question/reject"),
-          body: const RejectQuestionRequest(requestId: ""),
+          body: const RejectQuestionRequest(requestId: "", sessionId: null),
           pathParams: {},
           queryParams: {},
           fragment: null,
