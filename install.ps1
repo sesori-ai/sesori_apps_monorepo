@@ -65,7 +65,7 @@ function Resolve-BridgeRelease {
 
     $releases = @()
     for ($page = 1; $page -le $ReleasesMaxPages; $page++) {
-        $pageReleases = Invoke-RestMethod -Uri "$ReleasesApiUrl?per_page=$ReleasesPerPage&page=$page" -Headers @{
+        $pageReleases = Invoke-RestMethod -Uri "${ReleasesApiUrl}?per_page=$ReleasesPerPage&page=$page" -Headers @{
             'Accept' = 'application/vnd.github+json'
             'User-Agent' = 'sesori-bridge-installer'
         }

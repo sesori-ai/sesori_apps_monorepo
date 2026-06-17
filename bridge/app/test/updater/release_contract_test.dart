@@ -170,7 +170,7 @@ void main() {
       expect(script, contains(r'$ReleasesApiUrl = "https://api.github.com/repos/$RepoOwner/$RepoName/releases"'));
       expect(script, contains(r'$ReleasesPerPage = 100'));
       expect(script, contains(r'$ReleasesMaxPages = 10'));
-      expect(script, contains(r'"$ReleasesApiUrl?per_page=$ReleasesPerPage&page=$page"'));
+      expect(script, contains(r'"${ReleasesApiUrl}?per_page=$ReleasesPerPage&page=$page"'));
       expect(script, contains("StartsWith('v')"));
       expect(script, contains(r'''$release.draft -or $release.prerelease'''));
       expect(script, contains('Sort-Object Version -Descending'));
