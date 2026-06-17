@@ -731,6 +731,13 @@ class OrchestratorSession {
         Log.v("RelayRequest: ${req.method} ${req.path}");
         _inFlightRequestLabel = "${req.method} ${req.path}";
         final routeSw = Stopwatch()..start();
+        // Discard any restart flag left armed by a non-relay path before
+        // routing. The local DebugServer reuses this RequestRouter but never
+        // performs the handoff, so a debug `POST /global/restart` would
+        // otherwise leave the flag set for an unrelated later phone request to
+        // consume. Clearing here means only a restart requested during THIS
+        // relay request can trigger a handoff.
+        _restartService.consumeRestartRequest();
         // If shutdown wins the race below, this future keeps running in the
         // background. ignore() marks any later failure as handled so it can
         // never surface as an unhandled async exception after abandonment.

@@ -62,8 +62,12 @@ class BridgeInstanceService {
         Log.w('Failed to inspect restart predecessor pid $predecessorPid; proceeding', error, stackTrace);
         return;
       }
-      final bool stillLive =
-          match != null && match.kind == ProcessMatchKind.sesoriBridge && match.isCurrentUserProcess;
+      // We were handed the exact predecessor pid, so matching it to a live
+      // Sesori bridge is sufficient. We deliberately do NOT also require
+      // `isCurrentUserProcess`: when the current user can't be resolved (the
+      // runner allows that), every match is flagged as not-current-user, which
+      // would make us treat the still-running predecessor as gone and race it.
+      final bool stillLive = match != null && match.kind == ProcessMatchKind.sesoriBridge;
       if (!stillLive) {
         return;
       }

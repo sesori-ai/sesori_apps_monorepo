@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:http/http.dart' show ClientException;
 import 'package:path/path.dart' as p;
 
 import '../api/archive_extractor_api.dart';
@@ -54,6 +58,17 @@ class UpdateArtifactRepository {
         filePath: archivePath,
         expectedHash: expectedChecksum,
       );
+    } on SocketException {
+      // A network failure fetching the manifest is transient/benign — let it
+      // propagate so the caller classifies it as a network error rather than a
+      // genuine checksum mismatch (which warrants reinstall guidance).
+      rethrow;
+    } on TimeoutException {
+      rethrow;
+    } on HttpException {
+      rethrow;
+    } on ClientException {
+      rethrow;
     } on Object {
       return false;
     }

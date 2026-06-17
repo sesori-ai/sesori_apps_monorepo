@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:http/http.dart' show ClientException;
 import 'package:path/path.dart' as p;
 
 import '../foundation/filesystem_cleaner.dart';
@@ -70,6 +71,8 @@ class UpdateInstallService {
     } on HttpException {
       return const UpdateInstallResult.failed(result: UpdateResult.networkError);
     } on TimeoutException {
+      return const UpdateInstallResult.failed(result: UpdateResult.networkError);
+    } on ClientException {
       return const UpdateInstallResult.failed(result: UpdateResult.networkError);
     } on FileSystemException catch (error) {
       if (isPermissionDenied(error: error)) {
