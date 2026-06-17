@@ -88,23 +88,26 @@ class UpdateLogApi {
         .replaceAll(RegExp('gh[opusr]_[A-Za-z0-9]{20,}'), '[REDACTED_TOKEN]')
         .replaceAll(RegExp('github_pat_[A-Za-z0-9_]{20,}'), '[REDACTED_TOKEN]');
 
-    // Authorization headers: redact the whole credential (scheme + token), not
-    // just the scheme. Consumes up to two following tokens (e.g. "Bearer xyz").
+    // Authorization headers: redact the whole credential to end of line, so a
+    // multi-parameter scheme (e.g. Digest with several comma-separated params)
+    // can't leak its remaining parameters.
     out = out.replaceAllMapped(
-      RegExp(r'(?<key>authorization)\s*[:=]\s*\S+(?:\s+\S+)?', caseSensitive: false),
+      RegExp(r'(?<key>authorization)\s*[:=]\s*[^\r\n]+', caseSensitive: false),
       (Match m) => '${(m as RegExpMatch).namedGroup('key')}: [REDACTED]',
     );
 
-    // Standalone scheme + credential (e.g. a bearer/token value not behind an
-    // Authorization header).
+    // Standalone bearer credential (not behind an Authorization header).
     out = out.replaceAllMapped(
-      RegExp(r'\b(?<scheme>bearer|token)\s+\S+', caseSensitive: false),
-      (Match m) => '${(m as RegExpMatch).namedGroup('scheme')} [REDACTED]',
+      RegExp(r'\bbearer\s+\S+', caseSensitive: false),
+      (Match m) => 'Bearer [REDACTED]',
     );
 
-    // key=value secrets in URLs/query strings.
+    // Secret key/value pairs in `=`, `:`, or JSON ("key": "value") form.
     out = out.replaceAllMapped(
-      RegExp(r'(?<key>access_token|api_key|token)\s*=\s*[^\s"&]+', caseSensitive: false),
+      RegExp(
+        r'''(?<key>access_token|api_key|token|secret|password)["']?\s*[:=]\s*["']?[^\s"',&}\]]+''',
+        caseSensitive: false,
+      ),
       (Match m) => '${(m as RegExpMatch).namedGroup('key')}=[REDACTED]',
     );
 

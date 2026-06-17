@@ -71,7 +71,10 @@ class WindowsUpdateApi implements PlatformUpdateApi {
     required Directory fromDir,
     required Directory toDir,
   }) {
-    for (final FileSystemEntity entity in fromDir.listSync(recursive: true)) {
+    // followLinks: false so a symlink inside the payload can never redirect the
+    // swap to rename files outside fromDir (links are returned as Link entities
+    // and skipped by the `is! File` guard below).
+    for (final FileSystemEntity entity in fromDir.listSync(recursive: true, followLinks: false)) {
       if (entity is! File) {
         continue;
       }

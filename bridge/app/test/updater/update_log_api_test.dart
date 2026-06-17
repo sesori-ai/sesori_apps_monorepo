@@ -48,16 +48,23 @@ void main() {
     await api.append(message: 'using ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123 to fetch');
     await api.append(message: 'Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.payload.signature failed');
     await api.append(message: 'url https://x/cb?access_token=secretvalue123456&x=1');
+    await api.append(message: '{"token": "jsonsecretvalue999", "ok": true}');
+    await api.append(message: 'Authorization: Digest username="bob", response=digestsecretabcdef, nonce=zzz');
 
     final contents = readLog(tempDir.path);
     // No secret value of any kind survives.
     expect(contents, isNot(contains('ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123')));
     expect(contents, isNot(contains('eyJhbGciOiJIUzI1NiJ9.payload.signature')));
     expect(contents, isNot(contains('secretvalue123456')));
+    expect(contents, isNot(contains('jsonsecretvalue999')));
+    // Every parameter of a multi-param Authorization header is redacted.
+    expect(contents, isNot(contains('digestsecretabcdef')));
     // The whole bearer credential is redacted, not just the scheme.
     expect(contents, contains('[REDACTED_TOKEN]'));
     expect(contents, contains('Authorization: [REDACTED]'));
     expect(contents, contains('access_token=[REDACTED]'));
+    // Colon/JSON-delimited token fields are redacted too.
+    expect(contents, contains('token=[REDACTED]'));
   });
 
   test('rotates to .log.1 once the cap is exceeded', () async {

@@ -86,35 +86,67 @@ class UpdateApplyService {
       reason: null,
     );
 
-    await _logRepository.logAttemptHeader(fromVersion: _currentVersion, toVersion: release.version);
-    await _attemptRepository.saveAttempt(attempt: attempt);
-    await _logRepository.log(message: 'Applying in-place swap from staging: $stagingPath');
-
+    // The pre-apply record/log writes are guarded together with the swap: an
+    // I/O failure there (e.g. an unwritable install root) is itself a genuine
+    // apply failure and must surface to the user + durable log, never throw out
+    // of apply() into the caller's onError path.
     try {
+      await _logRepository.logAttemptHeader(fromVersion: _currentVersion, toVersion: release.version);
+      await _attemptRepository.saveAttempt(attempt: attempt);
+      await _logRepository.log(message: 'Applying in-place swap from staging: $stagingPath');
       await _installationRepository.applyInPlace(installRoot: _installRoot, stagingPath: stagingPath);
     } on Object catch (error, stackTrace) {
-      await _attemptRepository.saveAttempt(
-        attempt: attempt.copyWith(status: UpdateAttemptStatus.failed, reason: error.toString()),
-      );
-      await _logRepository.log(message: 'Swap failed: $error\n$stackTrace');
-      emitError(
-        _messageFormatter.failureGuidance(
-          toVersion: release.version,
-          reason: error.toString(),
-          logPath: _logRepository.logPath,
-        ),
-      );
+      await _reportSwapFailure(attempt: attempt, release: release, error: error, stackTrace: stackTrace);
       await _cleanupStaging(stagingPath: stagingPath);
       return false;
     }
 
-    await _attemptRepository.saveAttempt(
-      attempt: attempt.copyWith(stage: UpdateStage.activated, status: UpdateAttemptStatus.appliedPendingActivation),
-    );
-    await _logRepository.log(message: 'Swap complete; ${release.version} pending activation on next launch.');
-    emitMessage(_messageFormatter.installedPendingActivation(toVersion: release.version));
+    await _recordPendingActivation(attempt: attempt, release: release);
     await _cleanupStaging(stagingPath: stagingPath);
     return true;
+  }
+
+  Future<void> _reportSwapFailure({
+    required UpdateAttempt attempt,
+    required ReleaseInfo release,
+    required Object error,
+    required StackTrace stackTrace,
+  }) async {
+    // Recording the failure is itself best-effort — the repository whose write
+    // just failed may fail again — but the user-facing guidance always runs.
+    try {
+      await _attemptRepository.saveAttempt(
+        attempt: attempt.copyWith(status: UpdateAttemptStatus.failed, reason: error.toString()),
+      );
+      await _logRepository.log(message: 'Swap failed: $error\n$stackTrace');
+    } on Object catch (recordError) {
+      logWarning('Failed to record the update failure: $recordError');
+    }
+    emitError(
+      _messageFormatter.failureGuidance(
+        toVersion: release.version,
+        reason: error.toString(),
+        logPath: _logRepository.logPath,
+      ),
+    );
+  }
+
+  Future<void> _recordPendingActivation({
+    required UpdateAttempt attempt,
+    required ReleaseInfo release,
+  }) async {
+    // Best-effort: the swap already landed on disk, so even if the record write
+    // fails the next launch confirms activation via the running version. The
+    // success message always runs.
+    try {
+      await _attemptRepository.saveAttempt(
+        attempt: attempt.copyWith(stage: UpdateStage.activated, status: UpdateAttemptStatus.appliedPendingActivation),
+      );
+      await _logRepository.log(message: 'Swap complete; ${release.version} pending activation on next launch.');
+    } on Object catch (recordError) {
+      logWarning('Failed to record the pending activation: $recordError');
+    }
+    emitMessage(_messageFormatter.installedPendingActivation(toVersion: release.version));
   }
 
   Future<void> _cleanupStaging({required String stagingPath}) {
