@@ -228,6 +228,24 @@ void main() {
       expect(await resolver.willDownloadManagedBinary(), isFalse);
     });
 
+    test("false when a broken/missing --codex-bin override is set (not masked by managed download)", () async {
+      final env = {"HOME": home.path};
+      final key = currentCodexPlatformKey(environment: env);
+      if (key == null) {
+        markTestSkipped("unsupported host platform");
+        return;
+      }
+      final resolver = CodexBinaryResolver(
+        codexBinFlag: p.join(home.path, "does-not-exist"),
+        environment: env,
+        sha256Manifest: {key: "a" * 64},
+        httpClient: MockClient((_) async => fail("no network")),
+      );
+      // An explicit override that doesn't exist must NOT be masked by the
+      // managed download — it stays unavailable so the misconfig surfaces.
+      expect(await resolver.willDownloadManagedBinary(), isFalse);
+    });
+
     test("false when no checksummed asset exists for the platform", () async {
       final env = {"HOME": home.path};
       final key = currentCodexPlatformKey(environment: env);

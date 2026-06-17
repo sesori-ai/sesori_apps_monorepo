@@ -173,13 +173,20 @@ class CodexBinaryResolver {
   }
 
   /// Read-only: true iff [resolve] would auto-download the pinned managed
-  /// binary at startup — i.e. there is no usable `--codex-bin` override and no
-  /// usable cached binary, but a checksummed release asset exists for this
-  /// platform. Availability probing uses this so a fresh install (codex absent
-  /// on PATH but downloadable) reports available without downloading here; the
-  /// actual fetch still happens in [resolve] during `start()`.
+  /// binary for the *default* configuration — i.e. no `--codex-bin` override is
+  /// set, there is no usable cached binary, and a checksummed release asset
+  /// exists for this platform. Availability probing uses this so a fresh
+  /// default install (codex absent on PATH but downloadable) reports available
+  /// without downloading here; the fetch still happens in [resolve] during
+  /// `start()`.
+  ///
+  /// An explicit `--codex-bin` override is honored as-is and never masked by
+  /// the managed download, so a broken/missing override stays unavailable
+  /// rather than silently falling back to the managed binary.
   Future<bool> willDownloadManagedBinary() async {
-    if (await _resolveExplicit() != null) return false;
+    // Mirror [_resolveExplicit]'s "no override" guard: only the default bare
+    // `codex` (or empty) flag is eligible for the managed auto-download.
+    if (_codexBinFlag != "codex" && _codexBinFlag.isNotEmpty) return false;
     final cached = _cachedBinaryPath();
     if (cached != null && _isUsableBinary(cached)) return false;
     return _isManagedDownloadable();
