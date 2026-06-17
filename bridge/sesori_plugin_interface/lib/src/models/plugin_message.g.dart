@@ -48,11 +48,19 @@ const _$PluginMessagePartTypeEnumMap = {
 
 Map<String, dynamic> _$PluginToolStateToJson(_PluginToolState instance) =>
     <String, dynamic>{
-      'status': instance.status,
+      'status': _$PluginToolStatusEnumMap[instance.status]!,
       'title': instance.title,
       'output': instance.output,
       'error': instance.error,
     };
+
+const _$PluginToolStatusEnumMap = {
+  PluginToolStatus.pending: 'pending',
+  PluginToolStatus.running: 'running',
+  PluginToolStatus.completed: 'completed',
+  PluginToolStatus.error: 'error',
+  PluginToolStatus.unknown: 'unknown',
+};
 
 Map<String, dynamic> _$PluginMessageUserToJson(PluginMessageUser instance) =>
     <String, dynamic>{

@@ -53,10 +53,27 @@ sealed class MessagePart with _$MessagePart {
   factory MessagePart.fromJson(Map<String, dynamic> json) => _$MessagePartFromJson(json);
 }
 
+/// Lifecycle of a tool invocation. Wire values mirror OpenCode's tool-state
+/// `status` discriminator 1:1; [unknown] is the forward-compatible fallback for
+/// any status a newer bridge emits that this client does not yet model.
+@JsonEnum()
+enum ToolStatus {
+  @JsonValue("pending")
+  pending,
+  @JsonValue("running")
+  running,
+  @JsonValue("completed")
+  completed,
+  @JsonValue("error")
+  error,
+  @JsonValue("unknown")
+  unknown,
+}
+
 @Freezed(fromJson: true, toJson: true)
 sealed class ToolState with _$ToolState {
   const factory ToolState({
-    required String status,
+    @JsonKey(unknownEnumValue: ToolStatus.unknown) required ToolStatus status,
     required String? title,
     required String? output,
     required String? error,

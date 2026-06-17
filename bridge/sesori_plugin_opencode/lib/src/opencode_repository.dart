@@ -3,6 +3,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginAgent,
         PluginCommand,
         PluginCommandSource,
+        PluginMessageWithParts,
         PluginPermissionReply,
         PluginPromptPart,
         PluginProvidersResult,
@@ -10,17 +11,19 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginSessionVariant;
 import "package:sesori_shared/sesori_shared.dart" show StringExtensions, wait2;
 
-import "models/agent_info.dart";
-import "models/command.dart";
-import "models/pending_permission.dart";
-import "models/pending_question.dart";
-import "models/project.dart";
+import "message_part_mapper.dart";
+import "models/openapi/command.g.dart";
+import "models/openapi/global_session.g.dart";
+import "models/openapi/permission_request.g.dart";
+import "models/openapi/project.g.dart";
+import "models/openapi/question_request.g.dart";
+import "models/openapi/session.g.dart";
 import "models/question_reply_body.dart";
 import "models/send_command_body.dart";
 import "models/send_prompt_body.dart";
-import "models/session.dart";
 import "models/summarize_body.dart";
 import "opencode_api.dart";
+import "plugin_model_mapper.dart";
 import "provider_mapper.dart";
 
 const String _globalProjectId = "global";
@@ -58,6 +61,9 @@ const String _globalProjectId = "global";
 ///    display those sessions.
 class OpenCodeRepository {
   final OpenCodeApi _api;
+  final PluginModelMapper _pluginModelMapper = const PluginModelMapper(
+    messagePartMapper: MessagePartMapper(),
+  );
 
   OpenCodeRepository(this._api);
 
@@ -70,7 +76,7 @@ class OpenCodeRepository {
 
   Future<List<PluginAgent>> getAgents({required String directory}) async {
     final agents = await _api.listAgents(directory: directory);
-    return agents.map((agent) => agent.toPlugin()).toList();
+    return agents.map(_pluginModelMapper.mapAgent).toList();
   }
 
   Future<PluginSession> createSession({
@@ -82,7 +88,7 @@ class OpenCodeRepository {
       directory: normalizedDirectory,
       parentSessionId: parentSessionId,
     );
-    return session.toPlugin(projectID: normalizedDirectory);
+    return _pluginModelMapper.mapSession(session, projectID: normalizedDirectory);
   }
 
   Future<void> sendPrompt({
@@ -264,12 +270,66 @@ class OpenCodeRepository {
       merged.add(
         Session(
           id: global.id,
+          slug: global.slug,
           projectID: global.projectID,
+          workspaceID: global.workspaceID,
           directory: global.directory,
+          path: global.path,
           parentID: global.parentID,
           title: global.title,
-          time: global.time,
-          summary: global.summary,
+          cost: global.cost,
+          tokens: switch (global.tokens) {
+            null => null,
+            final t => SessionTokens(
+              input: t.input,
+              output: t.output,
+              reasoning: t.reasoning,
+              cache: SessionTokensCache(
+                read: t.cache.read,
+                write: t.cache.write,
+              ),
+            ),
+          },
+          share: switch (global.share) {
+            null => null,
+            final s => SessionShare(url: s.url),
+          },
+          agent: global.agent,
+          model: switch (global.model) {
+            null => null,
+            final m => SessionModel(
+              id: m.id,
+              providerID: m.providerID,
+              variant: m.variant,
+            ),
+          },
+          version: global.version,
+          metadata: global.metadata,
+          time: SessionTime(
+            created: global.time.created,
+            updated: global.time.updated,
+            compacting: global.time.compacting,
+            archived: global.time.archived,
+          ),
+          summary: switch (global.summary) {
+            null => null,
+            final s => SessionSummary(
+              additions: s.additions,
+              deletions: s.deletions,
+              files: s.files,
+              diffs: s.diffs,
+            ),
+          },
+          permission: global.permission,
+          revert: switch (global.revert) {
+            null => null,
+            final r => SessionRevert(
+              messageID: r.messageID,
+              partID: r.partID,
+              snapshot: r.snapshot,
+              diff: r.diff,
+            ),
+          },
         ),
       );
     }
@@ -280,8 +340,8 @@ class OpenCodeRepository {
     }).toList();
 
     filtered.sort((a, b) {
-      final updatedA = a.time?.updated ?? 0;
-      final updatedB = b.time?.updated ?? 0;
+      final updatedA = a.time.updated;
+      final updatedB = b.time.updated;
       return updatedB.compareTo(updatedA);
     });
 
@@ -309,11 +369,11 @@ class OpenCodeRepository {
     );
   }
 
-  Future<List<PendingQuestion>> getPendingQuestions({required String? directory}) {
+  Future<List<QuestionRequest>> getPendingQuestions({required String? directory}) {
     return _api.getPendingQuestions(directory: directory?.normalize());
   }
 
-  Future<List<PendingPermission>> getPendingPermissions({required String? directory}) {
+  Future<List<PermissionRequest>> getPendingPermissions({required String? directory}) {
     return _api.getPendingPermissions(directory: directory?.normalize());
   }
 
@@ -389,7 +449,16 @@ class OpenCodeRepository {
 
       final time = _deriveTimeFromSessions(groupedSessions);
       virtual.add(
-        Project(id: _globalProjectId, worktree: directory, time: time),
+        Project(
+          id: _globalProjectId,
+          worktree: directory,
+          vcs: null,
+          name: null,
+          icon: null,
+          commands: null,
+          time: time ?? const ProjectTime(created: 0, updated: 0, initialized: null),
+          sandboxes: const [],
+        ),
       );
     }
 
@@ -405,25 +474,22 @@ class OpenCodeRepository {
   }) {
     final sessionTime = _deriveTimeFromSessions(sessions);
     final projectTime = project.time;
-    if (projectTime == null && sessionTime == null) return project;
+    if (sessionTime == null) return project;
 
     final createdCandidates = <int>[];
     final updatedCandidates = <int>[];
 
-    if (projectTime != null) {
-      createdCandidates.add(projectTime.created);
-      updatedCandidates.add(projectTime.updated);
-    }
-    if (sessionTime != null) {
-      createdCandidates.add(sessionTime.created);
-      updatedCandidates.add(sessionTime.updated);
-    }
+    createdCandidates.add(projectTime.created);
+    updatedCandidates.add(projectTime.updated);
+    createdCandidates.add(sessionTime.created);
+    updatedCandidates.add(sessionTime.updated);
 
     if (createdCandidates.isEmpty || updatedCandidates.isEmpty) return project;
 
     final mergedTime = ProjectTime(
       created: createdCandidates.reduce((a, b) => a < b ? a : b),
       updated: updatedCandidates.reduce((a, b) => a > b ? a : b),
+      initialized: projectTime.initialized,
     );
 
     return project.copyWith(time: mergedTime);
@@ -438,7 +504,6 @@ class OpenCodeRepository {
 
     for (final session in sessions) {
       final time = session.time;
-      if (time == null) continue;
       created.add(time.created);
       updated.add(time.updated);
     }
@@ -448,7 +513,19 @@ class OpenCodeRepository {
     return ProjectTime(
       created: created.reduce((a, b) => a < b ? a : b),
       updated: updated.reduce((a, b) => a > b ? a : b),
+      initialized: null,
     );
+  }
+
+  Future<List<PluginMessageWithParts>> getMessages({
+    required String sessionId,
+    required String? directory,
+  }) async {
+    final messages = await _api.getMessages(
+      sessionId: sessionId,
+      directory: directory,
+    );
+    return messages.map(_pluginModelMapper.mapMessageWithParts).toList();
   }
 
   PluginCommand _mapCommand(Command command) {

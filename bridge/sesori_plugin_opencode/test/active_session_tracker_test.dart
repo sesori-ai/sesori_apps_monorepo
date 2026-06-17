@@ -46,7 +46,18 @@ void main() {
 
       test("SSE session.created populates getSessionDirectory", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/projects/foo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/projects/foo",
+            ),
+          ],
         );
 
         tracker.handleEvent(
@@ -62,7 +73,18 @@ void main() {
 
       test("SSE session.updated preserves raw directory", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/projects/foo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/projects/foo",
+            ),
+          ],
         );
 
         tracker.handleEvent(
@@ -82,7 +104,18 @@ void main() {
 
       test("SSE session.deleted removes from getSessionDirectory", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/projects/foo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/projects/foo",
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionCreated("s1", "/projects/foo"), null);
@@ -95,7 +128,18 @@ void main() {
 
       test("coldStart populates getSessionDirectory for all fetched sessions", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/projects/foo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/projects/foo",
+            ),
+          ],
           sessions: [
             _session("s1", "/projects/foo"),
             _session("s2", "/projects/foo/lib"),
@@ -138,16 +182,27 @@ void main() {
 
       test("coldStart populates active statuses from busy/retry sessions", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/projects/foo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/projects/foo",
+            ),
+          ],
           sessions: [
             _session("s1", "/projects/foo"),
             _session("s2", "/projects/foo"),
             _session("s3", "/projects/foo"),
           ],
           statuses: {
-            "s1": const SessionStatus.busy(),
-            "s2": const SessionStatus.idle(),
-            "s3": const SessionStatus.retry(attempt: 1, message: "fail", next: 123),
+            "s1": const SessionStatusBusy(),
+            "s2": const SessionStatusIdle(),
+            "s3": const SessionStatusRetry(attempt: 1, message: "fail", action: null, next: 123),
           },
         );
 
@@ -161,7 +216,18 @@ void main() {
 
       test("SSE busy event adds to active statuses", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/projects/foo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/projects/foo",
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionCreated("s1", "/projects/foo"), null);
@@ -175,9 +241,20 @@ void main() {
 
       test("SSE idle event removes from active statuses", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/projects/foo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/projects/foo",
+            ),
+          ],
           sessions: [_session("s1", "/projects/foo")],
-          statuses: {"s1": const SessionStatus.busy()},
+          statuses: {"s1": const SessionStatusBusy()},
         );
         expect(tracker.getActiveStatuses(), hasLength(1));
 
@@ -191,14 +268,25 @@ void main() {
 
         final active = tracker.getActiveStatuses();
 
-        expect(() => active["x"] = const SessionStatus.busy(), throwsA(anything));
+        expect(() => active["x"] = const SessionStatusBusy(), throwsA(anything));
       });
 
       test("reset clears active statuses", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/projects/foo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/projects/foo",
+            ),
+          ],
           sessions: [_session("s1", "/projects/foo")],
-          statuses: {"s1": const SessionStatus.busy()},
+          statuses: {"s1": const SessionStatusBusy()},
         );
         expect(tracker.getActiveStatuses(), hasLength(1));
 
@@ -210,7 +298,18 @@ void main() {
 
     test("session directory exactly matches worktree", () async {
       final tracker = await _coldStartedTracker(
-        projects: [const Project(id: "p1", worktree: "/projects/foo")],
+        projects: [
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/projects/foo",
+          ),
+        ],
       );
 
       tracker.handleEvent(_sessionCreated("s1", "/projects/foo"), null);
@@ -222,7 +321,18 @@ void main() {
 
     test("session directory as subdirectory resolves to project", () async {
       final tracker = await _coldStartedTracker(
-        projects: [const Project(id: "p1", worktree: "/projects/foo")],
+        projects: [
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/projects/foo",
+          ),
+        ],
       );
 
       tracker.handleEvent(_sessionCreated("s1", "/projects/foo/lib/src"), null);
@@ -234,7 +344,18 @@ void main() {
 
     test("session directory with no matching worktree is ignored", () async {
       final tracker = await _coldStartedTracker(
-        projects: [const Project(id: "p1", worktree: "/projects/foo")],
+        projects: [
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/projects/foo",
+          ),
+        ],
       );
 
       tracker.handleEvent(_sessionCreated("s1", "/tmp/other"), null);
@@ -246,7 +367,18 @@ void main() {
 
     test("empty directory is handled gracefully", () async {
       final tracker = await _coldStartedTracker(
-        projects: [const Project(id: "p1", worktree: "/projects/foo")],
+        projects: [
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/projects/foo",
+          ),
+        ],
       );
 
       tracker.handleEvent(_sessionCreated("s1", ""), null);
@@ -259,8 +391,26 @@ void main() {
     test("longest matching worktree is selected", () async {
       final tracker = await _coldStartedTracker(
         projects: [
-          const Project(id: "p1", worktree: "/projects/foo"),
-          const Project(id: "p2", worktree: "/projects/foo/packages/bar"),
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/projects/foo",
+          ),
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p2",
+            worktree: "/projects/foo/packages/bar",
+          ),
         ],
       );
 
@@ -281,7 +431,18 @@ void main() {
 
     test("windows-style path prefixes resolve to project", () async {
       final tracker = await _coldStartedTracker(
-        projects: [const Project(id: "p1", worktree: r"C:\repo\foo")],
+        projects: [
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: r"C:\repo\foo",
+          ),
+        ],
       );
 
       tracker.handleEvent(_sessionCreated("s1", r"C:\repo\foo\subdir"), null);
@@ -293,7 +454,18 @@ void main() {
 
     test("busy increments and idle decrements active count", () async {
       final tracker = await _coldStartedTracker(
-        projects: [const Project(id: "p1", worktree: "/repo")],
+        projects: [
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/repo",
+          ),
+        ],
       );
 
       tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
@@ -309,16 +481,28 @@ void main() {
 
     test("retry session status counts as active", () async {
       final tracker = await _coldStartedTracker(
-        projects: [const Project(id: "p1", worktree: "/repo")],
+        projects: [
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/repo",
+          ),
+        ],
       );
 
       tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
       final changed = tracker.handleEvent(
         const SseEventData.sessionStatus(
           sessionID: "s1",
-          status: SessionStatus.retry(
+          status: SessionStatusRetry(
             attempt: 2,
             message: "retrying",
+            action: null,
             next: 123,
           ),
         ),
@@ -331,7 +515,18 @@ void main() {
 
     test("multiple busy sessions in same project are all counted", () async {
       final tracker = await _coldStartedTracker(
-        projects: [const Project(id: "p1", worktree: "/repo")],
+        projects: [
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/repo",
+          ),
+        ],
       );
 
       tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
@@ -347,7 +542,18 @@ void main() {
       "deleted session is removed from maps and active count updates",
       () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
@@ -371,7 +577,18 @@ void main() {
       "unknown directory on status event does not crash and returns false",
       () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
         );
 
         final changed = tracker.handleEvent(_sessionBusy("s1"), "/tmp/unknown");
@@ -383,7 +600,18 @@ void main() {
 
     test("reset clears all state", () async {
       final tracker = await _coldStartedTracker(
-        projects: [const Project(id: "p1", worktree: "/repo")],
+        projects: [
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/repo",
+          ),
+        ],
       );
 
       tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
@@ -399,8 +627,26 @@ void main() {
     test("buildSummary includes only projects with active sessions", () async {
       final tracker = await _coldStartedTracker(
         projects: [
-          const Project(id: "p1", worktree: "/repo-a"),
-          const Project(id: "p2", worktree: "/repo-b"),
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/repo-a",
+          ),
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p2",
+            worktree: "/repo-b",
+          ),
         ],
       );
 
@@ -415,7 +661,18 @@ void main() {
 
     test("handleEvent change detection and idempotency", () async {
       final tracker = await _coldStartedTracker(
-        projects: [const Project(id: "p1", worktree: "/repo")],
+        projects: [
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/repo",
+          ),
+        ],
       );
 
       tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
@@ -439,14 +696,72 @@ void main() {
     test("coldStart populates state from API", () async {
       final tracker = await _coldStartedTracker(
         projects: [
-          const Project(id: "p1", worktree: "/foo"),
-          const Project(id: "p2", worktree: "/bar"),
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/foo",
+          ),
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p2",
+            worktree: "/bar",
+          ),
         ],
         sessions: [
-          const Session(id: "s1", projectID: "p1", directory: "/foo"),
-          const Session(id: "s2", projectID: "p2", directory: "/bar"),
+          const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: null,
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "s1",
+            projectID: "p1",
+            directory: "/foo",
+          ),
+          const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: null,
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "s2",
+            projectID: "p2",
+            directory: "/bar",
+          ),
         ],
-        statuses: {"s1": const SessionStatus.busy(), "s2": const SessionStatus.idle()},
+        statuses: {"s1": const SessionStatusBusy(), "s2": const SessionStatusIdle()},
       );
 
       expect(tracker.activeSessions, equals({"/foo": 1}));
@@ -454,11 +769,42 @@ void main() {
 
     test("coldStart buildSummary reflects busy sessions", () async {
       final tracker = await _coldStartedTracker(
-        projects: [const Project(id: "p1", worktree: "/repo")],
-        sessions: [
-          const Session(id: "s1", projectID: "p1", directory: "/repo"),
+        projects: [
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/repo",
+          ),
         ],
-        statuses: {"s1": const SessionStatus.busy()},
+        sessions: [
+          const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: null,
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "s1",
+            projectID: "p1",
+            directory: "/repo",
+          ),
+        ],
+        statuses: {"s1": const SessionStatusBusy()},
       );
 
       final summary = tracker.buildSummary();
@@ -471,12 +817,63 @@ void main() {
 
     test("coldStart groups child sessions under parents", () async {
       final tracker = await _coldStartedTracker(
-        projects: [const Project(id: "p1", worktree: "/repo")],
-        sessions: [
-          const Session(id: "s1", projectID: "p1", directory: "/repo"),
-          const Session(id: "c1", projectID: "p1", directory: "/repo", parentID: "s1"),
+        projects: [
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/repo",
+          ),
         ],
-        statuses: {"c1": const SessionStatus.busy()},
+        sessions: [
+          const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: null,
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "s1",
+            projectID: "p1",
+            directory: "/repo",
+          ),
+          const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: "s1",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "c1",
+            projectID: "p1",
+            directory: "/repo",
+          ),
+        ],
+        statuses: {"c1": const SessionStatusBusy()},
       );
 
       final summary = tracker.buildSummary();
@@ -489,7 +886,18 @@ void main() {
 
     test("buildSummary includes activeSessions for busy sessions", () async {
       final tracker = await _coldStartedTracker(
-        projects: [const Project(id: "p1", worktree: "/projects/foo")],
+        projects: [
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/projects/foo",
+          ),
+        ],
       );
 
       tracker.handleEvent(_sessionCreated("s1", "/projects/foo"), null);
@@ -506,7 +914,18 @@ void main() {
 
     test("buildSummary excludes idle sessions from activeSessions", () async {
       final tracker = await _coldStartedTracker(
-        projects: [const Project(id: "p1", worktree: "/projects/foo")],
+        projects: [
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/projects/foo",
+          ),
+        ],
       );
 
       tracker.handleEvent(_sessionCreated("s1", "/projects/foo"), null);
@@ -524,8 +943,26 @@ void main() {
     test("buildSummary groups session IDs by worktree correctly", () async {
       final tracker = await _coldStartedTracker(
         projects: [
-          const Project(id: "p1", worktree: "/projects/foo"),
-          const Project(id: "p2", worktree: "/projects/bar"),
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/projects/foo",
+          ),
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p2",
+            worktree: "/projects/bar",
+          ),
         ],
       );
 
@@ -547,14 +984,45 @@ void main() {
 
     test("child sessions are grouped under their parent", () async {
       final tracker = await _coldStartedTracker(
-        projects: [const Project(id: "p1", worktree: "/repo")],
+        projects: [
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/repo",
+          ),
+        ],
       );
 
       tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
       tracker.handleEvent(_sessionBusy("s1"), null);
       tracker.handleEvent(
         const SseEventData.sessionCreated(
-          info: Session(id: "c1", projectID: "project", directory: "/repo", parentID: "s1"),
+          info: Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: "s1",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "c1",
+            projectID: "project",
+            directory: "/repo",
+          ),
         ),
         null,
       );
@@ -571,13 +1039,44 @@ void main() {
 
     test("idle root with busy children appears in summary", () async {
       final tracker = await _coldStartedTracker(
-        projects: [const Project(id: "p1", worktree: "/repo")],
+        projects: [
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/repo",
+          ),
+        ],
       );
 
       tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
       tracker.handleEvent(
         const SseEventData.sessionCreated(
-          info: Session(id: "c1", projectID: "project", directory: "/repo", parentID: "s1"),
+          info: Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: "s1",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "c1",
+            projectID: "project",
+            directory: "/repo",
+          ),
         ),
         null,
       );
@@ -599,12 +1098,43 @@ void main() {
       // the core of the phantom-root fix: the real root lights up instead of
       // the child becoming its own (phantom) root.
       final tracker = await _coldStartedTracker(
-        projects: [const Project(id: "p1", worktree: "/repo")],
+        projects: [
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/repo",
+          ),
+        ],
       );
 
       tracker.handleEvent(
         const SseEventData.sessionCreated(
-          info: Session(id: "c1", projectID: "project", directory: "/repo", parentID: "root"),
+          info: Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: "root",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "c1",
+            projectID: "project",
+            directory: "/repo",
+          ),
         ),
         null,
       );
@@ -624,12 +1154,63 @@ void main() {
       // be treated as an orphan root, logging "no worktree for session".
       // After switching to listSessions(), child metadata is available.
       final tracker = await _coldStartedTracker(
-        projects: [const Project(id: "p1", worktree: "/repo")],
-        sessions: [
-          const Session(id: "s1", projectID: "p1", directory: "/repo"),
-          const Session(id: "c1", projectID: "p1", directory: "/repo", parentID: "s1"),
+        projects: [
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/repo",
+          ),
         ],
-        statuses: {"c1": const SessionStatus.busy()},
+        sessions: [
+          const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: null,
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "s1",
+            projectID: "p1",
+            directory: "/repo",
+          ),
+          const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: "s1",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "c1",
+            projectID: "p1",
+            directory: "/repo",
+          ),
+        ],
+        statuses: {"c1": const SessionStatusBusy()},
       );
 
       final summary = tracker.buildSummary();
@@ -647,21 +1228,72 @@ void main() {
       // child surfaced under its immediate parent. A hypothetical grandchild is
       // attributed to its immediate parent rather than walked up to the root.
       final tracker = await _coldStartedTracker(
-        projects: [const Project(id: "p1", worktree: "/repo")],
+        projects: [
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/repo",
+          ),
+        ],
       );
 
       tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
       tracker.handleEvent(_sessionBusy("s1"), null);
       tracker.handleEvent(
         const SseEventData.sessionCreated(
-          info: Session(id: "c1", projectID: "project", directory: "/repo", parentID: "s1"),
+          info: Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: "s1",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "c1",
+            projectID: "project",
+            directory: "/repo",
+          ),
         ),
         null,
       );
       tracker.handleEvent(_sessionBusy("c1"), null);
       tracker.handleEvent(
         const SseEventData.sessionCreated(
-          info: Session(id: "g1", projectID: "project", directory: "/repo", parentID: "c1"),
+          info: Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+            parentID: "c1",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "g1",
+            projectID: "project",
+            directory: "/repo",
+          ),
         ),
         null,
       );
@@ -681,7 +1313,18 @@ void main() {
     group("parent-ID resolution (phantom-root fix)", () {
       test("busy child with unknown parent is a phantom root until resolved", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              id: "p1",
+              worktree: "/repo",
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+            ),
+          ],
         );
 
         // Busy status arrives for a child with no preceding session.created, so
@@ -721,7 +1364,18 @@ void main() {
         // Busy status with no directory: the worktree is never learned from the
         // status event, so the busy child produces no row yet.
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              id: "p1",
+              worktree: "/repo",
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionBusy("c1"), null);
@@ -748,7 +1402,18 @@ void main() {
         // the first time, so the active session goes from no row to a visible
         // root row and registerSession must report the change.
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              id: "p1",
+              worktree: "/repo",
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionBusy("s1"), null);
@@ -772,7 +1437,18 @@ void main() {
         // busy status carried a directory) and the parent is unchanged, so a
         // re-registration must not trigger a redundant re-emit.
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              id: "p1",
+              worktree: "/repo",
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionBusy("s1"), "/repo");
@@ -787,7 +1463,18 @@ void main() {
 
       test("registerSession returns false when the session is not active", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              id: "p1",
+              worktree: "/repo",
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+            ),
+          ],
         );
 
         final changed = tracker.registerSession(
@@ -802,7 +1489,18 @@ void main() {
 
       test("registerSession returns false when the parent is unchanged", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              id: "p1",
+              worktree: "/repo",
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionBusy("c1"), "/repo");
@@ -822,7 +1520,18 @@ void main() {
     group("pending input tracking", () {
       test("question asked sets awaitingInput true, replied clears it", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
@@ -841,7 +1550,18 @@ void main() {
 
       test("question rejected clears awaitingInput", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
@@ -857,7 +1577,18 @@ void main() {
 
       test("permission asked sets awaitingInput, replied clears it via requestID mapping", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
@@ -874,7 +1605,18 @@ void main() {
 
       test("multiple pending questions require all resolved to clear", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
@@ -897,7 +1639,18 @@ void main() {
 
       test("session deleted cleans up pending input state", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
@@ -914,7 +1667,18 @@ void main() {
 
       test("session idle cleans up pending input state", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
@@ -931,7 +1695,18 @@ void main() {
 
       test("question asked on active session triggers change detection", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
@@ -945,14 +1720,25 @@ void main() {
 
       test("populatePendingQuestions populates from cold start data", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
           sessions: [_session("s1", "/repo")],
-          statuses: {"s1": const SessionStatus.busy()},
+          statuses: {"s1": const SessionStatusBusy()},
         );
 
         tracker.populatePendingQuestions(
           questions: [
-            const PendingQuestion(id: "q1", sessionID: "s1", questions: []),
+            const QuestionRequest(id: "q1", sessionID: "s1", questions: [], tool: null),
           ],
         );
 
@@ -962,7 +1748,18 @@ void main() {
 
       test("permission replied for unknown requestID is a no-op", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
@@ -977,7 +1774,18 @@ void main() {
 
       test("clearPendingQuestion by sessionId and id clears awaitingInput and fires change", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
@@ -995,7 +1803,18 @@ void main() {
 
       test("clearPendingQuestion scans by id when sessionId is absent", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
@@ -1013,7 +1832,18 @@ void main() {
 
       test("clearPendingQuestion reports found but no summary change when other pending questions remain", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
@@ -1032,7 +1862,18 @@ void main() {
 
       test("getSessionIdForQuestion returns owning session id", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
@@ -1044,7 +1885,18 @@ void main() {
 
       test("clearPendingPermission clears awaitingInput and fires change", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
@@ -1061,7 +1913,18 @@ void main() {
 
       test("clearPendingPermission reports found but no summary change when other pending input remains", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionCreated("s1", "/repo"), null);
@@ -1079,7 +1942,18 @@ void main() {
 
       test("child session pending question bubbles up to root awaitingInput", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionCreated("root", "/repo"), null);
@@ -1100,7 +1974,18 @@ void main() {
 
       test("child session pending permission bubbles up to root awaitingInput", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionCreated("root", "/repo"), null);
@@ -1123,16 +2008,55 @@ void main() {
 
       test("populatePendingPermissions hydrates from cold start data", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/repo")],
-          statuses: {"s1": const SessionStatus.busy()},
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo",
+            ),
+          ],
+          statuses: {"s1": const SessionStatusBusy()},
           sessions: [
-            const Session(id: "s1", projectID: "p1", directory: "/repo"),
+            const Session(
+              slug: "slug",
+              title: "title",
+              version: "v",
+              workspaceID: null,
+              path: null,
+              summary: null,
+              cost: null,
+              tokens: null,
+              share: null,
+              agent: null,
+              model: null,
+              metadata: null,
+              permission: null,
+              revert: null,
+              parentID: null,
+              time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+              id: "s1",
+              projectID: "p1",
+              directory: "/repo",
+            ),
           ],
         );
 
         tracker.populatePendingPermissions(
           permissions: [
-            const PendingPermission(id: "perm1", sessionID: "s1", permission: "bash"),
+            const PermissionRequest(
+              id: "perm1",
+              sessionID: "s1",
+              permission: "bash",
+              patterns: [],
+              metadata: {},
+              always: [],
+              tool: null,
+            ),
           ],
         );
 
@@ -1145,16 +2069,34 @@ void main() {
       test("populates statuses and worktrees correctly", () async {
         final tracker = await _coldStartedTracker(
           projects: [
-            const Project(id: "p1", worktree: "/repo-a"),
-            const Project(id: "p2", worktree: "/repo-b"),
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo-a",
+            ),
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p2",
+              worktree: "/repo-b",
+            ),
           ],
           sessions: [
             _session("session-a", "/repo-a"),
             _session("session-b", "/repo-b"),
           ],
           statuses: {
-            "session-a": const SessionStatus.busy(),
-            "session-b": const SessionStatus.busy(),
+            "session-a": const SessionStatusBusy(),
+            "session-b": const SessionStatusBusy(),
           },
         );
 
@@ -1175,14 +2117,32 @@ void main() {
       test("per-directory error does not break other directories", () async {
         final tracker = await _coldStartedTracker(
           projects: [
-            const Project(id: "p1", worktree: "/repo-a"),
-            const Project(id: "p2", worktree: "/repo-b"),
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/repo-a",
+            ),
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p2",
+              worktree: "/repo-b",
+            ),
           ],
           sessions: [
             _session("session-b", "/repo-b"),
           ],
           statuses: {
-            "session-b": const SessionStatus.busy(),
+            "session-b": const SessionStatusBusy(),
           },
         );
 
@@ -1214,7 +2174,18 @@ void main() {
 
       test("replaces old worktrees", () async {
         final tracker = await _coldStartedTracker(
-          projects: [const Project(id: "p1", worktree: "/old-repo")],
+          projects: [
+            const Project(
+              time: ProjectTime(created: 0, updated: 0, initialized: null),
+              sandboxes: <String>[],
+              vcs: null,
+              name: null,
+              icon: null,
+              commands: null,
+              id: "p1",
+              worktree: "/old-repo",
+            ),
+          ],
         );
 
         tracker.handleEvent(_sessionCreated("s1", "/old-repo/sub"), null);
@@ -1236,43 +2207,143 @@ void main() {
 
 SseEventData _sessionCreated(String id, String directory) {
   return SseEventData.sessionCreated(
-    info: Session(id: id, projectID: "project", directory: directory),
+    info: Session(
+      slug: "slug",
+      title: "title",
+      version: "v",
+      workspaceID: null,
+      path: null,
+      summary: null,
+      cost: null,
+      tokens: null,
+      share: null,
+      agent: null,
+      model: null,
+      metadata: null,
+      permission: null,
+      revert: null,
+      parentID: null,
+      time: const SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+      id: id,
+      projectID: "project",
+      directory: directory,
+    ),
   );
 }
 
 SseEventData _childSessionCreated(String id, String parentId, String directory) {
   return SseEventData.sessionCreated(
-    info: Session(id: id, projectID: "project", directory: directory, parentID: parentId),
+    info: Session(
+      slug: "slug",
+      title: "title",
+      version: "v",
+      workspaceID: null,
+      path: null,
+      summary: null,
+      cost: null,
+      tokens: null,
+      share: null,
+      agent: null,
+      model: null,
+      metadata: null,
+      permission: null,
+      revert: null,
+      parentID: parentId,
+      time: const SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+      id: id,
+      projectID: "project",
+      directory: directory,
+    ),
   );
 }
 
 SseEventData _sessionUpdated(String id, String directory) {
   return SseEventData.sessionUpdated(
-    info: Session(id: id, projectID: "project", directory: directory),
+    info: Session(
+      slug: "slug",
+      title: "title",
+      version: "v",
+      workspaceID: null,
+      path: null,
+      summary: null,
+      cost: null,
+      tokens: null,
+      share: null,
+      agent: null,
+      model: null,
+      metadata: null,
+      permission: null,
+      revert: null,
+      parentID: null,
+      time: const SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+      id: id,
+      projectID: "project",
+      directory: directory,
+    ),
   );
 }
 
 SseEventData _sessionDeleted(String id, [String directory = ""]) {
   return SseEventData.sessionDeleted(
-    info: Session(id: id, projectID: "project", directory: directory),
+    info: Session(
+      slug: "slug",
+      title: "title",
+      version: "v",
+      workspaceID: null,
+      path: null,
+      summary: null,
+      cost: null,
+      tokens: null,
+      share: null,
+      agent: null,
+      model: null,
+      metadata: null,
+      permission: null,
+      revert: null,
+      parentID: null,
+      time: const SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+      id: id,
+      projectID: "project",
+      directory: directory,
+    ),
   );
 }
 
 Session _session(String id, String directory) {
-  return Session(id: id, projectID: "project", directory: directory);
+  return Session(
+    slug: "slug",
+    title: "title",
+    version: "v",
+    workspaceID: null,
+    path: null,
+    parentID: null,
+    summary: null,
+    cost: null,
+    tokens: null,
+    share: null,
+    agent: null,
+    model: null,
+    metadata: null,
+    permission: null,
+    revert: null,
+    time: const SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+    id: id,
+    projectID: "project",
+    directory: directory,
+  );
 }
 
 SseEventData _sessionBusy(String id) {
   return SseEventData.sessionStatus(
     sessionID: id,
-    status: const SessionStatus.busy(),
+    status: const SessionStatusBusy(),
   );
 }
 
 SseEventData _sessionIdle(String id) {
   return SseEventData.sessionStatus(
     sessionID: id,
-    status: const SessionStatus.idle(),
+    status: const SessionStatusIdle(),
   );
 }
 
@@ -1300,10 +2371,10 @@ SseEventData _questionRejected(String requestId, String sessionId) {
 
 SseEventData _permissionAsked(String requestId, String sessionId) {
   return SseEventData.permissionAsked(
-    requestID: requestId,
+    id: requestId,
     sessionID: sessionId,
-    tool: "test-tool",
-    description: "test permission",
+    permission: "test-tool",
+    patterns: const ["test permission"],
   );
 }
 
@@ -1423,13 +2494,13 @@ class _FakeApi implements OpenCodeApi {
   Future<void> abortSession({required String sessionId, required String? directory}) async {}
 
   @override
-  Future<List<AgentInfo>> listAgents({required String directory}) async => [];
+  Future<List<Agent>> listAgents({required String directory}) async => [];
 
   @override
-  Future<List<PendingQuestion>> getPendingQuestions({required String? directory}) async => [];
+  Future<List<QuestionRequest>> getPendingQuestions({required String? directory}) async => [];
 
   @override
-  Future<List<PendingPermission>> getPendingPermissions({required String? directory}) async => [];
+  Future<List<PermissionRequest>> getPendingPermissions({required String? directory}) async => [];
 
   @override
   Future<void> replyToQuestion({
@@ -1461,7 +2532,7 @@ class _FakeApi implements OpenCodeApi {
   }) async => [];
 
   @override
-  Future<List<MessageWithParts>> getMessages({
+  Future<List<SessionMessagesResponseItem>> getMessages({
     required String sessionId,
     required String? directory,
   }) async => [];
@@ -1485,11 +2556,11 @@ class _FakeApi implements OpenCodeApi {
 
   @override
   Future<ProviderListResponse> listProviders() async =>
-      const ProviderListResponse(providers: [], defaults: {}, connected: []);
+      const ProviderListResponse(all: [], defaultValue: {}, connected: []);
 
   @override
-  Future<ProviderListResponse> listConfigProviders({required String? directory}) async =>
-      const ProviderListResponse(providers: [], defaults: {}, connected: []);
+  Future<ConfigProvidersResponse> listConfigProviders({required String? directory}) async =>
+      const ConfigProvidersResponse(providers: [], defaultValue: {});
 
   @override
   Future<Project> updateProject({

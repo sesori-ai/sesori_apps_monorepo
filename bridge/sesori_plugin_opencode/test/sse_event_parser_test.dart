@@ -38,7 +38,13 @@ void main() {
         "payload": {
           "type": "session.created",
           "properties": {
-            "info": {"id": "s1", "projectID": "p1", "directory": "/repo"},
+            "info": {
+              "id": "s1",
+              "slug": "ses-1",
+              "projectID": "p1",
+              "directory": "/repo",
+              "time": {"created": 0, "updated": 0},
+            },
           },
         },
       });
@@ -222,6 +228,27 @@ void main() {
       expect(result.rawData, equals(rawData));
     });
 
+    for (final eventType in ["integration.updated", "catalog.updated"]) {
+      test("$eventType is recognized and ignored, not reported as unknown", () {
+        final parser = SseEventParser();
+        final rawData = jsonEncode({
+          "directory": "/repo",
+          "payload": {
+            "type": eventType,
+            "properties": <String, dynamic>{},
+          },
+        });
+
+        final result = parser.parse(rawData);
+
+        expect(result.outcome, equals(SseParseOutcome.ignoredKnownEvent));
+        expect(result.event, isNull);
+        expect(result.directory, equals("/repo"));
+        expect(result.eventType, equals(eventType));
+        expect(result.rawData, equals(rawData));
+      });
+    }
+
     test("malformed JSON returns null event and preserved rawData", () {
       final parser = SseEventParser();
       const rawData = "{not-json";
@@ -279,7 +306,7 @@ void main() {
       expect(result.rawData, equals(rawData));
     });
 
-    test("known event with malformed payload is categorized separately", () {
+    test("known event with unknown session status is preserved", () {
       final parser = SseEventParser();
       final rawData = jsonEncode({
         "directory": "/repo",
@@ -294,11 +321,14 @@ void main() {
 
       final result = parser.parse(rawData);
 
-      expect(result.outcome, equals(SseParseOutcome.malformedKnownPayload));
-      expect(result.event, isNull);
+      expect(result.outcome, equals(SseParseOutcome.validKnownEvent));
+      expect(result.event, isA<SseSessionStatus>());
       expect(result.directory, equals("/repo"));
       expect(result.eventType, equals("session.status"));
       expect(result.rawData, equals(rawData));
+
+      final event = result.event! as SseSessionStatus;
+      expect(event.status, isA<SessionStatusUnknown>());
     });
 
     test("malformed payload envelope is categorized separately", () {

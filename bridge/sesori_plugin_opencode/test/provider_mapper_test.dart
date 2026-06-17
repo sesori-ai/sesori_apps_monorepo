@@ -1,4 +1,4 @@
-import "package:opencode_plugin/src/models/provider_info.dart";
+import "package:opencode_plugin/src/models/openapi/config_providers_response.g.dart";
 import "package:opencode_plugin/src/provider_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginModel;
 import "package:test/test.dart";
@@ -6,34 +6,24 @@ import "package:test/test.dart";
 void main() {
   group("mapProviderResponse", () {
     test("preserves synthetic model IDs and treats alpha/beta statuses as available", () {
-      const response = ProviderListResponse(
-        providers: [
-          ProviderInfo(
-            id: "openai",
-            name: "OpenAI",
-            models: {
-              "alpha-key": ProviderModel(
-                id: "openai/gpt-4.1-alpha",
-                providerID: "openai",
-                name: "GPT-4.1 Alpha",
-                variants: ["low", "high"],
-                family: "gpt-4.1",
-                status: "alpha",
-              ),
-              "beta-key": ProviderModel(
-                id: "openai/gpt-4.1-mini",
-                providerID: "openai",
-                name: "GPT-4.1 Mini",
-                variants: ["medium"],
-                family: "gpt-4.1",
-                status: "beta",
-                releaseDate: "2025-04-01",
-              ),
-            },
+      final response = ConfigProvidersResponse.fromJson(
+        _providersJson(<String, dynamic>{
+          "alpha-key": _modelJson(
+            id: "openai/gpt-4.1-alpha",
+            name: "GPT-4.1 Alpha",
+            variants: <String, dynamic>{"low": <String, dynamic>{}, "high": <String, dynamic>{}},
+            family: "gpt-4.1",
+            status: "alpha",
           ),
-        ],
-        defaults: {"openai": "openai/gpt-4.1-mini"},
-        connected: ["openai"],
+          "beta-key": _modelJson(
+            id: "openai/gpt-4.1-mini",
+            name: "GPT-4.1 Mini",
+            variants: <String, dynamic>{"medium": <String, dynamic>{}},
+            family: "gpt-4.1",
+            status: "beta",
+            releaseDate: "2025-04-01",
+          ),
+        }),
       );
 
       final mapped = mapProviderResponse(response: response);
@@ -43,11 +33,9 @@ void main() {
       expect(provider.id, equals("openai"));
       expect(provider.defaultModelID, equals("openai/gpt-4.1-mini"));
       expect(provider.models, hasLength(2));
-
       final alphaModel = provider.models.firstWhere((model) => model.id == "openai/gpt-4.1-alpha");
       expect(alphaModel.isAvailable, isTrue);
       expect(alphaModel.variants, equals(["low", "high"]));
-
       final betaModel = provider.models.firstWhere((model) => model.id == "openai/gpt-4.1-mini");
       expect(betaModel.isAvailable, isTrue);
       expect(betaModel.variants, equals(["medium"]));
@@ -55,25 +43,16 @@ void main() {
     });
 
     test("treats still-unknown statuses as available", () {
-      const response = ProviderListResponse(
-        providers: [
-          ProviderInfo(
-            id: "openai",
-            name: "OpenAI",
-            models: {
-              "synthetic-key": ProviderModel(
-                id: "openai/gpt-4.1-mini",
-                providerID: "openai",
-                name: "GPT-4.1 Mini",
-                variants: [],
-                family: "gpt-4.1",
-                status: "preview",
-              ),
-            },
+      final response = ConfigProvidersResponse.fromJson(
+        _providersJson(<String, dynamic>{
+          "synthetic-key": _modelJson(
+            id: "openai/gpt-4.1-mini",
+            name: "GPT-4.1 Mini",
+            variants: const <String, dynamic>{},
+            family: "gpt-4.1",
+            status: "preview",
           ),
-        ],
-        defaults: {"openai": "openai/gpt-4.1-mini"},
-        connected: ["openai"],
+        }),
       );
 
       final mapped = mapProviderResponse(response: response);
@@ -83,27 +62,21 @@ void main() {
     });
 
     test("filters disabled variants from config provider response", () {
-      final response = ProviderListResponse.fromJson({
-        "providers": [
-          {
-            "id": "openai",
-            "name": "OpenAI",
-            "models": {
-              "gpt-4.1": {
-                "id": "openai/gpt-4.1",
-                "providerID": "openai",
-                "name": "GPT-4.1",
-                "variants": {
-                  "low": {"disabled": false},
-                  "medium": {"disabled": true},
-                  "high": <String, dynamic>{},
-                },
-              },
+      final response = ConfigProvidersResponse.fromJson(
+        _providersJson(<String, dynamic>{
+          "gpt-4.1": _modelJson(
+            id: "openai/gpt-4.1",
+            name: "GPT-4.1",
+            variants: <String, dynamic>{
+              "low": {"disabled": false},
+              "medium": {"disabled": true},
+              "high": <String, dynamic>{},
             },
-          },
-        ],
-        "default": {"openai": "openai/gpt-4.1"},
-      });
+            family: "gpt-4.1",
+            status: "active",
+          ),
+        }),
+      );
 
       final mapped = mapProviderResponse(response: response);
 
@@ -112,24 +85,17 @@ void main() {
 
     group("releaseDate parsing", () {
       test("parses full YYYY-MM-DD release_date", () {
-        const response = ProviderListResponse(
-          providers: [
-            ProviderInfo(
-              id: "moonshotai",
-              name: "Moonshot AI",
-              models: {
-                "kimi-k2-thinking": ProviderModel(
-                  id: "moonshotai/kimi-k2-thinking",
-                  providerID: "moonshotai",
-                  name: "Kimi K2 Thinking",
-                  family: "kimi-thinking",
-                  releaseDate: "2025-11-06",
-                ),
-              },
+        final response = ConfigProvidersResponse.fromJson(
+          _providersJson(<String, dynamic>{
+            "kimi-k2-thinking": _modelJson(
+              id: "moonshotai/kimi-k2-thinking",
+              name: "Kimi K2 Thinking",
+              variants: <String, dynamic>{},
+              family: "kimi-thinking",
+              status: "active",
+              releaseDate: "2025-11-06",
             ),
-          ],
-          defaults: {},
-          connected: ["moonshotai"],
+          }),
         );
 
         final mapped = mapProviderResponse(response: response);
@@ -151,38 +117,33 @@ void main() {
           // model in the family ended up with a null `releaseDate`. The
           // mobile picker then fell back to iteration order and surfaced
           // "Kimi K2 Thinking" instead of "Kimi K2.6".
-          const response = ProviderListResponse(
-            providers: [
-              ProviderInfo(
-                id: "kimi-for-coding",
-                name: "Kimi For Coding",
-                models: {
-                  "kimi-k2-thinking": ProviderModel(
-                    id: "kimi-k2-thinking",
-                    providerID: "kimi-for-coding",
-                    name: "Kimi K2 Thinking",
-                    family: "kimi-thinking",
-                    releaseDate: "2025-11",
-                  ),
-                  "k2p5": ProviderModel(
-                    id: "k2p5",
-                    providerID: "kimi-for-coding",
-                    name: "Kimi K2.5",
-                    family: "kimi-thinking",
-                    releaseDate: "2026-01",
-                  ),
-                  "k2p6": ProviderModel(
-                    id: "k2p6",
-                    providerID: "kimi-for-coding",
-                    name: "Kimi K2.6",
-                    family: "kimi-thinking",
-                    releaseDate: "2026-04",
-                  ),
-                },
+          final response = ConfigProvidersResponse.fromJson(
+            _providersJson(<String, dynamic>{
+              "kimi-k2-thinking": _modelJson(
+                id: "kimi-k2-thinking",
+                name: "Kimi K2 Thinking",
+                variants: <String, dynamic>{},
+                family: "kimi-thinking",
+                status: "active",
+                releaseDate: "2025-11",
               ),
-            ],
-            defaults: {},
-            connected: ["kimi-for-coding"],
+              "k2p5": _modelJson(
+                id: "k2p5",
+                name: "Kimi K2.5",
+                variants: <String, dynamic>{},
+                family: "kimi-thinking",
+                status: "active",
+                releaseDate: "2026-01",
+              ),
+              "k2p6": _modelJson(
+                id: "k2p6",
+                name: "Kimi K2.6",
+                variants: <String, dynamic>{},
+                family: "kimi-thinking",
+                status: "active",
+                releaseDate: "2026-04",
+              ),
+            }),
           );
 
           final mapped = mapProviderResponse(response: response);
@@ -196,23 +157,16 @@ void main() {
       );
 
       test("leaves releaseDate null when the field is absent", () {
-        const response = ProviderListResponse(
-          providers: [
-            ProviderInfo(
-              id: "openai",
-              name: "OpenAI",
-              models: {
-                "gpt-4.1": ProviderModel(
-                  id: "openai/gpt-4.1",
-                  providerID: "openai",
-                  name: "GPT-4.1",
-                  family: "gpt-4.1",
-                ),
-              },
+        final response = ConfigProvidersResponse.fromJson(
+          _providersJson(<String, dynamic>{
+            "gpt-4.1": _modelJson(
+              id: "openai/gpt-4.1",
+              name: "GPT-4.1",
+              variants: <String, dynamic>{},
+              family: "gpt-4.1",
+              status: "active",
             ),
-          ],
-          defaults: {},
-          connected: ["openai"],
+          }),
         );
 
         final mapped = mapProviderResponse(response: response);
@@ -220,24 +174,17 @@ void main() {
       });
 
       test("leaves releaseDate null when the value is unparseable", () {
-        const response = ProviderListResponse(
-          providers: [
-            ProviderInfo(
-              id: "openai",
-              name: "OpenAI",
-              models: {
-                "gpt-4.1": ProviderModel(
-                  id: "openai/gpt-4.1",
-                  providerID: "openai",
-                  name: "GPT-4.1",
-                  family: "gpt-4.1",
-                  releaseDate: "not-a-date",
-                ),
-              },
+        final response = ConfigProvidersResponse.fromJson(
+          _providersJson(<String, dynamic>{
+            "gpt-4.1": _modelJson(
+              id: "openai/gpt-4.1",
+              name: "GPT-4.1",
+              variants: <String, dynamic>{},
+              family: "gpt-4.1",
+              status: "active",
+              releaseDate: "not-a-date",
             ),
-          ],
-          defaults: {},
-          connected: ["openai"],
+          }),
         );
 
         final mapped = mapProviderResponse(response: response);
@@ -246,3 +193,64 @@ void main() {
     });
   });
 }
+
+Map<String, dynamic> _providersJson(Map<String, dynamic> models) => <String, dynamic>{
+  "providers": [
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "source": "custom",
+      "env": <String>[],
+      "options": <String, dynamic>{},
+      "models": models,
+    },
+  ],
+  "default": {"openai": "openai/gpt-4.1-mini"},
+};
+
+Map<String, dynamic> _modelJson({
+  required String id,
+  required String name,
+  required Map<String, dynamic> variants,
+  required String family,
+  required String status,
+  String releaseDate = "",
+}) => <String, dynamic>{
+  "id": id,
+  "providerID": "openai",
+  "api": <String, dynamic>{"id": id, "url": "http://example.com", "npm": "openai"},
+  "name": name,
+  "family": family,
+  "capabilities": <String, dynamic>{
+    "temperature": false,
+    "reasoning": false,
+    "attachment": false,
+    "toolcall": false,
+    "input": <String, dynamic>{
+      "text": true,
+      "audio": false,
+      "image": false,
+      "video": false,
+      "pdf": false,
+    },
+    "output": <String, dynamic>{
+      "text": true,
+      "audio": false,
+      "image": false,
+      "video": false,
+      "pdf": false,
+    },
+    "interleaved": false,
+  },
+  "cost": <String, dynamic>{
+    "input": 0,
+    "output": 0,
+    "cache": <String, dynamic>{"read": 0, "write": 0},
+  },
+  "limit": <String, dynamic>{"context": 0, "output": 0},
+  "status": status,
+  "options": <String, dynamic>{},
+  "headers": <String, dynamic>{},
+  "release_date": releaseDate,
+  "variants": variants,
+};

@@ -164,6 +164,9 @@ as List<ReplyAnswer>,
 mixin _$RejectQuestionRequest {
 
  String get requestId;// questions request id
+// `required` so callers cannot forget to supply it, but nullable on the
+// wire: older clients that omit it deserialize to null, and the bridge
+// falls back to resolving the owning session from the question id.
  String? get sessionId;
 /// Create a copy of RejectQuestionRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -235,6 +238,9 @@ class _RejectQuestionRequest implements RejectQuestionRequest {
 
 @override final  String requestId;
 // questions request id
+// `required` so callers cannot forget to supply it, but nullable on the
+// wire: older clients that omit it deserialize to null, and the bridge
+// falls back to resolving the owning session from the question id.
 @override final  String? sessionId;
 
 /// Create a copy of RejectQuestionRequest
