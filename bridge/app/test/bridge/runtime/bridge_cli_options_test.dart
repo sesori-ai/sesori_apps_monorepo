@@ -26,6 +26,35 @@ void main() {
 
     expect(options.debugPort, 8080);
   });
+
+  test("a plugin without a password option (e.g. codex) parses without crashing", () {
+    // Codex registers `port` but not `password`. Only the selected plugin's
+    // options are on the parser, so reading `password` unconditionally would
+    // throw — BridgeCliOptions must tolerate its absence.
+    final parser = ArgParser()
+      ..addOption("relay", defaultsTo: "wss://relay.sesori.com")
+      ..addOption("port")
+      ..addOption("codex-bin", defaultsTo: "codex")
+      ..addOption("auth-backend", defaultsTo: "")
+      ..addOption("debug-port", defaultsTo: "")
+      ..addOption(
+        "log-level",
+        defaultsTo: "info",
+        allowed: ["verbose", "debug", "info", "warning", "error"],
+      );
+    final results = parser.parse(["--debug-port", "8080"]);
+
+    final options = BridgeCliOptions.fromArgResults(
+      cliArgs: const ["--debug-port", "8080"],
+      results: results,
+      environment: const {},
+      defaultAuthUrl: "https://api.sesori.com",
+    );
+
+    expect(options.password, "");
+    expect(options.port, isNull);
+    expect(options.debugPort, 8080);
+  });
 }
 
 BridgeCliOptions _parseOptions({required List<String> args}) {

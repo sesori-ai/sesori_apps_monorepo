@@ -26,6 +26,8 @@ dependencies:
     path: ../sesori_plugin_runtime
   opencode_plugin:
     path: ../sesori_plugin_opencode
+  codex_plugin:
+    path: ../sesori_plugin_codex
   meta: ^1.18.3
   drift: ^2.34.0
   collection: ^1.19.1

@@ -32,13 +32,20 @@ class BridgeCliOptions {
       defaultAuthUrl: defaultAuthUrl,
     );
     final debugPortRaw = results["debug-port"] as String;
-    final portRaw = results["port"] as String?;
+
+    // `port` and `password` are plugin-scoped options: the bridge registers
+    // only the *selected* plugin's options, so they are present only when that
+    // plugin declares them (OpenCode declares both; Codex declares only
+    // `port`). Read them defensively so selecting a plugin without one does not
+    // throw "Could not find an option named ...".
+    final portRaw = results.options.contains("port") ? results["port"] as String? : null;
+    final password = results.options.contains("password") ? results["password"] as String : "";
 
     return BridgeCliOptions(
       cliArgs: cliArgs,
       relayUrl: results["relay"] as String,
       port: portRaw == null || portRaw.isEmpty ? null : int.parse(portRaw),
-      password: results["password"] as String,
+      password: password,
       authBackendUrl: authBackendUrl,
       debugPort: debugPortRaw.isNotEmpty ? int.tryParse(debugPortRaw) : null,
       logLevelName: results["log-level"] as String,
