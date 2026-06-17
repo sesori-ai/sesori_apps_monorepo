@@ -209,7 +209,7 @@ $ToolStateCopyWith<$Res>? get state {
 /// @nodoc
 mixin _$ToolState {
 
- String get status; String? get title; String? get output; String? get error;
+@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus get status; String? get title; String? get output; String? get error;
 /// Create a copy of ToolState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -242,7 +242,7 @@ abstract mixin class $ToolStateCopyWith<$Res>  {
   factory $ToolStateCopyWith(ToolState value, $Res Function(ToolState) _then) = _$ToolStateCopyWithImpl;
 @useResult
 $Res call({
- String status, String? title, String? output, String? error
+@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus status, String? title, String? output, String? error
 });
 
 
@@ -262,7 +262,7 @@ class _$ToolStateCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') @override $Res call({Object? status = null,Object? title = freezed,Object? output = freezed,Object? error = freezed,}) {
   return _then(_self.copyWith(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as String,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
+as ToolStatus,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String?,output: freezed == output ? _self.output : output // ignore: cast_nullable_to_non_nullable
 as String?,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -277,10 +277,10 @@ as String?,
 @JsonSerializable()
 
 class _ToolState implements ToolState {
-  const _ToolState({required this.status, required this.title, required this.output, required this.error});
+  const _ToolState({@JsonKey(unknownEnumValue: ToolStatus.unknown) required this.status, required this.title, required this.output, required this.error});
   factory _ToolState.fromJson(Map<String, dynamic> json) => _$ToolStateFromJson(json);
 
-@override final  String status;
+@override@JsonKey(unknownEnumValue: ToolStatus.unknown) final  ToolStatus status;
 @override final  String? title;
 @override final  String? output;
 @override final  String? error;
@@ -318,7 +318,7 @@ abstract mixin class _$ToolStateCopyWith<$Res> implements $ToolStateCopyWith<$Re
   factory _$ToolStateCopyWith(_ToolState value, $Res Function(_ToolState) _then) = __$ToolStateCopyWithImpl;
 @override @useResult
 $Res call({
- String status, String? title, String? output, String? error
+@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus status, String? title, String? output, String? error
 });
 
 
@@ -338,7 +338,7 @@ class __$ToolStateCopyWithImpl<$Res>
 @override @pragma('vm:prefer-inline') $Res call({Object? status = null,Object? title = freezed,Object? output = freezed,Object? error = freezed,}) {
   return _then(_ToolState(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as String,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
+as ToolStatus,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String?,output: freezed == output ? _self.output : output // ignore: cast_nullable_to_non_nullable
 as String?,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
 as String?,

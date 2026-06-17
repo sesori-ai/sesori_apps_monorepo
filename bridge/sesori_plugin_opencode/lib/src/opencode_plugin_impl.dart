@@ -32,6 +32,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
   final io.HttpClient _httpClient;
   final SseEventMapper _mapper = SseEventMapper();
+  final PluginModelMapper _pluginModelMapper = const PluginModelMapper(messagePartMapper: MessagePartMapper());
   late final SseConnection _sseConnection;
   late final StreamSubscription<void> _summarySubscription;
   Future<void>? _initializeFuture;
@@ -137,7 +138,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
       _sseConnection.start();
     }
     if (coldStartError != null) {
-      Error.throwWithStackTrace(coldStartError, coldStartStackTrace!);
+      Error.throwWithStackTrace(coldStartError, coldStartStackTrace ?? StackTrace.current);
     }
   }
 
@@ -202,7 +203,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
       worktrees: projects.map((p) => p.worktree).toSet(),
     );
     if (changed) _emitProjectsSummary();
-    return projects.map((project) => project.toPlugin()).toList();
+    return projects.map(_pluginModelMapper.mapProject).toList();
   }
 
   @override
@@ -227,7 +228,8 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     }
     return sessions
         .map(
-          (session) => session.toPlugin(projectID: _resolveCanonicalProjectID(session, projectId)),
+          (session) =>
+              _pluginModelMapper.mapSession(session, projectID: _resolveCanonicalProjectID(session, projectId)),
         )
         .toList();
   }
@@ -279,7 +281,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
         body: {"title": title},
       ),
     );
-    return session.toPlugin(projectID: _resolveCanonicalProjectID(session, session.projectID));
+    return _pluginModelMapper.mapSession(session, projectID: _resolveCanonicalProjectID(session, session.projectID));
   }
 
   @override
@@ -293,7 +295,8 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     );
     return sessions
         .map(
-          (session) => session.toPlugin(
+          (session) => _pluginModelMapper.mapSession(
+            session,
             projectID: _resolveCanonicalProjectID(session, session.projectID),
           ),
         )
@@ -307,7 +310,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     );
 
     // Start with the API response as a baseline.
-    final merged = apiStatuses.map((key, value) => MapEntry(key, value.toPlugin()));
+    final merged = apiStatuses.map((key, value) => MapEntry(key, _pluginModelMapper.mapSessionStatus(value)));
 
     // Overlay the tracker's real-time active statuses. The tracker is
     // maintained by SSE events and accurately reflects which sessions are
@@ -315,7 +318,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     // context and miss sessions from other projects.
     final activeStatuses = _service.tracker.getActiveStatuses();
     for (final entry in activeStatuses.entries) {
-      merged[entry.key] = entry.value.toPlugin();
+      merged[entry.key] = _pluginModelMapper.mapSessionStatus(entry.value);
     }
 
     return merged;
@@ -330,7 +333,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
         directory: directory,
       ),
     );
-    return messages.map(_mapMessage).toList();
+    return messages;
   }
 
   @override
@@ -396,7 +399,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     final pending = await _call(
       () => _service.getPendingQuestionsForSession(sessionId: sessionId),
     );
-    return pending.map((question) => question.toPlugin()).toList();
+    return pending.map<PluginPendingQuestion>(_pluginModelMapper.mapQuestion).toList();
   }
 
   @override
@@ -408,7 +411,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
         directory: projectId,
       ),
     );
-    return pending.map((question) => question.toPlugin()).toList();
+    return pending.map<PluginPendingQuestion>(_pluginModelMapper.mapQuestion).toList();
   }
 
   @override
@@ -478,7 +481,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
         directory: projectId,
       ),
     );
-    return project.toPlugin();
+    return _pluginModelMapper.mapProject(project);
   }
 
   @override
@@ -522,7 +525,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
         body: {"name": name},
       ),
     );
-    return updated.toPlugin();
+    return _pluginModelMapper.mapProject(updated);
   }
 
   void _handleRawSseEvent(String rawData) {
@@ -621,50 +624,6 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     };
   }
 
-  PluginMessageWithParts _mapMessage(MessageWithParts raw) {
-    final info = raw.info;
-    final parts = raw.parts;
-    final time = switch (info.time) {
-      MessageTime(:final created, :final completed) => PluginMessageTime(
-        created: created,
-        completed: completed,
-      ),
-      null => null,
-    };
-    final pluginInfo = switch (info.error) {
-      final error? => PluginMessage.error(
-        id: info.id,
-        sessionID: info.sessionID,
-        agent: info.agent,
-        modelID: info.modelID,
-        providerID: info.providerID,
-        errorName: error.name,
-        errorMessage: error.data.message,
-        time: time,
-      ),
-      null => switch (info.role) {
-        "user" => PluginMessage.user(
-          id: info.id,
-          sessionID: info.sessionID,
-          agent: info.agent,
-          time: time,
-        ),
-        "assistant" => PluginMessage.assistant(
-          id: info.id,
-          sessionID: info.sessionID,
-          agent: info.agent,
-          modelID: info.modelID,
-          providerID: info.providerID,
-          time: time,
-        ),
-        _ => throw ArgumentError('Unknown message role: ${info.role}'),
-      },
-    };
-    return PluginMessageWithParts(
-      info: pluginInfo,
-      parts: parts.map(_mapper.mapPart).where((p) => p.type.isVisible).toList(),
-    );
-  }
 
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() {

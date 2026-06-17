@@ -521,6 +521,45 @@ void main() {
   });
 }
 
+/// Shared complete sub-maps for the required nested fields of an OpenCode
+/// `Model`, so the config-providers mock decodes through `Model.fromJson`.
+const Map<String, dynamic> _modelApi = {
+  "id": "model-api",
+  "url": "https://example.com",
+  "npm": "@example/sdk",
+};
+
+const Map<String, dynamic> _modelCapabilitiesIo = {
+  "text": true,
+  "audio": false,
+  "image": false,
+  "video": false,
+  "pdf": false,
+};
+
+const Map<String, dynamic> _modelCapabilities = {
+  "temperature": true,
+  "reasoning": false,
+  "attachment": false,
+  "toolcall": true,
+  "input": _modelCapabilitiesIo,
+  "output": _modelCapabilitiesIo,
+  "interleaved": false,
+};
+
+const Map<String, dynamic> _modelCache = {"read": 0, "write": 0};
+
+const Map<String, dynamic> _modelCost = {
+  "input": 0,
+  "output": 0,
+  "cache": _modelCache,
+};
+
+const Map<String, dynamic> _modelLimit = {
+  "context": 0,
+  "output": 0,
+};
+
 /// A lightweight fake OpenCode server whose `/session/status` response can be
 /// changed between calls — used to test the merge of API data with tracker data.
 class _DynamicStatusServer {
@@ -540,7 +579,13 @@ class _DynamicStatusServer {
 
       if (request.method == "GET" && path == "/project") {
         await _json(request.response, [
-          {"id": "p1", "worktree": "/repo", "name": "Repo"},
+          {
+            "id": "p1",
+            "worktree": "/repo",
+            "name": "Repo",
+            "time": {"created": 0, "updated": 0},
+            "sandboxes": <String>[],
+          },
         ]);
         return;
       }
@@ -554,12 +599,14 @@ class _DynamicStatusServer {
         await _json(request.response, [
           {
             "id": "s-root",
+            "slug": "root-session",
             "projectID": "p1",
             "directory": "/repo",
             "time": {"created": 1, "updated": 2},
           },
           {
             "id": "child-1",
+            "slug": "child-1-session",
             "projectID": "p1",
             "directory": "/repo",
             "parentID": "s-root",
@@ -567,6 +614,7 @@ class _DynamicStatusServer {
           },
           {
             "id": "s-child",
+            "slug": "s-child-session",
             "projectID": "p1",
             "directory": "/repo/packages/foo",
             "time": {"created": 5, "updated": 6},
@@ -638,6 +686,7 @@ class _FakeOpenCodeServer {
   final Map<String, Map<String, dynamic>> _sessions = {
     "s-root": {
       "id": "s-root",
+      "slug": "root-session",
       "projectID": "p1",
       "directory": "/repo",
       "title": "Root Session",
@@ -646,7 +695,13 @@ class _FakeOpenCodeServer {
   };
 
   final Map<String, Map<String, dynamic>> _projects = {
-    "p1": {"id": "p1", "worktree": "/repo", "name": "Main Repo"},
+    "p1": {
+      "id": "p1",
+      "worktree": "/repo",
+      "name": "Main Repo",
+      "time": {"created": 0, "updated": 0},
+      "sandboxes": <String>[],
+    },
   };
 
   String get baseUrl => "http://${_server!.address.address}:${_server!.port}";
@@ -713,6 +768,7 @@ class _FakeOpenCodeServer {
         await _sendJson(request.response, [
           {
             "id": "s-root",
+            "slug": "root-session",
             "projectID": "p1",
             "directory": "/repo",
             "title": "Root Session",
@@ -720,6 +776,7 @@ class _FakeOpenCodeServer {
           },
           {
             "id": "s-child",
+            "slug": "child-session",
             "projectID": "p1",
             "directory": "/repo/packages/foo",
             "title": "Child Session",
@@ -754,6 +811,7 @@ class _FakeOpenCodeServer {
         const sessionId = "s-created";
         _sessions[sessionId] = {
           "id": sessionId,
+          "slug": "created-session",
           "projectID": "global",
           "directory": directory,
           "parentID": body["parentID"],
@@ -836,6 +894,7 @@ class _FakeOpenCodeServer {
         await _sendJson(request.response, [
           {
             "id": "g-1",
+            "slug": "virtual-session",
             "projectID": "global",
             "directory": "/virtual",
             "time": {"created": 100, "updated": 200},
@@ -851,11 +910,20 @@ class _FakeOpenCodeServer {
             {
               "id": "anthropic",
               "name": "Anthropic",
+              "source": "config",
+              "env": <String>[],
+              "options": <String, dynamic>{},
               "models": {
                 "claude-3-opus": {
                   "id": "claude-3-opus",
                   "providerID": "anthropic",
                   "name": "Claude 3 Opus",
+                  "api": _modelApi,
+                  "capabilities": _modelCapabilities,
+                  "cost": _modelCost,
+                  "limit": _modelLimit,
+                  "options": <String, dynamic>{},
+                  "headers": <String, dynamic>{},
                   "variants": {
                     "low": {"disabled": false},
                     "medium": {"disabled": true},
@@ -869,6 +937,12 @@ class _FakeOpenCodeServer {
                   "id": "claude-3-sonnet",
                   "providerID": "anthropic",
                   "name": "Claude 3 Sonnet",
+                  "api": _modelApi,
+                  "capabilities": _modelCapabilities,
+                  "cost": _modelCost,
+                  "limit": _modelLimit,
+                  "options": <String, dynamic>{},
+                  "headers": <String, dynamic>{},
                   "variants": {
                     "low": {"disabled": false},
                     "high": {"disabled": false},
@@ -882,6 +956,9 @@ class _FakeOpenCodeServer {
             {
               "id": "my-custom",
               "name": "My Custom Provider",
+              "source": "custom",
+              "env": <String>[],
+              "options": <String, dynamic>{},
               "models": <String, dynamic>{},
             },
           ],
@@ -897,6 +974,9 @@ class _FakeOpenCodeServer {
               "role": "user",
               "id": "m-user",
               "sessionID": "ses-1",
+              "agent": "build",
+              "model": {"providerID": "openai", "modelID": "gpt"},
+              "time": {"created": 100},
             },
             "parts": [
               {
@@ -926,8 +1006,12 @@ class _FakeOpenCodeServer {
               "role": "assistant",
               "id": "m-assistant",
               "sessionID": "ses-1",
+              "parentID": "m-user",
               "modelID": "gpt",
               "providerID": "openai",
+              "mode": "primary",
+              "agent": "build",
+              "path": {"cwd": "/repo", "root": "/repo"},
               "cost": 1.25,
               "finish": "stop",
               "tokens": {
@@ -972,6 +1056,9 @@ class _FakeOpenCodeServer {
               "role": "user",
               "id": "m-filter-user",
               "sessionID": "ses-filter",
+              "agent": "build",
+              "model": {"providerID": "openai", "modelID": "gpt"},
+              "time": {"created": 100},
             },
             "parts": [
               {
@@ -988,6 +1075,20 @@ class _FakeOpenCodeServer {
               "role": "assistant",
               "id": "m-filter",
               "sessionID": "ses-filter",
+              "parentID": "m-filter-user",
+              "modelID": "gpt",
+              "providerID": "openai",
+              "mode": "primary",
+              "agent": "build",
+              "path": {"cwd": "/repo", "root": "/repo"},
+              "cost": 0,
+              "tokens": {
+                "input": 0,
+                "output": 0,
+                "reasoning": 0,
+                "cache": {"read": 0, "write": 0},
+              },
+              "time": {"created": 123},
             },
             "parts": [
               {
@@ -1002,12 +1103,15 @@ class _FakeOpenCodeServer {
                 "sessionID": "ses-filter",
                 "messageID": "m-filter",
                 "type": "tool",
+                "callID": "call-1",
                 "tool": "bash",
                 "state": {
                   "status": "completed",
                   "title": "Run command",
+                  "input": <String, dynamic>{},
                   "output": "done",
-                  "error": null,
+                  "metadata": <String, dynamic>{},
+                  "time": {"start": 0, "end": 1},
                 },
               },
               {
@@ -1015,14 +1119,15 @@ class _FakeOpenCodeServer {
                 "sessionID": "ses-filter",
                 "messageID": "m-filter",
                 "type": "file",
-                "text": "ignored",
+                "mime": "text/plain",
+                "url": "https://example.com/file.txt",
               },
               {
                 "id": "part-snapshot",
                 "sessionID": "ses-filter",
                 "messageID": "m-filter",
                 "type": "snapshot",
-                "text": "ignored",
+                "snapshot": "snap-1",
               },
               {
                 "id": "part-reasoning",
@@ -1030,6 +1135,7 @@ class _FakeOpenCodeServer {
                 "messageID": "m-filter",
                 "type": "reasoning",
                 "text": "thinking",
+                "time": {"start": 0},
               },
             ],
           },
@@ -1044,6 +1150,9 @@ class _FakeOpenCodeServer {
               "role": "user",
               "id": "m-tool-long-user",
               "sessionID": "ses-tool-long",
+              "agent": "build",
+              "model": {"providerID": "openai", "modelID": "gpt"},
+              "time": {"created": 100},
             },
             "parts": [
               {
@@ -1060,6 +1169,20 @@ class _FakeOpenCodeServer {
               "role": "assistant",
               "id": "m-tool-long",
               "sessionID": "ses-tool-long",
+              "parentID": "m-tool-long-user",
+              "modelID": "gpt",
+              "providerID": "openai",
+              "mode": "primary",
+              "agent": "build",
+              "path": {"cwd": "/repo", "root": "/repo"},
+              "cost": 0,
+              "tokens": {
+                "input": 0,
+                "output": 0,
+                "reasoning": 0,
+                "cache": {"read": 0, "write": 0},
+              },
+              "time": {"created": 123},
             },
             "parts": [
               {
@@ -1067,12 +1190,15 @@ class _FakeOpenCodeServer {
                 "sessionID": "ses-tool-long",
                 "messageID": "m-tool-long",
                 "type": "tool",
+                "callID": "call-long",
                 "tool": "bash",
                 "state": {
                   "status": "completed",
                   "title": "Long output",
+                  "input": <String, dynamic>{},
                   "output": "x" * 1000,
-                  "error": null,
+                  "metadata": <String, dynamic>{},
+                  "time": {"start": 0, "end": 1},
                 },
               },
             ],
@@ -1088,6 +1214,9 @@ class _FakeOpenCodeServer {
               "role": "user",
               "id": "m-tool-short-user",
               "sessionID": "ses-tool-short",
+              "agent": "build",
+              "model": {"providerID": "openai", "modelID": "gpt"},
+              "time": {"created": 100},
             },
             "parts": [
               {
@@ -1104,6 +1233,20 @@ class _FakeOpenCodeServer {
               "role": "assistant",
               "id": "m-tool-short",
               "sessionID": "ses-tool-short",
+              "parentID": "m-tool-short-user",
+              "modelID": "gpt",
+              "providerID": "openai",
+              "mode": "primary",
+              "agent": "build",
+              "path": {"cwd": "/repo", "root": "/repo"},
+              "cost": 0,
+              "tokens": {
+                "input": 0,
+                "output": 0,
+                "reasoning": 0,
+                "cache": {"read": 0, "write": 0},
+              },
+              "time": {"created": 123},
             },
             "parts": [
               {
@@ -1111,12 +1254,15 @@ class _FakeOpenCodeServer {
                 "sessionID": "ses-tool-short",
                 "messageID": "m-tool-short",
                 "type": "tool",
+                "callID": "call-short",
                 "tool": "bash",
                 "state": {
                   "status": "completed",
                   "title": "Short output",
+                  "input": <String, dynamic>{},
                   "output": "short",
-                  "error": null,
+                  "metadata": <String, dynamic>{},
+                  "time": {"start": 0, "end": 1},
                 },
               },
             ],
@@ -1128,7 +1274,14 @@ class _FakeOpenCodeServer {
       if (request.method == "GET" && path == "/session/ses-new-parts-filter/message") {
         await _sendJson(request.response, [
           {
-            "info": {"role": "user", "id": "m-npf-user", "sessionID": "ses-new-parts-filter"},
+            "info": {
+              "role": "user",
+              "id": "m-npf-user",
+              "sessionID": "ses-new-parts-filter",
+              "agent": "build",
+              "model": {"providerID": "openai", "modelID": "gpt"},
+              "time": {"created": 100},
+            },
             "parts": [
               {
                 "id": "p-npf-user",
@@ -1140,10 +1293,41 @@ class _FakeOpenCodeServer {
             ],
           },
           {
-            "info": {"role": "assistant", "id": "m-npf", "sessionID": "ses-new-parts-filter"},
+            "info": {
+              "role": "assistant",
+              "id": "m-npf",
+              "sessionID": "ses-new-parts-filter",
+              "parentID": "m-npf-user",
+              "modelID": "gpt",
+              "providerID": "openai",
+              "mode": "primary",
+              "agent": "build",
+              "path": {"cwd": "/repo", "root": "/repo"},
+              "cost": 0,
+              "tokens": {
+                "input": 0,
+                "output": 0,
+                "reasoning": 0,
+                "cache": {"read": 0, "write": 0},
+              },
+              "time": {"created": 123},
+            },
             "parts": [
-              {"id": "p-patch", "sessionID": "ses-new-parts-filter", "messageID": "m-npf", "type": "patch"},
-              {"id": "p-compaction", "sessionID": "ses-new-parts-filter", "messageID": "m-npf", "type": "compaction"},
+              {
+                "id": "p-patch",
+                "sessionID": "ses-new-parts-filter",
+                "messageID": "m-npf",
+                "type": "patch",
+                "hash": "abc123",
+                "files": <String>[],
+              },
+              {
+                "id": "p-compaction",
+                "sessionID": "ses-new-parts-filter",
+                "messageID": "m-npf",
+                "type": "compaction",
+                "auto": false,
+              },
               {
                 "id": "p-text",
                 "sessionID": "ses-new-parts-filter",
@@ -1160,7 +1344,14 @@ class _FakeOpenCodeServer {
       if (request.method == "GET" && path == "/session/ses-agent-part/message") {
         await _sendJson(request.response, [
           {
-            "info": {"role": "user", "id": "m-agent-user", "sessionID": "ses-agent-part"},
+            "info": {
+              "role": "user",
+              "id": "m-agent-user",
+              "sessionID": "ses-agent-part",
+              "agent": "build",
+              "model": {"providerID": "openai", "modelID": "gpt"},
+              "time": {"created": 100},
+            },
             "parts": [
               {
                 "id": "p-agent-user",
@@ -1172,7 +1363,25 @@ class _FakeOpenCodeServer {
             ],
           },
           {
-            "info": {"role": "assistant", "id": "m-agent", "sessionID": "ses-agent-part"},
+            "info": {
+              "role": "assistant",
+              "id": "m-agent",
+              "sessionID": "ses-agent-part",
+              "parentID": "m-agent-user",
+              "modelID": "gpt",
+              "providerID": "openai",
+              "mode": "primary",
+              "agent": "build",
+              "path": {"cwd": "/repo", "root": "/repo"},
+              "cost": 0,
+              "tokens": {
+                "input": 0,
+                "output": 0,
+                "reasoning": 0,
+                "cache": {"read": 0, "write": 0},
+              },
+              "time": {"created": 123},
+            },
             "parts": [
               {
                 "id": "p-agent",
@@ -1190,7 +1399,14 @@ class _FakeOpenCodeServer {
       if (request.method == "GET" && path == "/session/ses-retry-part/message") {
         await _sendJson(request.response, [
           {
-            "info": {"role": "user", "id": "m-retry-user", "sessionID": "ses-retry-part"},
+            "info": {
+              "role": "user",
+              "id": "m-retry-user",
+              "sessionID": "ses-retry-part",
+              "agent": "build",
+              "model": {"providerID": "openai", "modelID": "gpt"},
+              "time": {"created": 100},
+            },
             "parts": [
               {
                 "id": "p-retry-user",
@@ -1202,7 +1418,25 @@ class _FakeOpenCodeServer {
             ],
           },
           {
-            "info": {"role": "assistant", "id": "m-retry", "sessionID": "ses-retry-part"},
+            "info": {
+              "role": "assistant",
+              "id": "m-retry",
+              "sessionID": "ses-retry-part",
+              "parentID": "m-retry-user",
+              "modelID": "gpt",
+              "providerID": "openai",
+              "mode": "primary",
+              "agent": "build",
+              "path": {"cwd": "/repo", "root": "/repo"},
+              "cost": 0,
+              "tokens": {
+                "input": 0,
+                "output": 0,
+                "reasoning": 0,
+                "cache": {"read": 0, "write": 0},
+              },
+              "time": {"created": 123},
+            },
             "parts": [
               {
                 "id": "p-retry",

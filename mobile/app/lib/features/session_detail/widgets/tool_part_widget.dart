@@ -17,9 +17,9 @@ class ToolPartWidget extends StatelessWidget {
     final loc = context.loc;
     final state = part.state;
     final toolName = part.state?.title ?? part.tool ?? loc.sessionDetailToolUnknown;
-    final status = state?.status ?? "pending";
-    final output = status == "completed" ? state?.output : null;
-    final errorText = status == "error" ? state?.error : null;
+    final status = state?.status ?? ToolStatus.pending;
+    final output = status == ToolStatus.completed ? state?.output : null;
+    final errorText = status == ToolStatus.error ? state?.error : null;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -80,8 +80,8 @@ class ToolPartWidget extends StatelessWidget {
     );
   }
 
-  Widget _statusIcon({required String status, required PregoDesignSystem prego}) => switch (status) {
-    "pending" || "running" => SizedBox(
+  Widget _statusIcon({required ToolStatus status, required PregoDesignSystem prego}) => switch (status) {
+    ToolStatus.pending || ToolStatus.running => SizedBox(
       width: 16,
       height: 16,
       child: CircularProgressIndicator(
@@ -89,25 +89,25 @@ class ToolPartWidget extends StatelessWidget {
         color: prego.colors.bgBrandSolid,
       ),
     ),
-    "completed" => Icon(
+    ToolStatus.completed => Icon(
       Icons.check_circle,
       size: 16,
       color: prego.colors.bgBrandSolid,
     ),
-    "error" => Icon(Icons.error, size: 16, color: prego.colors.fgErrorPrimary),
-    _ => Icon(
+    ToolStatus.error => Icon(Icons.error, size: 16, color: prego.colors.fgErrorPrimary),
+    ToolStatus.unknown => Icon(
       Icons.circle_outlined,
       size: 16,
       color: prego.colors.borderPrimary,
     ),
   };
 
-  String _statusLabel({required AppLocalizations loc, required String status}) => switch (status) {
-    "pending" => loc.sessionDetailToolPending,
-    "running" => loc.sessionDetailToolRunning,
-    "completed" => loc.sessionDetailToolCompleted,
-    "error" => loc.sessionDetailToolError,
-    _ => status,
+  String _statusLabel({required AppLocalizations loc, required ToolStatus status}) => switch (status) {
+    ToolStatus.pending => loc.sessionDetailToolPending,
+    ToolStatus.running => loc.sessionDetailToolRunning,
+    ToolStatus.completed => loc.sessionDetailToolCompleted,
+    ToolStatus.error => loc.sessionDetailToolError,
+    ToolStatus.unknown => loc.sessionDetailToolUnknown,
   };
 }
 

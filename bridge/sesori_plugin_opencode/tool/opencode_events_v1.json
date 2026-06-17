@@ -1,0 +1,277 @@
+{
+  "_comment": "Hand-curated manifest of v1 OpenCode SSE event payload shapes. Mirrors the structure of the hand-written sse_event_data.dart. Each event is an entry in `events`. Fields reference openapi.json schemas by `ref` (the schema's PascalCase class name) or use a primitive `type`. The marker interface SseSessionEventData is auto-implemented by any variant that has a field named `sessionID` with primitive string type, OR for which `session_marker: true` is set explicitly (used for events whose session context is carried through a nested payload — e.g. session.created/updated/deleted via `info`, message.updated via `info`, message.part.updated via `part`).",
+  "events": [
+    {
+      "type": "server.connected",
+      "fields": []
+    },
+    {
+      "type": "server.heartbeat",
+      "fields": []
+    },
+    {
+      "type": "server.instance.disposed",
+      "fields": [
+        { "name": "directory", "type": "string", "required": false }
+      ]
+    },
+    {
+      "type": "global.disposed",
+      "fields": []
+    },
+    {
+      "type": "session.created",
+      "session_marker": true,
+      "fields": [
+        { "name": "info", "ref": "Session" }
+      ]
+    },
+    {
+      "type": "session.updated",
+      "session_marker": true,
+      "fields": [
+        { "name": "info", "ref": "Session" }
+      ]
+    },
+    {
+      "type": "session.deleted",
+      "session_marker": true,
+      "fields": [
+        { "name": "info", "ref": "Session" }
+      ]
+    },
+    {
+      "type": "session.diff",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "diff", "ref": "SnapshotFileDiff", "list": true }
+      ]
+    },
+    {
+      "type": "session.error",
+      "fields": [
+        { "name": "sessionID", "type": "string", "required": false }
+      ]
+    },
+    {
+      "type": "session.compacted",
+      "fields": [
+        { "name": "sessionID", "type": "string" }
+      ]
+    },
+    {
+      "type": "session.status",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "status", "ref": "SessionStatus" }
+      ]
+    },
+    {
+      "type": "session.idle",
+      "deprecated": true,
+      "deprecated_message": "Use sessionStatus instead. Emitted for backward compatibility.",
+      "fields": [
+        { "name": "sessionID", "type": "string" }
+      ]
+    },
+    {
+      "type": "command.executed",
+      "fields": [
+        { "name": "name", "type": "string" },
+        { "name": "sessionID", "type": "string" },
+        { "name": "arguments", "type": "string" },
+        { "name": "messageID", "type": "string" }
+      ]
+    },
+    {
+      "type": "message.updated",
+      "session_marker": true,
+      "fields": [
+        { "name": "info", "ref": "Message" }
+      ]
+    },
+    {
+      "type": "message.removed",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "messageID", "type": "string" }
+      ]
+    },
+    {
+      "type": "message.part.updated",
+      "session_marker": true,
+      "fields": [
+        { "name": "part", "ref": "Part" }
+      ]
+    },
+    {
+      "type": "message.part.delta",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "messageID", "type": "string" },
+        { "name": "partID", "type": "string" },
+        { "name": "field", "type": "string" },
+        { "name": "delta", "type": "string" }
+      ]
+    },
+    {
+      "type": "message.part.removed",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "messageID", "type": "string" },
+        { "name": "partID", "type": "string" }
+      ]
+    },
+    {
+      "type": "pty.created",
+      "fields": []
+    },
+    {
+      "type": "pty.updated",
+      "fields": []
+    },
+    {
+      "type": "pty.exited",
+      "fields": [
+        { "name": "id", "type": "string", "required": false },
+        { "name": "exitCode", "type": "int", "required": false }
+      ]
+    },
+    {
+      "type": "pty.deleted",
+      "fields": [
+        { "name": "id", "type": "string", "required": false }
+      ]
+    },
+    {
+      "_comment": "Matches the OpenCode EventPermissionAsked payload: `id` (the permission/request id), `sessionID`, `permission` (the tool/permission identifier), and `patterns` (the requested patterns). The older `requestID`/`description` fields and string `tool` no longer exist on the wire; declaring them caused this event to be dropped as a malformed payload. Extra payload fields (`metadata`, `always`, object `tool`) are present on the wire but unused, so they are intentionally omitted here.",
+      "type": "permission.asked",
+      "fields": [
+        { "name": "id", "type": "string" },
+        { "name": "sessionID", "type": "string" },
+        { "name": "permission", "type": "string" },
+        { "name": "patterns", "type": "string", "list": true }
+      ]
+    },
+    {
+      "type": "permission.replied",
+      "fields": [
+        { "name": "requestID", "type": "string" },
+        { "name": "sessionID", "type": "string" },
+        { "name": "reply", "type": "string" }
+      ]
+    },
+    {
+      "type": "permission.updated",
+      "fields": []
+    },
+    {
+      "type": "question.asked",
+      "fields": [
+        { "name": "id", "type": "string" },
+        { "name": "sessionID", "type": "string" },
+        { "name": "questions", "ref": "QuestionInfo", "list": true }
+      ]
+    },
+    {
+      "type": "question.replied",
+      "fields": [
+        { "name": "requestID", "type": "string" },
+        { "name": "sessionID", "type": "string" }
+      ]
+    },
+    {
+      "type": "question.rejected",
+      "fields": [
+        { "name": "requestID", "type": "string" },
+        { "name": "sessionID", "type": "string" }
+      ]
+    },
+    {
+      "type": "todo.updated",
+      "fields": [
+        { "name": "sessionID", "type": "string" }
+      ]
+    },
+    {
+      "type": "project.updated",
+      "fields": []
+    },
+    {
+      "type": "vcs.branch.updated",
+      "fields": []
+    },
+    {
+      "type": "file.edited",
+      "fields": [
+        { "name": "file", "type": "string", "required": false }
+      ]
+    },
+    {
+      "type": "file.watcher.updated",
+      "fields": [
+        { "name": "file", "type": "string", "required": false },
+        { "name": "event", "type": "string", "required": false }
+      ]
+    },
+    {
+      "type": "lsp.updated",
+      "fields": []
+    },
+    {
+      "type": "lsp.client.diagnostics",
+      "fields": [
+        { "name": "serverID", "type": "string", "required": false },
+        { "name": "path", "type": "string", "required": false }
+      ]
+    },
+    {
+      "type": "mcp.tools.changed",
+      "fields": []
+    },
+    {
+      "type": "mcp.browser.open.failed",
+      "fields": []
+    },
+    {
+      "type": "installation.updated",
+      "fields": [
+        { "name": "version", "type": "string", "required": false }
+      ]
+    },
+    {
+      "type": "installation.update-available",
+      "fields": [
+        { "name": "version", "type": "string", "required": false }
+      ]
+    },
+    {
+      "type": "workspace.ready",
+      "fields": [
+        { "name": "name", "type": "string", "required": false }
+      ]
+    },
+    {
+      "type": "workspace.failed",
+      "fields": [
+        { "name": "message", "type": "string", "required": false }
+      ]
+    },
+    {
+      "type": "tui.toast.show",
+      "fields": [
+        { "name": "title", "type": "string", "required": false },
+        { "name": "message", "type": "string", "required": false },
+        { "name": "variant", "type": "string", "required": false }
+      ]
+    },
+    {
+      "type": "worktree.ready",
+      "fields": []
+    },
+    {
+      "type": "worktree.failed",
+      "fields": []
+    }
+  ]
+}

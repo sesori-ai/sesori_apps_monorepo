@@ -270,7 +270,7 @@ void main() {
             text: null,
             tool: null,
             state: PluginToolState(
-              status: "completed",
+              status: PluginToolStatus.completed,
               title: null,
               output: longOutput,
               error: null,
@@ -329,7 +329,7 @@ void main() {
             text: null,
             tool: null,
             state: PluginToolState(
-              status: "completed",
+              status: PluginToolStatus.completed,
               title: null,
               output: "short",
               error: null,

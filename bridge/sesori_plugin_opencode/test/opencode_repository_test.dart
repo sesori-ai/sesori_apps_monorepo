@@ -7,19 +7,89 @@ void main() {
     test("excludes child sessions (non-null parentID)", () async {
       final api = _FakeApi(
         sessions: [
-          const Session(id: "parent-1", projectID: "p1", directory: "/repo"),
           const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "parent-1",
+            projectID: "p1",
+            directory: "/repo",
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
+          const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
             id: "child-1",
             projectID: "p1",
             directory: "/repo",
             parentID: "parent-1",
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
           ),
-          const Session(id: "parent-2", projectID: "p1", directory: "/repo"),
           const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "parent-2",
+            projectID: "p1",
+            directory: "/repo",
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
+          const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
             id: "child-2",
             projectID: "p1",
             directory: "/repo",
             parentID: "parent-2",
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
           ),
         ],
       );
@@ -36,8 +106,48 @@ void main() {
     test("includes sessions with null parentID", () async {
       final api = _FakeApi(
         sessions: [
-          const Session(id: "s1", projectID: "p1", directory: "/repo"),
-          const Session(id: "s2", projectID: "p1", directory: "/repo"),
+          const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "s1",
+            projectID: "p1",
+            directory: "/repo",
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
+          const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "s2",
+            projectID: "p1",
+            directory: "/repo",
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
         ],
       );
       final repository = OpenCodeRepository(api);
@@ -51,15 +161,48 @@ void main() {
       final api = _FakeApi(
         globalSessions: [
           const GlobalSession(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: GlobalSessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            project: null,
             id: "g-parent",
             projectID: "global",
             directory: "/repo",
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
           ),
           const GlobalSession(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: GlobalSessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            project: null,
             id: "g-child",
             projectID: "global",
             directory: "/repo",
             parentID: "g-parent",
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
           ),
         ],
       );
@@ -75,8 +218,48 @@ void main() {
     test("filters by worktree directory", () async {
       final api = _FakeApi(
         sessions: [
-          const Session(id: "s1", projectID: "p1", directory: "/repo"),
-          const Session(id: "s2", projectID: "p1", directory: "/other"),
+          const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "s1",
+            projectID: "p1",
+            directory: "/repo",
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
+          const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "s2",
+            projectID: "p1",
+            directory: "/other",
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
         ],
       );
       final repository = OpenCodeRepository(api);
@@ -90,16 +273,46 @@ void main() {
       final api = _FakeApi(
         sessions: [
           const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
             id: "old",
             projectID: "p1",
             directory: "/repo",
-            time: SessionTime(created: 100, updated: 100),
+            time: SessionTime(created: 100, updated: 100, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
           ),
           const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
             id: "new",
             projectID: "p1",
             directory: "/repo",
-            time: SessionTime(created: 200, updated: 200),
+            time: SessionTime(created: 200, updated: 200, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
           ),
         ],
       );
@@ -112,10 +325,74 @@ void main() {
 
     test("deduplicates standard and global sessions", () async {
       final api = _FakeApi(
-        sessions: [const Session(id: "dup", projectID: "p1", directory: "/repo")],
+        sessions: [
+          const Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "dup",
+            projectID: "p1",
+            directory: "/repo",
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
+        ],
         globalSessions: [
-          const GlobalSession(id: "dup", projectID: "global", directory: "/repo"),
-          const GlobalSession(id: "unique", projectID: "global", directory: "/repo"),
+          const GlobalSession(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: GlobalSessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            project: null,
+            id: "dup",
+            projectID: "global",
+            directory: "/repo",
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
+          const GlobalSession(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: GlobalSessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            project: null,
+            id: "unique",
+            projectID: "global",
+            directory: "/repo",
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
         ],
       );
       final repository = OpenCodeRepository(api);
@@ -136,17 +413,38 @@ void main() {
       final api = _FakeApi(
         projects: [
           const Project(
+            sandboxes: <String>[],
             id: "my-project",
             worktree: "/repo",
-            time: ProjectTime(created: 1000, updated: 1000),
+            time: ProjectTime(created: 1000, updated: 1000, initialized: null),
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
           ),
         ],
         globalSessions: [
           const GlobalSession(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            project: null,
             id: "s1",
             projectID: "my-project",
             directory: "/repo",
-            time: SessionTime(created: 1500, updated: 9000),
+            time: GlobalSessionTime(created: 1500, updated: 9000, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
           ),
         ],
       );
@@ -155,9 +453,9 @@ void main() {
       final projects = await repository.getProjects();
 
       expect(projects, hasLength(1));
-      expect(projects.first.time?.updated, equals(9000));
+      expect(projects.first.time.updated, equals(9000));
       // created should be the earliest across project and sessions.
-      expect(projects.first.time?.created, equals(1000));
+      expect(projects.first.time.created, equals(1000));
     });
 
     test("merges timestamps from global sessions into matching real project", () async {
@@ -165,17 +463,38 @@ void main() {
       final api = _FakeApi(
         projects: [
           const Project(
+            sandboxes: <String>[],
             id: "my-project",
             worktree: "/repo",
-            time: ProjectTime(created: 1000, updated: 2000),
+            time: ProjectTime(created: 1000, updated: 2000, initialized: null),
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
           ),
         ],
         globalSessions: [
           const GlobalSession(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            project: null,
             id: "orphan",
             projectID: "global",
             directory: "/repo",
-            time: SessionTime(created: 500, updated: 3000),
+            time: GlobalSessionTime(created: 500, updated: 3000, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
           ),
         ],
       );
@@ -185,18 +504,23 @@ void main() {
 
       expect(projects, hasLength(1));
       // updated = max(2000, 3000)
-      expect(projects.first.time?.updated, equals(3000));
+      expect(projects.first.time.updated, equals(3000));
       // created = min(1000, 500)
-      expect(projects.first.time?.created, equals(500));
+      expect(projects.first.time.created, equals(500));
     });
 
     test("uses project's own timestamp when no sessions exist", () async {
       final api = _FakeApi(
         projects: [
           const Project(
+            sandboxes: <String>[],
             id: "my-project",
             worktree: "/repo",
-            time: ProjectTime(created: 1000, updated: 2000),
+            time: ProjectTime(created: 1000, updated: 2000, initialized: null),
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
           ),
         ],
       );
@@ -205,8 +529,8 @@ void main() {
       final projects = await repository.getProjects();
 
       expect(projects, hasLength(1));
-      expect(projects.first.time?.updated, equals(2000));
-      expect(projects.first.time?.created, equals(1000));
+      expect(projects.first.time.updated, equals(2000));
+      expect(projects.first.time.created, equals(1000));
     });
 
     test("merges timestamps from both global and real-project sessions", () async {
@@ -216,23 +540,60 @@ void main() {
       final api = _FakeApi(
         projects: [
           const Project(
+            sandboxes: <String>[],
             id: "my-project",
             worktree: "/repo",
-            time: ProjectTime(created: 1000, updated: 1000),
+            time: ProjectTime(created: 1000, updated: 1000, initialized: null),
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
           ),
         ],
         globalSessions: [
           const GlobalSession(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            project: null,
             id: "real-session",
             projectID: "my-project",
             directory: "/repo",
-            time: SessionTime(created: 2000, updated: 5000),
+            time: GlobalSessionTime(created: 2000, updated: 5000, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
           ),
           const GlobalSession(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            project: null,
             id: "orphan-session",
             projectID: "global",
             directory: "/repo",
-            time: SessionTime(created: 500, updated: 8000),
+            time: GlobalSessionTime(created: 500, updated: 8000, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
           ),
         ],
       );
@@ -242,9 +603,9 @@ void main() {
 
       expect(projects, hasLength(1));
       // updated = max(1000, 5000, 8000)
-      expect(projects.first.time?.updated, equals(8000));
+      expect(projects.first.time.updated, equals(8000));
       // created = min(1000, 2000, 500)
-      expect(projects.first.time?.created, equals(500));
+      expect(projects.first.time.created, equals(500));
     });
 
     test("creates virtual projects only from global sessions", () async {
@@ -253,17 +614,38 @@ void main() {
       final api = _FakeApi(
         projects: [
           const Project(
+            sandboxes: <String>[],
             id: "other-project",
             worktree: "/other-repo",
-            time: ProjectTime(created: 1000, updated: 1000),
+            time: ProjectTime(created: 1000, updated: 1000, initialized: null),
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
           ),
         ],
         globalSessions: [
           const GlobalSession(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            project: null,
             id: "orphan",
             projectID: "global",
             directory: "/no-git-repo",
-            time: SessionTime(created: 500, updated: 3000),
+            time: GlobalSessionTime(created: 500, updated: 3000, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
           ),
         ],
       );
@@ -275,7 +657,7 @@ void main() {
       expect(projects, hasLength(2));
       final virtual = projects.where((p) => p.worktree == "/no-git-repo");
       expect(virtual, hasLength(1));
-      expect(virtual.first.time?.updated, equals(3000));
+      expect(virtual.first.time.updated, equals(3000));
     });
 
     test("does not create virtual project for real-project sessions without matching project", () async {
@@ -286,10 +668,26 @@ void main() {
         projects: [],
         globalSessions: [
           const GlobalSession(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            project: null,
             id: "s1",
             projectID: "some-real-project",
             directory: "/repo",
-            time: SessionTime(created: 500, updated: 3000),
+            time: GlobalSessionTime(created: 500, updated: 3000, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
           ),
         ],
       );
@@ -309,17 +707,38 @@ void main() {
       final api = _FakeApi(
         projects: [
           const Project(
+            sandboxes: <String>[],
             id: "my-project",
             worktree: "/repo",
-            time: ProjectTime(created: 1000, updated: 1000),
+            time: ProjectTime(created: 1000, updated: 1000, initialized: null),
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
           ),
         ],
         globalSessions: [
           const GlobalSession(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            project: null,
             id: "sub-session",
             projectID: "my-project",
             directory: "/repo/packages/foo",
-            time: SessionTime(created: 2000, updated: 9000),
+            time: GlobalSessionTime(created: 2000, updated: 9000, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
           ),
         ],
       );
@@ -329,22 +748,32 @@ void main() {
 
       expect(projects, hasLength(1));
       // The subdirectory session's updated (9000) should be picked up.
-      expect(projects.first.time?.updated, equals(9000));
-      expect(projects.first.time?.created, equals(1000));
+      expect(projects.first.time.updated, equals(9000));
+      expect(projects.first.time.created, equals(1000));
     });
 
     test("excludes global meta-project from results", () async {
       final api = _FakeApi(
         projects: [
           const Project(
+            sandboxes: <String>[],
             id: "global",
             worktree: "/home/user",
-            time: ProjectTime(created: 1000, updated: 1000),
+            time: ProjectTime(created: 1000, updated: 1000, initialized: null),
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
           ),
           const Project(
+            sandboxes: <String>[],
             id: "my-project",
             worktree: "/repo",
-            time: ProjectTime(created: 2000, updated: 2000),
+            time: ProjectTime(created: 2000, updated: 2000, initialized: null),
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
           ),
         ],
       );
@@ -400,13 +829,25 @@ void main() {
     test("trims directory before calling api and mapping projectID", () async {
       final api = _FakeApi(
         createdSession: const Session(
+          slug: "slug",
+          version: "v",
           id: "ses-1",
           projectID: "global",
           directory: "/repo",
           parentID: null,
-          title: null,
-          time: null,
+          title: "",
+          time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
           summary: null,
+          workspaceID: null,
+          path: null,
+          cost: null,
+          tokens: null,
+          share: null,
+          agent: null,
+          model: null,
+          metadata: null,
+          permission: null,
+          revert: null,
         ),
       );
       final repository = OpenCodeRepository(api);
@@ -591,13 +1032,25 @@ class _FakeApi implements OpenCodeApi {
     lastCreateParentSessionId = parentSessionId;
     return _createdSession ??
         const Session(
+          slug: "slug",
+          version: "v",
           id: "created",
           projectID: "global",
           directory: "/repo",
           parentID: null,
-          title: null,
-          time: null,
+          title: "",
+          time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
           summary: null,
+          workspaceID: null,
+          path: null,
+          cost: null,
+          tokens: null,
+          share: null,
+          agent: null,
+          model: null,
+          metadata: null,
+          permission: null,
+          revert: null,
         );
   }
 
@@ -659,13 +1112,13 @@ class _FakeApi implements OpenCodeApi {
   Future<void> abortSession({required String sessionId, required String? directory}) async {}
 
   @override
-  Future<List<AgentInfo>> listAgents({required String directory}) async => [];
+  Future<List<Agent>> listAgents({required String directory}) async => [];
 
   @override
-  Future<List<PendingQuestion>> getPendingQuestions({required String? directory}) async => [];
+  Future<List<QuestionRequest>> getPendingQuestions({required String? directory}) async => [];
 
   @override
-  Future<List<PendingPermission>> getPendingPermissions({required String? directory}) async => [];
+  Future<List<PermissionRequest>> getPendingPermissions({required String? directory}) async => [];
 
   @override
   Future<void> replyToQuestion({
@@ -697,7 +1150,7 @@ class _FakeApi implements OpenCodeApi {
   }) async => [];
 
   @override
-  Future<List<MessageWithParts>> getMessages({
+  Future<List<SessionMessagesResponseItem>> getMessages({
     required String sessionId,
     required String? directory,
   }) async => [];
@@ -713,11 +1166,11 @@ class _FakeApi implements OpenCodeApi {
 
   @override
   Future<ProviderListResponse> listProviders() async =>
-      const ProviderListResponse(providers: [], defaults: {}, connected: []);
+      const ProviderListResponse(all: [], defaultValue: {}, connected: []);
 
   @override
-  Future<ProviderListResponse> listConfigProviders({required String? directory}) async =>
-      const ProviderListResponse(providers: [], defaults: {}, connected: []);
+  Future<ConfigProvidersResponse> listConfigProviders({required String? directory}) async =>
+      const ConfigProvidersResponse(providers: [], defaultValue: {});
 
   @override
   Future<Project> updateProject({

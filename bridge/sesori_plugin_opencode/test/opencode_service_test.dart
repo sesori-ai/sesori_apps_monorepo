@@ -1,9 +1,9 @@
 import "dart:async";
 import "dart:io" as io;
 
-import "package:opencode_plugin/opencode_plugin.dart" hide Message, MessageError, MessageErrorData, MessageWithParts;
-import "package:opencode_plugin/src/models/message.dart" as plugin_msg;
-import "package:opencode_plugin/src/models/message_with_parts.dart" as plugin;
+import "package:opencode_plugin/opencode_plugin.dart";
+import "package:opencode_plugin/src/models/openapi/assistant_message.g.dart";
+import "package:opencode_plugin/src/models/openapi/user_message.g.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show ActiveSession, ProjectActivitySummary;
 import "package:test/test.dart";
@@ -13,8 +13,26 @@ void main() {
     test("delegates to repository and returns result", () async {
       final repository = FakeOpenCodeRepository(
         projects: [
-          const Project(id: "p1", worktree: "/repo-a"),
-          const Project(id: "p2", worktree: "/repo-b"),
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            id: "p1",
+            worktree: "/repo-a",
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+          ),
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            id: "p2",
+            worktree: "/repo-b",
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+          ),
         ],
       );
       final service = OpenCodeService(repository, FakeActiveSessionTracker());
@@ -30,7 +48,7 @@ void main() {
     test("returns upstream commands alongside the synthetic compact command", () async {
       final repository = FakeOpenCodeRepository(
         commands: const [
-          PluginCommand(name: "review-work", provider: "openai", source: PluginCommandSource.skill),
+          PluginCommand(name: "review-work", model: "openai", provider: null, source: PluginCommandSource.skill),
         ],
       );
       final service = OpenCodeService(repository, FakeActiveSessionTracker());
@@ -95,10 +113,90 @@ void main() {
 
   group("OpenCodeService.getSessions", () {
     final sessions = [
-      const Session(id: "s1", projectID: "p1", directory: "/repo"),
-      const Session(id: "s2", projectID: "p1", directory: "/repo"),
-      const Session(id: "s3", projectID: "p1", directory: "/repo"),
-      const Session(id: "s4", projectID: "p1", directory: "/repo"),
+      const Session(
+        slug: "slug",
+        title: "title",
+        version: "v",
+        time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+        id: "s1",
+        projectID: "p1",
+        directory: "/repo",
+        workspaceID: null,
+        path: null,
+        parentID: null,
+        summary: null,
+        cost: null,
+        tokens: null,
+        share: null,
+        agent: null,
+        model: null,
+        metadata: null,
+        permission: null,
+        revert: null,
+      ),
+      const Session(
+        slug: "slug",
+        title: "title",
+        version: "v",
+        time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+        id: "s2",
+        projectID: "p1",
+        directory: "/repo",
+        workspaceID: null,
+        path: null,
+        parentID: null,
+        summary: null,
+        cost: null,
+        tokens: null,
+        share: null,
+        agent: null,
+        model: null,
+        metadata: null,
+        permission: null,
+        revert: null,
+      ),
+      const Session(
+        slug: "slug",
+        title: "title",
+        version: "v",
+        time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+        id: "s3",
+        projectID: "p1",
+        directory: "/repo",
+        workspaceID: null,
+        path: null,
+        parentID: null,
+        summary: null,
+        cost: null,
+        tokens: null,
+        share: null,
+        agent: null,
+        model: null,
+        metadata: null,
+        permission: null,
+        revert: null,
+      ),
+      const Session(
+        slug: "slug",
+        title: "title",
+        version: "v",
+        time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+        id: "s4",
+        projectID: "p1",
+        directory: "/repo",
+        workspaceID: null,
+        path: null,
+        parentID: null,
+        summary: null,
+        cost: null,
+        tokens: null,
+        share: null,
+        agent: null,
+        model: null,
+        metadata: null,
+        permission: null,
+        revert: null,
+      ),
     ];
 
     test("returns all sessions when no start/limit", () async {
@@ -265,7 +363,29 @@ void main() {
 
     test("resolves unknown directory via getSession, registers it, and returns question", () async {
       final repository = FakeOpenCodeRepository(
-        sessions: const [Session(id: "root", projectID: "p1", directory: "/repo")],
+        sessions: const [
+          Session(
+            id: "root",
+            projectID: "p1",
+            directory: "/repo",
+            slug: "slug",
+            title: null,
+            version: null,
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
+        ],
         pendingQuestionsByDirectory: {
           "/repo": [_question(id: "q-root", sessionId: "root")],
         },
@@ -599,7 +719,18 @@ void main() {
 
     setUp(() async {
       final repository = FakeOpenCodeRepository(
-        projects: [const Project(id: "p1", worktree: "/repo")],
+        projects: [
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            id: "p1",
+            worktree: "/repo",
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+          ),
+        ],
       );
       tracker = ActiveSessionTracker(repository);
       await tracker.coldStart();
@@ -609,7 +740,27 @@ void main() {
     test("status change with count delta returns changed=true", () {
       service.handleSseEvent(
         const SseEventData.sessionCreated(
-          info: Session(id: "s1", projectID: "p1", directory: "/repo"),
+          info: Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "s1",
+            projectID: "p1",
+            directory: "/repo",
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
         ),
         null,
       );
@@ -617,7 +768,7 @@ void main() {
       final changed = service.handleSseEvent(
         const SseEventData.sessionStatus(
           sessionID: "s1",
-          status: SessionStatus.busy(),
+          status: SessionStatusBusy(),
         ),
         null,
       );
@@ -628,14 +779,34 @@ void main() {
     test("status change without count delta returns changed=false", () {
       service.handleSseEvent(
         const SseEventData.sessionCreated(
-          info: Session(id: "s1", projectID: "p1", directory: "/repo"),
+          info: Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "s1",
+            projectID: "p1",
+            directory: "/repo",
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
         ),
         null,
       );
       service.handleSseEvent(
         const SseEventData.sessionStatus(
           sessionID: "s1",
-          status: SessionStatus.busy(),
+          status: SessionStatusBusy(),
         ),
         null,
       );
@@ -643,7 +814,7 @@ void main() {
       final changed = service.handleSseEvent(
         const SseEventData.sessionStatus(
           sessionID: "s1",
-          status: SessionStatus.busy(),
+          status: SessionStatusBusy(),
         ),
         null,
       );
@@ -662,7 +833,27 @@ void main() {
     test("session created updated and deleted events are handled", () {
       final created = service.handleSseEvent(
         const SseEventData.sessionCreated(
-          info: Session(id: "s1", projectID: "p1", directory: "/repo"),
+          info: Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "s1",
+            projectID: "p1",
+            directory: "/repo",
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
         ),
         null,
       );
@@ -670,7 +861,27 @@ void main() {
 
       final updated = service.handleSseEvent(
         const SseEventData.sessionUpdated(
-          info: Session(id: "s1", projectID: "p1", directory: "/repo/sub"),
+          info: Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "s1",
+            projectID: "p1",
+            directory: "/repo/sub",
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
         ),
         null,
       );
@@ -679,13 +890,33 @@ void main() {
       service.handleSseEvent(
         const SseEventData.sessionStatus(
           sessionID: "s1",
-          status: SessionStatus.busy(),
+          status: SessionStatusBusy(),
         ),
         null,
       );
       final deleted = service.handleSseEvent(
         const SseEventData.sessionDeleted(
-          info: Session(id: "s1", projectID: "p1", directory: "/repo/sub"),
+          info: Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "s1",
+            projectID: "p1",
+            directory: "/repo/sub",
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
         ),
         null,
       );
@@ -701,7 +932,18 @@ void main() {
       List<Session> sessions = const [],
     }) async {
       final repository = FakeOpenCodeRepository(
-        projects: [const Project(id: "p1", worktree: "/repo")],
+        projects: [
+          const Project(
+            id: "p1",
+            worktree: "/repo",
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+          ),
+        ],
         sessions: sessions,
       );
       final tracker = ActiveSessionTracker(repository);
@@ -715,12 +957,32 @@ void main() {
     test("busy status with unknown parent resolves parent and invalidates summary", () async {
       final (service, repository, emissions) = await build(
         sessions: [
-          const Session(id: "c1", projectID: "p1", directory: "/repo", parentID: "root"),
+          const Session(
+            id: "c1",
+            projectID: "p1",
+            directory: "/repo",
+            parentID: "root",
+            slug: "slug",
+            title: null,
+            version: null,
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
         ],
       );
 
       service.handleSseEvent(
-        const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatus.busy()),
+        const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatusBusy()),
         "/repo",
       );
       await pump();
@@ -743,12 +1005,32 @@ void main() {
       // missing.
       final (service, repository, emissions) = await build(
         sessions: [
-          const Session(id: "c1", projectID: "p1", directory: "/repo", parentID: "root"),
+          const Session(
+            id: "c1",
+            projectID: "p1",
+            directory: "/repo",
+            parentID: "root",
+            slug: "slug",
+            title: null,
+            version: null,
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
         ],
       );
 
       service.handleSseEvent(
-        const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatus.busy()),
+        const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatusBusy()),
         null,
       );
       await pump();
@@ -771,12 +1053,32 @@ void main() {
       // badge stays missing until a later SSE event.
       final (service, repository, emissions) = await build(
         sessions: [
-          const Session(id: "s1", projectID: "p1", directory: "/repo"),
+          const Session(
+            id: "s1",
+            projectID: "p1",
+            directory: "/repo",
+            slug: "slug",
+            title: null,
+            version: null,
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
         ],
       );
 
       service.handleSseEvent(
-        const SseEventData.sessionStatus(sessionID: "s1", status: SessionStatus.busy()),
+        const SseEventData.sessionStatus(sessionID: "s1", status: SessionStatusBusy()),
         null,
       );
       await pump();
@@ -794,18 +1096,38 @@ void main() {
     test("concurrent busy statuses for the same session trigger a single lookup", () async {
       final (service, repository, _) = await build(
         sessions: [
-          const Session(id: "c1", projectID: "p1", directory: "/repo", parentID: "root"),
+          const Session(
+            id: "c1",
+            projectID: "p1",
+            directory: "/repo",
+            parentID: "root",
+            slug: "slug",
+            title: null,
+            version: null,
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
         ],
       );
 
       // Both events are dispatched synchronously, before the first lookup
       // settles, so the in-flight dedupe must collapse them to one call.
       service.handleSseEvent(
-        const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatus.busy()),
+        const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatusBusy()),
         "/repo",
       );
       service.handleSseEvent(
-        const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatus.busy()),
+        const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatusBusy()),
         "/repo",
       );
       await pump();
@@ -818,12 +1140,32 @@ void main() {
 
       service.handleSseEvent(
         const SseEventData.sessionCreated(
-          info: Session(id: "c1", projectID: "p1", directory: "/repo", parentID: "root"),
+          info: Session(
+            id: "c1",
+            projectID: "p1",
+            directory: "/repo",
+            parentID: "root",
+            slug: "slug",
+            title: null,
+            version: null,
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
         ),
         "/repo",
       );
       service.handleSseEvent(
-        const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatus.busy()),
+        const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatusBusy()),
         "/repo",
       );
       await pump();
@@ -836,12 +1178,32 @@ void main() {
 
       service.handleSseEvent(
         const SseEventData.sessionCreated(
-          info: Session(id: "s1", projectID: "p1", directory: "/repo"),
+          info: Session(
+            id: "s1",
+            projectID: "p1",
+            directory: "/repo",
+            slug: "slug",
+            title: null,
+            version: null,
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
         ),
         "/repo",
       );
       service.handleSseEvent(
-        const SseEventData.sessionStatus(sessionID: "s1", status: SessionStatus.busy()),
+        const SseEventData.sessionStatus(sessionID: "s1", status: SessionStatusBusy()),
         "/repo",
       );
       await pump();
@@ -854,7 +1216,7 @@ void main() {
       final (service, repository, emissions) = await build();
 
       service.handleSseEvent(
-        const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatus.busy()),
+        const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatusBusy()),
         "/repo",
       );
       await pump();
@@ -864,7 +1226,7 @@ void main() {
 
       // Parent still unknown, so the next status event is allowed to retry.
       service.handleSseEvent(
-        const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatus.busy()),
+        const SseEventData.sessionStatus(sessionID: "c1", status: SessionStatusBusy()),
         "/repo",
       );
       await pump();
@@ -948,17 +1310,48 @@ void main() {
 
     test("regression: question reply without SSE echo clears awaitingInput", () async {
       final repository = FakeOpenCodeRepository(
-        projects: [const Project(id: "p1", worktree: "/repo")],
+        projects: [
+          const Project(
+            time: ProjectTime(created: 0, updated: 0, initialized: null),
+            sandboxes: <String>[],
+            vcs: null,
+            name: null,
+            icon: null,
+            commands: null,
+            id: "p1",
+            worktree: "/repo",
+          ),
+        ],
       );
       final tracker = ActiveSessionTracker(repository);
       await tracker.coldStart();
       tracker.handleEvent(
         const SseEventData.sessionCreated(
-          info: Session(id: "ses-1", projectID: "p1", directory: "/repo"),
+          info: Session(
+            slug: "slug",
+            title: "title",
+            version: "v",
+            time: SessionTime(created: 0, updated: 0, compacting: null, archived: null),
+            id: "ses-1",
+            projectID: "p1",
+            directory: "/repo",
+            workspaceID: null,
+            path: null,
+            parentID: null,
+            summary: null,
+            cost: null,
+            tokens: null,
+            share: null,
+            agent: null,
+            model: null,
+            metadata: null,
+            permission: null,
+            revert: null,
+          ),
         ),
         null,
       );
-      tracker.handleEvent(const SseEventData.sessionStatus(sessionID: "ses-1", status: SessionStatus.busy()), null);
+      tracker.handleEvent(const SseEventData.sessionStatus(sessionID: "ses-1", status: SessionStatusBusy()), null);
       tracker.handleEvent(_questionAsked("q1", "ses-1"), null);
       final service = OpenCodeService(repository, tracker);
 
@@ -1152,32 +1545,50 @@ void main() {
   });
 }
 
-plugin.MessageWithParts _msg(String role, String id) {
-  return plugin.MessageWithParts(
-    info: plugin_msg.Message(
-      role: role,
-      id: id,
-      sessionID: "ses-1",
-      parentID: null,
-      agent: null,
-      modelID: null,
-      providerID: null,
-      cost: null,
-      tokens: null,
-      time: null,
-      finish: null,
-      error: null,
-    ),
+SessionMessagesResponseItem _msg(String role, String id) {
+  return SessionMessagesResponseItem(
+    info: role == "user"
+        ? UserMessage.fromJson(<String, dynamic>{
+            "role": "user",
+            "id": id,
+            "sessionID": "ses-1",
+            "time": const {"created": 0},
+            "agent": "agent",
+            "model": const {"providerID": "p", "modelID": "m"},
+          })
+        : AssistantMessage.fromJson(<String, dynamic>{
+            "role": "assistant",
+            "id": id,
+            "sessionID": "ses-1",
+            "time": const {"created": 0},
+            "parentID": "parent",
+            "modelID": "m",
+            "providerID": "p",
+            "mode": "primary",
+            "agent": "agent",
+            "path": const {"cwd": "/repo", "root": "/repo"},
+            "cost": 0,
+            "tokens": const {
+              "input": 0,
+              "output": 0,
+              "reasoning": 0,
+              "cache": {"read": 0, "write": 0},
+            },
+          }),
     parts: const [],
   );
 }
 
-String? _messageId(plugin.MessageWithParts message) {
-  return message.info.id;
+String? _messageId(PluginMessageWithParts message) {
+  return switch (message.info) {
+    PluginMessageUser(:final id) => id,
+    PluginMessageAssistant(:final id) => id,
+    PluginMessageError(:final id) => id,
+  };
 }
 
-PendingQuestion _question({required String id, required String sessionId}) {
-  return PendingQuestion(id: id, sessionID: sessionId, questions: const []);
+QuestionRequest _question({required String id, required String sessionId}) {
+  return QuestionRequest(id: id, sessionID: sessionId, questions: const [], tool: null);
 }
 
 SseEventData _questionAsked(String id, String sessionId) {
@@ -1189,7 +1600,7 @@ SseEventData _questionAsked(String id, String sessionId) {
 }
 
 class FakeOpenCodeApi implements OpenCodeApi {
-  List<plugin.MessageWithParts> messages;
+  List<SessionMessagesResponseItem> messages;
   Object? messagesError;
   String? lastRequestedSessionId;
   String? lastRequestedDirectory;
@@ -1200,7 +1611,7 @@ class FakeOpenCodeApi implements OpenCodeApi {
   Future<bool> healthCheck() async => true;
 
   @override
-  Future<List<plugin.MessageWithParts>> getMessages({required String sessionId, required String? directory}) async {
+  Future<List<SessionMessagesResponseItem>> getMessages({required String sessionId, required String? directory}) async {
     lastRequestedSessionId = sessionId;
     lastRequestedDirectory = directory;
     if (messagesError != null) throw messagesError!;
@@ -1268,13 +1679,13 @@ class FakeOpenCodeApi implements OpenCodeApi {
   Future<void> abortSession({required String sessionId, required String? directory}) async {}
 
   @override
-  Future<List<AgentInfo>> listAgents({required String directory}) async => [];
+  Future<List<Agent>> listAgents({required String directory}) async => [];
 
   @override
-  Future<List<PendingQuestion>> getPendingQuestions({required String? directory}) async => [];
+  Future<List<QuestionRequest>> getPendingQuestions({required String? directory}) async => [];
 
   @override
-  Future<List<PendingPermission>> getPendingPermissions({required String? directory}) async => [];
+  Future<List<PermissionRequest>> getPendingPermissions({required String? directory}) async => [];
 
   @override
   Future<void> replyToQuestion({
@@ -1323,11 +1734,11 @@ class FakeOpenCodeApi implements OpenCodeApi {
 
   @override
   Future<ProviderListResponse> listProviders() async =>
-      const ProviderListResponse(providers: [], defaults: {}, connected: []);
+      const ProviderListResponse(all: [], defaultValue: {}, connected: []);
 
   @override
-  Future<ProviderListResponse> listConfigProviders({required String? directory}) async =>
-      const ProviderListResponse(providers: [], defaults: {}, connected: []);
+  Future<ConfigProvidersResponse> listConfigProviders({required String? directory}) async =>
+      const ConfigProvidersResponse(providers: [], defaultValue: {});
 
   @override
   Future<Session> forkSession({
@@ -1344,8 +1755,8 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   final List<Session> _sessions;
   final List<PluginCommand> _commands;
   final PluginSession? _createdSession;
-  final Map<String, List<PendingQuestion>> _pendingQuestionsByDirectory;
-  final Map<String, List<PendingPermission>> _pendingPermissionsByDirectory;
+  final Map<String, List<QuestionRequest>> _pendingQuestionsByDirectory;
+  final Map<String, List<PermissionRequest>> _pendingPermissionsByDirectory;
   int getProjectsCalls = 0;
   int getSessionsCalls = 0;
   String? lastWorktree;
@@ -1391,26 +1802,52 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   final List<String?> pendingQuestionDirectories = [];
   final List<String?> pendingPermissionDirectories = [];
 
-  FakeOpenCodeRepository({
+  factory FakeOpenCodeRepository({
     List<Project> projects = const [],
     List<Session> sessions = const [],
     List<PluginCommand> commands = const [],
     PluginSession? createdSession,
-    List<plugin.MessageWithParts> messages = const [],
+    List<SessionMessagesResponseItem> messages = const [],
     Object? messagesError,
+    Object? replyToQuestionError,
+    Object? rejectQuestionError,
+    Object? replyToPermissionError,
+    Map<String, List<QuestionRequest>> pendingQuestionsByDirectory = const {},
+    Map<String, List<PermissionRequest>> pendingPermissionsByDirectory = const {},
+  }) {
+    final api = FakeOpenCodeApi(messages: messages, messagesError: messagesError);
+    return FakeOpenCodeRepository._(
+      api: api,
+      projects: projects,
+      sessions: sessions,
+      commands: commands,
+      createdSession: createdSession,
+      replyToQuestionError: replyToQuestionError,
+      rejectQuestionError: rejectQuestionError,
+      replyToPermissionError: replyToPermissionError,
+      pendingQuestionsByDirectory: pendingQuestionsByDirectory,
+      pendingPermissionsByDirectory: pendingPermissionsByDirectory,
+    );
+  }
+
+  FakeOpenCodeRepository._({
+    required this.api,
+    required List<Project> projects,
+    required List<Session> sessions,
+    required List<PluginCommand> commands,
+    required PluginSession? createdSession,
     this.replyToQuestionError,
     this.rejectQuestionError,
     this.replyToPermissionError,
-    Map<String, List<PendingQuestion>> pendingQuestionsByDirectory = const {},
-    Map<String, List<PendingPermission>> pendingPermissionsByDirectory = const {},
+    required Map<String, List<QuestionRequest>> pendingQuestionsByDirectory,
+    required Map<String, List<PermissionRequest>> pendingPermissionsByDirectory,
   }) : _projects = projects,
        _sessions = sessions,
        _commands = commands,
        _createdSession = createdSession,
        _pendingQuestionsByDirectory = pendingQuestionsByDirectory,
        _pendingPermissionsByDirectory = pendingPermissionsByDirectory,
-       api = FakeOpenCodeApi(messages: messages, messagesError: messagesError),
-       super(FakeOpenCodeApi(messages: messages, messagesError: messagesError));
+       super(api);
 
   @override
   Future<List<Project>> getProjects() async {
@@ -1435,6 +1872,18 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   Future<List<PluginCommand>> getCommands({required String? projectId}) async {
     lastCommandsProjectId = projectId;
     return _commands;
+  }
+
+  @override
+  Future<List<PluginMessageWithParts>> getMessages({
+    required String sessionId,
+    required String? directory,
+  }) async {
+    final messages = await api.getMessages(
+      sessionId: sessionId,
+      directory: directory,
+    );
+    return messages.map(const PluginModelMapper(messagePartMapper: MessagePartMapper()).mapMessageWithParts).toList();
   }
 
   @override
@@ -1568,13 +2017,13 @@ class FakeOpenCodeRepository extends OpenCodeRepository {
   }
 
   @override
-  Future<List<PendingQuestion>> getPendingQuestions({required String? directory}) async {
+  Future<List<QuestionRequest>> getPendingQuestions({required String? directory}) async {
     pendingQuestionDirectories.add(directory);
     return _pendingQuestionsByDirectory[directory] ?? const [];
   }
 
   @override
-  Future<List<PendingPermission>> getPendingPermissions({required String? directory}) async {
+  Future<List<PermissionRequest>> getPendingPermissions({required String? directory}) async {
     pendingPermissionDirectories.add(directory);
     return _pendingPermissionsByDirectory[directory] ?? const [];
   }
@@ -1591,8 +2040,8 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   String? lastRegisteredDirectory;
   String? lastRegisteredParentId;
   bool registerSessionReturns = false;
-  List<PendingQuestion> populatedQuestions = const [];
-  List<PendingPermission> populatedPermissions = const [];
+  List<QuestionRequest> populatedQuestions = const [];
+  List<PermissionRequest> populatedPermissions = const [];
   final bool clearPendingQuestionFound;
   final String? clearPendingQuestionResolvedSessionId;
   final bool clearPendingQuestionChanged;
@@ -1656,12 +2105,12 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   }
 
   @override
-  void populatePendingQuestions({required List<PendingQuestion> questions}) {
+  void populatePendingQuestions({required List<QuestionRequest> questions}) {
     populatedQuestions = questions;
   }
 
   @override
-  void populatePendingPermissions({required List<PendingPermission> permissions}) {
+  void populatePendingPermissions({required List<PermissionRequest> permissions}) {
     populatedPermissions = permissions;
   }
 
