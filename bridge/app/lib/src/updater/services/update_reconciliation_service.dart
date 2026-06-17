@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:meta/meta.dart';
+import 'package:path/path.dart' as p;
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Console, Log;
 
+import '../foundation/update_lock.dart';
 import '../foundation/update_message_formatter.dart';
 import '../models/update_attempt.dart';
 import '../repositories/update_attempt_repository.dart';
@@ -18,12 +22,14 @@ class UpdateReconciliationService {
     required UpdateLogRepository logRepository,
     required UpdateInstallationRepository installationRepository,
     required UpdateMessageFormatter messageFormatter,
+    required UpdateLock updateLock,
     required String currentVersion,
     required String installRoot,
   }) : _attemptRepository = attemptRepository,
        _logRepository = logRepository,
        _installationRepository = installationRepository,
        _messageFormatter = messageFormatter,
+       _updateLock = updateLock,
        _currentVersion = currentVersion,
        _installRoot = installRoot;
 
@@ -31,6 +37,7 @@ class UpdateReconciliationService {
   final UpdateLogRepository _logRepository;
   final UpdateInstallationRepository _installationRepository;
   final UpdateMessageFormatter _messageFormatter;
+  final UpdateLock _updateLock;
   final String _currentVersion;
   final String _installRoot;
 
@@ -62,11 +69,7 @@ class UpdateReconciliationService {
       }
     }
 
-    try {
-      await _installationRepository.sweepResidue(installRoot: _installRoot);
-    } on Object catch (error) {
-      logWarning('Failed to sweep update residue: $error');
-    }
+    await _sweepResidueUnderLock();
 
     if (attempt != null) {
       try {
@@ -77,6 +80,25 @@ class UpdateReconciliationService {
     }
   }
 
+  /// Reconciliation runs before single-live-bridge enforcement, so another
+  /// bridge may be mid-apply (holding the update lock and owning the `.old`/
+  /// `.rollback` residue). Sweep only under that lock; if it is held, skip —
+  /// the applying bridge sweeps its own residue when it finishes.
+  Future<void> _sweepResidueUnderLock() async {
+    try {
+      await _updateLock.locked<void>(
+        lockFile: File(p.join(_installRoot, '.update.lock')),
+        onLockAcquired: () => _installationRepository.sweepResidue(installRoot: _installRoot),
+        onLockRejected: (_) async {
+          logWarning('Skipping update residue sweep — the update lock is held by another process.');
+        },
+        shouldReleaseLock: (_) => true,
+      );
+    } on Object catch (error) {
+      logWarning('Failed to sweep update residue: $error');
+    }
+  }
+
   Future<void> _reconcileAttempt({required UpdateAttempt attempt}) async {
     switch (attempt.status) {
       case UpdateAttemptStatus.appliedPendingActivation:
@@ -84,12 +106,11 @@ class UpdateReconciliationService {
       case UpdateAttemptStatus.inFlight:
         await _recoverInterrupted(attempt: attempt);
       case UpdateAttemptStatus.failed:
-        // Surface the prior failure even if the process died before the
-        // in-run `Console.error` was emitted, so the recovery guidance is
-        // never lost.
-        await _logRepository.log(
-          message: 'Surfacing prior failed update attempt for ${attempt.toVersion}: '
-              '${attempt.reason ?? 'unknown reason'}',
+        // Surface the prior failure even if the process died before the in-run
+        // `Console.error` was emitted, so the recovery guidance is never lost.
+        await _logBestEffort(
+          'Surfacing prior failed update attempt for ${attempt.toVersion}: '
+          '${attempt.reason ?? 'unknown reason'}',
         );
         emitError(
           _messageFormatter.failureGuidance(
@@ -102,15 +123,15 @@ class UpdateReconciliationService {
   }
 
   Future<void> _confirmActivation({required UpdateAttempt attempt}) async {
+    // `appliedPendingActivation` is only recorded after BOTH the binary and lib
+    // swap completed, so a version match here means the update truly took.
     if (_currentVersion == attempt.toVersion) {
-      await _logRepository.log(message: 'Activation confirmed: now running ${attempt.toVersion}.');
+      await _logBestEffort('Activation confirmed: now running ${attempt.toVersion}.');
       emitMessage(_messageFormatter.activated(toVersion: attempt.toVersion));
       return;
     }
 
-    await _logRepository.log(
-      message: 'Activation mismatch: expected ${attempt.toVersion} but running $_currentVersion.',
-    );
+    await _logBestEffort('Activation mismatch: expected ${attempt.toVersion} but running $_currentVersion.');
     emitError(
       _messageFormatter.failureGuidance(
         toVersion: attempt.toVersion,
@@ -121,24 +142,29 @@ class UpdateReconciliationService {
   }
 
   Future<void> _recoverInterrupted({required UpdateAttempt attempt}) async {
-    if (_currentVersion == attempt.toVersion) {
-      // The swap finished on disk before the crash; the new version is live.
-      await _logRepository.log(
-        message: 'Apply was interrupted but ${attempt.toVersion} is now active.',
-      );
-      emitMessage(_messageFormatter.activated(toVersion: attempt.toVersion));
-      return;
-    }
-
-    await _logRepository.log(
-      message: 'Apply interrupted mid-swap; recovered to $_currentVersion (target was ${attempt.toVersion}).',
+    // The apply was interrupted mid-swap. Even when the running version already
+    // matches the target, we can't prove the lib swap finished before the crash
+    // (the binary may have landed first), so we never claim a clean success
+    // from the version alone — surface it as a possibly-incomplete update.
+    await _logBestEffort(
+      'Apply of ${attempt.toVersion} was interrupted mid-swap; running $_currentVersion.',
     );
     emitError(
       _messageFormatter.failureGuidance(
         toVersion: attempt.toVersion,
-        reason: 'a previous update was interrupted before it completed',
+        reason: 'a previous update was interrupted and may be incomplete',
         logPath: _logRepository.logPath,
       ),
     );
+  }
+
+  /// Logging the reconciliation outcome must never suppress the user-facing
+  /// message that follows it (e.g. an unwritable install root).
+  Future<void> _logBestEffort(String message) async {
+    try {
+      await _logRepository.log(message: message);
+    } on Object catch (error) {
+      logWarning('Failed to write the update log: $error');
+    }
   }
 }

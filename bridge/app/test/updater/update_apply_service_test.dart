@@ -17,6 +17,7 @@ class _FakeInstallationRepository implements UpdateInstallationRepository {
   Object? applyError;
   int applyCount = 0;
   int sweepCount = 0;
+  String? recordedVersion;
 
   @override
   Future<void> applyInPlace({required String installRoot, required String stagingPath}) async {
@@ -29,6 +30,11 @@ class _FakeInstallationRepository implements UpdateInstallationRepository {
   @override
   Future<void> sweepResidue({required String installRoot}) async {
     sweepCount++;
+  }
+
+  @override
+  Future<void> recordManagedVersion({required String installRoot, required String version}) async {
+    recordedVersion = version;
   }
 }
 
@@ -143,6 +149,9 @@ void main() {
 
     expect(applied, isTrue);
     expect(installation.applyCount, 1);
+    // The managed-runtime manifest is bumped so the npm bootstrap won't clobber
+    // the freshly swapped binary.
+    expect(installation.recordedVersion, '2.0.0');
     expect(attempts.saved.first.status, UpdateAttemptStatus.inFlight);
     expect(attempts.saved.last.status, UpdateAttemptStatus.appliedPendingActivation);
     expect(attempts.saved.last.stage, UpdateStage.activated);

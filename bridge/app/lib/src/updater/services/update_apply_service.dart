@@ -67,12 +67,38 @@ class UpdateApplyService {
       lockFile: File(p.join(_installRoot, '.update.lock')),
       onLockAcquired: () => _applyLocked(release: release, stagingPath: stagingPath),
       onLockRejected: (LockAcquireResult result) async {
-        // Another bridge is applying, or we lack permission — both benign for a
-        // best-effort updater. Stays quiet in Log; reconcile/next cycle retries.
-        logWarning('Skipping in-place update to ${release.version}: ${result.name}');
+        switch (result) {
+          case LockAcquireResult.alreadyLocked:
+            // Another bridge is applying — benign; the next cycle retries.
+            logWarning('Skipping in-place update to ${release.version}: another update is in progress');
+          case LockAcquireResult.permissionDenied:
+            // A stale/root-owned `.update.lock` the user can't read or delete
+            // blocks every future update — surface it instead of silently
+            // re-downloading and warning forever.
+            await _reportLockPermissionFailure(release: release);
+          case LockAcquireResult.acquired:
+            break; // never delivered to onLockRejected
+        }
         return false;
       },
       shouldReleaseLock: (_) => true,
+    );
+  }
+
+  Future<void> _reportLockPermissionFailure({required ReleaseInfo release}) async {
+    try {
+      await _logRepository.log(
+        message: 'Update lock permission denied applying ${release.version} (check ownership of .update.lock)',
+      );
+    } on Object catch (error) {
+      logWarning('Failed to log update lock failure: $error');
+    }
+    emitError(
+      _messageFormatter.failureGuidance(
+        toVersion: release.version,
+        reason: 'the update lock could not be acquired (permission denied on .update.lock)',
+        logPath: _logRepository.logPath,
+      ),
     );
   }
 
@@ -135,6 +161,16 @@ class UpdateApplyService {
     required UpdateAttempt attempt,
     required ReleaseInfo release,
   }) async {
+    // Bump the managed-runtime manifest so the npm bootstrap sees the new
+    // version and does not clobber/downgrade the freshly swapped binary on the
+    // next `npx`. Best-effort: the swap already landed, so a manifest write
+    // failure only risks a later npm re-install, not the update itself.
+    try {
+      await _installationRepository.recordManagedVersion(installRoot: _installRoot, version: release.version);
+    } on Object catch (manifestError) {
+      logWarning('Failed to update the managed runtime manifest: $manifestError');
+    }
+
     // Best-effort: the swap already landed on disk, so even if the record write
     // fails the next launch confirms activation via the running version. The
     // success message always runs.

@@ -53,6 +53,7 @@ import "../../updater/api/archive_extractor_api.dart";
 import "../../updater/api/checksum_manifest_api.dart";
 import "../../updater/api/checksum_verifier_api.dart";
 import "../../updater/api/github_releases_api.dart";
+import "../../updater/api/managed_runtime_manifest_api.dart";
 import "../../updater/api/platform_update_api.dart";
 import "../../updater/api/update_attempt_api.dart";
 import "../../updater/api/update_cache_api.dart";
@@ -182,6 +183,7 @@ class BridgeRuntimeRunner {
         browserLauncher: openOAuthBrowser,
         browserOpenability: detectBrowserOpenability,
       ),
+      environment: environment,
       loadTokens: loadTokens,
       saveTokens: saveTokens,
       clearTokens: clearTokens,
@@ -548,12 +550,14 @@ class BridgeRuntimeRunner {
     );
     final installationRepository = UpdateInstallationRepository(
       platformUpdateApi: PlatformUpdateApi.forPlatform(processRunner: processRunner),
+      manifestApi: const ManagedRuntimeManifestApi(),
     );
+    final updateLock = UpdateLock(currentPid: io.pid, processRunner: processRunner);
     final updateApplyService = UpdateApplyService(
       installationRepository: installationRepository,
       attemptRepository: attemptRepository,
       logRepository: logRepository,
-      updateLock: UpdateLock(currentPid: io.pid, processRunner: processRunner),
+      updateLock: updateLock,
       messageFormatter: messageFormatter,
       filesystemCleaner: filesystemCleaner,
       clock: clock,
@@ -595,6 +599,7 @@ class BridgeRuntimeRunner {
       logRepository: logRepository,
       installationRepository: installationRepository,
       messageFormatter: messageFormatter,
+      updateLock: updateLock,
       currentVersion: appVersion,
       installRoot: installRoot,
     );

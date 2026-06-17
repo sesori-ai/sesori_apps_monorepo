@@ -4,6 +4,7 @@ import 'package:sesori_bridge/src/auth/login_email_api.dart';
 import 'package:sesori_bridge/src/auth/login_email_repository.dart';
 import 'package:sesori_bridge/src/auth/login_oauth_service.dart';
 import 'package:sesori_bridge/src/auth/token.dart';
+import 'package:sesori_bridge/src/bridge/foundation/legacy_post_update_relaunch.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_runtime_auth.dart';
 import 'package:sesori_shared/sesori_shared.dart';
@@ -11,6 +12,28 @@ import 'package:test/test.dart';
 
 void main() {
   group('BridgeRuntimeAuthService', () {
+    test('promptForProvider throws clear guidance when relaunched non-interactively by a legacy auto-update', () async {
+      final service = BridgeRuntimeAuthService(
+        loginEmailRepository: _FakeLoginEmailRepository(),
+        loginOAuthService: _FakeLoginOAuthService(),
+        environment: const <String, String>{sesoriPostUpdateRestartEnvVar: '1'},
+        loadTokens: () async => throw const FileSystemException('missing', 'token.json', OSError('missing', 2)),
+        saveTokens: (_) async {},
+        clearTokens: () async {},
+      );
+
+      await expectLater(
+        service.promptForProvider(),
+        throwsA(
+          isA<Exception>().having(
+            (error) => error.toString(),
+            'message',
+            contains('relaunched non-interactively after an auto-update'),
+          ),
+        ),
+      );
+    });
+
     test('OAuth login ACK is sent only after tokens are persisted', () async {
       final authBackend = await _InvalidTokenAuthBackend.start();
       addTearDown(authBackend.close);
@@ -39,6 +62,7 @@ void main() {
       final service = BridgeRuntimeAuthService(
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: oauthService,
+        environment: const <String, String>{},
         loadTokens: () async => storedTokens,
         saveTokens: (tokens) async {
           savedTokens = tokens;
@@ -66,6 +90,7 @@ void main() {
       final service = BridgeRuntimeAuthService(
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: oauthService,
+        environment: const <String, String>{},
         loadTokens: () async => storedTokens,
         saveTokens: (_) async {},
         clearTokens: () async {},
@@ -102,6 +127,7 @@ void main() {
       final service = BridgeRuntimeAuthService(
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: oauthService,
+        environment: const <String, String>{},
         loadTokens: () async => storedTokens,
         saveTokens: (tokens) async {
           savedTokens = tokens;

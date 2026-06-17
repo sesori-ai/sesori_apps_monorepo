@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io' show HttpException, SocketException;
 
+import 'package:http/http.dart' show ClientException;
 import 'package:meta/meta.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Console, Log;
@@ -109,6 +111,19 @@ class UpdateService {
     } on GitHubRateLimitException catch (error) {
       // Expected, benign for a best-effort updater — stays quiet in Log.
       logWarning(_rateLimitMessage(error));
+      return;
+    } on SocketException catch (error) {
+      // Offline / unreachable — benign; the next cycle retries.
+      logWarning('Skipping update check — network unavailable: $error');
+      return;
+    } on TimeoutException catch (error) {
+      logWarning('Skipping update check — the release check timed out: $error');
+      return;
+    } on HttpException catch (error) {
+      logWarning('Skipping update check — network error: $error');
+      return;
+    } on ClientException catch (error) {
+      logWarning('Skipping update check — network error: $error');
       return;
     } on Object catch (error, stackTrace) {
       await _reportGenuineFailure(

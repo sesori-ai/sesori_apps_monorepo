@@ -8,6 +8,7 @@ import '../../auth/login_oauth_service.dart';
 import '../../auth/profile.dart';
 import '../../auth/token.dart';
 import '../../auth/validate.dart';
+import '../foundation/legacy_post_update_relaunch.dart';
 import 'bridge_cli_options.dart';
 
 const Duration _oAuthAckTimeout = Duration(seconds: 5);
@@ -15,6 +16,7 @@ const Duration _oAuthAckTimeout = Duration(seconds: 5);
 class BridgeRuntimeAuthService {
   final LoginEmailRepository _loginEmailRepository;
   final LoginOAuthService _loginOAuthService;
+  final Map<String, String> _environment;
   final Future<TokenData> Function() _loadTokens;
   final Future<void> Function(TokenData tokens) _saveTokens;
   final Future<void> Function() _clearTokens;
@@ -22,16 +24,29 @@ class BridgeRuntimeAuthService {
   const BridgeRuntimeAuthService({
     required LoginEmailRepository loginEmailRepository,
     required LoginOAuthService loginOAuthService,
+    required Map<String, String> environment,
     required Future<TokenData> Function() loadTokens,
     required Future<void> Function(TokenData tokens) saveTokens,
     required Future<void> Function() clearTokens,
   }) : _loginEmailRepository = loginEmailRepository,
        _loginOAuthService = loginOAuthService,
+       _environment = environment,
        _loadTokens = loadTokens,
        _saveTokens = saveTokens,
        _clearTokens = clearTokens;
 
   Future<AuthProvider> promptForProvider() async {
+    if (_environment[sesoriPostUpdateRestartEnvVar] == '1') {
+      // Legacy upgrade: an old binary relaunched us (possibly non-interactively)
+      // after applying an update, and there are no usable stored tokens. Don't
+      // block on an unanswerable prompt — tell the user to start again from a
+      // terminal.
+      throw Exception(
+        'Login required, but this bridge was relaunched non-interactively after an auto-update. '
+        'Run sesori-bridge again from a terminal to log in.',
+      );
+    }
+
     while (true) {
       stdout.writeln('Select login method: [1] GitHub [2] Google [3] Apple [4] Email');
       stdout.write('Enter choice (1-4): ');

@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:sesori_bridge/src/updater/foundation/update_lock.dart';
 import 'package:sesori_bridge/src/updater/foundation/update_message_formatter.dart';
 import 'package:sesori_bridge/src/updater/models/update_attempt.dart';
 import 'package:sesori_bridge/src/updater/repositories/update_attempt_repository.dart';
@@ -43,6 +46,31 @@ class _FakeInstallationRepository implements UpdateInstallationRepository {
 
   @override
   Future<void> sweepResidue({required String installRoot}) async => sweepCount++;
+
+  @override
+  Future<void> recordManagedVersion({required String installRoot, required String version}) async {
+    throw UnimplementedError();
+  }
+}
+
+class _FakeUpdateLock implements UpdateLock {
+  LockAcquireResult outcome = LockAcquireResult.acquired;
+
+  @override
+  Future<T> locked<T>({
+    required File lockFile,
+    required Future<T> Function() onLockAcquired,
+    required Future<T> Function(LockAcquireResult result) onLockRejected,
+    required bool Function(T value) shouldReleaseLock,
+  }) {
+    if (outcome == LockAcquireResult.acquired) {
+      return onLockAcquired();
+    }
+    return onLockRejected(outcome);
+  }
+
+  @override
+  Future<bool> isProcessAlive({required int pidToCheck}) async => false;
 }
 
 UpdateAttempt _attempt({
@@ -64,6 +92,7 @@ void main() {
   late _FakeAttemptRepository attempts;
   late _FakeLogRepository logs;
   late _FakeInstallationRepository installation;
+  late _FakeUpdateLock lock;
   late List<String> infoMessages;
   late List<String> errorMessages;
 
@@ -73,6 +102,7 @@ void main() {
       logRepository: logs,
       installationRepository: installation,
       messageFormatter: const UpdateMessageFormatter(),
+      updateLock: lock,
       currentVersion: currentVersion,
       installRoot: '/tmp/install',
     );
@@ -85,6 +115,7 @@ void main() {
     attempts = _FakeAttemptRepository();
     logs = _FakeLogRepository();
     installation = _FakeInstallationRepository();
+    lock = _FakeUpdateLock();
     infoMessages = <String>[];
     errorMessages = <String>[];
   });
@@ -96,6 +127,14 @@ void main() {
     expect(infoMessages, isEmpty);
     expect(errorMessages, isEmpty);
     expect(attempts.cleared, isFalse);
+  });
+
+  test('residue sweep is skipped when the update lock is held by another process', () async {
+    lock.outcome = LockAcquireResult.alreadyLocked;
+
+    await buildService(currentVersion: '1.0.0').reconcile();
+
+    expect(installation.sweepCount, 0);
   });
 
   test('pending activation that matches the running version is confirmed', () async {
@@ -119,13 +158,15 @@ void main() {
     expect(attempts.cleared, isTrue);
   });
 
-  test('interrupted apply that actually landed is confirmed', () async {
+  test('interrupted apply is reported as possibly incomplete even when the version matches', () async {
     attempts.stored = _attempt(status: UpdateAttemptStatus.inFlight);
 
     await buildService(currentVersion: '2.0.0').reconcile();
 
-    expect(infoMessages.single, contains('Updated to 2.0.0'));
-    expect(errorMessages, isEmpty);
+    // We never claim a clean success from the version alone for an interrupted
+    // swap — the lib swap may not have finished before the crash.
+    expect(infoMessages, isEmpty);
+    expect(errorMessages.single, contains('interrupted'));
     expect(attempts.cleared, isTrue);
   });
 
