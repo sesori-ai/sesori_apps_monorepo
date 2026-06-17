@@ -24,12 +24,24 @@ extension PluginMessagePartTypeMapping on PluginMessagePartType {
   };
 }
 
+/// Maps [PluginToolStatus] to the shared [ToolStatus] with compile-time
+/// exhaustiveness — a new plugin status forces a compile error here rather than
+/// silently leaking a wire string. Unlike [PluginMessagePartType], `unknown` is
+/// a real renderable state, so it maps through instead of throwing.
+extension PluginToolStatusMapping on PluginToolStatus {
+  ToolStatus toShared() => switch (this) {
+    PluginToolStatus.pending => ToolStatus.pending,
+    PluginToolStatus.running => ToolStatus.running,
+    PluginToolStatus.completed => ToolStatus.completed,
+    PluginToolStatus.error => ToolStatus.error,
+    PluginToolStatus.unknown => ToolStatus.unknown,
+  };
+}
+
 /// Maps [PluginToolState] to the shared [ToolState].
 extension PluginToolStateMapping on PluginToolState {
   ToolState toShared() => ToolState(
-    // The shared model still carries the wire string; the [PluginToolStatus]
-    // member names match the OpenCode status values 1:1.
-    status: status.name,
+    status: status.toShared(),
     title: title,
     output: output,
     error: error,

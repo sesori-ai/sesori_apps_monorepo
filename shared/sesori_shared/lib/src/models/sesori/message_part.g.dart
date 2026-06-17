@@ -57,7 +57,11 @@ const _$MessagePartTypeEnumMap = {
 };
 
 _ToolState _$ToolStateFromJson(Map json) => _ToolState(
-  status: json['status'] as String,
+  status: $enumDecode(
+    _$ToolStatusEnumMap,
+    json['status'],
+    unknownValue: ToolStatus.unknown,
+  ),
   title: json['title'] as String?,
   output: json['output'] as String?,
   error: json['error'] as String?,
@@ -65,8 +69,16 @@ _ToolState _$ToolStateFromJson(Map json) => _ToolState(
 
 Map<String, dynamic> _$ToolStateToJson(_ToolState instance) =>
     <String, dynamic>{
-      'status': instance.status,
+      'status': _$ToolStatusEnumMap[instance.status]!,
       'title': instance.title,
       'output': instance.output,
       'error': instance.error,
     };
+
+const _$ToolStatusEnumMap = {
+  ToolStatus.pending: 'pending',
+  ToolStatus.running: 'running',
+  ToolStatus.completed: 'completed',
+  ToolStatus.error: 'error',
+  ToolStatus.unknown: 'unknown',
+};
