@@ -1,5 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v1.17.3 (8c8011336163d7e7fb24a6a4a049cdb1f6e6ee74)
+// Source: anomalyco/opencode@v1.17.7 (4ed4f749e644ffb5b279fb30b7b915e743d80142)
 
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
@@ -15,6 +15,7 @@ class Pty {
     required this.cwd,
     required this.status,
     required this.pid,
+    required this.exitCode,
   });
 
   factory Pty.fromJson(Map<String, dynamic> json) {
@@ -26,6 +27,7 @@ class Pty {
       cwd: json["cwd"] as String,
       status: PtyStatus.fromJson(json["status"] as String),
       pid: (json["pid"] as num).toInt(),
+      exitCode: (json["exitCode"] as num?)?.toInt(),
     );
   }
 
@@ -38,6 +40,7 @@ class Pty {
       "cwd": cwd,
       "status": status.toJson(),
       "pid": pid,
+      "exitCode": ?exitCode,
     };
   }
 
@@ -51,6 +54,7 @@ class Pty {
     String? cwd,
     PtyStatus? status,
     int? pid,
+    int? exitCode,
   }) {
     return Pty(
       id: id ?? this.id,
@@ -60,6 +64,7 @@ class Pty {
       cwd: cwd ?? this.cwd,
       status: status ?? this.status,
       pid: pid ?? this.pid,
+      exitCode: exitCode ?? this.exitCode,
     );
   }
 
@@ -73,10 +78,11 @@ class Pty {
           const DeepCollectionEquality().equals(other.args, args) &&
           other.cwd == cwd &&
           other.status == status &&
-          other.pid == pid);
+          other.pid == pid &&
+          other.exitCode == exitCode);
 
   @override
-  int get hashCode => Object.hash(id, title, command, const DeepCollectionEquality().hash(args), cwd, status, pid);
+  int get hashCode => Object.hash(id, title, command, const DeepCollectionEquality().hash(args), cwd, status, pid, exitCode);
 
   final String id;
   final String? title;
@@ -85,6 +91,7 @@ class Pty {
   final String cwd;
   final PtyStatus status;
   final int pid;
+  final int? exitCode;
 }
 
 enum PtyStatus {

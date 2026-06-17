@@ -4,16 +4,16 @@
 import 'package:meta/meta.dart';
 
 @immutable
-class ProviderAuthError {
-  const ProviderAuthError({
+class ContentFilterError {
+  const ContentFilterError({
     required this.name,
     required this.data,
   });
 
-  factory ProviderAuthError.fromJson(Map<String, dynamic> json) {
-    return ProviderAuthError(
+  factory ContentFilterError.fromJson(Map<String, dynamic> json) {
+    return ContentFilterError(
       name: json["name"] as String,
-      data: ProviderAuthErrorData.fromJson(json["data"] as Map<String, dynamic>),
+      data: ContentFilterErrorData.fromJson(json["data"] as Map<String, dynamic>),
     );
   }
 
@@ -26,11 +26,11 @@ class ProviderAuthError {
 
   /// Returns a copy with non-null arguments replacing existing values.
   /// Nullable fields cannot be set to null through this helper; null means keep.
-  ProviderAuthError copyWith({
+  ContentFilterError copyWith({
     String? name,
-    ProviderAuthErrorData? data,
+    ContentFilterErrorData? data,
   }) {
-    return ProviderAuthError(
+    return ContentFilterError(
       name: name ?? this.name,
       data: data ?? this.data,
     );
@@ -39,7 +39,7 @@ class ProviderAuthError {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ProviderAuthError &&
+      (other is ContentFilterError &&
           other.name == name &&
           other.data == data);
 
@@ -47,38 +47,33 @@ class ProviderAuthError {
   int get hashCode => Object.hash(name, data);
 
   final String name;
-  final ProviderAuthErrorData data;
+  final ContentFilterErrorData data;
 }
 
 @immutable
-class ProviderAuthErrorData {
-  const ProviderAuthErrorData({
-    required this.providerID,
+class ContentFilterErrorData {
+  const ContentFilterErrorData({
     required this.message,
   });
 
-  factory ProviderAuthErrorData.fromJson(Map<String, dynamic> json) {
-    return ProviderAuthErrorData(
-      providerID: json["providerID"] as String,
+  factory ContentFilterErrorData.fromJson(Map<String, dynamic> json) {
+    return ContentFilterErrorData(
       message: json["message"] as String,
     );
   }
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      "providerID": providerID,
       "message": message,
     };
   }
 
   /// Returns a copy with non-null arguments replacing existing values.
   /// Nullable fields cannot be set to null through this helper; null means keep.
-  ProviderAuthErrorData copyWith({
-    String? providerID,
+  ContentFilterErrorData copyWith({
     String? message,
   }) {
-    return ProviderAuthErrorData(
-      providerID: providerID ?? this.providerID,
+    return ContentFilterErrorData(
       message: message ?? this.message,
     );
   }
@@ -86,13 +81,11 @@ class ProviderAuthErrorData {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ProviderAuthErrorData &&
-          other.providerID == providerID &&
+      (other is ContentFilterErrorData &&
           other.message == message);
 
   @override
-  int get hashCode => Object.hash(providerID, message);
+  int get hashCode => message.hashCode;
 
-  final String providerID;
   final String message;
 }
