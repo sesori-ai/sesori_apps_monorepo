@@ -16,7 +16,7 @@ import "codex_config_reader.dart";
 
 /// One line of `~/.codex/session_index.jsonl`.
 ///
-/// Shape (observed on codex-cli 0.121.0):
+/// Shape (observed on codex-cli 0.139.0):
 /// ```jsonl
 /// {"id":"019d...","thread_name":"Plan adding new theme version","updated_at":"2026-03-05T22:15:28.679601Z"}
 /// ```
@@ -52,7 +52,7 @@ class CodexSessionIndexEntry {
 
 /// Header (`session_meta`) record from a rollout JSONL file.
 ///
-/// Shape (observed on codex-cli 0.121.0): a record with
+/// Shape (observed on codex-cli 0.139.0): a record with
 /// `{"type": "session_meta", "payload": {"id", "timestamp", "cwd", ...}}`.
 class CodexSessionMeta {
   const CodexSessionMeta({

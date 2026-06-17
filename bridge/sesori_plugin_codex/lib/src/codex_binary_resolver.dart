@@ -12,7 +12,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 /// refresh the matching SHA-256 hashes in [codexSha256Manifest] from the GitHub
 /// release's published asset digests, confirm the [codexAssetFor] filenames
 /// still match the release, and re-run the integration tests.
-const String pinnedCodexVersion = "0.132.0";
+const String pinnedCodexVersion = "0.139.0";
 
 /// SHA-256 of the platform-specific codex release archive, keyed by
 /// `${platform}-${arch}` (matching [currentCodexPlatformKey]).
@@ -20,14 +20,14 @@ const String pinnedCodexVersion = "0.132.0";
 /// **Empty values disable auto-download for that platform.** When the hash is
 /// empty, [CodexBinaryResolver] falls back to PATH lookup rather than
 /// downloading an unverified binary. The hashes below are the published asset
-/// digests for codex `rust-v0.132.0` (the GitHub release asset `digest` field,
+/// digests for codex `rust-v0.139.0` (the GitHub release asset `digest` field,
 /// verified against the downloaded archive).
 const Map<String, String> codexSha256Manifest = {
-  "darwin-arm64": "73258e01c122941c21bb8afbb81daff2ffdd8d3e803754fd411340c24257fdce",
-  "darwin-x64": "58acad9af4f3b6dbabf6a1255baeac2384310b208d8b14a8899772cc72f99ea1",
-  "linux-x64": "8b64432ee4ef5b1d7d197aad4535a276bc85223f4e4163769c0e1015cda883b2",
-  "linux-arm64": "ae80a8ffb41abfca4eba9746cd3ba90403d57b02bdbcd68455f560890ad9f440",
-  "windows-x64": "6bcd3b4051b4d05b3e07d039234d3b86b343d0b3322e36367e6ca39c3e106024",
+  "darwin-arm64": "c28344255844d83a728c084c2d9e21e168b5d217f6049d3a9a36827903f16fdb",
+  "darwin-x64": "c8b52d7588977f6cd055112faa0f3e6b9ec764473bc1be8efa44f3c8f68d14bf",
+  "linux-x64": "12ebf70df41dc831061862912ab5e7eacdd112bb17e8ce9b2098cb3d92180081",
+  "linux-arm64": "2b7407643e0e74c525d84347c9eecec4b3d275af0382142ac42216508bb0b2a2",
+  "windows-x64": "1f76f5e211e36a204883b2975b39bf3f5ad106d7b7a84d45e9a1c062983e0902",
 };
 
 /// Asset filename inside the GitHub release for a given platform key.

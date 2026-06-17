@@ -7,21 +7,18 @@ import "codex_app_server_client.dart";
 
 /// Codex methods that we surface as permission asks.
 ///
-/// These are the JSON-RPC method names codex `app-server` sends as
+/// These are the JSON-RPC method names codex `app-server` (0.139.0) sends as
 /// server-originated requests when it needs the user to allow / deny a
-/// destructive action. The bridge drives turns via the **v2** `turn/start`
-/// API, so the live names are the slash-delimited `item/.../requestApproval`
-/// strings; the legacy `applyPatchApproval`/`execCommandApproval` names are
-/// only emitted for the deprecated `sendUserTurn`/`sendUserMessage` path and
-/// are kept here so an older/alternate flow still routes.
+/// destructive action. The bridge drives turns exclusively via the **v2**
+/// `turn/start` API, so codex only ever emits the slash-delimited
+/// `item/.../requestApproval` names. The deprecated `applyPatchApproval` /
+/// `execCommandApproval` requests (emitted only on the legacy
+/// `sendUserTurn`/`sendUserMessage` path we never call) are intentionally not
+/// handled — an unexpected one returns a soft -32601 rather than routing.
 const Set<String> _permissionMethods = {
-  // v2 (turn/start) — the live path the bridge uses.
   "item/commandExecution/requestApproval",
   "item/fileChange/requestApproval",
   "item/permissions/requestApproval",
-  // legacy (sendUserTurn/sendUserMessage) — back-compat only.
-  "applyPatchApproval",
-  "execCommandApproval",
 };
 
 /// Codex methods that we surface as questions (free-form user input or
@@ -31,14 +28,6 @@ const Set<String> _questionMethods = {
   // v2 wire names.
   "item/tool/requestUserInput",
   "mcpServer/elicitation/request",
-};
-
-/// v2 command/file-change approval methods. Their response is a
-/// `{decision: accept|acceptForSession|decline|cancel}` enum
-/// (CommandExecutionApprovalDecision / FileChangeApprovalDecision).
-const Set<String> _v2DecisionMethods = {
-  "item/commandExecution/requestApproval",
-  "item/fileChange/requestApproval",
 };
 
 /// The v2 permissions-escalation method. Its response is **not** a decision —
@@ -316,10 +305,9 @@ class ApprovalRegistry {
   }
 
   /// Builds the JSON-RPC result payload for a permission reply, keyed by the
-  /// request's wire method so the v2 and legacy vocabularies stay correct:
-  ///   - v2 command/file change → `{decision: accept|acceptForSession|decline}`
-  ///   - legacy patch/exec       → `{decision: approved|approved_for_session|denied}`
-  ///   - v2 permissions request  → `{permissions: GrantedPermissionProfile, scope}`
+  /// request's wire method:
+  ///   - command/file change   → `{decision: accept|acceptForSession|decline}`
+  ///   - permissions request    → `{permissions: GrantedPermissionProfile, scope}`
   Map<String, dynamic> _permissionResponse(
     _PendingApproval entry,
     PluginPermissionReply reply,
@@ -347,22 +335,14 @@ class ApprovalRegistry {
       };
     }
 
-    if (_v2DecisionMethods.contains(entry.method)) {
-      final decision = switch (reply) {
-        PluginPermissionReply.once => "accept",
-        PluginPermissionReply.always => "acceptForSession",
-        // `decline` lets the agent continue the turn; `cancel` would also
-        // interrupt the whole turn, which is more than a single deny implies.
-        PluginPermissionReply.reject => "decline",
-      };
-      return {"decision": decision};
-    }
-
-    // Legacy ReviewDecision vocabulary (applyPatchApproval / execCommandApproval).
+    // Every remaining permission method is a v2 command/file-change approval
+    // (CommandExecutionApprovalDecision / FileChangeApprovalDecision).
     final decision = switch (reply) {
-      PluginPermissionReply.once => "approved",
-      PluginPermissionReply.always => "approved_for_session",
-      PluginPermissionReply.reject => "denied",
+      PluginPermissionReply.once => "accept",
+      PluginPermissionReply.always => "acceptForSession",
+      // `decline` lets the agent continue the turn; `cancel` would also
+      // interrupt the whole turn, which is more than a single deny implies.
+      PluginPermissionReply.reject => "decline",
     };
     return {"decision": decision};
   }
@@ -403,35 +383,29 @@ class ApprovalRegistry {
 
   String _toolHintFor(String method) {
     return switch (method) {
-      "item/fileChange/requestApproval" || "applyPatchApproval" => "patch",
-      "item/commandExecution/requestApproval" || "execCommandApproval" => "exec",
+      "item/fileChange/requestApproval" => "patch",
+      "item/commandExecution/requestApproval" => "exec",
       "item/permissions/requestApproval" => "permissions",
       _ => method,
     };
   }
 
   String _descriptionFallback(String method, Map<String, dynamic> params) {
+    // A command/exec approval carries the command to run as a single string;
+    // file-change and permission approvals carry only an explanatory `reason`
+    // (the touched files / diff arrive on the correlated `item/*`
+    // notification, not on the approval request itself).
     final command = params["command"];
-    // v2 command/exec approvals carry `command` as a single string; the legacy
-    // exec approval carries it as an argv list.
     if (command is String && command.isNotEmpty) return command;
-    if (command is List && command.isNotEmpty) return command.join(" ");
-    final fileChanges = params["fileChanges"];
-    if (fileChanges is Map && fileChanges.isNotEmpty) {
-      final files = fileChanges.keys.cast<String>().take(3).join(", ");
-      return "Apply changes to $files";
-    }
     final reason = params["reason"];
     if (reason is String && reason.isNotEmpty) return reason;
     return method;
   }
 
   String? _extractSessionId(Map<String, dynamic> params) {
-    // v2 approvals carry `threadId`; legacy approvals carry `conversationId`.
+    // v2 approvals carry the owning thread as `threadId`.
     final thread = params["threadId"];
     if (thread is String && thread.isNotEmpty) return thread;
-    final conversation = params["conversationId"];
-    if (conversation is String && conversation.isNotEmpty) return conversation;
     return null;
   }
 

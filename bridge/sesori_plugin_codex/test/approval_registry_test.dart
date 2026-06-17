@@ -247,10 +247,15 @@ void main() {
       },
     );
 
-    // --- legacy (sendUserTurn) approvals stay supported ---
+    // --- legacy (sendUserTurn) approvals are no longer supported ---
+    //
+    // The bridge drives turns exclusively via the v2 turn/start API, so codex
+    // 0.139.0 only ever emits the `item/.../requestApproval` names. The dropped
+    // legacy `execCommandApproval`/`applyPatchApproval` requests are not routed:
+    // they fall through to a soft -32601 and never surface a permission card.
 
     test(
-      "legacy execCommandApproval still maps to the v1 'approved' decision",
+      "legacy execCommandApproval is not handled (soft -32601, no card)",
       () async {
         requests.add(
           const CodexServerRequest(
@@ -266,15 +271,10 @@ void main() {
           ),
         );
         await pump();
-        final event = emitted.single as BridgeSsePermissionAsked;
-        expect(event.tool, equals("exec"));
-        expect(event.sessionID, equals("t-9"));
-
-        registry.replyPermission(event.requestID, PluginPermissionReply.once);
-        expect(
-          (respondCalls.single.result as Map)["decision"],
-          equals("approved"),
-        );
+        expect(emitted, isEmpty, reason: "no permission card for a legacy method");
+        expect(respondCalls, isEmpty);
+        expect(errorCalls.single.id, equals(120));
+        expect(errorCalls.single.code, equals(-32601));
       },
     );
 

@@ -178,6 +178,11 @@ class CodexAppServerClient {
         },
         "capabilities": {
           "experimentalApi": false,
+          // codex 0.139.0 added this capability: opting in makes codex send
+          // `attestation/generate` server-requests (for upstream
+          // `x-oai-attestation`) which the bridge does not handle. Stay opted
+          // out so codex never blocks a turn waiting on an attestation reply.
+          "requestAttestation": false,
           "optOutNotificationMethods": null,
         },
       },

@@ -368,11 +368,7 @@ class CodexPlugin implements CodexManagedApi {
     required ({String providerID, String modelID})? model,
   }) async {
     final client = await _connectedClient();
-    final params = <String, dynamic>{
-      "cwd": directory,
-      "experimentalRawEvents": false,
-      "persistExtendedHistory": false,
-    };
+    final params = <String, dynamic>{"cwd": directory};
     if (model != null) {
       params["model"] = model.modelID;
       params["modelProvider"] = model.providerID;
@@ -677,8 +673,8 @@ class CodexPlugin implements CodexManagedApi {
 
   @override
   Future<List<PluginSession>> getChildSessions(String sessionId) async {
-    // codex-cli 0.121.0's rollout headers do not record a `forked_from`
-    // field, so we have no way to reconstruct the parent→child link from
+    // codex-cli 0.139.0's rollout headers do not record a parent/`forked_from`
+    // link, so we have no way to reconstruct the parent→child relationship from
     // disk. Until codex surfaces it, return empty — the bridge contract
     // treats this as "no children known", not as an error.
     return const [];

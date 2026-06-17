@@ -15,8 +15,8 @@ String _cachedPath(String home) =>
 
 void main() {
   group("release manifest data", () {
-    test("pins codex 0.132.0", () {
-      expect(pinnedCodexVersion, equals("0.132.0"));
+    test("pins codex 0.139.0", () {
+      expect(pinnedCodexVersion, equals("0.139.0"));
     });
 
     test("every platform has a 64-char lowercase-hex sha and an asset", () {
@@ -27,12 +27,12 @@ void main() {
       }
     });
 
-    test("asset filenames match the rust-v0.132.0 release shapes", () {
+    test("asset filenames match the rust-v0.139.0 release shapes", () {
       expect(codexAssetFor["darwin-arm64"], equals("codex-aarch64-apple-darwin.tar.gz"));
       expect(codexAssetFor["darwin-x64"], equals("codex-x86_64-apple-darwin.tar.gz"));
       expect(codexAssetFor["linux-x64"], equals("codex-x86_64-unknown-linux-musl.tar.gz"));
       expect(codexAssetFor["linux-arm64"], equals("codex-aarch64-unknown-linux-musl.tar.gz"));
-      // 0.132.0 ships the Windows binary as an `.exe.zip` (member is the .exe).
+      // 0.139.0 ships the Windows binary as an `.exe.zip` (member is the .exe).
       expect(codexAssetFor["windows-x64"], equals("codex-x86_64-pc-windows-msvc.exe.zip"));
     });
   });
