@@ -15,6 +15,7 @@ class CompletionNotifier {
   final StreamController<String> _completionController = StreamController<String>.broadcast();
   final Map<String, Timer> _debounceTimers = {};
   final Set<String> _completionSentForRoots = {};
+  final Set<String> _completionBlockedByPendingInteraction = {};
   final Set<String> _pendingAbortRoots = {};
   final Set<String> _abortedRoots = {};
   final Map<String, String> _permissionRequestToSession = {};
@@ -76,11 +77,20 @@ class CompletionNotifier {
           case SessionStatusBusy():
           case SessionStatusRetry():
             _completionSentForRoots.remove(rootSessionId);
+            _completionBlockedByPendingInteraction.remove(rootSessionId);
             _pendingAbortRoots.remove(rootSessionId);
             _abortedRoots.remove(rootSessionId);
             _cancelDebounceForRoot(rootSessionId);
           case SessionStatusIdle():
-            _maybeScheduleCompletion(sessionID);
+            if (_tracker.isSessionGroupFullyIdle(rootSessionId) &&
+                _tracker.hasPendingInteraction(rootSessionId)) {
+              // The agent finished while prompts are still pending. Block
+              // completion until the user resolves all of them.
+              _completionBlockedByPendingInteraction.add(rootSessionId);
+              _cancelDebounceForRoot(rootSessionId);
+            } else {
+              _maybeScheduleCompletion(sessionID);
+            }
         }
       // Deletion clears any pending completion work for this session group.
       case SesoriSessionDeleted(:final info):
@@ -89,17 +99,36 @@ class CompletionNotifier {
         _pendingAbortRoots.remove(info.id);
         _abortedRoots.remove(info.id);
         _permissionRequestToSession.removeWhere((_, sessionId) => sessionId == info.id);
-      // User already handled the question, so cancel any pending completion ping.
+        // The deleted session may have been the last pending interaction
+        // blocking its root. Resume completion for the root if it is still
+        // reachable via the parent and now eligible. Pass the deleted sessionId
+        // so the helper can find a blocked key recorded before reparenting.
+        if (info.parentID case final parentId?) {
+          _maybeResumeBlockedCompletionForRoot(
+            // Resolve the parent to its true root: the block was recorded under
+            // the resolved root in the idle handler, but parentId may itself be
+            // a mid-level child in a deeper hierarchy. The tracker has already
+            // processed this deletion, yet the parent chain above the deleted
+            // session is intact, so resolution still reaches the real root.
+            rootSessionId: _tracker.resolveRootSessionId(parentId),
+            originalSessionId: info.id,
+          );
+        }
+        // Clean up any stale blocked key for the deleted session itself.
+        _completionBlockedByPendingInteraction.remove(info.id);
+      // User already handled the question; resume completion if this was the
+      // last blocker for an idle session group.
       case SesoriQuestionReplied(:final sessionID):
-        _cancelDebounceForSessionGroup(sessionID);
+        _maybeResumeBlockedCompletion(sessionID);
       // Rejected questions are also already seen by the user.
       case SesoriQuestionRejected(:final sessionID):
-        _cancelDebounceForSessionGroup(sessionID);
-      // Permission replies are user actions, so cancel completion debounce.
+        _maybeResumeBlockedCompletion(sessionID);
+      // Permission replies are user actions; resume completion if this was the
+      // last blocker for an idle session group.
       case SesoriPermissionReplied(:final requestID):
         final sessionId = _permissionRequestToSession.remove(requestID);
         if (sessionId != null) {
-          _cancelDebounceForSessionGroup(sessionId);
+          _maybeResumeBlockedCompletion(sessionId);
         }
       // Ignore unsupported events.
       default:
@@ -116,6 +145,7 @@ class CompletionNotifier {
     for (final sessionId in prunedRootIds) {
       _cancelDebounceForRoot(sessionId);
       _completionSentForRoots.remove(sessionId);
+      _completionBlockedByPendingInteraction.remove(sessionId);
       _pendingAbortRoots.remove(sessionId);
       _abortedRoots.remove(sessionId);
     }
@@ -134,6 +164,7 @@ class CompletionNotifier {
   void reset() {
     _cancelAllDebounceTimers();
     _completionSentForRoots.clear();
+    _completionBlockedByPendingInteraction.clear();
     _pendingAbortRoots.clear();
     _abortedRoots.clear();
     _permissionRequestToSession.clear();
@@ -145,6 +176,50 @@ class CompletionNotifier {
       timer.cancel();
     }
     _debounceTimers.clear();
+  }
+
+  /// Schedules completion for [sessionId] only if its group was previously busy,
+  /// is fully idle, has no pending interactions, and was blocked by a pending
+  /// interaction. Used after question/permission replies or session deletions
+  /// so an already-idle session can still fire completion once the last blocker
+  /// is removed.
+  void _maybeResumeBlockedCompletion(String sessionId) {
+    final rootSessionId = _tracker.resolveRootSessionId(sessionId);
+    _maybeResumeBlockedCompletionForRoot(
+      rootSessionId: rootSessionId,
+      originalSessionId: sessionId,
+    );
+  }
+
+  /// Schedules completion for [rootSessionId] only if its group was previously
+  /// busy, is fully idle, has no pending interactions, and was blocked by a
+  /// pending interaction. [originalSessionId] is checked as a fallback blocked
+  /// key for sessions that were reparented after going idle.
+  ///
+  /// [rootSessionId] must already be the resolved root (callers resolve it via
+  /// [PushSessionStateTracker.resolveRootSessionId]); the blocked key is
+  /// recorded under the resolved root, so an unresolved id would miss it.
+  void _maybeResumeBlockedCompletionForRoot({
+    required String rootSessionId,
+    required String originalSessionId,
+  }) {
+    // The blocked key may have been recorded under the original sessionId
+    // before a parent link was learned (reparenting). Find either key and
+    // remove it only when we are actually going to schedule completion.
+    final blockedKey = _completionBlockedByPendingInteraction.contains(rootSessionId)
+        ? rootSessionId
+        : _completionBlockedByPendingInteraction.contains(originalSessionId)
+            ? originalSessionId
+            : null;
+    if (blockedKey == null) {
+      return;
+    }
+    if (_tracker.wasPreviouslyBusy(rootSessionId) &&
+        _tracker.isSessionGroupFullyIdle(rootSessionId) &&
+        !_tracker.hasPendingInteraction(rootSessionId)) {
+      _completionBlockedByPendingInteraction.remove(blockedKey);
+      _maybeScheduleCompletion(rootSessionId);
+    }
   }
 
   /// Schedules (or reschedules) completion emission for [sessionId]'s root.

@@ -13,6 +13,7 @@ import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
@@ -219,6 +220,7 @@ class _RegistrationHarness {
       sessionRepository: sessionRepository,
       projectRepository: ProjectRepository(plugin: plugin, projectsDao: database.projectsDao),
       permissionRepository: PermissionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin),
       sessionPersistenceService: SessionPersistenceService(
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,

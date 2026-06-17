@@ -19,6 +19,7 @@ import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
@@ -82,7 +83,7 @@ void main() {
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(""),
-        bridgeIdProvider: FakeBridgeIdProvider(),
+      bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
@@ -109,6 +110,7 @@ void main() {
       sessionRepository: sessionRepository,
       projectRepository: projectRepository,
       permissionRepository: permissionRepository,
+      questionRepository: QuestionRepository(plugin: plugin),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -190,7 +192,7 @@ void main() {
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(""),
-        bridgeIdProvider: FakeBridgeIdProvider(),
+      bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
@@ -235,6 +237,7 @@ void main() {
       sessionRepository: sessionRepository,
       projectRepository: projectRepository,
       permissionRepository: permissionRepository,
+      questionRepository: QuestionRepository(plugin: plugin),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -331,7 +334,7 @@ void main() {
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(""),
-        bridgeIdProvider: FakeBridgeIdProvider(),
+      bridgeIdProvider: FakeBridgeIdProvider(),
     );
 
     await database.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
@@ -389,6 +392,7 @@ void main() {
       sessionRepository: sessionRepository,
       projectRepository: projectRepository,
       permissionRepository: permissionRepository,
+      questionRepository: QuestionRepository(plugin: plugin),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -487,7 +491,7 @@ void main() {
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(""),
-        bridgeIdProvider: FakeBridgeIdProvider(),
+      bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
@@ -514,6 +518,7 @@ void main() {
       sessionRepository: sessionRepository,
       projectRepository: projectRepository,
       permissionRepository: permissionRepository,
+      questionRepository: QuestionRepository(plugin: plugin),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -583,7 +588,7 @@ void main() {
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(""),
-        bridgeIdProvider: FakeBridgeIdProvider(),
+      bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
@@ -610,6 +615,7 @@ void main() {
       sessionRepository: sessionRepository,
       projectRepository: projectRepository,
       permissionRepository: permissionRepository,
+      questionRepository: QuestionRepository(plugin: plugin),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -704,7 +710,7 @@ void main() {
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
       accessTokenProvider: FakeAccessTokenProvider(""),
-        bridgeIdProvider: FakeBridgeIdProvider(),
+      bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
@@ -731,6 +737,7 @@ void main() {
       sessionRepository: sessionRepository,
       projectRepository: projectRepository,
       permissionRepository: permissionRepository,
+      questionRepository: QuestionRepository(plugin: plugin),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -1113,7 +1120,7 @@ class _SummaryPlugin implements BridgePluginApi {
   }) async {}
 
   @override
-  Future<void> rejectQuestion(String questionId) async {}
+  Future<void> rejectQuestion({required String questionId, required String? sessionId}) async {}
 
   @override
   Future<void> replyToPermission({
@@ -1261,7 +1268,7 @@ class _NoopPlugin implements BridgePluginApi {
   }) async {}
 
   @override
-  Future<void> rejectQuestion(String questionId) async {}
+  Future<void> rejectQuestion({required String questionId, required String? sessionId}) async {}
 
   @override
   Future<void> replyToPermission({

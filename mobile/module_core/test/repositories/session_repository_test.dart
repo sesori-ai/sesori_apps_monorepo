@@ -59,7 +59,9 @@ void main() {
         ],
       ),
     ).thenAnswer((_) async => ApiResponse.success(null));
-    when(() => api.rejectQuestion(requestId: "question-1")).thenAnswer((_) async => ApiResponse.success(null));
+    when(
+      () => api.rejectQuestion(requestId: "question-1", sessionId: "session-1"),
+    ).thenAnswer((_) async => ApiResponse.success(null));
     await repository.getMessages(sessionId: "session-1");
     await repository.getPendingQuestions(sessionId: "session-1");
     await repository.getPendingPermissions();
@@ -84,7 +86,7 @@ void main() {
         ReplyAnswer(values: <String>["Yes"]),
       ],
     );
-    await repository.rejectQuestion(requestId: "question-1");
+    await repository.rejectQuestion(requestId: "question-1", sessionId: "session-1");
     verify(() => api.getMessages(sessionId: "session-1")).called(1);
     verify(() => api.getPendingQuestions(sessionId: "session-1")).called(1);
     verify(api.getPendingPermissions).called(1);
@@ -113,6 +115,6 @@ void main() {
         ],
       ),
     ).called(1);
-    verify(() => api.rejectQuestion(requestId: "question-1")).called(1);
+    verify(() => api.rejectQuestion(requestId: "question-1", sessionId: "session-1")).called(1);
   });
 }

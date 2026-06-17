@@ -227,7 +227,7 @@ class _FakeBridgePlugin implements BridgePluginApi {
   }) => throw UnimplementedError();
 
   @override
-  Future<void> rejectQuestion(String questionId) => throw UnimplementedError();
+  Future<void> rejectQuestion({required String questionId, required String? sessionId}) => throw UnimplementedError();
 
   @override
   Future<void> replyToPermission({
@@ -246,8 +246,7 @@ class _FakeBridgePlugin implements BridgePluginApi {
   Future<bool> healthCheck() => throw UnimplementedError();
 
   @override
-  Future<PluginProvidersResult> getProviders({required String projectId}) =>
-      throw UnimplementedError();
+  Future<PluginProvidersResult> getProviders({required String projectId}) => throw UnimplementedError();
 
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() => throw UnimplementedError();

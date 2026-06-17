@@ -134,7 +134,7 @@ abstract class BridgePluginApi {
     required List<List<String>> answers,
   });
 
-  Future<void> rejectQuestion(String questionId);
+  Future<void> rejectQuestion({required String questionId, required String? sessionId});
 
   /// Responds to a pending permission request.
   ///

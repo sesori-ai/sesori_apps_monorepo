@@ -8,6 +8,7 @@ import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/abort_session_handler.dart";
@@ -50,6 +51,7 @@ void main() {
       final projectRepository = ProjectRepository(plugin: plugin, projectsDao: db.projectsDao);
       final providerRepository = ProviderRepository(plugin: plugin);
       final permissionRepository = PermissionRepository(plugin: plugin);
+      final questionRepository = QuestionRepository(plugin: plugin);
       final sessionPersistenceService = SessionPersistenceService(
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
@@ -103,6 +105,7 @@ void main() {
         getAgentsHandler: GetAgentsHandler(AgentRepository(plugin: plugin)),
         postAgentsHandler: PostAgentsHandler(AgentRepository(plugin: plugin)),
         permissionRepository: permissionRepository,
+        questionRepository: questionRepository,
         sessionPersistenceService: sessionPersistenceService,
         worktreeService: worktreeService,
         sessionDiffsHandler: sessionDiffsHandler,
@@ -428,7 +431,10 @@ void main() {
           sessionPersistenceService: sessionPersistenceService,
         ),
         sendPromptHandler: SendPromptHandler(
-          sessionPromptService: SessionPromptService(sessionRepository: sessionRepository, sseManager: FakeSSEManager()),
+          sessionPromptService: SessionPromptService(
+            sessionRepository: sessionRepository,
+            sseManager: FakeSSEManager(),
+          ),
         ),
         prSyncService: spyPrSyncService,
         projectRepository: projectRepository,
@@ -436,6 +442,7 @@ void main() {
         getAgentsHandler: GetAgentsHandler(AgentRepository(plugin: plugin)),
         postAgentsHandler: PostAgentsHandler(AgentRepository(plugin: plugin)),
         permissionRepository: permissionRepository,
+        questionRepository: QuestionRepository(plugin: plugin),
         sessionPersistenceService: sessionPersistenceService,
         worktreeService: worktreeService,
         sessionDiffsHandler: sessionDiffsHandler,

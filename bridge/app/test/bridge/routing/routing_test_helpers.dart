@@ -101,6 +101,7 @@ class FakeBridgePlugin implements BridgePluginApi {
   String? lastReplySessionId;
   List<List<String>>? lastReplyAnswers;
   String? lastRejectQuestionId;
+  String? lastRejectSessionId;
   String? lastGetCurrentProjectProjectId;
   String? lastReplyToPermissionRequestId;
   String? lastReplyToPermissionSessionId;
@@ -330,8 +331,9 @@ class FakeBridgePlugin implements BridgePluginApi {
   }
 
   @override
-  Future<void> rejectQuestion(String questionId) async {
+  Future<void> rejectQuestion({required String questionId, required String? sessionId}) async {
     lastRejectQuestionId = questionId;
+    lastRejectSessionId = sessionId;
   }
 
   @override
