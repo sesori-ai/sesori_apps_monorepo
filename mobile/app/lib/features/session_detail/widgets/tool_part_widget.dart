@@ -168,14 +168,17 @@ class _ToolOutputBlockState extends State<_ToolOutputBlock> {
             children: [
               Stack(
                 children: [
-                  Padding(
-                    // Reserve trailing room for the overlaid copy button.
-                    padding: const EdgeInsetsDirectional.only(end: _copyButtonReserve),
-                    child: Text(
-                      output,
-                      style: monoStyle,
-                      maxLines: _expanded ? null : _collapsedMaxLines,
-                      overflow: _expanded ? TextOverflow.clip : TextOverflow.ellipsis,
+                  SizedBox(
+                    width: double.infinity,
+                    child: Padding(
+                      // Reserve trailing room for the overlaid copy button.
+                      padding: const EdgeInsetsDirectional.only(end: _copyButtonReserve),
+                      child: Text(
+                        output,
+                        style: monoStyle,
+                        maxLines: _expanded ? null : _collapsedMaxLines,
+                        overflow: _expanded ? TextOverflow.clip : TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
                   PositionedDirectional(
