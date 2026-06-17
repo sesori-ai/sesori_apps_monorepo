@@ -22,6 +22,7 @@ class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionSe
 
 class AdaptiveSessionRouterTestHarness {
   late final MockProjectService projectService;
+  late final MockBridgeRepository bridgeRepository;
   late final MockSessionRepository sessionRepository;
   late final MockConnectionService connectionService;
   late final MockSseEventRepository sseEventRepository;
@@ -50,6 +51,7 @@ class AdaptiveSessionRouterTestHarness {
     await GetIt.instance.reset();
 
     projectService = MockProjectService();
+    bridgeRepository = MockBridgeRepository();
     sessionRepository = MockSessionRepository();
     connectionService = MockConnectionService();
     sseEventRepository = MockSseEventRepository();
@@ -71,6 +73,10 @@ class AdaptiveSessionRouterTestHarness {
     when(() => connectionService.sessionEvents(any())).thenAnswer((_) => const Stream<SesoriSessionEvent>.empty());
 
     when(() => projectService.listProjects()).thenAnswer((_) async => ApiResponse.success(const Projects(data: [])));
+
+    when(
+      () => bridgeRepository.getRegisteredBridges(),
+    ).thenAnswer((_) async => ApiResponse.success(const <BridgeSummary>[]));
 
     when(
       () => projectService.listSessions(
@@ -149,6 +155,7 @@ class AdaptiveSessionRouterTestHarness {
 
     final getIt = GetIt.instance;
     getIt.registerSingleton<ProjectService>(projectService);
+    getIt.registerSingleton<BridgeRepository>(bridgeRepository);
     getIt.registerSingleton<SessionService>(SessionService(repository: sessionRepository));
     getIt.registerSingleton<SessionRepository>(sessionRepository);
     getIt.registerSingleton<ConnectionService>(connectionService);

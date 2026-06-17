@@ -24,6 +24,7 @@ import "package:sesori_dart_core/src/capabilities/voice/voice_api.dart";
 import "package:sesori_dart_core/src/platform/deep_link_source.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/notification_canceller.dart";
+import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 
@@ -41,6 +42,8 @@ class MockProjectService extends Mock implements ProjectService {}
 class MockProjectApi extends Mock implements ProjectApi {}
 
 class MockProjectRepository extends Mock implements ProjectRepository {}
+
+class MockBridgeRepository extends Mock implements BridgeRepository {}
 
 class MockSessionApi extends Mock implements SessionApi {}
 
