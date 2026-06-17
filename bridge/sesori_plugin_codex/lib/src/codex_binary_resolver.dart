@@ -172,6 +172,28 @@ class CodexBinaryResolver {
     return _codexBinFlag;
   }
 
+  /// Read-only: true iff [resolve] would auto-download the pinned managed
+  /// binary at startup — i.e. there is no usable `--codex-bin` override and no
+  /// usable cached binary, but a checksummed release asset exists for this
+  /// platform. Availability probing uses this so a fresh install (codex absent
+  /// on PATH but downloadable) reports available without downloading here; the
+  /// actual fetch still happens in [resolve] during `start()`.
+  Future<bool> willDownloadManagedBinary() async {
+    if (await _resolveExplicit() != null) return false;
+    final cached = _cachedBinaryPath();
+    if (cached != null && _isUsableBinary(cached)) return false;
+    return _isManagedDownloadable();
+  }
+
+  /// Whether a checksummed release asset for the pinned version exists for the
+  /// current platform — the precondition [_tryDownload] needs to proceed.
+  bool _isManagedDownloadable() {
+    final key = currentCodexPlatformKey(environment: _environment);
+    if (key == null) return false;
+    final expectedSha = _manifest[key];
+    return expectedSha != null && expectedSha.isNotEmpty && codexAssetFor[key] != null;
+  }
+
   Future<String?> _resolveExplicit() async {
     // Default flag value is the bare 'codex' string — treat that as
     // "no override, do the normal resolution dance".

@@ -118,14 +118,19 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
   @override
   List<PluginOption> get options => cliOptions;
 
-  /// Confirms the codex CLI is installed and runnable before the bridge commits
-  /// to startup. This is a READ-ONLY probe: it resolves the binary without any
-  /// network/download or disk side effects (override / usable cached binary /
-  /// PATH) via [CodexBinaryResolver.probe], then runs `<codex-bin> --version`:
-  /// exit 0 within [codexVersionProbeTimeout] means available; a failed launch,
-  /// a non-zero exit, or a timeout mean unavailable. The download-capable
-  /// resolution is deferred to [start], so availability checks never mutate
-  /// disk or hit the network before startup is committed.
+  /// Confirms the codex CLI is available before the bridge commits to startup.
+  /// This is a READ-ONLY probe — it never mutates disk or hits the network:
+  ///
+  ///   1. Resolve the binary with no side effects ([CodexBinaryResolver.probe]:
+  ///      override / usable cached binary / PATH) and run `<codex-bin>
+  ///      --version`; exit 0 within [_versionProbeTimeout] means available.
+  ///   2. If that finds no runnable codex but [start]'s download-capable
+  ///      resolution *would* fetch the pinned managed binary for this platform
+  ///      ([CodexBinaryResolver.willDownloadManagedBinary]), report available
+  ///      anyway — a fresh install where codex is absent on PATH but
+  ///      downloadable must not be blocked here; the fetch happens in [start].
+  ///   3. Otherwise unavailable (failed launch, non-zero exit, or timeout with
+  ///      nothing downloadable).
   @override
   Future<PluginAvailability> checkAvailability({
     required PluginConfig config,
@@ -133,12 +138,22 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
     required Map<String, String> environment,
   }) async {
     final binFlag = config.value("codex-bin") ?? "codex";
-    final executablePath = await _probeBinary(binFlag: binFlag, environment: environment);
-    return _probeCodexBinary(
+    final resolver = _resolver(binFlag: binFlag, environment: environment);
+    final executablePath = await resolver.probe();
+    final availability = await _probeCodexBinary(
       executablePath: executablePath,
       processes: processes,
       environment: environment,
     );
+    if (availability is PluginAvailable) return availability;
+    // No runnable codex right now, but if start()'s resolve() would
+    // auto-download the pinned managed binary, the install is fine — defer the
+    // fetch to start() rather than blocking startup. Stays side-effect free.
+    if (await resolver.willDownloadManagedBinary()) {
+      Log.d("[codex] available: managed binary will be downloaded at startup");
+      return const PluginAvailable();
+    }
+    return availability;
   }
 
   CodexBinaryResolver _resolver({
@@ -158,14 +173,6 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
     required Map<String, String> environment,
   }) async {
     return _resolver(binFlag: binFlag, environment: environment).resolve();
-  }
-
-  /// Read-only resolution for the availability probe — never downloads.
-  Future<String> _probeBinary({
-    required String binFlag,
-    required Map<String, String> environment,
-  }) async {
-    return _resolver(binFlag: binFlag, environment: environment).probe();
   }
 
   /// Runs `<executablePath> --version` and classifies the outcome. Never

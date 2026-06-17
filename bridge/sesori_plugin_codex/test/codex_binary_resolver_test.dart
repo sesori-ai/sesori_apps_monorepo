@@ -160,4 +160,88 @@ void main() {
       expect(await resolver.resolve(), equals("codex"));
     });
   });
+
+  group("CodexBinaryResolver.willDownloadManagedBinary", () {
+    late Directory home;
+
+    setUp(() => home = Directory.systemTemp.createTempSync("codex-probe-"));
+    tearDown(() {
+      try {
+        home.deleteSync(recursive: true);
+      } catch (_) {}
+    });
+
+    test("true when codex is absent but the managed binary is downloadable", () async {
+      final env = {"HOME": home.path};
+      final key = currentCodexPlatformKey(environment: env);
+      if (key == null) {
+        markTestSkipped("unsupported host platform");
+        return;
+      }
+      final resolver = CodexBinaryResolver(
+        codexBinFlag: "codex",
+        environment: env,
+        sha256Manifest: {key: "a" * 64},
+        httpClient: MockClient((_) async => fail("probe must not download")),
+      );
+      // Regression guard: a read-only availability probe must report a fresh
+      // install (codex absent on PATH, but downloadable) as available so
+      // startup is not blocked before resolve() can fetch the binary.
+      expect(await resolver.willDownloadManagedBinary(), isTrue);
+    });
+
+    test("false when a usable cached binary already exists", () async {
+      final env = {"HOME": home.path};
+      final key = currentCodexPlatformKey(environment: env);
+      if (key == null) {
+        markTestSkipped("unsupported host platform");
+        return;
+      }
+      final cached = File(_cachedPath(home.path))..parent.createSync(recursive: true);
+      cached.writeAsStringSync("#!/bin/sh\n");
+      if (!Platform.isWindows) {
+        Process.runSync("chmod", ["+x", cached.path]);
+      }
+      final resolver = CodexBinaryResolver(
+        codexBinFlag: "codex",
+        environment: env,
+        sha256Manifest: {key: "a" * 64},
+        httpClient: MockClient((_) async => fail("no network")),
+      );
+      expect(await resolver.willDownloadManagedBinary(), isFalse);
+    });
+
+    test("false when an existing --codex-bin override is set", () async {
+      final env = {"HOME": home.path};
+      final key = currentCodexPlatformKey(environment: env);
+      if (key == null) {
+        markTestSkipped("unsupported host platform");
+        return;
+      }
+      final override = File(p.join(home.path, "my-codex"))..writeAsStringSync("#!/bin/sh\n");
+      final resolver = CodexBinaryResolver(
+        codexBinFlag: override.path,
+        environment: env,
+        sha256Manifest: {key: "a" * 64},
+        httpClient: MockClient((_) async => fail("no network")),
+      );
+      expect(await resolver.willDownloadManagedBinary(), isFalse);
+    });
+
+    test("false when no checksummed asset exists for the platform", () async {
+      final env = {"HOME": home.path};
+      final key = currentCodexPlatformKey(environment: env);
+      if (key == null) {
+        markTestSkipped("unsupported host platform");
+        return;
+      }
+      final resolver = CodexBinaryResolver(
+        codexBinFlag: "codex",
+        environment: env,
+        sha256Manifest: const {},
+        httpClient: MockClient((_) async => fail("no network")),
+      );
+      expect(await resolver.willDownloadManagedBinary(), isFalse);
+    });
+  });
 }
