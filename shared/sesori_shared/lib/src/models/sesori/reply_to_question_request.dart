@@ -19,6 +19,9 @@ sealed class ReplyToQuestionRequest with _$ReplyToQuestionRequest {
 sealed class RejectQuestionRequest with _$RejectQuestionRequest {
   const factory RejectQuestionRequest({
     required String requestId, // questions request id
+    // `required` so callers cannot forget to supply it, but nullable on the
+    // wire: older clients that omit it deserialize to null, and the bridge
+    // falls back to resolving the owning session from the question id.
     required String? sessionId,
   }) = _RejectQuestionRequest;
 

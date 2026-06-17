@@ -195,6 +195,10 @@ class CompletionNotifier {
   /// busy, is fully idle, has no pending interactions, and was blocked by a
   /// pending interaction. [originalSessionId] is checked as a fallback blocked
   /// key for sessions that were reparented after going idle.
+  ///
+  /// [rootSessionId] must already be the resolved root (callers resolve it via
+  /// [PushSessionStateTracker.resolveRootSessionId]); the blocked key is
+  /// recorded under the resolved root, so an unresolved id would miss it.
   void _maybeResumeBlockedCompletionForRoot({
     required String rootSessionId,
     required String originalSessionId,

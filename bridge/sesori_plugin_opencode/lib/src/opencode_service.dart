@@ -318,6 +318,11 @@ class OpenCodeService {
     required String sessionId,
     required List<List<String>> answers,
   }) async {
+    // Best-effort directory scoping: unlike reject/getPending (which fail loud
+    // with a 502 when the directory is unresolved), reply proceeds with a null
+    // directory, which OpenCode routes to its cwd instance. The rethrow-on-404
+    // guard below (gated on `directory == null`) ensures a misrouted reply never
+    // falsely clears local pending state — it surfaces the 404 to the caller.
     final directory = await _resolveSessionDirectory(sessionId: sessionId);
     try {
       await repository.replyToQuestion(
@@ -372,6 +377,9 @@ class OpenCodeService {
     required String sessionId,
     required PluginPermissionReply reply,
   }) async {
+    // Best-effort directory scoping; see replyToQuestion for why a null
+    // directory is tolerated here (rethrow-on-404 guard) while reject/getPending
+    // fail loud instead.
     final directory = await _resolveSessionDirectory(sessionId: sessionId);
     try {
       await repository.replyToPermission(
@@ -479,6 +487,11 @@ class OpenCodeService {
 
   void reset() {
     tracker.reset();
+    // Drop any in-flight parent lookups so a post-reconnect status event can
+    // re-resolve immediately instead of being suppressed by a stale entry. The
+    // orphaned lookups still settle harmlessly: their `finally` is a no-op on an
+    // already-absent key and their tracker writes target the post-reset state.
+    _parentIdLookupsInFlight.clear();
   }
 
   /// Releases the summary-invalidation stream. Called by the plugin on dispose.
