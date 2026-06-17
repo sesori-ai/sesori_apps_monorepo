@@ -50,12 +50,23 @@ class BridgeRestartService {
     return requested;
   }
 
-  /// Whether the managed binary exists and can be spawned. Checked before the
-  /// handler promises a restart, so an unspawnable bridge fails fast with an
-  /// error response instead of a dropped session.
+  /// Whether the managed binary exists and is executable, so the handler only
+  /// promises a restart it can actually deliver (an unspawnable bridge fails
+  /// fast with an error response instead of a dropped session).
   Future<bool> canSpawnSuccessor() async {
+    // Sync dart:io checks satisfy the project's `avoid_slow_async_io` lint.
+    final File file = File(_binaryPath);
+    if (!file.existsSync()) {
+      return false;
+    }
+    if (Platform.isWindows) {
+      return true;
+    }
+    // POSIX: require an execute bit so a present-but-non-executable binary
+    // fails the preflight rather than promising a restart that cannot spawn.
     try {
-      return File(_binaryPath).existsSync();
+      final int mode = file.statSync().mode;
+      return mode & 0x49 != 0; // any of owner/group/other execute (0o111)
     } on Object {
       return false;
     }

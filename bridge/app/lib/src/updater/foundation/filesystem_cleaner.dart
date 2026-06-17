@@ -9,6 +9,9 @@ class FilesystemCleaner {
   const FilesystemCleaner();
 
   Future<void> delete({required String path, required bool recursive}) async {
+    // Synchronous dart:io is used deliberately: the `avoid_slow_async_io` lint
+    // (enforced project-wide) prefers the sync variants for type/existence
+    // checks, which are faster than their async counterparts.
     try {
       final FileSystemEntityType entityType = FileSystemEntity.typeSync(path);
       switch (entityType) {

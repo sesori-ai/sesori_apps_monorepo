@@ -42,18 +42,22 @@ void main() {
     expect(readLog(tempDir.path), contains('update attempt 1.0.0 -> 2.0.0'));
   });
 
-  test('redacts tokens and authorization values', () async {
+  test('redacts github tokens, full authorization credentials, and key=value secrets', () async {
     final api = UpdateLogApi(installRoot: tempDir.path, clock: clock);
 
-    await api.append(
-      message: 'auth failed Authorization: Bearer ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123 token=secretvalue123456',
-    );
+    await api.append(message: 'using ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123 to fetch');
+    await api.append(message: 'Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.payload.signature failed');
+    await api.append(message: 'url https://x/cb?access_token=secretvalue123456&x=1');
 
     final contents = readLog(tempDir.path);
+    // No secret value of any kind survives.
     expect(contents, isNot(contains('ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123')));
+    expect(contents, isNot(contains('eyJhbGciOiJIUzI1NiJ9.payload.signature')));
     expect(contents, isNot(contains('secretvalue123456')));
+    // The whole bearer credential is redacted, not just the scheme.
     expect(contents, contains('[REDACTED_TOKEN]'));
-    expect(contents, contains('[REDACTED]'));
+    expect(contents, contains('Authorization: [REDACTED]'));
+    expect(contents, contains('access_token=[REDACTED]'));
   });
 
   test('rotates to .log.1 once the cap is exceeded', () async {

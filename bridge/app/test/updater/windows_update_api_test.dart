@@ -60,6 +60,22 @@ void main() {
     expect(File(p.join(installRoot, '.lib.old', 'b.dll')).readAsStringSync(), 'OLD-B');
   });
 
+  test('swaps lib files inside subdirectories per-file (never renaming a directory)', () async {
+    writeFile(p.join(installRoot, 'bin', 'sesori-bridge.exe'), 'OLD-BINARY');
+    writeFile(p.join(installRoot, 'lib', 'plugins', 'p.dll'), 'OLD-P');
+    writeFile(p.join(stagingPath, 'bin', 'sesori-bridge.exe'), 'NEW-BINARY');
+    writeFile(p.join(stagingPath, 'lib', 'plugins', 'p.dll'), 'NEW-P');
+    writeFile(p.join(stagingPath, 'lib', 'a.dll'), 'NEW-A');
+    const api = WindowsUpdateApi();
+
+    await api.applyInPlace(installRoot: installRoot, stagingPath: stagingPath);
+
+    expect(File(p.join(installRoot, 'lib', 'plugins', 'p.dll')).readAsStringSync(), 'NEW-P');
+    expect(File(p.join(installRoot, 'lib', 'a.dll')).readAsStringSync(), 'NEW-A');
+    // The displaced nested original is preserved at its relative path.
+    expect(File(p.join(installRoot, '.lib.old', 'plugins', 'p.dll')).readAsStringSync(), 'OLD-P');
+  });
+
   test('applyInPlace throws and leaves the install intact when the payload is missing', () async {
     seedInstall();
     const api = WindowsUpdateApi();

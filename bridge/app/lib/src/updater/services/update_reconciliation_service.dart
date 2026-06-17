@@ -43,6 +43,9 @@ class UpdateReconciliationService {
   @visibleForTesting
   void Function(String message) logWarning = Log.w;
 
+  /// Reconciliation is best-effort startup maintenance: every step is isolated
+  /// so a single I/O failure (e.g. a full disk while logging) can neither abort
+  /// the remaining cleanup nor hard-fail bridge startup.
   Future<void> reconcile() async {
     UpdateAttempt? attempt;
     try {
@@ -52,13 +55,25 @@ class UpdateReconciliationService {
     }
 
     if (attempt != null) {
-      await _reconcileAttempt(attempt: attempt);
+      try {
+        await _reconcileAttempt(attempt: attempt);
+      } on Object catch (error) {
+        logWarning('Failed to reconcile the update attempt: $error');
+      }
     }
 
-    await _installationRepository.sweepResidue(installRoot: _installRoot);
+    try {
+      await _installationRepository.sweepResidue(installRoot: _installRoot);
+    } on Object catch (error) {
+      logWarning('Failed to sweep update residue: $error');
+    }
 
     if (attempt != null) {
-      await _attemptRepository.clearAttempt();
+      try {
+        await _attemptRepository.clearAttempt();
+      } on Object catch (error) {
+        logWarning('Failed to clear the update attempt record: $error');
+      }
     }
   }
 
@@ -69,10 +84,19 @@ class UpdateReconciliationService {
       case UpdateAttemptStatus.inFlight:
         await _recoverInterrupted(attempt: attempt);
       case UpdateAttemptStatus.failed:
-        // The failure was already surfaced when it happened; just record the
-        // cleanup so the durable log keeps a continuous trail.
+        // Surface the prior failure even if the process died before the
+        // in-run `Console.error` was emitted, so the recovery guidance is
+        // never lost.
         await _logRepository.log(
-          message: 'Clearing prior failed attempt for ${attempt.toVersion}: ${attempt.reason ?? 'unknown reason'}',
+          message: 'Surfacing prior failed update attempt for ${attempt.toVersion}: '
+              '${attempt.reason ?? 'unknown reason'}',
+        );
+        emitError(
+          _messageFormatter.failureGuidance(
+            toVersion: attempt.toVersion,
+            reason: attempt.reason ?? 'a previous update failed',
+            logPath: _logRepository.logPath,
+          ),
         );
     }
   }

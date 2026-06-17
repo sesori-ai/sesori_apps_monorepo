@@ -50,6 +50,7 @@ class UpdateLogApi {
   }
 
   Future<void> _appendRaw(String text) async {
+    // Sync existence checks satisfy the project's `avoid_slow_async_io` lint.
     final Directory dir = Directory(installRoot);
     if (!dir.existsSync()) {
       await dir.create(recursive: true);
@@ -78,21 +79,35 @@ class UpdateLogApi {
 
   String _timestamp() => clock.now().toUtc().toIso8601String();
 
-  /// Strips secrets so they never persist: GitHub tokens and the value side of
-  /// any `authorization`/`bearer`/`token`/`access_token` pairing.
+  /// Strips secrets so they never persist: GitHub tokens, the entire credential
+  /// after an `Authorization:` header (scheme included), a `Bearer`/`token`
+  /// scheme followed by its value, and `token=`/`access_token=`/`api_key=`
+  /// query-style pairs.
   String _redact(String message) {
-    return message
+    var out = message
         .replaceAll(RegExp('gh[opusr]_[A-Za-z0-9]{20,}'), '[REDACTED_TOKEN]')
-        .replaceAll(RegExp('github_pat_[A-Za-z0-9_]{20,}'), '[REDACTED_TOKEN]')
-        .replaceAllMapped(
-          RegExp(
-            r'(?<key>authorization|bearer|token|access_token|api_key)(?<sep>["\s:=]+)(?<val>[^\s"&]+)',
-            caseSensitive: false,
-          ),
-          (Match match) {
-            final RegExpMatch m = match as RegExpMatch;
-            return '${m.namedGroup('key')}${m.namedGroup('sep')}[REDACTED]';
-          },
-        );
+        .replaceAll(RegExp('github_pat_[A-Za-z0-9_]{20,}'), '[REDACTED_TOKEN]');
+
+    // Authorization headers: redact the whole credential (scheme + token), not
+    // just the scheme. Consumes up to two following tokens (e.g. "Bearer xyz").
+    out = out.replaceAllMapped(
+      RegExp(r'(?<key>authorization)\s*[:=]\s*\S+(?:\s+\S+)?', caseSensitive: false),
+      (Match m) => '${(m as RegExpMatch).namedGroup('key')}: [REDACTED]',
+    );
+
+    // Standalone scheme + credential (e.g. a bearer/token value not behind an
+    // Authorization header).
+    out = out.replaceAllMapped(
+      RegExp(r'\b(?<scheme>bearer|token)\s+\S+', caseSensitive: false),
+      (Match m) => '${(m as RegExpMatch).namedGroup('scheme')} [REDACTED]',
+    );
+
+    // key=value secrets in URLs/query strings.
+    out = out.replaceAllMapped(
+      RegExp(r'(?<key>access_token|api_key|token)\s*=\s*[^\s"&]+', caseSensitive: false),
+      (Match m) => '${(m as RegExpMatch).namedGroup('key')}=[REDACTED]',
+    );
+
+    return out;
   }
 }

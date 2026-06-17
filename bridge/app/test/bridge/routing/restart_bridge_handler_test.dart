@@ -76,6 +76,9 @@ void main() {
   test('replies {restarting:true} and flags the restart when spawnable', () async {
     final binaryPath = p.join(tempDir.path, 'sesori-bridge');
     File(binaryPath).writeAsStringSync('binary');
+    if (!Platform.isWindows) {
+      await Process.run('chmod', ['+x', binaryPath]);
+    }
     final service = buildService(binaryPath: binaryPath);
     final handler = RestartBridgeHandler(restartService: service);
 

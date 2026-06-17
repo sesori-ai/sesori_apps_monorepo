@@ -123,17 +123,42 @@ class UpdateService {
       return;
     }
 
-    final staged = await _updateInstallService.stageUpdate(
-      release: release,
-      installRoot: _installRoot,
-    );
-    final stagingPath = staged.stagingPath;
-    if (staged.result != UpdateResult.success || stagingPath == null) {
-      await _reportStageFailure(release: release, result: staged.result);
-      return;
-    }
+    // Stage + apply can throw (unexpected stage error, lock/log/attempt write
+    // failure). Catch here so a thrown failure is still surfaced to the user
+    // and the durable log rather than vanishing into the stream's onError.
+    try {
+      final staged = await _updateInstallService.stageUpdate(
+        release: release,
+        installRoot: _installRoot,
+      );
+      final stagingPath = staged.stagingPath;
+      if (staged.result != UpdateResult.success || stagingPath == null) {
+        await _reportStageFailure(release: release, result: staged.result);
+        return;
+      }
 
-    await _updateApplyService.apply(release: release, stagingPath: stagingPath);
+      final applied = await _updateApplyService.apply(release: release, stagingPath: stagingPath);
+      if (applied) {
+        // The release is now staged for activation on the next launch. This
+        // process still reports the old appVersion, so left running it would
+        // keep "finding" and re-applying the same release every interval —
+        // stop the cycle until a restart.
+        _stopPolling();
+      }
+    } on Object catch (error, stackTrace) {
+      await _reportGenuineFailure(
+        toVersion: release.version,
+        reason: error.toString(),
+        logDetail: 'Applying update to ${release.version} failed: $error\n$stackTrace',
+      );
+    }
+  }
+
+  void _stopPolling() {
+    final subscription = _subscription;
+    _subscription = null;
+    // Defer so we never cancel the subscription from within its own event.
+    scheduleMicrotask(() => subscription?.cancel());
   }
 
   Future<void> _reportStageFailure({required ReleaseInfo release, required UpdateResult result}) async {
@@ -159,7 +184,14 @@ class UpdateService {
     required String reason,
     required String logDetail,
   }) async {
-    await _logRepository.log(message: logDetail);
+    // The durable log is best-effort: a failed write (e.g. an unwritable
+    // install root — exactly the failure we may be reporting) must never
+    // suppress the user-facing guidance.
+    try {
+      await _logRepository.log(message: logDetail);
+    } on Object catch (error, stackTrace) {
+      logError('Failed to persist update failure log', error, stackTrace);
+    }
     emitError(
       _messageFormatter.failureGuidance(
         toVersion: toVersion,

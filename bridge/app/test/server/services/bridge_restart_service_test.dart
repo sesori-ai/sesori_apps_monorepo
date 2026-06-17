@@ -81,12 +81,25 @@ void main() {
     expect(service.consumeRestartRequest(), isFalse);
   });
 
-  test('canSpawnSuccessor reflects whether the binary exists', () async {
+  test('canSpawnSuccessor reflects whether the binary exists and is executable', () async {
     final existing = p.join(tempDir.path, 'sesori-bridge');
     File(existing).writeAsStringSync('binary');
+    if (!Platform.isWindows) {
+      await Process.run('chmod', ['+x', existing]);
+    }
 
     expect(await buildService(binaryPath: existing).canSpawnSuccessor(), isTrue);
     expect(await buildService(binaryPath: p.join(tempDir.path, 'missing')).canSpawnSuccessor(), isFalse);
+  });
+
+  test('canSpawnSuccessor is false for a present but non-executable binary (POSIX)', () async {
+    if (Platform.isWindows) {
+      return; // the execute-bit preflight is POSIX-only
+    }
+    final notExecutable = p.join(tempDir.path, 'sesori-bridge');
+    File(notExecutable).writeAsStringSync('binary'); // 0644, no execute bit
+
+    expect(await buildService(binaryPath: notExecutable).canSpawnSuccessor(), isFalse);
   });
 
   test('spawnSuccessor starts the binary with cli args and the predecessor pid', () async {

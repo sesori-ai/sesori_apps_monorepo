@@ -138,13 +138,13 @@ void main() {
     expect(attempts.cleared, isTrue);
   });
 
-  test('a prior failed attempt is cleared quietly', () async {
+  test('a prior failed attempt is surfaced and cleared', () async {
     attempts.stored = _attempt(status: UpdateAttemptStatus.failed, reason: 'permission denied');
 
     await buildService(currentVersion: '1.0.0').reconcile();
 
     expect(infoMessages, isEmpty);
-    expect(errorMessages, isEmpty);
+    expect(errorMessages.single, contains('permission denied'));
     expect(attempts.cleared, isTrue);
     expect(installation.sweepCount, 1);
   });

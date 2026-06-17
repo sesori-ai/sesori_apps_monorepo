@@ -44,9 +44,13 @@ class UpdateAttemptApi {
     final File tmpFile = File('$_filePath.tmp');
     await tmpFile.writeAsString(jsonEncode(attempt.toJson()), flush: true);
 
+    // tmp-write then rename-into-place. The pre-delete is required because
+    // Dart's File.rename fails over an existing file on Windows (matching the
+    // existing UpdateCacheApi convention). Sync existence checks satisfy the
+    // project's `avoid_slow_async_io` lint.
     final File target = File(_filePath);
     if (target.existsSync()) {
-      await target.delete();
+      target.deleteSync();
     }
     await tmpFile.rename(target.path);
   }

@@ -222,8 +222,13 @@ class BridgeRuntimeRunner {
         releaseTrack: releaseTrack,
       );
       // Reconcile a prior in-place update first (fast, local): confirm a
-      // pending activation, surface a prior failure, sweep residue.
-      await updatePipeline.reconciliationService.reconcile();
+      // pending activation, surface a prior failure, sweep residue. Best-effort:
+      // reconciliation is maintenance and must never block startup.
+      try {
+        await updatePipeline.reconciliationService.reconcile();
+      } on Object catch (error) {
+        Log.w("Update reconciliation failed (non-fatal): $error");
+      }
 
       final authTokens = await runtimeAuthService.ensureAuthenticated(options: options);
       await runtimeAuthService.logAuthenticatedUser(

@@ -740,6 +740,11 @@ class OrchestratorSession {
             routeFuture,
             _shutdownCompleter.future.then((_) => throw const _ShutdownInProgressException()),
           ]);
+          // Consume the restart flag now — it was set (if at all) by THIS
+          // request during routing. Tying consumption to this request means a
+          // failed/abandoned response can never leave the flag armed to trigger
+          // a delayed, unintended restart on a later request.
+          final bool restartRequested = _restartService.consumeRestartRequest();
           if (_cancelled) {
             Log.v(
               "[shutdown] route ${req.method} ${req.path} completed after cancel — "
@@ -756,7 +761,7 @@ class OrchestratorSession {
           Log.v("response: status=${response.status}");
           await _encryptAndSend(connID: connID, message: response);
           Log.v("response sent to connID=$connID");
-          if (_restartService.consumeRestartRequest()) {
+          if (restartRequested) {
             await _handleRestartHandoff();
           }
         } on _ShutdownInProgressException {
