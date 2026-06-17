@@ -199,7 +199,10 @@ const Set<String> _ignoredEventTypes = {
   "reference.updated",
   "models-dev.refreshed",
   "catalog.model.updated",
+  "catalog.updated",
   "project.directories.updated",
+  // provider/integration registry refresh — server-internal, not useful for mobile UI
+  "integration.updated",
   // local account/auth lifecycle on the dev machine — not useful for mobile UI
   "account.added",
   "account.removed",

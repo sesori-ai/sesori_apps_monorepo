@@ -228,6 +228,27 @@ void main() {
       expect(result.rawData, equals(rawData));
     });
 
+    for (final eventType in ["integration.updated", "catalog.updated"]) {
+      test("$eventType is recognized and ignored, not reported as unknown", () {
+        final parser = SseEventParser();
+        final rawData = jsonEncode({
+          "directory": "/repo",
+          "payload": {
+            "type": eventType,
+            "properties": <String, dynamic>{},
+          },
+        });
+
+        final result = parser.parse(rawData);
+
+        expect(result.outcome, equals(SseParseOutcome.ignoredKnownEvent));
+        expect(result.event, isNull);
+        expect(result.directory, equals("/repo"));
+        expect(result.eventType, equals(eventType));
+        expect(result.rawData, equals(rawData));
+      });
+    }
+
     test("malformed JSON returns null event and preserved rawData", () {
       final parser = SseEventParser();
       const rawData = "{not-json";
