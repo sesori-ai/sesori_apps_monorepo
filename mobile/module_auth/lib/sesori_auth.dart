@@ -1,7 +1,10 @@
 /// Authentication package for Sesori — token lifecycle, OAuth flow, authenticated HTTP client.
 library;
 
-export "package:sesori_shared/sesori_shared.dart" show AuthProvider, AuthUser;
+// $AuthUserCopyWith is the freezed-generated copyWith for AuthUser; re-export it
+// alongside the type so downstream freezed models (e.g. SettingsState) with an
+// AuthUser field can resolve their generated nested copyWith.
+export "package:sesori_shared/sesori_shared.dart" show $AuthUserCopyWith, AuthProvider, AuthUser;
 
 export "src/auth_config.dart";
 export "src/client/api_error.dart";

@@ -14,30 +14,76 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$SettingsState {
 
-
+/// The account this device is signed in as, or `null` when there is no
+/// authenticated session. Driven reactively by the auth state stream.
+ AuthUser? get account; SettingsLogoutStatus get logoutStatus;
+/// Create a copy of SettingsState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SettingsStateCopyWith<SettingsState> get copyWith => _$SettingsStateCopyWithImpl<SettingsState>(this as SettingsState, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SettingsState);
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SettingsState&&(identical(other.account, account) || other.account == account)&&(identical(other.logoutStatus, logoutStatus) || other.logoutStatus == logoutStatus));
 }
 
 
 @override
-int get hashCode => runtimeType.hashCode;
+int get hashCode => Object.hash(runtimeType,account,logoutStatus);
 
 @override
 String toString() {
-  return 'SettingsState()';
+  return 'SettingsState(account: $account, logoutStatus: $logoutStatus)';
 }
 
 
 }
 
 /// @nodoc
-class $SettingsStateCopyWith<$Res>  {
-$SettingsStateCopyWith(SettingsState _, $Res Function(SettingsState) __);
+abstract mixin class $SettingsStateCopyWith<$Res>  {
+  factory $SettingsStateCopyWith(SettingsState value, $Res Function(SettingsState) _then) = _$SettingsStateCopyWithImpl;
+@useResult
+$Res call({
+ AuthUser? account, SettingsLogoutStatus logoutStatus
+});
+
+
+$AuthUserCopyWith<$Res>? get account;
+
+}
+/// @nodoc
+class _$SettingsStateCopyWithImpl<$Res>
+    implements $SettingsStateCopyWith<$Res> {
+  _$SettingsStateCopyWithImpl(this._self, this._then);
+
+  final SettingsState _self;
+  final $Res Function(SettingsState) _then;
+
+/// Create a copy of SettingsState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? account = freezed,Object? logoutStatus = null,}) {
+  return _then(_self.copyWith(
+account: freezed == account ? _self.account : account // ignore: cast_nullable_to_non_nullable
+as AuthUser?,logoutStatus: null == logoutStatus ? _self.logoutStatus : logoutStatus // ignore: cast_nullable_to_non_nullable
+as SettingsLogoutStatus,
+  ));
+}
+/// Create a copy of SettingsState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$AuthUserCopyWith<$Res>? get account {
+    if (_self.account == null) {
+    return null;
+  }
+
+  return $AuthUserCopyWith<$Res>(_self.account!, (value) {
+    return _then(_self.copyWith(account: value));
+  });
+}
 }
 
 
@@ -45,129 +91,83 @@ $SettingsStateCopyWith(SettingsState _, $Res Function(SettingsState) __);
 /// @nodoc
 
 
-class SettingsInitial implements SettingsState {
-  const SettingsInitial();
+class _SettingsState implements SettingsState {
+  const _SettingsState({required this.account, this.logoutStatus = SettingsLogoutStatus.idle});
   
 
+/// The account this device is signed in as, or `null` when there is no
+/// authenticated session. Driven reactively by the auth state stream.
+@override final  AuthUser? account;
+@override@JsonKey() final  SettingsLogoutStatus logoutStatus;
 
-
+/// Create a copy of SettingsState
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$SettingsStateCopyWith<_SettingsState> get copyWith => __$SettingsStateCopyWithImpl<_SettingsState>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SettingsInitial);
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SettingsState&&(identical(other.account, account) || other.account == account)&&(identical(other.logoutStatus, logoutStatus) || other.logoutStatus == logoutStatus));
 }
 
 
 @override
-int get hashCode => runtimeType.hashCode;
+int get hashCode => Object.hash(runtimeType,account,logoutStatus);
 
 @override
 String toString() {
-  return 'SettingsState.initial()';
+  return 'SettingsState(account: $account, logoutStatus: $logoutStatus)';
 }
 
 
 }
-
-
-
 
 /// @nodoc
+abstract mixin class _$SettingsStateCopyWith<$Res> implements $SettingsStateCopyWith<$Res> {
+  factory _$SettingsStateCopyWith(_SettingsState value, $Res Function(_SettingsState) _then) = __$SettingsStateCopyWithImpl;
+@override @useResult
+$Res call({
+ AuthUser? account, SettingsLogoutStatus logoutStatus
+});
 
 
-class SettingsLoggingOut implements SettingsState {
-  const SettingsLoggingOut();
-  
-
-
-
-
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SettingsLoggingOut);
-}
-
-
-@override
-int get hashCode => runtimeType.hashCode;
-
-@override
-String toString() {
-  return 'SettingsState.loggingOut()';
-}
-
+@override $AuthUserCopyWith<$Res>? get account;
 
 }
-
-
-
-
 /// @nodoc
+class __$SettingsStateCopyWithImpl<$Res>
+    implements _$SettingsStateCopyWith<$Res> {
+  __$SettingsStateCopyWithImpl(this._self, this._then);
 
+  final _SettingsState _self;
+  final $Res Function(_SettingsState) _then;
 
-class SettingsLoggedOut implements SettingsState {
-  const SettingsLoggedOut();
-  
-
-
-
-
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SettingsLoggedOut);
+/// Create a copy of SettingsState
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? account = freezed,Object? logoutStatus = null,}) {
+  return _then(_SettingsState(
+account: freezed == account ? _self.account : account // ignore: cast_nullable_to_non_nullable
+as AuthUser?,logoutStatus: null == logoutStatus ? _self.logoutStatus : logoutStatus // ignore: cast_nullable_to_non_nullable
+as SettingsLogoutStatus,
+  ));
 }
 
-
+/// Create a copy of SettingsState
+/// with the given fields replaced by the non-null parameter values.
 @override
-int get hashCode => runtimeType.hashCode;
+@pragma('vm:prefer-inline')
+$AuthUserCopyWith<$Res>? get account {
+    if (_self.account == null) {
+    return null;
+  }
 
-@override
-String toString() {
-  return 'SettingsState.loggedOut()';
+  return $AuthUserCopyWith<$Res>(_self.account!, (value) {
+    return _then(_self.copyWith(account: value));
+  });
 }
-
-
 }
-
-
-
-
-/// @nodoc
-
-
-class SettingsLogoutFailed implements SettingsState {
-  const SettingsLogoutFailed();
-  
-
-
-
-
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SettingsLogoutFailed);
-}
-
-
-@override
-int get hashCode => runtimeType.hashCode;
-
-@override
-String toString() {
-  return 'SettingsState.logoutFailed()';
-}
-
-
-}
-
-
-
 
 // dart format on

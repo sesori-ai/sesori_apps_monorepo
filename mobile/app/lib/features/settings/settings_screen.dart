@@ -36,23 +36,30 @@ class _SettingsBody extends StatelessWidget {
     final prego = context.prego;
     final notificationState = context.watch<NotificationPreferencesCubit>().state;
     final settingsState = context.watch<SettingsCubit>().state;
-    final isLoggingOut = settingsState is SettingsLoggingOut;
+    final isLoggingOut = settingsState.logoutStatus == SettingsLogoutStatus.inProgress;
 
     return BlocListener<SettingsCubit, SettingsState>(
+      // Only react to logout transitions — account updates from the auth
+      // stream also emit new states and must not re-trigger navigation.
+      listenWhen: (prev, curr) => prev.logoutStatus != curr.logoutStatus,
       listener: (context, settingsState) {
-        if (settingsState is SettingsLoggedOut) {
-          context.goRoute(const AppRoute.splash());
-        }
-        if (settingsState is SettingsLogoutFailed) {
-          ScaffoldMessenger.of(context)
-            ..clearSnackBars()
-            ..showSnackBar(SnackBar(content: Text(loc.connectErrorUnknown)));
+        switch (settingsState.logoutStatus) {
+          case SettingsLogoutStatus.success:
+            context.goRoute(const AppRoute.splash());
+          case SettingsLogoutStatus.failure:
+            ScaffoldMessenger.of(context)
+              ..clearSnackBars()
+              ..showSnackBar(SnackBar(content: Text(loc.connectErrorUnknown)));
+          case SettingsLogoutStatus.idle:
+          case SettingsLogoutStatus.inProgress:
+            break;
         }
       },
       child: Scaffold(
         appBar: AppBar(title: Text(loc.settingsTitle)),
         body: ListView(
           children: [
+            _AccountTile(account: settingsState.account),
             ...switch (notificationState) {
               NotificationPreferencesLoading() => const [
                 SizedBox(height: 32),
@@ -123,6 +130,47 @@ class _SettingsBody extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Header tile showing which account this device is signed in as — the same
+/// account surfaced during onboarding (see `_AccountLine`).
+///
+/// The [account] is sourced from [SettingsCubit] state (which subscribes to
+/// the auth stream), so it stays in sync as the session resolves on launch.
+/// Renders nothing when there is no account, so the trailing [Divider] never
+/// hangs above an empty tile.
+class _AccountTile extends StatelessWidget {
+  const _AccountTile({required this.account});
+
+  final AuthUser? account;
+
+  @override
+  Widget build(BuildContext context) {
+    final user = account;
+    if (user == null) return const SizedBox.shrink();
+
+    final loc = context.loc;
+    final providerLabel = loc.settingsAccountSignedInWith(user.provider.label);
+    final username = user.providerUsername;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ListTile(
+          leading: const Icon(Icons.account_circle_outlined),
+          title: Text(switch (username) {
+            final String name when name.isNotEmpty => name,
+            _ => providerLabel,
+          }),
+          subtitle: switch (username) {
+            final String name when name.isNotEmpty => Text(providerLabel),
+            _ => null,
+          },
+        ),
+        const Divider(),
+      ],
     );
   }
 }
