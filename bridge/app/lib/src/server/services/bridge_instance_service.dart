@@ -52,7 +52,16 @@ class BridgeInstanceService {
   }) async {
     final DateTime deadline = _clock.now().add(timeout);
     while (true) {
-      final ProcessMatch? match = await _processRepository.inspectProcessMatch(pid: predecessorPid);
+      final ProcessMatch? match;
+      try {
+        match = await _processRepository.inspectProcessMatch(pid: predecessorPid);
+      } on Object catch (error, stackTrace) {
+        // A transient process-inspection failure (e.g. ps/tasklist erroring)
+        // must not hard-fail startup. Stop waiting and let single-live-bridge
+        // enforcement take over.
+        Log.w('Failed to inspect restart predecessor pid $predecessorPid; proceeding', error, stackTrace);
+        return;
+      }
       final bool stillLive =
           match != null && match.kind == ProcessMatchKind.sesoriBridge && match.isCurrentUserProcess;
       if (!stillLive) {
