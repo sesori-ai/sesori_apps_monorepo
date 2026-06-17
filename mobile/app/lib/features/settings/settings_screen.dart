@@ -53,6 +53,7 @@ class _SettingsBody extends StatelessWidget {
         appBar: AppBar(title: Text(loc.settingsTitle)),
         body: ListView(
           children: [
+            const _AccountTile(),
             ...switch (notificationState) {
               NotificationPreferencesLoading() => const [
                 SizedBox(height: 32),
@@ -123,6 +124,49 @@ class _SettingsBody extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Header tile showing which account this device is signed in as — the same
+/// account surfaced during onboarding (see `_AccountLine`).
+///
+/// Subscribes to the auth state rather than reading a one-shot snapshot: the
+/// session is restored asynchronously on launch, so the account may resolve
+/// after this tile first builds. Renders nothing until authenticated, so the
+/// trailing [Divider] never hangs above an empty tile.
+class _AccountTile extends StatelessWidget {
+  const _AccountTile();
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    final authSession = getIt<AuthSession>();
+
+    return StreamBuilder<AuthState>(
+      stream: authSession.authStateStream,
+      initialData: authSession.currentState,
+      builder: (context, snapshot) {
+        final authState = snapshot.data ?? authSession.currentState;
+        if (authState is! AuthAuthenticated) return const SizedBox.shrink();
+
+        final user = authState.user;
+        final providerLabel = loc.settingsAccountSignedInWith(user.provider.label);
+        final account = user.providerUsername;
+        final hasAccount = account != null && account.isNotEmpty;
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.account_circle_outlined),
+              title: Text(hasAccount ? account : providerLabel),
+              subtitle: hasAccount ? Text(providerLabel) : null,
+            ),
+            const Divider(),
+          ],
+        );
+      },
     );
   }
 }

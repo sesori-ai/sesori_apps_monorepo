@@ -64,6 +64,14 @@
   "bridgeOfflineTitle": "Bridge Offline",
   "bridgeOfflineMessage": "Start sesori-bridge on your laptop",
   "settingsTitle": "Settings",
+  "settingsAccountSignedInWith": "Signed in with {provider}",
+  "@settingsAccountSignedInWith": {
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      }
+    }
+  },
   "settingsLogout": "Log Out",
   "notificationCategoryAiInteraction": "AI Interactions",
   "notificationCategoryAiInteractionDescription": "Questions and permission requests from active AI sessions",
