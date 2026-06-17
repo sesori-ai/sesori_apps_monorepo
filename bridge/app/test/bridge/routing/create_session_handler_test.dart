@@ -1096,6 +1096,15 @@ class _FakeWorktreeService extends WorktreeService {
 
 class _NoopProcessRunner implements ProcessRunner {
   @override
+  Future<int> startDetached(
+    String executable,
+    List<String> arguments, {
+    Map<String, String>? environment,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<ProcessResult> run(
     String executable,
     List<String> arguments, {

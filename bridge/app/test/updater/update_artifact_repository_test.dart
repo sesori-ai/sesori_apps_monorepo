@@ -57,6 +57,15 @@ class _FakeChecksumVerifierApi implements ChecksumVerifierApi {
 }
 
 class _FakeProcessRunner implements ProcessRunner {
+  @override
+  Future<int> startDetached(
+    String executable,
+    List<String> arguments, {
+    Map<String, String>? environment,
+  }) async {
+    throw UnimplementedError();
+  }
+
   final int exitCode;
 
   _FakeProcessRunner({required this.exitCode});

@@ -87,6 +87,15 @@ void main() {
 }
 
 class _FakeProcessRunner implements ProcessRunner {
+  @override
+  Future<int> startDetached(
+    String executable,
+    List<String> arguments, {
+    Map<String, String>? environment,
+  }) async {
+    throw UnimplementedError();
+  }
+
   final List<ProcessResult> _queue = [];
   final List<_Invocation> invocations = [];
 

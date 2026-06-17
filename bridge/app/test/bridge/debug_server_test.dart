@@ -14,6 +14,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../helpers/restart_test_support.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
 
@@ -38,6 +39,7 @@ _DebugServerHarness _createDebugServerHarness({
     database: db,
     processRunner: ProcessRunner(),
     failureReporter: FakeFailureReporter(),
+    restartService: buildTestRestartService(),
   );
   final debugServer = runtime.createDebugServer(port: port);
   return _DebugServerHarness(

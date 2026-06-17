@@ -36,6 +36,8 @@ import "../../server/api/loopback_port_api.dart";
 import "../../server/api/runtime_file_api.dart";
 import "../../server/api/system_process_api.dart";
 import "../../server/api/terminal_prompt_api.dart";
+import "../../server/foundation/bridge_restart_command_builder.dart";
+import "../../server/foundation/bridge_restart_env.dart";
 import "../../server/host/bridge_host_info_impl.dart";
 import "../../server/host/bridge_host_json_store.dart";
 import "../../server/host/bridge_host_port_service.dart";
@@ -46,24 +48,32 @@ import "../../server/repositories/process_repository.dart";
 import "../../server/repositories/startup_mutex_repository.dart";
 import "../../server/repositories/terminal_prompt_repository.dart";
 import "../../server/services/bridge_instance_service.dart";
+import "../../server/services/bridge_restart_service.dart";
 import "../../updater/api/archive_extractor_api.dart";
 import "../../updater/api/checksum_manifest_api.dart";
 import "../../updater/api/checksum_verifier_api.dart";
-import "../../updater/api/file_replacement_api.dart";
 import "../../updater/api/github_releases_api.dart";
+import "../../updater/api/platform_update_api.dart";
+import "../../updater/api/update_attempt_api.dart";
 import "../../updater/api/update_cache_api.dart";
 import "../../updater/api/update_download_api.dart";
+import "../../updater/api/update_log_api.dart";
+import "../../updater/foundation/filesystem_cleaner.dart";
 import "../../updater/foundation/release_track.dart";
 import "../../updater/foundation/update_lock.dart";
+import "../../updater/foundation/update_message_formatter.dart";
 import "../../updater/foundation/update_policy.dart";
-import "../../updater/foundation/update_relaunch_client.dart";
 import "../../updater/models/distribution_target.dart";
 import "../../updater/models/managed_runtime_paths.dart";
-import "../../updater/repositories/installed_file_repository.dart";
 import "../../updater/repositories/release_repository.dart";
 import "../../updater/repositories/update_artifact_repository.dart";
+import "../../updater/repositories/update_attempt_repository.dart";
+import "../../updater/repositories/update_installation_repository.dart";
+import "../../updater/repositories/update_log_repository.dart";
 import "../../updater/services/managed_runtime_path_service.dart";
+import "../../updater/services/update_apply_service.dart";
 import "../../updater/services/update_install_service.dart";
+import "../../updater/services/update_reconciliation_service.dart";
 import "../../updater/services/update_service.dart";
 import "../../version.dart";
 import "../foundation/process_runner.dart";
@@ -144,7 +154,6 @@ class BridgeRuntimeRunner {
     final terminalPromptApi = TerminalPromptApi(
       stdin: io.stdin,
       stdout: io.stdout,
-      environment: environment,
     );
     final terminalPromptRepository = TerminalPromptRepository(
       api: terminalPromptApi,
@@ -173,7 +182,6 @@ class BridgeRuntimeRunner {
         browserLauncher: openOAuthBrowser,
         browserOpenability: detectBrowserOpenability,
       ),
-      environment: environment,
       loadTokens: loadTokens,
       saveTokens: saveTokens,
       clearTokens: clearTokens,
@@ -207,13 +215,15 @@ class BridgeRuntimeRunner {
         Log.d("Release track: ${releaseTrack.wireValue}");
       }
 
-      final updateService = _createUpdateService(
+      final updatePipeline = _buildUpdatePipeline(
         httpClient: httpClient,
         processRunner: processRunner,
         managedRuntimePaths: managedRuntimePaths,
         releaseTrack: releaseTrack,
       );
-      await updateService.checkAndApplyUpdate(cliArgs: options.cliArgs);
+      // Reconcile a prior in-place update first (fast, local): confirm a
+      // pending activation, surface a prior failure, sweep residue.
+      await updatePipeline.reconciliationService.reconcile();
 
       final authTokens = await runtimeAuthService.ensureAuthenticated(options: options);
       await runtimeAuthService.logAuthenticatedUser(
@@ -275,6 +285,17 @@ class BridgeRuntimeRunner {
           startAborted: startAbortController.signal,
         ),
       );
+      // If this bridge was spawned by a restart, wait for the predecessor to
+      // exit before single-live-bridge enforcement so the handoff is clean.
+      final predecessorPidRaw = environment[sesoriRestartPredecessorPidEnvVar];
+      final predecessorPid = predecessorPidRaw == null ? null : int.tryParse(predecessorPidRaw);
+      if (predecessorPid != null) {
+        await bridgeInstanceService.awaitPredecessorBridgeExit(
+          predecessorPid: predecessorPid,
+          timeout: const Duration(seconds: 30),
+        );
+      }
+
       final plugin = await pluginManager.startPlugin(id: pluginId);
       shutdownCoordinator.addOrdered(
         action: () => pluginManager.stopPlugin(id: pluginId),
@@ -310,6 +331,14 @@ class BridgeRuntimeRunner {
         platform: BridgeRegistrationService.currentPlatformName(),
       );
 
+      final restartService = BridgeRestartService(
+        processRepository: processRepository,
+        commandBuilder: const BridgeRestartCommandBuilder(),
+        binaryPath: managedRuntimePaths.binaryPath,
+        cliArgs: options.cliArgs,
+        currentPid: io.pid,
+      );
+
       final runtime = BridgeRuntime.create(
         config: BridgeConfig(
           relayURL: options.relayUrl,
@@ -325,6 +354,7 @@ class BridgeRuntimeRunner {
         database: AppDatabase.create(),
         processRunner: processRunner,
         failureReporter: LogFailureReporter(),
+        restartService: restartService,
       );
       shutdownCoordinator.add(disposable: runtime.close);
       // Defined stop semantics: stopping the active plugin cancels the
@@ -340,11 +370,10 @@ class BridgeRuntimeRunner {
         shutdownCoordinator: shutdownCoordinator,
       );
       registerSignalHandlers(session: runtime.session, subscriptions: subscriptions);
-      updateService.updateAvailable
-          .listen((version) {
-            Console.message("A new bridge version ($version) is available. Restart to update.");
-          })
-          .addTo(subscriptions);
+      // Background: check + download + stage + apply-in-place on a 4h cadence.
+      // The swap takes effect on the next launch (or a phone-triggered restart).
+      shutdownCoordinator.add(disposable: updatePipeline.updateService.dispose);
+      updatePipeline.updateService.start();
 
       final startupFailure = failureLatch.failure;
       if (startupFailure != null) {
@@ -481,15 +510,16 @@ class BridgeRuntimeRunner {
     return attemptStart(attempt: 1);
   }
 
-  static UpdateService _createUpdateService({
+  static ({UpdateService updateService, UpdateReconciliationService reconciliationService}) _buildUpdatePipeline({
     required http.Client httpClient,
     required ProcessRunner processRunner,
     required ManagedRuntimePaths managedRuntimePaths,
     required ReleaseTrack releaseTrack,
   }) {
-    final installedFileRepository = InstalledFileRepository(
-      fileReplacementApi: FileReplacementApi(processRunner: processRunner),
-    );
+    const clock = Clock();
+    const messageFormatter = UpdateMessageFormatter();
+    const filesystemCleaner = FilesystemCleaner();
+    final installRoot = managedRuntimePaths.installRoot;
 
     // Opportunistically authenticate GitHub release checks when a token is
     // present in the environment. Unauthenticated requests share a 60/hour
@@ -505,34 +535,66 @@ class BridgeRuntimeRunner {
       orElse: () => null,
     );
 
-    return UpdateService(
+    final logRepository = UpdateLogRepository(
+      api: UpdateLogApi(installRoot: installRoot, clock: clock),
+    );
+    final attemptRepository = UpdateAttemptRepository(
+      api: UpdateAttemptApi(installRoot: installRoot),
+    );
+    final installationRepository = UpdateInstallationRepository(
+      platformUpdateApi: PlatformUpdateApi.forPlatform(processRunner: processRunner),
+    );
+    final updateApplyService = UpdateApplyService(
+      installationRepository: installationRepository,
+      attemptRepository: attemptRepository,
+      logRepository: logRepository,
+      updateLock: UpdateLock(currentPid: io.pid, processRunner: processRunner),
+      messageFormatter: messageFormatter,
+      filesystemCleaner: filesystemCleaner,
+      clock: clock,
+      currentVersion: appVersion,
+      installRoot: installRoot,
+    );
+
+    final updateService = UpdateService(
       releaseRepository: ReleaseRepository(
         api: GitHubReleasesApi(httpClient: httpClient, authToken: githubToken),
         cache: UpdateCacheApi(
           cacheDirectory: managedRuntimePaths.cacheDirectory,
-          clock: const Clock(),
+          clock: clock,
         ),
         currentVersion: appVersion,
         target: currentDistributionTarget(),
         track: releaseTrack,
       ),
-      updateInstallerService: UpdateInstallService(
+      updateInstallService: UpdateInstallService(
         updateArtifactRepository: UpdateArtifactRepository(
           downloadApi: UpdateDownloadApi(httpClient: httpClient),
           checksumManifestApi: ChecksumManifestApi(httpClient: httpClient),
           checksumVerifierApi: ChecksumVerifierApi(),
           archiveExtractorApi: ArchiveExtractorApi(processRunner: processRunner),
         ),
-        installedFileRepository: installedFileRepository,
+        filesystemCleaner: filesystemCleaner,
       ),
-      installedFileRepository: installedFileRepository,
-      updateLock: UpdateLock(currentPid: io.pid, processRunner: processRunner),
-      updateRelaunchClient: UpdateRelaunchClient(processStarter: io.Process.start),
-      installRoot: managedRuntimePaths.installRoot,
+      updateApplyService: updateApplyService,
+      logRepository: logRepository,
+      messageFormatter: messageFormatter,
+      installRoot: installRoot,
       executablePath: io.Platform.resolvedExecutable,
       managedExecutablePath: managedRuntimePaths.binaryPath,
       environment: io.Platform.environment,
     );
+
+    final reconciliationService = UpdateReconciliationService(
+      attemptRepository: attemptRepository,
+      logRepository: logRepository,
+      installationRepository: installationRepository,
+      messageFormatter: messageFormatter,
+      currentVersion: appVersion,
+      installRoot: installRoot,
+    );
+
+    return (updateService: updateService, reconciliationService: reconciliationService);
   }
 
   static ProcessUser? _resolveCurrentUser({required Map<String, String> environment}) => ProcessUser.fromRawUser(

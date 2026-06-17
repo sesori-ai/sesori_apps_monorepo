@@ -252,6 +252,15 @@ class Invocation {
 }
 
 class FakeProcessRunner implements ProcessRunner {
+  @override
+  Future<int> startDetached(
+    String executable,
+    List<String> arguments, {
+    Map<String, String>? environment,
+  }) async {
+    throw UnimplementedError();
+  }
+
   final Future<ProcessResult> Function(
     String executable,
     List<String> arguments, {

@@ -13,6 +13,7 @@ import "../auth/token_refresher.dart";
 import "../push/completion_push_listener.dart";
 import "../push/maintenance_push_listener.dart";
 import "../push/push_dispatcher.dart";
+import "../server/services/bridge_restart_service.dart";
 import "foundation/process_runner.dart";
 import "key_exchange.dart";
 import "metadata_service.dart";
@@ -63,6 +64,7 @@ class Orchestrator {
   final SessionPersistenceService _sessionPersistenceService;
   final WorktreeService _worktreeService;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
+  final BridgeRestartService _restartService;
 
   Orchestrator({
     required this.config,
@@ -83,6 +85,7 @@ class Orchestrator {
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
+    required BridgeRestartService restartService,
   }) : _client = client,
        _plugin = plugin,
        _metadataService = metadataService,
@@ -99,7 +102,8 @@ class Orchestrator {
        _questionRepository = questionRepository,
        _sessionPersistenceService = sessionPersistenceService,
        _worktreeService = worktreeService,
-       _sessionEventEnrichmentService = sessionEventEnrichmentService;
+       _sessionEventEnrichmentService = sessionEventEnrichmentService,
+       _restartService = restartService;
 
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorSession create() {
@@ -147,6 +151,7 @@ class Orchestrator {
       sessionArchiveService: sessionArchiveService,
       sessionAbortService: sessionAbortService,
       sessionEventEnrichmentService: _sessionEventEnrichmentService,
+      restartService: _restartService,
     );
   }
 
@@ -180,6 +185,7 @@ class OrchestratorSession {
   final PrSyncService _prSyncService;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final SessionAbortService _sessionAbortService;
+  final BridgeRestartService _restartService;
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
   bool _cancelled = false;
@@ -222,6 +228,7 @@ class OrchestratorSession {
     required SessionArchiveService sessionArchiveService,
     required SessionAbortService sessionAbortService,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
+    required BridgeRestartService restartService,
   }) : _client = client,
        _plugin = plugin,
        _pushDispatcher = pushDispatcher,
@@ -235,6 +242,7 @@ class OrchestratorSession {
        _failureReporter = failureReporter,
        _prSyncService = prSyncService,
        _sessionAbortService = sessionAbortService,
+       _restartService = restartService,
        _router = RequestRouter(
          plugin: plugin,
          getCommandsHandler: GetCommandsHandler(
@@ -267,6 +275,7 @@ class OrchestratorSession {
            sessionRepository: sessionRepository,
            processRunner: ProcessRunner(),
          ),
+         restartService: restartService,
        ),
        _mapper = BridgeEventMapper(
          plugin: plugin,
@@ -460,6 +469,25 @@ class OrchestratorSession {
         Log.v("[shutdown] early plugin dispose error (ignored): $e");
       }),
     );
+  }
+
+  /// Performs the restart handoff after the `{restarting:true}` reply has been
+  /// enqueued: spawns the successor, then drives the normal graceful shutdown
+  /// ([cancel]) — which flushes the queued reply by closing the relay and lets
+  /// this process exit. The successor waits for this pid to exit before it
+  /// enforces single-live-bridge, so the handoff is clean.
+  Future<void> _handleRestartHandoff() async {
+    Log.i("[restart] phone requested restart; spawning successor bridge");
+    final bool spawned = await _restartService.spawnSuccessor();
+    if (!spawned) {
+      Console.error(
+        "Restart requested but a new bridge could not be started; continuing to run. "
+        "Re-run the install script if this persists: https://sesori.com/",
+      );
+      return;
+    }
+    Log.i("[restart] successor spawned; shutting down for handoff");
+    await cancel();
   }
 
   Future<void> _processPluginEvent(BridgeSseEvent event) async {
@@ -728,6 +756,9 @@ class OrchestratorSession {
           Log.v("response: status=${response.status}");
           await _encryptAndSend(connID: connID, message: response);
           Log.v("response sent to connID=$connID");
+          if (_restartService.consumeRestartRequest()) {
+            await _handleRestartHandoff();
+          }
         } on _ShutdownInProgressException {
           Log.v(
             "[shutdown] route ${req.method} ${req.path} abandoned because shutdown was requested",

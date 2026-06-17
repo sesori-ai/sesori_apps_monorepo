@@ -1,67 +1,62 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:meta/meta.dart';
-import 'package:path/path.dart' as p;
 import 'package:rxdart/rxdart.dart';
-import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
-import 'package:sesori_shared/sesori_shared.dart';
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Console, Log;
 
 import '../foundation/github_rate_limit_exception.dart';
-import '../foundation/update_lock.dart';
+import '../foundation/update_message_formatter.dart';
 import '../foundation/update_policy.dart';
-import '../foundation/update_relaunch_client.dart';
 import '../models/release_info.dart';
-import '../models/update_install_result.dart';
 import '../models/update_result.dart';
-import '../repositories/installed_file_repository.dart';
 import '../repositories/release_repository.dart';
+import '../repositories/update_log_repository.dart';
+import 'update_apply_service.dart';
 import 'update_install_service.dart';
 
+/// Periodic + startup update coordinator.
+///
+/// On start (and every 4h) it checks for a newer eligible release, stages it via
+/// [UpdateInstallService], and delegates the in-place swap to [UpdateApplyService].
+/// It never relaunches — the swapped binary takes effect on the next launch
+/// (or an explicit phone-triggered restart). Benign conditions (no newer
+/// release, offline, rate-limited, disabled) stay quiet; genuine failures are
+/// surfaced via `Console.error` and the durable update log.
 class UpdateService {
+  UpdateService({
+    required ReleaseRepository releaseRepository,
+    required UpdateInstallService updateInstallService,
+    required UpdateApplyService updateApplyService,
+    required UpdateLogRepository logRepository,
+    required UpdateMessageFormatter messageFormatter,
+    required String installRoot,
+    required String executablePath,
+    required String managedExecutablePath,
+    required Map<String, String> environment,
+  }) : _releaseRepository = releaseRepository,
+       _updateInstallService = updateInstallService,
+       _updateApplyService = updateApplyService,
+       _logRepository = logRepository,
+       _messageFormatter = messageFormatter,
+       _installRoot = installRoot,
+       _executablePath = executablePath,
+       _managedExecutablePath = managedExecutablePath,
+       _environment = environment;
+
   final ReleaseRepository _releaseRepository;
-  final UpdateInstallService _updateInstallerService;
-  final InstalledFileRepository _installedFileRepository;
-  final UpdateLock _updateLock;
-  final UpdateRelaunchClient _updateRelaunchClient;
+  final UpdateInstallService _updateInstallService;
+  final UpdateApplyService _updateApplyService;
+  final UpdateLogRepository _logRepository;
+  final UpdateMessageFormatter _messageFormatter;
   final String _installRoot;
   final String _executablePath;
   final String _managedExecutablePath;
   final Map<String, String> _environment;
 
-  String? _lastNotifiedVersion;
-
-  late final Stream<String> updateAvailable = RefCountReusableStream<String>.publish(
-    () =>
-        (_isUpdatePollingDisabled()
-                ? const Stream<ReleaseInfo?>.empty()
-                : Rx.concat<Null>([
-                    Stream<Null>.value(null),
-                    Stream<Null>.periodic(
-                      const Duration(hours: 4),
-                      (_) => null,
-                    ),
-                  ]).asyncMap((_) => _checkForPollingUpdate()))
-            .whereNotNull()
-            .map((release) => release.version)
-            .where((version) {
-              if (_lastNotifiedVersion == version) {
-                return false;
-              }
-              _lastNotifiedVersion = version;
-              return true;
-            })
-            .distinct(),
-    onCancel: () {
-      _lastNotifiedVersion = null;
-    },
-  );
+  StreamSubscription<void>? _subscription;
 
   @visibleForTesting
-  bool Function() hasTerminal = () => stdout.hasTerminal;
-
-  @visibleForTesting
-  void Function(String message) writeToStderr = stderr.writeln;
+  void Function(String message) emitError = Console.error;
 
   @visibleForTesting
   void Function(String message) logWarning = Log.w;
@@ -69,75 +64,126 @@ class UpdateService {
   @visibleForTesting
   void Function(String message, Object error, StackTrace stackTrace) logError = Log.e;
 
-  UpdateService({
-    required ReleaseRepository releaseRepository,
-    required UpdateInstallService updateInstallerService,
-    required InstalledFileRepository installedFileRepository,
-    required UpdateLock updateLock,
-    required UpdateRelaunchClient updateRelaunchClient,
-    required String installRoot,
-    required String executablePath,
-    required String managedExecutablePath,
-    required Map<String, String> environment,
-  }) : _releaseRepository = releaseRepository,
-       _updateInstallerService = updateInstallerService,
-       _installedFileRepository = installedFileRepository,
-       _updateLock = updateLock,
-       _updateRelaunchClient = updateRelaunchClient,
-       _installRoot = installRoot,
-       _executablePath = executablePath,
-       _managedExecutablePath = managedExecutablePath,
-       _environment = environment;
+  @visibleForTesting
+  Duration pollInterval = const Duration(hours: 4);
 
-  bool _isUpdatePollingDisabled() {
-    return isUpdateDisabled(environment: _environment) ||
-        isCiEnvironment(environment: _environment) ||
-        isNpmInstall(executablePath: _executablePath);
+  /// Begins the initial + periodic check/stage/apply pipeline in the
+  /// background. A no-op when updates are disabled or this is not the managed
+  /// install. Idempotent — calling it again while already running does nothing.
+  void start() {
+    if (_subscription != null || _shouldSkipUpdates()) {
+      return;
+    }
+
+    _subscription =
+        Rx.concat<void>([
+          Stream<void>.value(null),
+          Stream<void>.periodic(pollInterval, (_) {}),
+        ]).asyncMap((_) => _runCycle()).listen(
+          (_) {},
+          onError: (Object error, StackTrace stackTrace) {
+            logError('Update cycle stream error', error, stackTrace);
+          },
+        );
   }
 
-  bool _shouldSkipStartupUpdateCheck() {
-    return _isUpdatePollingDisabled() ||
+  Future<void> dispose() async {
+    await _subscription?.cancel();
+    _subscription = null;
+  }
+
+  bool _shouldSkipUpdates() {
+    return isUpdateDisabled(environment: _environment) ||
+        isCiEnvironment(environment: _environment) ||
+        isNpmInstall(executablePath: _executablePath) ||
         !isManagedInstall(
           executablePath: _executablePath,
           managedExecutablePath: _managedExecutablePath,
         );
   }
 
-  Future<ReleaseInfo?> _checkForPollingUpdate() async {
+  Future<void> _runCycle() async {
+    final ReleaseInfo? release;
     try {
-      return await _releaseRepository.checkForNewerRelease();
+      release = await _releaseRepository.checkForNewerRelease();
+    } on GitHubRateLimitException catch (error) {
+      // Expected, benign for a best-effort updater — stays quiet in Log.
+      logWarning(_rateLimitMessage(error));
+      return;
     } on Object catch (error, stackTrace) {
-      _reportUpdateFailure(
-        error: error,
-        stackTrace: stackTrace,
-        stageDescription: 'Periodic update check failed',
+      await _reportGenuineFailure(
+        toVersion: 'the latest release',
+        reason: error.toString(),
+        logDetail: 'Update check failed: $error\n$stackTrace',
       );
-      return null;
+      return;
+    }
+
+    if (release == null) {
+      return;
+    }
+
+    final staged = await _updateInstallService.stageUpdate(
+      release: release,
+      installRoot: _installRoot,
+    );
+    final stagingPath = staged.stagingPath;
+    if (staged.result != UpdateResult.success || stagingPath == null) {
+      await _reportStageFailure(release: release, result: staged.result);
+      return;
+    }
+
+    await _updateApplyService.apply(release: release, stagingPath: stagingPath);
+  }
+
+  Future<void> _reportStageFailure({required ReleaseInfo release, required UpdateResult result}) async {
+    switch (result) {
+      case UpdateResult.networkError:
+      case UpdateResult.alreadyLocked:
+        // Transient/contended — benign; the next cycle retries.
+        logWarning('Skipping update to ${release.version}: ${result.name}');
+      case UpdateResult.permissionDenied:
+      case UpdateResult.checksumFailed:
+      case UpdateResult.downloadFailed:
+      case UpdateResult.success:
+        await _reportGenuineFailure(
+          toVersion: release.version,
+          reason: _stageFailureReason(result),
+          logDetail: 'Staging ${release.version} failed: ${result.name}',
+        );
     }
   }
 
-  /// Logs a failed update attempt through [Log].
-  ///
-  /// A rate limit is an expected, benign condition for a best-effort updater,
-  /// so it is surfaced as a warning with a friendly explanation (and a hint to
-  /// authenticate) and no stack trace. Genuinely unexpected failures are logged
-  /// as errors with their [error] and [stackTrace]; [Log] only appends those at
-  /// debug/verbose levels, so normal output stays clean while `--log-level
-  /// debug` still gets full context. [stageDescription] distinguishes which
-  /// stage failed (check vs. install/restart).
-  void _reportUpdateFailure({
-    required Object error,
-    required StackTrace stackTrace,
-    required String stageDescription,
-  }) {
-    if (error is GitHubRateLimitException) {
-      logWarning(_rateLimitMessage(error));
-      return;
+  Future<void> _reportGenuineFailure({
+    required String toVersion,
+    required String reason,
+    required String logDetail,
+  }) async {
+    await _logRepository.log(message: logDetail);
+    emitError(
+      _messageFormatter.failureGuidance(
+        toVersion: toVersion,
+        reason: reason,
+        logPath: _logRepository.logPath,
+      ),
+    );
+  }
+
+  String _stageFailureReason(UpdateResult result) {
+    switch (result) {
+      case UpdateResult.permissionDenied:
+        return 'permission denied writing to the install directory';
+      case UpdateResult.checksumFailed:
+        return 'the downloaded archive failed checksum verification';
+      case UpdateResult.downloadFailed:
+        return 'the release archive could not be downloaded or extracted';
+      case UpdateResult.networkError:
+        return 'a network error occurred';
+      case UpdateResult.alreadyLocked:
+        return 'another update is already in progress';
+      case UpdateResult.success:
+        return 'an unexpected error occurred';
     }
-    // Keep the concise cause on the default line (e.g. a timeout vs. a parse
-    // error); Log only appends the error object and stack trace at
-    // debug/verbose levels.
-    logError('$stageDescription: $error', error, stackTrace);
   }
 
   String _rateLimitMessage(GitHubRateLimitException error) {
@@ -155,90 +201,5 @@ class UpdateService {
   String _formatLocalTime(DateTime time) {
     String pad(int value) => value.toString().padLeft(2, '0');
     return '${pad(time.hour)}:${pad(time.minute)}';
-  }
-
-  Future<void> checkAndApplyUpdate({required List<String> cliArgs}) async {
-    try {
-      if (_shouldSkipStartupUpdateCheck()) {
-        return;
-      }
-
-      final release = await _releaseRepository.checkForNewerRelease();
-      if (release == null) {
-        return;
-      }
-
-      final bool interactiveTerminal = hasTerminal();
-      if (interactiveTerminal) {
-        writeToStderr('Updating to ${release.version}...');
-      }
-
-      final UpdateInstallResult installResult = await _updateLock.locked<UpdateInstallResult>(
-        lockFile: File(p.join(_installRoot, '.update.lock')),
-        onLockAcquired: () {
-          return _updateInstallerService.performUpdate(
-            release: release,
-            installRoot: _installRoot,
-          );
-        },
-        onLockRejected: (lockResult) async {
-          return switch (lockResult) {
-            LockAcquireResult.alreadyLocked => const UpdateInstallResult.completed(
-              result: UpdateResult.alreadyLocked,
-            ),
-            LockAcquireResult.permissionDenied => const UpdateInstallResult.completed(
-              result: UpdateResult.permissionDenied,
-            ),
-            LockAcquireResult.acquired => throw StateError(
-              'Unexpected acquired state in onLockRejected',
-            ),
-          };
-        },
-        shouldReleaseLock: (installResult) {
-          return installResult.pendingWindowsUpdate == null;
-        },
-      );
-
-      if (installResult.result == UpdateResult.success) {
-        if (interactiveTerminal) {
-          writeToStderr('Updated to ${release.version}. Restarting...');
-        }
-        await _restartUpdatedBridge(
-          cliArgs: cliArgs,
-          installResult: installResult,
-        );
-      }
-
-      if (interactiveTerminal) {
-        writeToStderr(
-          'Warning: failed to update to ${release.version} (${installResult.result}). Continuing with current version.',
-        );
-      }
-    } on Object catch (error, stackTrace) {
-      _reportUpdateFailure(
-        error: error,
-        stackTrace: stackTrace,
-        stageDescription: 'Automatic update failed',
-      );
-    }
-  }
-
-  Future<Never> _restartUpdatedBridge({
-    required List<String> cliArgs,
-    required UpdateInstallResult installResult,
-  }) async {
-    final pendingWindowsUpdate = installResult.pendingWindowsUpdate;
-    if (Platform.isWindows && pendingWindowsUpdate != null) {
-      final String scriptPath = await _installedFileRepository.createWindowsSwapScript(
-        pendingWindowsUpdate: pendingWindowsUpdate,
-        args: cliArgs,
-      );
-      await _updateRelaunchClient.relaunchWindowsSwapScript(scriptPath: scriptPath);
-    }
-
-    await _updateRelaunchClient.relaunchBinary(
-      binaryPath: _managedExecutablePath,
-      args: cliArgs,
-    );
   }
 }

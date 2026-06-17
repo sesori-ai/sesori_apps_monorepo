@@ -39,6 +39,36 @@ class BridgeInstanceService {
   final ProcessRepository _processRepository;
   final ServerClock _clock;
 
+  /// Waits for a restart predecessor (the bridge that spawned this one) to
+  /// exit before single-live-bridge enforcement runs, so a restart hands off
+  /// cleanly instead of prompting/aborting on the still-exiting predecessor.
+  ///
+  /// Polls the predecessor's identity on a short interval — a bounded startup
+  /// wait, not data polling — and returns as soon as it is gone (or no longer a
+  /// Sesori bridge), or when [timeout] elapses.
+  Future<void> awaitPredecessorBridgeExit({
+    required int predecessorPid,
+    required Duration timeout,
+  }) async {
+    final DateTime deadline = _clock.now().add(timeout);
+    while (true) {
+      final ProcessMatch? match = await _processRepository.inspectProcessMatch(pid: predecessorPid);
+      final bool stillLive =
+          match != null && match.kind == ProcessMatchKind.sesoriBridge && match.isCurrentUserProcess;
+      if (!stillLive) {
+        return;
+      }
+      if (!_clock.now().isBefore(deadline)) {
+        Log.w(
+          'Restart predecessor pid $predecessorPid still running after ${timeout.inSeconds}s; '
+          'proceeding with single-live-bridge enforcement.',
+        );
+        return;
+      }
+      await _clock.delay(duration: const Duration(milliseconds: 250));
+    }
+  }
+
   Future<BridgeInstanceResolution> enforceSingleLiveBridge({required int currentPid}) async {
     final existingBridges = await _bridgeInstanceRepository.listLiveBridgeCandidates(currentPid: currentPid);
     if (existingBridges.isEmpty) {

@@ -393,6 +393,15 @@ class _FakeTerminalPromptRepository implements TerminalPromptRepository {
 }
 
 class _FakeProcessRepository implements ProcessRepository {
+  @override
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
+    Map<String, String>? environment,
+  }) async {
+    throw UnimplementedError();
+  }
+
   final List<String> signalRequests = <String>[];
   final Map<int, List<ProcessMatch?>> matchSnapshots = <int, List<ProcessMatch?>>{};
   bool throwGraceful = false;

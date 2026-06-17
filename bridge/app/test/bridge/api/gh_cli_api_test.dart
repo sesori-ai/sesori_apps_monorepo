@@ -327,6 +327,15 @@ class _Invocation {
 }
 
 class _FakeProcessRunner implements ProcessRunner {
+  @override
+  Future<int> startDetached(
+    String executable,
+    List<String> arguments, {
+    Map<String, String>? environment,
+  }) async {
+    throw UnimplementedError();
+  }
+
   final List<_Invocation> invocations = <_Invocation>[];
   final Queue<Object> _queue = Queue<Object>();
 

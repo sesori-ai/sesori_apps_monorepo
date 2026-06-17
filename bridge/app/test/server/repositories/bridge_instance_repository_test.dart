@@ -180,6 +180,15 @@ ProcessIdentity _fact({
 }
 
 class _FakeSystemProcessApi implements SystemProcessApi {
+  @override
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
+    Map<String, String>? environment,
+  }) async {
+    throw UnimplementedError();
+  }
+
   List<ProcessIdentity> facts = <ProcessIdentity>[];
   int listCallCount = 0;
 

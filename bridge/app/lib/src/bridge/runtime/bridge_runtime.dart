@@ -18,6 +18,7 @@ import "../../push/push_notification_client.dart";
 import "../../push/push_notification_content_builder.dart";
 import "../../push/push_rate_limiter.dart";
 import "../../push/push_session_state_tracker.dart";
+import "../../server/services/bridge_restart_service.dart";
 import "../api/gh_cli_api.dart";
 import "../api/git_cli_api.dart";
 import "../bandwidth_tracker.dart";
@@ -69,6 +70,7 @@ class BridgeRuntime {
     required AppDatabase database,
     required ProcessRunner processRunner,
     required FailureReporter failureReporter,
+    required BridgeRestartService restartService,
   }) {
     final pullRequestRepository = PullRequestRepository(
       pullRequestDao: database.pullRequestDao,
@@ -166,6 +168,7 @@ class BridgeRuntime {
           ),
         ),
         sessionEventEnrichmentService: sessionEventEnrichmentService,
+        restartService: restartService,
       ).create(),
     );
   }

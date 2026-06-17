@@ -25,6 +25,16 @@ class SystemProcessApi {
     return _isWindows ? _listWindowsProcesses() : _listPosixProcesses();
   }
 
+  /// Spawns [executable] detached (inheriting stdio), returning its pid without
+  /// waiting. Used to launch a successor bridge during a restart.
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
+    Map<String, String>? environment,
+  }) {
+    return _processRunner.startDetached(executable, arguments, environment: environment);
+  }
+
   Future<ProcessIdentity?> inspectProcess({required int pid}) async {
     final processes = await listProcesses();
     for (final process in processes) {
