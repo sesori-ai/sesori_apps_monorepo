@@ -178,7 +178,7 @@ void delegateSessionRepositoryToService({
   ).thenAnswer(
     (invocation) => service.rejectQuestion(
       requestId: invocation.namedArguments[#requestId]! as String,
-      sessionId: invocation.namedArguments[#sessionId] as String?,
+      sessionId: invocation.namedArguments[#sessionId]! as String,
     ),
   );
   when(

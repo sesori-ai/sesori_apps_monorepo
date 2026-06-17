@@ -58,7 +58,7 @@ class SessionService {
     return _repository.replyToQuestion(requestId: requestId, sessionId: sessionId, answers: answers);
   }
 
-  Future<ApiResponse<void>> rejectQuestion({required String requestId, required String? sessionId}) {
+  Future<ApiResponse<void>> rejectQuestion({required String requestId, required String sessionId}) {
     return _repository.rejectQuestion(requestId: requestId, sessionId: sessionId);
   }
 
