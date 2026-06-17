@@ -66,8 +66,10 @@ bool _isDynamicCandidate(int port) =>
 
 /// The dynamic port candidates the supervisor probes when no explicit port is
 /// requested. When [candidates] is supplied (tests) it is filtered through the
-/// same in-range rule; otherwise random ports in the dynamic range are drawn
-/// until [dynamicCodexMaxAttempts] distinct valid candidates have been yielded.
+/// same in-range rule; otherwise random ports in the dynamic range are drawn,
+/// examining at most [dynamicCodexMaxAttempts] draws and yielding each distinct
+/// valid candidate (duplicate draws are skipped but still count as attempts, so
+/// the loop always terminates).
 Iterable<int> codexDynamicCandidates({Iterable<int>? candidates, Random? random}) sync* {
   final supplied = candidates;
   if (supplied != null) {
@@ -86,7 +88,9 @@ Iterable<int> codexDynamicCandidates({Iterable<int>? candidates, Random? random}
 
   final rng = random ?? Random.secure();
   final seen = <int>{};
-  while (seen.length < dynamicCodexMaxAttempts) {
+  // Bound by the number of draws examined, not by distinct ports yielded, so a
+  // run of duplicate draws (e.g. a degenerate Random) can never loop forever.
+  for (var examined = 0; examined < dynamicCodexMaxAttempts; examined++) {
     final port = dynamicCodexPortMin + rng.nextInt(dynamicCodexPortMax - dynamicCodexPortMin + 1);
     if (_isDynamicCandidate(port) && seen.add(port)) {
       yield port;
@@ -195,7 +199,10 @@ class _DrainingCodexProcess implements SpawnedProcess {
       _stderr = _inner.stderr.asBroadcastStream() {
     _stdoutDrain = _stdout.listen((_) {}, onError: (Object _) {}, cancelOnError: false);
     _stderrDrain = _stderr.listen((_) {}, onError: (Object _) {}, cancelOnError: false);
-    unawaited(_releaseDrainsOnExit());
+    // Fail-soft: this background drain-release is best-effort, so swallow any
+    // error (e.g. a `cancel()` throw) rather than leaking an unhandled async
+    // error from the unawaited future.
+    unawaited(_releaseDrainsOnExit().catchError((Object _) {}));
   }
 
   final SpawnedProcess _inner;

@@ -128,7 +128,13 @@ class ApprovalRegistry {
   /// Cancels the subscription and denies every still-pending approval so
   /// codex doesn't wait forever.
   Future<void> dispose() async {
-    await _subscription?.cancel();
+    // Isolate the cancel so a failing cancel can never skip the pending-denial
+    // loop below — otherwise codex would wait forever on unanswered approvals.
+    try {
+      await _subscription?.cancel();
+    } catch (_) {
+      // Best-effort; we still must deny everything that's pending.
+    }
     _subscription = null;
     final remaining = List<_PendingApproval>.from(_pending.values);
     _pending.clear();

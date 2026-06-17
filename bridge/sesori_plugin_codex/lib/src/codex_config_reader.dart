@@ -49,9 +49,18 @@ class CodexConfigReader {
     final file = File(p.join(home, "config.toml"));
     if (!file.existsSync()) return const CodexConfigDefaults.empty();
 
+    final List<String> rawLines;
+    try {
+      rawLines = file.readAsLinesSync();
+    } catch (_) {
+      // Permission/IO error reading the config: this is only a fallback
+      // source, so degrade to no defaults rather than failing the caller.
+      return const CodexConfigDefaults.empty();
+    }
+
     String? model;
     String? modelProvider;
-    for (final rawLine in file.readAsLinesSync()) {
+    for (final rawLine in rawLines) {
       final line = rawLine.split("#").first.trim();
       if (line.isEmpty) continue;
       // Stop at the first table header — the keys we care about are

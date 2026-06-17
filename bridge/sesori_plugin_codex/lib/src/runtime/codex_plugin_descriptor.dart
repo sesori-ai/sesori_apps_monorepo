@@ -119,9 +119,13 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
   List<PluginOption> get options => cliOptions;
 
   /// Confirms the codex CLI is installed and runnable before the bridge commits
-  /// to startup. Resolves the binary (override / cached / PATH), then runs
-  /// `<codex-bin> --version`: exit 0 within [codexVersionProbeTimeout] means
-  /// available; a failed launch, a non-zero exit, or a timeout mean unavailable.
+  /// to startup. This is a READ-ONLY probe: it resolves the binary without any
+  /// network/download or disk side effects (override / usable cached binary /
+  /// PATH) via [CodexBinaryResolver.probe], then runs `<codex-bin> --version`:
+  /// exit 0 within [codexVersionProbeTimeout] means available; a failed launch,
+  /// a non-zero exit, or a timeout mean unavailable. The download-capable
+  /// resolution is deferred to [start], so availability checks never mutate
+  /// disk or hit the network before startup is committed.
   @override
   Future<PluginAvailability> checkAvailability({
     required PluginConfig config,
@@ -129,7 +133,7 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
     required Map<String, String> environment,
   }) async {
     final binFlag = config.value("codex-bin") ?? "codex";
-    final executablePath = await _resolveBinary(binFlag: binFlag, environment: environment);
+    final executablePath = await _probeBinary(binFlag: binFlag, environment: environment);
     return _probeCodexBinary(
       executablePath: executablePath,
       processes: processes,
@@ -137,15 +141,31 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
     );
   }
 
+  CodexBinaryResolver _resolver({
+    required String binFlag,
+    required Map<String, String> environment,
+  }) {
+    return (_buildBinaryResolver ?? _defaultBuildBinaryResolver)(
+      codexBinFlag: binFlag,
+      environment: environment,
+    );
+  }
+
+  /// Download-capable resolution for actual startup (override / cached /
+  /// auto-download / PATH).
   Future<String> _resolveBinary({
     required String binFlag,
     required Map<String, String> environment,
   }) async {
-    final resolver = (_buildBinaryResolver ?? _defaultBuildBinaryResolver)(
-      codexBinFlag: binFlag,
-      environment: environment,
-    );
-    return resolver.resolve();
+    return _resolver(binFlag: binFlag, environment: environment).resolve();
+  }
+
+  /// Read-only resolution for the availability probe — never downloads.
+  Future<String> _probeBinary({
+    required String binFlag,
+    required Map<String, String> environment,
+  }) async {
+    return _resolver(binFlag: binFlag, environment: environment).probe();
   }
 
   /// Runs `<executablePath> --version` and classifies the outcome. Never

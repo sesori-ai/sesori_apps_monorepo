@@ -47,12 +47,22 @@ class CodexRuntimeStatusReporter {
   /// Transport dropped: schedule a [PluginDegraded] after [degradedDebounce],
   /// unless a later connect/disconnect supersedes it. The first observation
   /// time is retained as `since`.
+  ///
+  /// If a degradation is already pending (`_degradedSince` is still set from
+  /// an earlier disconnect that no reconnect has cleared), the in-flight
+  /// debounce future already covers this drop, so we don't schedule another.
+  /// This keeps exactly one debounce pending during a flap instead of letting
+  /// futures pile up — the [ServerClock.delay] future is not cancelable, so
+  /// suppression rather than replacement is the only lever available.
   void markDisconnected() {
     if (_disposed) {
       return;
     }
+    if (_degradedSince != null) {
+      return;
+    }
+    final since = _degradedSince = _clock.now();
     final generation = ++_generation;
-    final since = _degradedSince ??= _clock.now();
     unawaited(_applyDegradedAfterDebounce(generation, since));
   }
 

@@ -69,7 +69,15 @@ class CodexSkillReader {
   ) {
     final dir = Directory(directory);
     if (!dir.existsSync()) return;
-    for (final entity in dir.listSync(followLinks: false)) {
+    final List<FileSystemEntity> entities;
+    try {
+      entities = dir.listSync(followLinks: false);
+    } catch (_) {
+      // Unreadable skills root (e.g. permission denied): skip this location
+      // rather than aborting discovery of the other location.
+      return;
+    }
+    for (final entity in entities) {
       if (entity is! Directory) continue;
       final skillFile = File(p.join(entity.path, "SKILL.md"));
       if (!skillFile.existsSync()) continue;
@@ -89,7 +97,13 @@ class CodexSkillReader {
     File skillFile,
     CodexSkillSource source,
   ) {
-    final lines = skillFile.readAsLinesSync();
+    final List<String> lines;
+    try {
+      lines = skillFile.readAsLinesSync();
+    } catch (_) {
+      // Unreadable SKILL.md: skip this one skill, keep scanning the rest.
+      return null;
+    }
     if (lines.isEmpty || lines.first.trim() != "---") return null;
 
     String? name;

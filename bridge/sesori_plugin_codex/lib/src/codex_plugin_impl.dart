@@ -31,10 +31,14 @@ import "session_rollout_reader.dart";
 /// Approval/permission flows still throw — those land in Phase 5.
 class CodexPlugin implements CodexManagedApi {
   final String _serverUrl;
-  // ignore: unused_field
+  // Passed to the default client built in [_createClient]; retained for future
+  // non-loopback (`--ws-auth`) support.
   final String? _capabilityToken;
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
-  final CodexAppServerClient Function() _clientFactory;
+  // Nullable: when the caller injects a factory (tests) we use it verbatim;
+  // otherwise [_ensureConnected] builds the default client itself so it can
+  // wire the client's disconnect signal into [_handleClientDisconnected].
+  final CodexAppServerClient Function()? _clientFactory;
   final SessionRolloutReader _rolloutReader;
   final CodexConfigReader _configReader;
   final CodexSkillReader _skillReader;
@@ -47,6 +51,11 @@ class CodexPlugin implements CodexManagedApi {
   /// (The disconnect signal is wired directly into the app-server client by the
   /// default client factory below.)
   final void Function()? _onConnected;
+
+  /// Forwarded to the runtime descriptor's status reporter when the transport
+  /// drops. Wrapped by [_handleClientDisconnected] so cached connection state
+  /// is reset before the reporter is told.
+  final void Function()? _onDisconnected;
 
   CodexAppServerClient? _client;
   Future<bool>? _connectFuture;
@@ -96,13 +105,9 @@ class CodexPlugin implements CodexManagedApi {
     return CodexPlugin._(
       serverUrl: serverUrl,
       capabilityToken: capabilityToken,
-      clientFactory:
-          clientFactory ??
-          () => CodexAppServerClient(
-            serverUrl: serverUrl,
-            capabilityToken: capabilityToken,
-            onDisconnected: onDisconnected,
-          ),
+      // When null, [_ensureConnected] builds the default client so it can wire
+      // the client's `onDisconnected` through [_handleClientDisconnected].
+      clientFactory: clientFactory,
       rolloutReader: rolloutReader ?? SessionRolloutReader(),
       configReader: resolvedConfigReader,
       skillReader:
@@ -115,6 +120,7 @@ class CodexPlugin implements CodexManagedApi {
           ),
       projectCwd: resolvedProjectCwd,
       onConnected: onConnected,
+      onDisconnected: onDisconnected,
       keepaliveInterval: keepaliveInterval,
     );
   }
@@ -122,13 +128,14 @@ class CodexPlugin implements CodexManagedApi {
   CodexPlugin._({
     required String serverUrl,
     required String? capabilityToken,
-    required CodexAppServerClient Function() clientFactory,
+    required CodexAppServerClient Function()? clientFactory,
     required SessionRolloutReader rolloutReader,
     required CodexConfigReader configReader,
     required CodexSkillReader skillReader,
     required CodexEventMapper eventMapper,
     required String projectCwd,
     void Function()? onConnected,
+    void Function()? onDisconnected,
     Duration keepaliveInterval = const Duration(seconds: 30),
   }) : _serverUrl = serverUrl,
        _keepaliveInterval = keepaliveInterval,
@@ -140,6 +147,7 @@ class CodexPlugin implements CodexManagedApi {
        _eventMapper = eventMapper,
        _projectCwd = projectCwd,
        _onConnected = onConnected,
+       _onDisconnected = onDisconnected,
        _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>();
 
   String get serverUrl => _serverUrl;
@@ -159,7 +167,7 @@ class CodexPlugin implements CodexManagedApi {
     final existing = _connectFuture;
     if (existing != null) return existing;
     final future = () async {
-      final client = _clientFactory();
+      final client = _createClient();
       _client = client;
       try {
         await client.connect();
@@ -177,6 +185,32 @@ class CodexPlugin implements CodexManagedApi {
     }();
     _connectFuture = future.catchError((Object _) => false);
     return _connectFuture!;
+  }
+
+  /// Builds the app-server client: the injected factory verbatim (tests), or
+  /// the default client with its disconnect signal wired into
+  /// [_handleClientDisconnected].
+  CodexAppServerClient _createClient() {
+    final injected = _clientFactory;
+    if (injected != null) return injected();
+    return CodexAppServerClient(
+      serverUrl: _serverUrl,
+      capabilityToken: _capabilityToken,
+      onDisconnected: _handleClientDisconnected,
+    );
+  }
+
+  /// Invoked when the underlying transport drops unexpectedly. Resets the
+  /// cached connection state (so [healthCheck]/[_ensureConnected] no longer
+  /// hand back a stale successful future for a dead socket and instead
+  /// re-establish on the next call), then forwards the signal to the runtime
+  /// descriptor's status reporter.
+  void _handleClientDisconnected() {
+    _connectFuture = null;
+    _client = null;
+    _keepaliveTimer?.cancel();
+    _keepaliveTimer = null;
+    _onDisconnected?.call();
   }
 
   /// Wires the codex notification stream into the bridge event buffer,

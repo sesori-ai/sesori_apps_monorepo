@@ -48,6 +48,12 @@ const Map<String, String> codexAssetFor = {
 String _githubReleaseUrl(String asset) =>
     "https://github.com/openai/codex/releases/download/rust-v$pinnedCodexVersion/$asset";
 
+/// Deadline for the release-asset download GET, so a hung network call cannot
+/// block resolver startup indefinitely. The asset is a few MB; a slow link
+/// still completes well within this budget, and on timeout the resolver
+/// degrades to PATH lookup like any other download failure.
+const Duration codexDownloadTimeout = Duration(seconds: 60);
+
 /// The binary's name inside a release [asset] archive: the asset filename with
 /// its archive extension (`.tar.gz` / `.zip`) stripped. For codex's archives
 /// this is the target-triple-named binary, e.g.
@@ -131,7 +137,7 @@ class CodexBinaryResolver {
     }
 
     final cached = _cachedBinaryPath();
-    if (cached != null && File(cached).existsSync()) {
+    if (cached != null && _isUsableBinary(cached)) {
       Log.i("codex: using cached binary at $cached");
       return cached;
     }
@@ -143,6 +149,26 @@ class CodexBinaryResolver {
     }
 
     Log.i("codex: falling back to PATH lookup of '$_codexBinFlag'");
+    return _codexBinFlag;
+  }
+
+  /// Read-only counterpart to [resolve] for availability probing: returns the
+  /// binary to spawn for `--version` WITHOUT ever touching the network or
+  /// mutating disk.
+  ///
+  /// It honors the `--codex-bin` override and a usable cached managed binary,
+  /// but never auto-downloads — a missing managed binary degrades to the bare
+  /// `--codex-bin` string for the caller to probe on `PATH`. The deferred
+  /// download still happens later in [resolve] at actual startup. This keeps
+  /// `checkAvailability` side-effect free (no disk/network mutation before the
+  /// bridge has committed to startup).
+  Future<String> probe() async {
+    final explicit = await _resolveExplicit();
+    if (explicit != null) return explicit;
+
+    final cached = _cachedBinaryPath();
+    if (cached != null && _isUsableBinary(cached)) return cached;
+
     return _codexBinFlag;
   }
 
@@ -161,6 +187,21 @@ class CodexBinaryResolver {
     final dataHome = _environment["XDG_DATA_HOME"] ?? p.join(home, ".local", "share");
     final binName = Platform.isWindows ? "codex.exe" : "codex";
     return p.join(dataHome, "sesori", "codex", pinnedCodexVersion, binName);
+  }
+
+  /// A spawnable binary must exist and, on POSIX, carry an execute bit. A
+  /// present-but-non-executable cached file (e.g. from an interrupted earlier
+  /// run before its `chmod +x`) would otherwise be returned here and fail at
+  /// `Process.start`; treating it as unusable lets resolution fall through to a
+  /// fresh download that re-applies the execute bit. Windows has no exec-bit
+  /// concept, so existence is sufficient there.
+  static bool _isUsableBinary(String path) {
+    final file = File(path);
+    if (!file.existsSync()) return false;
+    if (Platform.isWindows) return true;
+    // Any of the owner/group/other execute bits (octal 111 == 0x49) makes the
+    // file spawnable. Dart has no octal literal, so the mask is written in hex.
+    return (file.statSync().mode & 0x49) != 0;
   }
 
   Future<String?> _tryDownload() async {
@@ -184,7 +225,7 @@ class CodexBinaryResolver {
 
       final archivePath = p.join(destDir, asset);
       Log.i("codex: downloading $url");
-      final response = await _httpClient.get(Uri.parse(url));
+      final response = await _httpClient.get(Uri.parse(url)).timeout(codexDownloadTimeout);
       if (response.statusCode != 200) {
         Log.w(
           "codex: download failed (HTTP ${response.statusCode}), "

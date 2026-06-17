@@ -156,6 +156,10 @@ class CodexAppServerClient {
     if (_disposed) {
       throw StateError("CodexAppServerClient is disposed");
     }
+    // Re-arm the one-shot disconnect signal: a prior failed connect on this
+    // instance may have set it, which would otherwise suppress the disconnect
+    // notification for this fresh connection.
+    _disconnectedNotified = false;
 
     final uri = Uri.parse(_serverUrl);
     final channel = _channelFactory(uri);
@@ -168,35 +172,67 @@ class CodexAppServerClient {
       cancelOnError: false,
     );
 
-    final raw = await request(
-      method: "initialize",
-      params: {
-        "clientInfo": {
-          "name": clientName,
-          "title": null,
-          "version": clientVersion,
-        },
-        "capabilities": {
-          "experimentalApi": false,
-          // codex 0.139.0 added this capability: opting in makes codex send
-          // `attestation/generate` server-requests (for upstream
-          // `x-oai-attestation`) which the bridge does not handle. Stay opted
-          // out so codex never blocks a turn waiting on an attestation reply.
-          "requestAttestation": false,
-          "optOutNotificationMethods": null,
-        },
-      },
-      timeout: timeout,
-    );
-
-    if (raw is! Map) {
-      throw CodexRpcException(
+    try {
+      final raw = await request(
         method: "initialize",
-        code: -32603,
-        message: "expected object result, got ${raw.runtimeType}",
+        params: {
+          "clientInfo": {
+            "name": clientName,
+            "title": null,
+            "version": clientVersion,
+          },
+          "capabilities": {
+            "experimentalApi": false,
+            // codex 0.139.0 added this capability: opting in makes codex send
+            // `attestation/generate` server-requests (for upstream
+            // `x-oai-attestation`) which the bridge does not handle. Stay opted
+            // out so codex never blocks a turn waiting on an attestation reply.
+            "requestAttestation": false,
+            "optOutNotificationMethods": null,
+          },
+        },
+        timeout: timeout,
       );
+
+      if (raw is! Map) {
+        throw CodexRpcException(
+          method: "initialize",
+          code: -32603,
+          message: "expected object result, got ${raw.runtimeType}",
+        );
+      }
+      return CodexInitializeResult.fromJson(raw.cast<String, dynamic>());
+    } catch (_) {
+      // A failed handshake (timeout, RPC error, socket drop mid-connect) must
+      // not leave the client half-open: tear down the channel, subscription
+      // and any in-flight request state so a subsequent `connect()` on this
+      // instance (or a fresh one) can recover instead of tripping the
+      // "already connected" guard above.
+      await _teardownTransport();
+      rethrow;
     }
-    return CodexInitializeResult.fromJson(raw.cast<String, dynamic>());
+  }
+
+  /// Cancels the socket subscription and closes the channel sink, nulling both
+  /// so later calls fail fast. Failure-isolated: a throwing cancel/close must
+  /// not prevent the remaining teardown or surface as an unhandled async error.
+  Future<void> _teardownTransport() async {
+    final channel = _channel;
+    _channel = null;
+    try {
+      // Cancel on the field directly (not a local copy) so the
+      // `cancel_subscriptions` lint can see the teardown; null it immediately
+      // after so a re-entrant teardown is a harmless no-op.
+      await _subscription?.cancel();
+    } catch (_) {
+      // best-effort cancel
+    }
+    _subscription = null;
+    try {
+      await channel?.sink.close();
+    } catch (_) {
+      // best-effort close
+    }
   }
 
   /// Send a JSON-RPC request and wait for its response.
@@ -308,15 +344,31 @@ class CodexAppServerClient {
         return;
       }
 
-      Log.d("[codex][ws] unrecognised frame: $raw");
+      Log.d("[codex][ws] unrecognised frame: ${_redactForLog(raw)}");
     } catch (error, stack) {
-      Log.w("[codex][ws] failed to parse frame: $error\n$stack");
+      // The error (e.g. a FormatException from jsonDecode) can embed a snippet
+      // of the offending frame, so redact it too.
+      Log.w("[codex][ws] failed to parse frame: ${_redactForLog("$error")}\n$stack");
     }
   }
 
+  /// Masks JSON-style secret values before logging a raw frame. Matches
+  /// case-insensitively on the usual credential keys and replaces the value
+  /// with `"***"` while leaving the rest of the frame intact for diagnostics.
+  /// Best-effort string scrub (not a JSON re-encode) so a non-JSON or partial
+  /// frame still gets redacted.
+  static final RegExp _secretKeyValue = RegExp(
+    r'("(?:token|authorization|api[_-]?key|secret|password|bearer)"\s*:\s*)"(?:\\.|[^"\\])*"',
+    caseSensitive: false,
+  );
+
+  String _redactForLog(String frame) =>
+      frame.replaceAllMapped(_secretKeyValue, (m) => '${m.group(1)}"***"');
+
   void _handleSocketError(Object error, StackTrace stack) {
-    Log.w("[codex][ws] socket error: $error");
+    Log.w("[codex][ws] socket error: ${_redactForLog("$error")}");
     _failPending(error, stack);
+    _tearDownDeadTransport();
     _notifyDisconnected();
   }
 
@@ -326,7 +378,18 @@ class CodexAppServerClient {
       StateError("codex app-server WebSocket closed before reply"),
       StackTrace.current,
     );
+    _tearDownDeadTransport();
     _notifyDisconnected();
+  }
+
+  /// Drops the channel and cancels the subscription after an unexpected
+  /// disconnect so later [request] calls fail fast (against a null channel)
+  /// instead of writing to a dead sink. The cancel is best-effort and not
+  /// awaited (these handlers are `void`); [_teardownTransport] swallows any
+  /// cancellation error so it never escapes as an unhandled async error.
+  void _tearDownDeadTransport() {
+    if (_disposed) return;
+    unawaited(_teardownTransport());
   }
 
   /// Surfaces a single unexpected-disconnect signal. Suppressed once the
@@ -347,24 +410,37 @@ class CodexAppServerClient {
   }
 
   /// Closes the socket and fails any in-flight requests.
+  ///
+  /// Failure-isolated: every teardown step runs even if an earlier one throws,
+  /// so a single failing close cannot strand the subscription, the pending
+  /// requests, or the broadcast controllers. `dispose()` stays non-throwing
+  /// (its callers — the plugin teardown and the connect-failure path — `await`
+  /// it without a guard and rely on the statements after it running); any step
+  /// failure is surfaced via [Log.w] instead of propagated.
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
-    await _subscription?.cancel();
-    final channel = _channel;
-    _channel = null;
-    if (channel != null) {
-      try {
-        await channel.sink.close();
-      } catch (_) {
-        // best-effort close
-      }
+
+    // Transport teardown is already best-effort (swallows its own errors).
+    await _teardownTransport();
+
+    try {
+      _failPending(
+        StateError("CodexAppServerClient disposed"),
+        StackTrace.current,
+      );
+    } catch (error, stack) {
+      Log.w("[codex][ws] dispose: failing pending requests threw: $error", error, stack);
     }
-    _failPending(
-      StateError("CodexAppServerClient disposed"),
-      StackTrace.current,
-    );
-    await _notifications.close();
-    await _serverRequests.close();
+    try {
+      await _notifications.close();
+    } catch (error, stack) {
+      Log.w("[codex][ws] dispose: closing notifications stream threw: $error", error, stack);
+    }
+    try {
+      await _serverRequests.close();
+    } catch (error, stack) {
+      Log.w("[codex][ws] dispose: closing serverRequests stream threw: $error", error, stack);
+    }
   }
 }

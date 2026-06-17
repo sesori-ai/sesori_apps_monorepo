@@ -76,6 +76,11 @@ void main() {
     test("uses the cached managed binary before downloading", () async {
       final cached = File(_cachedPath(home.path))..parent.createSync(recursive: true);
       cached.writeAsStringSync("#!/bin/sh\n");
+      // A properly-cached binary carries the execute bit; the resolver now
+      // rejects a present-but-non-executable cache and re-downloads.
+      if (!Platform.isWindows) {
+        Process.runSync("chmod", ["+x", cached.path]);
+      }
       final resolver = CodexBinaryResolver(
         codexBinFlag: "codex",
         environment: {"HOME": home.path},

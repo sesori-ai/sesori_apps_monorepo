@@ -149,7 +149,14 @@ class SessionRolloutReader {
     if (path == null) return const [];
     final file = File(path);
     if (!file.existsSync()) return const [];
-    final lines = file.readAsLinesSync();
+    final List<String> lines;
+    try {
+      lines = file.readAsLinesSync();
+    } catch (_) {
+      // Permission/IO error reading the index: fail soft so a single
+      // unreadable index never blocks the rollout-derived session list.
+      return const [];
+    }
     final out = <CodexSessionIndexEntry>[];
     for (final line in lines) {
       final entry = CodexSessionIndexEntry.tryParse(line);
@@ -169,8 +176,17 @@ class SessionRolloutReader {
     final dir = Directory(root);
     if (!dir.existsSync()) return const [];
 
+    final List<FileSystemEntity> entities;
+    try {
+      entities = dir.listSync(recursive: true, followLinks: false);
+    } catch (_) {
+      // Permission/IO error walking the sessions tree: fail soft so a single
+      // unreadable directory never breaks the session listing.
+      return const [];
+    }
+
     final out = <({String sessionId, String path})>[];
-    for (final entity in dir.listSync(recursive: true, followLinks: false)) {
+    for (final entity in entities) {
       if (entity is! File) continue;
       final name = p.basename(entity.path);
       if (!name.startsWith("rollout-") || !name.endsWith(".jsonl")) continue;
@@ -200,7 +216,14 @@ class SessionRolloutReader {
     // `turn_context` record that follows it. Scan a bounded window so we can
     // capture both without reading the whole transcript when all we need is
     // the session header.
-    final lines = file.readAsLinesSync();
+    final List<String> lines;
+    try {
+      lines = file.readAsLinesSync();
+    } catch (_) {
+      // Permission/IO error on a single rollout: skip its header so one bad
+      // file never aborts the whole session listing.
+      return null;
+    }
     final scanLimit = lines.length < 32 ? lines.length : 32;
 
     String? id;
@@ -313,7 +336,14 @@ class SessionRolloutReader {
     final file = File(rolloutPath);
     if (!file.existsSync()) return const [];
 
-    final lines = file.readAsLinesSync();
+    final List<String> lines;
+    try {
+      lines = file.readAsLinesSync();
+    } catch (_) {
+      // Permission/IO error reading the transcript: fail soft so the message
+      // fetch returns empty rather than throwing through getSessionMessages.
+      return const [];
+    }
 
     // Pre-scan: a tool call (`function_call`) and its result
     // (`function_call_output`) are separate records correlated by `call_id`.
@@ -573,15 +603,20 @@ class SessionRolloutReader {
     if (path == null) return;
     final file = File(path);
     if (!file.existsSync()) return;
-    final lines = file.readAsLinesSync();
-    final filtered = <String>[];
-    for (final line in lines) {
-      final entry = CodexSessionIndexEntry.tryParse(line);
-      if (entry?.id == sessionId) continue;
-      filtered.add(line);
+    try {
+      final lines = file.readAsLinesSync();
+      final filtered = <String>[];
+      for (final line in lines) {
+        final entry = CodexSessionIndexEntry.tryParse(line);
+        if (entry?.id == sessionId) continue;
+        filtered.add(line);
+      }
+      if (filtered.length == lines.length) return;
+      file.writeAsStringSync(filtered.isEmpty ? "" : "${filtered.join("\n")}\n");
+    } catch (_) {
+      // Best-effort: a permission/IO error rewriting the index leaves the
+      // entry in place rather than failing deleteSession.
     }
-    if (filtered.length == lines.length) return;
-    file.writeAsStringSync(filtered.isEmpty ? "" : "${filtered.join("\n")}\n");
   }
 
   static String? _sessionIdFromRolloutName(String fileName) {
