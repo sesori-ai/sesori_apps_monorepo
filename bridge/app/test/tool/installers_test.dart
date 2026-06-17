@@ -400,7 +400,7 @@ cat "\$HOME/.zprofile"
       expect(script, contains(r'''$release.draft -or $release.prerelease'''));
       expect(script, contains(r'[version]::TryParse($versionText, [ref]$parsedVersion)'));
       expect(script, contains(r'$page -le $ReleasesMaxPages'));
-      expect(script, contains(r'"$ReleasesApiUrl?per_page=$ReleasesPerPage&page=$page"'));
+      expect(script, contains(r'"${ReleasesApiUrl}?per_page=$ReleasesPerPage&page=$page"'));
       expect(script, contains('Sort-Object Version -Descending'));
       expect(script, contains(r'''Where-Object { $_.name -eq $ArchiveName }'''));
       expect(script, contains(r'''Where-Object { $_.name -eq 'checksums.txt' }'''));
