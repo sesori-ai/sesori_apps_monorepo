@@ -105,7 +105,12 @@ class CompletionNotifier {
         // so the helper can find a blocked key recorded before reparenting.
         if (info.parentID case final parentId?) {
           _maybeResumeBlockedCompletionForRoot(
-            rootSessionId: parentId,
+            // Resolve the parent to its true root: the block was recorded under
+            // the resolved root in the idle handler, but parentId may itself be
+            // a mid-level child in a deeper hierarchy. The tracker has already
+            // processed this deletion, yet the parent chain above the deleted
+            // session is intact, so resolution still reaches the real root.
+            rootSessionId: _tracker.resolveRootSessionId(parentId),
             originalSessionId: info.id,
           );
         }

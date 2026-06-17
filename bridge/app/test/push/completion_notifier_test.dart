@@ -143,6 +143,57 @@ void main() {
       });
     });
 
+    test("deletion of last pending grandchild resumes blocked root completion", () {
+      fakeAsync((async) {
+        final harness = _newHarness();
+
+        // A 3-level hierarchy: root <- child <- grandchild. The grandchild holds
+        // the only pending question, so the block is recorded under the resolved
+        // root ("root"), not the grandchild's immediate parent ("child").
+        harness.dispatch(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
+        harness.dispatch(
+          SesoriSseEvent.sessionCreated(info: _session(id: "child", parentID: "root")),
+        );
+        harness.dispatch(
+          SesoriSseEvent.sessionCreated(info: _session(id: "grandchild", parentID: "child")),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.questionAsked(
+            id: "q-1",
+            sessionID: "grandchild",
+            questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
+          ),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
+        );
+        harness.dispatch(
+          const SesoriSseEvent.sessionStatus(sessionID: "grandchild", status: SessionStatus.idle()),
+        );
+        async.elapse(const Duration(milliseconds: 200));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, isEmpty);
+
+        // Deleting the grandchild — whose parentID is the mid-level "child", not
+        // the true root — must still resume completion for the real root. This
+        // only works if the deletion handler resolves parentID to its root
+        // rather than using it verbatim.
+        harness.dispatch(
+          SesoriSseEvent.sessionDeleted(info: _session(id: "grandchild", parentID: "child")),
+        );
+
+        async.elapse(const Duration(milliseconds: 500));
+        async.flushMicrotasks();
+        expect(harness.completedRoots, equals(["root"]));
+      });
+    });
+
     test("reparented child still resumes blocked completion on reply", () {
       fakeAsync((async) {
         final harness = _newHarness();
