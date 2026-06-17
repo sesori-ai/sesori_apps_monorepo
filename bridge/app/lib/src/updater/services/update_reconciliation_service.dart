@@ -50,10 +50,32 @@ class UpdateReconciliationService {
   @visibleForTesting
   void Function(String message) logWarning = Log.w;
 
-  /// Reconciliation is best-effort startup maintenance: every step is isolated
-  /// so a single I/O failure (e.g. a full disk while logging) can neither abort
-  /// the remaining cleanup nor hard-fail bridge startup.
+  /// Reconciliation is best-effort startup maintenance. It runs entirely under
+  /// the cross-process update lock because it executes BEFORE single-live-bridge
+  /// enforcement: another bridge may start an apply (writing a new attempt
+  /// record and creating `.old`/`.rollback` residue) between our read and our
+  /// clear/sweep. Taking the lock means we never read a stale record and then
+  /// delete a newer one, nor sweep residue an applying bridge still needs. If
+  /// the lock is held, that bridge owns the in-flight state and reconciles on
+  /// its own next launch.
   Future<void> reconcile() async {
+    try {
+      await _updateLock.locked<void>(
+        lockFile: File(p.join(_installRoot, '.update.lock')),
+        onLockAcquired: _reconcileLocked,
+        onLockRejected: (_) async {
+          logWarning('Skipping update reconciliation — the update lock is held by another process.');
+        },
+        shouldReleaseLock: (_) => true,
+      );
+    } on Object catch (error) {
+      logWarning('Update reconciliation failed: $error');
+    }
+  }
+
+  /// The locked body: every step is isolated so a single I/O failure can
+  /// neither abort the remaining cleanup nor hard-fail bridge startup.
+  Future<void> _reconcileLocked() async {
     UpdateAttempt? attempt;
     try {
       attempt = await _attemptRepository.readAttempt();
@@ -69,7 +91,11 @@ class UpdateReconciliationService {
       }
     }
 
-    await _sweepResidueUnderLock();
+    try {
+      await _installationRepository.sweepResidue(installRoot: _installRoot);
+    } on Object catch (error) {
+      logWarning('Failed to sweep update residue: $error');
+    }
 
     if (attempt != null) {
       try {
@@ -77,25 +103,6 @@ class UpdateReconciliationService {
       } on Object catch (error) {
         logWarning('Failed to clear the update attempt record: $error');
       }
-    }
-  }
-
-  /// Reconciliation runs before single-live-bridge enforcement, so another
-  /// bridge may be mid-apply (holding the update lock and owning the `.old`/
-  /// `.rollback` residue). Sweep only under that lock; if it is held, skip —
-  /// the applying bridge sweeps its own residue when it finishes.
-  Future<void> _sweepResidueUnderLock() async {
-    try {
-      await _updateLock.locked<void>(
-        lockFile: File(p.join(_installRoot, '.update.lock')),
-        onLockAcquired: () => _installationRepository.sweepResidue(installRoot: _installRoot),
-        onLockRejected: (_) async {
-          logWarning('Skipping update residue sweep — the update lock is held by another process.');
-        },
-        shouldReleaseLock: (_) => true,
-      );
-    } on Object catch (error) {
-      logWarning('Failed to sweep update residue: $error');
     }
   }
 

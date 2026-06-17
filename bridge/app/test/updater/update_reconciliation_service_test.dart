@@ -129,12 +129,17 @@ void main() {
     expect(attempts.cleared, isFalse);
   });
 
-  test('residue sweep is skipped when the update lock is held by another process', () async {
+  test('reconciliation is skipped entirely when the update lock is held by another process', () async {
+    attempts.stored = _attempt(status: UpdateAttemptStatus.appliedPendingActivation);
     lock.outcome = LockAcquireResult.alreadyLocked;
 
-    await buildService(currentVersion: '1.0.0').reconcile();
+    await buildService(currentVersion: '2.0.0').reconcile();
 
+    // The applying bridge owns the in-flight state; we touch nothing.
     expect(installation.sweepCount, 0);
+    expect(infoMessages, isEmpty);
+    expect(errorMessages, isEmpty);
+    expect(attempts.cleared, isFalse);
   });
 
   test('pending activation that matches the running version is confirmed', () async {
