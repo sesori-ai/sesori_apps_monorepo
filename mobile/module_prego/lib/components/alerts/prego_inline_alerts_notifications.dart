@@ -200,7 +200,14 @@ class PregoInlineAlertsNotifications extends StatelessWidget {
         ),
         if (_buildActions(colors) case final actions?) ...[
           const SizedBox(width: PregoSpacing.md),
-          actions,
+          // The card surface is `fgPrimary` — the inverse of the page
+          // background — so action buttons that resolve their foreground from
+          // semantic page tokens (a tertiary [PregoButtonsSolid]'s
+          // `textTertiary` label, the loading `primaryAlt` fill) would be
+          // mis-toned against it. Render the cluster under the opposite-
+          // brightness palette so those tokens land on the right side of the
+          // surface in both themes.
+          _InvertedSurfaceTheme(child: actions),
         ],
       ],
     );
@@ -385,6 +392,35 @@ class PregoInlineAlertsNotifications extends StatelessWidget {
     PregoInlineAlertsNotificationsType.warning => colors.fgWarningSecondary,
     PregoInlineAlertsNotificationsType.error => colors.fgErrorSecondary,
   };
+}
+
+/// Re-themes [child] with the opposite-brightness [PregoDesignSystem].
+///
+/// The alert card paints its surface with `fgPrimary`, which is the inverse of
+/// the page background in each theme (a dark surface in light mode, a light
+/// surface in dark mode). Controls that resolve colours from semantic page
+/// tokens — e.g. a tertiary [PregoButtonsSolid] using `textTertiary`, or the
+/// loading-type `primaryAlt` fill — are tuned for the page background, so they
+/// sit on the wrong side of this inverted surface. Wrapping them in the
+/// opposite-brightness palette puts every token back on the correct side.
+class _InvertedSurfaceTheme extends StatelessWidget {
+  const _InvertedSurfaceTheme({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final inverted = theme.brightness == Brightness.light
+        ? PregoDesignSystem.dark
+        : PregoDesignSystem.light;
+    // Append after the existing extensions so the inverted PregoDesignSystem
+    // wins by type; all other theme extensions are preserved.
+    return Theme(
+      data: theme.copyWith(extensions: [...theme.extensions.values, inverted]),
+      child: child,
+    );
+  }
 }
 
 /// Stretches a [RadialGradient] horizontally into a wide, shallow ellipse.

@@ -123,15 +123,17 @@ class _BridgeOfflineBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final loc = context.loc;
 
+    // No reconnect action here: while the bridge is offline the relay
+    // connection is still alive and ConnectionService keeps a bridge-status
+    // watcher that auto-reconnects when the bridge comes back. Forcing a
+    // reconnect now can't complete the E2E handshake and would tear that
+    // watcher down, dropping into the blocking ConnectionLost state — the exact
+    // case ConnectionService deliberately avoids (see the resume path in
+    // connection_service.dart). The banner is purely informational.
     return PregoInlineAlertsNotifications(
       type: PregoInlineAlertsNotificationsType.warning,
       title: loc.bridgeDisconnectedTitle,
       icon: TablerRegular.broadcast_off,
-      primaryAction: PregoInlineAlertsNotificationsAction(
-        label: loc.connectionLostReconnect,
-        icon: TablerRegular.rotate_clockwise,
-        onPressed: () => context.read<ConnectionOverlayCubit>().reconnect(),
-      ),
     );
   }
 }
