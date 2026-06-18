@@ -57,12 +57,19 @@ void main() {
     }
 
     test("resetConnectionAfterExit drops the cached client so the next request reconnects", () async {
+      // onConnected must fire on every successful (re)connect so the lifecycle
+      // wrapper can re-arm its exit watch on the new client.
+      var connects = 0;
+      plugin.onConnected.listen((_) => connects++);
+
       final connecting = plugin.ensureConnected();
       await respondInitialize(fakes.single);
       expect(await connecting, isTrue);
       expect(fakes, hasLength(1));
       final first = plugin.client;
       expect(first, isNotNull);
+      await pump();
+      expect(connects, 1);
 
       // The agent process dies, then the lifecycle resets the connection.
       fakes.single.exit(1);
@@ -77,6 +84,8 @@ void main() {
       expect(await reconnecting, isTrue);
       expect(fakes, hasLength(2), reason: "a fresh agent process was spawned");
       expect(identical(plugin.client, first), isFalse);
+      await pump();
+      expect(connects, 2, reason: "onConnected fires again on reconnect");
     });
   });
 }

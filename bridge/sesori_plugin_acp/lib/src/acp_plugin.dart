@@ -73,6 +73,14 @@ class AcpPlugin implements BridgePluginApi {
   AcpApprovalRegistry? _approvalRegistry;
   AcpInitializeResult? _initResult;
 
+  /// Emits after each successful (re)connect — including a lazy reconnect that
+  /// follows [resetConnectionAfterExit] — so the lifecycle wrapper can re-arm
+  /// its exit watch on the new client and flip back to ready. Broadcast (no
+  /// buffering): the initial connect, driven by the wrapper directly, is not a
+  /// subscriber so it is not double-handled.
+  final StreamController<void> _connected = StreamController<void>.broadcast();
+  Stream<void> get onConnected => _connected.stream;
+
   final Map<String, PluginSessionStatus> _sessionStatuses = {};
   final Set<String> _activeSessions = {};
 
@@ -165,6 +173,7 @@ class AcpPlugin implements BridgePluginApi {
         _approvalRegistry = registry;
         registry.attach(client.serverRequests);
         _initResult = await _initialize(client);
+        if (!_connected.isClosed) _connected.add(null);
         return true;
       } catch (error) {
         await client.dispose();
@@ -900,6 +909,11 @@ class AcpPlugin implements BridgePluginApi {
       await _eventBuffer.close();
     } on Object catch (e, st) {
       Log.w("[$id] failed to close event buffer", e, st);
+    }
+    try {
+      await _connected.close();
+    } on Object catch (e, st) {
+      Log.w("[$id] failed to close connected stream", e, st);
     }
   }
 }

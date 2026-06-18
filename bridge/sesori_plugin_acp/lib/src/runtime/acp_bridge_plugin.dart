@@ -32,6 +32,7 @@ class AcpBridgePlugin with SteadyPluginLifecycle implements BridgePlugin {
   final String? _endpoint;
 
   StreamSubscription<int>? _exitSubscription;
+  StreamSubscription<void>? _connectedSubscription;
   var _stopping = false;
 
   @override
@@ -80,6 +81,18 @@ class AcpBridgePlugin with SteadyPluginLifecycle implements BridgePlugin {
     if (startAborted.isAborted) {
       return;
     }
+    // Re-arm the exit watch and recover to ready on every later (re)connect — a
+    // lazy reconnect after a crash+reset, or a first success following a
+    // degraded start. Subscribed after the initial ensureConnected above, whose
+    // emit (a broadcast with no subscriber yet) is dropped, so the connected
+    // branch below is not double-handled.
+    _connectedSubscription ??= _plugin.onConnected.listen((_) {
+      if (_stopping) {
+        return;
+      }
+      _armExitWatch();
+      markReady();
+    });
     if (connected) {
       _armExitWatch();
       markReady();
@@ -97,6 +110,9 @@ class AcpBridgePlugin with SteadyPluginLifecycle implements BridgePlugin {
     if (exit == null) {
       return;
     }
+    // Drop any prior watch (e.g. from the previous, now-exited client) before
+    // arming on the current client, so reconnects do not leak subscriptions.
+    unawaited(_exitSubscription?.cancel());
     _exitSubscription = exit.asStream().listen((code) {
       if (_stopping) {
         return;
@@ -115,6 +131,13 @@ class AcpBridgePlugin with SteadyPluginLifecycle implements BridgePlugin {
   Future<void> onShutdown({required Duration? budget}) async {
     _stopping = true;
     // Isolated so a failed cancel cannot skip the dispose() below.
+    try {
+      await _connectedSubscription?.cancel();
+    } on Object catch (e, st) {
+      Log.w("[${_plugin.id}] failed to cancel connected subscription", e, st);
+    } finally {
+      _connectedSubscription = null;
+    }
     try {
       await _exitSubscription?.cancel();
     } on Object catch (e, st) {

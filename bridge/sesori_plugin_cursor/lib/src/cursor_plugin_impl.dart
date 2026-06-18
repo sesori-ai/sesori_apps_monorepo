@@ -206,6 +206,18 @@ class CursorPlugin extends AcpPlugin {
     }
   }
 
+  /// The first model with a usable String `value`, or null. Used as the
+  /// default-model fallback so a malformed agent payload (a non-string value on
+  /// the first entry) cannot crash [getProviders].
+  String? _firstModelValue() {
+    for (final model in _models) {
+      if (model["value"] case final String value when value.isNotEmpty) {
+        return value;
+      }
+    }
+    return null;
+  }
+
   /// Cursor's modes as sesori variant ids, default mode first (the mobile
   /// picker auto-selects the first on a model switch).
   List<String> _modeVariants() {
@@ -267,8 +279,7 @@ class CursorPlugin extends AcpPlugin {
                   releaseDate: null,
                 ),
           ],
-          defaultModelID:
-              _currentModelId ?? (_models.first["value"] as String?),
+          defaultModelID: _currentModelId ?? _firstModelValue(),
         ),
       ],
     );

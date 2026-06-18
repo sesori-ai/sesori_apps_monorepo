@@ -254,6 +254,29 @@ void main() {
       await client.dispose();
     });
 
+    test("getProviders tolerates a malformed model option and derives a safe default", () async {
+      // No currentValue, and the first option has a non-string value: the old
+      // `_models.first["value"] as String?` default would have thrown.
+      plugin.captureSessionConfig({
+        "sessionId": "s1",
+        "configOptions": [
+          {
+            "id": "model",
+            "category": "model",
+            "options": [
+              {"value": 123, "name": "Bad"},
+              {"value": "gpt-5.4", "name": "GPT-5.4"},
+            ],
+          },
+        ],
+      });
+      final providers = await plugin.getProviders(projectId: "/repo");
+      final provider = providers.providers.single;
+      expect(provider.models.map((m) => m.id), ["gpt-5.4"],
+          reason: "the malformed entry is dropped, not force-cast");
+      expect(provider.defaultModelID, "gpt-5.4");
+    });
+
     test("getProviders is empty before any session/catalog", () async {
       final providers = plugin.getProviders(projectId: "/repo");
       // _ensureCatalog connects and probes; the agent reports no list capability
