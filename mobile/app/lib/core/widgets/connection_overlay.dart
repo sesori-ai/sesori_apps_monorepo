@@ -121,41 +121,16 @@ class _BridgeOfflineBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final prego = context.prego;
     final loc = context.loc;
 
-    return Material(
-      elevation: 2,
-      color: Colors.orange.shade800,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Row(
-          children: [
-            const Icon(Icons.cloud_off_rounded, color: Colors.white, size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: .start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    loc.bridgeOfflineTitle,
-                    style: prego.textTheme.textXs.medium.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    loc.bridgeOfflineMessage,
-                    style: prego.textTheme.textXs.regular.copyWith(
-                      color: Colors.white70,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+    return PregoInlineAlertsNotifications(
+      type: PregoInlineAlertsNotificationsType.warning,
+      title: loc.bridgeDisconnectedTitle,
+      icon: TablerRegular.broadcast_off,
+      primaryAction: PregoInlineAlertsNotificationsAction(
+        label: loc.connectionLostReconnect,
+        icon: TablerRegular.rotate_clockwise,
+        onPressed: () => context.read<ConnectionOverlayCubit>().reconnect(),
       ),
     );
   }

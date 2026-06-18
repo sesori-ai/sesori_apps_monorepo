@@ -128,75 +128,108 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
             LayoutBuilder(
               builder: (context, constraints) {
                 return SingleChildScrollView(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                      child: Column(
-                        mainAxisSize: .min,
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Material(
-                            type: MaterialType.transparency,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: Column(
+                      mainAxisSize: .min,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Material(
+                          type: MaterialType.transparency,
+                          child: Column(
+                            mainAxisSize: .min,
+                            children: [
+                              const Hero(tag: SesoriLogo.heroTag, child: SesoriLogo()),
+                              Text(
+                                loc.loginTitle,
+                                style: prego.textTheme.textSm.regular,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                loc.loginSubtitle,
+                                style: prego.textTheme.displaySm.bold,
+                              ),
+                            ],
+                          ),
+                        ),
+                        SafeArea(
+                          top: false,
+                          child: Padding(
+                            padding: const EdgeInsetsDirectional.fromSTEB(32, 86, 32, 24),
                             child: Column(
                               mainAxisSize: .min,
                               children: [
-                                const Hero(tag: SesoriLogo.heroTag, child: SesoriLogo()),
-                                Text(
-                                  loc.loginTitle,
-                                  style: prego.textTheme.textSm.regular,
+                                const SizedBox(height: 24),
+                                LoginProviderButtons(
+                                  isLoading: isLoading,
+                                  showEmailForm: _showEmailForm,
+                                  showApple: !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS,
+                                  onGithubSelected: () => _loginWithProvider(AuthProvider.github),
+                                  onAppleSelected: _loginWithApple,
+                                  onGoogleSelected: () => _loginWithProvider(AuthProvider.google),
+                                  onShowEmailForm: _showEmailLogin,
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  loc.loginSubtitle,
-                                  style: prego.textTheme.displaySm.bold,
-                                ),
-                              ],
-                            ),
-                          ),
-                          SafeArea(
-                            top: false,
-                            child: Padding(
-                              padding: const EdgeInsetsDirectional.fromSTEB(32, 86, 32, 24),
-                              child: Column(
-                                mainAxisSize: .min,
-                                children: [
-                                  const SizedBox(height: 24),
-                                  LoginProviderButtons(
-                                    isLoading: isLoading,
-                                    showEmailForm: _showEmailForm,
-                                    showApple: !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS,
-                                    onGithubSelected: () => _loginWithProvider(AuthProvider.github),
-                                    onAppleSelected: _loginWithApple,
-                                    onGoogleSelected: () => _loginWithProvider(AuthProvider.google),
-                                    onShowEmailForm: _showEmailLogin,
+                                if (_showEmailForm) ...[
+                                  const SizedBox(height: 8),
+                                  EmailLoginForm(
+                                    key: ValueKey(_showEmailForm),
                                   ),
-                                  if (_showEmailForm) ...[
-                                    const SizedBox(height: 8),
-                                    EmailLoginForm(
-                                      key: ValueKey(_showEmailForm),
-                                    ),
-                                  ],
-                                  switch (state) {
-                                    LoginAuthenticating() => Padding(
-                                      padding: const EdgeInsetsDirectional.only(top: 16),
-                                      child: Text(
-                                        loc.loginAuthenticating,
-                                        style: prego.textTheme.textSm.regular.copyWith(
-                                          color: prego.colors.textSecondary,
-                                        ),
-                                        textAlign: TextAlign.center,
+                                ],
+                                switch (state) {
+                                  LoginAuthenticating() => Padding(
+                                    padding: const EdgeInsetsDirectional.only(top: 16),
+                                    child: Text(
+                                      loc.loginAuthenticating,
+                                      style: prego.textTheme.textSm.regular.copyWith(
+                                        color: prego.colors.textSecondary,
                                       ),
+                                      textAlign: TextAlign.center,
                                     ),
-                                    LoginAwaitingConfirmation(:final userCode) => Padding(
-                                      padding: const EdgeInsetsDirectional.only(top: 16),
-                                      child: Column(
-                                        children: [
-                                          Text(
-                                            loc.loginAwaitingConfirmation(userCode),
-                                            style: prego.textTheme.textSm.regular.copyWith(
-                                              color: prego.colors.textSecondary,
-                                            ),
-                                            textAlign: TextAlign.center,
+                                  ),
+                                  LoginAwaitingConfirmation(:final userCode) => Padding(
+                                    padding: const EdgeInsetsDirectional.only(top: 16),
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          loc.loginAwaitingConfirmation(userCode),
+                                          style: prego.textTheme.textSm.regular.copyWith(
+                                            color: prego.colors.textSecondary,
                                           ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                          decoration: BoxDecoration(
+                                            color: prego.colors.bgBrandSolid.withAlpha(26),
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(
+                                              color: prego.colors.bgBrandSolid.withAlpha(77),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            userCode,
+                                            style: prego.textTheme.textXl.bold.copyWith(
+                                              color: prego.colors.bgBrandSolid,
+                                              letterSpacing: 4,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  LoginPolling(:final userCode) => Padding(
+                                    padding: const EdgeInsetsDirectional.only(top: 16),
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          loc.loginPolling,
+                                          style: prego.textTheme.textSm.regular.copyWith(
+                                            color: prego.colors.textSecondary,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        if (userCode != null) ...[
                                           const SizedBox(height: 8),
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -216,106 +249,73 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                                             ),
                                           ),
                                         ],
-                                      ),
+                                      ],
                                     ),
-                                    LoginPolling(:final userCode) => Padding(
-                                      padding: const EdgeInsetsDirectional.only(top: 16),
-                                      child: Column(
-                                        children: [
-                                          Text(
-                                            loc.loginPolling,
-                                            style: prego.textTheme.textSm.regular.copyWith(
-                                              color: prego.colors.textSecondary,
+                                  ),
+                                  LoginTimeout() => Padding(
+                                    padding: const EdgeInsetsDirectional.only(top: 16),
+                                    child: Text(
+                                      loc.loginTimeout,
+                                      style: prego.textTheme.textSm.regular.copyWith(
+                                        color: prego.colors.textSecondary,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                  LoginIdle() => const SizedBox.shrink(),
+                                  LoginFailed() => const SizedBox.shrink(),
+                                  LoginSuccess() => const SizedBox.shrink(),
+                                },
+                                switch (state) {
+                                  LoginFailed() => const SizedBox.shrink(),
+                                  LoginTimeout() => Padding(
+                                    padding: const EdgeInsetsDirectional.only(top: 24),
+                                    child: Card(
+                                      color: prego.colors.bgErrorPrimary,
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(16),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.error_outline,
+                                              color: prego.colors.fgErrorPrimary,
                                             ),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                          if (userCode != null) ...[
-                                            const SizedBox(height: 8),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                              decoration: BoxDecoration(
-                                                color: prego.colors.bgBrandSolid.withAlpha(26),
-                                                borderRadius: BorderRadius.circular(8),
-                                                border: Border.all(
-                                                  color: prego.colors.bgBrandSolid.withAlpha(77),
-                                                ),
-                                              ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
                                               child: Text(
-                                                userCode,
-                                                style: prego.textTheme.textXl.bold.copyWith(
-                                                  color: prego.colors.bgBrandSolid,
-                                                  letterSpacing: 4,
+                                                loc.loginTimeout,
+                                                style: prego.textTheme.textSm.regular.copyWith(
+                                                  color: prego.colors.fgErrorPrimary,
                                                 ),
                                               ),
                                             ),
                                           ],
-                                        ],
-                                      ),
-                                    ),
-                                    LoginTimeout() => Padding(
-                                      padding: const EdgeInsetsDirectional.only(top: 16),
-                                      child: Text(
-                                        loc.loginTimeout,
-                                        style: prego.textTheme.textSm.regular.copyWith(
-                                          color: prego.colors.textSecondary,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                    LoginIdle() => const SizedBox.shrink(),
-                                    LoginFailed() => const SizedBox.shrink(),
-                                    LoginSuccess() => const SizedBox.shrink(),
-                                  },
-                                  switch (state) {
-                                    LoginFailed() => const SizedBox.shrink(),
-                                    LoginTimeout() => Padding(
-                                      padding: const EdgeInsetsDirectional.only(top: 24),
-                                      child: Card(
-                                        color: prego.colors.bgErrorPrimary,
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(16),
-                                          child: Row(
-                                            children: [
-                                              Icon(
-                                                Icons.error_outline,
-                                                color: prego.colors.fgErrorPrimary,
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Expanded(
-                                                child: Text(
-                                                  loc.loginTimeout,
-                                                  style: prego.textTheme.textSm.regular.copyWith(
-                                                    color: prego.colors.fgErrorPrimary,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
                                         ),
                                       ),
                                     ),
-                                    LoginIdle() => const SizedBox.shrink(),
-                                    LoginAuthenticating() => const SizedBox.shrink(),
-                                    LoginAwaitingConfirmation() => const SizedBox.shrink(),
-                                    LoginPolling() => const SizedBox.shrink(),
-                                    LoginSuccess() => const SizedBox.shrink(),
-                                  },
-                                  const SizedBox(height: 22),
-                                  MarkdownBody(
-                                    data: loc.loginAgreementText,
-                                    onTapLink: handleMarkdownLinkTap,
-                                    styleSheet: buildAgreementMarkdownStyleSheet(prego: prego),
                                   ),
-                                ],
-                              ),
+                                  LoginIdle() => const SizedBox.shrink(),
+                                  LoginAuthenticating() => const SizedBox.shrink(),
+                                  LoginAwaitingConfirmation() => const SizedBox.shrink(),
+                                  LoginPolling() => const SizedBox.shrink(),
+                                  LoginSuccess() => const SizedBox.shrink(),
+                                },
+                                const SizedBox(height: 22),
+                                MarkdownBody(
+                                  data: loc.loginAgreementText,
+                                  onTapLink: handleMarkdownLinkTap,
+                                  styleSheet: buildAgreementMarkdownStyleSheet(prego: prego),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  );
-                },
-              ),
+                  ),
+                );
+              },
+            ),
             PositionedDirectional(
               top: 0,
               start: 0,
@@ -390,11 +390,10 @@ class _LoginErrorBannerState extends State<_LoginErrorBanner> {
               opacity: isVisible ? 1 : 0,
               child: reason == null
                   ? const SizedBox.shrink()
-                  : PregoAlertsNotification(
+                  : PregoPopupAlertsNotifications(
                       title: loc.loginAuthenticationFailedTitle,
                       message: _getErrorMessage(loc: loc, reason: reason),
-                      onClose: () =>
-                          context.read<LoginCubit>().onDismissedLoginFailureError(),
+                      onClose: () => context.read<LoginCubit>().onDismissedLoginFailureError(),
                     ),
             ),
           ),

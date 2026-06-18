@@ -141,10 +141,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get relayReconnecting => 'Reconnecting to bridge...';
 
   @override
-  String get bridgeOfflineTitle => 'Bridge Offline';
-
-  @override
-  String get bridgeOfflineMessage => 'Start sesori-bridge on your laptop';
+  String get bridgeDisconnectedTitle => 'Bridge disconnected';
 
   @override
   String get settingsTitle => 'Settings';
