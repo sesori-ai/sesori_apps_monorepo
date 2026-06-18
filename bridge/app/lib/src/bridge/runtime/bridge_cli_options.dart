@@ -3,8 +3,6 @@ import "package:args/args.dart" show ArgResults;
 class BridgeCliOptions {
   final List<String> cliArgs;
   final String relayUrl;
-  final int? port;
-  final String password;
   final String authBackendUrl;
   final int? debugPort;
   final String logLevelName;
@@ -12,8 +10,6 @@ class BridgeCliOptions {
   const BridgeCliOptions({
     required this.cliArgs,
     required this.relayUrl,
-    required this.port,
-    required this.password,
     required this.authBackendUrl,
     required this.debugPort,
     required this.logLevelName,
@@ -32,13 +28,10 @@ class BridgeCliOptions {
       defaultAuthUrl: defaultAuthUrl,
     );
     final debugPortRaw = results["debug-port"] as String;
-    final portRaw = results["port"] as String?;
 
     return BridgeCliOptions(
       cliArgs: cliArgs,
       relayUrl: results["relay"] as String,
-      port: portRaw == null || portRaw.isEmpty ? null : int.parse(portRaw),
-      password: results["password"] as String,
       authBackendUrl: authBackendUrl,
       debugPort: debugPortRaw.isNotEmpty ? int.tryParse(debugPortRaw) : null,
       logLevelName: results["log-level"] as String,

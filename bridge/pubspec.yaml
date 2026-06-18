@@ -9,3 +9,5 @@ workspace:
   - sesori_plugin_opencode
   - sesori_plugin_runtime
   - sesori_plugin_interface
+  - sesori_plugin_acp
+  - sesori_plugin_cursor

@@ -1,3 +1,4 @@
+import "package:cursor_plugin/cursor_plugin.dart" show CursorPluginDescriptor;
 import "package:opencode_plugin/opencode_plugin.dart" show OpenCodePluginDescriptor;
 import "package:sesori_bridge/src/bridge/runtime/plugin_registry.dart";
 import "package:sesori_bridge/src/server/host/plugin_state_directory.dart";
@@ -7,11 +8,18 @@ import "package:test/test.dart";
 
 void main() {
   group("knownPlugins", () {
-    test("registers the real OpenCode descriptor", () {
-      expect(knownPlugins, hasLength(1));
-      expect(knownPlugins.single, isA<OpenCodePluginDescriptor>());
-      expect(knownPlugins.single.id, openCodePluginId);
-      expect(identical(knownPlugins.single.options, OpenCodePluginDescriptor.cliOptions), isTrue);
+    test("registers the real OpenCode and Cursor descriptors", () {
+      expect(knownPlugins, hasLength(2));
+
+      final opencode = knownPlugins.firstWhere((plugin) => plugin.id == openCodePluginId);
+      expect(opencode, isA<OpenCodePluginDescriptor>());
+      expect(identical(opencode.options, OpenCodePluginDescriptor.cliOptions), isTrue);
+
+      final cursor = knownPlugins.firstWhere((plugin) => plugin.id == "cursor");
+      expect(cursor, isA<CursorPluginDescriptor>());
+
+      // OpenCode stays the default so existing installs see no change; Cursor
+      // is opt-in via --plugin cursor or enabledPlugins.
       expect(defaultPluginId, openCodePluginId);
     });
   });

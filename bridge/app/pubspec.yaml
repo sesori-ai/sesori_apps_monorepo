@@ -26,6 +26,10 @@ dependencies:
     path: ../sesori_plugin_runtime
   opencode_plugin:
     path: ../sesori_plugin_opencode
+  acp_plugin:
+    path: ../sesori_plugin_acp
+  cursor_plugin:
+    path: ../sesori_plugin_cursor
   meta: ^1.18.3
   drift: ^2.34.0
   collection: ^1.19.1
