@@ -101,7 +101,7 @@ enum PregoButtonsSolidType {
 ///   label: 'Delete',
 ///   hierarchy: PregoButtonsSolidHierarchy.primary,
 ///   size: PregoButtonsSolidSize.md,
-///   tone: PregoButtonsSolidTone.destructive,
+///   type: PregoButtonsSolidType.destructive,
 ///   onPressed: () {},
 /// )
 /// ```
