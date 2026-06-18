@@ -1,5 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "acp_content.dart";
+
 /// Accumulates the `session/update` notifications replayed by `session/load`
 /// into ordered [PluginMessageWithParts] for `getSessionMessages`.
 ///
@@ -31,13 +33,13 @@ class AcpReplayCollector {
     if (update == null) return;
     switch (update["sessionUpdate"] as String?) {
       case "agent_message_chunk":
-        final t = _contentText(update["content"]);
+        final t = acpContentText(update["content"]);
         if (t != null) _assistant().text.write(t);
       case "agent_thought_chunk":
-        final t = _contentText(update["content"]);
+        final t = acpContentText(update["content"]);
         if (t != null) _assistant().reasoning.write(t);
       case "user_message_chunk":
-        final t = _contentText(update["content"]);
+        final t = acpContentText(update["content"]);
         if (t != null) _user().text.write(t);
       case "tool_call":
         final id = update["toolCallId"] as String?;
@@ -45,16 +47,16 @@ class AcpReplayCollector {
         _assistant().tools[id] = _ToolDraft(
           tool: (update["kind"] ?? update["title"] ?? "tool") as String,
           title: update["title"] as String?,
-          status: _status(update["status"]),
-          output: _toolOutput(update),
+          status: acpToolStatus(update["status"]),
+          output: acpToolOutputText(update),
         );
       case "tool_call_update":
         final id = update["toolCallId"] as String?;
         if (id == null) return;
         final draft = _findTool(id);
         if (draft == null) return;
-        draft.status = _status(update["status"]);
-        final out = _toolOutput(update);
+        draft.status = acpToolStatus(update["status"]);
+        final out = acpToolOutputText(update);
         if (out != null) draft.output = out;
     }
   }
@@ -156,65 +158,6 @@ class AcpReplayCollector {
     for (final draft in _drafts.reversed) {
       final tool = draft.tools[toolId];
       if (tool != null) return tool;
-    }
-    return null;
-  }
-
-  PluginToolStatus _status(Object? raw) {
-    return switch (raw) {
-      "pending" => PluginToolStatus.pending,
-      "in_progress" => PluginToolStatus.running,
-      "completed" => PluginToolStatus.completed,
-      "failed" => PluginToolStatus.error,
-      _ => PluginToolStatus.pending,
-    };
-  }
-
-  /// Tool output for replayed `tool_call`/`tool_call_update`: ACP `content`
-  /// block first, else the harness `rawOutput` (cursor's exec stdout/stderr),
-  /// truncated to [maxToolOutputLength].
-  String? _toolOutput(Map<String, dynamic> update) {
-    final text = _contentText(update["content"]) ?? _rawOutputText(update["rawOutput"]);
-    if (text == null || text.isEmpty) return null;
-    return text.length > maxToolOutputLength
-        ? "${text.substring(0, maxToolOutputLength)}…"
-        : text;
-  }
-
-  String? _rawOutputText(Object? raw) {
-    if (raw is String) return raw.isEmpty ? null : raw;
-    if (raw is! Map) return null;
-    final map = raw.cast<String, dynamic>();
-    final out = (map["stdout"] as String?)?.trimRight() ?? "";
-    final err = (map["stderr"] as String?)?.trimRight() ?? "";
-    if (out.isNotEmpty || err.isNotEmpty) {
-      final buffer = StringBuffer(out);
-      if (err.isNotEmpty) {
-        if (buffer.isNotEmpty) buffer.write("\n");
-        buffer.write(err);
-      }
-      return buffer.toString();
-    }
-    final content = _contentText(map["content"])?.trimRight();
-    return (content == null || content.isEmpty) ? null : content;
-  }
-
-  String? _contentText(Object? content) {
-    if (content is String) return content.isEmpty ? null : content;
-    if (content is Map) {
-      final text = content["text"];
-      return text is String && text.isNotEmpty ? text : null;
-    }
-    if (content is List) {
-      final buffer = StringBuffer();
-      for (final entry in content) {
-        if (entry is Map) {
-          final text = entry["text"];
-          if (text is String) buffer.write(text);
-        }
-      }
-      final result = buffer.toString();
-      return result.isEmpty ? null : result;
     }
     return null;
   }

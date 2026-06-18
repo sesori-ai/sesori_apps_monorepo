@@ -209,6 +209,51 @@ void main() {
       await client.dispose();
     });
 
+    test("a default (null) model is re-applied when another model is active", () async {
+      // Cursor's model selection is process-global: if one session selects a
+      // non-default model, a later turn that uses the default must push it back,
+      // or it silently runs on the other session's model.
+      plugin.captureSessionConfig(catalogResult()); // default gpt-5.4
+      final client = AcpStdioClient(
+        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        processFactory: (_) async => fake,
+      );
+      await client.connect();
+
+      // Session A explicitly selects sonnet-4.6 (and the default mode).
+      final selecting = plugin.applyTurnSelection(
+        client: client,
+        sessionId: "sA",
+        model: (providerID: "cursor", modelID: "sonnet-4.6"),
+        variant: null,
+      );
+      await respond("session/set_config_option", const {}); // model=sonnet-4.6
+      await respond("session/set_config_option", const {}); // mode=agent
+      await selecting;
+
+      // Session B uses the default (null) model — must reset the process-global
+      // selection back to gpt-5.4 rather than inherit sonnet-4.6.
+      final defaulting = plugin.applyTurnSelection(
+        client: client,
+        sessionId: "sB",
+        model: null,
+        variant: null,
+      );
+      await respond("session/set_config_option", const {}); // model=gpt-5.4 (reapplied)
+      await defaulting;
+
+      final modelSets = fake.written
+          .where((f) => f["method"] == "session/set_config_option")
+          .map((f) => (f["params"] as Map).cast<String, dynamic>())
+          .where((p) => p["configId"] == "model")
+          .map((p) => p["value"])
+          .toList();
+      expect(modelSets, ["sonnet-4.6", "gpt-5.4"],
+          reason: "the default model is re-pushed when a different one was left active");
+
+      await client.dispose();
+    });
+
     test("getProviders is empty before any session/catalog", () async {
       final providers = plugin.getProviders(projectId: "/repo");
       // _ensureCatalog connects and probes; the agent reports no list capability

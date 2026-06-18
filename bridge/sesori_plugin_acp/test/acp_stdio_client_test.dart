@@ -92,5 +92,41 @@ void main() {
       fake.exit(1);
       await expectLater(future, throwsA(isA<AcpRpcException>()));
     });
+
+    test("a request after the process exited fails fast instead of timing out", () async {
+      fake.exit(1);
+      await pump();
+      // Without the post-exit guard this would write to a dead pipe and block
+      // for the full timeout; it must throw synchronously-ish instead.
+      await expectLater(
+        client.request(method: "session/prompt"),
+        throwsA(isA<StateError>()),
+      );
+    });
+
+    test("a malformed error payload still completes the pending request", () async {
+      // `error` is not a map: the old `as Map` cast threw inside the line
+      // handler (caught + logged) and orphaned the completer until timeout.
+      final future = client.request(method: "session/new");
+      final id = fake.written.single["id"];
+      fake.emit({"jsonrpc": "2.0", "id": id, "error": "totally malformed"});
+      await expectLater(future, throwsA(isA<AcpRpcException>()));
+    });
+
+    test("an error payload with a non-int code falls back to a generic code", () async {
+      final future = client.request(method: "session/new");
+      final id = fake.written.single["id"];
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": id,
+        "error": {"code": "nope", "message": 123},
+      });
+      await expectLater(
+        future,
+        throwsA(isA<AcpRpcException>()
+            .having((e) => e.code, "code", -32603)
+            .having((e) => e.message, "message", "unknown error")),
+      );
+    });
   });
 }

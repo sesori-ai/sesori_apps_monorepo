@@ -165,6 +165,36 @@ void main() {
       final session = shared.Session.fromJson(updated.info);
       expect(session.id, "s1");
       expect(session.title, "Fix the parser");
+      // No per-session project recorded -> falls back to the launch cwd.
+      expect(session.projectID, "/repo");
+      expect(session.directory, "/repo");
+    });
+
+    test("session_info_update files the title under the session's own project", () {
+      // A session opened outside the launch cwd: its title update must carry
+      // that project's id, or the mobile session list (which drops updates whose
+      // projectID != the active project) ignores it.
+      mapper.setSessionProject("s1", "/repo/opened-elsewhere");
+      final events = mapper.map(update({
+        "sessionUpdate": "session_info_update",
+        "title": "Title in opened project",
+      }));
+      final session =
+          shared.Session.fromJson(events.whereType<BridgeSseSessionUpdated>().single.info);
+      expect(session.projectID, "/repo/opened-elsewhere");
+      expect(session.directory, "/repo/opened-elsewhere");
+    });
+
+    test("clearing a session's project reverts to the launch cwd", () {
+      mapper.setSessionProject("s1", "/repo/opened-elsewhere");
+      mapper.setSessionProject("s1", null);
+      final events = mapper.map(update({
+        "sessionUpdate": "session_info_update",
+        "title": "Back to default",
+      }));
+      final session =
+          shared.Session.fromJson(events.whereType<BridgeSseSessionUpdated>().single.info);
+      expect(session.projectID, "/repo");
     });
 
     test("a per-session model overrides the global stamp", () {

@@ -1,4 +1,3 @@
-import "dart:async";
 import "dart:convert";
 
 import "package:path/path.dart" as p;
@@ -76,7 +75,10 @@ class AcpProjectRegistry {
       decoded = jsonDecode(raw);
     } catch (_) {
       // Corrupt JSON: move it aside so a clean file can be written, keep seed.
-      unawaited(_quarantine());
+      // Awaited (not fire-and-forget) so the quarantine completes before any
+      // later _persist() write — otherwise the rename can race ahead and move
+      // aside the freshly written clean file.
+      await _quarantine();
       return;
     }
     if (decoded is! Map) return;
@@ -159,7 +161,19 @@ class AcpProjectRegistry {
     return _ProjectEntry(id: fallbackId, createdAt: _now(), persisted: false).toProject();
   }
 
-  Future<void> _persist() async {
+  /// Serializes persistence so concurrent register/rename calls cannot interleave
+  /// or complete out of order and drop entries. Each link snapshots [_entries]
+  /// when it runs, so the final write reflects the latest state.
+  Future<void> _writeChain = Future.value();
+
+  Future<void> _persist() {
+    final next = _writeChain.then((_) => _write());
+    // Keep the chain alive even if a write fails so the next link still runs.
+    _writeChain = next.catchError((Object _) {});
+    return next;
+  }
+
+  Future<void> _write() async {
     final store = _store;
     if (store == null) return;
     final payload = jsonEncode({

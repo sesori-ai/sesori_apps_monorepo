@@ -85,6 +85,65 @@ void main() {
       expect((reply["result"] as Map)["accepted"], true);
     });
 
+    test("a non-bool allowMultiple does not crash the handler", () async {
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 4,
+        "method": "cursor/ask_question",
+        "params": {
+          "sessionId": "s1",
+          "questions": [
+            {
+              "id": "q1",
+              "prompt": "Pick",
+              "allowMultiple": "yes", // wrong type — must be treated as false
+              "options": [
+                {"id": "o1", "label": "A"},
+              ],
+            },
+          ],
+        },
+      });
+      await pump();
+      final asked = emitted.single as BridgeSseQuestionAsked;
+      expect(asked.questions.single["multiple"], false);
+      expect(registry.pendingForSession("s1"), hasLength(1));
+    });
+
+    test("an empty question list is rejected, not registered as blocking", () async {
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 5,
+        "method": "cursor/ask_question",
+        "params": {"sessionId": "s1", "questions": <Object?>[]},
+      });
+      await pump();
+      // No pending question is created, and the agent gets an error reply so it
+      // is not left blocked on input that can never be answered.
+      expect(emitted, isEmpty);
+      expect(registry.pendingForSession("s1"), isEmpty);
+      final reply = fake.written.last;
+      expect(reply["id"], 5);
+      expect(reply.containsKey("error"), isTrue);
+    });
+
+    test("questions with no usable text are dropped", () async {
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 6,
+        "method": "cursor/ask_question",
+        "params": {
+          "sessionId": "s1",
+          "questions": [
+            {"id": "q1", "prompt": 123}, // non-string prompt -> dropped
+          ],
+        },
+      });
+      await pump();
+      expect(registry.pendingForSession("s1"), isEmpty);
+      expect(fake.written.last.containsKey("error"), isTrue);
+    });
+
     test("standard permission requests still work via the base", () async {
       fake.emit({
         "jsonrpc": "2.0",

@@ -45,8 +45,45 @@ class _FakeStore implements HostJsonStore {
   }
 }
 
+/// A store whose `write` completions are gated, so a test can hold a write in
+/// flight and observe whether a second write is (wrongly) issued concurrently.
+class _GatedStore implements HostJsonStore {
+  final List<String> writes = [];
+  final List<Completer<void>> _gates = [];
+  String? current;
+
+  @override
+  Future<String?> read({required String name}) async => current;
+
+  @override
+  Future<void> write({required String name, required String contents}) {
+    writes.add(contents);
+    final gate = Completer<void>();
+    _gates.add(gate);
+    return gate.future.then((_) => current = contents);
+  }
+
+  /// Completes the oldest in-flight write.
+  void releaseNext() => _gates.removeAt(0).complete();
+
+  @override
+  Future<void> delete({required String name}) async => current = null;
+
+  @override
+  Future<void> quarantine({required String name, required String quarantinedName}) async {}
+
+  @override
+  Future<String?> update({
+    required String name,
+    required FutureOr<String?> Function(String? current) transform,
+  }) async =>
+      current = await transform(current);
+}
+
 void main() {
   group("AcpProjectRegistry", () {
+    Future<void> pump() => Future<void>.delayed(Duration.zero);
+
     // Monotonic clock so createdAt ordering is deterministic per call sequence.
     int Function() monotonic() {
       var t = 1000;
@@ -138,6 +175,31 @@ void main() {
       expect(project.id, "/Users/x/unknown");
       expect(project.name, "unknown");
       expect(reg.list().map((p) => p.id), ["/repo"], reason: "projectFor must not register");
+    });
+
+    test("concurrent registers serialize writes and lose no entries", () async {
+      final store = _GatedStore();
+      final reg = AcpProjectRegistry(cwd: "/repo", store: store, nowMs: monotonic());
+      await reg.ensureLoaded();
+
+      final a = reg.register("/Users/x/alpha");
+      final b = reg.register("/Users/x/beta");
+      await pump();
+
+      // The second write must be queued behind the first, not issued in
+      // parallel (which could complete out of order and drop an entry).
+      expect(store.writes, hasLength(1), reason: "writes are serialized");
+
+      store.releaseNext();
+      await pump();
+      expect(store.writes, hasLength(2), reason: "the queued write runs once the first completes");
+
+      store.releaseNext();
+      await Future.wait([a, b]);
+
+      final decoded = jsonDecode(store.current!) as Map<String, dynamic>;
+      final ids = (decoded["projects"] as List).map((e) => (e as Map)["id"]).toSet();
+      expect(ids, {"/Users/x/alpha", "/Users/x/beta"});
     });
 
     test("re-registering an existing project does not rewrite the store", () async {

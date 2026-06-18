@@ -101,7 +101,12 @@ class AcpBridgePlugin with SteadyPluginLifecycle implements BridgePlugin {
       if (_stopping) {
         return;
       }
-      Log.w("[${_plugin.id}] agent process exited (code $code); marking degraded");
+      Log.w("[${_plugin.id}] agent process exited (code $code); resetting connection and marking degraded");
+      // Drop the cached client/connection so the next request re-spawns a fresh
+      // agent instead of writing to the dead process. resetConnectionAfterExit()
+      // clears the cached state synchronously before its first await and never
+      // throws, so the degraded path is genuinely recoverable.
+      unawaited(_plugin.resetConnectionAfterExit());
       markDegraded(recoverable: true, requiresUserAction: false, userActionHint: null);
     });
   }
@@ -109,10 +114,17 @@ class AcpBridgePlugin with SteadyPluginLifecycle implements BridgePlugin {
   @override
   Future<void> onShutdown({required Duration? budget}) async {
     _stopping = true;
-    await _exitSubscription?.cancel();
-    _exitSubscription = null;
+    // Isolated so a failed cancel cannot skip the dispose() below.
+    try {
+      await _exitSubscription?.cancel();
+    } on Object catch (e, st) {
+      Log.w("[${_plugin.id}] failed to cancel exit subscription", e, st);
+    } finally {
+      _exitSubscription = null;
+    }
     // AcpPlugin.dispose() reaps the agent subprocess (SIGTERM, wait, SIGKILL),
     // cancels the notification subscription, and closes the event channel.
+    // It isolates and swallows its own teardown failures, so it never throws.
     await _plugin.dispose();
   }
 }

@@ -127,6 +127,8 @@ class AcpStdioClient {
         .transform(const LineSplitter())
         .listen(
           (line) => Log.d("[$_logTag][stderr] $line"),
+          onError: (Object error, StackTrace stack) =>
+              Log.w("[$_logTag] stderr stream error: $error", error, stack),
           cancelOnError: false,
         );
 
@@ -151,7 +153,7 @@ class AcpStdioClient {
   /// Send a JSON-RPC request and await its response.
   ///
   /// Throws [AcpRpcException] on error responses, [TimeoutException] on
-  /// timeout, [StateError] if not connected.
+  /// timeout, [StateError] if not connected or the agent process has exited.
   Future<dynamic> request({
     required String method,
     Object? params,
@@ -160,6 +162,13 @@ class AcpStdioClient {
     final process = _process;
     if (process == null) {
       throw StateError("AcpStdioClient not connected");
+    }
+    // The exit handler does not clear _process, so without this a request issued
+    // after the agent died would write to a dead pipe and then block for the
+    // full timeout (up to 30 min for a prompt) waiting for a reply that can
+    // never come. Fail fast instead.
+    if (_exited.isCompleted) {
+      throw StateError("AcpStdioClient agent process has exited");
     }
     final id = _nextId++;
     final completer = Completer<dynamic>();
@@ -238,13 +247,19 @@ class AcpStdioClient {
           return;
         }
         if (map.containsKey("error")) {
-          final err = (map["error"] as Map).cast<String, dynamic>();
+          // Parse defensively: a malformed `error` member (not a map, or a
+          // non-int code / non-string message) must still complete the pending
+          // completer, or the awaiting request orphans until it times out.
+          final rawErr = map["error"];
+          final err = rawErr is Map ? rawErr.cast<String, dynamic>() : null;
+          final code = err?["code"];
+          final message = err?["message"];
           completer.completeError(
             AcpRpcException(
               method: "<response>",
-              code: (err["code"] ?? -32603) as int,
-              message: (err["message"] ?? "unknown error") as String,
-              data: err["data"],
+              code: code is int ? code : -32603,
+              message: message is String ? message : "unknown error",
+              data: err?["data"],
             ),
           );
         } else {
@@ -314,13 +329,32 @@ class AcpStdioClient {
       }
     }
 
-    await _stdoutSubscription?.cancel();
-    await _stderrSubscription?.cancel();
+    // Isolate each teardown step so a failure in one does not skip the rest
+    // (notably _failPending, which unblocks callers awaiting in-flight
+    // requests). dispose() must not throw — log and continue.
+    try {
+      await _stdoutSubscription?.cancel();
+    } on Object catch (e, st) {
+      Log.w("[$_logTag] failed to cancel stdout subscription", e, st);
+    }
+    try {
+      await _stderrSubscription?.cancel();
+    } on Object catch (e, st) {
+      Log.w("[$_logTag] failed to cancel stderr subscription", e, st);
+    }
     _failPending(
       StateError("AcpStdioClient disposed"),
       StackTrace.current,
     );
-    await _notifications.close();
-    await _serverRequests.close();
+    try {
+      await _notifications.close();
+    } on Object catch (e, st) {
+      Log.w("[$_logTag] failed to close notifications stream", e, st);
+    }
+    try {
+      await _serverRequests.close();
+    } on Object catch (e, st) {
+      Log.w("[$_logTag] failed to close server-requests stream", e, st);
+    }
   }
 }

@@ -216,6 +216,44 @@ class AcpPlugin implements BridgePluginApi {
     return client;
   }
 
+  /// Tears down the cached ACP connection after the agent subprocess exits, so
+  /// the next [ensureConnected] spawns a fresh agent instead of writing to the
+  /// dead process. The lifecycle wrapper calls this from its exit watch when an
+  /// unexpected exit flips the plugin to degraded; without it the cached
+  /// `_connectFuture`/`_client` keep reporting a successful connection and
+  /// requests are written to the exited process until they fail or time out.
+  ///
+  /// Resident sessions are forgotten: the replacement process holds no sessions
+  /// until they are re-created or resumed via `session/load`. The event channel
+  /// and project registry are left intact — the plugin stays alive, only the
+  /// connection is reset. Never throws.
+  Future<void> resetConnectionAfterExit() async {
+    _connectFuture = null;
+    _initResult = null;
+    _residentSessions.clear();
+    final sub = _notificationSubscription;
+    _notificationSubscription = null;
+    final registry = _approvalRegistry;
+    _approvalRegistry = null;
+    final client = _client;
+    _client = null;
+    try {
+      await sub?.cancel();
+    } on Object catch (e, st) {
+      Log.w("[$id] failed to cancel notification subscription on reset", e, st);
+    }
+    try {
+      await registry?.dispose();
+    } on Object catch (e, st) {
+      Log.w("[$id] failed to dispose approval registry on reset", e, st);
+    }
+    try {
+      await client?.dispose();
+    } on Object catch (e, st) {
+      Log.w("[$id] failed to dispose client on reset", e, st);
+    }
+  }
+
   @override
   Future<bool> healthCheck() async {
     try {
@@ -277,7 +315,10 @@ class AcpPlugin implements BridgePluginApi {
     final id = (raw["sessionId"] ?? "") as String;
     // Remember which project this session belongs to so a later turn/history
     // load uses its own cwd and the activity badge lands on the right project.
-    if (id.isNotEmpty) _sessionProjects[id] = projectId;
+    if (id.isNotEmpty) {
+      _sessionProjects[id] = projectId;
+      eventMapper.setSessionProject(id, projectId);
+    }
     return PluginSession(
       id: id,
       projectID: projectId,
@@ -320,6 +361,7 @@ class AcpPlugin implements BridgePluginApi {
       throw StateError("session/new response missing sessionId");
     }
     _sessionProjects[session.sessionId] = projectId;
+    eventMapper.setSessionProject(session.sessionId, projectId);
     captureSessionConfig(session.raw, sessionId: session.sessionId);
     // session/new leaves the session resident in the agent process.
     _residentSessions.add(session.sessionId);
@@ -542,6 +584,7 @@ class AcpPlugin implements BridgePluginApi {
     _sessionStatuses.remove(sessionId);
     _residentSessions.remove(sessionId);
     _sessionProjects.remove(sessionId);
+    eventMapper.setSessionProject(sessionId, null);
   }
 
   @override
@@ -623,8 +666,16 @@ class AcpPlugin implements BridgePluginApi {
     } catch (_) {
       return const [];
     } finally {
-      await sub?.cancel();
-      await replayClient.dispose();
+      try {
+        await sub?.cancel();
+      } on Object catch (e, st) {
+        Log.w("[$id] failed to cancel replay subscription", e, st);
+      }
+      try {
+        await replayClient.dispose();
+      } on Object catch (e, st) {
+        Log.w("[$id] failed to dispose replay client", e, st);
+      }
     }
   }
 
@@ -821,12 +872,34 @@ class AcpPlugin implements BridgePluginApi {
 
   @override
   Future<void> dispose() async {
-    await _notificationSubscription?.cancel();
-    _notificationSubscription = null;
-    await _approvalRegistry?.dispose();
-    _approvalRegistry = null;
-    await _client?.dispose();
-    _client = null;
-    await _eventBuffer.close();
+    // Each teardown step is isolated so a failure in one (e.g. a hung
+    // subscription) cannot skip a later one (e.g. reaping the agent
+    // subprocess). dispose() must not throw — log and continue.
+    try {
+      await _notificationSubscription?.cancel();
+    } on Object catch (e, st) {
+      Log.w("[$id] failed to cancel notification subscription", e, st);
+    } finally {
+      _notificationSubscription = null;
+    }
+    try {
+      await _approvalRegistry?.dispose();
+    } on Object catch (e, st) {
+      Log.w("[$id] failed to dispose approval registry", e, st);
+    } finally {
+      _approvalRegistry = null;
+    }
+    try {
+      await _client?.dispose();
+    } on Object catch (e, st) {
+      Log.w("[$id] failed to dispose client", e, st);
+    } finally {
+      _client = null;
+    }
+    try {
+      await _eventBuffer.close();
+    } on Object catch (e, st) {
+      Log.w("[$id] failed to close event buffer", e, st);
+    }
   }
 }

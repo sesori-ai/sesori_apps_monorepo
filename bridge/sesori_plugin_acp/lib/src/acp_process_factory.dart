@@ -47,15 +47,13 @@ typedef AcpProcessFactory = Future<AcpProcessHandle> Function(AcpLaunchSpec spec
 
 /// Default factory: spawns a real OS process via [io.Process.start].
 Future<AcpProcessHandle> defaultAcpProcessFactory(AcpLaunchSpec spec) async {
-  final env = <String, String>{
-    ...io.Platform.environment,
-    ...spec.environment,
-  };
   final process = await io.Process.start(
     spec.command,
     spec.args,
     workingDirectory: spec.cwd,
-    environment: env,
+    // includeParentEnvironment defaults to true, so these entries are merged
+    // over the inherited environment — no manual Platform.environment copy.
+    environment: spec.environment,
     runInShell: io.Platform.isWindows,
   );
   return _RealAcpProcess(process);

@@ -137,7 +137,13 @@ class AcpApprovalRegistry {
   }
 
   Future<void> dispose() async {
-    await _subscription?.cancel();
+    // Isolated so a failed cancel cannot skip the pending-approval cleanup
+    // below, which unblocks callers awaiting a permission/question reply.
+    try {
+      await _subscription?.cancel();
+    } on Object catch (e, st) {
+      Log.w("[acp] failed to cancel approval subscription", e, st);
+    }
     _subscription = null;
     final remaining = List<_PendingApproval>.from(_pending.values);
     _pending.clear();

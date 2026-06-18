@@ -174,8 +174,16 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
       Log.d("[cursor] availability probe '$executablePath --version' failed with error: $error");
       return PluginUnavailable(message: _notWorkingMessage(executablePath: executablePath));
     } finally {
-      await stdoutSubscription.cancel();
-      await stderrSubscription.cancel();
+      try {
+        await stdoutSubscription.cancel();
+      } on Object catch (e, st) {
+        Log.w("[cursor] failed to cancel stdout subscription", e, st);
+      }
+      try {
+        await stderrSubscription.cancel();
+      } on Object catch (e, st) {
+        Log.w("[cursor] failed to cancel stderr subscription", e, st);
+      }
     }
   }
 
@@ -243,20 +251,25 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
       endpoint: "$binaryPath acp",
     );
 
-    // Eagerly spawn the agent and run the ACP handshake (bounded), so the first
-    // mobile request is fast and the status reflects reality. A timeout/failure
-    // leaves the plugin degraded rather than failing the bridge.
-    await plugin.connect(budget: _connectBudget, startAborted: host.startAborted);
-
-    // The connect above is a phase boundary: an abort observed here must roll
-    // back the spawned agent before surfacing.
-    if (host.startAborted.isAborted) {
+    // Rolls back the spawned agent and surfaces the abort. Each eager phase
+    // below (connect, catalog warm-up) is a boundary where an abort that arrived
+    // meanwhile must undo the partial start rather than return a live plugin.
+    Future<Never> rollbackAborted() async {
       try {
         await plugin.shutdown(budget: null);
       } on Object catch (error) {
         Log.e("[cursor] rollback after aborted start failed: $error");
       }
       throw const PluginStartAbortedException();
+    }
+
+    // Eagerly spawn the agent and run the ACP handshake (bounded), so the first
+    // mobile request is fast and the status reflects reality. A timeout/failure
+    // leaves the plugin degraded rather than failing the bridge.
+    await plugin.connect(budget: _connectBudget, startAborted: host.startAborted);
+
+    if (host.startAborted.isAborted) {
+      await rollbackAborted();
     }
 
     // Eagerly warm the model/mode catalog so the mobile's first providers fetch
@@ -266,6 +279,12 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
       const Duration(seconds: 12),
       onTimeout: () => Log.d("[cursor] catalog warm-up timed out; will populate lazily"),
     );
+
+    // Warm-up can run for seconds: re-check so an abort observed during it still
+    // rolls back instead of returning a started plugin.
+    if (host.startAborted.isAborted) {
+      await rollbackAborted();
+    }
 
     return plugin;
   }

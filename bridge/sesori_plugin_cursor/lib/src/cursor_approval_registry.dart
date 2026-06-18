@@ -47,8 +47,12 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
 
     for (final raw in rawQuestions.whereType<Map<dynamic, dynamic>>()) {
       final q = raw.cast<String, dynamic>();
-      final prompt = (q["prompt"] ?? q["question"] ?? "") as String;
-      final multiple = (q["allowMultiple"] ?? false) as bool;
+      // Parse defensively: Cursor's payload shapes are not formally documented,
+      // so a field arriving with an unexpected type (e.g. allowMultiple as a
+      // string) must not crash the whole request handler.
+      final prompt = _str(q["prompt"]) ?? _str(q["question"]);
+      if (prompt == null || prompt.isEmpty) continue; // skip a question with no text
+      final multiple = q["allowMultiple"] == true;
       final options = ((q["options"] as List?) ?? const [])
           .whereType<Map<dynamic, dynamic>>()
           .map((o) => o.cast<String, dynamic>())
@@ -58,8 +62,8 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
       final sharedOptions = <shared.QuestionOption>[];
       final pluginOptions = <PluginQuestionOption>[];
       for (final option in options) {
-        final id = (option["id"] ?? option["value"] ?? "") as String;
-        final label = (option["label"] ?? id) as String;
+        final id = _str(option["id"]) ?? _str(option["value"]) ?? "";
+        final label = _str(option["label"]) ?? id;
         labelToId[label] = id;
         sharedOptions.add(shared.QuestionOption(label: label, description: ""));
         pluginOptions.add(PluginQuestionOption(label: label, description: ""));
@@ -83,7 +87,16 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
           custom: false,
         ),
       );
-      metas.add(_QuestionMeta(id: q["id"] as String?, labelToId: labelToId));
+      metas.add(_QuestionMeta(id: _str(q["id"]), labelToId: labelToId));
+    }
+
+    // A malformed/empty question list must not register a pending question: it
+    // would block the session awaiting input that can never be answered. Reject
+    // the request so the agent can proceed instead of hanging.
+    if (pluginQuestions.isEmpty) {
+      Log.w("[cursor] cursor/ask_question had no valid questions; rejecting");
+      respondError(request.id, -32602, "cursor/ask_question: no valid questions");
+      return;
     }
 
     final bridgeId = generateBridgeId();
@@ -102,6 +115,10 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
       ),
     );
   }
+
+  /// A field as a non-empty String, or null if absent/another type. Cursor's
+  /// reply shapes are not formally documented, so casts here are fail-soft.
+  static String? _str(Object? value) => value is String ? value : null;
 
   Object _buildAskReply(List<_QuestionMeta> metas, List<List<String>> answers) {
     final out = <Map<String, dynamic>>[];

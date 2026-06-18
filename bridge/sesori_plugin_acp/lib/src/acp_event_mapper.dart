@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
+import "acp_content.dart";
 import "acp_protocol.dart";
 import "acp_stdio_client.dart";
 
@@ -63,6 +64,29 @@ class AcpEventMapper {
       _sessionModel[sessionId] ?? currentModelId;
   String? providerForSession(String sessionId) =>
       _sessionProvider[sessionId] ?? currentProviderId;
+
+  /// Per-session project directory (an ACP project id *is* its `cwd`). The
+  /// plugin records it so `session_info_update` (title) events are filed under
+  /// the session's real project, not the launch [projectCwd]. The mobile
+  /// session list drops `session.updated` events whose projectID does not match
+  /// the active project, so a session opened outside the launch directory would
+  /// otherwise have its title updates ignored (or misrouted to the launch
+  /// project).
+  final Map<String, String> _sessionProject = {};
+
+  /// Records the project directory [sessionId] belongs to. A null/empty
+  /// [directory] clears the override (falls back to [projectCwd]).
+  void setSessionProject(String sessionId, String? directory) {
+    if (directory == null || directory.isEmpty) {
+      _sessionProject.remove(sessionId);
+    } else {
+      _sessionProject[sessionId] = directory;
+    }
+  }
+
+  /// The project id/directory to stamp on [sessionId]'s session-level events.
+  String projectForSession(String sessionId) =>
+      _sessionProject[sessionId] ?? projectCwd;
 
   /// sessionId -> current turn number, advanced by [beginTurn].
   final Map<String, int> _turnSeq = {};
@@ -150,7 +174,7 @@ class AcpEventMapper {
     required String partSuffix,
     required PluginMessagePartType partType,
   }) {
-    final text = _contentText(update["content"]);
+    final text = acpContentText(update["content"]);
     if (text == null || text.isEmpty) return const [];
 
     final messageId = "$sessionId-t${_turn(sessionId)}-${role.name}";
@@ -196,8 +220,8 @@ class AcpEventMapper {
     _startedParts.add(partId);
     final title = update["title"] as String?;
     final kind = update["kind"] as String?;
-    final status = _toolStatus(update["status"]);
-    final output = toolOutputText(update);
+    final status = acpToolStatus(update["status"]);
+    final output = acpToolOutputText(update);
     return [
       BridgeSseMessageUpdated(
         info: shared.Message.assistant(
@@ -236,8 +260,8 @@ class AcpEventMapper {
     if (toolCallId == null || toolCallId.isEmpty) return const [];
     final messageId = "$sessionId-tool-$toolCallId";
     final partId = "$messageId-call";
-    final status = _toolStatus(update["status"]);
-    final output = toolOutputText(update);
+    final status = acpToolStatus(update["status"]);
+    final output = acpToolOutputText(update);
     final events = <BridgeSseEvent>[
       BridgeSseMessagePartUpdated(
         part: _toolPart(
@@ -283,10 +307,11 @@ class AcpEventMapper {
   /// enrichment + mobile merge it against existing state, so only the id and
   /// title matter here.
   shared.Session _minimalSession(String id, String? title) {
+    final project = projectForSession(id);
     return shared.Session(
       id: id,
-      projectID: projectCwd,
-      directory: projectCwd,
+      projectID: project,
+      directory: project,
       parentID: null,
       title: title,
       time: null,
@@ -344,76 +369,9 @@ class AcpEventMapper {
     );
   }
 
-  /// Normalizes an ACP tool-call status onto the [PluginToolStatus] the mobile
-  /// tool renderer consumes. Tuned during end-to-end verification.
-  PluginToolStatus _toolStatus(Object? raw) {
-    return switch (raw) {
-      "pending" => PluginToolStatus.pending,
-      "in_progress" => PluginToolStatus.running,
-      "completed" => PluginToolStatus.completed,
-      "failed" => PluginToolStatus.error,
-      _ => PluginToolStatus.pending,
-    };
-  }
-
   bool _isFileMutation(Map<String, dynamic> update) {
     final kind = update["kind"] as String?;
     return kind == "edit" || kind == "delete" || kind == "move";
-  }
-
-  /// Tool output for a `tool_call`/`tool_call_update`: prefers an ACP
-  /// `content` block, else falls back to the harness `rawOutput` (cursor
-  /// reports an executed command's stdout/stderr there, not in `content`).
-  /// Truncated to [maxToolOutputLength] so the mobile tool renderer is not
-  /// flooded by large command output.
-  String? toolOutputText(Map<String, dynamic> update) {
-    final text = _contentText(update["content"]) ?? _rawOutputText(update["rawOutput"]);
-    if (text == null || text.isEmpty) return null;
-    return text.length > maxToolOutputLength
-        ? "${text.substring(0, maxToolOutputLength)}…"
-        : text;
-  }
-
-  /// Flattens a `rawOutput` block into displayable text. Exec-style tools report
-  /// `{exitCode, stdout, stderr}`; read/other tools report `{content}` (string
-  /// or ContentBlock(s)); some report a bare string.
-  String? _rawOutputText(Object? raw) {
-    if (raw is String) return raw.isEmpty ? null : raw;
-    if (raw is! Map) return null;
-    final map = raw.cast<String, dynamic>();
-    final out = (map["stdout"] as String?)?.trimRight() ?? "";
-    final err = (map["stderr"] as String?)?.trimRight() ?? "";
-    if (out.isNotEmpty || err.isNotEmpty) {
-      final buffer = StringBuffer(out);
-      if (err.isNotEmpty) {
-        if (buffer.isNotEmpty) buffer.write("\n");
-        buffer.write(err);
-      }
-      return buffer.toString();
-    }
-    final content = _contentText(map["content"])?.trimRight();
-    return (content == null || content.isEmpty) ? null : content;
-  }
-
-  /// Extracts text from an ACP `ContentBlock` (`{type:text,text}`) or a list
-  /// of them.
-  String? _contentText(Object? content) {
-    if (content is String) return content.isEmpty ? null : content;
-    if (content is Map) {
-      final text = content["text"];
-      return text is String && text.isNotEmpty ? text : null;
-    }
-    if (content is List) {
-      final buffer = StringBuffer();
-      for (final entry in content) {
-        final map = _asMap(entry);
-        final text = map?["text"];
-        if (text is String) buffer.write(text);
-      }
-      final result = buffer.toString();
-      return result.isEmpty ? null : result;
-    }
-    return null;
   }
 
   Map<String, dynamic>? _asMap(Object? value) {

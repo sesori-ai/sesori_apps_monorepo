@@ -122,20 +122,28 @@ class CursorPlugin extends AcpPlugin {
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
   }) async {
-    // Model selection.
+    // Model selection. Cursor's selection is process-global, so even a turn that
+    // uses the *default* model must push it when it differs from what was last
+    // applied — otherwise the turn silently runs on whatever model another
+    // session left selected while we stamp it as the default. A null/empty model
+    // means "use the default" (_currentModelId); an explicit-but-unknown model
+    // stays fail-soft (the agent keeps its current value, see [_setConfig]).
     final requestedModel = model?.modelID;
-    if (requestedModel != null &&
-        requestedModel.isNotEmpty &&
+    final useDefault = requestedModel == null || requestedModel.isEmpty;
+    final targetModel = useDefault ? _currentModelId : requestedModel;
+    if (targetModel != null &&
+        targetModel.isNotEmpty &&
         _modelConfigId != null &&
-        CursorModelProbe.hasOption(_models, requestedModel)) {
-      if (requestedModel != _appliedModelId) {
-        if (await _setConfig(client, sessionId, _modelConfigId!, requestedModel)) {
-          _appliedModelId = requestedModel;
+        CursorModelProbe.hasOption(_models, targetModel)) {
+      if (targetModel != _appliedModelId) {
+        if (await _setConfig(client, sessionId, _modelConfigId!, targetModel)) {
+          _appliedModelId = targetModel;
         }
       }
-      eventMapper.setSessionModel(sessionId, requestedModel, providerId: _providerId);
+      eventMapper.setSessionModel(sessionId, targetModel, providerId: _providerId);
     } else {
-      // No explicit/valid model — stamp messages with the session's default.
+      // Unknown explicit model (fail-soft) or no default resolved yet — stamp
+      // messages with the session's default.
       eventMapper.setSessionModel(sessionId, _currentModelId, providerId: _providerId);
     }
 
@@ -243,15 +251,21 @@ class CursorPlugin extends AcpPlugin {
           name: "Cursor",
           authType: PluginProviderAuthType.unknown,
           models: [
+            // Parse defensively: a malformed/changed agent payload (a non-string
+            // value/name) must not crash the whole provider listing. Skip an
+            // entry without a usable value, mirroring [_modeVariants].
             for (final model in _models)
-              PluginModel(
-                id: (model["value"] ?? "") as String,
-                name: (model["name"] ?? model["value"] ?? "") as String,
-                variants: variants,
-                family: null,
-                isAvailable: true,
-                releaseDate: null,
-              ),
+              if (model["value"] case final String value when value.isNotEmpty)
+                PluginModel(
+                  id: value,
+                  name: model["name"] is String && (model["name"] as String).isNotEmpty
+                      ? model["name"] as String
+                      : value,
+                  variants: variants,
+                  family: null,
+                  isAvailable: true,
+                  releaseDate: null,
+                ),
           ],
           defaultModelID:
               _currentModelId ?? (_models.first["value"] as String?),
