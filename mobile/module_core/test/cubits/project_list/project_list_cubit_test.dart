@@ -49,6 +49,7 @@ void main() {
     late MockSseEventRepository mockSseEventRepository;
     late MockRouteSource mockRouteSource;
     late MockBridgeRepository mockBridgeRepository;
+    late MockRegisteredBridgesStore mockRegisteredBridgesStore;
     late MockFailureReporter mockFailureReporter;
     late BehaviorSubject<ConnectionStatus> statusController;
 
@@ -58,6 +59,7 @@ void main() {
       mockSseEventRepository = MockSseEventRepository();
       mockRouteSource = MockRouteSource();
       mockBridgeRepository = MockBridgeRepository();
+      mockRegisteredBridgesStore = MockRegisteredBridgesStore();
       mockFailureReporter = MockFailureReporter();
       statusController = BehaviorSubject<ConnectionStatus>.seeded(
         _connectedStatus,
@@ -71,6 +73,9 @@ void main() {
       when(() => mockBridgeRepository.getRegisteredBridges()).thenAnswer(
         (_) async => ApiResponse.success(const <BridgeSummary>[]),
       );
+      // Default: nothing latched yet, so the lookup falls through to the network.
+      when(() => mockRegisteredBridgesStore.hasRegisteredBridges()).thenAnswer((_) async => false);
+      when(() => mockRegisteredBridgesStore.markRegistered()).thenAnswer((_) async {});
       when(
         () => mockFailureReporter.recordFailure(
           error: any(named: "error"),
@@ -96,6 +101,7 @@ void main() {
       mockSseEventRepository,
       mockRouteSource,
       bridgeRepository: mockBridgeRepository,
+      registeredBridgesStore: mockRegisteredBridgesStore,
       failureReporter: mockFailureReporter,
     );
 
@@ -444,6 +450,55 @@ void main() {
             isTrue,
           ),
         ],
+        verify: (_) {
+          // The positive answer is latched so future transitions skip the network.
+          verify(() => mockRegisteredBridgesStore.markRegistered()).called(1);
+        },
+      );
+
+      blocTest<ProjectListCubit, ProjectListState>(
+        "already-latched account skips the network lookup and shows the turn-on view",
+        build: () {
+          statusController.add(const ConnectionStatus.disconnected());
+          when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => false);
+          // The store already knows (in memory or persisted) that this account
+          // has a registered bridge.
+          when(() => mockRegisteredBridgesStore.hasRegisteredBridges()).thenAnswer((_) async => true);
+          return buildCubit();
+        },
+        expect: () => [
+          isA<ProjectListBridgeDisconnected>().having(
+            (s) => s.hasRegisteredBridges,
+            "hasRegisteredBridges",
+            isTrue,
+          ),
+        ],
+        verify: (_) {
+          // A known-positive latch never re-queries the auth server.
+          verifyNever(() => mockBridgeRepository.getRegisteredBridges());
+          verifyNever(() => mockRegisteredBridgesStore.markRegistered());
+        },
+      );
+
+      blocTest<ProjectListCubit, ProjectListState>(
+        "no registered bridges: the empty result is not latched",
+        build: () {
+          statusController.add(const ConnectionStatus.disconnected());
+          when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => false);
+          return buildCubit();
+        },
+        expect: () => [
+          isA<ProjectListBridgeDisconnected>().having(
+            (s) => s.hasRegisteredBridges,
+            "hasRegisteredBridges",
+            isFalse,
+          ),
+        ],
+        verify: (_) {
+          // Only the positive answer is ever persisted; an empty result keeps
+          // the account looking up until a bridge is first registered.
+          verifyNever(() => mockRegisteredBridgesStore.markRegistered());
+        },
       );
 
       blocTest<ProjectListCubit, ProjectListState>(
@@ -488,10 +543,42 @@ void main() {
       );
 
       blocTest<ProjectListCubit, ProjectListState>(
-        "bridges lookup failure falls back to the last successful answer",
+        "a failed lookup is not latched, so the next transition re-queries the auth server",
         build: () {
           statusController.add(const ConnectionStatus.disconnected());
           when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => false);
+          when(() => mockBridgeRepository.getRegisteredBridges()).thenAnswer(
+            (_) async => ApiResponse.error(ApiError.generic()),
+          );
+          return buildCubit();
+        },
+        act: (cubit) async {
+          await Future<void>.delayed(Duration.zero); // initial -> bridgeDisconnected(false)
+          // A second bridge-disconnected transition re-runs the lookup. The
+          // resulting state equals the current one, so bloc dedupes it — the
+          // observable proof is the second network call below.
+          statusController.add(_bridgeOfflineStatus);
+          await Future<void>.delayed(Duration.zero);
+        },
+        skip: 1, // initial bridgeDisconnected(false)
+        expect: () => <ProjectListState>[],
+        verify: (_) {
+          // A failure never latches, so each transition re-queries the network.
+          verify(() => mockBridgeRepository.getRegisteredBridges()).called(2);
+          verifyNever(() => mockRegisteredBridgesStore.markRegistered());
+        },
+      );
+
+      blocTest<ProjectListCubit, ProjectListState>(
+        "the registered-bridges latch survives a later transition without re-querying",
+        build: () {
+          statusController.add(const ConnectionStatus.disconnected());
+          when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => false);
+          // Stateful latch mirroring the real RegisteredBridgesStore:
+          // markRegistered() flips the cached answer to true for good.
+          var latched = false;
+          when(() => mockRegisteredBridgesStore.hasRegisteredBridges()).thenAnswer((_) async => latched);
+          when(() => mockRegisteredBridgesStore.markRegistered()).thenAnswer((_) async => latched = true);
           // First lookup succeeds: the account has a bridge.
           when(() => mockBridgeRepository.getRegisteredBridges()).thenAnswer(
             (_) async => ApiResponse.success([testBridgeSummary()]),
@@ -502,11 +589,12 @@ void main() {
           return buildCubit();
         },
         act: (cubit) async {
-          await Future<void>.delayed(Duration.zero); // initial -> bridgeDisconnected(true)
+          await Future<void>.delayed(Duration.zero); // initial -> bridgeDisconnected(true), now latched
           // Bridge comes online and projects load…
           statusController.add(_connectedStatus);
           await Future<void>.delayed(Duration.zero);
-          // …then drops again while the auth server is unreachable.
+          // …then drops again. The auth server would now error, but the latch
+          // means we never ask it.
           when(() => mockBridgeRepository.getRegisteredBridges()).thenAnswer(
             (_) async => ApiResponse.error(ApiError.generic()),
           );
@@ -517,14 +605,18 @@ void main() {
         expect: () => [
           isA<ProjectListLoading>(),
           isA<ProjectListLoaded>(),
-          // The failed re-lookup reuses the known answer instead of regressing
-          // to the setup onboarding.
+          // The latched answer is reused instead of regressing to the setup
+          // onboarding (or surfacing the failed re-lookup).
           isA<ProjectListBridgeDisconnected>().having(
             (s) => s.hasRegisteredBridges,
-            "hasRegisteredBridges after failed re-lookup",
+            "hasRegisteredBridges after the latch",
             isTrue,
           ),
         ],
+        verify: (_) {
+          // The network was queried exactly once — before the latch was set.
+          verify(() => mockBridgeRepository.getRegisteredBridges()).called(1);
+        },
       );
 
       blocTest<ProjectListCubit, ProjectListState>(
