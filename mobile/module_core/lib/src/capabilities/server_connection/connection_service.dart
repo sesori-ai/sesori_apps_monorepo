@@ -284,8 +284,12 @@ class ConnectionService {
       // _subscribeBridgeStatus then drives a reconnect that runs a fresh key
       // exchange — the same recovery path as a bridge that drops after a live
       // connection. No await runs between the staleness check above and this
-      // commit, so there is no superseding race to re-check.
-      if (!relayClient.isConnected) {
+      // commit, so there is no superseding race to re-check. Gate on the
+      // transport state being `connected` too: a bridge-absent park sets the
+      // state to connected with no session encryptor, whereas a disposed/early
+      // return leaves it in `connecting` — only the former should park here.
+      if (relayClient.connectionState == RelayClientConnectionState.connected &&
+          !relayClient.isConnected) {
         const bridgeOfflineHealth = HealthResponse(healthy: true, version: "");
         _clearConnectingRelayClient(relayClient);
         _relayClient = relayClient;
