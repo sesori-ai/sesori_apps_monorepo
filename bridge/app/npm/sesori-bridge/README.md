@@ -16,11 +16,13 @@ The platform-specific native binary is pulled from the matching optional depende
 npx @sesori/bridge
 ```
 
-After the first run, the managed `sesori-bridge` command is installed. Open a new terminal on macOS/Linux if `~/.local/bin` was just added to your PATH, then verify:
+After the first run, the managed `sesori-bridge` command is installed. On all platforms, open a new terminal so the new PATH entry is picked up (macOS/Linux: `~/.local/bin`; Windows: `%LOCALAPPDATA%\sesori\bin`), then verify:
 
 ```bash
 sesori-bridge --version
 ```
+
+On Windows, the bootstrap persists the User PATH via a child PowerShell process that cannot refresh the current terminal — a new terminal is required before `sesori-bridge` is available. Alternatively, run the binary directly: `& "$env:LOCALAPPDATA\sesori\bin\sesori-bridge.exe" --version`.
 
 Prefer a shell installer with no Node.js dependency?
 
