@@ -63,8 +63,20 @@ class UpdateReconciliationService {
       await _updateLock.locked<void>(
         lockFile: File(p.join(_installRoot, '.update.lock')),
         onLockAcquired: _reconcileLocked,
-        onLockRejected: (_) async {
-          logWarning('Skipping update reconciliation — the update lock is held by another process.');
+        onLockRejected: (LockAcquireResult result) async {
+          switch (result) {
+            case LockAcquireResult.alreadyLocked:
+              logWarning('Skipping update reconciliation — the update lock is held by another process.');
+            case LockAcquireResult.permissionDenied:
+              // A stale/root-owned `.update.lock` the user cannot access is not
+              // benign contention — it blocks every future update. Log it
+              // distinctly so reconciliation does not mask it as "held by another
+              // process"; the apply path surfaces full guidance when an update is
+              // actually attempted.
+              logWarning('Skipping update reconciliation — the update lock is not accessible (check ownership of .update.lock).');
+            case LockAcquireResult.acquired:
+              break; // never delivered to onLockRejected
+          }
         },
         shouldReleaseLock: (_) => true,
       );

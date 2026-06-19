@@ -95,6 +95,7 @@ void main() {
   late _FakeUpdateLock lock;
   late List<String> infoMessages;
   late List<String> errorMessages;
+  late List<String> warnings;
 
   UpdateReconciliationService buildService({required String currentVersion}) {
     final service = UpdateReconciliationService(
@@ -108,6 +109,7 @@ void main() {
     );
     service.emitMessage = infoMessages.add;
     service.emitError = errorMessages.add;
+    service.logWarning = warnings.add;
     return service;
   }
 
@@ -118,6 +120,7 @@ void main() {
     lock = _FakeUpdateLock();
     infoMessages = <String>[];
     errorMessages = <String>[];
+    warnings = <String>[];
   });
 
   test('no attempt: sweeps residue, nothing reported, nothing cleared', () async {
@@ -137,6 +140,22 @@ void main() {
 
     // The applying bridge owns the in-flight state; we touch nothing.
     expect(installation.sweepCount, 0);
+    expect(infoMessages, isEmpty);
+    expect(errorMessages, isEmpty);
+    expect(attempts.cleared, isFalse);
+  });
+
+  test('lock permission denial is logged distinctly, not masked as contention', () async {
+    attempts.stored = _attempt(status: UpdateAttemptStatus.appliedPendingActivation);
+    lock.outcome = LockAcquireResult.permissionDenied;
+
+    await buildService(currentVersion: '2.0.0').reconcile();
+
+    // Nothing is touched, but the inaccessible lock is surfaced as a distinct
+    // warning rather than benign "held by another process".
+    expect(installation.sweepCount, 0);
+    expect(warnings, hasLength(1));
+    expect(warnings.single, contains('not accessible'));
     expect(infoMessages, isEmpty);
     expect(errorMessages, isEmpty);
     expect(attempts.cleared, isFalse);
