@@ -18,10 +18,15 @@ class _InMemorySecureStorage implements SecureStorage {
   bool throwOnWrite = false;
   bool throwOnDelete = false;
 
+  /// When set, `read` blocks on this until completed — lets a test interleave
+  /// an account switch with an in-flight read.
+  Completer<void>? readGate;
+
   @override
   Future<String?> read({required String key}) async {
     reads++;
     if (throwOnRead) throw Exception("read failed");
+    if (readGate != null) await readGate!.future;
     return data[key];
   }
 
@@ -181,6 +186,28 @@ void main() {
       isFalse,
       reason: "acct-2 reads has_registered_bridges.acct-2, never acct-1's stale key",
     );
+  });
+
+  test("an account switch during an in-flight read does not cache for the new account", () async {
+    storage.data[keyFor("acct-1")] = "true";
+    final gate = Completer<void>();
+    storage.readGate = gate;
+    final store = buildStore(); // acct-1 signed in
+
+    // Start the read for acct-1; it suspends on the gate.
+    final pending = store.hasRegisteredBridges();
+
+    // acct-2 signs in while acct-1's read is still in flight.
+    authState.add(AuthState.authenticated(user: _user("acct-2")));
+    await _settle();
+
+    // acct-1's read now completes with "true".
+    gate.complete();
+    expect(await pending, isFalse, reason: "acct-1's late result must not latch onto acct-2");
+
+    // acct-2's own lookup reads its own (empty) key — not a stale cached flag.
+    storage.readGate = null;
+    expect(await store.hasRegisteredBridges(), isFalse);
   });
 
   test("the same account keeps its latch after a failed logout delete and re-login", () async {

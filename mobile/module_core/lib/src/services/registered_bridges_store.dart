@@ -60,12 +60,13 @@ class RegisteredBridgesStore {
     _accountId = _accountIdOf(authSession.authStateStream.valueOrNull);
     _authSubscription = authSession.authStateStream.listen((state) {
       switch (state) {
-        case AuthAuthenticated(:final user):
-          if (user.id == _accountId) return;
+        case AuthAuthenticated(:final user) when user.id != _accountId:
           // A different account signed in: drop the previous account's
           // in-memory latch and bind to the new one.
           _accountId = user.id;
           _knownRegistered = false;
+        case AuthAuthenticated():
+          break; // same account re-emitted (e.g. token refresh) — no change
         case AuthUnauthenticated():
           // Logout: drop the in-memory latch and best-effort delete the
           // persisted one. clear() handles its own errors, so fire-and-forget.
@@ -91,7 +92,11 @@ class RegisteredBridgesStore {
     final accountId = _accountId;
     if (accountId == null) return false;
     try {
-      if (await _storage.read(key: _storageKeyFor(accountId)) == _storedValue) {
+      final hasBridges = await _storage.read(key: _storageKeyFor(accountId)) == _storedValue;
+      // The signed-in account can change while the read is in flight; only
+      // cache the result if it still applies to the current account, so a late
+      // completion can't latch one account's answer onto another.
+      if (hasBridges && accountId == _accountId) {
         _knownRegistered = true;
       }
     } catch (error, stackTrace) {
