@@ -161,27 +161,37 @@ class UpdateApplyService {
     required UpdateAttempt attempt,
     required ReleaseInfo release,
   }) async {
-    // Bump the managed-runtime manifest so the npm bootstrap sees the new
-    // version and does not clobber/downgrade the freshly swapped binary on the
-    // next `npx`. Best-effort: the swap already landed, so a manifest write
-    // failure only risks a later npm re-install, not the update itself.
-    try {
-      await _installationRepository.recordManagedVersion(installRoot: _installRoot, version: release.version);
-    } on Object catch (manifestError) {
-      logWarning('Failed to update the managed runtime manifest: $manifestError');
-    }
-
-    // Best-effort: the swap already landed on disk, so even if the record write
-    // fails the next launch confirms activation via the running version. The
-    // success message always runs.
+    // Record the durable activation status FIRST, before the manifest bump. The
+    // manifest is an idempotency marker the npm bootstrap reads; bumping it
+    // while the attempt record still says `inFlight` diverges — npm would see
+    // the new version while the next-launch reconciliation treats the swap as
+    // possibly-incomplete and emits reinstall guidance. Best-effort: the swap
+    // already landed on disk, so a record-write failure is non-fatal here.
+    var pendingActivationRecorded = false;
     try {
       await _attemptRepository.saveAttempt(
         attempt: attempt.copyWith(stage: UpdateStage.activated, status: UpdateAttemptStatus.appliedPendingActivation),
       );
       await _logRepository.log(message: 'Swap complete; ${release.version} pending activation on next launch.');
+      pendingActivationRecorded = true;
     } on Object catch (recordError) {
       logWarning('Failed to record the pending activation: $recordError');
     }
+
+    // Bump the managed-runtime manifest so the npm bootstrap sees the new
+    // version and does not clobber/downgrade the freshly swapped binary on the
+    // next `npx`. Only once the activation status is durably recorded, so we
+    // never leave a manifest that claims a version the attempt record hasn't
+    // confirmed. Best-effort: a manifest write failure only risks a later npm
+    // re-install, not the update itself.
+    if (pendingActivationRecorded) {
+      try {
+        await _installationRepository.recordManagedVersion(installRoot: _installRoot, version: release.version);
+      } on Object catch (manifestError) {
+        logWarning('Failed to update the managed runtime manifest: $manifestError');
+      }
+    }
+
     emitMessage(_messageFormatter.installedPendingActivation(toVersion: release.version));
   }
 

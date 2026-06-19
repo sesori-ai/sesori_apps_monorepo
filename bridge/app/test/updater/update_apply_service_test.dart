@@ -42,11 +42,20 @@ class _FakeAttemptRepository implements UpdateAttemptRepository {
   final List<UpdateAttempt> saved = <UpdateAttempt>[];
   bool cleared = false;
 
+  /// When set, `saveAttempt` throws for an attempt with this status (used to
+  /// simulate a durable-write failure on a specific transition).
+  UpdateAttemptStatus? throwOnSaveStatus;
+
   @override
   Future<UpdateAttempt?> readAttempt() async => saved.isEmpty ? null : saved.last;
 
   @override
-  Future<void> saveAttempt({required UpdateAttempt attempt}) async => saved.add(attempt);
+  Future<void> saveAttempt({required UpdateAttempt attempt}) async {
+    if (attempt.status == throwOnSaveStatus) {
+      throw StateError('attempt write failed');
+    }
+    saved.add(attempt);
+  }
 
   @override
   Future<void> clearAttempt() async => cleared = true;
@@ -159,6 +168,22 @@ void main() {
     expect(errorMessages, isEmpty);
     // The staging directory is cleaned after a successful apply.
     expect(Directory(stagingPath).existsSync(), isFalse);
+  });
+
+  test('pending-activation write failure does not bump the manifest (no divergent state)', () async {
+    attempts.throwOnSaveStatus = UpdateAttemptStatus.appliedPendingActivation;
+    final service = buildService();
+
+    final applied = await service.apply(release: _release(), stagingPath: stagingPath);
+
+    // The swap landed, so apply still succeeds; recording activation is
+    // best-effort.
+    expect(applied, isTrue);
+    expect(installation.applyCount, 1);
+    // Because the durable activation status could not be written, the manifest
+    // is left untouched — never "manifest updated but attempt still in-flight".
+    expect(installation.recordedVersion, isNull);
+    expect(warnings, contains(predicate<String>((w) => w.contains('pending activation'))));
   });
 
   test('failed swap records a failure and surfaces guidance', () async {
