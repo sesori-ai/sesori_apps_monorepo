@@ -4,17 +4,17 @@ import "../../icons/tabler_icons.g.dart";
 import "../../interactions/prego_tappable.dart";
 import "../../theme/prego_theme.dart";
 
-/// Visual variant for [PregoAlertsNotification].
+/// Visual variant for [PregoPopupAlertsNotifications].
 ///
 /// Each variant pairs a leading icon with an accent colour used for the
 /// radial gradient overlay and the icon tint.
-enum PregoAlertsNotificationVariant {
+enum PregoPopupAlertsNotificationsVariant {
   /// Error / failure — red circle-exclamation icon, error-red gradient.
   error,
 }
 
 /// A dark, gradient-tinted alert notification matching the Figma
-/// `pregoAlertsNotifications` component.
+/// `pregoPopupAlertsNotifications` component.
 ///
 /// The component renders with a fixed dark background regardless of the
 /// app's brightness — the gradient overlay and white-alpha text colours
@@ -22,7 +22,7 @@ enum PregoAlertsNotificationVariant {
 ///
 /// Usage:
 /// ```dart
-/// PregoAlertsNotification(
+/// PregoPopupAlertsNotifications(
 ///   title: 'Authentication failed',
 ///   message: 'The credentials returned by Google could not be verified. '
 ///       'Please try again.',
@@ -31,13 +31,13 @@ enum PregoAlertsNotificationVariant {
 /// ```
 ///
 /// Passing `onClose: null` hides the close button.
-class PregoAlertsNotification extends StatelessWidget {
-  const PregoAlertsNotification({
+class PregoPopupAlertsNotifications extends StatelessWidget {
+  const PregoPopupAlertsNotifications({
     super.key,
     required this.title,
     this.message,
     this.onClose,
-    this.variant = PregoAlertsNotificationVariant.error,
+    this.variant = PregoPopupAlertsNotificationsVariant.error,
   });
 
   /// Bold headline text shown on the first line.
@@ -52,8 +52,8 @@ class PregoAlertsNotification extends StatelessWidget {
   final VoidCallback? onClose;
 
   /// Controls the leading icon and accent colour. Currently only
-  /// [PregoAlertsNotificationVariant.error] is defined.
-  final PregoAlertsNotificationVariant variant;
+  /// [PregoPopupAlertsNotificationsVariant.error] is defined.
+  final PregoPopupAlertsNotificationsVariant variant;
 
   // Solid background fill — `rgb(24, 25, 27)`. Not a semantic token because
   // the alert is always rendered on a dark surface regardless of theme.
@@ -151,11 +151,11 @@ class PregoAlertsNotification extends StatelessWidget {
   }
 
   Color _resolveAccentColor({required PregoColors colors}) => switch (variant) {
-    PregoAlertsNotificationVariant.error => colors.fgErrorSecondary,
+    PregoPopupAlertsNotificationsVariant.error => colors.fgErrorSecondary,
   };
 
   IconData _resolveIcon() => switch (variant) {
-    PregoAlertsNotificationVariant.error => TablerRegular.alert_circle,
+    PregoPopupAlertsNotificationsVariant.error => TablerRegular.alert_circle,
   };
 }
 

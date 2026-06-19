@@ -331,17 +331,11 @@ abstract class AppLocalizations {
   /// **'Reconnecting to bridge...'**
   String get relayReconnecting;
 
-  /// No description provided for @bridgeOfflineTitle.
+  /// No description provided for @bridgeDisconnectedTitle.
   ///
   /// In en, this message translates to:
-  /// **'Bridge Offline'**
-  String get bridgeOfflineTitle;
-
-  /// No description provided for @bridgeOfflineMessage.
-  ///
-  /// In en, this message translates to:
-  /// **'Start sesori-bridge on your laptop'**
-  String get bridgeOfflineMessage;
+  /// **'Bridge disconnected'**
+  String get bridgeDisconnectedTitle;
 
   /// No description provided for @settingsTitle.
   ///
