@@ -280,7 +280,7 @@ void main() {
       addTearDown(sseController.close);
 
       final relayClient = MockRelayClient();
-      when(relayClient.connect).thenAnswer((_) async => RelayConnectOutcome.connected);
+      when(relayClient.connect).thenAnswer((_) async {});
       when(() => relayClient.didResume).thenReturn(false);
       when(() => relayClient.isConnected).thenReturn(true);
       when(() => relayClient.sendRequest(any())).thenAnswer(

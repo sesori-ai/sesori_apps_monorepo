@@ -266,7 +266,7 @@ class ConnectionService {
     }
 
     try {
-      final outcome = await relayClient.connect();
+      await relayClient.connect();
 
       // If this attempt was superseded while the websocket handshake awaited,
       // stop before sending health on a socket that a newer attempt now owns.
@@ -276,15 +276,16 @@ class ConnectionService {
         return ApiResponse.error(ApiError.generic());
       }
 
-      // The relay accepted and is holding our socket open, but no bridge is in
-      // the account group yet, so no E2E session exists. Commit the socket and
-      // arm the bridge-status watcher, skipping the health probe (no session
-      // encryptor) and SSE (needs the room key). When a bridge appears the relay
-      // pushes bridge_connected; _subscribeBridgeStatus then drives a reconnect
-      // that runs a fresh key exchange — the same recovery path as a bridge that
-      // drops after a live connection. No await runs between the staleness check
-      // above and this commit, so there is no superseding race to re-check.
-      if (outcome == RelayConnectOutcome.bridgeAbsent) {
+      // connect() returned but isConnected is false: the relay accepted and is
+      // holding our socket open, but no bridge is in the account group yet, so
+      // no E2E session exists. Commit the socket and arm the bridge-status
+      // watcher, skipping the health probe (no session encryptor) and SSE (needs
+      // the room key). When a bridge appears the relay pushes bridge_connected;
+      // _subscribeBridgeStatus then drives a reconnect that runs a fresh key
+      // exchange — the same recovery path as a bridge that drops after a live
+      // connection. No await runs between the staleness check above and this
+      // commit, so there is no superseding race to re-check.
+      if (!relayClient.isConnected) {
         const bridgeOfflineHealth = HealthResponse(healthy: true, version: "");
         _clearConnectingRelayClient(relayClient);
         _relayClient = relayClient;
@@ -435,7 +436,11 @@ class ConnectionService {
           case BridgeStatus.online:
             if (_status.value is ConnectionBridgeOffline) {
               logd("Bridge came back online — reconnecting to re-establish encryption");
-              unawaited(_reconnectRelayWithRefresh(config));
+              // immediate: the bridge is provably present and the parked (or
+              // stale) socket needs replacing now, so skip the reconnect backoff
+              // delay. Backoff still applies to genuinely failed retries, so a
+              // flapping bridge is not hammered.
+              unawaited(_reconnectRelayWithRefresh(config, immediate: true));
             }
           case BridgeStatus.offline:
             if (_status.value is ConnectionConnected) {

@@ -9,38 +9,13 @@ import "package:web_socket_channel/web_socket_channel.dart";
 import "../../logging/logging.dart";
 import "room_key_storage.dart";
 
-enum RelayClientConnectionState {
-  disconnected,
-  connecting,
-  connected,
-
-  /// Socket + auth are established and held open, but no bridge is in the
-  /// account group yet, so there is no E2E session. [RelayClient.isConnected]
-  /// stays false in this state — callers must not route requests until a bridge
-  /// appears and the key exchange completes.
-  bridgeOffline,
-  disconnecting,
-}
+/// Transport state of the relay WebSocket. This is deliberately about the
+/// socket only — it carries no notion of bridge presence or plugin status,
+/// which are tracked separately ([BridgeStatus] / the session encryptor).
+enum RelayClientConnectionState { disconnected, connecting, connected, disconnecting }
 
 /// Represents whether the bridge (desktop process) is reachable via the relay.
 enum BridgeStatus { online, offline }
-
-/// Outcome of a [RelayClient.connect] attempt.
-///
-/// The relay accepts and holds a phone socket open even when no bridge is in
-/// the account group yet, so a successful socket + auth handshake does not by
-/// itself mean an end-to-end session with a bridge was established.
-enum RelayConnectOutcome {
-  /// Socket established AND the E2E key exchange (or resume) with the bridge
-  /// completed — the client is ready for encrypted requests.
-  connected,
-
-  /// Socket established and authenticated, but no bridge is currently in the
-  /// account group, so the E2E key exchange could not complete. The socket is
-  /// kept open; the relay pushes a bridge_connected control frame when a bridge
-  /// appears, at which point a fresh handshake can run.
-  bridgeAbsent,
-}
 
 class RelayClient {
   final String relayHost;
@@ -79,7 +54,13 @@ class RelayClient {
        _roomKeyStorage = roomKeyStorage;
 
   RelayClientConnectionState get connectionState => _connectionState;
-  bool get isConnected => _connectionState == RelayClientConnectionState.connected;
+
+  /// True only when the socket is up AND an end-to-end session is established.
+  /// While the socket is held open with no bridge present (the bridge-absent
+  /// park), there is no session encryptor, so this stays false and callers
+  /// (e.g. RelayHttpApiClient) must not route requests through it.
+  bool get isConnected =>
+      _connectionState == RelayClientConnectionState.connected && _sessionEncryptor != null;
   bool get didResume => _didResume;
 
   /// Stream of bridge online/offline events sent as text control frames by the relay.
@@ -91,15 +72,18 @@ class RelayClient {
   /// stream to surface the drop.
   Stream<void> get onSocketClosed => _socketClosedController.stream;
 
-  Future<RelayConnectOutcome> connect() async {
+  /// Connects and authenticates to the relay. Returns normally whether or not a
+  /// bridge is present — inspect [isConnected] afterwards: true means the E2E
+  /// session with a bridge is established; false means the socket is held open
+  /// but no bridge is in the account group yet (the relay pushes a
+  /// bridge_connected control frame when one appears). Throws only on a genuine
+  /// connection failure.
+  Future<void> connect() async {
     if (_disposed) {
       throw StateError("RelayClient is disposed");
     }
     if (_connectionState == RelayClientConnectionState.connected) {
-      return RelayConnectOutcome.connected;
-    }
-    if (_connectionState == RelayClientConnectionState.bridgeOffline) {
-      return RelayConnectOutcome.bridgeAbsent;
+      return;
     }
     if (_connectionState == RelayClientConnectionState.connecting) {
       throw StateError("RelayClient is already connecting");
@@ -156,11 +140,11 @@ class RelayClient {
       if (storedRoomKeyBytes != null) {
         final resumed = await _tryResume(storedRoomKeyBytes);
         if (resumed) {
-          if (_disposed) return RelayConnectOutcome.connected;
+          if (_disposed) return;
           _connectionState = RelayClientConnectionState.connected;
           _didResume = true;
           logd("Relay resumed with stored room key");
-          return RelayConnectOutcome.connected;
+          return;
         }
         // Resume failed (rekey_required or decryption error); room key was cleared.
         // Reset the completer so the DH flow can capture the bridge's response.
@@ -171,27 +155,28 @@ class RelayClient {
       await _performKeyExchange();
 
       if (_disposed) {
-        return RelayConnectOutcome.connected;
+        return;
       }
 
       _connectionState = RelayClientConnectionState.connected;
       logd("Relay key exchange complete, room key persisted");
-      return RelayConnectOutcome.connected;
+      return;
     } on _BridgeOfflineDuringHandshake {
       // The relay authenticated us and is holding the socket open, but no bridge
       // is in the account group yet, so the E2E key exchange cannot complete.
-      // Keep the socket alive (do NOT tear it down) and report bridge-absent so
-      // ConnectionService can park in ConnectionBridgeOffline and let the relay's
-      // bridge_connected control frame drive a reconnect when a bridge appears.
-      if (_disposed) return RelayConnectOutcome.bridgeAbsent;
-      // Socket + auth are up but there is no E2E session yet, so isConnected
-      // stays false — RelayHttpApiClient won't route requests through this
-      // half-open client until a bridge appears and the key exchange completes.
-      _connectionState = RelayClientConnectionState.bridgeOffline;
-      // Re-arm the binary completer so a later handshake can run on this socket.
-      _firstBinaryMessage = Completer<Uint8List>();
+      // Keep the socket alive (do NOT tear it down): the transport state stays
+      // `connected`, but with no session encryptor [isConnected] is false, so
+      // ConnectionService parks in ConnectionBridgeOffline and the relay's
+      // bridge_connected control frame drives recovery when a bridge appears.
+      if (_disposed) return;
+      _connectionState = RelayClientConnectionState.connected;
+      // Clear the handshake completer: nothing awaits it while parked, and
+      // recovery builds a fresh RelayClient, so it is never reused. Leaving it
+      // armed would let a later bridge_disconnected or socket-close complete an
+      // unobserved future, surfacing as an uncaught async error.
+      _firstBinaryMessage = null;
       logd("Relay connected but bridge is offline — holding socket open");
-      return RelayConnectOutcome.bridgeAbsent;
+      return;
     } catch (error, stackTrace) {
       loge("Failed to connect relay client", error, stackTrace);
       await _teardownChannelOnly();
