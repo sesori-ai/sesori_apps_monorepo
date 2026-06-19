@@ -278,7 +278,20 @@ platform :android do
       # So once build N+1 lands on internal, build N can no longer be promoted.
       # We guard for this explicitly below so the failure is a clear message
       # rather than supply's cryptic "Track 'internal' doesn't have any releases".
-      internal_codes = google_play_track_version_codes(track: "internal").map(&:to_s)
+      #
+      # The read itself can fail: the Play API raises (e.g. auth/network) or
+      # returns nil when the track has no releases yet. Translate both into the
+      # same actionable error rather than letting a raw exception or a NoMethodError
+      # on nil escape — otherwise the user-facing mismatch guard is bypassed.
+      begin
+        internal_codes = (google_play_track_version_codes(track: "internal") || []).map(&:to_s)
+      rescue StandardError => e
+        UI.user_error!(
+          "Could not read the internal track to verify version code #{version_code} is " \
+          "promotable (#{e.class}: #{e.message}). Check the Play service account " \
+          "credentials and that the internal track exists."
+        )
+      end
       unless internal_codes.include?(version_code)
         UI.user_error!(
           "Version code #{version_code} is not a release on the internal track " \
