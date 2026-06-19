@@ -245,7 +245,22 @@ platform :android do
       # Verify the version code exists in the 'internal' track before attempting promotion.
       # This provides a clearer error message if the 'internal' track is empty or the version is missing,
       # instead of letting `supply` fail with a generic "Track 'internal' doesn't have any releases" error.
-      internal_version_codes = google_play_track_version_codes(track: "internal")
+      #
+      # Only the API call is wrapped in a rescue so that the user_error! validation
+      # failures below are not accidentally caught and reshaped by it.
+      begin
+        internal_version_codes = google_play_track_version_codes(track: "internal")
+      rescue StandardError => e
+        # A 404 or the specific "no releases" error from supply means the track is
+        # empty or doesn't exist. Surface a friendlier message; re-raise anything
+        # else (e.g. network or authentication failures).
+        if e.message.include?("404") || e.message.include?("Track 'internal' doesn't have any releases")
+          UI.user_error!("The 'internal' track on Google Play is empty or inaccessible. Error: #{e.message}")
+        else
+          raise e
+        end
+      end
+
       if internal_version_codes.nil? || internal_version_codes.empty?
         UI.user_error!("The 'internal' track on Google Play is empty. There are no releases to promote.")
       end
@@ -257,18 +272,7 @@ platform :android do
           "Ensure the 'deploy_internal' lane has run successfully for this version."
         )
       end
-    rescue StandardError => e
-      # If it's a 404 or the specific "no releases" error from supply, it means the track is empty or doesn't exist.
-      # We catch this to provide a more user-friendly error message.
-      if e.message.include?("404") || e.message.include?("Track 'internal' doesn't have any releases")
-         UI.user_error!("The 'internal' track on Google Play is empty or inaccessible. Error: #{e.message}")
-      else
-         # Re-raise other errors (e.g., network issues, authentication failure)
-         raise e
-      end
-    end
 
-    begin
       target_track = track == "beta" ? "beta" : "production"
       version_name = _read_version_name
 
