@@ -95,13 +95,11 @@ class UpdateService {
   }
 
   bool _shouldSkipUpdates() {
-    return isUpdateDisabled(environment: _environment) ||
-        isCiEnvironment(environment: _environment) ||
-        isNpmInstall(executablePath: _executablePath) ||
-        !isManagedInstall(
-          executablePath: _executablePath,
-          managedExecutablePath: _managedExecutablePath,
-        );
+    return shouldSkipUpdates(
+      environment: _environment,
+      executablePath: _executablePath,
+      managedExecutablePath: _managedExecutablePath,
+    );
   }
 
   Future<void> _runCycle() async {

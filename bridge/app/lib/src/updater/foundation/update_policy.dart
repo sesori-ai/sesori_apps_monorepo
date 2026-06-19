@@ -48,6 +48,24 @@ bool isUpdateDisabled({required Map<String, String> environment}) {
   return environment.containsKey('SESORI_NO_UPDATE');
 }
 
+/// Whether the updater must not run for this install: explicitly disabled, a CI
+/// environment, an npm-owned payload, or simply not the managed binary. Gates
+/// BOTH the periodic update cycle and startup reconciliation so neither touches
+/// the managed install's state when this process is not the managed runtime.
+bool shouldSkipUpdates({
+  required Map<String, String> environment,
+  required String executablePath,
+  required String managedExecutablePath,
+}) {
+  return isUpdateDisabled(environment: environment) ||
+      isCiEnvironment(environment: environment) ||
+      isNpmInstall(executablePath: executablePath) ||
+      !isManagedInstall(
+        executablePath: executablePath,
+        managedExecutablePath: managedExecutablePath,
+      );
+}
+
 /// Whether an HTTP status from a release check or artifact download is a
 /// transient, retryable outage (server-side errors, request timeout, or
 /// throttling) rather than a genuine failure. The best-effort updater stays

@@ -228,10 +228,21 @@ class BridgeRuntimeRunner {
       // Reconcile a prior in-place update first (fast, local): confirm a
       // pending activation, surface a prior failure, sweep residue. Best-effort:
       // reconciliation is maintenance and must never block startup.
-      try {
-        await updateLifecycle.reconcile();
-      } on Object catch (error) {
-        Log.w("Update reconciliation failed (non-fatal): $error");
+      //
+      // Gate it on the same skip check the periodic update path uses: a
+      // non-managed binary (npm payload, dev build, CI, or updates disabled)
+      // must not touch the managed install's attempt/residue state.
+      final bool updatesEnabledForThisInstall = !shouldSkipUpdates(
+        environment: environment,
+        executablePath: io.Platform.resolvedExecutable,
+        managedExecutablePath: managedRuntimePaths.binaryPath,
+      );
+      if (updatesEnabledForThisInstall) {
+        try {
+          await updateLifecycle.reconcile();
+        } on Object catch (error) {
+          Log.w("Update reconciliation failed (non-fatal): $error");
+        }
       }
 
       final authTokens = await runtimeAuthService.ensureAuthenticated(options: options);
