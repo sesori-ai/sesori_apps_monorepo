@@ -229,8 +229,8 @@ platform :android do
     end
   end
 
-  desc "Promote an existing internal-track build to beta or production. " \
-       "Does NOT build — runs on Linux."
+  desc "Release an already-uploaded build (by version code) directly to beta " \
+       "or production. Does NOT build — runs on Linux."
   lane :submit_android do |options|
     version_code = (options[:version_code] || ENV["VERSION_CODE"]).to_s.strip
     UI.user_error!("VERSION_CODE is required") if version_code.empty?
@@ -245,34 +245,49 @@ platform :android do
       target_track = track == "beta" ? "beta" : "production"
       version_name = _read_version_name
 
-      UI.message("Promoting Android version code #{version_code} (v#{version_name}) " \
-                 "from internal → #{target_track}")
+      # Create a release for the requested version code DIRECTLY on the target
+      # track, rather than promoting from internal.
+      #
+      # Why not `track_promote_to`? supply's promotion only operates on releases
+      # that are still ACTIVE on the source ("internal") track. Google Play now
+      # auto-supersedes/deactivates older releases when a newer build is added to
+      # a track (the behaviour behind the now-deprecated `check_superseded_tracks`
+      # and `deactivate_on_promote` options). So once a newer internal build (e.g.
+      # 119) lands, an older-but-still-present build (e.g. 118) is no longer an
+      # active release on internal and cannot be promoted — supply fails with
+      # "Track 'internal' doesn't have any releases". Targeting the destination
+      # track directly with the already-uploaded version code sidesteps this: the
+      # uploaded AAB is permanent, so Play can create a fresh release referencing
+      # it regardless of its status on internal.
+      UI.message("Releasing Android version code #{version_code} (v#{version_name}) " \
+                 "to #{target_track}")
 
       # Optional Play Store listing metadata from the private metadata repo. CI
       # populates this path only when that repo's latest commit has no `v*` tag
       # (unpublished listing changes — see submit-release.yml). Unlike iOS, supply
-      # runs the promotion and the metadata upload inside a SINGLE Play Edit, so a
-      # metadata error aborts the whole edit and the promotion does not half-land
+      # runs the release and the metadata upload inside a SINGLE Play Edit, so a
+      # metadata error aborts the whole edit and the release does not half-land
       # — no two-pass split needed. nil when the path is unset, making this a
-      # pure promotion (pre-feature behavior).
+      # pure release (pre-feature behavior).
       metadata_dir = metadata_dir_from_env("ANDROID_METADATA_PATH")
       have_meta = !metadata_dir.nil?
       UI.message(
-        have_meta ? "Uploading Play listing from #{metadata_dir}" : "No metadata path — promotion only"
+        have_meta ? "Uploading Play listing from #{metadata_dir}" : "No metadata path — release only"
       )
 
       # package_name comes from Appfile (matches deploy_internal).
       # `release_status: "completed"` implies 100% rollout — no `rollout:` needed.
+      # `skip_upload_aab/apk: true` means we do NOT re-upload a binary; supply
+      # creates the target-track release from the version code already uploaded by
+      # deploy_internal.
       # When a metadata dir is present we upload everything in it (listing text,
       # changelogs, images, screenshots); supply no-ops on categories that have
       # no files, so a text-only repo just uploads text. Release notes come from
       # <metadata_dir>/<locale>/changelogs/<versionCode>.txt with a default.txt
-      # fallback — keep a default.txt in the repo so a promotion never ships
+      # fallback — keep a default.txt in the repo so a release never ships
       # blank "What's new" (supply does so silently).
       play_opts = {
-        track: "internal",
-        track_promote_to: target_track,
-        track_promote_release_status: "completed",
+        track: target_track,
         version_code: version_code.to_i,
         skip_upload_apk: true,
         skip_upload_aab: true,
@@ -285,7 +300,7 @@ platform :android do
       play_opts[:metadata_path] = metadata_dir if metadata_dir
       upload_to_play_store(play_opts)
 
-      UI.success("Promoted Android version code #{version_code} (v#{version_name}) " \
+      UI.success("Released Android version code #{version_code} (v#{version_name}) " \
                  "to #{target_track}")
     ensure
       _cleanup_secret_files
