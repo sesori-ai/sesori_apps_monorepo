@@ -301,6 +301,24 @@ abstract class AppLocalizations {
   /// **'Open a folder'**
   String get projectsOnboardingOpenFolder;
 
+  /// No description provided for @projectsBridgeOfflineTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridge disconnected'**
+  String get projectsBridgeOfflineTitle;
+
+  /// No description provided for @projectsBridgeOfflineReconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect'**
+  String get projectsBridgeOfflineReconnect;
+
+  /// Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands.
+  ///
+  /// In en, this message translates to:
+  /// **'Install commands'**
+  String get projectsBridgeOfflineInstallCommands;
+
   /// No description provided for @connectionLostTitle.
   ///
   /// In en, this message translates to:
@@ -331,17 +349,11 @@ abstract class AppLocalizations {
   /// **'Reconnecting to bridge...'**
   String get relayReconnecting;
 
-  /// No description provided for @bridgeOfflineTitle.
+  /// No description provided for @bridgeDisconnectedTitle.
   ///
   /// In en, this message translates to:
-  /// **'Bridge Offline'**
-  String get bridgeOfflineTitle;
-
-  /// No description provided for @bridgeOfflineMessage.
-  ///
-  /// In en, this message translates to:
-  /// **'Start sesori-bridge on your laptop'**
-  String get bridgeOfflineMessage;
+  /// **'Bridge disconnected'**
+  String get bridgeDisconnectedTitle;
 
   /// No description provided for @settingsTitle.
   ///

@@ -56,13 +56,18 @@
   "projectsConnectedStep3Detail": "Choose a folder to start your first session.",
   "projectsConnectedAccountFallback": "Signed in with the account you used here.",
   "projectsOnboardingOpenFolder": "Open a folder",
+  "projectsBridgeOfflineTitle": "Bridge disconnected",
+  "projectsBridgeOfflineReconnect": "Reconnect",
+  "projectsBridgeOfflineInstallCommands": "Install commands",
+  "@projectsBridgeOfflineInstallCommands": {
+    "description": "Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands."
+  },
   "connectionLostTitle": "Connection Lost",
   "connectionLostReconnect": "Reconnect",
   "connectionLostDisconnect": "Disconnect",
   "relayConnectionLost": "Bridge went offline",
   "relayReconnecting": "Reconnecting to bridge...",
-  "bridgeOfflineTitle": "Bridge Offline",
-  "bridgeOfflineMessage": "Start sesori-bridge on your laptop",
+  "bridgeDisconnectedTitle": "Bridge disconnected",
   "settingsTitle": "Settings",
   "settingsAccountSignedInWith": "Signed in with {provider}",
   "@settingsAccountSignedInWith": {

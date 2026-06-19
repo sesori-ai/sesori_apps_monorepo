@@ -126,6 +126,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsOnboardingOpenFolder => 'Open a folder';
 
   @override
+  String get projectsBridgeOfflineTitle => 'Bridge disconnected';
+
+  @override
+  String get projectsBridgeOfflineReconnect => 'Reconnect';
+
+  @override
+  String get projectsBridgeOfflineInstallCommands => 'Install commands';
+
+  @override
   String get connectionLostTitle => 'Connection Lost';
 
   @override
@@ -141,10 +150,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get relayReconnecting => 'Reconnecting to bridge...';
 
   @override
-  String get bridgeOfflineTitle => 'Bridge Offline';
-
-  @override
-  String get bridgeOfflineMessage => 'Start sesori-bridge on your laptop';
+  String get bridgeDisconnectedTitle => 'Bridge disconnected';
 
   @override
   String get settingsTitle => 'Settings';

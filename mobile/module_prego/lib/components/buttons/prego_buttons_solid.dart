@@ -48,15 +48,39 @@ enum PregoButtonsSolidHierarchy {
   link,
 }
 
+/// Colour tone for [PregoButtonsSolid] — the colour family applied within the
+/// chosen [PregoButtonsSolidHierarchy].
+enum PregoButtonsSolidType {
+  /// Brand blue — the default.
+  regular,
+
+  /// Error red — maps to the Figma `pregoButtonsDestructiveSolid` component.
+  destructive,
+
+  /// Warning amber. Only valid with [PregoButtonsSolidHierarchy.primary] — the
+  /// only warning solid the Figma library exposes (an instance fill override on
+  /// `pregoButtonsSolid`). Mirrors the destructive primary treatment with
+  /// `bg-warning-solid` as the fill.
+  warning,
+
+  /// Success green. Only valid with [PregoButtonsSolidHierarchy.primary] — a
+  /// `bg-success-solid` instance fill override on `pregoButtonsSolid` (used by
+  /// the success `pregoInlineAlertsNotifications`). Mirrors the warning
+  /// treatment: white text + neutral darken overlays + the neutral focus ring.
+  success,
+}
+
 /// A solid-style button matching the Figma `pregoButtonsSolid` component.
 ///
 /// Supports all four [PregoButtonsSolidHierarchy] values, all four
-/// [PregoButtonsSolidSize] values, a `destructive` flag, icon-only mode,
-/// loading state, and disabled state.
+/// [PregoButtonsSolidSize] values, the [PregoButtonsSolidType] colour families,
+/// icon-only mode, loading state, and disabled state.
 ///
-/// The `destructive` flag maps to the Figma `pregoButtonsDestructiveSolid`
-/// component — it is identical to the regular solid button except that
-/// error colour tokens replace brand colour tokens.
+/// [PregoButtonsSolidType.destructive] maps to the Figma
+/// `pregoButtonsDestructiveSolid` component — identical to the brand solid button
+/// except that error colour tokens replace brand colour tokens.
+/// [PregoButtonsSolidType.warning] keeps that treatment with the warning fill and
+/// is only valid for the [PregoButtonsSolidHierarchy.primary] hierarchy.
 ///
 /// Hover and press overlays are handled by [PregoTappable] using alpha-blended
 /// tokens (`bgPrimaryHover`, `bgPrimaryPressed`, etc.) that layer on top of
@@ -77,7 +101,7 @@ enum PregoButtonsSolidHierarchy {
 ///   label: 'Delete',
 ///   hierarchy: PregoButtonsSolidHierarchy.primary,
 ///   size: PregoButtonsSolidSize.md,
-///   destructive: true,
+///   type: PregoButtonsSolidType.destructive,
 ///   onPressed: () {},
 /// )
 /// ```
@@ -91,11 +115,19 @@ class PregoButtonsSolid extends StatefulWidget {
     this.leadingIcon,
     this.trailingIcon,
     this.isLoading = false,
-    this.destructive = false,
+    this.type = PregoButtonsSolidType.regular,
     this.fullWidth = false,
   }) : assert(
-         hierarchy != PregoButtonsSolidHierarchy.primaryAlt || !destructive,
-         'destructive=true is not supported for primaryAlt — Figma does not define this variant.',
+         hierarchy != PregoButtonsSolidHierarchy.primaryAlt || type == PregoButtonsSolidType.regular,
+         'primaryAlt only supports the brand tone — Figma defines no destructive/warning variant for it.',
+       ),
+       assert(
+         type != PregoButtonsSolidType.warning || hierarchy == PregoButtonsSolidHierarchy.primary,
+         'The warning tone is only defined for the primary hierarchy.',
+       ),
+       assert(
+         type != PregoButtonsSolidType.success || hierarchy == PregoButtonsSolidHierarchy.primary,
+         'The success tone is only defined for the primary hierarchy.',
        ),
        iconOnly = false;
 
@@ -107,10 +139,18 @@ class PregoButtonsSolid extends StatefulWidget {
     required this.size,
     required this.onPressed,
     this.isLoading = false,
-    this.destructive = false,
+    this.type = PregoButtonsSolidType.regular,
   }) : assert(
-         hierarchy != PregoButtonsSolidHierarchy.primaryAlt || !destructive,
-         'destructive=true is not supported for primaryAlt — Figma does not define this variant.',
+         hierarchy != PregoButtonsSolidHierarchy.primaryAlt || type == PregoButtonsSolidType.regular,
+         'primaryAlt only supports the brand tone — Figma defines no destructive/warning variant for it.',
+       ),
+       assert(
+         type != PregoButtonsSolidType.warning || hierarchy == PregoButtonsSolidHierarchy.primary,
+         'The warning tone is only defined for the primary hierarchy.',
+       ),
+       assert(
+         type != PregoButtonsSolidType.success || hierarchy == PregoButtonsSolidHierarchy.primary,
+         'The success tone is only defined for the primary hierarchy.',
        ),
        iconOnly = true,
        fullWidth = false,
@@ -141,9 +181,13 @@ class PregoButtonsSolid extends StatefulWidget {
   /// even if [onPressed] is non-null.
   final bool isLoading;
 
-  /// When `true`, error colour tokens are used instead of brand colour tokens,
-  /// matching the Figma `pregoButtonsDestructiveSolid` component.
-  final bool destructive;
+  /// Colour family for the button. Defaults to [PregoButtonsSolidType.regular].
+  ///
+  /// [PregoButtonsSolidType.destructive] swaps brand tokens for error tokens (the
+  /// Figma `pregoButtonsDestructiveSolid` component); [PregoButtonsSolidType.warning]
+  /// keeps that treatment with the warning fill and is only valid with the
+  /// [PregoButtonsSolidHierarchy.primary] hierarchy.
+  final PregoButtonsSolidType type;
 
   /// Whether the button renders in icon-only mode (square, no label).
   final bool iconOnly;
@@ -161,6 +205,10 @@ class PregoButtonsSolid extends StatefulWidget {
 
 class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
   bool _isFocused = false;
+
+  bool get _isDestructive => widget.type == PregoButtonsSolidType.destructive;
+  bool get _isWarning => widget.type == PregoButtonsSolidType.warning;
+  bool get _isSuccess => widget.type == PregoButtonsSolidType.success;
 
   @override
   Widget build(BuildContext context) {
@@ -206,8 +254,7 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
           final showSkeuomorphicOverlay = switch (widget.hierarchy) {
             PregoButtonsSolidHierarchy.primary ||
             PregoButtonsSolidHierarchy.primaryAlt => !_isFocused && (!isDisabled || widget.isLoading),
-            PregoButtonsSolidHierarchy.secondary =>
-              widget.destructive ? ((!isHovered && !isPressed) || isDisabled) : true,
+            PregoButtonsSolidHierarchy.secondary => _isDestructive ? ((!isHovered && !isPressed) || isDisabled) : true,
             PregoButtonsSolidHierarchy.tertiary || PregoButtonsSolidHierarchy.link => false,
           };
           final skeuomorphicBottomColor = _isFocused && widget.hierarchy == PregoButtonsSolidHierarchy.secondary
@@ -331,12 +378,14 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
   /// Link: transparent — no hover background.
   Color _resolveHoverOverlayColor({required PregoColors colors}) {
     return switch (widget.hierarchy) {
-      PregoButtonsSolidHierarchy.primary => widget.destructive ? colors.bgDestructiveHover : colors.bgBrandHover,
+      // Warning and success reuse the destructive darken overlay (gray-alpha, tone-neutral).
+      PregoButtonsSolidHierarchy.primary =>
+        (_isDestructive || _isWarning || _isSuccess) ? colors.bgDestructiveHover : colors.bgBrandHover,
       // Primary Alt uses a translucent alpha overlay (alpha-white-10) that darkens
       // in light mode and lightens in dark mode — Figma does not define dedicated
       // hover/press background tokens for this hierarchy.
       PregoButtonsSolidHierarchy.primaryAlt => colors.alphaWhite10,
-      PregoButtonsSolidHierarchy.secondary => widget.destructive ? Colors.transparent : colors.bgGrayHover,
+      PregoButtonsSolidHierarchy.secondary => _isDestructive ? Colors.transparent : colors.bgGrayHover,
       PregoButtonsSolidHierarchy.tertiary || PregoButtonsSolidHierarchy.link => Colors.transparent,
     };
   }
@@ -350,10 +399,11 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
   /// Link: transparent — no press background.
   Color _resolvePressOverlayColor({required PregoColors colors}) {
     return switch (widget.hierarchy) {
-      PregoButtonsSolidHierarchy.primary => widget.destructive ? colors.bgDestructivePressed : colors.bgBrandPressed,
+      PregoButtonsSolidHierarchy.primary =>
+        (_isDestructive || _isWarning || _isSuccess) ? colors.bgDestructivePressed : colors.bgBrandPressed,
       // Stronger alpha overlay on press for Primary Alt (alpha-white-20).
       PregoButtonsSolidHierarchy.primaryAlt => colors.alphaWhite20,
-      PregoButtonsSolidHierarchy.secondary => widget.destructive ? Colors.transparent : colors.bgGrayPressed,
+      PregoButtonsSolidHierarchy.secondary => _isDestructive ? Colors.transparent : colors.bgGrayPressed,
       // Tertiary: bg handles pressed state directly (no overlay needed).
       PregoButtonsSolidHierarchy.tertiary || PregoButtonsSolidHierarchy.link => Colors.transparent,
     };
@@ -415,11 +465,16 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
   }
 
   Color _primaryBgColor({required PregoColors colors, required bool isEnabled}) {
-    // Disabled: bg-disabled (same for both regular and destructive).
+    // Disabled: bg-disabled (shared across all tones).
     if (!isEnabled) return colors.bgDisabled;
     // Enabled, hover, and loading all use the same base bg.
-    // Hover/press darkening is handled by PregoTappable overlay.
-    return widget.destructive ? colors.bgErrorSolid : colors.bgBrandSolid;
+    // Hover/press darkening is handled by the PregoTappable overlay.
+    return switch (widget.type) {
+      PregoButtonsSolidType.regular => colors.bgBrandSolid,
+      PregoButtonsSolidType.destructive => colors.bgErrorSolid,
+      PregoButtonsSolidType.warning => colors.bgWarningSolid,
+      PregoButtonsSolidType.success => colors.bgSuccessSolid,
+    };
   }
 
   Color _primaryAltBgColor({required PregoColors colors, required bool isEnabled}) {
@@ -444,7 +499,7 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
       return colors.bgDisabled;
     }
 
-    if (widget.destructive) {
+    if (_isDestructive) {
       // Destructive secondary: pressed and hover use opaque bg colours directly
       // (no overlay). isPressed takes priority over isHovered.
       if (isPressed) return colors.bgDestructivePressedAlt;
@@ -469,7 +524,7 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
     // Focused tertiary uses bg-primary (white) as a base.
     if (_isFocused) return colors.bgPrimary;
 
-    if (widget.destructive) {
+    if (_isDestructive) {
       // Destructive tertiary: pressed and hover use opaque bg colours directly
       // (no overlay). isPressed takes priority over isHovered.
       if (isPressed) return colors.bgDestructivePressedAlt;
@@ -493,7 +548,7 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
     // Link has no bg at rest or on hover. On press, use the same bg as tertiary
     // for consistent tap feedback across platforms (especially Android).
     if (!isPressed || !isEnabled) return Colors.transparent;
-    return widget.destructive ? colors.bgDestructivePressedAlt : colors.bgGrayPressed;
+    return _isDestructive ? colors.bgDestructivePressedAlt : colors.bgGrayPressed;
   }
 
   Border? _resolveBorder({required PregoColors colors, required Set<WidgetState> state}) {
@@ -502,7 +557,7 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
     if (isDisabled && !widget.isLoading) {
       return switch (widget.hierarchy) {
         PregoButtonsSolidHierarchy.primary =>
-          widget.destructive
+          _isDestructive
               // Destructive primary disabled: fg-disabled_subtle border.
               ? Border.all(color: colors.fgDisabledSubtle, width: 1)
               // Regular primary disabled: border-disabled.
@@ -511,7 +566,7 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
         // No destructive variant exists for primaryAlt.
         PregoButtonsSolidHierarchy.primaryAlt => Border.all(color: colors.borderDisabled, width: 1),
         PregoButtonsSolidHierarchy.secondary =>
-          widget.destructive
+          _isDestructive
               // Destructive secondary disabled: border-disabled_subtle.
               ? Border.all(color: colors.borderDisabledSubtle, width: 1)
               // Regular secondary disabled: border-disabled_subtle.
@@ -530,7 +585,7 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
         width: 2,
       ),
       PregoButtonsSolidHierarchy.secondary =>
-        widget.destructive
+        _isDestructive
             // Destructive secondary: border-error_subtle for all active states.
             ? Border.all(color: colors.borderErrorSubtle, width: 1)
             // Regular secondary: border-primary on hover/focused; border-secondary at rest.
@@ -545,10 +600,13 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
   }
 
   List<BoxShadow>? _resolveBoxShadows({required PregoColors colors, required Set<WidgetState> state}) {
-    final focusRingColor = widget.destructive ? colors.focusRingError : colors.focusRing;
+    // Warning has no dedicated focus-ring token, so it uses the neutral brand
+    // ring (the ring conveys keyboard focus, not semantic colour).
+    final focusRingColor = _isDestructive ? colors.focusRingError : colors.focusRing;
 
     // Tertiary and link: 2-layer focus ring only when focused; no drop shadow ever.
-    if (widget.hierarchy == PregoButtonsSolidHierarchy.tertiary || widget.hierarchy == PregoButtonsSolidHierarchy.link) {
+    if (widget.hierarchy == PregoButtonsSolidHierarchy.tertiary ||
+        widget.hierarchy == PregoButtonsSolidHierarchy.link) {
       if (!_isFocused) return null;
       return [
         BoxShadow(color: focusRingColor, blurRadius: 0, spreadRadius: 4),
@@ -611,7 +669,7 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
       };
     }
 
-    if (widget.destructive) {
+    if (_isDestructive) {
       return switch (widget.hierarchy) {
         // Destructive primary: always text-white.
         PregoButtonsSolidHierarchy.primary => colors.textWhite,
@@ -652,7 +710,7 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
       };
     }
 
-    if (widget.destructive) {
+    if (_isDestructive) {
       return switch (widget.hierarchy) {
         PregoButtonsSolidHierarchy.primary => colors.textWhite,
         // Unreachable — assertion in constructor blocks primaryAlt + destructive.

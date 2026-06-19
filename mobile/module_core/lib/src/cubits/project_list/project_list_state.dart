@@ -18,8 +18,17 @@ sealed class ProjectListState with _$ProjectListState {
   const factory ProjectListState.failed({required RemoteFailureReason reason}) = ProjectListFailed;
 
   /// The bridge (the user's computer) is not connected, so there are no
-  /// projects to show yet. Drives the "Let's connect your computer"
-  /// onboarding. Emitted when the connection is `ConnectionDisconnected` or
-  /// `ConnectionBridgeOffline`; replaced once the bridge comes online.
-  const factory ProjectListState.bridgeDisconnected() = ProjectListBridgeDisconnected;
+  /// projects to show yet. Emitted when the connection is
+  /// `ConnectionDisconnected` or `ConnectionBridgeOffline`; replaced once the
+  /// bridge comes online.
+  ///
+  /// [hasRegisteredBridges] tells which recovery flow applies (from the
+  /// account's registered bridges on the auth server):
+  /// * `false` — the user never set up a bridge → "Set up Sesori Bridge"
+  ///   onboarding.
+  /// * `true` — a bridge is registered but not running → "turn on your
+  ///   bridge" view.
+  const factory ProjectListState.bridgeDisconnected({
+    required bool hasRegisteredBridges,
+  }) = ProjectListBridgeDisconnected;
 }

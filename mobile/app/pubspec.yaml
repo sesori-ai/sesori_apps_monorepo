@@ -125,6 +125,9 @@ flutter:
     - assets/images/bkg_png/
     - assets/images/bkg_webp/
     - assets/images/projects_onboarding/
+    - assets/images/projects_onboarding/connection_graphic/
+    - assets/images/projects_onboarding/connection_graphic/2.0x/
+    - assets/images/projects_onboarding/connection_graphic/3.0x/
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
