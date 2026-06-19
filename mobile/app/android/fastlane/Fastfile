@@ -120,14 +120,31 @@ platform :android do
     version_codes
   end
 
-  # Reads the marketing version (e.g. "1.0.6") from pubspec.yaml two dirs up.
+  # Resolves the marketing version (e.g. "1.0.6"). Prefers an injected
+  # VERSION_NAME env so the submit workflow can run the LATEST Fastfile while
+  # still stamping the version that matches the already-uploaded binary (the
+  # submit job checks out the workflow's own ref, not the build's commit, so the
+  # local pubspec may belong to a newer version — see submit-release.yml). Falls
+  # back to reading pubspec.yaml two dirs up for build/standalone invocations.
   # The build-number suffix after `+` is intentionally ignored — Play decides
-  # the version code, pubspec only owns the version name.
+  # the version code, pubspec only owns the version name. Fails hard if the
+  # version cannot be determined: defaulting would stamp a wrong version onto a
+  # store release, which is worse than aborting.
   private_lane :_read_version_name do
-    pubspec_path = File.join(Dir.pwd, "..", "..", "pubspec.yaml")
-    pubspec_content = File.read(pubspec_path)
-    version_match = pubspec_content.match(/version:\s*(\d+\.\d+\.\d+)/)
-    version_match ? version_match[1] : "1.0.0"
+    injected = ENV["VERSION_NAME"].to_s.strip
+    if injected.empty?
+      # Anchor to __dir__ (the fastlane folder) rather than Dir.pwd so the path
+      # is correct regardless of the cwd fastlane resolves relative paths
+      # against — matches the AAB path resolution below.
+      pubspec_path = File.expand_path("../../pubspec.yaml", __dir__)
+      pubspec_content = File.read(pubspec_path)
+      version_match = pubspec_content.match(/version:\s*(\d+\.\d+\.\d+)/)
+      UI.user_error!("Could not determine version name: VERSION_NAME is unset and no " \
+                     "'version: X.Y.Z' was found in #{pubspec_path}") unless version_match
+      version_match[1]
+    else
+      injected
+    end
   end
 
   desc "Print the next Google Play version code without building or uploading"
@@ -229,8 +246,8 @@ platform :android do
     end
   end
 
-  desc "Release an already-uploaded build (by version code) directly to beta " \
-       "or production. Does NOT build — runs on Linux."
+  desc "Promote an existing internal-track build to beta or production. " \
+       "Does NOT build — runs on Linux."
   lane :submit_android do |options|
     version_code = (options[:version_code] || ENV["VERSION_CODE"]).to_s.strip
     UI.user_error!("VERSION_CODE is required") if version_code.empty?
@@ -245,49 +262,76 @@ platform :android do
       target_track = track == "beta" ? "beta" : "production"
       version_name = _read_version_name
 
-      # Create a release for the requested version code DIRECTLY on the target
-      # track, rather than promoting from internal.
+      # Promotion is the ONLY supply-supported way to ship an already-uploaded
+      # build: `upload_to_play_store` can either upload a NEW binary or promote a
+      # release that currently exists on a source track to another track
+      # (`track_promote_to`). There is no API to "create a release from an
+      # arbitrary historical version code" — passing `version_code:` without
+      # `track_promote_to` and without an AAB fails with "No local metadata,
+      # apks, aab, or track to promote were found", and re-uploading the AAB is
+      # rejected because version codes must be globally unique. So we promote
+      # from internal.
       #
-      # Why not `track_promote_to`? supply's promotion only operates on releases
-      # that are still ACTIVE on the source ("internal") track. Google Play now
-      # auto-supersedes/deactivates older releases when a newer build is added to
-      # a track (the behaviour behind the now-deprecated `check_superseded_tracks`
-      # and `deactivate_on_promote` options). So once a newer internal build (e.g.
-      # 119) lands, an older-but-still-present build (e.g. 118) is no longer an
-      # active release on internal and cannot be promoted — supply fails with
-      # "Track 'internal' doesn't have any releases". Targeting the destination
-      # track directly with the already-uploaded version code sidesteps this: the
-      # uploaded AAB is permanent, so Play can create a fresh release referencing
-      # it regardless of its status on internal.
-      UI.message("Releasing Android version code #{version_code} (v#{version_name}) " \
-                 "to #{target_track}")
+      # IMPORTANT — only the LATEST internal build is promotable. `deploy_internal`
+      # sets `internal.releases = [<new build>]`, which OVERWRITES the internal
+      # track's release list with just the newest build, evicting any prior build.
+      # So once build N+1 lands on internal, build N can no longer be promoted.
+      # We guard for this explicitly below so the failure is a clear message
+      # rather than supply's cryptic "Track 'internal' doesn't have any releases".
+      #
+      # The read itself can fail: the Play API raises (e.g. auth/network) or
+      # returns nil when the track has no releases yet. Translate both into the
+      # same actionable error rather than letting a raw exception or a NoMethodError
+      # on nil escape — otherwise the user-facing mismatch guard is bypassed.
+      begin
+        internal_codes = (google_play_track_version_codes(track: "internal") || []).map(&:to_s)
+      rescue StandardError => e
+        UI.user_error!(
+          "Could not read the internal track to verify version code #{version_code} is " \
+          "promotable (#{e.class}: #{e.message}). Check the Play service account " \
+          "credentials and that the internal track exists."
+        )
+      end
+      unless internal_codes.include?(version_code)
+        UI.user_error!(
+          "Version code #{version_code} is not a release on the internal track " \
+          "(internal currently has: #{internal_codes.empty? ? 'none' : internal_codes.join(', ')}). " \
+          "Only the latest internal build can be promoted — deploying a newer build to " \
+          "internal evicts older ones. Re-deploy this build to internal, or submit the " \
+          "latest one."
+        )
+      end
+
+      UI.message("Promoting Android version code #{version_code} (v#{version_name}) " \
+                 "from internal → #{target_track}")
 
       # Optional Play Store listing metadata from the private metadata repo. CI
       # populates this path only when that repo's latest commit has no `v*` tag
       # (unpublished listing changes — see submit-release.yml). Unlike iOS, supply
-      # runs the release and the metadata upload inside a SINGLE Play Edit, so a
-      # metadata error aborts the whole edit and the release does not half-land
+      # runs the promotion and the metadata upload inside a SINGLE Play Edit, so a
+      # metadata error aborts the whole edit and the promotion does not half-land
       # — no two-pass split needed. nil when the path is unset, making this a
-      # pure release (pre-feature behavior).
+      # pure promotion (pre-feature behavior).
       metadata_dir = metadata_dir_from_env("ANDROID_METADATA_PATH")
       have_meta = !metadata_dir.nil?
       UI.message(
-        have_meta ? "Uploading Play listing from #{metadata_dir}" : "No metadata path — release only"
+        have_meta ? "Uploading Play listing from #{metadata_dir}" : "No metadata path — promotion only"
       )
 
       # package_name comes from Appfile (matches deploy_internal).
-      # `release_status: "completed"` implies 100% rollout — no `rollout:` needed.
-      # `skip_upload_aab/apk: true` means we do NOT re-upload a binary; supply
-      # creates the target-track release from the version code already uploaded by
-      # deploy_internal.
+      # `track_promote_release_status: "completed"` implies 100% rollout — no
+      # `rollout:` needed. `skip_upload_aab/apk: true` means we do NOT re-upload a
+      # binary; supply promotes the version code already on the internal track.
       # When a metadata dir is present we upload everything in it (listing text,
       # changelogs, images, screenshots); supply no-ops on categories that have
       # no files, so a text-only repo just uploads text. Release notes come from
       # <metadata_dir>/<locale>/changelogs/<versionCode>.txt with a default.txt
-      # fallback — keep a default.txt in the repo so a release never ships
+      # fallback — keep a default.txt in the repo so a promotion never ships
       # blank "What's new" (supply does so silently).
       play_opts = {
-        track: target_track,
+        track: "internal",
+        track_promote_to: target_track,
+        track_promote_release_status: "completed",
         version_code: version_code.to_i,
         skip_upload_apk: true,
         skip_upload_aab: true,
@@ -300,7 +344,7 @@ platform :android do
       play_opts[:metadata_path] = metadata_dir if metadata_dir
       upload_to_play_store(play_opts)
 
-      UI.success("Released Android version code #{version_code} (v#{version_name}) " \
+      UI.success("Promoted Android version code #{version_code} (v#{version_name}) " \
                  "to #{target_track}")
     ensure
       _cleanup_secret_files
