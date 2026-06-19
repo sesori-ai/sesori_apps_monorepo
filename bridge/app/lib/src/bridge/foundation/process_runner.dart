@@ -40,9 +40,9 @@ class ProcessRunner {
   /// The child runs with [ProcessStartMode.inheritStdio] so it attaches to the
   /// same terminal and keeps running after this process exits — used to launch a
   /// successor bridge during a restart. Throws if the process cannot be started.
-  Future<int> startDetached(
-    String executable,
-    List<String> arguments, {
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
     Map<String, String>? environment,
   }) async {
     final process = await Process.start(

@@ -32,7 +32,7 @@ class SystemProcessApi {
     required List<String> arguments,
     Map<String, String>? environment,
   }) {
-    return _processRunner.startDetached(executable, arguments, environment: environment);
+    return _processRunner.startDetached(executable: executable, arguments: arguments, environment: environment);
   }
 
   Future<ProcessIdentity?> inspectProcess({required int pid}) async {

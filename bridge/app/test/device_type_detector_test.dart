@@ -178,9 +178,9 @@ class _FakeResult {
 
 class _FakeProcessRunner implements ProcessRunner {
   @override
-  Future<int> startDetached(
-    String executable,
-    List<String> arguments, {
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
     Map<String, String>? environment,
   }) async {
     throw UnimplementedError();
