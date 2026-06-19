@@ -47,6 +47,7 @@ class BridgeRuntime {
   final BridgePluginApi _plugin;
   final FailureReporter _failureReporter;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
+  final BridgeRestartService _restartService;
   final OrchestratorSession session;
 
   BridgeRuntime({
@@ -54,11 +55,13 @@ class BridgeRuntime {
     required BridgePluginApi plugin,
     required FailureReporter failureReporter,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
+    required BridgeRestartService restartService,
     required this.session,
   }) : _database = database,
        _plugin = plugin,
        _failureReporter = failureReporter,
-       _sessionEventEnrichmentService = sessionEventEnrichmentService;
+       _sessionEventEnrichmentService = sessionEventEnrichmentService,
+       _restartService = restartService;
 
   static BridgeRuntime create({
     required BridgeConfig config,
@@ -113,6 +116,7 @@ class BridgeRuntime {
       plugin: plugin,
       failureReporter: failureReporter,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      restartService: restartService,
       session: Orchestrator(
         config: config,
         client: RelayClient(
@@ -184,6 +188,8 @@ class BridgeRuntime {
       port: port,
       failureReporter: _failureReporter,
       sessionEventEnrichmentService: _sessionEventEnrichmentService,
+      restartService: _restartService,
+      restartHandoff: session.handleRestartHandoff,
     );
   }
 

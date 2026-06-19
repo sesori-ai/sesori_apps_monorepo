@@ -3,6 +3,7 @@ import "dart:convert";
 import "dart:io";
 
 import "package:http/http.dart" as http;
+import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/bridge/debug_server.dart";
@@ -10,6 +11,11 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
+import "package:sesori_bridge/src/server/api/system_process_api.dart";
+import "package:sesori_bridge/src/server/foundation/bridge_restart_command_builder.dart";
+import "package:sesori_bridge/src/server/foundation/bridge_restart_env.dart";
+import "package:sesori_bridge/src/server/repositories/process_repository.dart";
+import "package:sesori_bridge/src/server/services/bridge_restart_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -22,6 +28,7 @@ _DebugServerHarness _createDebugServerHarness({
   required BridgePluginApi plugin,
   required AppDatabase db,
   required int port,
+  BridgeRestartService? restartService,
 }) {
   final httpClient = http.Client();
   final runtime = BridgeRuntime.create(
@@ -39,7 +46,7 @@ _DebugServerHarness _createDebugServerHarness({
     database: db,
     processRunner: ProcessRunner(),
     failureReporter: FakeFailureReporter(),
-    restartService: buildTestRestartService(),
+    restartService: restartService ?? buildTestRestartService(),
   );
   final debugServer = runtime.createDebugServer(port: port);
   return _DebugServerHarness(
@@ -323,6 +330,149 @@ void main() {
       expect(body, contains("Internal Server Error"));
     });
   });
+
+  group("DebugServer restart", () {
+    test("POST /global/restart replies and spawns a successor", () async {
+      final plugin = _FakeBridgePlugin();
+      addTearDown(plugin.close);
+      final db = createTestDatabase();
+
+      final tempDir = await Directory.systemTemp.createTemp("debug-server-restart");
+      addTearDown(() async {
+        if (tempDir.existsSync()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+      final binaryPath = p.join(tempDir.path, "sesori-bridge");
+      File(binaryPath).writeAsStringSync("binary");
+      if (!Platform.isWindows) {
+        await Process.run("chmod", ["+x", binaryPath]);
+      }
+
+      final processRunner = _RecordingProcessRunner();
+      final harness = _createDebugServerHarness(
+        plugin: plugin,
+        db: db,
+        port: 0,
+        restartService: _spawnableRestartService(
+          binaryPath: binaryPath,
+          processRunner: processRunner,
+        ),
+      );
+      addTearDown(harness.close);
+      final debugServer = harness.debugServer;
+      await debugServer.start();
+
+      final client = HttpClient();
+      addTearDown(client.close);
+      final request = await client.postUrl(
+        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/global/restart"),
+      );
+      final response = await request.close();
+      final body = await utf8.decoder.bind(response).join();
+
+      expect(response.statusCode, equals(HttpStatus.ok));
+      expect(body, contains('"restarting":true'));
+      // The handoff actually ran: a successor was spawned with the predecessor
+      // pid in the environment (the phone-restart contract).
+      expect(processRunner.startDetachedCount, equals(1));
+      expect(
+        processRunner.lastEnvironment?[sesoriRestartPredecessorPidEnvVar],
+        equals("4321"),
+      );
+    });
+
+    test("POST /global/restart returns 503 and does not spawn when binary is missing", () async {
+      final plugin = _FakeBridgePlugin();
+      addTearDown(plugin.close);
+      final db = createTestDatabase();
+
+      final tempDir = await Directory.systemTemp.createTemp("debug-server-restart-missing");
+      addTearDown(() async {
+        if (tempDir.existsSync()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+
+      final processRunner = _RecordingProcessRunner();
+      final harness = _createDebugServerHarness(
+        plugin: plugin,
+        db: db,
+        port: 0,
+        restartService: _spawnableRestartService(
+          binaryPath: p.join(tempDir.path, "missing"),
+          processRunner: processRunner,
+        ),
+      );
+      addTearDown(harness.close);
+      final debugServer = harness.debugServer;
+      await debugServer.start();
+
+      final client = HttpClient();
+      addTearDown(client.close);
+      final request = await client.postUrl(
+        Uri.parse("http://127.0.0.1:${debugServer.boundPort!}/global/restart"),
+      );
+      final response = await request.close();
+
+      expect(response.statusCode, equals(HttpStatus.serviceUnavailable));
+      expect(processRunner.startDetachedCount, equals(0));
+    });
+  });
+}
+
+BridgeRestartService _spawnableRestartService({
+  required String binaryPath,
+  required ProcessRunner processRunner,
+}) {
+  return BridgeRestartService(
+    processRepository: ProcessRepository(
+      api: SystemProcessApi(
+        processRunner: processRunner,
+        clock: const ServerClock(),
+        isWindows: false,
+        platform: "linux",
+      ),
+      currentUser: null,
+    ),
+    commandBuilder: const BridgeRestartCommandBuilder(),
+    binaryPath: binaryPath,
+    cliArgs: const <String>[],
+    currentPid: 4321,
+  );
+}
+
+/// Records `startDetached` calls so the restart handoff can be asserted; `run`
+/// is never expected during these tests.
+class _RecordingProcessRunner implements ProcessRunner {
+  int startDetachedCount = 0;
+  String? lastExecutable;
+  List<String>? lastArguments;
+  Map<String, String>? lastEnvironment;
+
+  @override
+  Future<ProcessResult> run(
+    String executable,
+    List<String> arguments, {
+    Map<String, String>? environment,
+    String? workingDirectory,
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<int> startDetached(
+    String executable,
+    List<String> arguments, {
+    Map<String, String>? environment,
+  }) async {
+    startDetachedCount++;
+    lastExecutable = executable;
+    lastArguments = arguments;
+    lastEnvironment = environment;
+    return 4242;
+  }
 }
 
 class _DebugServerHarness {

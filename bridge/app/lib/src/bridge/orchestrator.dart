@@ -476,8 +476,12 @@ class OrchestratorSession {
   /// ([cancel]) — which flushes the queued reply by closing the relay and lets
   /// this process exit. The successor waits for this pid to exit before it
   /// enforces single-live-bridge, so the handoff is clean.
-  Future<void> _handleRestartHandoff() async {
-    Log.i("[restart] phone requested restart; spawning successor bridge");
+  ///
+  /// Public because both restart triggers drive the same handoff: the relay
+  /// request loop (below) and the local [DebugServer], which reuses this
+  /// session's [RequestRouter] and so reaches the same `RestartBridgeHandler`.
+  Future<void> handleRestartHandoff() async {
+    Log.i("[restart] restart requested; spawning successor bridge");
     final bool spawned = await _restartService.spawnSuccessor();
     if (!spawned) {
       Console.error(
@@ -731,12 +735,12 @@ class OrchestratorSession {
         Log.v("RelayRequest: ${req.method} ${req.path}");
         _inFlightRequestLabel = "${req.method} ${req.path}";
         final routeSw = Stopwatch()..start();
-        // Discard any restart flag left armed by a non-relay path before
-        // routing. The local DebugServer reuses this RequestRouter but never
-        // performs the handoff, so a debug `POST /global/restart` would
-        // otherwise leave the flag set for an unrelated later phone request to
-        // consume. Clearing here means only a restart requested during THIS
-        // relay request can trigger a handoff.
+        // Defensively discard any restart flag left armed before routing this
+        // relay request. The local DebugServer reuses this RequestRouter but
+        // consumes and acts on its own restart flag synchronously right after it
+        // routes, so it should never leak one here; this clear still guarantees
+        // that only a restart requested during THIS relay request can trigger a
+        // handoff from the relay path.
         _restartService.consumeRestartRequest();
         // If shutdown wins the race below, this future keeps running in the
         // background. ignore() marks any later failure as handled so it can
@@ -769,7 +773,7 @@ class OrchestratorSession {
           await _encryptAndSend(connID: connID, message: response);
           Log.v("response sent to connID=$connID");
           if (restartRequested) {
-            await _handleRestartHandoff();
+            await handleRestartHandoff();
           }
         } on _ShutdownInProgressException {
           Log.v(
