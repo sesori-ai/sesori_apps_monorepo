@@ -33,6 +33,6 @@ Map<String, dynamic> _$PendingQuestionToJson(_PendingQuestion instance) =>
     <String, dynamic>{
       'id': instance.id,
       'sessionID': instance.sessionID,
-      'displaySessionId': instance.displaySessionId,
+      'displaySessionId': ?instance.displaySessionId,
       'questions': instance.questions.map((e) => e.toJson()).toList(),
     };

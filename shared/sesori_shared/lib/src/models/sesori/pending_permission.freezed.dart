@@ -158,7 +158,7 @@ mixin _$PendingPermission {
  String get id; String get sessionID;/// Top-most root session this request should be surfaced under (for a
 /// child/sub-agent session's request). Null when unknown; consumers fall
 /// back to [sessionID].
- String? get displaySessionId; String get tool; String get description;
+@JsonKey(includeIfNull: false) String? get displaySessionId; String get tool; String get description;
 /// Create a copy of PendingPermission
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -191,7 +191,7 @@ abstract mixin class $PendingPermissionCopyWith<$Res>  {
   factory $PendingPermissionCopyWith(PendingPermission value, $Res Function(PendingPermission) _then) = _$PendingPermissionCopyWithImpl;
 @useResult
 $Res call({
- String id, String sessionID, String? displaySessionId, String tool, String description
+ String id, String sessionID,@JsonKey(includeIfNull: false) String? displaySessionId, String tool, String description
 });
 
 
@@ -227,7 +227,7 @@ as String,
 @JsonSerializable()
 
 class _PendingPermission implements PendingPermission {
-  const _PendingPermission({required this.id, required this.sessionID, required this.displaySessionId, required this.tool, required this.description});
+  const _PendingPermission({required this.id, required this.sessionID, @JsonKey(includeIfNull: false) required this.displaySessionId, required this.tool, required this.description});
   factory _PendingPermission.fromJson(Map<String, dynamic> json) => _$PendingPermissionFromJson(json);
 
 @override final  String id;
@@ -235,7 +235,7 @@ class _PendingPermission implements PendingPermission {
 /// Top-most root session this request should be surfaced under (for a
 /// child/sub-agent session's request). Null when unknown; consumers fall
 /// back to [sessionID].
-@override final  String? displaySessionId;
+@override@JsonKey(includeIfNull: false) final  String? displaySessionId;
 @override final  String tool;
 @override final  String description;
 
@@ -272,7 +272,7 @@ abstract mixin class _$PendingPermissionCopyWith<$Res> implements $PendingPermis
   factory _$PendingPermissionCopyWith(_PendingPermission value, $Res Function(_PendingPermission) _then) = __$PendingPermissionCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String? displaySessionId, String tool, String description
+ String id, String sessionID,@JsonKey(includeIfNull: false) String? displaySessionId, String tool, String description
 });
 
 

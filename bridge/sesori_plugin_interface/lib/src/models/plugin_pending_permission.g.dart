@@ -11,7 +11,7 @@ Map<String, dynamic> _$PluginPendingPermissionToJson(
 ) => <String, dynamic>{
   'id': instance.id,
   'sessionID': instance.sessionID,
-  'displaySessionId': instance.displaySessionId,
+  'displaySessionId': ?instance.displaySessionId,
   'tool': instance.tool,
   'description': instance.description,
 };

@@ -268,7 +268,7 @@ Map<String, dynamic> _$SesoriPermissionAskedToJson(
 ) => <String, dynamic>{
   'requestID': instance.requestID,
   'sessionID': instance.sessionID,
-  'displaySessionId': instance.displaySessionId,
+  'displaySessionId': ?instance.displaySessionId,
   'tool': instance.tool,
   'description': instance.description,
   'type': instance.$type,
@@ -288,7 +288,7 @@ Map<String, dynamic> _$SesoriPermissionRepliedToJson(
 ) => <String, dynamic>{
   'requestID': instance.requestID,
   'sessionID': instance.sessionID,
-  'displaySessionId': instance.displaySessionId,
+  'displaySessionId': ?instance.displaySessionId,
   'reply': instance.reply,
   'type': instance.$type,
 };
@@ -318,7 +318,7 @@ Map<String, dynamic> _$SesoriQuestionAskedToJson(
 ) => <String, dynamic>{
   'id': instance.id,
   'sessionID': instance.sessionID,
-  'displaySessionId': instance.displaySessionId,
+  'displaySessionId': ?instance.displaySessionId,
   'questions': instance.questions.map((e) => e.toJson()).toList(),
   'type': instance.$type,
 };
@@ -336,7 +336,7 @@ Map<String, dynamic> _$SesoriQuestionRepliedToJson(
 ) => <String, dynamic>{
   'requestID': instance.requestID,
   'sessionID': instance.sessionID,
-  'displaySessionId': instance.displaySessionId,
+  'displaySessionId': ?instance.displaySessionId,
   'type': instance.$type,
 };
 
@@ -353,7 +353,7 @@ Map<String, dynamic> _$SesoriQuestionRejectedToJson(
 ) => <String, dynamic>{
   'requestID': instance.requestID,
   'sessionID': instance.sessionID,
-  'displaySessionId': instance.displaySessionId,
+  'displaySessionId': ?instance.displaySessionId,
   'type': instance.$type,
 };
 

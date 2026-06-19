@@ -303,7 +303,7 @@ mixin _$PluginPendingQuestion {
 
  String get id; String get sessionID;/// Top-most root session this request should be surfaced under (for a
 /// child/sub-agent session's request). Null when unknown.
- String? get displaySessionId; List<PluginQuestionInfo> get questions;
+@JsonKey(includeIfNull: false) String? get displaySessionId; List<PluginQuestionInfo> get questions;
 /// Create a copy of PluginPendingQuestion
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -336,7 +336,7 @@ abstract mixin class $PluginPendingQuestionCopyWith<$Res>  {
   factory $PluginPendingQuestionCopyWith(PluginPendingQuestion value, $Res Function(PluginPendingQuestion) _then) = _$PluginPendingQuestionCopyWithImpl;
 @useResult
 $Res call({
- String id, String sessionID, String? displaySessionId, List<PluginQuestionInfo> questions
+ String id, String sessionID,@JsonKey(includeIfNull: false) String? displaySessionId, List<PluginQuestionInfo> questions
 });
 
 
@@ -371,14 +371,14 @@ as List<PluginQuestionInfo>,
 @JsonSerializable(createFactory: false)
 
 class _PluginPendingQuestion implements PluginPendingQuestion {
-  const _PluginPendingQuestion({required this.id, required this.sessionID, required this.displaySessionId, required final  List<PluginQuestionInfo> questions}): _questions = questions;
+  const _PluginPendingQuestion({required this.id, required this.sessionID, @JsonKey(includeIfNull: false) required this.displaySessionId, required final  List<PluginQuestionInfo> questions}): _questions = questions;
   
 
 @override final  String id;
 @override final  String sessionID;
 /// Top-most root session this request should be surfaced under (for a
 /// child/sub-agent session's request). Null when unknown.
-@override final  String? displaySessionId;
+@override@JsonKey(includeIfNull: false) final  String? displaySessionId;
  final  List<PluginQuestionInfo> _questions;
 @override List<PluginQuestionInfo> get questions {
   if (_questions is EqualUnmodifiableListView) return _questions;
@@ -420,7 +420,7 @@ abstract mixin class _$PluginPendingQuestionCopyWith<$Res> implements $PluginPen
   factory _$PluginPendingQuestionCopyWith(_PluginPendingQuestion value, $Res Function(_PluginPendingQuestion) _then) = __$PluginPendingQuestionCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String? displaySessionId, List<PluginQuestionInfo> questions
+ String id, String sessionID,@JsonKey(includeIfNull: false) String? displaySessionId, List<PluginQuestionInfo> questions
 });
 
 

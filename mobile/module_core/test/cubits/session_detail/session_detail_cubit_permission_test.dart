@@ -429,6 +429,51 @@ void main() {
 
       expect((cubit.state as SessionDetailLoaded).pendingPermissions, isEmpty);
     });
+
+    test("rejecting a surfaced child question targets the child (owner) session", () async {
+      when(() => mockSessionService.getPendingQuestions(sessionId: any(named: "sessionId"))).thenAnswer(
+        (_) async => ApiResponse.success(
+          const PendingQuestionResponse(
+            data: [
+              PendingQuestion(
+                id: "q-child",
+                sessionID: "child-1",
+                displaySessionId: sessionId,
+                questions: [],
+              ),
+            ],
+          ),
+        ),
+      );
+      when(
+        () => mockSessionService.rejectQuestion(
+          requestId: any(named: "requestId"),
+          sessionId: any(named: "sessionId"),
+        ),
+      ).thenAnswer((_) async => ApiResponse<void>.success(null));
+
+      final cubit = _buildCubit(
+        sessionId: sessionId,
+        projectId: "project-1",
+        connectionService: mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        notificationCanceller: mockNotificationCanceller,
+        permissionRepository: mockPermissionRepository,
+        failureReporter: mockFailureReporter,
+      );
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+
+      // The child question surfaced on the root.
+      expect((cubit.state as SessionDetailLoaded).pendingQuestions.map((q) => q.id), ["q-child"]);
+
+      final ok = await cubit.rejectQuestion("q-child");
+
+      expect(ok, isTrue);
+      // Reject targets the owning child session, not the open root.
+      verify(() => mockSessionService.rejectQuestion(requestId: "q-child", sessionId: "child-1")).called(1);
+    });
   });
 }
 

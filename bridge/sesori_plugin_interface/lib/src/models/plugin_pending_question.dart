@@ -30,6 +30,7 @@ sealed class PluginPendingQuestion with _$PluginPendingQuestion {
     required String sessionID,
     /// Top-most root session this request should be surfaced under (for a
     /// child/sub-agent session's request). Null when unknown.
+    @JsonKey(includeIfNull: false)
     required String? displaySessionId,
     required List<PluginQuestionInfo> questions,
   }) = _PluginPendingQuestion;

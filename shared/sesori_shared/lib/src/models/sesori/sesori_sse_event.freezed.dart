@@ -1773,7 +1773,7 @@ as String?,
 @JsonSerializable()
 
 class SesoriPermissionAsked implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriPermissionAsked({required this.requestID, required this.sessionID, required this.displaySessionId, required this.tool, required this.description, final  String? $type}): $type = $type ?? 'permission.asked';
+  const SesoriPermissionAsked({required this.requestID, required this.sessionID, @JsonKey(includeIfNull: false) required this.displaySessionId, required this.tool, required this.description, final  String? $type}): $type = $type ?? 'permission.asked';
   factory SesoriPermissionAsked.fromJson(Map<String, dynamic> json) => _$SesoriPermissionAskedFromJson(json);
 
  final  String requestID;
@@ -1781,7 +1781,7 @@ class SesoriPermissionAsked implements SesoriSseEvent, SesoriSessionEvent {
 /// Top-most root session this request should be surfaced under (for a
 /// child/sub-agent session's request). Null when unknown; consumers fall
 /// back to [sessionID].
- final  String? displaySessionId;
+@JsonKey(includeIfNull: false) final  String? displaySessionId;
  final  String tool;
  final  String description;
 
@@ -1822,7 +1822,7 @@ abstract mixin class $SesoriPermissionAskedCopyWith<$Res> implements $SesoriSseE
   factory $SesoriPermissionAskedCopyWith(SesoriPermissionAsked value, $Res Function(SesoriPermissionAsked) _then) = _$SesoriPermissionAskedCopyWithImpl;
 @useResult
 $Res call({
- String requestID, String sessionID, String? displaySessionId, String tool, String description
+ String requestID, String sessionID,@JsonKey(includeIfNull: false) String? displaySessionId, String tool, String description
 });
 
 
@@ -1857,14 +1857,14 @@ as String,
 @JsonSerializable()
 
 class SesoriPermissionReplied implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriPermissionReplied({required this.requestID, required this.sessionID, required this.displaySessionId, required this.reply, final  String? $type}): $type = $type ?? 'permission.replied';
+  const SesoriPermissionReplied({required this.requestID, required this.sessionID, @JsonKey(includeIfNull: false) required this.displaySessionId, required this.reply, final  String? $type}): $type = $type ?? 'permission.replied';
   factory SesoriPermissionReplied.fromJson(Map<String, dynamic> json) => _$SesoriPermissionRepliedFromJson(json);
 
  final  String requestID;
  final  String sessionID;
 /// Root session this request is surfaced under; null ⇒ fall back to
 /// [sessionID].
- final  String? displaySessionId;
+@JsonKey(includeIfNull: false) final  String? displaySessionId;
  final  String reply;
 
 @JsonKey(name: 'type')
@@ -1904,7 +1904,7 @@ abstract mixin class $SesoriPermissionRepliedCopyWith<$Res> implements $SesoriSs
   factory $SesoriPermissionRepliedCopyWith(SesoriPermissionReplied value, $Res Function(SesoriPermissionReplied) _then) = _$SesoriPermissionRepliedCopyWithImpl;
 @useResult
 $Res call({
- String requestID, String sessionID, String? displaySessionId, String reply
+ String requestID, String sessionID,@JsonKey(includeIfNull: false) String? displaySessionId, String reply
 });
 
 
@@ -1977,7 +1977,7 @@ String toString() {
 @JsonSerializable()
 
 class SesoriQuestionAsked implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriQuestionAsked({required this.id, required this.sessionID, required this.displaySessionId, required final  List<QuestionInfo> questions, final  String? $type}): _questions = questions,$type = $type ?? 'question.asked';
+  const SesoriQuestionAsked({required this.id, required this.sessionID, @JsonKey(includeIfNull: false) required this.displaySessionId, required final  List<QuestionInfo> questions, final  String? $type}): _questions = questions,$type = $type ?? 'question.asked';
   factory SesoriQuestionAsked.fromJson(Map<String, dynamic> json) => _$SesoriQuestionAskedFromJson(json);
 
  final  String id;
@@ -1985,7 +1985,7 @@ class SesoriQuestionAsked implements SesoriSseEvent, SesoriSessionEvent {
 /// Top-most root session this request should be surfaced under (for a
 /// child/sub-agent session's request). Null when unknown; consumers fall
 /// back to [sessionID].
- final  String? displaySessionId;
+@JsonKey(includeIfNull: false) final  String? displaySessionId;
  final  List<QuestionInfo> _questions;
  List<QuestionInfo> get questions {
   if (_questions is EqualUnmodifiableListView) return _questions;
@@ -2031,7 +2031,7 @@ abstract mixin class $SesoriQuestionAskedCopyWith<$Res> implements $SesoriSseEve
   factory $SesoriQuestionAskedCopyWith(SesoriQuestionAsked value, $Res Function(SesoriQuestionAsked) _then) = _$SesoriQuestionAskedCopyWithImpl;
 @useResult
 $Res call({
- String id, String sessionID, String? displaySessionId, List<QuestionInfo> questions
+ String id, String sessionID,@JsonKey(includeIfNull: false) String? displaySessionId, List<QuestionInfo> questions
 });
 
 
@@ -2065,14 +2065,14 @@ as List<QuestionInfo>,
 @JsonSerializable()
 
 class SesoriQuestionReplied implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriQuestionReplied({required this.requestID, required this.sessionID, required this.displaySessionId, final  String? $type}): $type = $type ?? 'question.replied';
+  const SesoriQuestionReplied({required this.requestID, required this.sessionID, @JsonKey(includeIfNull: false) required this.displaySessionId, final  String? $type}): $type = $type ?? 'question.replied';
   factory SesoriQuestionReplied.fromJson(Map<String, dynamic> json) => _$SesoriQuestionRepliedFromJson(json);
 
  final  String requestID;
  final  String sessionID;
 /// Root session this request is surfaced under; null ⇒ fall back to
 /// [sessionID].
- final  String? displaySessionId;
+@JsonKey(includeIfNull: false) final  String? displaySessionId;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -2111,7 +2111,7 @@ abstract mixin class $SesoriQuestionRepliedCopyWith<$Res> implements $SesoriSseE
   factory $SesoriQuestionRepliedCopyWith(SesoriQuestionReplied value, $Res Function(SesoriQuestionReplied) _then) = _$SesoriQuestionRepliedCopyWithImpl;
 @useResult
 $Res call({
- String requestID, String sessionID, String? displaySessionId
+ String requestID, String sessionID,@JsonKey(includeIfNull: false) String? displaySessionId
 });
 
 
@@ -2144,14 +2144,14 @@ as String?,
 @JsonSerializable()
 
 class SesoriQuestionRejected implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriQuestionRejected({required this.requestID, required this.sessionID, required this.displaySessionId, final  String? $type}): $type = $type ?? 'question.rejected';
+  const SesoriQuestionRejected({required this.requestID, required this.sessionID, @JsonKey(includeIfNull: false) required this.displaySessionId, final  String? $type}): $type = $type ?? 'question.rejected';
   factory SesoriQuestionRejected.fromJson(Map<String, dynamic> json) => _$SesoriQuestionRejectedFromJson(json);
 
  final  String requestID;
  final  String sessionID;
 /// Root session this request is surfaced under; null ⇒ fall back to
 /// [sessionID].
- final  String? displaySessionId;
+@JsonKey(includeIfNull: false) final  String? displaySessionId;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -2190,7 +2190,7 @@ abstract mixin class $SesoriQuestionRejectedCopyWith<$Res> implements $SesoriSse
   factory $SesoriQuestionRejectedCopyWith(SesoriQuestionRejected value, $Res Function(SesoriQuestionRejected) _then) = _$SesoriQuestionRejectedCopyWithImpl;
 @useResult
 $Res call({
- String requestID, String sessionID, String? displaySessionId
+ String requestID, String sessionID,@JsonKey(includeIfNull: false) String? displaySessionId
 });
 
 

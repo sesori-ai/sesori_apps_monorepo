@@ -56,6 +56,33 @@ void main() {
       expect(payload.data?.eventType, equals(NotificationEventType.questionAsked));
     });
 
+    test("permission notification resolves the project from the owner session when the root project is unknown", () {
+      final harness = _newHarness();
+
+      // Only the child's creation is seen (so its project is tracked); the root
+      // session is not yet known to the push tracker.
+      harness.completionListener.handleSseEvent(
+        SesoriSseEvent.sessionCreated(info: _session(id: "child", projectID: "project-a", parentID: "root")),
+      );
+
+      harness.dispatcher.dispatchImmediateIfApplicable(
+        const SesoriSseEvent.permissionAsked(
+          requestID: "perm-1",
+          sessionID: "child",
+          displaySessionId: "root",
+          tool: "bash",
+          description: "Run ls",
+        ),
+      );
+
+      expect(harness.client.sentPayloads, hasLength(1));
+      final payload = harness.client.sentPayloads.single;
+      // Notification still targets the display (root) session...
+      expect(payload.data?.sessionId, equals("root"));
+      // ...but the project falls back to the owner session's (same project).
+      expect(payload.data?.projectId, equals("project-a"));
+    });
+
     test("collapseKey is session-scoped (category-independent) for session notifications", () {
       final harness = _newHarness();
 

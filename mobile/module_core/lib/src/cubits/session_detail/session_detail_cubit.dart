@@ -1001,10 +1001,17 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   }
 
   Future<bool> rejectQuestion(String requestId) async {
+    // Reject against the question's owning session (which may be a child/
+    // sub-agent surfaced on this root), mirroring the reply path, so the bridge
+    // clears its tracker under the correct session instead of the open root.
+    final current = state;
+    final ownerSessionId = current is SessionDetailLoaded
+        ? (current.pendingQuestions.firstWhereOrNull((q) => q.id == requestId)?.sessionID ?? _sessionId)
+        : _sessionId;
     _onQuestionResolved(requestId);
     _notificationCanceller.cancelForSession(sessionId: _sessionId);
     try {
-      final result = await _sessionRepository.rejectQuestion(requestId: requestId, sessionId: _sessionId);
+      final result = await _sessionRepository.rejectQuestion(requestId: requestId, sessionId: ownerSessionId);
       if (result case ErrorResponse(:final error)) {
         throw error;
       }

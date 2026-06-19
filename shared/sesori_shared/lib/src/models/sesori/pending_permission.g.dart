@@ -32,7 +32,7 @@ Map<String, dynamic> _$PendingPermissionToJson(_PendingPermission instance) =>
     <String, dynamic>{
       'id': instance.id,
       'sessionID': instance.sessionID,
-      'displaySessionId': instance.displaySessionId,
+      'displaySessionId': ?instance.displaySessionId,
       'tool': instance.tool,
       'description': instance.description,
     };
