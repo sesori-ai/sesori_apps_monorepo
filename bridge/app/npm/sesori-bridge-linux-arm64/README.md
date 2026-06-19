@@ -1,13 +1,13 @@
 # @sesori/bridge-linux-arm64
 
-Platform payload for [`@sesori/bridge`](../sesori-bridge/README.md) on **Linux (ARM64)**.
+Platform payload for [`@sesori/bridge`](https://www.npmjs.com/package/@sesori/bridge) on **Linux (ARM64)**.
 
 This package contains the native Sesori Bridge runtime archive for `linux/arm64`. It is consumed automatically by the bootstrap launcher — you do not need to install it directly. If `npx @sesori/bridge` detects `linux arm64`, this package provides the native binary payload that gets unpacked into the managed runtime under `~/.local/share/sesori/`.
 
 ## Install (indirect)
 
 ```bash
-npx @sesori/bridge --version
+npx @sesori/bridge
 ```
 
 If you somehow need the payload directly (not recommended for normal use):

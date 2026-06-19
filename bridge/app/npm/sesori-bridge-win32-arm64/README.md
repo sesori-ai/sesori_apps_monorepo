@@ -1,13 +1,13 @@
 # @sesori/bridge-win32-arm64
 
-Platform payload for [`@sesori/bridge`](../sesori-bridge/README.md) on **Windows (ARM64)**.
+Platform payload for [`@sesori/bridge`](https://www.npmjs.com/package/@sesori/bridge) on **Windows (ARM64)**.
 
 This package contains the native Sesori Bridge runtime archive for `win32/arm64`. It is consumed automatically by the bootstrap launcher — you do not need to install it directly. If `npx @sesori/bridge` detects `win32 arm64`, this package provides the native binary payload that gets unpacked into the managed runtime under `%LOCALAPPDATA%\sesori\`.
 
 ## Install (indirect)
 
 ```bash
-npx @sesori/bridge --version
+npx @sesori/bridge
 ```
 
 If you somehow need the payload directly (not recommended for normal use):

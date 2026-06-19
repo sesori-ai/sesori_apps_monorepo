@@ -13,10 +13,14 @@ The platform-specific native binary is pulled from the matching optional depende
 
 ```bash
 # macOS / Linux / Windows (Node.js required)
-npx @sesori/bridge --version
+npx @sesori/bridge
 ```
 
-After the first run, use `sesori-bridge` directly (open a new terminal on macOS/Linux if `~/.local/bin` was just added to your PATH).
+After the first run, the managed `sesori-bridge` command is installed. Open a new terminal on macOS/Linux if `~/.local/bin` was just added to your PATH, then verify:
+
+```bash
+sesori-bridge --version
+```
 
 Prefer a shell installer with no Node.js dependency?
 

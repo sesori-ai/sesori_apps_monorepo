@@ -1,13 +1,13 @@
 # @sesori/bridge-darwin-arm64
 
-Platform payload for [`@sesori/bridge`](../sesori-bridge/README.md) on **macOS (Apple Silicon)**.
+Platform payload for [`@sesori/bridge`](https://www.npmjs.com/package/@sesori/bridge) on **macOS (Apple Silicon)**.
 
 This package contains the native Sesori Bridge runtime archive for `darwin/arm64`. It is consumed automatically by the bootstrap launcher — you do not need to install it directly. If `npx @sesori/bridge` detects `darwin arm64`, this package provides the native binary payload that gets unpacked into the managed runtime under `~/.local/share/sesori/`.
 
 ## Install (indirect)
 
 ```bash
-npx @sesori/bridge --version
+npx @sesori/bridge
 ```
 
 If you somehow need the payload directly (not recommended for normal use):
