@@ -37,6 +37,19 @@ class _FakeCache extends UpdateCacheApi {
   }
 }
 
+/// Cache whose [write] always fails, simulating a full/unwritable cache dir.
+class _ThrowingCache extends UpdateCacheApi {
+  _ThrowingCache() : super(cacheDirectory: '', clock: const Clock());
+
+  @override
+  Future<CachedRelease?> read({required Duration ttl}) async => null;
+
+  @override
+  Future<void> write({required CachedRelease release}) async {
+    throw const FileSystemException('disk full');
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
@@ -83,7 +96,7 @@ MockClient _mockStatus(int status) => MockClient((_) async => http.Response('', 
 /// Platform is always locked to macos/arm64 so tests are machine-independent.
 ReleaseRepository _makeRepository({
   required http.Client httpClient,
-  _FakeCache? cache,
+  UpdateCacheApi? cache,
   String currentVersion = '0.2.0',
   DistributionTarget? target,
   ReleaseTrack track = ReleaseTrack.stable,
@@ -261,6 +274,18 @@ void main() {
           _makeRepository(httpClient: _mockStatus(500)).checkForNewerRelease(),
           throwsA(isA<HttpException>()),
         );
+      });
+
+      test('a release-cache write failure is best-effort and never fails the check', () async {
+        // The fetched release is NOT newer than the running version, so the
+        // correct result is null — even though the cache write throws.
+        final repository = _makeRepository(
+          httpClient: _mockOk(body: [_releaseJson(version: '0.1.0')]),
+          cache: _ThrowingCache(),
+          currentVersion: '0.2.0',
+        );
+
+        expect(await repository.checkForNewerRelease(), isNull);
       });
 
       test('malformed JSON body → throws', () async {
