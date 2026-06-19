@@ -226,32 +226,66 @@ as RemoteFailureReason,
 
 
 class ProjectListBridgeDisconnected implements ProjectListState {
-  const ProjectListBridgeDisconnected();
+  const ProjectListBridgeDisconnected({required this.hasRegisteredBridges});
   
 
+ final  bool hasRegisteredBridges;
 
-
+/// Create a copy of ProjectListState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ProjectListBridgeDisconnectedCopyWith<ProjectListBridgeDisconnected> get copyWith => _$ProjectListBridgeDisconnectedCopyWithImpl<ProjectListBridgeDisconnected>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListBridgeDisconnected);
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListBridgeDisconnected&&(identical(other.hasRegisteredBridges, hasRegisteredBridges) || other.hasRegisteredBridges == hasRegisteredBridges));
 }
 
 
 @override
-int get hashCode => runtimeType.hashCode;
+int get hashCode => Object.hash(runtimeType,hasRegisteredBridges);
 
 @override
 String toString() {
-  return 'ProjectListState.bridgeDisconnected()';
+  return 'ProjectListState.bridgeDisconnected(hasRegisteredBridges: $hasRegisteredBridges)';
 }
 
 
 }
 
+/// @nodoc
+abstract mixin class $ProjectListBridgeDisconnectedCopyWith<$Res> implements $ProjectListStateCopyWith<$Res> {
+  factory $ProjectListBridgeDisconnectedCopyWith(ProjectListBridgeDisconnected value, $Res Function(ProjectListBridgeDisconnected) _then) = _$ProjectListBridgeDisconnectedCopyWithImpl;
+@useResult
+$Res call({
+ bool hasRegisteredBridges
+});
 
 
+
+
+}
+/// @nodoc
+class _$ProjectListBridgeDisconnectedCopyWithImpl<$Res>
+    implements $ProjectListBridgeDisconnectedCopyWith<$Res> {
+  _$ProjectListBridgeDisconnectedCopyWithImpl(this._self, this._then);
+
+  final ProjectListBridgeDisconnected _self;
+  final $Res Function(ProjectListBridgeDisconnected) _then;
+
+/// Create a copy of ProjectListState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? hasRegisteredBridges = null,}) {
+  return _then(ProjectListBridgeDisconnected(
+hasRegisteredBridges: null == hasRegisteredBridges ? _self.hasRegisteredBridges : hasRegisteredBridges // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+
+}
 
 // dart format on

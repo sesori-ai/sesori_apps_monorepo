@@ -126,6 +126,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsOnboardingOpenFolder => 'Open a folder';
 
   @override
+  String get projectsBridgeOfflineTitle => 'Bridge disconnected';
+
+  @override
+  String get projectsBridgeOfflineReconnect => 'Reconnect';
+
+  @override
+  String get projectsBridgeOfflineInstallCommands => 'Install commands';
+
+  @override
   String get connectionLostTitle => 'Connection Lost';
 
   @override

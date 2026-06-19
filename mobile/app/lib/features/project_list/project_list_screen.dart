@@ -8,6 +8,7 @@ import "package:flutter_svg/flutter_svg.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 import "../../core/bridge_install.dart";
 import "../../core/constants.dart";
@@ -16,12 +17,14 @@ import "../../core/extensions/build_context_x.dart";
 import "../../core/extensions/remote_failure_x.dart";
 import "../../core/extensions/text_style_x.dart";
 import "../../core/routing/app_router.dart";
+import "../../core/widgets/connection_graphic.dart";
 import "add_project_dialog.dart";
 import "rename_project_dialog.dart";
 
-part "onboarding/command_block.dart";
 part "onboarding/onboarding_hero.dart";
 part "onboarding/onboarding_view.dart";
+part "widgets/bridge_offline_view.dart";
+part "widgets/command_block.dart";
 part "widgets/connected_empty_view.dart";
 part "widgets/error_view.dart";
 part "widgets/project_tile.dart";
@@ -37,6 +40,8 @@ class ProjectListScreen extends StatelessWidget {
         getIt<ConnectionService>(),
         getIt<SseEventRepository>(),
         getIt<RouteSource>(),
+        bridgeRepository: getIt<BridgeRepository>(),
+        registeredBridgesStore: getIt<RegisteredBridgesStore>(),
         failureReporter: getIt<FailureReporter>(),
       ),
       child: const _ProjectListBody(),
@@ -162,7 +167,10 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
         ProjectListLoading() => const Center(
           child: CircularProgressIndicator(),
         ),
-        ProjectListBridgeDisconnected() => const _BridgeOnboardingView(),
+        // No bridge has ever been registered → walk through the setup
+        // onboarding; a bridge exists but isn't running → ask to turn it on.
+        ProjectListBridgeDisconnected(:final hasRegisteredBridges) =>
+          hasRegisteredBridges ? const _BridgeOfflineView() : const _BridgeOnboardingView(),
         ProjectListLoaded(:final projects, :final activityById, :final isRefreshing) => Column(
           children: [
             if (isRefreshing) const LinearProgressIndicator(),

@@ -86,6 +86,7 @@ export "src/platform/push_notification_message.dart";
 export "src/platform/route_dispatcher.dart";
 export "src/platform/route_source.dart";
 export "src/platform/url_launcher.dart";
+export "src/repositories/bridge_repository.dart";
 export "src/repositories/notification_preferences_repository.dart";
 export "src/repositories/notification_repository.dart";
 export "src/repositories/permission_repository.dart";
@@ -99,6 +100,7 @@ export "src/services/draft_store.dart";
 export "src/services/foreground_notification_dispatcher.dart";
 export "src/services/new_session_selection_tracker.dart";
 export "src/services/notification_registration_service.dart";
+export "src/services/registered_bridges_store.dart";
 export "src/services/session_detail_load_service.dart";
 // Utils
 export "src/utils/command_filter/command_picker_entry_builder.dart";

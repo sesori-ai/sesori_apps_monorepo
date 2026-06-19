@@ -36,14 +36,13 @@ class _BridgeOnboardingView extends StatelessWidget {
 }
 
 /// The shared onboarding body: hero illustration, title, and the three setup
-/// steps. Stateful because Step 1's install command block has its own
-/// platform tab selection, used by both the connected and disconnected states.
+/// steps.
 ///
 /// [connected] switches between the two states:
 /// * `false` — pending steps with hanging numbers and a disabled folder button.
 /// * `true`  — steps 1 & 2 ticked, the "Signed in" wording, and a live folder
 ///   button wired to [onOpenFolder].
-class _OnboardingChecklist extends StatefulWidget {
+class _OnboardingChecklist extends StatelessWidget {
   const _OnboardingChecklist({required this.connected, this.onOpenFolder});
 
   final bool connected;
@@ -53,32 +52,9 @@ class _OnboardingChecklist extends StatefulWidget {
   final VoidCallback? onOpenFolder;
 
   @override
-  State<_OnboardingChecklist> createState() => _OnboardingChecklistState();
-}
-
-class _OnboardingChecklistState extends State<_OnboardingChecklist> {
-  /// Selected install platform tab. `false` = Linux/Mac (default), `true` = Windows.
-  bool _isWindows = false;
-
-  String get _installCommand => _isWindows ? BridgeInstall.windowsCommand : BridgeInstall.macLinuxCommand;
-
-  Future<void> _copyCommand() async {
-    final messenger = ScaffoldMessenger.of(context);
-    final loc = context.loc;
-    await Clipboard.setData(ClipboardData(text: _installCommand));
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(loc.projectsOnboardingCommandCopied),
-        duration: kSnackBarDuration,
-      ),
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
     final loc = context.loc;
     final prego = context.prego;
-    final connected = widget.connected;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -111,14 +87,7 @@ class _OnboardingChecklistState extends State<_OnboardingChecklist> {
                 completed: connected,
                 titleAction: loc.projectsOnboardingStep1Action,
                 titleAccent: loc.projectsOnboardingBridgeName,
-                child: _CommandBlock(
-                  installCommand: _installCommand,
-                  runCommand: BridgeInstall.runCommand,
-                  isWindows: _isWindows,
-                  onSelectUnix: () => setState(() => _isWindows = false),
-                  onSelectWindows: () => setState(() => _isWindows = true),
-                  onCopy: _copyCommand,
-                ),
+                child: const _CommandBlock(),
               ),
               const SizedBox(height: PregoSpacing.x4l),
               _OnboardingStep(
@@ -155,7 +124,7 @@ class _OnboardingChecklistState extends State<_OnboardingChecklist> {
                       size: PregoButtonsIconGlassSize.lg,
                       iconSize: 30,
                       semanticLabel: loc.projectsOnboardingOpenFolder,
-                      onPressed: widget.onOpenFolder,
+                      onPressed: onOpenFolder,
                     ),
                   ],
                 ),

@@ -1,23 +1,41 @@
 part of "../project_list_screen.dart";
 
-/// The Step 1 install-command block: platform tabs, copy button, and the
-/// monospace command lines.
-class _CommandBlock extends StatelessWidget {
-  const _CommandBlock({
-    required this.installCommand,
-    required this.runCommand,
-    required this.isWindows,
-    required this.onSelectUnix,
-    required this.onSelectWindows,
-    required this.onCopy,
-  });
+/// The shared install-command block: platform tabs (Linux/Mac vs Windows), a
+/// copy button, and the monospace install + run command lines.
+///
+/// Self-contained — it owns the selected-platform state and the copy-to-
+/// clipboard behaviour — so both the onboarding checklist and the bridge
+/// "reconnect" screen drop it in with no wiring (`const _CommandBlock()`).
+class _CommandBlock extends StatefulWidget {
+  const _CommandBlock();
 
-  final String installCommand;
-  final String runCommand;
-  final bool isWindows;
-  final VoidCallback onSelectUnix;
-  final VoidCallback onSelectWindows;
-  final Future<void> Function() onCopy;
+  @override
+  State<_CommandBlock> createState() => _CommandBlockState();
+}
+
+class _CommandBlockState extends State<_CommandBlock> {
+  /// Selected install platform tab. `false` = Linux/Mac (default), `true` = Windows.
+  bool _isWindows = false;
+
+  String get _installCommand => _isWindows ? BridgeInstall.windowsCommand : BridgeInstall.macLinuxCommand;
+
+  Future<void> _copyCommand() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final loc = context.loc;
+    // Clipboard can throw on restricted platforms/states; fail soft and skip
+    // the success snackbar, matching CopyIconButton.
+    try {
+      await Clipboard.setData(ClipboardData(text: _installCommand));
+    } on Object catch (_) {
+      return;
+    }
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(loc.projectsOnboardingCommandCopied),
+        duration: kSnackBarDuration,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,14 +63,14 @@ class _CommandBlock extends StatelessWidget {
                 children: [
                   _PlatformTab(
                     label: loc.projectsOnboardingTabUnix,
-                    selected: !isWindows,
-                    onTap: onSelectUnix,
+                    selected: !_isWindows,
+                    onTap: () => setState(() => _isWindows = false),
                   ),
                   const SizedBox(width: PregoSpacing.sm),
                   _PlatformTab(
                     label: loc.projectsOnboardingTabWindows,
-                    selected: isWindows,
-                    onTap: onSelectWindows,
+                    selected: _isWindows,
+                    onTap: () => setState(() => _isWindows = true),
                   ),
                 ],
               ),
@@ -60,7 +78,7 @@ class _CommandBlock extends StatelessWidget {
                 button: true,
                 label: loc.projectsOnboardingCopyCommand,
                 child: InkResponse(
-                  onTap: onCopy,
+                  onTap: _copyCommand,
                   radius: 22,
                   child: const SizedBox(
                     width: 40,
@@ -77,8 +95,8 @@ class _CommandBlock extends StatelessWidget {
             // semanticsLabel carries the full command so screen readers read it
             // even though the visible text is clamped to one line with ellipsis.
             child: Text(
-              installCommand,
-              semanticsLabel: installCommand,
+              _installCommand,
+              semanticsLabel: _installCommand,
               style: mono,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -87,8 +105,8 @@ class _CommandBlock extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.lg, vertical: PregoSpacing.sm),
             child: Text(
-              runCommand,
-              semanticsLabel: runCommand,
+              BridgeInstall.runCommand,
+              semanticsLabel: BridgeInstall.runCommand,
               style: mono,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
