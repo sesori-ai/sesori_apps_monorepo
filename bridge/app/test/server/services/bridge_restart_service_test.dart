@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:sesori_bridge/src/bridge/foundation/legacy_post_update_relaunch.dart';
 import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/server/api/system_process_api.dart';
 import 'package:sesori_bridge/src/server/foundation/bridge_restart_command_builder.dart';
@@ -113,6 +114,9 @@ void main() {
     expect(call.executable, '/opt/sesori/sesori-bridge');
     expect(call.arguments, ['run', '--relay', 'wss://r']);
     expect(call.environment, containsPair(sesoriRestartPredecessorPidEnvVar, '7777'));
+    // The legacy post-update relaunch flag must be cleared so a non-interactive
+    // mode set by a legacy updater does not propagate to restart successors.
+    expect(call.environment, containsPair(sesoriPostUpdateRestartEnvVar, ''));
   });
 
   test('spawnSuccessor returns false when the process cannot be started', () async {

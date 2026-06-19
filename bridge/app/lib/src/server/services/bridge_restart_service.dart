@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 
+import '../../bridge/foundation/legacy_post_update_relaunch.dart';
 import '../foundation/bridge_restart_command.dart';
 import '../foundation/bridge_restart_command_builder.dart';
 import '../foundation/bridge_restart_env.dart';
@@ -80,7 +81,16 @@ class BridgeRestartService {
       await _processRepository.startDetached(
         executable: command.executable,
         arguments: command.arguments,
-        environment: <String, String>{sesoriRestartPredecessorPidEnvVar: '$_currentPid'},
+        environment: <String, String>{
+          sesoriRestartPredecessorPidEnvVar: '$_currentPid',
+          // The successor inherits this process's environment. If this bridge
+          // was itself launched non-interactively by a legacy auto-updater, the
+          // relaunch flag would otherwise propagate to every restart successor,
+          // pinning them to non-interactive mode indefinitely. An explicit
+          // restart is an intentional, terminal-attached launch, so clear the
+          // flag (the reader treats anything other than '1' as absent).
+          sesoriPostUpdateRestartEnvVar: '',
+        },
       );
       return true;
     } on Object catch (error, stackTrace) {
