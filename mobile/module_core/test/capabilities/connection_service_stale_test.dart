@@ -283,6 +283,7 @@ void main() {
       when(relayClient.connect).thenAnswer((_) async {});
       when(() => relayClient.didResume).thenReturn(false);
       when(() => relayClient.isConnected).thenReturn(true);
+      when(() => relayClient.connectionState).thenReturn(RelayClientConnectionState.connected);
       when(() => relayClient.sendRequest(any())).thenAnswer(
         (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
       );
