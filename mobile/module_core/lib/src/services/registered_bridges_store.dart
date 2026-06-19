@@ -25,73 +25,106 @@ import "../logging/logging.dart";
 /// bridges yet) keeps looking up until it first succeeds — at which point it
 /// latches and moves to the "turn your bridge on" flow for good.
 ///
-/// Both the in-memory flag and the persisted flag are cleared on logout (this
-/// store listens to [AuthSession.authStateStream]) so a different account
-/// signing in on the same device never inherits this one's answer.
+/// ## Per-account isolation
+///
+/// The persisted latch is keyed by the signed-in account's id, and the
+/// in-memory flag is dropped whenever the signed-in account changes (logout, or
+/// a different account signing in — the store listens to
+/// [AuthSession.authStateStream]). Scoping the key by account means one account
+/// can never read another's answer, so even a logout `delete` that fails to
+/// land cannot leak across accounts: the stale key belongs to the account that
+/// owned it, and only that account would ever read it back (correctly — it
+/// really does have a registered bridge).
 @lazySingleton
 class RegisteredBridgesStore {
-  static const _storageKey = "has_registered_bridges";
+  static const _keyPrefix = "has_registered_bridges";
   static const _storedValue = "true";
 
   final SecureStorage _storage;
   StreamSubscription<AuthState>? _authSubscription;
 
-  /// In-memory mirror of the latch. `true` once the account is known to have a
-  /// registered bridge; `false` means "not yet known" — never "no bridges".
+  /// Id of the signed-in account, or null when signed out. Seeded from the
+  /// current auth state and kept current by the auth-state subscription so the
+  /// first lookup after construction is already correctly scoped.
+  String? _accountId;
+
+  /// In-memory mirror of the latch for [_accountId]. `true` once that account
+  /// is known to have a registered bridge; `false` means "not yet known" —
+  /// never "no bridges".
   bool _knownRegistered = false;
 
   RegisteredBridgesStore({
     required SecureStorage secureStorage,
     required AuthSession authSession,
   }) : _storage = secureStorage {
+    _accountId = _accountIdOf(authSession.authStateStream.valueOrNull);
     _authSubscription = authSession.authStateStream.listen((state) {
-      // Logout: drop the latch so the next account starts from scratch.
-      // clear() handles its own errors, so this stays fire-and-forget.
-      if (state is AuthUnauthenticated) unawaited(clear());
+      switch (state) {
+        case AuthAuthenticated(:final user):
+          if (user.id == _accountId) return;
+          // A different account signed in: drop the previous account's
+          // in-memory latch and bind to the new one.
+          _accountId = user.id;
+          _knownRegistered = false;
+        case AuthUnauthenticated():
+          // Logout: drop the in-memory latch and best-effort delete the
+          // persisted one. clear() handles its own errors, so fire-and-forget.
+          unawaited(clear());
+        case AuthInitial():
+        case AuthAuthenticating():
+        case AuthFailed():
+          break;
+      }
     });
   }
 
-  /// Whether the account is already known to have a registered bridge, from the
-  /// in-memory flag or persisted storage. Reads storage at most once per app
-  /// run for the positive answer; the in-memory flag short-circuits after that.
+  static String? _accountIdOf(AuthState? state) => state is AuthAuthenticated ? state.user.id : null;
+
+  String _storageKeyFor(String accountId) => "$_keyPrefix.$accountId";
+
+  /// Whether the current account is already known to have a registered bridge,
+  /// from the in-memory flag or persisted storage. Reads storage at most once
+  /// per app run for the positive answer; the in-memory flag short-circuits
+  /// after that. Returns `false` while signed out.
   Future<bool> hasRegisteredBridges() async {
     if (_knownRegistered) return true;
+    final accountId = _accountId;
+    if (accountId == null) return false;
     try {
-      if (await _storage.read(key: _storageKey) == _storedValue) {
+      if (await _storage.read(key: _storageKeyFor(accountId)) == _storedValue) {
         _knownRegistered = true;
       }
     } catch (error, stackTrace) {
-      loge("Failed to read registered-bridges latch", error, stackTrace);
+      loge("Failed to read the registered-bridges latch", error, stackTrace);
     }
     return _knownRegistered;
   }
 
-  /// Latches the positive answer in memory and in persistent storage. A no-op
-  /// once already latched, so repeat calls cost nothing.
+  /// Latches the positive answer in memory and under the current account's key.
+  /// A no-op once already latched, or while signed out.
   Future<void> markRegistered() async {
     if (_knownRegistered) return;
+    final accountId = _accountId;
+    if (accountId == null) return;
     _knownRegistered = true;
     try {
-      await _storage.write(key: _storageKey, value: _storedValue);
+      await _storage.write(key: _storageKeyFor(accountId), value: _storedValue);
     } catch (error, stackTrace) {
-      loge("Failed to persist registered-bridges latch", error, stackTrace);
+      loge("Failed to persist the registered-bridges latch", error, stackTrace);
     }
   }
 
-  /// Clears both the persisted latch and the in-memory flag. Invoked on logout
-  /// so a different account signing in on the same device never inherits this
-  /// one's answer.
-  ///
-  /// The persisted flag is deleted first, and the in-memory flag is dropped
-  /// only after that succeeds: clearing memory first would let a concurrent
-  /// [hasRegisteredBridges] read re-hydrate the in-memory flag from the
-  /// not-yet-deleted storage value. A storage failure is logged and leaves the
-  /// flags untouched (consistent with each other) rather than throwing into the
-  /// logout listener.
+  /// Drops the in-memory flag and best-effort deletes the signing-out account's
+  /// persisted key. Invoked on logout. Because keys are account-scoped, a delete
+  /// that fails here is harmless — the lingering key can only ever be read back
+  /// by the same account, for which the answer is still correct.
   Future<void> clear() async {
+    _knownRegistered = false;
+    final accountId = _accountId;
+    _accountId = null;
+    if (accountId == null) return;
     try {
-      await _storage.delete(key: _storageKey);
-      _knownRegistered = false;
+      await _storage.delete(key: _storageKeyFor(accountId));
     } catch (error, stackTrace) {
       loge("Failed to clear the registered-bridges latch", error, stackTrace);
     }
