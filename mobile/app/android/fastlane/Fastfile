@@ -133,7 +133,10 @@ platform :android do
   private_lane :_read_version_name do
     injected = ENV["VERSION_NAME"].to_s.strip
     if injected.empty?
-      pubspec_path = File.join(Dir.pwd, "..", "..", "pubspec.yaml")
+      # Anchor to __dir__ (the fastlane folder) rather than Dir.pwd so the path
+      # is correct regardless of the cwd fastlane resolves relative paths
+      # against — matches the AAB path resolution below.
+      pubspec_path = File.expand_path("../../pubspec.yaml", __dir__)
       pubspec_content = File.read(pubspec_path)
       version_match = pubspec_content.match(/version:\s*(\d+\.\d+\.\d+)/)
       UI.user_error!("Could not determine version name: VERSION_NAME is unset and no " \
