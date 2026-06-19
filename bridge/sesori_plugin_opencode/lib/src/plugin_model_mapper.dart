@@ -4,6 +4,7 @@ import "message_part_mapper.dart";
 import "models/openapi/agent.g.dart";
 import "models/openapi/assistant_message.g.dart";
 import "models/openapi/message.g.dart";
+import "models/openapi/permission_request.g.dart";
 import "models/openapi/project.g.dart";
 import "models/openapi/question_request.g.dart";
 import "models/openapi/session.g.dart";
@@ -88,10 +89,11 @@ class PluginModelMapper {
     );
   }
 
-  PluginPendingQuestion mapQuestion(QuestionRequest question) {
+  PluginPendingQuestion mapQuestion(QuestionRequest question, {required String? displaySessionId}) {
     return PluginPendingQuestion(
       id: question.id,
       sessionID: question.sessionID,
+      displaySessionId: displaySessionId,
       questions: question.questions
           .map(
             (info) => PluginQuestionInfo(
@@ -105,6 +107,20 @@ class PluginModelMapper {
             ),
           )
           .toList(),
+    );
+  }
+
+  PluginPendingPermission mapPermission(PermissionRequest permission, {required String? displaySessionId}) {
+    // OpenCode's permission payload carries `permission` (the tool/permission
+    // identifier) and the requested `patterns`; there is no separate
+    // `description`, so the requested patterns stand in for the human-readable
+    // detail (mirrors the SSE mapper).
+    return PluginPendingPermission(
+      id: permission.id,
+      sessionID: permission.sessionID,
+      displaySessionId: displaySessionId,
+      tool: permission.permission,
+      description: permission.patterns.join(", "),
     );
   }
 

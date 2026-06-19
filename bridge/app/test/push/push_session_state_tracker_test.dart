@@ -193,6 +193,7 @@ void main() {
         const SesoriSseEvent.questionAsked(
           id: "q-1",
           sessionID: "session-a",
+          displaySessionId: null,
           questions: [QuestionInfo(header: "h", question: "q")],
         ),
       );
@@ -202,6 +203,7 @@ void main() {
         const SesoriSseEvent.questionReplied(
           requestID: "q-1",
           sessionID: "session-a",
+          displaySessionId: null,
         ),
       );
       expect(tracker.hasPendingInteraction("session-a"), isFalse);
@@ -210,6 +212,7 @@ void main() {
         const SesoriSseEvent.questionAsked(
           id: "q-2",
           sessionID: "session-a",
+          displaySessionId: null,
           questions: [QuestionInfo(header: "h", question: "q")],
         ),
       );
@@ -219,6 +222,7 @@ void main() {
         const SesoriSseEvent.questionRejected(
           requestID: "q-2",
           sessionID: "session-a",
+          displaySessionId: null,
         ),
       );
       expect(tracker.hasPendingInteraction("session-a"), isFalse);
@@ -231,6 +235,7 @@ void main() {
         const SesoriSseEvent.permissionAsked(
           requestID: "req-1",
           sessionID: "session-a",
+          displaySessionId: null,
           tool: "bash",
           description: "run",
         ),
@@ -242,6 +247,7 @@ void main() {
         const SesoriSseEvent.permissionReplied(
           requestID: "req-1",
           sessionID: "session-a",
+          displaySessionId: null,
           reply: "allow",
         ),
       );
@@ -324,13 +330,14 @@ void main() {
         const SesoriSseEvent.questionAsked(
           id: "q-1",
           sessionID: "session-a",
+          displaySessionId: null,
           questions: [QuestionInfo(header: "h", question: "q")],
         ),
       );
       expect(tracker.hasPendingInteraction("session-a"), isTrue);
 
       tracker.handleEvent(
-        const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "session-a"),
+        const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "session-a", displaySessionId: null),
       );
       expect(tracker.hasPendingInteraction("session-a"), isFalse);
 
@@ -338,6 +345,7 @@ void main() {
         const SesoriSseEvent.permissionAsked(
           requestID: "req-1",
           sessionID: "session-a",
+          displaySessionId: null,
           tool: "bash",
           description: "run",
         ),
@@ -368,6 +376,7 @@ void main() {
         const SesoriSseEvent.questionAsked(
           id: "q-child",
           sessionID: "child",
+          displaySessionId: null,
           questions: [QuestionInfo(header: "h", question: "q")],
         ),
       );
@@ -376,7 +385,7 @@ void main() {
 
       // Reply clears it.
       tracker.handleEvent(
-        const SesoriSseEvent.questionReplied(requestID: "q-child", sessionID: "child"),
+        const SesoriSseEvent.questionReplied(requestID: "q-child", sessionID: "child", displaySessionId: null),
       );
       expect(tracker.hasPendingInteraction("parent"), isFalse);
     });
@@ -400,6 +409,7 @@ void main() {
         const SesoriSseEvent.questionAsked(
           id: "q-grandchild",
           sessionID: "grandchild",
+          displaySessionId: null,
           questions: [QuestionInfo(header: "h", question: "q")],
         ),
       );
@@ -410,6 +420,7 @@ void main() {
         const SesoriSseEvent.questionReplied(
           requestID: "q-grandchild",
           sessionID: "grandchild",
+          displaySessionId: null,
         ),
       );
 
@@ -512,6 +523,7 @@ void main() {
           const SesoriSseEvent.questionAsked(
             id: "q-1",
             sessionID: "root",
+            displaySessionId: null,
             questions: [QuestionInfo(header: "h", question: "q")],
           ),
         )
@@ -519,6 +531,7 @@ void main() {
           const SesoriSseEvent.permissionAsked(
             requestID: "req-1",
             sessionID: "root",
+            displaySessionId: null,
             tool: "bash",
             description: "run",
           ),
@@ -580,6 +593,7 @@ void main() {
         const SesoriSseEvent.questionAsked(
           id: "q-1",
           sessionID: "root",
+          displaySessionId: null,
           questions: [QuestionInfo(header: "h", question: "q")],
         ),
       );
@@ -610,6 +624,7 @@ void main() {
           const SesoriSseEvent.questionAsked(
             id: "q-1",
             sessionID: "root",
+            displaySessionId: null,
             questions: [QuestionInfo(header: "h", question: "q")],
           ),
         )
@@ -617,6 +632,7 @@ void main() {
           const SesoriSseEvent.permissionAsked(
             requestID: "req-1",
             sessionID: "root",
+            displaySessionId: null,
             tool: "bash",
             description: "run",
           ),
@@ -1233,6 +1249,7 @@ void main() {
         const SesoriSseEvent.questionAsked(
           id: "q-1",
           sessionID: "child",
+          displaySessionId: null,
           questions: [QuestionInfo(header: "h", question: "q")],
         ),
       );
@@ -1241,7 +1258,7 @@ void main() {
       expect(tracker.findPrunableRootSessionIds(), isEmpty);
 
       tracker.handleEvent(
-        const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "child"),
+        const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "child", displaySessionId: null),
       );
 
       clock.advance(const Duration(minutes: 31));

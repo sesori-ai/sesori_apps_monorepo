@@ -112,7 +112,10 @@ class OpenCodeService {
     return _applyLimit(afterStart, limit);
   }
 
-  Future<List<QuestionRequest>> getPendingQuestionsForSession({
+  /// Returns the pending questions to surface on [sessionId]'s screen — its own
+  /// plus any descendant (sub-agent) session whose top-most root resolves to
+  /// [sessionId] — each paired with its resolved display (root) session.
+  Future<List<({QuestionRequest request, String displaySessionId})>> getPendingQuestionsForSession({
     required String sessionId,
   }) async {
     final directory = await _resolveSessionDirectory(sessionId: sessionId);
@@ -130,13 +133,47 @@ class OpenCodeService {
       );
     }
 
-    // Subagent (child) sessions are non-interactive and never ask questions, so
-    // only the session's own pending questions are relevant. `getPendingQuestions`
-    // is directory-scoped and may return questions for sibling sessions in the
-    // same worktree, so filter to this session.
+    // `getPendingQuestions` is directory-scoped and may return questions for
+    // sibling/child sessions in the same worktree. Keep the ones that belong on
+    // this session's screen: its own, plus any descendant whose top-most root is
+    // this session (so a sub-agent's prompt surfaces on the root).
     final all = await repository.getPendingQuestions(directory: directory);
-    return all.where((question) => question.sessionID == sessionId).toList();
+    return all
+        .map((q) => (request: q, displaySessionId: tracker.resolveDisplaySessionId(q.sessionID)))
+        .where((e) => e.request.sessionID == sessionId || e.displaySessionId == sessionId)
+        .toList();
   }
+
+  /// Returns the pending permissions to surface on [sessionId]'s screen — its
+  /// own plus any descendant (sub-agent) session whose top-most root resolves to
+  /// [sessionId] — each paired with its resolved display (root) session.
+  Future<List<({PermissionRequest request, String displaySessionId})>> getPendingPermissionsForSession({
+    required String sessionId,
+  }) async {
+    final directory = await _resolveSessionDirectory(sessionId: sessionId);
+    if (directory == null) {
+      throw PluginApiException(
+        "GET /session/$sessionId/permission",
+        502,
+        message: "could not resolve session directory",
+      );
+    }
+
+    // `getPendingPermissions` is directory-scoped (returns every pending
+    // permission in the worktree). Keep the ones that belong on this session's
+    // screen: its own, plus any descendant whose top-most root is this session
+    // (so a sub-agent's permission surfaces on the root).
+    final all = await repository.getPendingPermissions(directory: directory);
+    return all
+        .map((p) => (request: p, displaySessionId: tracker.resolveDisplaySessionId(p.sessionID)))
+        .where((e) => e.request.sessionID == sessionId || e.displaySessionId == sessionId)
+        .toList();
+  }
+
+  /// Resolves the top-most root "display" session for [sessionId] (see
+  /// [ActiveSessionTracker.resolveDisplaySessionId]). Used by the plugin to
+  /// stamp `displaySessionId` on outbound permission/question events.
+  String resolveDisplaySessionId(String sessionId) => tracker.resolveDisplaySessionId(sessionId);
 
   /// Resolves the directory for [sessionId], fetching and registering it from
   /// the repository if the tracker has not learned it yet.

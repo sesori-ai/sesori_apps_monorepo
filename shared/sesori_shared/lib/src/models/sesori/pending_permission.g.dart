@@ -23,6 +23,7 @@ Map<String, dynamic> _$PendingPermissionResponseToJson(
 _PendingPermission _$PendingPermissionFromJson(Map json) => _PendingPermission(
   id: json['id'] as String,
   sessionID: json['sessionID'] as String,
+  displaySessionId: json['displaySessionId'] as String?,
   tool: json['tool'] as String,
   description: json['description'] as String,
 );
@@ -31,6 +32,7 @@ Map<String, dynamic> _$PendingPermissionToJson(_PendingPermission instance) =>
     <String, dynamic>{
       'id': instance.id,
       'sessionID': instance.sessionID,
+      'displaySessionId': instance.displaySessionId,
       'tool': instance.tool,
       'description': instance.description,
     };

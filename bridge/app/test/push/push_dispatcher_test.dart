@@ -45,6 +45,7 @@ void main() {
         const SesoriSseEvent.questionAsked(
           id: "q-1",
           sessionID: "session-a",
+          displaySessionId: null,
           questions: [QuestionInfo(header: "Prompt", question: "Continue?")],
         ),
       );
@@ -62,6 +63,7 @@ void main() {
         const SesoriSseEvent.questionAsked(
           id: "q-1",
           sessionID: "session-a",
+          displaySessionId: null,
           questions: [QuestionInfo(header: "Prompt", question: "Continue?")],
         ),
       );

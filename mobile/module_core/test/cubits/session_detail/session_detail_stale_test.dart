@@ -423,7 +423,7 @@ void main() {
 
       verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
-      verify(() => mockSessionService.getPendingPermissions()).called(1);
+      verify(() => mockSessionService.getPendingPermissions(sessionId: any(named: "sessionId"))).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).called(1);
@@ -520,7 +520,7 @@ void main() {
         () => mockSessionService.getPendingQuestions(sessionId: sessionId),
       ).thenAnswer((_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])));
       when(
-        () => mockSessionService.getPendingPermissions(),
+        () => mockSessionService.getPendingPermissions(sessionId: any(named: "sessionId")),
       ).thenAnswer((_) async => ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])));
       when(
         () => mockSessionService.getChildren(sessionId: sessionId),
@@ -551,7 +551,7 @@ void main() {
 
       verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
-      verify(() => mockSessionService.getPendingPermissions()).called(1);
+      verify(() => mockSessionService.getPendingPermissions(sessionId: any(named: "sessionId"))).called(1);
       verify(() => mockSessionService.getChildren(sessionId: sessionId)).called(1);
       verify(() => mockSessionService.getSessionStatuses()).called(1);
       verify(() => mockSessionService.listAgents(projectId: any(named: "projectId"))).called(1);
@@ -576,7 +576,7 @@ void _stubLoadApis(MockSessionService service, {required String sessionId}) {
     ),
   );
   when(
-    () => service.getPendingPermissions(),
+    () => service.getPendingPermissions(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<PendingPermissionResponse>>.value(
       ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])),

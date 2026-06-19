@@ -346,6 +346,24 @@ class ActiveSessionTracker {
     return _sessionDirectories[sessionId];
   }
 
+  /// Resolves the top-most root "display" session for [sessionId] by walking the
+  /// recorded parent chain to the root.
+  ///
+  /// Used to surface a child/sub-agent session's pending input (questions and
+  /// permissions) on its root session. Best-effort: returns the highest *known*
+  /// ancestor, or [sessionId] itself when it is already a root or its parent
+  /// chain has not been observed. Cycle-safe via a visited guard.
+  String resolveDisplaySessionId(String sessionId) {
+    final visited = <String>{};
+    var current = sessionId;
+    while (visited.add(current)) {
+      final parent = _sessionParentIds[current];
+      if (parent == null || parent.isEmpty) return current;
+      current = parent;
+    }
+    return current;
+  }
+
   /// Resolves the canonical worktree for a raw session directory.
   String? resolveProjectWorktree({required String directory}) {
     return _resolveWorktree(directory);

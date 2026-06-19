@@ -363,6 +363,18 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       // this at buffer time). Updates for unrelated sessions are dropped
       // immediately to avoid accumulating irrelevant backlog.
       SesoriSessionUpdated(:final info) => info.parentID == _sessionId,
+      // Permission/question events for a descendant (sub-agent) session that
+      // surfaces on this session must be buffered so they replay after load.
+      SesoriPermissionAsked(:final sessionID, :final displaySessionId) =>
+        _surfacesChildRequestHere(sessionID: sessionID, displaySessionId: displaySessionId),
+      SesoriPermissionReplied(:final sessionID, :final displaySessionId) =>
+        _surfacesChildRequestHere(sessionID: sessionID, displaySessionId: displaySessionId),
+      SesoriQuestionAsked(:final sessionID, :final displaySessionId) =>
+        _surfacesChildRequestHere(sessionID: sessionID, displaySessionId: displaySessionId),
+      SesoriQuestionReplied(:final sessionID, :final displaySessionId) =>
+        _surfacesChildRequestHere(sessionID: sessionID, displaySessionId: displaySessionId),
+      SesoriQuestionRejected(:final sessionID, :final displaySessionId) =>
+        _surfacesChildRequestHere(sessionID: sessionID, displaySessionId: displaySessionId),
       // Definitively irrelevant high-volume events.
       SesoriServerConnected() ||
       SesoriServerHeartbeat() ||
@@ -382,12 +394,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       SesoriPtyUpdated() ||
       SesoriPtyExited() ||
       SesoriPtyDeleted() ||
-      SesoriPermissionAsked() ||
-      SesoriPermissionReplied() ||
       SesoriPermissionUpdated() ||
-      SesoriQuestionAsked() ||
-      SesoriQuestionReplied() ||
-      SesoriQuestionRejected() ||
       SesoriTodoUpdated() ||
       SesoriProjectsSummary() ||
       SesoriProjectUpdated() ||
@@ -423,6 +430,25 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           _onChildSessionStatus(sessionId: sessionID, status: status);
         case SesoriSessionUpdated(:final info):
           _onChildSessionUpdated(info);
+        // A child (sub-agent) session's permission/question, surfaced on this
+        // parent session via the bridge-resolved display session so it can be
+        // answered here without drilling into the child. Own-session events go
+        // through _processSessionEvent; the guard matches only descendants.
+        case final SesoriPermissionAsked event
+            when _surfacesChildRequestHere(sessionID: event.sessionID, displaySessionId: event.displaySessionId):
+          _onPermissionAsked(event);
+        case final SesoriPermissionReplied event
+            when _surfacesChildRequestHere(sessionID: event.sessionID, displaySessionId: event.displaySessionId):
+          _onPermissionResolved(event.requestID);
+        case final SesoriQuestionAsked event
+            when _surfacesChildRequestHere(sessionID: event.sessionID, displaySessionId: event.displaySessionId):
+          _onQuestionAsked(event);
+        case final SesoriQuestionReplied event
+            when _surfacesChildRequestHere(sessionID: event.sessionID, displaySessionId: event.displaySessionId):
+          _onQuestionResolved(event.requestID);
+        case final SesoriQuestionRejected event
+            when _surfacesChildRequestHere(sessionID: event.sessionID, displaySessionId: event.displaySessionId):
+          _onQuestionResolved(event.requestID);
         case SesoriSessionCreated() ||
             SesoriSessionDeleted() ||
             SesoriSessionDiff() ||
@@ -575,6 +601,16 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     final updatedChildren = List<Session>.of(current.children)..[index] = updatedChild;
     _sortChildrenByUpdatedDesc(updatedChildren);
     emit(current.copyWith(children: updatedChildren));
+  }
+
+  /// Whether a child (sub-agent) permission/question event should surface on
+  /// this (parent) session. Own-session events arrive via the session-scoped
+  /// stream and are handled in [_processSessionEvent]; this gates the global
+  /// stream to descendant requests whose display (root) session is this session.
+  /// Falls back to [sessionID] when the bridge did not provide a display session
+  /// (older bridge), which collapses to today's own-session-only behaviour.
+  bool _surfacesChildRequestHere({required String sessionID, required String? displaySessionId}) {
+    return sessionID != _sessionId && (displaySessionId ?? sessionID) == _sessionId;
   }
 
   void _onMessageUpdated(Message message) {
@@ -1225,12 +1261,15 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   }
 
   List<SesoriQuestionAsked> _mapPendingQuestions(List<PendingQuestion> pendingQuestions) {
+    // The bridge already returns the questions to surface on this session (its
+    // own plus any descendant/sub-agent session whose root is this session), so
+    // map all of them through.
     return pendingQuestions
-        .where((q) => q.sessionID == _sessionId)
         .map(
           (q) => SesoriQuestionAsked(
             id: q.id,
             sessionID: q.sessionID,
+            displaySessionId: q.displaySessionId,
             questions: q.questions,
           ),
         )
@@ -1238,12 +1277,15 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   }
 
   List<SesoriPermissionAsked> _mapPendingPermissions(List<PendingPermission> pendingPermissions) {
+    // The bridge already returns the permissions to surface on this session (its
+    // own plus any descendant/sub-agent session whose root is this session), so
+    // map all of them through.
     return pendingPermissions
-        .where((p) => p.sessionID == _sessionId)
         .map(
           (p) => SesoriPermissionAsked(
             requestID: p.id,
             sessionID: p.sessionID,
+            displaySessionId: p.displaySessionId,
             tool: p.tool,
             description: p.description,
           ),

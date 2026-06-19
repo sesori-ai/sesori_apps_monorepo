@@ -139,11 +139,16 @@ class BridgeSsePtyDeleted extends BridgeSseEvent {
 class BridgeSsePermissionAsked extends BridgeSseEvent {
   final String requestID;
   final String sessionID;
+
+  /// Top-most root session this request should be surfaced under (for a
+  /// child/sub-agent session's request). Null when unknown.
+  final String? displaySessionId;
   final String tool;
   final String description;
   const BridgeSsePermissionAsked({
     required this.requestID,
     required this.sessionID,
+    required this.displaySessionId,
     required this.tool,
     required this.description,
   });
@@ -152,10 +157,14 @@ class BridgeSsePermissionAsked extends BridgeSseEvent {
 class BridgeSsePermissionReplied extends BridgeSseEvent {
   final String requestID;
   final String sessionID;
+
+  /// Root session this request is surfaced under. Null when unknown.
+  final String? displaySessionId;
   final String reply;
   const BridgeSsePermissionReplied({
     required this.requestID,
     required this.sessionID,
+    required this.displaySessionId,
     required this.reply,
   });
 }
@@ -167,20 +176,43 @@ class BridgeSsePermissionUpdated extends BridgeSseEvent {
 class BridgeSseQuestionAsked extends BridgeSseEvent {
   final String id;
   final String sessionID;
+
+  /// Top-most root session this request should be surfaced under (for a
+  /// child/sub-agent session's request). Null when unknown.
+  final String? displaySessionId;
   final List<Map<String, dynamic>> questions;
-  const BridgeSseQuestionAsked({required this.id, required this.sessionID, required this.questions});
+  const BridgeSseQuestionAsked({
+    required this.id,
+    required this.sessionID,
+    required this.displaySessionId,
+    required this.questions,
+  });
 }
 
 class BridgeSseQuestionReplied extends BridgeSseEvent {
   final String requestID;
   final String sessionID;
-  const BridgeSseQuestionReplied({required this.requestID, required this.sessionID});
+
+  /// Root session this request is surfaced under. Null when unknown.
+  final String? displaySessionId;
+  const BridgeSseQuestionReplied({
+    required this.requestID,
+    required this.sessionID,
+    required this.displaySessionId,
+  });
 }
 
 class BridgeSseQuestionRejected extends BridgeSseEvent {
   final String requestID;
   final String sessionID;
-  const BridgeSseQuestionRejected({required this.requestID, required this.sessionID});
+
+  /// Root session this request is surfaced under. Null when unknown.
+  final String? displaySessionId;
+  const BridgeSseQuestionRejected({
+    required this.requestID,
+    required this.sessionID,
+    required this.displaySessionId,
+  });
 }
 
 class BridgeSseTodoUpdated extends BridgeSseEvent {
