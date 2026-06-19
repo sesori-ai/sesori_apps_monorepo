@@ -74,6 +74,7 @@ import "../../updater/repositories/update_log_repository.dart";
 import "../../updater/services/managed_runtime_path_service.dart";
 import "../../updater/services/update_apply_service.dart";
 import "../../updater/services/update_install_service.dart";
+import "../../updater/services/update_lifecycle_service.dart";
 import "../../updater/services/update_reconciliation_service.dart";
 import "../../updater/services/update_service.dart";
 import "../../version.dart";
@@ -217,7 +218,7 @@ class BridgeRuntimeRunner {
         Log.d("Release track: ${releaseTrack.wireValue}");
       }
 
-      final updatePipeline = _buildUpdatePipeline(
+      final updateLifecycle = _buildUpdateLifecycleService(
         httpClient: httpClient,
         processRunner: processRunner,
         managedRuntimePaths: managedRuntimePaths,
@@ -227,7 +228,7 @@ class BridgeRuntimeRunner {
       // pending activation, surface a prior failure, sweep residue. Best-effort:
       // reconciliation is maintenance and must never block startup.
       try {
-        await updatePipeline.reconciliationService.reconcile();
+        await updateLifecycle.reconcile();
       } on Object catch (error) {
         Log.w("Update reconciliation failed (non-fatal): $error");
       }
@@ -379,8 +380,8 @@ class BridgeRuntimeRunner {
       registerSignalHandlers(session: runtime.session, subscriptions: subscriptions);
       // Background: check + download + stage + apply-in-place on a 4h cadence.
       // The swap takes effect on the next launch (or a phone-triggered restart).
-      shutdownCoordinator.add(disposable: updatePipeline.updateService.dispose);
-      updatePipeline.updateService.start();
+      shutdownCoordinator.add(disposable: updateLifecycle.dispose);
+      updateLifecycle.start();
 
       final startupFailure = failureLatch.failure;
       if (startupFailure != null) {
@@ -517,7 +518,7 @@ class BridgeRuntimeRunner {
     return attemptStart(attempt: 1);
   }
 
-  static ({UpdateService updateService, UpdateReconciliationService reconciliationService}) _buildUpdatePipeline({
+  static UpdateLifecycleService _buildUpdateLifecycleService({
     required http.Client httpClient,
     required ProcessRunner processRunner,
     required ManagedRuntimePaths managedRuntimePaths,
@@ -604,7 +605,10 @@ class BridgeRuntimeRunner {
       installRoot: installRoot,
     );
 
-    return (updateService: updateService, reconciliationService: reconciliationService);
+    return UpdateLifecycleService(
+      updateService: updateService,
+      reconciliationService: reconciliationService,
+    );
   }
 
   static ProcessUser? _resolveCurrentUser({required Map<String, String> environment}) => ProcessUser.fromRawUser(
