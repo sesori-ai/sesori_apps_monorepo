@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import '../foundation/update_policy.dart';
 import '../models/update_result.dart';
 
 const Duration _kDownloadRequestTimeout = Duration(seconds: 30);
@@ -30,6 +31,12 @@ class UpdateDownloadApi {
     final http.StreamedResponse response = await _httpClient.send(request).timeout(_requestTimeout);
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
+      if (isRetryableHttpStatus(response.statusCode)) {
+        // Transient server-side/throttling outage on the asset endpoint —
+        // retryable, not a genuine download failure. Classify as a network
+        // error so the caller stays quiet and retries on the next cycle.
+        return UpdateResult.networkError;
+      }
       return UpdateResult.downloadFailed;
     }
 

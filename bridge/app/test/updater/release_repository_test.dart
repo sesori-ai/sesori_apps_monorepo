@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
@@ -255,10 +256,10 @@ void main() {
         );
       });
 
-      test('HTTP 500 → throws', () async {
+      test('HTTP 500 → throws HttpException (transient/retryable, not a genuine failure)', () async {
         await expectLater(
           _makeRepository(httpClient: _mockStatus(500)).checkForNewerRelease(),
-          throwsA(isA<StateError>()),
+          throwsA(isA<HttpException>()),
         );
       });
 

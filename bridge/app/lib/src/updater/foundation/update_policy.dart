@@ -48,6 +48,15 @@ bool isUpdateDisabled({required Map<String, String> environment}) {
   return environment.containsKey('SESORI_NO_UPDATE');
 }
 
+/// Whether an HTTP status from a release check or artifact download is a
+/// transient, retryable outage (server-side errors, request timeout, or
+/// throttling) rather than a genuine failure. The best-effort updater stays
+/// quiet on these and retries on the next cycle; other non-2xx statuses (404,
+/// auth rejections, etc.) are genuine and surfaced with reinstall guidance.
+bool isRetryableHttpStatus(int statusCode) {
+  return statusCode >= 500 || statusCode == 429 || statusCode == 408;
+}
+
 String? unsupportedPackageRuntimeMessage({
   required String executablePath,
   required String managedExecutablePath,
