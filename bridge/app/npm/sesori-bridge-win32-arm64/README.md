@@ -34,4 +34,4 @@ npm install @sesori/bridge-win32-arm64
 
 ## License
 
-Source-available under the Functional Source License, Version 1.1, Apache 2.0 Future License (`FSL-1.1-ALv2`). See the [repository LICENSE](https://github.com/sesori-ai/sesori_apps_monorepo/blob/main/LICENSE).
+Source-available under the Functional Source License, Version 1.1, Apache 2.0 Future License (`FSL-1.1-ALv2`). See [LICENSE](./LICENSE).
