@@ -89,7 +89,7 @@ void main() {
       ).thenAnswer((_) async => "fresh-token-123");
 
       final relayClient = _MockRelayClient();
-      when(relayClient.connect).thenAnswer((_) async {});
+      when(relayClient.connect).thenAnswer((_) async => RelayConnectOutcome.connected);
       when(() => relayClient.didResume).thenReturn(false);
       when(() => relayClient.sendRequest(any())).thenAnswer(
         (_) async => const RelayResponse(id: "r", status: 500, headers: {}, body: null),

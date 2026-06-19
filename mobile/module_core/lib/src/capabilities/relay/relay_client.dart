@@ -9,10 +9,38 @@ import "package:web_socket_channel/web_socket_channel.dart";
 import "../../logging/logging.dart";
 import "room_key_storage.dart";
 
-enum RelayClientConnectionState { disconnected, connecting, connected, disconnecting }
+enum RelayClientConnectionState {
+  disconnected,
+  connecting,
+  connected,
+
+  /// Socket + auth are established and held open, but no bridge is in the
+  /// account group yet, so there is no E2E session. [RelayClient.isConnected]
+  /// stays false in this state — callers must not route requests until a bridge
+  /// appears and the key exchange completes.
+  bridgeOffline,
+  disconnecting,
+}
 
 /// Represents whether the bridge (desktop process) is reachable via the relay.
 enum BridgeStatus { online, offline }
+
+/// Outcome of a [RelayClient.connect] attempt.
+///
+/// The relay accepts and holds a phone socket open even when no bridge is in
+/// the account group yet, so a successful socket + auth handshake does not by
+/// itself mean an end-to-end session with a bridge was established.
+enum RelayConnectOutcome {
+  /// Socket established AND the E2E key exchange (or resume) with the bridge
+  /// completed — the client is ready for encrypted requests.
+  connected,
+
+  /// Socket established and authenticated, but no bridge is currently in the
+  /// account group, so the E2E key exchange could not complete. The socket is
+  /// kept open; the relay pushes a bridge_connected control frame when a bridge
+  /// appears, at which point a fresh handshake can run.
+  bridgeAbsent,
+}
 
 class RelayClient {
   final String relayHost;
@@ -30,6 +58,7 @@ class RelayClient {
   Completer<Uint8List>? _firstBinaryMessage;
 
   final StreamController<BridgeStatus> _bridgeStatusController = StreamController<BridgeStatus>.broadcast();
+  final StreamController<void> _socketClosedController = StreamController<void>.broadcast();
 
   RelayClientConnectionState _connectionState = RelayClientConnectionState.disconnected;
   bool _disposed = false;
@@ -56,12 +85,21 @@ class RelayClient {
   /// Stream of bridge online/offline events sent as text control frames by the relay.
   Stream<BridgeStatus> get bridgeStatus => _bridgeStatusController.stream;
 
-  Future<void> connect() async {
+  /// Fires once when the underlying socket closes unexpectedly (not via an
+  /// explicit [disconnect]). Used by ConnectionService to detect a dropped
+  /// socket while parked in the bridge-offline state, where there is no SSE
+  /// stream to surface the drop.
+  Stream<void> get onSocketClosed => _socketClosedController.stream;
+
+  Future<RelayConnectOutcome> connect() async {
     if (_disposed) {
       throw StateError("RelayClient is disposed");
     }
     if (_connectionState == RelayClientConnectionState.connected) {
-      return;
+      return RelayConnectOutcome.connected;
+    }
+    if (_connectionState == RelayClientConnectionState.bridgeOffline) {
+      return RelayConnectOutcome.bridgeAbsent;
     }
     if (_connectionState == RelayClientConnectionState.connecting) {
       throw StateError("RelayClient is already connecting");
@@ -118,11 +156,11 @@ class RelayClient {
       if (storedRoomKeyBytes != null) {
         final resumed = await _tryResume(storedRoomKeyBytes);
         if (resumed) {
-          if (_disposed) return;
+          if (_disposed) return RelayConnectOutcome.connected;
           _connectionState = RelayClientConnectionState.connected;
           _didResume = true;
           logd("Relay resumed with stored room key");
-          return;
+          return RelayConnectOutcome.connected;
         }
         // Resume failed (rekey_required or decryption error); room key was cleared.
         // Reset the completer so the DH flow can capture the bridge's response.
@@ -133,11 +171,27 @@ class RelayClient {
       await _performKeyExchange();
 
       if (_disposed) {
-        return;
+        return RelayConnectOutcome.connected;
       }
 
       _connectionState = RelayClientConnectionState.connected;
       logd("Relay key exchange complete, room key persisted");
+      return RelayConnectOutcome.connected;
+    } on _BridgeOfflineDuringHandshake {
+      // The relay authenticated us and is holding the socket open, but no bridge
+      // is in the account group yet, so the E2E key exchange cannot complete.
+      // Keep the socket alive (do NOT tear it down) and report bridge-absent so
+      // ConnectionService can park in ConnectionBridgeOffline and let the relay's
+      // bridge_connected control frame drive a reconnect when a bridge appears.
+      if (_disposed) return RelayConnectOutcome.bridgeAbsent;
+      // Socket + auth are up but there is no E2E session yet, so isConnected
+      // stays false — RelayHttpApiClient won't route requests through this
+      // half-open client until a bridge appears and the key exchange completes.
+      _connectionState = RelayClientConnectionState.bridgeOffline;
+      // Re-arm the binary completer so a later handshake can run on this socket.
+      _firstBinaryMessage = Completer<Uint8List>();
+      logd("Relay connected but bridge is offline — holding socket open");
+      return RelayConnectOutcome.bridgeAbsent;
     } catch (error, stackTrace) {
       loge("Failed to connect relay client", error, stackTrace);
       await _teardownChannelOnly();
@@ -197,6 +251,11 @@ class RelayClient {
       throw FormatException(
         "Unexpected first byte in resume response: 0x${responseBytes.first.toRadixString(16)}",
       );
+    } on _BridgeOfflineDuringHandshake {
+      // The bridge is offline (not a resume failure). Preserve the stored room
+      // key — a later resume against the returning bridge may still succeed —
+      // and let connect() resolve into the bridge-absent outcome.
+      rethrow;
     } catch (error, stackTrace) {
       loge("Resume failed, clearing room key and falling back to DH key exchange", error, stackTrace);
       await _roomKeyStorage.clearRoomKey();
@@ -333,6 +392,7 @@ class RelayClient {
     await _teardownChannelOnly();
     await _closeSseController();
     await _closeBridgeStatusController();
+    await _closeSocketClosedController();
     _completeAllPendingWithError(StateError("Relay disconnected"));
     _sessionEncryptor = null;
     _connectionState = RelayClientConnectionState.disconnected;
@@ -419,6 +479,8 @@ class RelayClient {
     } else {
       logw("Relay socket closed with terminal closeCode=$closeCode");
     }
+
+    _notifySocketClosed();
   }
 
   Future<void> _sendEncryptedMessage(RelayMessage message) async {
@@ -524,6 +586,24 @@ class RelayClient {
     }
   }
 
+  Future<void> _closeSocketClosedController() async {
+    if (_socketClosedController.isClosed) return;
+    try {
+      await _socketClosedController.close();
+    } catch (error, stackTrace) {
+      loge("Failed to close relay socket-closed controller", error, stackTrace);
+    }
+  }
+
+  /// Emitted from [_onSocketDone] when the socket closes unexpectedly. A
+  /// deliberate [disconnect] sets [_disposed] first and cancels the stream
+  /// subscription, so this never fires for an intentional teardown.
+  void _notifySocketClosed() {
+    if (_disposed) return;
+    if (_socketClosedController.isClosed) return;
+    _socketClosedController.add(null);
+  }
+
   /// Handles text frames from the relay. These are plaintext JSON control messages
   /// (not E2EE) sent by the relay itself, e.g. bridge_connected / bridge_disconnected.
   void _onTextFrame(String message) {
@@ -539,9 +619,10 @@ class RelayClient {
           logd("Relay: bridge went offline");
           final firstBinaryMessage = _firstBinaryMessage;
           if (firstBinaryMessage != null && !firstBinaryMessage.isCompleted) {
-            firstBinaryMessage.completeError(
-              StateError("Bridge is offline - cannot complete key exchange"),
-            );
+            // Bridge absent during the handshake. Signal a distinct, non-fatal
+            // outcome so connect() keeps the socket open and waits for a later
+            // bridge_connected instead of tearing the socket down.
+            firstBinaryMessage.completeError(const _BridgeOfflineDuringHandshake());
           }
           _bridgeStatusController.add(BridgeStatus.offline);
         default:
@@ -562,4 +643,13 @@ class RelayClient {
       }
     }
   }
+}
+
+/// Internal signal that the relay reported the bridge offline during the
+/// initial handshake (no bridge in the account group yet). Distinct from a
+/// fatal connection error so [RelayClient.connect] resolves into
+/// [RelayConnectOutcome.bridgeAbsent] and keeps the socket open instead of
+/// tearing it down.
+class _BridgeOfflineDuringHandshake implements Exception {
+  const _BridgeOfflineDuringHandshake();
 }

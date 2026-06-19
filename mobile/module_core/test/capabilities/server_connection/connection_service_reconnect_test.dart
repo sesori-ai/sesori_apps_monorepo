@@ -187,7 +187,7 @@ void main() {
     test("SSE setup failure disconnects relay and returns error response", () async {
       final relayClient = MockRelayClient();
 
-      when(relayClient.connect).thenAnswer((_) async {});
+      when(relayClient.connect).thenAnswer((_) async => RelayConnectOutcome.connected);
       when(() => relayClient.didResume).thenReturn(false);
       when(() => relayClient.sendRequest(any())).thenAnswer(
         (_) async => RelayResponse(
@@ -233,7 +233,7 @@ void main() {
       addTearDown(sseController.close);
 
       final relayClient = MockRelayClient();
-      when(relayClient.connect).thenAnswer((_) async {});
+      when(relayClient.connect).thenAnswer((_) async => RelayConnectOutcome.connected);
       when(() => relayClient.didResume).thenReturn(true);
       when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
       when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
@@ -269,7 +269,7 @@ void main() {
       addTearDown(sseController.close);
 
       final relayClient = MockRelayClient();
-      when(relayClient.connect).thenAnswer((_) async {});
+      when(relayClient.connect).thenAnswer((_) async => RelayConnectOutcome.connected);
       when(() => relayClient.didResume).thenReturn(false);
       when(() => relayClient.sendRequest(any())).thenAnswer(
         (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
@@ -312,7 +312,7 @@ void main() {
         addTearDown(sseController.close);
 
         final relayClient = MockRelayClient();
-        when(relayClient.connect).thenAnswer((_) async {});
+        when(relayClient.connect).thenAnswer((_) async => RelayConnectOutcome.connected);
         when(() => relayClient.didResume).thenReturn(false);
         when(() => relayClient.isConnected).thenReturn(true);
         when(() => relayClient.sendRequest(any())).thenAnswer(
@@ -369,7 +369,7 @@ void main() {
       addTearDown(sseController.close);
 
       final relayClient = MockRelayClient();
-      when(relayClient.connect).thenAnswer((_) async {});
+      when(relayClient.connect).thenAnswer((_) async => RelayConnectOutcome.connected);
       when(() => relayClient.didResume).thenReturn(false);
       when(() => relayClient.isConnected).thenReturn(true);
       when(() => relayClient.sendRequest(any())).thenAnswer(
@@ -415,7 +415,7 @@ void main() {
       addTearDown(sseController.close);
 
       final relayClient = MockRelayClient();
-      when(relayClient.connect).thenAnswer((_) async {});
+      when(relayClient.connect).thenAnswer((_) async => RelayConnectOutcome.connected);
       when(() => relayClient.didResume).thenReturn(false);
       when(() => relayClient.isConnected).thenReturn(true);
       when(() => relayClient.sendRequest(any())).thenAnswer(
@@ -491,7 +491,7 @@ void main() {
       final initialClient = MockRelayClient();
       final firstReconnectClient = MockRelayClient();
       final secondReconnectClient = MockRelayClient();
-      final firstConnect = Completer<void>();
+      final firstConnect = Completer<RelayConnectOutcome>();
       final clients = <MockRelayClient>[
         initialClient,
         firstReconnectClient,
@@ -508,9 +508,9 @@ void main() {
         when(() => client.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
         when(client.disconnect).thenAnswer((_) async {});
       }
-      when(initialClient.connect).thenAnswer((_) async {});
+      when(initialClient.connect).thenAnswer((_) async => RelayConnectOutcome.connected);
       when(firstReconnectClient.connect).thenAnswer((_) => firstConnect.future);
-      when(secondReconnectClient.connect).thenAnswer((_) async {});
+      when(secondReconnectClient.connect).thenAnswer((_) async => RelayConnectOutcome.connected);
 
       var nextClient = 0;
       final factory = _TestRelayClientFactory(
@@ -557,7 +557,7 @@ void main() {
       expect(service.relayClient, same(secondReconnectClient));
       expect(service.currentStatus, isA<ConnectionConnected>());
 
-      firstConnect.complete();
+      firstConnect.complete(RelayConnectOutcome.connected);
       await Future<void>.delayed(const Duration(milliseconds: 20));
 
       verifyNever(() => firstReconnectClient.sendRequest(any()));
@@ -571,7 +571,7 @@ void main() {
 
       final initialClient = MockRelayClient();
       final reconnectClient = MockRelayClient();
-      final reconnectConnect = Completer<void>();
+      final reconnectConnect = Completer<RelayConnectOutcome>();
       final clients = <MockRelayClient>[initialClient, reconnectClient];
 
       for (final client in clients) {
@@ -584,7 +584,7 @@ void main() {
         when(() => client.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
         when(client.disconnect).thenAnswer((_) async {});
       }
-      when(initialClient.connect).thenAnswer((_) async {});
+      when(initialClient.connect).thenAnswer((_) async => RelayConnectOutcome.connected);
       when(reconnectClient.connect).thenAnswer((_) => reconnectConnect.future);
 
       var nextClient = 0;
@@ -622,13 +622,158 @@ void main() {
 
       lifecycleController.add(LifecycleState.paused);
       await Future<void>.delayed(Duration.zero);
-      reconnectConnect.complete();
+      reconnectConnect.complete(RelayConnectOutcome.connected);
       await Future<void>.delayed(const Duration(milliseconds: 50));
 
       expect(service.currentStatus, const ConnectionStatus.connectionLost(config: config));
       expect(service.relayClient, isNull);
       verify(reconnectClient.disconnect).called(greaterThanOrEqualTo(1));
       verifyNever(() => reconnectClient.sendRequest(any()));
+    });
+
+    test("connect with bridge absent parks in ConnectionBridgeOffline without health probe or SSE", () async {
+      final relayClient = MockRelayClient();
+      when(relayClient.connect).thenAnswer((_) async => RelayConnectOutcome.bridgeAbsent);
+      when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(() => relayClient.onSocketClosed).thenAnswer((_) => const Stream<void>.empty());
+      when(relayClient.disconnect).thenAnswer((_) async {});
+
+      final factory = _TestRelayClientFactory(
+        ({
+          required String relayHost,
+          required RelayCryptoService cryptoService,
+          required RoomKeyStorage roomKeyStorage,
+          required String? authToken,
+        }) => relayClient,
+      );
+      final service = ConnectionService(
+        cryptoService,
+        roomKeyStorage,
+        authTokenProvider,
+        authSession,
+        lifecycleSource,
+        failureReporter,
+        relayClientFactory: factory,
+      );
+      addTearDown(service.dispose);
+
+      final result = await service.connect(config);
+
+      expect(result, isA<SuccessResponse<HealthResponse>>());
+      expect(service.currentStatus, isA<ConnectionBridgeOffline>());
+      expect(service.relayClient, same(relayClient));
+      // No E2E session yet, so neither the health probe nor SSE should run.
+      verifyNever(() => relayClient.sendRequest(any()));
+      verifyNever(() => relayClient.subscribeSse(any()));
+    });
+
+    test("bridge coming online while parked drives a reconnect to ConnectionConnected", () async {
+      final bridgeStatusController = StreamController<BridgeStatus>.broadcast();
+      addTearDown(bridgeStatusController.close);
+
+      final parkedClient = MockRelayClient();
+      when(parkedClient.connect).thenAnswer((_) async => RelayConnectOutcome.bridgeAbsent);
+      when(() => parkedClient.bridgeStatus).thenAnswer((_) => bridgeStatusController.stream);
+      when(() => parkedClient.onSocketClosed).thenAnswer((_) => const Stream<void>.empty());
+      when(parkedClient.disconnect).thenAnswer((_) async {});
+
+      final sseController = StreamController<RelaySseEvent>.broadcast();
+      addTearDown(sseController.close);
+      final connectedClient = MockRelayClient();
+      when(connectedClient.connect).thenAnswer((_) async => RelayConnectOutcome.connected);
+      when(() => connectedClient.didResume).thenReturn(false);
+      when(() => connectedClient.sendRequest(any())).thenAnswer(
+        (_) async => RelayResponse(id: "h", status: 200, body: jsonEncode(health.toJson()), headers: const {}),
+      );
+      when(() => connectedClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
+      when(() => connectedClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(() => connectedClient.onSocketClosed).thenAnswer((_) => const Stream<void>.empty());
+      when(connectedClient.disconnect).thenAnswer((_) async {});
+
+      final clients = <MockRelayClient>[parkedClient, connectedClient];
+      var nextClient = 0;
+      final factory = _TestRelayClientFactory(
+        ({
+          required String relayHost,
+          required RelayCryptoService cryptoService,
+          required RoomKeyStorage roomKeyStorage,
+          required String? authToken,
+        }) => clients[nextClient++],
+      );
+      final service = ConnectionService(
+        cryptoService,
+        roomKeyStorage,
+        authTokenProvider,
+        authSession,
+        lifecycleSource,
+        failureReporter,
+        relayClientFactory: factory,
+      );
+      addTearDown(service.dispose);
+
+      await service.connect(config);
+      expect(service.currentStatus, isA<ConnectionBridgeOffline>());
+
+      // The relay pushes bridge_connected over the still-open socket.
+      bridgeStatusController.add(BridgeStatus.online);
+      // The online handler runs _reconnectRelayWithRefresh, which waits the ~1s
+      // backoff, refreshes the token and reconnects with a fresh key exchange.
+      await Future<void>.delayed(const Duration(milliseconds: 1400));
+
+      expect(factory.callCount, 2);
+      expect(service.relayClient, same(connectedClient));
+      expect(service.currentStatus, isA<ConnectionConnected>());
+    });
+
+    test("socket closing while parked is recovered like an SSE drop", () async {
+      final socketClosedController = StreamController<void>.broadcast();
+      addTearDown(socketClosedController.close);
+
+      final parkedClient = MockRelayClient();
+      when(parkedClient.connect).thenAnswer((_) async => RelayConnectOutcome.bridgeAbsent);
+      when(() => parkedClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(() => parkedClient.onSocketClosed).thenAnswer((_) => socketClosedController.stream);
+      when(() => parkedClient.lastCloseCode).thenReturn(null);
+      when(parkedClient.disconnect).thenAnswer((_) async {});
+
+      final reparkedClient = MockRelayClient();
+      when(reparkedClient.connect).thenAnswer((_) async => RelayConnectOutcome.bridgeAbsent);
+      when(() => reparkedClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(() => reparkedClient.onSocketClosed).thenAnswer((_) => const Stream<void>.empty());
+      when(reparkedClient.disconnect).thenAnswer((_) async {});
+
+      final clients = <MockRelayClient>[parkedClient, reparkedClient];
+      var nextClient = 0;
+      final factory = _TestRelayClientFactory(
+        ({
+          required String relayHost,
+          required RelayCryptoService cryptoService,
+          required RoomKeyStorage roomKeyStorage,
+          required String? authToken,
+        }) => clients[nextClient++],
+      );
+      final service = ConnectionService(
+        cryptoService,
+        roomKeyStorage,
+        authTokenProvider,
+        authSession,
+        lifecycleSource,
+        failureReporter,
+        relayClientFactory: factory,
+      );
+      addTearDown(service.dispose);
+
+      await service.connect(config);
+      expect(service.currentStatus, isA<ConnectionBridgeOffline>());
+
+      // No SSE stream exists while parked, so the socket-closed signal is what
+      // surfaces the drop. It should reconnect and (bridge still absent) re-park.
+      socketClosedController.add(null);
+      await Future<void>.delayed(const Duration(milliseconds: 1400));
+
+      expect(factory.callCount, 2);
+      expect(service.relayClient, same(reparkedClient));
+      expect(service.currentStatus, isA<ConnectionBridgeOffline>());
     });
   });
 }

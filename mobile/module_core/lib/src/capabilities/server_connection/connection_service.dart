@@ -63,6 +63,7 @@ class ConnectionService {
   RelayClient? _connectingRelayClient;
   StreamSubscription<RelaySseEvent>? _relaySseSubscription;
   StreamSubscription<BridgeStatus>? _bridgeStatusSubscription;
+  StreamSubscription<void>? _socketClosedSubscription;
   Timer? _reconnectTimer;
   Completer<void>? _reconnectDelayCompleter;
   Future<bool>? _activeAuthConnect;
@@ -265,7 +266,7 @@ class ConnectionService {
     }
 
     try {
-      await relayClient.connect();
+      final outcome = await relayClient.connect();
 
       // If this attempt was superseded while the websocket handshake awaited,
       // stop before sending health on a socket that a newer attempt now owns.
@@ -273,6 +274,36 @@ class ConnectionService {
         _clearConnectingRelayClient(relayClient);
         await relayClient.disconnect();
         return ApiResponse.error(ApiError.generic());
+      }
+
+      // The relay accepted and is holding our socket open, but no bridge is in
+      // the account group yet, so no E2E session exists. Commit the socket and
+      // arm the bridge-status watcher, skipping the health probe (no session
+      // encryptor) and SSE (needs the room key). When a bridge appears the relay
+      // pushes bridge_connected; _subscribeBridgeStatus then drives a reconnect
+      // that runs a fresh key exchange — the same recovery path as a bridge that
+      // drops after a live connection. No await runs between the staleness check
+      // above and this commit, so there is no superseding race to re-check.
+      if (outcome == RelayConnectOutcome.bridgeAbsent) {
+        const bridgeOfflineHealth = HealthResponse(healthy: true, version: "");
+        _clearConnectingRelayClient(relayClient);
+        _relayClient = relayClient;
+        _authRetryCount = 0;
+        _relayReconnectBackoff = const Duration(seconds: 1);
+        try {
+          _subscribeBridgeStatus(
+            relayClient: relayClient,
+            config: config,
+            health: bridgeOfflineHealth,
+          );
+          _watchSocketClosedWhileBridgeOffline(relayClient);
+        } catch (error, stackTrace) {
+          loge("Failed to set up watchers after bridge-absent relay connect", error, stackTrace);
+          await _disconnectRelayClient();
+          return ApiResponse.error(ApiError.generic());
+        }
+        _status.add(ConnectionStatus.bridgeOffline(config: config, health: bridgeOfflineHealth));
+        return ApiResponse.success(bridgeOfflineHealth);
       }
 
       // A resume_ack already proves the bridge is reachable; only fresh-DH
@@ -419,6 +450,23 @@ class ConnectionService {
     );
   }
 
+  /// While parked in [ConnectionBridgeOffline] with no SSE stream (the bridge
+  /// never came online, so there is no room key and no SSE subscription), the
+  /// SSE drop handler that normally detects a dead socket is absent. Watch the
+  /// relay socket directly so a relay restart or network drop while waiting is
+  /// recovered the same way an SSE drop would be.
+  void _watchSocketClosedWhileBridgeOffline(RelayClient relayClient) {
+    _socketClosedSubscription = relayClient.onSocketClosed.listen(
+      (_) {
+        logd("Relay socket closed while bridge offline — handling as a connection drop");
+        _onRelayConnectionDrop();
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        loge("Relay socket-closed stream error", error, stackTrace);
+      },
+    );
+  }
+
   void _onSseData(String rawData) {
     if (rawData.isEmpty) return;
 
@@ -506,6 +554,13 @@ class ConnectionService {
     }
     _bridgeStatusSubscription = null;
 
+    try {
+      await _socketClosedSubscription?.cancel();
+    } catch (error, stackTrace) {
+      loge("Failed to cancel relay socket-closed subscription", error, stackTrace);
+    }
+    _socketClosedSubscription = null;
+
     if (relayClient == null && connectingRelayClient == null) {
       return;
     }
@@ -549,15 +604,17 @@ class ConnectionService {
     // almost certainly a dead socket, so reconnect proactively rather than
     // discovering it later via a request timeout.
     //
-    // ConnectionBridgeOffline is deliberately NOT treated as stale here: while
-    // the bridge is offline the E2E handshake cannot complete, so a forced
-    // reconnect would fail and drop us into the blocking ConnectionLost state,
-    // losing the watcher for the bridge's return. Bridge-offline recovery keeps
-    // relying on its relay status watcher and the socket's own drop (onDone).
-    // Re-establishing a relay-level watcher without a completed handshake is a
-    // separate, larger change (tracked in the reconnect UX plan).
+    // ConnectionBridgeOffline is treated the same way: while parked waiting for
+    // the bridge, the relay can reap our backgrounded socket and with it the
+    // bridge-status watcher, so on resume that watcher can no longer be trusted
+    // to fire. Reconnecting re-establishes a live socket; if the bridge is still
+    // offline the attempt lands back in ConnectionBridgeOffline (a successful
+    // bridge-absent connect, not a failure), so this no longer risks dropping
+    // into the blocking ConnectionLost state the way it would have before the
+    // bridge-absent connect path existed.
     final connectionLikelyStale =
-        status is ConnectionConnected && backgroundedFor >= _resumeReconnectThreshold;
+        (status is ConnectionConnected || status is ConnectionBridgeOffline) &&
+        backgroundedFor >= _resumeReconnectThreshold;
 
     final needsReconnect =
         status is ConnectionLost || status is ConnectionReconnecting || connectionLikelyStale;

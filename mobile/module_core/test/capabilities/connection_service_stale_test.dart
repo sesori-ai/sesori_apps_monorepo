@@ -253,11 +253,13 @@ void main() {
       expect(service.currentStatus, isA<ConnectionConnected>());
     });
 
-    test("does NOT proactively reconnect on resume while bridge offline", () async {
-      // While the bridge is offline the E2E handshake cannot complete, so a
-      // forced reconnect would fail into the blocking ConnectionLost state.
-      // Bridge-offline recovery instead relies on its relay watcher / socket
-      // drop, so resume must leave the status untouched.
+    test("proactively reconnects on resume when a parked bridge-offline socket is likely stale", () async {
+      // A backgrounded phone's relay socket is reaped by the relay, taking the
+      // bridge-status watcher with it, so on resume past the staleness threshold
+      // that watcher can no longer be trusted. We proactively reconnect to
+      // re-establish a live socket; because a bridge-absent connect now succeeds
+      // (re-parking in ConnectionBridgeOffline) rather than failing, this no
+      // longer risks dropping into the blocking ConnectionLost state.
       service.emitStatusForTesting(const ConnectionStatus.bridgeOffline(config: config, health: health));
 
       lifecycleController.add(LifecycleState.paused);
@@ -266,7 +268,11 @@ void main() {
       lifecycleController.add(LifecycleState.resumed);
       await flush();
 
-      expect(service.currentStatus, isA<ConnectionBridgeOffline>());
+      // The reconnect is in flight, parked at the held token refresh (the group
+      // setUp holds getFreshAccessToken pending), so status reads as reconnecting
+      // rather than sitting passively in bridge-offline on a dead socket.
+      expect(service.currentStatus, isA<ConnectionReconnecting>());
+      verify(() => authTokenProvider.getFreshAccessToken(minTtl: any(named: "minTtl"))).called(1);
     });
 
     test("detaches the stale relay client on resume so requests stop using the dead socket", () async {
@@ -274,7 +280,7 @@ void main() {
       addTearDown(sseController.close);
 
       final relayClient = MockRelayClient();
-      when(relayClient.connect).thenAnswer((_) async {});
+      when(relayClient.connect).thenAnswer((_) async => RelayConnectOutcome.connected);
       when(() => relayClient.didResume).thenReturn(false);
       when(() => relayClient.isConnected).thenReturn(true);
       when(() => relayClient.sendRequest(any())).thenAnswer(
