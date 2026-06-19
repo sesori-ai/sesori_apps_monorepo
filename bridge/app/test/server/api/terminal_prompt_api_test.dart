@@ -9,9 +9,20 @@ void main() {
       final api = TerminalPromptApi(
         stdin: stdin,
         stdout: stdout,
+        environment: const <String, String>{},
       );
 
       expect(api.isInteractive, equals(stdin.hasTerminal && stdout.hasTerminal));
+    });
+
+    test('legacy post-update relaunch flag forces non-interactive', () {
+      final api = TerminalPromptApi(
+        stdin: stdin,
+        stdout: stdout,
+        environment: const <String, String>{'SESORI_POST_UPDATE_RESTART': '1'},
+      );
+
+      expect(api.isInteractive, isFalse);
     });
   });
 }

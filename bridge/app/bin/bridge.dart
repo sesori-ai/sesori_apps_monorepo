@@ -188,6 +188,7 @@ class LogoutCommand extends cli.Command<void> {
       api: TerminalPromptApi(
         stdin: stdin,
         stdout: stdout,
+        environment: Platform.environment,
       ),
     );
     final logoutRunner = BridgeLogoutRunner(

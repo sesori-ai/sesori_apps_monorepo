@@ -156,6 +156,7 @@ class BridgeRuntimeRunner {
     final terminalPromptApi = TerminalPromptApi(
       stdin: io.stdin,
       stdout: io.stdout,
+      environment: environment,
     );
     final terminalPromptRepository = TerminalPromptRepository(
       api: terminalPromptApi,
