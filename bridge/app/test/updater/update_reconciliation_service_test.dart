@@ -38,6 +38,7 @@ class _FakeLogRepository implements UpdateLogRepository {
 
 class _FakeInstallationRepository implements UpdateInstallationRepository {
   int sweepCount = 0;
+  String? recordedVersion;
 
   @override
   Future<void> applyInPlace({required String installRoot, required String stagingPath}) async {
@@ -49,7 +50,7 @@ class _FakeInstallationRepository implements UpdateInstallationRepository {
 
   @override
   Future<void> recordManagedVersion({required String installRoot, required String version}) async {
-    throw UnimplementedError();
+    recordedVersion = version;
   }
 }
 
@@ -170,6 +171,9 @@ void main() {
     expect(errorMessages, isEmpty);
     expect(attempts.cleared, isTrue);
     expect(installation.sweepCount, 1);
+    // The manifest is (idempotently) bumped before clearing, so a crash between
+    // the apply's status write and its manifest bump can't leave it stale.
+    expect(installation.recordedVersion, '2.0.0');
   });
 
   test('pending activation that did not take effect is reported as a failure', () async {

@@ -145,6 +145,20 @@ class UpdateReconciliationService {
     // `appliedPendingActivation` is only recorded after BOTH the binary and lib
     // swap completed, so a version match here means the update truly took.
     if (_currentVersion == attempt.toVersion) {
+      // Idempotently ensure the managed-runtime manifest reflects the activated
+      // version before clearing the record. The apply path bumps it, but if the
+      // bridge crashed between the status write and that bump, the manifest is
+      // still stale here — and confirmation clears the only record, so a later
+      // older `npx` could otherwise reinstall/downgrade the swapped runtime.
+      // Best-effort: a failure only risks a later npm re-install, not activation.
+      try {
+        await _installationRepository.recordManagedVersion(
+          installRoot: _installRoot,
+          version: attempt.toVersion,
+        );
+      } on Object catch (error) {
+        logWarning('Failed to bump the managed runtime manifest on activation confirm: $error');
+      }
       await _logBestEffort('Activation confirmed: now running ${attempt.toVersion}.');
       emitMessage(_messageFormatter.activated(toVersion: attempt.toVersion));
       return;
