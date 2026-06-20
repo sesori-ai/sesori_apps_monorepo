@@ -314,6 +314,19 @@ class BridgeRuntimeRunner {
           predecessorPid: predecessorPid,
           timeout: const Duration(seconds: 30),
         );
+
+        // The reconcile() above may have skipped because the restart predecessor
+        // still held the update lock mid-apply. Now that it has exited and
+        // released the lock, reconcile again so a pending activation (or failure)
+        // from the predecessor's in-flight apply is confirmed/surfaced this
+        // launch instead of lingering until a future restart.
+        if (updatesEnabledForThisInstall) {
+          try {
+            await updateLifecycle.reconcile();
+          } on Object catch (error) {
+            Log.w("Update reconciliation after predecessor exit failed (non-fatal): $error");
+          }
+        }
       }
 
       final plugin = await pluginManager.startPlugin(id: pluginId);
