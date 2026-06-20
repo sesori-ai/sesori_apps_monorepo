@@ -64,6 +64,20 @@ void main() {
         throwsA(isA<ProcessException>()),
       );
     });
+
+    test("inspectProcess returns null for a non-positive PID without shelling out", () async {
+      final runner = _RecordingProcessRunner();
+      final api = SystemProcessApi(
+        processRunner: runner,
+        clock: const ServerClock(),
+        isWindows: true,
+        platform: "windows",
+      );
+
+      expect(await api.inspectProcess(pid: 0), isNull);
+      expect(await api.inspectProcess(pid: -1), isNull);
+      expect(runner.calls, isEmpty);
+    });
   });
 }
 

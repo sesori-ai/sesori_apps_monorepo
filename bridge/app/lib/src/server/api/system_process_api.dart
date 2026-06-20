@@ -26,6 +26,13 @@ class SystemProcessApi {
   }
 
   Future<ProcessIdentity?> inspectProcess({required int pid}) async {
+    // A non-positive PID never identifies a real process. Reject it up front so
+    // every platform returns null consistently — otherwise the Windows
+    // `tasklist /FI "PID eq <pid>"` path would exit non-zero and throw, while
+    // the POSIX list-and-filter path would simply find no match.
+    if (pid <= 0) {
+      return null;
+    }
     if (_isWindows) {
       return _inspectWindowsProcess(pid: pid);
     }
