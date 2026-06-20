@@ -2,6 +2,7 @@ import "bridge_sse_event.dart";
 import "models/plugin_agent.dart";
 import "models/plugin_command.dart";
 import "models/plugin_message.dart";
+import "models/plugin_pending_permission.dart";
 import "models/plugin_pending_question.dart";
 import "models/plugin_project.dart";
 import "models/plugin_project_activity_summary.dart";
@@ -115,6 +116,11 @@ abstract class BridgePluginApi {
   Future<List<PluginAgent>> getAgents({required String projectId});
 
   Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId});
+
+  /// Returns the pending permission requests to surface on [sessionId]'s
+  /// screen: the session's own requests plus those of its descendant
+  /// (sub-agent) sessions, whose top-most root resolves to [sessionId].
+  Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId});
 
   /// Returns all pending questions for every session in the given project.
   ///

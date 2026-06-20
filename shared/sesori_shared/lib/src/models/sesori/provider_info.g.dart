@@ -23,7 +23,7 @@ Map<String, dynamic> _$ProviderInfoToJson(_ProviderInfo instance) =>
       'id': instance.id,
       'name': instance.name,
       'models': instance.models.map((k, e) => MapEntry(k, e.toJson())),
-      'defaultModelID': instance.defaultModelID,
+      'defaultModelID': ?instance.defaultModelID,
     };
 
 _ProviderModel _$ProviderModelFromJson(Map json) => _ProviderModel(
@@ -47,9 +47,9 @@ Map<String, dynamic> _$ProviderModelToJson(_ProviderModel instance) =>
       'providerID': instance.providerID,
       'name': instance.name,
       'variants': instance.variants,
-      'family': instance.family,
+      'family': ?instance.family,
       'isAvailable': instance.isAvailable,
-      'releaseDate': _$JsonConverterToJson<String, DateTime>(
+      'releaseDate': ?_$JsonConverterToJson<String, DateTime>(
         instance.releaseDate,
         dateConverter.toJson,
       ),

@@ -57,6 +57,7 @@ class FakeBridgePlugin implements BridgePluginApi {
   List<PluginAgent> agentsResult = [];
   String? lastAgentsProjectId;
   List<PluginPendingQuestion> pendingQuestionsResult = [];
+  List<PluginPendingPermission> pendingPermissionsResult = [];
   PluginProject? currentProjectResult;
 
   // ── Recorded call arguments ──────────────────────────────────────────────
@@ -318,6 +319,10 @@ class FakeBridgePlugin implements BridgePluginApi {
 
   @override
   Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async => pendingQuestionsResult;
+
+  @override
+  Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async =>
+      pendingPermissionsResult;
 
   @override
   Future<void> replyToQuestion({

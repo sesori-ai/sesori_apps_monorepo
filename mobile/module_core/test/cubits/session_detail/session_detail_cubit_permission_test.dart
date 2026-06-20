@@ -128,6 +128,7 @@ void main() {
       const permission = SesoriPermissionAsked(
         requestID: "perm-123",
         sessionID: sessionId,
+        displaySessionId: null,
         tool: "fs_write",
         description: "Allow writing file",
       );
@@ -161,6 +162,7 @@ void main() {
       const permission = SesoriPermissionAsked(
         requestID: "perm-123",
         sessionID: sessionId,
+        displaySessionId: null,
         tool: "fs_write",
         description: "Allow writing file",
       );
@@ -201,6 +203,7 @@ void main() {
         const SesoriPermissionAsked(
           requestID: "perm-123",
           sessionID: "ses-456",
+          displaySessionId: null,
           tool: "fs_write",
           description: "Allow writing file",
         ),
@@ -257,6 +260,7 @@ void main() {
         const SesoriPermissionAsked(
           requestID: "perm-123",
           sessionID: "ses-456",
+          displaySessionId: null,
           tool: "fs_write",
           description: "Allow writing file",
         ),
@@ -297,6 +301,7 @@ void main() {
       const permission = SesoriPermissionAsked(
         requestID: "perm-123",
         sessionID: sessionId,
+        displaySessionId: null,
         tool: "fs_write",
         description: "Allow writing file",
       );
@@ -310,6 +315,164 @@ void main() {
 
       // The buffered permission event should have been replayed after load
       expect((cubit.state as SessionDetailLoaded).pendingPermissions, [permission]);
+    });
+
+    test("child-session permission from initial load surfaces on the root", () async {
+      when(() => mockSessionService.getPendingPermissions(sessionId: any(named: "sessionId"))).thenAnswer(
+        (_) async => ApiResponse.success(
+          const PendingPermissionResponse(
+            data: [
+              PendingPermission(
+                id: "perm-child",
+                sessionID: "child-1",
+                displaySessionId: sessionId,
+                tool: "bash",
+                description: "Run ls",
+              ),
+            ],
+          ),
+        ),
+      );
+
+      final cubit = _buildCubit(
+        sessionId: sessionId,
+        projectId: "project-1",
+        connectionService: mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        notificationCanceller: mockNotificationCanceller,
+        permissionRepository: mockPermissionRepository,
+        failureReporter: mockFailureReporter,
+      );
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+
+      final loaded = cubit.state as SessionDetailLoaded;
+      expect(loaded.pendingPermissions.map((p) => p.requestID), ["perm-child"]);
+      expect(loaded.pendingPermissions.single.displaySessionId, sessionId);
+    });
+
+    test("child-session permission surfaces on the root via the global stream", () async {
+      final cubit = _buildCubit(
+        sessionId: sessionId,
+        projectId: "project-1",
+        connectionService: mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        notificationCanceller: mockNotificationCanceller,
+        permissionRepository: mockPermissionRepository,
+        failureReporter: mockFailureReporter,
+      );
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+
+      const childPermission = SesoriPermissionAsked(
+        requestID: "perm-child",
+        sessionID: "child-1",
+        displaySessionId: sessionId,
+        tool: "bash",
+        description: "Run ls",
+      );
+
+      final seen = <SesoriPermissionAsked>[];
+      final sub = cubit.permissionStream.listen(seen.add);
+      addTearDown(sub.cancel);
+
+      globalEvents.add(SseEvent(data: childPermission));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      final loaded = cubit.state as SessionDetailLoaded;
+      expect(loaded.pendingPermissions, [childPermission]);
+      expect(seen, [childPermission]);
+
+      // Replied for the same child request removes it from the root view.
+      globalEvents.add(
+        SseEvent(
+          data: const SesoriPermissionReplied(
+            requestID: "perm-child",
+            sessionID: "child-1",
+            displaySessionId: sessionId,
+            reply: "once",
+          ),
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect((cubit.state as SessionDetailLoaded).pendingPermissions, isEmpty);
+    });
+
+    test("permission for an unrelated session is ignored on the global stream", () async {
+      final cubit = _buildCubit(
+        sessionId: sessionId,
+        projectId: "project-1",
+        connectionService: mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        notificationCanceller: mockNotificationCanceller,
+        permissionRepository: mockPermissionRepository,
+        failureReporter: mockFailureReporter,
+      );
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+
+      globalEvents.add(
+        SseEvent(
+          data: const SesoriPermissionAsked(
+            requestID: "perm-x",
+            sessionID: "other-child",
+            displaySessionId: "other-root",
+            tool: "bash",
+            description: "Run ls",
+          ),
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect((cubit.state as SessionDetailLoaded).pendingPermissions, isEmpty);
+    });
+
+    test("rejecting a surfaced child question targets the child (owner) session", () async {
+      when(() => mockSessionService.getPendingQuestions(sessionId: any(named: "sessionId"))).thenAnswer(
+        (_) async => ApiResponse.success(
+          const PendingQuestionResponse(
+            data: [
+              PendingQuestion(
+                id: "q-child",
+                sessionID: "child-1",
+                displaySessionId: sessionId,
+                questions: [],
+              ),
+            ],
+          ),
+        ),
+      );
+      when(
+        () => mockSessionService.rejectQuestion(
+          requestId: any(named: "requestId"),
+          sessionId: any(named: "sessionId"),
+        ),
+      ).thenAnswer((_) async => ApiResponse<void>.success(null));
+
+      final cubit = _buildCubit(
+        sessionId: sessionId,
+        projectId: "project-1",
+        connectionService: mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        notificationCanceller: mockNotificationCanceller,
+        permissionRepository: mockPermissionRepository,
+        failureReporter: mockFailureReporter,
+      );
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+
+      // The child question surfaced on the root.
+      expect((cubit.state as SessionDetailLoaded).pendingQuestions.map((q) => q.id), ["q-child"]);
+
+      final ok = await cubit.rejectQuestion("q-child");
+
+      expect(ok, isTrue);
+      // Reject targets the owning child session, not the open root.
+      verify(() => mockSessionService.rejectQuestion(requestId: "q-child", sessionId: "child-1")).called(1);
     });
   });
 }
@@ -352,7 +515,7 @@ void _stubLoadApis(MockSessionService service, {required String sessionId}) {
     ),
   );
   when(
-    () => service.getPendingPermissions(),
+    () => service.getPendingPermissions(sessionId: any(named: "sessionId")),
   ).thenAnswer(
     (_) => Future<ApiResponse<PendingPermissionResponse>>.value(
       ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])),

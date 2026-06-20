@@ -20,8 +20,8 @@ Map<String, dynamic> _$MessageUserToJson(MessageUser instance) =>
     <String, dynamic>{
       'id': instance.id,
       'sessionID': instance.sessionID,
-      'agent': instance.agent,
-      'time': instance.time?.toJson(),
+      'agent': ?instance.agent,
+      'time': ?instance.time?.toJson(),
       'role': instance.$type,
     };
 
@@ -41,10 +41,10 @@ Map<String, dynamic> _$MessageAssistantToJson(MessageAssistant instance) =>
     <String, dynamic>{
       'id': instance.id,
       'sessionID': instance.sessionID,
-      'agent': instance.agent,
-      'modelID': instance.modelID,
-      'providerID': instance.providerID,
-      'time': instance.time?.toJson(),
+      'agent': ?instance.agent,
+      'modelID': ?instance.modelID,
+      'providerID': ?instance.providerID,
+      'time': ?instance.time?.toJson(),
       'role': instance.$type,
     };
 
@@ -66,12 +66,12 @@ Map<String, dynamic> _$MessageErrorToJson(MessageError instance) =>
     <String, dynamic>{
       'id': instance.id,
       'sessionID': instance.sessionID,
-      'agent': instance.agent,
-      'modelID': instance.modelID,
-      'providerID': instance.providerID,
+      'agent': ?instance.agent,
+      'modelID': ?instance.modelID,
+      'providerID': ?instance.providerID,
       'errorName': instance.errorName,
       'errorMessage': instance.errorMessage,
-      'time': instance.time?.toJson(),
+      'time': ?instance.time?.toJson(),
       'role': instance.$type,
     };
 
@@ -83,5 +83,5 @@ _MessageTime _$MessageTimeFromJson(Map json) => _MessageTime(
 Map<String, dynamic> _$MessageTimeToJson(_MessageTime instance) =>
     <String, dynamic>{
       'created': instance.created,
-      'completed': instance.completed,
+      'completed': ?instance.completed,
     };

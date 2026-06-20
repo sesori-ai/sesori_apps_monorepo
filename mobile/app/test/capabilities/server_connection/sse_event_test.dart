@@ -75,6 +75,7 @@ void main() {
       final event = SseEvent(
         data: const SesoriPermissionAsked(
           sessionID: "session-perm-1",
+          displaySessionId: null,
           requestID: "req-1",
           tool: "test_tool",
           description: "Test permission",
@@ -88,6 +89,7 @@ void main() {
       final event = SseEvent(
         data: const SesoriQuestionAsked(
           sessionID: "session-q-1",
+          displaySessionId: null,
           id: "q-1",
           questions: [],
         ),
@@ -100,6 +102,7 @@ void main() {
       final event = SseEvent(
         data: const SesoriQuestionReplied(
           sessionID: "session-qr-1",
+          displaySessionId: null,
           requestID: "req-1",
         ),
       );
@@ -111,6 +114,7 @@ void main() {
       final event = SseEvent(
         data: const SesoriQuestionRejected(
           sessionID: "session-qrej-1",
+          displaySessionId: null,
           requestID: "req-1",
         ),
       );

@@ -1,17 +1,17 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "question_mapper.dart";
+import "../repositories/question_repository.dart";
 import "request_handler.dart";
 
-/// Handles `POST /session/questions` — returns all pending question prompts for a session.
-///
-/// Returns ALL pending questions for a session.
+/// Handles `POST /session/questions` — returns the pending questions to surface
+/// on a session's screen: its own plus any descendant (sub-agent) session whose
+/// top-most root resolves to this session.
 class GetSessionQuestionsHandler extends BodyRequestHandler<SessionIdRequest, PendingQuestionResponse> {
-  final BridgePluginApi _plugin;
+  final QuestionRepository _questionRepository;
 
-  GetSessionQuestionsHandler(this._plugin)
-    : super(
+  GetSessionQuestionsHandler({required QuestionRepository questionRepository})
+    : _questionRepository = questionRepository,
+      super(
         HttpMethod.post,
         "/session/questions",
         fromJson: SessionIdRequest.fromJson,
@@ -30,9 +30,7 @@ class GetSessionQuestionsHandler extends BodyRequestHandler<SessionIdRequest, Pe
       throw buildErrorResponse(request, 400, "empty session id");
     }
 
-    final pluginQuestions = await _plugin.getPendingQuestions(sessionId: sessionId);
-    final questions = mapPluginQuestions(pluginQuestions);
-
+    final questions = await _questionRepository.getPendingQuestions(sessionId: sessionId);
     return PendingQuestionResponse(data: questions);
   }
 }

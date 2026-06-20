@@ -1773,11 +1773,15 @@ as String?,
 @JsonSerializable()
 
 class SesoriPermissionAsked implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriPermissionAsked({required this.requestID, required this.sessionID, required this.tool, required this.description, final  String? $type}): $type = $type ?? 'permission.asked';
+  const SesoriPermissionAsked({required this.requestID, required this.sessionID, required this.displaySessionId, required this.tool, required this.description, final  String? $type}): $type = $type ?? 'permission.asked';
   factory SesoriPermissionAsked.fromJson(Map<String, dynamic> json) => _$SesoriPermissionAskedFromJson(json);
 
  final  String requestID;
  final  String sessionID;
+/// Top-most root session this request should be surfaced under (for a
+/// child/sub-agent session's request). Null when unknown; consumers fall
+/// back to [sessionID].
+ final  String? displaySessionId;
  final  String tool;
  final  String description;
 
@@ -1798,16 +1802,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPermissionAsked&&(identical(other.requestID, requestID) || other.requestID == requestID)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.description, description) || other.description == description));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPermissionAsked&&(identical(other.requestID, requestID) || other.requestID == requestID)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.description, description) || other.description == description));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,requestID,sessionID,tool,description);
+int get hashCode => Object.hash(runtimeType,requestID,sessionID,displaySessionId,tool,description);
 
 @override
 String toString() {
-  return 'SesoriSseEvent.permissionAsked(requestID: $requestID, sessionID: $sessionID, tool: $tool, description: $description)';
+  return 'SesoriSseEvent.permissionAsked(requestID: $requestID, sessionID: $sessionID, displaySessionId: $displaySessionId, tool: $tool, description: $description)';
 }
 
 
@@ -1818,7 +1822,7 @@ abstract mixin class $SesoriPermissionAskedCopyWith<$Res> implements $SesoriSseE
   factory $SesoriPermissionAskedCopyWith(SesoriPermissionAsked value, $Res Function(SesoriPermissionAsked) _then) = _$SesoriPermissionAskedCopyWithImpl;
 @useResult
 $Res call({
- String requestID, String sessionID, String tool, String description
+ String requestID, String sessionID, String? displaySessionId, String tool, String description
 });
 
 
@@ -1835,11 +1839,12 @@ class _$SesoriPermissionAskedCopyWithImpl<$Res>
 
 /// Create a copy of SesoriSseEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? requestID = null,Object? sessionID = null,Object? tool = null,Object? description = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? requestID = null,Object? sessionID = null,Object? displaySessionId = freezed,Object? tool = null,Object? description = null,}) {
   return _then(SesoriPermissionAsked(
 requestID: null == requestID ? _self.requestID : requestID // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
-as String,tool: null == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
+as String,displaySessionId: freezed == displaySessionId ? _self.displaySessionId : displaySessionId // ignore: cast_nullable_to_non_nullable
+as String?,tool: null == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
 as String,description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String,
   ));
@@ -1852,11 +1857,14 @@ as String,
 @JsonSerializable()
 
 class SesoriPermissionReplied implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriPermissionReplied({required this.requestID, required this.sessionID, required this.reply, final  String? $type}): $type = $type ?? 'permission.replied';
+  const SesoriPermissionReplied({required this.requestID, required this.sessionID, required this.displaySessionId, required this.reply, final  String? $type}): $type = $type ?? 'permission.replied';
   factory SesoriPermissionReplied.fromJson(Map<String, dynamic> json) => _$SesoriPermissionRepliedFromJson(json);
 
  final  String requestID;
  final  String sessionID;
+/// Root session this request is surfaced under; null ⇒ fall back to
+/// [sessionID].
+ final  String? displaySessionId;
  final  String reply;
 
 @JsonKey(name: 'type')
@@ -1876,16 +1884,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPermissionReplied&&(identical(other.requestID, requestID) || other.requestID == requestID)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.reply, reply) || other.reply == reply));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriPermissionReplied&&(identical(other.requestID, requestID) || other.requestID == requestID)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&(identical(other.reply, reply) || other.reply == reply));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,requestID,sessionID,reply);
+int get hashCode => Object.hash(runtimeType,requestID,sessionID,displaySessionId,reply);
 
 @override
 String toString() {
-  return 'SesoriSseEvent.permissionReplied(requestID: $requestID, sessionID: $sessionID, reply: $reply)';
+  return 'SesoriSseEvent.permissionReplied(requestID: $requestID, sessionID: $sessionID, displaySessionId: $displaySessionId, reply: $reply)';
 }
 
 
@@ -1896,7 +1904,7 @@ abstract mixin class $SesoriPermissionRepliedCopyWith<$Res> implements $SesoriSs
   factory $SesoriPermissionRepliedCopyWith(SesoriPermissionReplied value, $Res Function(SesoriPermissionReplied) _then) = _$SesoriPermissionRepliedCopyWithImpl;
 @useResult
 $Res call({
- String requestID, String sessionID, String reply
+ String requestID, String sessionID, String? displaySessionId, String reply
 });
 
 
@@ -1913,11 +1921,12 @@ class _$SesoriPermissionRepliedCopyWithImpl<$Res>
 
 /// Create a copy of SesoriSseEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? requestID = null,Object? sessionID = null,Object? reply = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? requestID = null,Object? sessionID = null,Object? displaySessionId = freezed,Object? reply = null,}) {
   return _then(SesoriPermissionReplied(
 requestID: null == requestID ? _self.requestID : requestID // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
-as String,reply: null == reply ? _self.reply : reply // ignore: cast_nullable_to_non_nullable
+as String,displaySessionId: freezed == displaySessionId ? _self.displaySessionId : displaySessionId // ignore: cast_nullable_to_non_nullable
+as String?,reply: null == reply ? _self.reply : reply // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -1968,11 +1977,15 @@ String toString() {
 @JsonSerializable()
 
 class SesoriQuestionAsked implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriQuestionAsked({required this.id, required this.sessionID, required final  List<QuestionInfo> questions, final  String? $type}): _questions = questions,$type = $type ?? 'question.asked';
+  const SesoriQuestionAsked({required this.id, required this.sessionID, required this.displaySessionId, required final  List<QuestionInfo> questions, final  String? $type}): _questions = questions,$type = $type ?? 'question.asked';
   factory SesoriQuestionAsked.fromJson(Map<String, dynamic> json) => _$SesoriQuestionAskedFromJson(json);
 
  final  String id;
  final  String sessionID;
+/// Top-most root session this request should be surfaced under (for a
+/// child/sub-agent session's request). Null when unknown; consumers fall
+/// back to [sessionID].
+ final  String? displaySessionId;
  final  List<QuestionInfo> _questions;
  List<QuestionInfo> get questions {
   if (_questions is EqualUnmodifiableListView) return _questions;
@@ -1998,16 +2011,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriQuestionAsked&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&const DeepCollectionEquality().equals(other._questions, _questions));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriQuestionAsked&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&const DeepCollectionEquality().equals(other._questions, _questions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,const DeepCollectionEquality().hash(_questions));
+int get hashCode => Object.hash(runtimeType,id,sessionID,displaySessionId,const DeepCollectionEquality().hash(_questions));
 
 @override
 String toString() {
-  return 'SesoriSseEvent.questionAsked(id: $id, sessionID: $sessionID, questions: $questions)';
+  return 'SesoriSseEvent.questionAsked(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, questions: $questions)';
 }
 
 
@@ -2018,7 +2031,7 @@ abstract mixin class $SesoriQuestionAskedCopyWith<$Res> implements $SesoriSseEve
   factory $SesoriQuestionAskedCopyWith(SesoriQuestionAsked value, $Res Function(SesoriQuestionAsked) _then) = _$SesoriQuestionAskedCopyWithImpl;
 @useResult
 $Res call({
- String id, String sessionID, List<QuestionInfo> questions
+ String id, String sessionID, String? displaySessionId, List<QuestionInfo> questions
 });
 
 
@@ -2035,11 +2048,12 @@ class _$SesoriQuestionAskedCopyWithImpl<$Res>
 
 /// Create a copy of SesoriSseEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? questions = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? displaySessionId = freezed,Object? questions = null,}) {
   return _then(SesoriQuestionAsked(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
-as String,questions: null == questions ? _self._questions : questions // ignore: cast_nullable_to_non_nullable
+as String,displaySessionId: freezed == displaySessionId ? _self.displaySessionId : displaySessionId // ignore: cast_nullable_to_non_nullable
+as String?,questions: null == questions ? _self._questions : questions // ignore: cast_nullable_to_non_nullable
 as List<QuestionInfo>,
   ));
 }
@@ -2051,11 +2065,14 @@ as List<QuestionInfo>,
 @JsonSerializable()
 
 class SesoriQuestionReplied implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriQuestionReplied({required this.requestID, required this.sessionID, final  String? $type}): $type = $type ?? 'question.replied';
+  const SesoriQuestionReplied({required this.requestID, required this.sessionID, required this.displaySessionId, final  String? $type}): $type = $type ?? 'question.replied';
   factory SesoriQuestionReplied.fromJson(Map<String, dynamic> json) => _$SesoriQuestionRepliedFromJson(json);
 
  final  String requestID;
  final  String sessionID;
+/// Root session this request is surfaced under; null ⇒ fall back to
+/// [sessionID].
+ final  String? displaySessionId;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -2074,16 +2091,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriQuestionReplied&&(identical(other.requestID, requestID) || other.requestID == requestID)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriQuestionReplied&&(identical(other.requestID, requestID) || other.requestID == requestID)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,requestID,sessionID);
+int get hashCode => Object.hash(runtimeType,requestID,sessionID,displaySessionId);
 
 @override
 String toString() {
-  return 'SesoriSseEvent.questionReplied(requestID: $requestID, sessionID: $sessionID)';
+  return 'SesoriSseEvent.questionReplied(requestID: $requestID, sessionID: $sessionID, displaySessionId: $displaySessionId)';
 }
 
 
@@ -2094,7 +2111,7 @@ abstract mixin class $SesoriQuestionRepliedCopyWith<$Res> implements $SesoriSseE
   factory $SesoriQuestionRepliedCopyWith(SesoriQuestionReplied value, $Res Function(SesoriQuestionReplied) _then) = _$SesoriQuestionRepliedCopyWithImpl;
 @useResult
 $Res call({
- String requestID, String sessionID
+ String requestID, String sessionID, String? displaySessionId
 });
 
 
@@ -2111,11 +2128,12 @@ class _$SesoriQuestionRepliedCopyWithImpl<$Res>
 
 /// Create a copy of SesoriSseEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? requestID = null,Object? sessionID = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? requestID = null,Object? sessionID = null,Object? displaySessionId = freezed,}) {
   return _then(SesoriQuestionReplied(
 requestID: null == requestID ? _self.requestID : requestID // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
-as String,
+as String,displaySessionId: freezed == displaySessionId ? _self.displaySessionId : displaySessionId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -2126,11 +2144,14 @@ as String,
 @JsonSerializable()
 
 class SesoriQuestionRejected implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriQuestionRejected({required this.requestID, required this.sessionID, final  String? $type}): $type = $type ?? 'question.rejected';
+  const SesoriQuestionRejected({required this.requestID, required this.sessionID, required this.displaySessionId, final  String? $type}): $type = $type ?? 'question.rejected';
   factory SesoriQuestionRejected.fromJson(Map<String, dynamic> json) => _$SesoriQuestionRejectedFromJson(json);
 
  final  String requestID;
  final  String sessionID;
+/// Root session this request is surfaced under; null ⇒ fall back to
+/// [sessionID].
+ final  String? displaySessionId;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -2149,16 +2170,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriQuestionRejected&&(identical(other.requestID, requestID) || other.requestID == requestID)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriQuestionRejected&&(identical(other.requestID, requestID) || other.requestID == requestID)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,requestID,sessionID);
+int get hashCode => Object.hash(runtimeType,requestID,sessionID,displaySessionId);
 
 @override
 String toString() {
-  return 'SesoriSseEvent.questionRejected(requestID: $requestID, sessionID: $sessionID)';
+  return 'SesoriSseEvent.questionRejected(requestID: $requestID, sessionID: $sessionID, displaySessionId: $displaySessionId)';
 }
 
 
@@ -2169,7 +2190,7 @@ abstract mixin class $SesoriQuestionRejectedCopyWith<$Res> implements $SesoriSse
   factory $SesoriQuestionRejectedCopyWith(SesoriQuestionRejected value, $Res Function(SesoriQuestionRejected) _then) = _$SesoriQuestionRejectedCopyWithImpl;
 @useResult
 $Res call({
- String requestID, String sessionID
+ String requestID, String sessionID, String? displaySessionId
 });
 
 
@@ -2186,11 +2207,12 @@ class _$SesoriQuestionRejectedCopyWithImpl<$Res>
 
 /// Create a copy of SesoriSseEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? requestID = null,Object? sessionID = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? requestID = null,Object? sessionID = null,Object? displaySessionId = freezed,}) {
   return _then(SesoriQuestionRejected(
 requestID: null == requestID ? _self.requestID : requestID // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
-as String,
+as String,displaySessionId: freezed == displaySessionId ? _self.displaySessionId : displaySessionId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

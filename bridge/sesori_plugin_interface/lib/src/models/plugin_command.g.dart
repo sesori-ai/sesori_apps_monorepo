@@ -23,14 +23,14 @@ _PluginCommand _$PluginCommandFromJson(Map json) => _PluginCommand(
 Map<String, dynamic> _$PluginCommandToJson(_PluginCommand instance) =>
     <String, dynamic>{
       'name': instance.name,
-      'template': instance.template,
+      'template': ?instance.template,
       'hints': instance.hints,
-      'description': instance.description,
-      'agent': instance.agent,
-      'model': instance.model,
-      'provider': instance.provider,
-      'source': _$PluginCommandSourceEnumMap[instance.source],
-      'subtask': instance.subtask,
+      'description': ?instance.description,
+      'agent': ?instance.agent,
+      'model': ?instance.model,
+      'provider': ?instance.provider,
+      'source': ?_$PluginCommandSourceEnumMap[instance.source],
+      'subtask': ?instance.subtask,
     };
 
 const _$PluginCommandSourceEnumMap = {

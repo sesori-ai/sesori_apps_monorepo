@@ -399,7 +399,21 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     final pending = await _call(
       () => _service.getPendingQuestionsForSession(sessionId: sessionId),
     );
-    return pending.map<PluginPendingQuestion>(_pluginModelMapper.mapQuestion).toList();
+    return pending
+        .map((e) => _pluginModelMapper.mapQuestion(e.request, displaySessionId: e.displaySessionId))
+        .toList();
+  }
+
+  @override
+  Future<List<PluginPendingPermission>> getPendingPermissions({
+    required String sessionId,
+  }) async {
+    final pending = await _call(
+      () => _service.getPendingPermissionsForSession(sessionId: sessionId),
+    );
+    return pending
+        .map((e) => _pluginModelMapper.mapPermission(e.request, displaySessionId: e.displaySessionId))
+        .toList();
   }
 
   @override
@@ -411,7 +425,14 @@ class OpenCodePlugin implements OpenCodeManagedApi {
         directory: projectId,
       ),
     );
-    return pending.map<PluginPendingQuestion>(_pluginModelMapper.mapQuestion).toList();
+    return pending
+        .map(
+          (q) => _pluginModelMapper.mapQuestion(
+            q,
+            displaySessionId: _service.resolveDisplaySessionId(q.sessionID),
+          ),
+        )
+        .toList();
   }
 
   @override
@@ -428,7 +449,13 @@ class OpenCodePlugin implements OpenCodeManagedApi {
       ),
     );
     if (result.found) {
-      _eventBuffer.add(BridgeSseQuestionReplied(requestID: questionId, sessionID: sessionId));
+      _eventBuffer.add(
+        BridgeSseQuestionReplied(
+          requestID: questionId,
+          sessionID: sessionId,
+          displaySessionId: _service.resolveDisplaySessionId(sessionId),
+        ),
+      );
     }
     if (result.summaryChanged) _emitProjectsSummary();
   }
@@ -451,6 +478,7 @@ class OpenCodePlugin implements OpenCodeManagedApi {
         BridgeSsePermissionReplied(
           requestID: requestId,
           sessionID: sessionId,
+          displaySessionId: _service.resolveDisplaySessionId(sessionId),
           reply: reply.name,
         ),
       );
@@ -468,7 +496,13 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     );
     if (result.found) {
       if (result.resolvedSessionId case final sessionID?) {
-        _eventBuffer.add(BridgeSseQuestionRejected(requestID: questionId, sessionID: sessionID));
+        _eventBuffer.add(
+          BridgeSseQuestionRejected(
+            requestID: questionId,
+            sessionID: sessionID,
+            displaySessionId: _service.resolveDisplaySessionId(sessionID),
+          ),
+        );
       }
     }
     if (result.summaryChanged) _emitProjectsSummary();
@@ -544,7 +578,11 @@ class OpenCodePlugin implements OpenCodeManagedApi {
             _emitProjectsSummary();
           }
 
-          final bridgeEvent = _mapper.map(_canonicalizeEvent(event));
+          final canonicalEvent = _canonicalizeEvent(event);
+          final bridgeEvent = _mapper.map(
+            canonicalEvent,
+            displaySessionId: _displaySessionIdForEvent(canonicalEvent),
+          );
           if (bridgeEvent != null) {
             _eventBuffer.add(bridgeEvent);
           }
@@ -624,6 +662,20 @@ class OpenCodePlugin implements OpenCodeManagedApi {
     };
   }
 
+  /// Resolves the root display session for the permission/question events that
+  /// carry it, so a child/sub-agent request can surface on its root session.
+  /// Returns null for all other event types (which are not surfaced cross-session).
+  String? _displaySessionIdForEvent(SseEventData event) {
+    final ownerSessionId = switch (event) {
+      SsePermissionAsked(:final sessionID) => sessionID,
+      SsePermissionReplied(:final sessionID) => sessionID,
+      SseQuestionAsked(:final sessionID) => sessionID,
+      SseQuestionReplied(:final sessionID) => sessionID,
+      SseQuestionRejected(:final sessionID) => sessionID,
+      _ => null,
+    };
+    return ownerSessionId == null ? null : _service.resolveDisplaySessionId(ownerSessionId);
+  }
 
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() {

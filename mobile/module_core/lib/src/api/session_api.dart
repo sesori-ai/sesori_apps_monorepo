@@ -224,10 +224,11 @@ class SessionApi {
     );
   }
 
-  Future<ApiResponse<PendingPermissionResponse>> getPendingPermissions() {
-    return _client.get(
-      "/permission",
+  Future<ApiResponse<PendingPermissionResponse>> getPendingPermissions({required String sessionId}) {
+    return _client.post(
+      "/session/permissions",
       fromJson: PendingPermissionResponse.fromJson,
+      body: SessionIdRequest(sessionId: sessionId),
     );
   }
 

@@ -30,15 +30,15 @@ Map<String, dynamic> _$MessagePartToJson(_MessagePart instance) =>
       'sessionID': instance.sessionID,
       'messageID': instance.messageID,
       'type': _$MessagePartTypeEnumMap[instance.type]!,
-      'text': instance.text,
-      'tool': instance.tool,
-      'state': instance.state?.toJson(),
-      'prompt': instance.prompt,
-      'description': instance.description,
-      'agent': instance.agent,
-      'agentName': instance.agentName,
-      'attempt': instance.attempt,
-      'retryError': instance.retryError,
+      'text': ?instance.text,
+      'tool': ?instance.tool,
+      'state': ?instance.state?.toJson(),
+      'prompt': ?instance.prompt,
+      'description': ?instance.description,
+      'agent': ?instance.agent,
+      'agentName': ?instance.agentName,
+      'attempt': ?instance.attempt,
+      'retryError': ?instance.retryError,
     };
 
 const _$MessagePartTypeEnumMap = {
@@ -70,9 +70,9 @@ _ToolState _$ToolStateFromJson(Map json) => _ToolState(
 Map<String, dynamic> _$ToolStateToJson(_ToolState instance) =>
     <String, dynamic>{
       'status': _$ToolStatusEnumMap[instance.status]!,
-      'title': instance.title,
-      'output': instance.output,
-      'error': instance.error,
+      'title': ?instance.title,
+      'output': ?instance.output,
+      'error': ?instance.error,
     };
 
 const _$ToolStatusEnumMap = {

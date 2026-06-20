@@ -1097,6 +1097,11 @@ class _FakeBridgePluginApi implements BridgePluginApi {
   Future<List<PluginAgent>> getAgents({required String projectId}) async => [];
 
   @override
+  Future<List<PluginPendingPermission>> getPendingPermissions({
+    required String sessionId,
+  }) async => [];
+
+  @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({
     required String sessionId,
   }) async => [];

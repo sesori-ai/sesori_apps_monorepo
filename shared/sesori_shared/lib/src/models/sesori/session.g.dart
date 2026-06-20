@@ -28,8 +28,8 @@ _SessionListRequest _$SessionListRequestFromJson(Map json) =>
 Map<String, dynamic> _$SessionListRequestToJson(_SessionListRequest instance) =>
     <String, dynamic>{
       'projectId': instance.projectId,
-      'start': instance.start,
-      'limit': instance.limit,
+      'start': ?instance.start,
+      'limit': ?instance.limit,
       'waitForPrData': instance.waitForPrData,
     };
 
@@ -64,12 +64,12 @@ Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
   'id': instance.id,
   'projectID': instance.projectID,
   'directory': instance.directory,
-  'parentID': instance.parentID,
-  'title': instance.title,
-  'time': instance.time?.toJson(),
-  'summary': instance.summary?.toJson(),
-  'pullRequest': instance.pullRequest?.toJson(),
-  'promptDefaults': instance.promptDefaults?.toJson(),
+  'parentID': ?instance.parentID,
+  'title': ?instance.title,
+  'time': ?instance.time?.toJson(),
+  'summary': ?instance.summary?.toJson(),
+  'pullRequest': ?instance.pullRequest?.toJson(),
+  'promptDefaults': ?instance.promptDefaults?.toJson(),
   'hasWorktree': instance.hasWorktree,
 };
 
@@ -86,8 +86,8 @@ _SessionPromptDefaults _$SessionPromptDefaultsFromJson(Map json) =>
 Map<String, dynamic> _$SessionPromptDefaultsToJson(
   _SessionPromptDefaults instance,
 ) => <String, dynamic>{
-  'agent': instance.agent,
-  'model': instance.model?.toJson(),
+  'agent': ?instance.agent,
+  'model': ?instance.model?.toJson(),
 };
 
 _SessionTime _$SessionTimeFromJson(Map json) => _SessionTime(
@@ -100,7 +100,7 @@ Map<String, dynamic> _$SessionTimeToJson(_SessionTime instance) =>
     <String, dynamic>{
       'created': instance.created,
       'updated': instance.updated,
-      'archived': instance.archived,
+      'archived': ?instance.archived,
     };
 
 _SessionSummary _$SessionSummaryFromJson(Map json) => _SessionSummary(
@@ -142,11 +142,11 @@ Map<String, dynamic> _$GlobalSessionToJson(_GlobalSession instance) =>
       'id': instance.id,
       'projectID': instance.projectID,
       'directory': instance.directory,
-      'parentID': instance.parentID,
-      'title': instance.title,
-      'time': instance.time?.toJson(),
-      'summary': instance.summary?.toJson(),
-      'project': instance.project?.toJson(),
+      'parentID': ?instance.parentID,
+      'title': ?instance.title,
+      'time': ?instance.time?.toJson(),
+      'summary': ?instance.summary?.toJson(),
+      'project': ?instance.project?.toJson(),
     };
 
 _SessionProject _$SessionProjectFromJson(Map json) => _SessionProject(
@@ -158,7 +158,7 @@ _SessionProject _$SessionProjectFromJson(Map json) => _SessionProject(
 Map<String, dynamic> _$SessionProjectToJson(_SessionProject instance) =>
     <String, dynamic>{
       'id': instance.id,
-      'name': instance.name,
+      'name': ?instance.name,
       'worktree': instance.worktree,
     };
 

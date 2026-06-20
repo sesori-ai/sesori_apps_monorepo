@@ -1,3 +1,4 @@
+import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/get_project_questions_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -12,7 +13,7 @@ void main() {
 
     setUp(() {
       plugin = FakeBridgePlugin();
-      handler = GetProjectQuestionsHandler(plugin);
+      handler = GetProjectQuestionsHandler(questionRepository: QuestionRepository(plugin: plugin));
     });
 
     tearDown(() => plugin.close());
@@ -42,6 +43,7 @@ void main() {
         const PluginPendingQuestion(
           id: "q-1",
           sessionID: "s-1",
+          displaySessionId: null,
           questions: [
             PluginQuestionInfo(
               question: "Pick a tool",

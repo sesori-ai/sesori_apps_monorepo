@@ -5,6 +5,9 @@ targets:
         options:
           any_map: true
           explicit_to_json: true
+          # Omit null-valued keys from wire payloads by default, so nullable
+          # fields don't need an explicit @JsonKey(includeIfNull: false).
+          include_if_null: false
       freezed:
         options:
           format: false
