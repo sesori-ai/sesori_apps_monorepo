@@ -200,9 +200,14 @@ def cancel_waiting_for_review_if_pending(api_key:, version:, build_number:)
   deadline = Time.now + CANCEL_REVIEW_SETTLE_TIMEOUT
   loop do
     current = app.get_edit_app_store_version(platform: platform)
-    current_state = current&.app_store_state
-    if current_state != waiting
-      UI.success("Review submission cancelled; version #{version} is now #{current_state || 'no longer the edit version'}.")
+    # A nil here is a transient ASC/network hiccup, NOT confirmation that the
+    # version left WAITING_FOR_REVIEW — keep polling rather than assuming success
+    # (treating nil as "settled" would race ahead to select_build with no editable
+    # version). Only break once the API returns a version in a non-waiting state.
+    if current.nil?
+      UI.message("Edit version not returned by App Store Connect yet; retrying…")
+    elsif current.app_store_state != waiting
+      UI.success("Review submission cancelled; version #{version} is now #{current.app_store_state}.")
       break
     end
     if Time.now >= deadline
