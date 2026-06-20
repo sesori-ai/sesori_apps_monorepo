@@ -124,6 +124,31 @@ void main() {
     expect(File(p.join(installRoot, 'bin', 'sesori-bridge')).readAsStringSync(), 'OLD-BINARY');
   });
 
+  test('rollback restores the original binary when the lib swap fails mid-apply', () async {
+    if (Platform.isWindows) {
+      return; // forces the mid-swap failure with a POSIX read-only directory
+    }
+    seedInstall();
+    seedStaging();
+    // installRoot read-only, but bin/ stays writable: the binary swap (renames
+    // within bin/) succeeds, then renaming installRoot/lib (needs write on
+    // installRoot) fails — triggering rollback after the binary already moved.
+    await Process.run('chmod', ['555', installRoot]);
+    addTearDown(() => Process.run('chmod', ['755', installRoot]));
+
+    final api = PosixUpdateApi(processRunner: _FakeProcessRunner());
+
+    await expectLater(
+      api.applyInPlace(installRoot: installRoot, stagingPath: stagingPath),
+      throwsA(anything),
+    );
+
+    // The binary swap was rolled back and the lib was never touched.
+    expect(File(p.join(installRoot, 'bin', 'sesori-bridge')).readAsStringSync(), 'OLD-BINARY');
+    expect(File(p.join(installRoot, 'lib', 'libsqlite3.so')).readAsStringSync(), 'OLD-LIB');
+    expect(File(p.join(installRoot, 'lib', 'libnew.so')).existsSync(), isFalse);
+  });
+
   test('sweepResidue deletes leftover rollback artifacts', () async {
     writeFile(p.join(installRoot, 'bin', '.sesori-bridge.rollback'), 'old');
     writeFile(p.join(installRoot, '.lib.rollback', 'libsqlite3.so'), 'old');

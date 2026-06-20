@@ -97,6 +97,24 @@ void main() {
     expect(result.stagingPath, isNull);
   });
 
+  test('a non-writable install root returns permissionDenied', () async {
+    if (Platform.isWindows) {
+      return; // relies on POSIX read-only directory semantics
+    }
+    await Process.run('chmod', ['555', installRoot.path]);
+    addTearDown(() => Process.run('chmod', ['755', installRoot.path]));
+
+    final service = UpdateInstallService(
+      updateArtifactRepository: _FakeArtifactRepository(),
+      filesystemCleaner: const FilesystemCleaner(),
+    );
+
+    final result = await service.stageUpdate(release: _release(), installRoot: installRoot.path);
+
+    expect(result.result, UpdateResult.permissionDenied);
+    expect(result.stagingPath, isNull);
+  });
+
   test('extraction failure returns downloadFailed and cleans staging', () async {
     final service = UpdateInstallService(
       updateArtifactRepository: _FakeArtifactRepository()..extracted = false,
