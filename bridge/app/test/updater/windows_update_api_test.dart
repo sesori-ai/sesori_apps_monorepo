@@ -96,6 +96,38 @@ void main() {
     expect(File(p.join(installRoot, '.lib.old', 'foo', 'bar.dll')).readAsStringSync(), 'OLD-BAR');
   });
 
+  test('rollback restores an old lib file when a failed swap left a directory at its path', () async {
+    if (Platform.isWindows) {
+      return; // forces the mid-apply failure with a POSIX read-only directory
+    }
+    // Old: lib/foo is a FILE.
+    writeFile(p.join(installRoot, 'bin', 'sesori-bridge.exe'), 'OLD-BINARY');
+    writeFile(p.join(installRoot, 'lib', 'foo'), 'OLD-FOO');
+    // A read-only lib subdir with no old files (so it survives the displacement
+    // step) — moving a staged file into it fails, forcing a rollback. It sorts
+    // after `foo`, so foo is swapped first and creates a directory at lib/foo.
+    final Directory roDir = Directory(p.join(installRoot, 'lib', 'zz_ro'))..createSync(recursive: true);
+    addTearDown(() => Process.run('chmod', ['755', roDir.path]));
+
+    // New: lib/foo becomes a DIRECTORY; lib/zz_ro/x.dll lands in the read-only dir.
+    writeFile(p.join(stagingPath, 'bin', 'sesori-bridge.exe'), 'NEW-BINARY');
+    writeFile(p.join(stagingPath, 'lib', 'foo', 'bar.dll'), 'NEW-BAR');
+    writeFile(p.join(stagingPath, 'lib', 'zz_ro', 'x.dll'), 'NEW-X');
+    await Process.run('chmod', ['555', roDir.path]);
+
+    const api = WindowsUpdateApi();
+    await expectLater(
+      api.applyInPlace(installRoot: installRoot, stagingPath: stagingPath),
+      throwsA(anything),
+    );
+
+    // Rollback restored the original lib/foo FILE (not left as an empty dir).
+    final foo = File(p.join(installRoot, 'lib', 'foo'));
+    expect(foo.existsSync(), isTrue);
+    expect(FileSystemEntity.isDirectorySync(p.join(installRoot, 'lib', 'foo')), isFalse);
+    expect(foo.readAsStringSync(), 'OLD-FOO');
+  });
+
   test('applyInPlace throws and leaves the install intact when the payload is missing', () async {
     seedInstall();
     const api = WindowsUpdateApi();

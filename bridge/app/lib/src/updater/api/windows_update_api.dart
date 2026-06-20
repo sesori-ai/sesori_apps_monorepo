@@ -73,11 +73,11 @@ class WindowsUpdateApi implements PlatformUpdateApi {
   }) {
     // followLinks: false so a symlink inside the payload can never redirect the
     // swap to rename files outside fromDir (links are returned as Link entities
-    // and skipped by the `is! File` guard below).
-    for (final FileSystemEntity entity in fromDir.listSync(recursive: true, followLinks: false)) {
-      if (entity is! File) {
-        continue;
-      }
+    // and skipped by whereType<File> below). Sorted so the swap — and therefore
+    // its rollback — processes files in a deterministic, reproducible order.
+    final List<File> files = fromDir.listSync(recursive: true, followLinks: false).whereType<File>().toList()
+      ..sort((a, b) => a.path.compareTo(b.path));
+    for (final File entity in files) {
       final String relative = p.relative(entity.path, from: fromDir.path);
       final String destPath = p.join(toDir.path, relative);
       Directory(p.dirname(destPath)).createSync(recursive: true);
@@ -113,6 +113,12 @@ class WindowsUpdateApi implements PlatformUpdateApi {
         final File moved = File(move.toPath);
         if (moved.existsSync()) {
           Directory(p.dirname(move.fromPath)).createSync(recursive: true);
+          // The forward apply may have created a directory where this file
+          // originally lived (an old file replaced by a new directory). The
+          // displaced nested files were already moved back by earlier reverse
+          // steps, so the skeleton here is empty — clear it so restoring the
+          // original file does not fail (and get swallowed) on the conflict.
+          _clearConflictingDirectory(destPath: move.fromPath);
           moved.renameSync(move.fromPath);
         }
       } on Object {
