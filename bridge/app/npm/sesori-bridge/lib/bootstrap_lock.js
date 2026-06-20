@@ -18,7 +18,17 @@ function sleep(milliseconds) {
 }
 
 function removeRecursive(filePath) {
-  fs.rmSync(filePath, { force: true, recursive: true });
+  // The detached heartbeat process keeps writing `heartbeat` inside the lock
+  // directory and only stops asynchronously on SIGTERM. If it writes once more
+  // while we are tearing the directory down, the internal rmdir observes a
+  // non-empty directory and fails with ENOTEMPTY (also EBUSY/EPERM on some
+  // platforms). Retry so the removal succeeds once the heartbeat has exited.
+  fs.rmSync(filePath, {
+    force: true,
+    recursive: true,
+    maxRetries: 10,
+    retryDelay: 50,
+  });
 }
 
 function heartbeatPath(lockPath) {
