@@ -4,7 +4,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../plugin_to_shared_mapping.dart";
-import "../repositories/mappers/plugin_question_mapper.dart";
 
 /// Maps [BridgeSseEvent]s from the plugin to [SesoriSseEvent]s for relay delivery.
 ///

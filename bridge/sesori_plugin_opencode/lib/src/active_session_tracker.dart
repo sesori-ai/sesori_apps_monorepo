@@ -50,7 +50,7 @@ class ActiveSessionTracker {
     final sessionLists = await Future.wait(
       sessionQueryDirectories.map((directory) async {
         try {
-          return await _repository.api.listSessions(directory: directory, roots: false);
+          return await _repository.listSessions(directory: directory, roots: false);
         } catch (e) {
           Log.w("coldStart: failed to list sessions for ${directory ?? "<cwd>"}: $e");
           return <Session>[];
