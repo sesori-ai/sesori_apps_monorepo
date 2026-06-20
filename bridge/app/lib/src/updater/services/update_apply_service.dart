@@ -172,8 +172,14 @@ class UpdateApplyService {
       await _attemptRepository.saveAttempt(
         attempt: attempt.copyWith(stage: UpdateStage.activated, status: UpdateAttemptStatus.appliedPendingActivation),
       );
-      await _logRepository.log(message: 'Swap complete; ${release.version} pending activation on next launch.');
+      // Gate the manifest bump on the durable STATUS write alone — set the flag
+      // here, before the incidental log append. A log failure (e.g. a root-owned
+      // rotated log) must not skip the manifest and leave `.managed-runtime.json`
+      // stale while the attempt record already says appliedPendingActivation
+      // (which the next launch confirms and clears, after which a later older
+      // `npx` could downgrade the swapped binary).
       pendingActivationRecorded = true;
+      await _logRepository.log(message: 'Swap complete; ${release.version} pending activation on next launch.');
     } on Object catch (recordError) {
       logWarning('Failed to record the pending activation: $recordError');
     }

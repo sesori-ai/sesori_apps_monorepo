@@ -64,6 +64,10 @@ class _FakeAttemptRepository implements UpdateAttemptRepository {
 class _FakeLogRepository implements UpdateLogRepository {
   final List<String> messages = <String>[];
 
+  /// When set, a `log` call whose message contains this substring throws,
+  /// simulating an unwritable/rotated log file.
+  String? throwOnMessageContaining;
+
   @override
   String get logPath => '/tmp/.sesori-bridge-update.log';
 
@@ -73,7 +77,13 @@ class _FakeLogRepository implements UpdateLogRepository {
   }
 
   @override
-  Future<void> log({required String message}) async => messages.add(message);
+  Future<void> log({required String message}) async {
+    final needle = throwOnMessageContaining;
+    if (needle != null && message.contains(needle)) {
+      throw const FileSystemException('log write failed');
+    }
+    messages.add(message);
+  }
 }
 
 class _FakeUpdateLock implements UpdateLock {
@@ -183,6 +193,21 @@ void main() {
     // Because the durable activation status could not be written, the manifest
     // is left untouched — never "manifest updated but attempt still in-flight".
     expect(installation.recordedVersion, isNull);
+    expect(warnings, contains(predicate<String>((w) => w.contains('pending activation'))));
+  });
+
+  test('a log-append failure after the status write still bumps the manifest', () async {
+    // The durable activation status is written, but the trailing log append
+    // fails. The manifest must still be bumped — otherwise .managed-runtime.json
+    // stays stale and a later older npx could downgrade the swapped binary.
+    logs.throwOnMessageContaining = 'pending activation on next launch';
+    final service = buildService();
+
+    final applied = await service.apply(release: _release(), stagingPath: stagingPath);
+
+    expect(applied, isTrue);
+    expect(attempts.saved.last.status, UpdateAttemptStatus.appliedPendingActivation);
+    expect(installation.recordedVersion, '2.0.0');
     expect(warnings, contains(predicate<String>((w) => w.contains('pending activation'))));
   });
 
