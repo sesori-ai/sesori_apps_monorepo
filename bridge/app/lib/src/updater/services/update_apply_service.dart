@@ -161,41 +161,48 @@ class UpdateApplyService {
     required UpdateAttempt attempt,
     required ReleaseInfo release,
   }) async {
-    // Record the durable activation status FIRST, before the manifest bump. The
-    // manifest is an idempotency marker the npm bootstrap reads; bumping it
-    // while the attempt record still says `inFlight` diverges — npm would see
-    // the new version while the next-launch reconciliation treats the swap as
-    // possibly-incomplete and emits reinstall guidance. Best-effort: the swap
-    // already landed on disk, so a record-write failure is non-fatal here.
+    // The swap already landed on disk, so these are post-swap bookkeeping
+    // writes — best-effort, never fatal. The invariant to preserve is that the
+    // durable attempt record is NEVER left at `inFlight` after a successful
+    // swap: the next-launch reconciliation would otherwise treat a successful
+    // update as interrupted and emit reinstall guidance, contradicting the
+    // success we report below.
     var pendingActivationRecorded = false;
     try {
       await _attemptRepository.saveAttempt(
         attempt: attempt.copyWith(stage: UpdateStage.activated, status: UpdateAttemptStatus.appliedPendingActivation),
       );
-      // Gate the manifest bump on the durable STATUS write alone — set the flag
-      // here, before the incidental log append. A log failure (e.g. a root-owned
-      // rotated log) must not skip the manifest and leave `.managed-runtime.json`
-      // stale while the attempt record already says appliedPendingActivation
-      // (which the next launch confirms and clears, after which a later older
-      // `npx` could downgrade the swapped binary).
+      // Set the flag right after the durable STATUS write, before the incidental
+      // log append, so a log failure doesn't misclassify a recorded activation.
       pendingActivationRecorded = true;
       await _logRepository.log(message: 'Swap complete; ${release.version} pending activation on next launch.');
     } on Object catch (recordError) {
       logWarning('Failed to record the pending activation: $recordError');
     }
 
+    if (!pendingActivationRecorded) {
+      // The activation-status write failed after a successful swap. Clear the
+      // stale `inFlight` record so the next launch doesn't reconcile this
+      // successful update as interrupted. (Deleting the record can succeed where
+      // the write+rename did not.) Once it's cleared, the manifest bump below
+      // can no longer diverge from an `inFlight` record.
+      try {
+        await _attemptRepository.clearAttempt();
+      } on Object catch (clearError) {
+        logWarning('Failed to clear the in-flight attempt after a status-write failure: $clearError');
+      }
+    }
+
     // Bump the managed-runtime manifest so the npm bootstrap sees the new
     // version and does not clobber/downgrade the freshly swapped binary on the
-    // next `npx`. Only once the activation status is durably recorded, so we
-    // never leave a manifest that claims a version the attempt record hasn't
-    // confirmed. Best-effort: a manifest write failure only risks a later npm
-    // re-install, not the update itself.
-    if (pendingActivationRecorded) {
-      try {
-        await _installationRepository.recordManagedVersion(installRoot: _installRoot, version: release.version);
-      } on Object catch (manifestError) {
-        logWarning('Failed to update the managed runtime manifest: $manifestError');
-      }
+    // next `npx`. Safe to always attempt after a successful swap: the record is
+    // now either `appliedPendingActivation` (confirmed next launch) or cleared,
+    // so this never leaves a manifest claiming a version an `inFlight` record
+    // contradicts. Best-effort: a failure only risks a later npm re-install.
+    try {
+      await _installationRepository.recordManagedVersion(installRoot: _installRoot, version: release.version);
+    } on Object catch (manifestError) {
+      logWarning('Failed to update the managed runtime manifest: $manifestError');
     }
 
     emitMessage(_messageFormatter.installedPendingActivation(toVersion: release.version));

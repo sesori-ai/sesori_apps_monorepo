@@ -180,7 +180,7 @@ void main() {
     expect(Directory(stagingPath).existsSync(), isFalse);
   });
 
-  test('pending-activation write failure does not bump the manifest (no divergent state)', () async {
+  test('pending-activation write failure clears the stale record and bumps the manifest', () async {
     attempts.throwOnSaveStatus = UpdateAttemptStatus.appliedPendingActivation;
     final service = buildService();
 
@@ -190,9 +190,12 @@ void main() {
     // best-effort.
     expect(applied, isTrue);
     expect(installation.applyCount, 1);
-    // Because the durable activation status could not be written, the manifest
-    // is left untouched — never "manifest updated but attempt still in-flight".
-    expect(installation.recordedVersion, isNull);
+    // The inFlight record could not be advanced to appliedPendingActivation, so
+    // it is cleared — the next launch must not reconcile this successful update
+    // as interrupted. With no inFlight record left, the manifest is bumped so
+    // npm sees the new version.
+    expect(attempts.cleared, isTrue);
+    expect(installation.recordedVersion, '2.0.0');
     expect(warnings, contains(predicate<String>((w) => w.contains('pending activation'))));
   });
 
