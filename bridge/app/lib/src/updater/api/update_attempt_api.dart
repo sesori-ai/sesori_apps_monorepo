@@ -19,6 +19,8 @@ class UpdateAttemptApi {
 
   String get _filePath => p.join(installRoot, _fileName);
 
+  String get _tmpFilePath => '$_filePath.tmp';
+
   /// Reads the persisted attempt.
   ///
   /// Returns `null` only when no record exists. A read or parse failure is
@@ -27,12 +29,21 @@ class UpdateAttemptApi {
   /// stay observable instead of silently masquerading as "no attempt".
   Future<UpdateAttempt?> read() async {
     final File file = File(_filePath);
-    if (!file.existsSync()) {
-      return null;
+    if (file.existsSync()) {
+      return UpdateAttempt.fromJson(jsonDecodeMap(await file.readAsString()));
     }
 
-    final String contents = await file.readAsString();
-    return UpdateAttempt.fromJson(jsonDecodeMap(contents));
+    // Recover from a crash in [write]'s delete→rename gap: the temp file is
+    // fully flushed before the old record is deleted, so a present temp with a
+    // missing target holds the latest record. Promote it into place so the
+    // record survives and subsequent reads/writes/clears stay consistent.
+    final File tmpFile = File(_tmpFilePath);
+    if (tmpFile.existsSync()) {
+      await tmpFile.rename(file.path);
+      return UpdateAttempt.fromJson(jsonDecodeMap(await file.readAsString()));
+    }
+
+    return null;
   }
 
   Future<void> write({required UpdateAttempt attempt}) async {
@@ -41,7 +52,7 @@ class UpdateAttemptApi {
       await dir.create(recursive: true);
     }
 
-    final File tmpFile = File('$_filePath.tmp');
+    final File tmpFile = File(_tmpFilePath);
     await tmpFile.writeAsString(jsonEncode(attempt.toJson()), flush: true);
 
     // tmp-write then rename-into-place. The pre-delete is required because
@@ -56,7 +67,13 @@ class UpdateAttemptApi {
   }
 
   Future<void> clear() async {
-    final File file = File(_filePath);
+    // Remove both the record and any leftover temp so a stray temp can't be
+    // recovered by [read] as a resurrected record after the attempt is cleared.
+    await _deleteIfExists(File(_filePath));
+    await _deleteIfExists(File(_tmpFilePath));
+  }
+
+  Future<void> _deleteIfExists(File file) async {
     try {
       if (file.existsSync()) {
         await file.delete();
