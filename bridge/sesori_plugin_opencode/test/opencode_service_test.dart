@@ -1343,9 +1343,8 @@ void main() {
 
       await service.coldStart();
 
-      // Queried each worktree (not just the cwd / directory: null).
-      expect(repository.pendingPermissionDirectories, containsAll(<String?>["/repo-a", "/repo-b"]));
-      expect(repository.pendingPermissionDirectories, isNot(contains(null)));
+      // Queried the cwd instance (directory: null) plus every worktree.
+      expect(repository.pendingPermissionDirectories, containsAll(<String?>[null, "/repo-a", "/repo-b"]));
       // Aggregated pending input from all worktrees was handed to the tracker.
       expect(tracker.populatedPermissions.map((p) => p.id), containsAll(<String>["p-a", "p-b"]));
       expect(tracker.populatedQuestions.map((q) => q.id), containsAll(<String>["q-a", "q-b"]));

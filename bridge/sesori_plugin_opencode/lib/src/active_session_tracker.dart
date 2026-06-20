@@ -39,14 +39,15 @@ class ActiveSessionTracker {
     _sessionDirectories.clear();
     _sessionParentIds.clear();
 
-    // List sessions per worktree. An unscoped `listSessions(directory: null)`
-    // only targets the OpenCode server's cwd instance, so a session in any other
-    // project worktree — and its parent attribution — would be missing on a cold
-    // start, leaving a child session's parent unknown so its pending input never
-    // rolls up to (or surfaces on) its root until the session is opened later.
-    // Fall back to the cwd when no worktrees are known yet (e.g. a fresh
-    // OpenCode install whose project list is still empty).
-    final sessionQueryDirectories = _projectWorktrees.isEmpty ? <String?>[null] : _projectWorktrees.toList();
+    // List sessions for the OpenCode server's cwd instance AND every project
+    // worktree. An unscoped `listSessions(directory: null)` only targets the cwd
+    // instance, while a per-worktree query covers each project — querying both
+    // (and de-duplicating by id below) ensures every session and its parent
+    // attribution is hydrated regardless of whether the cwd is itself a listed
+    // worktree. Without complete parent attribution a child session's parent
+    // stays unknown, so its pending input never rolls up to (or surfaces on) its
+    // root until the session is opened later.
+    final sessionQueryDirectories = <String?>{null, ..._projectWorktrees}.toList();
     final sessionLists = await Future.wait(
       sessionQueryDirectories.map((directory) async {
         try {
