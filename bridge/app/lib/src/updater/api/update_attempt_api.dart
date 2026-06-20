@@ -23,27 +23,46 @@ class UpdateAttemptApi {
 
   /// Reads the persisted attempt.
   ///
-  /// Returns `null` only when no record exists. A read or parse failure is
-  /// unexpected and is thrown rather than swallowed — the caller
+  /// Returns `null` only when no record exists. A parse failure of the committed
+  /// record is unexpected and is thrown rather than swallowed — the caller
   /// ([UpdateReconciliationService]) already catches and logs it, so failures
   /// stay observable instead of silently masquerading as "no attempt".
   Future<UpdateAttempt?> read() async {
-    final File file = File(_filePath);
-    if (file.existsSync()) {
-      return UpdateAttempt.fromJson(jsonDecodeMap(await file.readAsString()));
+    final File target = File(_filePath);
+    final File tmp = File(_tmpFilePath);
+
+    // A surviving temp is always the newest write: [write] flushes the temp,
+    // then deletes the old target, then renames the temp into place, and a
+    // successful write always consumes the temp. So if the temp exists — whether
+    // or not the (stale) target also survives a crash mid-write — it holds the
+    // latest record. Prefer it when it parses, and promote it into place. A temp
+    // that doesn't parse is a partial write: discard it and fall back to the
+    // last committed target rather than resurrecting garbage.
+    if (tmp.existsSync()) {
+      final UpdateAttempt? recovered = _tryParse(await tmp.readAsString());
+      if (recovered != null) {
+        if (target.existsSync()) {
+          target.deleteSync();
+        }
+        await tmp.rename(target.path);
+        return recovered;
+      }
+      await _deleteIfExists(tmp);
     }
 
-    // Recover from a crash in [write]'s delete→rename gap: the temp file is
-    // fully flushed before the old record is deleted, so a present temp with a
-    // missing target holds the latest record. Promote it into place so the
-    // record survives and subsequent reads/writes/clears stay consistent.
-    final File tmpFile = File(_tmpFilePath);
-    if (tmpFile.existsSync()) {
-      await tmpFile.rename(file.path);
-      return UpdateAttempt.fromJson(jsonDecodeMap(await file.readAsString()));
+    if (target.existsSync()) {
+      return UpdateAttempt.fromJson(jsonDecodeMap(await target.readAsString()));
     }
 
     return null;
+  }
+
+  UpdateAttempt? _tryParse(String contents) {
+    try {
+      return UpdateAttempt.fromJson(jsonDecodeMap(contents));
+    } on Object {
+      return null;
+    }
   }
 
   Future<void> write({required UpdateAttempt attempt}) async {

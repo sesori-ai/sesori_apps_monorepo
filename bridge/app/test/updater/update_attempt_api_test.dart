@@ -61,6 +61,33 @@ void main() {
     expect(File(tmpPath()).existsSync(), isFalse);
   });
 
+  test('prefers a valid newer temp over a stale target left by a mid-write crash', () async {
+    // Crash window: the newer record was flushed to .tmp but the old target was
+    // not yet deleted, so both files exist.
+    File(recordPath()).writeAsStringSync(jsonEncode(attempt(status: UpdateAttemptStatus.inFlight).toJson()));
+    File(tmpPath()).writeAsStringSync(
+      jsonEncode(attempt(status: UpdateAttemptStatus.appliedPendingActivation).toJson()),
+    );
+
+    final read = await api.read();
+
+    // The newer temp wins (not the stale inFlight target) and is healed in.
+    expect(read!.status, UpdateAttemptStatus.appliedPendingActivation);
+    expect(File(recordPath()).existsSync(), isTrue);
+    expect(File(tmpPath()).existsSync(), isFalse);
+  });
+
+  test('falls back to the committed target when the temp is a partial write', () async {
+    File(recordPath()).writeAsStringSync(jsonEncode(attempt(status: UpdateAttemptStatus.inFlight).toJson()));
+    File(tmpPath()).writeAsStringSync('{ this is not valid json'); // crash mid-temp-write
+
+    final read = await api.read();
+
+    // The corrupt temp is discarded; the last committed record is returned.
+    expect(read!.status, UpdateAttemptStatus.inFlight);
+    expect(File(tmpPath()).existsSync(), isFalse);
+  });
+
   test('returns null when neither the record nor the temp exist', () async {
     expect(await api.read(), isNull);
   });
