@@ -144,7 +144,13 @@ class DebugServer {
     // by the orchestrator and injected as an action, so a debug
     // `POST /global/restart` behaves identically to a phone-triggered restart.
     if (restartRequested) {
-      await _restartHandoff();
+      // The response is already closed, so a handoff failure has nowhere to go —
+      // log it instead of letting it escape this listen callback unhandled.
+      try {
+        await _restartHandoff();
+      } on Object catch (error, stackTrace) {
+        Log.w("debug server restart handoff failed: $error", error, stackTrace);
+      }
     }
   }
 

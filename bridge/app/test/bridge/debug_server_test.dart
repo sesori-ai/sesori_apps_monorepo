@@ -382,6 +382,45 @@ void main() {
       );
     });
 
+    test("concurrent restart handoffs spawn at most one successor", () async {
+      final plugin = _FakeBridgePlugin();
+      addTearDown(plugin.close);
+      final db = createTestDatabase();
+
+      final tempDir = await Directory.systemTemp.createTemp("debug-server-restart-single");
+      addTearDown(() async {
+        if (tempDir.existsSync()) {
+          await tempDir.delete(recursive: true);
+        }
+      });
+      final binaryPath = p.join(tempDir.path, "sesori-bridge");
+      File(binaryPath).writeAsStringSync("binary");
+      if (!Platform.isWindows) {
+        await Process.run("chmod", ["+x", binaryPath]);
+      }
+
+      final processRunner = _RecordingProcessRunner();
+      final harness = _createDebugServerHarness(
+        plugin: plugin,
+        db: db,
+        port: 0,
+        restartService: _spawnableRestartService(
+          binaryPath: binaryPath,
+          processRunner: processRunner,
+        ),
+      );
+      addTearDown(harness.close);
+
+      // Both the relay and debug triggers funnel into handleRestartHandoff;
+      // fire two concurrently and assert the single-flight guard holds.
+      await Future.wait<void>([
+        harness.runtime.session.handleRestartHandoff(),
+        harness.runtime.session.handleRestartHandoff(),
+      ]);
+
+      expect(processRunner.startDetachedCount, equals(1));
+    });
+
     test("POST /global/restart returns 503 and does not spawn when binary is missing", () async {
       final plugin = _FakeBridgePlugin();
       addTearDown(plugin.close);

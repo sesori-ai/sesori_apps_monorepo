@@ -190,6 +190,10 @@ class OrchestratorSession {
 
   bool _cancelled = false;
 
+  /// Guards [handleRestartHandoff] so concurrent relay + debug restart triggers
+  /// spawn at most one successor.
+  bool _restartHandoffStarted = false;
+
   /// When the first [cancel] was requested. Used only for shutdown timing
   /// diagnostics (the logger emits no timestamps, so durations are explicit).
   DateTime? _cancelRequestedAt;
@@ -481,9 +485,21 @@ class OrchestratorSession {
   /// request loop (below) and the local [DebugServer], which reuses this
   /// session's [RequestRouter] and so reaches the same `RestartBridgeHandler`.
   Future<void> handleRestartHandoff() async {
+    // Single-flight: the relay and debug-server triggers share the same restart
+    // flag but run independently, so without this guard two near-simultaneous
+    // `POST /global/restart` requests could each spawn a successor. The flag is
+    // set synchronously (no await before it), so the check-and-set is atomic on
+    // the event loop. It is reset only when the spawn fails and we keep running,
+    // so a later restart can retry.
+    if (_restartHandoffStarted) {
+      Log.v("[restart] handoff already in progress; ignoring duplicate trigger");
+      return;
+    }
+    _restartHandoffStarted = true;
     Log.i("[restart] restart requested; spawning successor bridge");
     final bool spawned = await _restartService.spawnSuccessor();
     if (!spawned) {
+      _restartHandoffStarted = false;
       Console.error(
         "Restart requested but a new bridge could not be started; continuing to run. "
         "Re-run the install script if this persists: https://sesori.com/",
