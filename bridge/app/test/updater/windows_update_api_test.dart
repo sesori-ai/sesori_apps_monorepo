@@ -76,6 +76,26 @@ void main() {
     expect(File(p.join(installRoot, '.lib.old', 'plugins', 'p.dll')).readAsStringSync(), 'OLD-P');
   });
 
+  test('applies a release where an old lib directory becomes a file at the same path', () async {
+    // Old install: lib/foo is a DIRECTORY (lib/foo/bar.dll).
+    writeFile(p.join(installRoot, 'bin', 'sesori-bridge.exe'), 'OLD-BINARY');
+    writeFile(p.join(installRoot, 'lib', 'foo', 'bar.dll'), 'OLD-BAR');
+    // New release: lib/foo is a FILE.
+    writeFile(p.join(stagingPath, 'bin', 'sesori-bridge.exe'), 'NEW-BINARY');
+    writeFile(p.join(stagingPath, 'lib', 'foo'), 'NEW-FOO');
+    const api = WindowsUpdateApi();
+
+    await api.applyInPlace(installRoot: installRoot, stagingPath: stagingPath);
+
+    // The staged file replaced the old directory skeleton at lib/foo.
+    final foo = File(p.join(installRoot, 'lib', 'foo'));
+    expect(foo.existsSync(), isTrue);
+    expect(foo.readAsStringSync(), 'NEW-FOO');
+    expect(FileSystemEntity.isDirectorySync(p.join(installRoot, 'lib', 'foo')), isFalse);
+    // The displaced original is preserved for sweeping.
+    expect(File(p.join(installRoot, '.lib.old', 'foo', 'bar.dll')).readAsStringSync(), 'OLD-BAR');
+  });
+
   test('applyInPlace throws and leaves the install intact when the payload is missing', () async {
     seedInstall();
     const api = WindowsUpdateApi();

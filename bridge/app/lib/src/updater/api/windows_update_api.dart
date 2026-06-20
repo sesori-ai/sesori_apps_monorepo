@@ -81,7 +81,20 @@ class WindowsUpdateApi implements PlatformUpdateApi {
       final String relative = p.relative(entity.path, from: fromDir.path);
       final String destPath = p.join(toDir.path, relative);
       Directory(p.dirname(destPath)).createSync(recursive: true);
+      _clearConflictingDirectory(destPath: destPath);
       _moveFile(performed: performed, from: entity, toPath: destPath);
+    }
+  }
+
+  /// When an old `lib` path was a directory and the new one is a file at the
+  /// same relative path, displacing the old files above leaves an empty
+  /// directory skeleton at [destPath]. A file cannot be renamed onto an existing
+  /// directory, so remove the skeleton first. It is guaranteed to hold no files
+  /// (they were already displaced), so this never loses data; rollback recreates
+  /// the structure when restoring the displaced files.
+  void _clearConflictingDirectory({required String destPath}) {
+    if (FileSystemEntity.typeSync(destPath, followLinks: false) == FileSystemEntityType.directory) {
+      Directory(destPath).deleteSync(recursive: true);
     }
   }
 
