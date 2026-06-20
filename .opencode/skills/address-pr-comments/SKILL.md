@@ -11,7 +11,7 @@ Addresses unresolved inline PR review comments by assessing their validity, impl
 
 1. **Unresolved comments only**: Unless explicitly told otherwise, only fetch and address comments where `is_resolved == false`. Use the `--unresolved` flag.
 2. **Every thread gets a reply**: After assessing and acting on a comment, you MUST post a reply to that comment thread. No thread should be left without a response.
-3. **Do not reply twice**: Before posting a reply, check the thread's `comments[]` for an existing body starting with `[Sesori reply]`. If the last comment in the thread is already a `[Sesori reply]`, skip the thread unless there is a new follow-up request from a reviewer. If the last comment is an acknowledgment like "Acknowledged" or similar that does not require action, skip it.
+3. **Do not reply twice**: Before posting a reply, inspect the comments after the most recent `[Sesori reply]`. If the last comment is already a `[Sesori reply]` and there are no later reviewer comments, skip the thread. If the only later comments are acknowledgment-only bot comments (for example "Acknowledged", "Thanks", "Looks good", or "Accepted") with no new request, objection, question, or requested change, skip the thread. Do not skip if a later comment raises a follow-up, pushback, asks for clarification, or requests additional changes; handle that as a new actionable comment.
 4. **Reply prefix**: Every reply must start with `[Sesori reply]` so it is clear the response comes from the agent, not the human user.
 5. **All comments are assessed**: Every comment must be evaluated for validity. Do not automatically assume any comment is correct.
 6. **Extra scrutiny for AI/bot comments**: Comments from AI reviewers or bots require more careful assessment. They are more likely to be incorrect, irrelevant, or based on stale context.
@@ -76,6 +76,19 @@ For AI/bot comments:
 - Verify the claim by reading the actual code
 - Check if the suggestion aligns with existing codebase patterns
 - Do not implement blindly — apply the same critical thinking you would use on your own code
+
+#### Acknowledgment-only bot follow-ups
+
+Some bots post a short acknowledgment after the `[Sesori reply]` instead of resolving the thread. Treat the thread as already addressed when every comment after the most recent `[Sesori reply]` is acknowledgment-only, such as "Acknowledged", "Thanks", "Looks good", "Accepted", or equivalent non-actionable wording.
+
+Do not treat a bot follow-up as acknowledgment-only if it contains any of the following:
+- a new requested change or clarification
+- a question about the fix
+- a pushback or objection
+- a statement that the previous reply did not address the original concern
+- a new link, suggestion, or actionable review note
+
+For human follow-ups, assume the follow-up is actionable unless it is explicitly just an acknowledgment.
 
 For human comments:
 - Assume the comment is correct unless you have strong evidence otherwise
