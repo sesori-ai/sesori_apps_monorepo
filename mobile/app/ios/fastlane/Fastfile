@@ -104,35 +104,42 @@ def release_notes_by_locale(dir)
   notes.empty? ? nil : notes
 end
 
-# How long to wait for a cancelled version's review submission to settle back to
-# an editable state, and how often to re-check. After deleting the submission,
-# App Store Connect takes a few seconds to move the version out of
-# WAITING_FOR_REVIEW; submitting again before it settles fails with
-# "appStoreVersions ... is not in valid state".
+# How long to wait for a cancelled review submission to clear, and how often to
+# re-check. After cancel_submission, App Store Connect moves the submission
+# through CANCELING before it stops being "in progress"; submitting again before
+# it clears fails deliver's get_in_progress_review_submission guard with
+# "A review submission is already in progress".
 CANCEL_REVIEW_SETTLE_TIMEOUT = 120 # seconds
 CANCEL_REVIEW_POLL_INTERVAL = 5    # seconds
 
-# Cancels an App Store review submission ONLY when the version under review is
-# still WAITING_FOR_REVIEW — i.e. Apple has not picked it up yet, so pulling it
-# is safe and lets us submit a newer build for the same marketing version. If
-# the version is already IN_REVIEW (or any other non-waiting state), this is a
-# deliberate no-op: the caller then proceeds to submit and Apple/ASC rejects it
-# with "already in review", which is the behavior we want — we never silently
-# yank a build a reviewer is actively looking at.
+# Cancels an in-progress App Store review submission ONLY when it is still
+# WAITING_FOR_REVIEW — i.e. Apple has not picked it up yet, so pulling it is safe
+# and lets us submit a newer build for the same marketing version. If the
+# submission is already IN_REVIEW (or in any other state), this is a deliberate
+# no-op: the caller proceeds to submit and deliver's own
+# get_in_progress_review_submission guard fails with "already in progress",
+# which is the behavior we want — we never silently yank a build a reviewer is
+# actively looking at.
 #
-# Scope is strict on TWO axes so we never touch an unrelated version:
-#   1. version_string must equal the marketing version we are submitting, and
-#   2. app_store_state must be exactly WAITING_FOR_REVIEW.
+# This operates on the ReviewSubmission object (the unit modern deliver checks
+# and submits via in fastlane 2.236.1's Deliver::SubmitForReview), NOT the
+# legacy per-version appStoreVersionSubmission. AppStoreVersion#reject! only
+# deletes the latter and would leave the in-progress ReviewSubmission in place,
+# so the subsequent deliver submit would still fail.
 #
-# After a successful cancel we (a) poll until the version leaves
-# WAITING_FOR_REVIEW so the subsequent submit sees a valid editable state, and
-# (b) explicitly attach the target build number to the version so the freshly
-# editable version points at the NEW build, not whatever was under review.
+# Scope is strict on TWO axes so we never touch an unrelated submission:
+#   1. the submission's version under review must equal the marketing version we
+#      are submitting, and
+#   2. its state must be exactly WAITING_FOR_REVIEW.
 #
-# Returns true if a submission was cancelled, false if nothing was done. Any
-# race where the version flips WAITING_FOR_REVIEW -> IN_REVIEW between our read
-# and the delete is caught and treated as a no-op: the submit pass then fails
-# naturally instead of crashing the lane with a raw Spaceship error.
+# The replacement build is verified to exist on App Store Connect BEFORE we
+# cancel, so a bad/unindexed BUILD_NUMBER aborts without yanking a valid waiting
+# review. The actual build selection is left to the deliver submit pass (it
+# selects by build_number itself); this preflight only guards the cancel.
+#
+# After a successful cancel we poll until the submission is no longer in progress
+# so deliver's guard passes. Returns true if a submission was cancelled, false if
+# nothing was done.
 def cancel_waiting_for_review_if_pending(api_key:, version:, build_number:)
   require "spaceship"
 
@@ -143,44 +150,65 @@ def cancel_waiting_for_review_if_pending(api_key:, version:, build_number:)
   )
 
   platform = Spaceship::ConnectAPI::Platform::IOS
-  waiting = Spaceship::ConnectAPI::AppStoreVersion::AppStoreState::WAITING_FOR_REVIEW
+  waiting = Spaceship::ConnectAPI::ReviewSubmission::ReviewSubmissionState::WAITING_FOR_REVIEW
 
   app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
   app = Spaceship::ConnectAPI::App.find(app_identifier)
   UI.user_error!("App not found on App Store Connect: #{app_identifier}") if app.nil?
 
-  edit_version = app.get_edit_app_store_version(platform: platform)
-  if edit_version.nil?
-    UI.message("No editable App Store version found; nothing to cancel.")
+  submission = app.get_in_progress_review_submission(
+    platform: platform,
+    includes: "appStoreVersionForReview"
+  )
+  if submission.nil?
+    UI.message("No in-progress review submission found; nothing to cancel.")
     return false
   end
 
-  # Only ever act on the exact marketing version we are submitting.
-  unless edit_version.version_string == version
+  # Only ever act on a submission whose version under review is the exact
+  # marketing version we are submitting.
+  review_version = submission.app_store_version_for_review&.version_string
+  unless review_version == version
     UI.message(
-      "Editable version is #{edit_version.version_string}, not #{version}; " \
-      "leaving it untouched."
+      "In-progress review submission is for version #{review_version || 'unknown'}, " \
+      "not #{version}; leaving it untouched."
     )
     return false
   end
 
-  state = edit_version.app_store_state
-  unless state == waiting
+  unless submission.state == waiting
     UI.message(
-      "Version #{version} is in state #{state}, not #{waiting}; not cancelling " \
-      "(an in-review submission is intentionally left to fail)."
+      "Review submission for #{version} is in state #{submission.state}, not #{waiting}; " \
+      "not cancelling (an in-review submission is intentionally left to fail)."
     )
     return false
   end
 
-  UI.important("Version #{version} is #{waiting}; cancelling its review submission to submit build #{build_number}.")
+  # Preflight: confirm the replacement build exists BEFORE cancelling, so a
+  # mistyped or not-yet-indexed BUILD_NUMBER aborts without yanking the still
+  # waiting review. We do not select it here — the deliver submit pass selects by
+  # build_number itself; this only validates that there is something to submit.
+  builds = Spaceship::ConnectAPI::Build.all(
+    app_id: app.id,
+    version: version,
+    build_number: build_number.to_s,
+    platform: platform
+  )
+  if builds.first.nil?
+    UI.user_error!(
+      "Build #{build_number} for version #{version} was not found on App Store " \
+      "Connect; refusing to cancel the waiting review for a build that does not exist."
+    )
+  end
 
-  # reject! deletes the version's submission. It can raise if the version flipped
-  # to IN_REVIEW after our read (the submission is no longer cancellable). Treat
-  # that as a no-op so the caller's submit pass fails with the normal
-  # "already in review" path instead of an opaque Spaceship error.
+  UI.important("Review submission for #{version} is #{waiting}; cancelling it to submit build #{build_number}.")
+
+  # cancel_submission can raise if the submission flipped to IN_REVIEW after our
+  # read (no longer cancellable). Treat that as a no-op so the caller's submit
+  # pass fails with the normal "already in progress" path instead of an opaque
+  # Spaceship error.
   begin
-    cancelled = edit_version.reject!
+    submission.cancel_submission
   rescue => e
     UI.important(
       "Could not cancel the review submission for #{version} (it likely moved to " \
@@ -190,56 +218,25 @@ def cancel_waiting_for_review_if_pending(api_key:, version:, build_number:)
     return false
   end
 
-  unless cancelled
-    UI.message("No cancellable submission on version #{version}; nothing was cancelled.")
-    return false
-  end
-
-  # Poll until the version leaves WAITING_FOR_REVIEW so the subsequent submit
-  # sees an editable state instead of "not in valid state".
+  # Poll until there is no longer an in-progress submission so deliver's
+  # get_in_progress_review_submission guard passes on the submit pass.
   deadline = Time.now + CANCEL_REVIEW_SETTLE_TIMEOUT
   loop do
-    current = app.get_edit_app_store_version(platform: platform)
-    # A nil here is a transient ASC/network hiccup, NOT confirmation that the
-    # version left WAITING_FOR_REVIEW — keep polling rather than assuming success
-    # (treating nil as "settled" would race ahead to select_build with no editable
-    # version). Only break once the API returns a version in a non-waiting state.
+    current = app.get_in_progress_review_submission(platform: platform)
     if current.nil?
-      UI.message("Edit version not returned by App Store Connect yet; retrying…")
-    elsif current.app_store_state != waiting
-      UI.success("Review submission cancelled; version #{version} is now #{current.app_store_state}.")
+      UI.success("Review submission for #{version} cancelled; no in-progress submission remains.")
       break
     end
     if Time.now >= deadline
       UI.user_error!(
-        "Version #{version} is still #{waiting} #{CANCEL_REVIEW_SETTLE_TIMEOUT}s after " \
-        "cancelling its submission; aborting before submit to avoid an invalid-state error."
+        "A review submission for #{version} is still in progress (state " \
+        "#{current.state}) #{CANCEL_REVIEW_SETTLE_TIMEOUT}s after cancelling; aborting " \
+        "before submit to avoid an 'already in progress' error."
       )
     end
-    UI.message("Waiting for version #{version} to leave #{waiting}…")
+    UI.message("Waiting for the cancelled review submission to clear (state #{current.state})…")
     sleep(CANCEL_REVIEW_POLL_INTERVAL)
   end
-
-  # Explicitly attach the NEW build to the now-editable version so submission
-  # uses the build we are releasing, not whatever build was under review.
-  builds = Spaceship::ConnectAPI::Build.all(
-    app_id: app.id,
-    version: version,
-    build_number: build_number.to_s,
-    platform: platform
-  )
-  target_build = builds.first
-  if target_build.nil?
-    UI.user_error!(
-      "Could not find build #{build_number} for version #{version} on App Store " \
-      "Connect after cancelling review; cannot guarantee the new build is selected."
-    )
-  end
-
-  refreshed = app.get_edit_app_store_version(platform: platform)
-  UI.user_error!("Edit version for #{version} disappeared after cancel; aborting.") if refreshed.nil?
-  refreshed.select_build(build_id: target_build.id)
-  UI.success("Selected build #{build_number} for version #{version} after cancelling the prior review.")
 
   true
 end
@@ -401,19 +398,6 @@ platform :ios do
     UI.message("Submitting iOS build #{build_number} (v#{version}) to #{track}")
 
     if track == "production"
-      # If a prior version is still WAITING_FOR_REVIEW (Apple hasn't picked it up
-      # yet), cancel its review submission so we can submit this newer build for
-      # the same marketing version. Strictly scoped: only the matching
-      # version_string in exactly WAITING_FOR_REVIEW is cancelled. A version that
-      # is already IN_REVIEW is intentionally left alone so the submit below fails
-      # rather than yanking a build Apple is actively reviewing. On success this
-      # also re-selects the new build number on the now-editable version.
-      cancel_waiting_for_review_if_pending(
-        api_key: api_key,
-        version: version,
-        build_number: build_number
-      )
-
       # Optional App Store listing metadata from the private metadata repo. CI
       # populates these paths only when that repo's latest commit has no `v*` tag
       # (unpublished listing changes — see submit-release.yml). Everything present
@@ -500,6 +484,21 @@ platform :ios do
           )
         end
       end
+
+      # If a prior submission for THIS version is still WAITING_FOR_REVIEW (Apple
+      # hasn't picked it up yet), cancel it so Pass 2 can submit this newer build.
+      # Strictly scoped: only a submission whose version-under-review matches and
+      # whose state is exactly WAITING_FOR_REVIEW is cancelled. A submission that
+      # is already IN_REVIEW is left alone, so the submit below fails rather than
+      # yanking a build Apple is actively reviewing. Deliberately placed AFTER the
+      # metadata/release-notes passes: those passes never mutate the live review,
+      # so if any of them fail we abort with the waiting review still intact —
+      # cancelling earlier would yank it on a mere metadata error.
+      cancel_waiting_for_review_if_pending(
+        api_key: api_key,
+        version: version,
+        build_number: build_number
+      )
 
       # Pass 2 — attach the already-uploaded build and submit for review.
       # `skip_binary_upload: true` + `build_number:` picks the existing build
