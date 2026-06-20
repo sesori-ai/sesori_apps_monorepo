@@ -1,4 +1,5 @@
 import "models/plugin_message.dart";
+import "models/plugin_pending_question.dart";
 
 sealed class BridgeSseEvent {
   const BridgeSseEvent();
@@ -180,7 +181,7 @@ class BridgeSseQuestionAsked extends BridgeSseEvent {
   /// Top-most root session this request should be surfaced under (for a
   /// child/sub-agent session's request). Null when unknown.
   final String? displaySessionId;
-  final List<Map<String, dynamic>> questions;
+  final List<PluginQuestionInfo> questions;
   const BridgeSseQuestionAsked({
     required this.id,
     required this.sessionID,

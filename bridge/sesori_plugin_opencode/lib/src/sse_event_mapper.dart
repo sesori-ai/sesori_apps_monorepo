@@ -2,6 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "message_part_mapper.dart";
 import "models/sse_event_data.g.dart";
+import "question_info_mapper.dart";
 
 /// Maps OpenCode SSE events and message parts to plugin interface types.
 ///
@@ -9,6 +10,7 @@ import "models/sse_event_data.g.dart";
 /// This class is stateless — all methods are pure transformations.
 class SseEventMapper {
   final MessagePartMapper _messagePartMapper = const MessagePartMapper();
+  final QuestionInfoMapper _questionInfoMapper = const QuestionInfoMapper();
 
   /// Narrows a union's `Object? toJson()` result to the JSON map the bridge
   /// model carries — without a null-assertion (`!`). Known variants always
@@ -102,7 +104,7 @@ class SseEventMapper {
         id: id,
         sessionID: sessionID,
         displaySessionId: displaySessionId,
-        questions: questions.map((q) => q.toJson()).toList(),
+        questions: _questionInfoMapper.mapQuestionInfos(questions),
       ),
       SseQuestionReplied(:final requestID, :final sessionID) => BridgeSseQuestionReplied(
         requestID: requestID,

@@ -16,7 +16,7 @@ mixin _$PluginPendingPermission {
 
  String get id; String get sessionID;/// Top-most root session this request should be surfaced under (for a
 /// child/sub-agent session's request). Null when unknown.
-@JsonKey(includeIfNull: false) String? get displaySessionId; String get tool; String get description;
+ String? get displaySessionId; String get tool; String get description;
 /// Create a copy of PluginPendingPermission
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -49,7 +49,7 @@ abstract mixin class $PluginPendingPermissionCopyWith<$Res>  {
   factory $PluginPendingPermissionCopyWith(PluginPendingPermission value, $Res Function(PluginPendingPermission) _then) = _$PluginPendingPermissionCopyWithImpl;
 @useResult
 $Res call({
- String id, String sessionID,@JsonKey(includeIfNull: false) String? displaySessionId, String tool, String description
+ String id, String sessionID, String? displaySessionId, String tool, String description
 });
 
 
@@ -85,14 +85,14 @@ as String,
 @JsonSerializable(createFactory: false)
 
 class _PluginPendingPermission implements PluginPendingPermission {
-  const _PluginPendingPermission({required this.id, required this.sessionID, @JsonKey(includeIfNull: false) required this.displaySessionId, required this.tool, required this.description});
+  const _PluginPendingPermission({required this.id, required this.sessionID, required this.displaySessionId, required this.tool, required this.description});
   
 
 @override final  String id;
 @override final  String sessionID;
 /// Top-most root session this request should be surfaced under (for a
 /// child/sub-agent session's request). Null when unknown.
-@override@JsonKey(includeIfNull: false) final  String? displaySessionId;
+@override final  String? displaySessionId;
 @override final  String tool;
 @override final  String description;
 
@@ -129,7 +129,7 @@ abstract mixin class _$PluginPendingPermissionCopyWith<$Res> implements $PluginP
   factory _$PluginPendingPermissionCopyWith(_PluginPendingPermission value, $Res Function(_PluginPendingPermission) _then) = __$PluginPendingPermissionCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID,@JsonKey(includeIfNull: false) String? displaySessionId, String tool, String description
+ String id, String sessionID, String? displaySessionId, String tool, String description
 });
 
 

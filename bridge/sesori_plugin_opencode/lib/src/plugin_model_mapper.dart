@@ -11,11 +11,17 @@ import "models/openapi/session.g.dart";
 import "models/openapi/session_messages_response_item.g.dart";
 import "models/openapi/session_status.g.dart";
 import "models/openapi/user_message.g.dart";
+import "question_info_mapper.dart";
 
 class PluginModelMapper {
-  const PluginModelMapper({required MessagePartMapper messagePartMapper}) : _messagePartMapper = messagePartMapper;
+  const PluginModelMapper({
+    required MessagePartMapper messagePartMapper,
+    QuestionInfoMapper questionInfoMapper = const QuestionInfoMapper(),
+  }) : _messagePartMapper = messagePartMapper,
+       _questionInfoMapper = questionInfoMapper;
 
   final MessagePartMapper _messagePartMapper;
+  final QuestionInfoMapper _questionInfoMapper;
 
   PluginSession mapSession(Session session, {required String projectID}) {
     final summary = session.summary;
@@ -94,19 +100,7 @@ class PluginModelMapper {
       id: question.id,
       sessionID: question.sessionID,
       displaySessionId: displaySessionId,
-      questions: question.questions
-          .map(
-            (info) => PluginQuestionInfo(
-              question: info.question,
-              header: info.header,
-              options: info.options
-                  .map((option) => PluginQuestionOption(label: option.label, description: option.description))
-                  .toList(),
-              multiple: info.multiple ?? false,
-              custom: info.custom ?? true,
-            ),
-          )
-          .toList(),
+      questions: _questionInfoMapper.mapQuestionInfos(question.questions),
     );
   }
 

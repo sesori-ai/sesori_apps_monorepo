@@ -24,7 +24,6 @@ sealed class PendingQuestion with _$PendingQuestion {
     /// Top-most root session this request should be surfaced under (for a
     /// child/sub-agent session's request). Null when unknown; consumers fall
     /// back to [sessionID].
-    @JsonKey(includeIfNull: false)
     required String? displaySessionId,
     required List<QuestionInfo> questions,
   }) = _PendingQuestion;

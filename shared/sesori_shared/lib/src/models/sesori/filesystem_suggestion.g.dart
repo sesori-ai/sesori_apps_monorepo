@@ -17,7 +17,7 @@ Map<String, dynamic> _$FilesystemSuggestionsRequestToJson(
   _FilesystemSuggestionsRequest instance,
 ) => <String, dynamic>{
   'maxResults': instance.maxResults,
-  'prefix': instance.prefix,
+  'prefix': ?instance.prefix,
 };
 
 _FilesystemSuggestions _$FilesystemSuggestionsFromJson(Map json) =>

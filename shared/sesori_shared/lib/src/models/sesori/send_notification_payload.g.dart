@@ -25,8 +25,8 @@ Map<String, dynamic> _$SendNotificationPayloadToJson(
   'category': _$NotificationCategoryEnumMap[instance.category]!,
   'title': instance.title,
   'body': instance.body,
-  'collapseKey': instance.collapseKey,
-  'data': instance.data?.toJson(),
+  'collapseKey': ?instance.collapseKey,
+  'data': ?instance.data?.toJson(),
 };
 
 const _$NotificationCategoryEnumMap = {

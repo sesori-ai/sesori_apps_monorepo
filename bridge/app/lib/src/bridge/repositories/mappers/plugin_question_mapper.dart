@@ -7,18 +7,19 @@ extension PluginPendingQuestionMapping on PluginPendingQuestion {
     id: id,
     sessionID: sessionID,
     displaySessionId: displaySessionId,
-    questions: questions
-        .map(
-          (qi) => QuestionInfo(
-            question: qi.question,
-            header: qi.header,
-            options: qi.options
-                .map((o) => QuestionOption(label: o.label, description: o.description))
-                .toList(),
-            multiple: qi.multiple,
-            custom: qi.custom,
-          ),
-        )
-        .toList(),
+    questions: questions.map((qi) => qi.toSharedQuestionInfo()).toList(),
+  );
+}
+
+extension PluginQuestionInfoMapping on PluginQuestionInfo {
+  /// Maps a plugin-interface question info to the shared [QuestionInfo] wire
+  /// model. Shared by the REST ([PendingQuestion]) and SSE
+  /// ([SesoriQuestionAsked]) question paths.
+  QuestionInfo toSharedQuestionInfo() => QuestionInfo(
+    question: question,
+    header: header,
+    options: options.map((o) => QuestionOption(label: o.label, description: o.description)).toList(),
+    multiple: multiple,
+    custom: custom,
   );
 }

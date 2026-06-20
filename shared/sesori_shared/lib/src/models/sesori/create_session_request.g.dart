@@ -32,9 +32,9 @@ Map<String, dynamic> _$CreateSessionRequestToJson(
 ) => <String, dynamic>{
   'projectId': instance.projectId,
   'parts': instance.parts.map((e) => e.toJson()).toList(),
-  'agent': instance.agent,
-  'model': instance.model?.toJson(),
-  'command': instance.command,
-  'variant': instance.variant?.toJson(),
+  'agent': ?instance.agent,
+  'model': ?instance.model?.toJson(),
+  'command': ?instance.command,
+  'variant': ?instance.variant?.toJson(),
   'dedicatedWorktree': instance.dedicatedWorktree,
 };

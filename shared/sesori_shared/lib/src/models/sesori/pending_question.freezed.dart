@@ -158,7 +158,7 @@ mixin _$PendingQuestion {
  String get id; String get sessionID;/// Top-most root session this request should be surfaced under (for a
 /// child/sub-agent session's request). Null when unknown; consumers fall
 /// back to [sessionID].
-@JsonKey(includeIfNull: false) String? get displaySessionId; List<QuestionInfo> get questions;
+ String? get displaySessionId; List<QuestionInfo> get questions;
 /// Create a copy of PendingQuestion
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -191,7 +191,7 @@ abstract mixin class $PendingQuestionCopyWith<$Res>  {
   factory $PendingQuestionCopyWith(PendingQuestion value, $Res Function(PendingQuestion) _then) = _$PendingQuestionCopyWithImpl;
 @useResult
 $Res call({
- String id, String sessionID,@JsonKey(includeIfNull: false) String? displaySessionId, List<QuestionInfo> questions
+ String id, String sessionID, String? displaySessionId, List<QuestionInfo> questions
 });
 
 
@@ -226,7 +226,7 @@ as List<QuestionInfo>,
 @JsonSerializable()
 
 class _PendingQuestion implements PendingQuestion {
-  const _PendingQuestion({required this.id, required this.sessionID, @JsonKey(includeIfNull: false) required this.displaySessionId, required final  List<QuestionInfo> questions}): _questions = questions;
+  const _PendingQuestion({required this.id, required this.sessionID, required this.displaySessionId, required final  List<QuestionInfo> questions}): _questions = questions;
   factory _PendingQuestion.fromJson(Map<String, dynamic> json) => _$PendingQuestionFromJson(json);
 
 @override final  String id;
@@ -234,7 +234,7 @@ class _PendingQuestion implements PendingQuestion {
 /// Top-most root session this request should be surfaced under (for a
 /// child/sub-agent session's request). Null when unknown; consumers fall
 /// back to [sessionID].
-@override@JsonKey(includeIfNull: false) final  String? displaySessionId;
+@override final  String? displaySessionId;
  final  List<QuestionInfo> _questions;
 @override List<QuestionInfo> get questions {
   if (_questions is EqualUnmodifiableListView) return _questions;
@@ -276,7 +276,7 @@ abstract mixin class _$PendingQuestionCopyWith<$Res> implements $PendingQuestion
   factory _$PendingQuestionCopyWith(_PendingQuestion value, $Res Function(_PendingQuestion) _then) = __$PendingQuestionCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID,@JsonKey(includeIfNull: false) String? displaySessionId, List<QuestionInfo> questions
+ String id, String sessionID, String? displaySessionId, List<QuestionInfo> questions
 });
 
 

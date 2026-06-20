@@ -181,7 +181,6 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     /// Top-most root session this request should be surfaced under (for a
     /// child/sub-agent session's request). Null when unknown; consumers fall
     /// back to [sessionID].
-    @JsonKey(includeIfNull: false)
     required String? displaySessionId,
     required String tool,
     required String description,
@@ -194,7 +193,6 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     required String sessionID,
     /// Root session this request is surfaced under; null ⇒ fall back to
     /// [sessionID].
-    @JsonKey(includeIfNull: false)
     required String? displaySessionId,
     required String reply,
   }) = SesoriPermissionReplied;
@@ -214,7 +212,6 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     /// Top-most root session this request should be surfaced under (for a
     /// child/sub-agent session's request). Null when unknown; consumers fall
     /// back to [sessionID].
-    @JsonKey(includeIfNull: false)
     required String? displaySessionId,
     required List<QuestionInfo> questions,
   }) = SesoriQuestionAsked;
@@ -226,7 +223,6 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     required String sessionID,
     /// Root session this request is surfaced under; null ⇒ fall back to
     /// [sessionID].
-    @JsonKey(includeIfNull: false)
     required String? displaySessionId,
   }) = SesoriQuestionReplied;
 
@@ -237,7 +233,6 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     required String sessionID,
     /// Root session this request is surfaced under; null ⇒ fall back to
     /// [sessionID].
-    @JsonKey(includeIfNull: false)
     required String? displaySessionId,
   }) = SesoriQuestionRejected;
 

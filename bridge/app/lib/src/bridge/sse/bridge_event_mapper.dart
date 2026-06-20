@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../plugin_to_shared_mapping.dart";
+import "../repositories/mappers/plugin_question_mapper.dart";
 
 /// Maps [BridgeSseEvent]s from the plugin to [SesoriSseEvent]s for relay delivery.
 ///
@@ -111,13 +112,12 @@ class BridgeEventMapper {
           ),
         BridgeSsePermissionUpdated() => const SesoriSseEvent.permissionUpdated(),
         BridgeSseQuestionAsked(:final id, :final sessionID, :final displaySessionId, :final questions) =>
-          _tryParseSseEvent({
-            "type": "question.asked",
-            "id": id,
-            "sessionID": sessionID,
-            "displaySessionId": displaySessionId,
-            "questions": questions,
-          }),
+          SesoriSseEvent.questionAsked(
+            id: id,
+            sessionID: sessionID,
+            displaySessionId: displaySessionId,
+            questions: questions.map((q) => q.toSharedQuestionInfo()).toList(),
+          ),
         BridgeSseQuestionReplied(:final requestID, :final sessionID, :final displaySessionId) =>
           SesoriSseEvent.questionReplied(
             requestID: requestID,
