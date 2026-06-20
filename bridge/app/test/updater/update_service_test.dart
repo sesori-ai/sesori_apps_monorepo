@@ -174,6 +174,26 @@ void main() {
     });
   });
 
+  test('dispose during the release check prevents staging and applying', () {
+    late UpdateService service;
+    release.onCheck = () async {
+      // Tear down the subsystem while the awaited release check is in flight.
+      await service.dispose();
+      return _release(version: '2.0.0'); // a newer release that would otherwise apply
+    };
+    service = buildService();
+
+    fakeAsync((async) {
+      service.start();
+      async.flushMicrotasks();
+
+      expect(release.checkCount, 1);
+      // The disposed cycle bailed before any destructive work.
+      expect(install.stageCount, 0);
+      expect(apply.appliedVersions, isEmpty);
+    });
+  });
+
   group('gating', () {
     test('CI environment disables the pipeline', () {
       runStarted(buildService(environment: const {'CI': 'true'}), (async) {

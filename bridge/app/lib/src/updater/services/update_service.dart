@@ -56,6 +56,7 @@ class UpdateService {
   final Map<String, String> _environment;
 
   StreamSubscription<void>? _subscription;
+  bool _disposed = false;
 
   @visibleForTesting
   void Function(String message) emitError = Console.error;
@@ -90,6 +91,7 @@ class UpdateService {
   }
 
   Future<void> dispose() async {
+    _disposed = true;
     await _subscription?.cancel();
     _subscription = null;
   }
@@ -136,6 +138,13 @@ class UpdateService {
       return;
     }
 
+    // Bail before any destructive work if the subsystem was disposed while the
+    // (awaited) release check was in flight — dispose() cancels the schedule but
+    // cannot abort an already-running cycle.
+    if (_disposed) {
+      return;
+    }
+
     // Stage + apply can throw (unexpected stage error, lock/log/attempt write
     // failure). Catch here so a thrown failure is still surfaced to the user
     // and the durable log rather than vanishing into the stream's onError.
@@ -150,6 +159,11 @@ class UpdateService {
         return;
       }
 
+      // Re-check after staging (another await): never apply an in-place swap
+      // once disposed.
+      if (_disposed) {
+        return;
+      }
       final applied = await _updateApplyService.apply(release: release, stagingPath: stagingPath);
       if (applied) {
         // The release is now staged for activation on the next launch. This
