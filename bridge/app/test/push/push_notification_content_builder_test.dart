@@ -10,11 +10,13 @@ void main() {
       const questionEvent = SesoriSseEvent.questionAsked(
         id: "q-1",
         sessionID: "session-a",
+        displaySessionId: null,
         questions: [QuestionInfo(question: "Continue?", header: "Prompt")],
       );
       const permissionEvent = SesoriSseEvent.permissionAsked(
         requestID: "r-1",
         sessionID: "session-a",
+        displaySessionId: null,
         tool: "bash",
         description: "Run command",
       );
@@ -39,6 +41,7 @@ void main() {
       const event = SesoriSseEvent.questionAsked(
         id: "q-1",
         sessionID: "session-a",
+        displaySessionId: null,
         questions: [QuestionInfo(question: "Ship it?", header: "Prompt")],
       );
 
@@ -84,6 +87,32 @@ void main() {
         payload.data?.eventType,
         equals(NotificationEventType.installationUpdateAvailable),
       );
+    });
+  });
+
+  group("extractSessionId", () {
+    test("attributes a child session's permission to its display (root) session", () {
+      const event = SesoriSseEvent.permissionAsked(
+        requestID: "r-1",
+        sessionID: "child",
+        displaySessionId: "root",
+        tool: "bash",
+        description: "Run command",
+      );
+
+      expect(contentBuilder.extractSessionId(event), equals("root"));
+    });
+
+    test("falls back to sessionID when displaySessionId is null", () {
+      const event = SesoriSseEvent.permissionAsked(
+        requestID: "r-1",
+        sessionID: "child",
+        displaySessionId: null,
+        tool: "bash",
+        description: "Run command",
+      );
+
+      expect(contentBuilder.extractSessionId(event), equals("child"));
     });
   });
 }

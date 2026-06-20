@@ -27,10 +27,10 @@ Map<String, dynamic> _$SendPromptRequestToJson(_SendPromptRequest instance) =>
     <String, dynamic>{
       'sessionId': instance.sessionId,
       'parts': instance.parts.map((e) => e.toJson()).toList(),
-      'agent': instance.agent,
-      'model': instance.model?.toJson(),
-      'command': instance.command,
-      'variant': instance.variant?.toJson(),
+      'agent': ?instance.agent,
+      'model': ?instance.model?.toJson(),
+      'command': ?instance.command,
+      'variant': ?instance.variant?.toJson(),
     };
 
 PromptPartText _$PromptPartTextFromJson(Map json) => PromptPartText(
@@ -52,7 +52,7 @@ Map<String, dynamic> _$PromptPartFilePathToJson(PromptPartFilePath instance) =>
     <String, dynamic>{
       'mime': instance.mime,
       'path': instance.path,
-      'filename': instance.filename,
+      'filename': ?instance.filename,
       'type': instance.$type,
     };
 
@@ -67,7 +67,7 @@ Map<String, dynamic> _$PromptPartFileUrlToJson(PromptPartFileUrl instance) =>
     <String, dynamic>{
       'mime': instance.mime,
       'url': instance.url,
-      'filename': instance.filename,
+      'filename': ?instance.filename,
       'type': instance.$type,
     };
 
@@ -82,7 +82,7 @@ Map<String, dynamic> _$PromptPartFileDataToJson(PromptPartFileData instance) =>
     <String, dynamic>{
       'mime': instance.mime,
       'base64': instance.base64,
-      'filename': instance.filename,
+      'filename': ?instance.filename,
       'type': instance.$type,
     };
 

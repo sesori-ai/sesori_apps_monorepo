@@ -25,14 +25,14 @@ _CommandInfo _$CommandInfoFromJson(Map json) => _CommandInfo(
 Map<String, dynamic> _$CommandInfoToJson(_CommandInfo instance) =>
     <String, dynamic>{
       'name': instance.name,
-      'template': instance.template,
-      'hints': instance.hints,
-      'description': instance.description,
-      'agent': instance.agent,
-      'model': instance.model,
-      'provider': instance.provider,
-      'source': _$CommandSourceEnumMap[instance.source],
-      'subtask': instance.subtask,
+      'template': ?instance.template,
+      'hints': ?instance.hints,
+      'description': ?instance.description,
+      'agent': ?instance.agent,
+      'model': ?instance.model,
+      'provider': ?instance.provider,
+      'source': ?_$CommandSourceEnumMap[instance.source],
+      'subtask': ?instance.subtask,
     };
 
 const _$CommandSourceEnumMap = {

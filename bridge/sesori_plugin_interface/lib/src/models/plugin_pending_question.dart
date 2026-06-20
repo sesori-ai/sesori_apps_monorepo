@@ -28,6 +28,9 @@ sealed class PluginPendingQuestion with _$PluginPendingQuestion {
   const factory PluginPendingQuestion({
     required String id,
     required String sessionID,
+    /// Top-most root session this request should be surfaced under (for a
+    /// child/sub-agent session's request). Null when unknown.
+    required String? displaySessionId,
     required List<PluginQuestionInfo> questions,
   }) = _PluginPendingQuestion;
 }

@@ -105,14 +105,30 @@ def release_notes_by_locale(dir)
 end
 
 platform :ios do
-  # Reads the marketing version (e.g. "1.0.6") from pubspec.yaml two dirs up.
+  # Resolves the marketing version (e.g. "1.0.6"). Prefers an injected
+  # VERSION_NAME env so the submit workflow can run the LATEST Fastfile while
+  # still stamping the version that matches the already-uploaded binary (the
+  # submit job checks out the workflow's own ref, not the build's commit, so the
+  # local pubspec may belong to a newer version — see submit-release.yml). Falls
+  # back to reading pubspec.yaml two dirs up for build/standalone invocations.
   # The build-number suffix after `+` is intentionally ignored — store APIs
-  # own the build number, pubspec only owns the version name.
+  # own the build number, pubspec only owns the version name. Fails hard if the
+  # version cannot be determined: defaulting would stamp a wrong version onto a
+  # store release, which is worse than aborting.
   private_lane :_read_marketing_version do
-    pubspec_path = File.join(Dir.pwd, "..", "..", "pubspec.yaml")
-    pubspec_content = File.read(pubspec_path)
-    version_match = pubspec_content.match(/version:\s*(\d+\.\d+\.\d+)/)
-    version_match ? version_match[1] : "1.0.0"
+    injected = ENV["VERSION_NAME"].to_s.strip
+    if injected.empty?
+      # Anchor to __dir__ (the fastlane folder) rather than Dir.pwd so the path
+      # is correct regardless of the cwd fastlane resolves relative paths against.
+      pubspec_path = File.expand_path("../../pubspec.yaml", __dir__)
+      pubspec_content = File.read(pubspec_path)
+      version_match = pubspec_content.match(/version:\s*(\d+\.\d+\.\d+)/)
+      UI.user_error!("Could not determine version name: VERSION_NAME is unset and no " \
+                     "'version: X.Y.Z' was found in #{pubspec_path}") unless version_match
+      version_match[1]
+    else
+      injected
+    end
   end
 
   desc "Print the next TestFlight build number without building or uploading"

@@ -2,6 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "message_part_mapper.dart";
 import "models/sse_event_data.g.dart";
+import "question_info_mapper.dart";
 
 /// Maps OpenCode SSE events and message parts to plugin interface types.
 ///
@@ -9,6 +10,7 @@ import "models/sse_event_data.g.dart";
 /// This class is stateless — all methods are pure transformations.
 class SseEventMapper {
   final MessagePartMapper _messagePartMapper = const MessagePartMapper();
+  final QuestionInfoMapper _questionInfoMapper = const QuestionInfoMapper();
 
   /// Narrows a union's `Object? toJson()` result to the JSON map the bridge
   /// model carries — without a null-assertion (`!`). Known variants always
@@ -19,7 +21,12 @@ class SseEventMapper {
 
   /// Maps an [SseEventData] to a [BridgeSseEvent], or null if the event
   /// type has no plugin representation.
-  BridgeSseEvent? map(SseEventData event) {
+  ///
+  /// [displaySessionId] is the already-resolved root session for permission/
+  /// question events (see [OpenCodePlugin._displaySessionIdForEvent]); it is
+  /// null for all other event types. Kept as a passed-in value so this mapper
+  /// stays a pure, dependency-free transformation.
+  BridgeSseEvent? map(SseEventData event, {String? displaySessionId}) {
     return switch (event) {
       SseServerConnected() => const BridgeSseServerConnected(),
       SseServerHeartbeat() => const BridgeSseServerHeartbeat(),
@@ -82,27 +89,32 @@ class SseEventMapper {
         BridgeSsePermissionAsked(
           requestID: id,
           sessionID: sessionID,
+          displaySessionId: displaySessionId,
           tool: permission,
           description: patterns.join(", "),
         ),
       SsePermissionReplied(:final requestID, :final sessionID, :final reply) => BridgeSsePermissionReplied(
         requestID: requestID,
         sessionID: sessionID,
+        displaySessionId: displaySessionId,
         reply: reply,
       ),
       SsePermissionUpdated() => const BridgeSsePermissionUpdated(),
       SseQuestionAsked(:final id, :final sessionID, :final questions) => BridgeSseQuestionAsked(
         id: id,
         sessionID: sessionID,
-        questions: questions.map((q) => q.toJson()).toList(),
+        displaySessionId: displaySessionId,
+        questions: _questionInfoMapper.mapQuestionInfos(questions),
       ),
       SseQuestionReplied(:final requestID, :final sessionID) => BridgeSseQuestionReplied(
         requestID: requestID,
         sessionID: sessionID,
+        displaySessionId: displaySessionId,
       ),
       SseQuestionRejected(:final requestID, :final sessionID) => BridgeSseQuestionRejected(
         requestID: requestID,
         sessionID: sessionID,
+        displaySessionId: displaySessionId,
       ),
       SseTodoUpdated(:final sessionID) => BridgeSseTodoUpdated(sessionID: sessionID),
       SseProjectUpdated() => const BridgeSseProjectUpdated(),

@@ -2203,6 +2203,39 @@ void main() {
       });
     });
   });
+
+  group("resolveDisplaySessionId", () {
+    test("returns the session itself when it is a root", () {
+      final tracker = ActiveSessionTracker(_fakeRepository());
+      tracker.handleEvent(_sessionCreated("root", "/repo"), null);
+
+      expect(tracker.resolveDisplaySessionId("root"), equals("root"));
+    });
+
+    test("walks the parent chain to the top-most root", () {
+      final tracker = ActiveSessionTracker(_fakeRepository());
+      tracker.handleEvent(_sessionCreated("root", "/repo"), null);
+      tracker.handleEvent(_childSessionCreated("child", "root", "/repo"), null);
+      tracker.handleEvent(_childSessionCreated("grand", "child", "/repo"), null);
+
+      expect(tracker.resolveDisplaySessionId("grand"), equals("root"));
+      expect(tracker.resolveDisplaySessionId("child"), equals("root"));
+    });
+
+    test("returns the session itself when its parent chain is unknown", () {
+      final tracker = ActiveSessionTracker(_fakeRepository());
+
+      expect(tracker.resolveDisplaySessionId("orphan"), equals("orphan"));
+    });
+
+    test("terminates and returns a cycle node when parents form a loop", () {
+      final tracker = ActiveSessionTracker(_fakeRepository());
+      tracker.handleEvent(_childSessionCreated("a", "b", "/repo"), null);
+      tracker.handleEvent(_childSessionCreated("b", "a", "/repo"), null);
+
+      expect(["a", "b"], contains(tracker.resolveDisplaySessionId("a")));
+    });
+  });
 }
 
 SseEventData _sessionCreated(String id, String directory) {

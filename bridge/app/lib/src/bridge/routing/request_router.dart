@@ -28,6 +28,7 @@ import "get_providers_handler.dart";
 import "get_session_diffs_handler.dart";
 import "get_session_handler.dart";
 import "get_session_messages_handler.dart";
+import "get_session_permissions_handler.dart";
 import "get_session_questions_handler.dart";
 import "get_session_statuses_handler.dart";
 import "get_sessions_handler.dart";
@@ -145,8 +146,9 @@ class RequestRouter {
       GetProvidersHandler(providerRepository),
       getAgentsHandler,
       postAgentsHandler,
-      GetSessionQuestionsHandler(plugin),
-      GetProjectQuestionsHandler(plugin),
+      GetSessionQuestionsHandler(questionRepository: questionRepository),
+      GetProjectQuestionsHandler(questionRepository: questionRepository),
+      GetSessionPermissionsHandler(permissionRepository: permissionRepository),
       ReplyToQuestionHandler(questionRepository: questionRepository),
       RejectQuestionHandler(questionRepository: questionRepository),
       ReplyToPermissionHandler(permissionRepository: permissionRepository),

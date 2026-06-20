@@ -21,6 +21,10 @@ sealed class PendingQuestion with _$PendingQuestion {
   const factory PendingQuestion({
     required String id,
     required String sessionID,
+    /// Top-most root session this request should be surfaced under (for a
+    /// child/sub-agent session's request). Null when unknown; consumers fall
+    /// back to [sessionID].
+    required String? displaySessionId,
     required List<QuestionInfo> questions,
   }) = _PendingQuestion;
 

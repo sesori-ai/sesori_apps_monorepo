@@ -48,6 +48,19 @@ extension PluginToolStateMapping on PluginToolState {
   );
 }
 
+/// Maps a plugin-interface [PluginQuestionInfo] to the shared [QuestionInfo]
+/// wire model. Layer-neutral so it can be shared by the SSE path
+/// ([BridgeEventMapper]) and the repository/REST path ([PluginPendingQuestion]).
+extension PluginQuestionInfoMapping on PluginQuestionInfo {
+  QuestionInfo toSharedQuestionInfo() => QuestionInfo(
+    question: question,
+    header: header,
+    options: options.map((o) => QuestionOption(label: o.label, description: o.description)).toList(),
+    multiple: multiple,
+    custom: custom,
+  );
+}
+
 /// Maps [PluginMessagePart] to the shared [MessagePart].
 extension PluginMessagePartMapping on PluginMessagePart {
   MessagePart toShared() => MessagePart(

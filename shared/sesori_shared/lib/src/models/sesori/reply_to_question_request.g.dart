@@ -33,7 +33,7 @@ Map<String, dynamic> _$RejectQuestionRequestToJson(
   _RejectQuestionRequest instance,
 ) => <String, dynamic>{
   'requestId': instance.requestId,
-  'sessionId': instance.sessionId,
+  'sessionId': ?instance.sessionId,
 };
 
 _ReplyAnswer _$ReplyAnswerFromJson(Map json) => _ReplyAnswer(

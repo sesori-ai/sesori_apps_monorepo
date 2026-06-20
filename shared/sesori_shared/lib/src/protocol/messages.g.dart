@@ -21,7 +21,7 @@ Map<String, dynamic> _$RelayRequestToJson(RelayRequest instance) =>
       'method': instance.method,
       'path': instance.path,
       'headers': instance.headers,
-      'body': instance.body,
+      'body': ?instance.body,
       'type': instance.$type,
     };
 
@@ -38,7 +38,7 @@ Map<String, dynamic> _$RelayResponseToJson(RelayResponse instance) =>
       'id': instance.id,
       'status': instance.status,
       'headers': instance.headers,
-      'body': instance.body,
+      'body': ?instance.body,
       'type': instance.$type,
     };
 

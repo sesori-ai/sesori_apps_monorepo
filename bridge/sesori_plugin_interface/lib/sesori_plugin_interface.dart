@@ -23,6 +23,7 @@ export "src/models/plugin_active_session.dart";
 export "src/models/plugin_agent.dart";
 export "src/models/plugin_command.dart";
 export "src/models/plugin_message.dart";
+export "src/models/plugin_pending_permission.dart";
 export "src/models/plugin_pending_question.dart";
 export "src/models/plugin_project.dart";
 export "src/models/plugin_project_activity_summary.dart";

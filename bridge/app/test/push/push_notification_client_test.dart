@@ -83,7 +83,7 @@ void main() {
           "category": "ai_interaction",
           "eventType": "question_asked",
           "sessionId": "session-a",
-          "projectId": null,
+          // projectId omitted: null keys are dropped from wire payloads.
         },
       });
     });

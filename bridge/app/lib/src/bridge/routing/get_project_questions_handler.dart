@@ -1,15 +1,15 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "question_mapper.dart";
+import "../repositories/question_repository.dart";
 import "request_handler.dart";
 
 /// Handles `POST /project/questions` — returns all pending questions for a project.
 class GetProjectQuestionsHandler extends BodyRequestHandler<ProjectIdRequest, PendingQuestionResponse> {
-  final BridgePluginApi _plugin;
+  final QuestionRepository _questionRepository;
 
-  GetProjectQuestionsHandler(this._plugin)
-    : super(
+  GetProjectQuestionsHandler({required QuestionRepository questionRepository})
+    : _questionRepository = questionRepository,
+      super(
         HttpMethod.post,
         "/project/questions",
         fromJson: ProjectIdRequest.fromJson,
@@ -28,9 +28,7 @@ class GetProjectQuestionsHandler extends BodyRequestHandler<ProjectIdRequest, Pe
       throw buildErrorResponse(request, 400, "empty project id");
     }
 
-    final pluginQuestions = await _plugin.getProjectQuestions(projectId: projectId);
-    final questions = mapPluginQuestions(pluginQuestions);
-
+    final questions = await _questionRepository.getProjectQuestions(projectId: projectId);
     return PendingQuestionResponse(data: questions);
   }
 }

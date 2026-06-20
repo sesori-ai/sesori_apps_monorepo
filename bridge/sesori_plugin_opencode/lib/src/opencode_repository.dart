@@ -250,6 +250,12 @@ class OpenCodeRepository {
     );
   }
 
+  /// Lists the sessions in [directory] (or the OpenCode server's cwd instance
+  /// when null). [roots] limits the result to root sessions.
+  Future<List<Session>> listSessions({required String? directory, required bool roots}) {
+    return _api.listSessions(directory: directory, roots: roots);
+  }
+
   Future<List<Session>> getSessions({required String worktree}) async {
     final (standardSessions, globalSessions) = await wait2(
       _api.listSessions(directory: worktree, roots: true),

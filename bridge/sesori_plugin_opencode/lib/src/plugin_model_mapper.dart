@@ -4,17 +4,24 @@ import "message_part_mapper.dart";
 import "models/openapi/agent.g.dart";
 import "models/openapi/assistant_message.g.dart";
 import "models/openapi/message.g.dart";
+import "models/openapi/permission_request.g.dart";
 import "models/openapi/project.g.dart";
 import "models/openapi/question_request.g.dart";
 import "models/openapi/session.g.dart";
 import "models/openapi/session_messages_response_item.g.dart";
 import "models/openapi/session_status.g.dart";
 import "models/openapi/user_message.g.dart";
+import "question_info_mapper.dart";
 
 class PluginModelMapper {
-  const PluginModelMapper({required MessagePartMapper messagePartMapper}) : _messagePartMapper = messagePartMapper;
+  const PluginModelMapper({
+    required MessagePartMapper messagePartMapper,
+    QuestionInfoMapper questionInfoMapper = const QuestionInfoMapper(),
+  }) : _messagePartMapper = messagePartMapper,
+       _questionInfoMapper = questionInfoMapper;
 
   final MessagePartMapper _messagePartMapper;
+  final QuestionInfoMapper _questionInfoMapper;
 
   PluginSession mapSession(Session session, {required String projectID}) {
     final summary = session.summary;
@@ -88,23 +95,26 @@ class PluginModelMapper {
     );
   }
 
-  PluginPendingQuestion mapQuestion(QuestionRequest question) {
+  PluginPendingQuestion mapQuestion(QuestionRequest question, {required String? displaySessionId}) {
     return PluginPendingQuestion(
       id: question.id,
       sessionID: question.sessionID,
-      questions: question.questions
-          .map(
-            (info) => PluginQuestionInfo(
-              question: info.question,
-              header: info.header,
-              options: info.options
-                  .map((option) => PluginQuestionOption(label: option.label, description: option.description))
-                  .toList(),
-              multiple: info.multiple ?? false,
-              custom: info.custom ?? true,
-            ),
-          )
-          .toList(),
+      displaySessionId: displaySessionId,
+      questions: _questionInfoMapper.mapQuestionInfos(question.questions),
+    );
+  }
+
+  PluginPendingPermission mapPermission(PermissionRequest permission, {required String? displaySessionId}) {
+    // OpenCode's permission payload carries `permission` (the tool/permission
+    // identifier) and the requested `patterns`; there is no separate
+    // `description`, so the requested patterns stand in for the human-readable
+    // detail (mirrors the SSE mapper).
+    return PluginPendingPermission(
+      id: permission.id,
+      sessionID: permission.sessionID,
+      displaySessionId: displaySessionId,
+      tool: permission.permission,
+      description: permission.patterns.join(", "),
     );
   }
 
