@@ -6,9 +6,13 @@ $ErrorActionPreference = 'Stop'
 
 $RepoOwner  = 'sesori-ai'
 $RepoName   = 'sesori_apps_monorepo'
+$RepoBase   = "https://github.com/$RepoOwner/$RepoName"
 $ReleasesApiUrl = "https://api.github.com/repos/$RepoOwner/$RepoName/releases"
-$ReleasesPerPage = 100
-$ReleasesMaxPages = 10
+# Fallback-only knobs: scanning recent releases is a cold path used only when the
+# latest release lacks this platform's asset. Kept small because the release
+# pipeline prunes internal pre-releases to a single rolling object.
+$ReleasesPerPage = 30
+$ReleasesMaxPages = 3
 $BinaryName = 'sesori-bridge.exe'
 $InstallRoot = Join-Path $env:LOCALAPPDATA 'sesori'
 $BinDir      = Join-Path $InstallRoot 'bin'
@@ -57,7 +61,90 @@ if ($arch -notin @('x64', 'arm64')) {
 }
 
 $ArchiveName   = "sesori-bridge-windows-$arch.zip"
-function Resolve-BridgeRelease {
+# Returns the Location header of the first (non-followed) redirect for $Url, or
+# $null. Used to learn the version from GitHub's latest -> versioned-download
+# redirect without downloading the asset body.
+function Get-RedirectLocation {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Url
+    )
+
+    $request = [System.Net.WebRequest]::Create($Url)
+    $request.Method = 'HEAD'
+    $request.AllowAutoRedirect = $false
+    $request.UserAgent = 'sesori-bridge-installer'
+    try {
+        $response = $request.GetResponse()
+        try {
+            return $response.Headers['Location']
+        } finally {
+            $response.Close()
+        }
+    } catch [System.Net.WebException] {
+        $errorResponse = $_.Exception.Response
+        if ($errorResponse) {
+            try {
+                return $errorResponse.Headers['Location']
+            } finally {
+                $errorResponse.Close()
+            }
+        }
+        return $null
+    }
+}
+
+# Returns $true when a HEAD request to $Url (following redirects) resolves to 200.
+function Test-RemoteAssetExists {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Url
+    )
+
+    try {
+        $response = Invoke-WebRequest -Uri $Url -Method Head -UseBasicParsing -Headers @{ 'User-Agent' = 'sesori-bridge-installer' }
+        return $response.StatusCode -eq 200
+    } catch {
+        return $null
+    }
+}
+
+# Resolver (primary): GitHub serves an always-latest static asset at
+# releases/latest/download/<file>, redirecting through the versioned download
+# path. Read the version from that redirect, confirm the asset exists, and
+# publish the resolution contract. Returns $null when the latest release does not
+# carry this platform's asset, so the coordinator can fall back to a scan.
+function Resolve-BridgeReleaseViaLatest {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ArchiveName
+    )
+
+    $latestAssetUrl = "$RepoBase/releases/latest/download/$ArchiveName"
+    $location = Get-RedirectLocation -Url $latestAssetUrl
+    if (-not $location -or $location -notmatch 'releases/download/(v[0-9]+\.[0-9]+\.[0-9]+)/') {
+        return $null
+    }
+
+    $tagName = $Matches[1]
+    $assetUrl = "$RepoBase/releases/download/$tagName/$ArchiveName"
+    $checksumsUrl = "$RepoBase/releases/download/$tagName/checksums.txt"
+    if (-not (Test-RemoteAssetExists -Url $assetUrl)) {
+        return $null
+    }
+
+    return [pscustomobject]@{
+        Version = $tagName.Substring(1)
+        TagName = $tagName
+        AssetUrl = $assetUrl
+        ChecksumsUrl = $checksumsUrl
+    }
+}
+
+# Resolver (fallback): used only when the latest release lacks this platform's
+# asset. Scans recent releases and selects the newest stable one carrying both
+# the asset and checksums.txt. Returns $null when none qualifies.
+function Resolve-BridgeReleaseViaScan {
     param(
         [Parameter(Mandatory = $true)]
         [string]$ArchiveName
@@ -107,21 +194,35 @@ function Resolve-BridgeRelease {
         return $eligible | Sort-Object Version -Descending | Select-Object -First 1
     }
 
-    throw "Could not resolve a published bridge release for $ArchiveName."
+    return $null
 }
 
-try {
-    $Release = Resolve-BridgeRelease -ArchiveName $ArchiveName
-} catch {
-    $noReleaseFound = $_.Exception.Message -like '*Could not resolve a published bridge release*'
-    if ($arch -eq 'arm64' -and $noReleaseFound) {
-        Write-Warning "No native arm64 bridge release found yet; falling back to the x64 build (runs under emulation on Windows arm64). Re-run this installer after a native arm64 release to switch to the native build."
-        $arch = 'x64'
-        $ArchiveName = "sesori-bridge-windows-$arch.zip"
-        $Release = Resolve-BridgeRelease -ArchiveName $ArchiveName
-    } else {
-        throw
+# Coordinator: resolves the release to install via two peer strategies that
+# return the same shape (Version/TagName/AssetUrl/ChecksumsUrl). The
+# always-latest path is tried first; the older-release scan is the fallback.
+function Resolve-BridgeRelease {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ArchiveName
+    )
+
+    $release = Resolve-BridgeReleaseViaLatest -ArchiveName $ArchiveName
+    if (-not $release) {
+        $release = Resolve-BridgeReleaseViaScan -ArchiveName $ArchiveName
     }
+    return $release
+}
+
+$Release = Resolve-BridgeRelease -ArchiveName $ArchiveName
+if (-not $Release -and $arch -eq 'arm64') {
+    Write-Warning "No native arm64 bridge release found yet; falling back to the x64 build (runs under emulation on Windows arm64). Re-run this installer after a native arm64 release to switch to the native build."
+    $arch = 'x64'
+    $ArchiveName = "sesori-bridge-windows-$arch.zip"
+    $Release = Resolve-BridgeRelease -ArchiveName $ArchiveName
+}
+if (-not $Release) {
+    Write-Error "Could not resolve a published bridge release for $ArchiveName."
+    exit 1
 }
 $AssetUrl = $Release.AssetUrl
 $ChecksumsUrl = $Release.ChecksumsUrl

@@ -10,14 +10,30 @@ SYMLINK_DIR="${HOME}/.local/bin"
 SYMLINK="${SYMLINK_DIR}/sesori-bridge"
 MANAGED_MANIFEST="${INSTALL_DIR}/.managed-runtime.json"
 GITHUB_REPO="sesori-ai/sesori_apps_monorepo"
-GITHUB_RELEASES_API_URL="https://api.github.com/repos/${GITHUB_REPO}/releases"
-GITHUB_RELEASES_PER_PAGE=100
-GITHUB_RELEASES_MAX_PAGES=10
+# Base hosts are overridable for GitHub Enterprise or testing (see Bun/uv installers).
+GITHUB="${GITHUB:-https://github.com}"
+GITHUB_API="${GITHUB_API:-https://api.github.com}"
+# Fallback-only knobs: scanning recent releases is a cold path used only when the
+# latest release is missing this platform's asset. Kept small because the release
+# pipeline prunes internal pre-releases to a single rolling object.
+GITHUB_RELEASES_API_URL="${GITHUB_API}/repos/${GITHUB_REPO}/releases"
+GITHUB_RELEASES_PER_PAGE=30
+GITHUB_RELEASES_MAX_PAGES=3
+
+# Populated by resolve_release(): the version (without leading "v") and the
+# archive/checksums download URLs for the release being installed.
+RESOLVED_VERSION=""
+RESOLVED_ARCHIVE_URL=""
+RESOLVED_CHECKSUMS_URL=""
 
 TMPDIR_WORK=""
+TMPDIR_RELEASES=""
 cleanup() {
     if [ -n "${TMPDIR_WORK}" ] && [ -d "${TMPDIR_WORK}" ]; then
         rm -rf "${TMPDIR_WORK}"
+    fi
+    if [ -n "${TMPDIR_RELEASES}" ] && [ -d "${TMPDIR_RELEASES}" ]; then
+        rm -rf "${TMPDIR_RELEASES}"
     fi
 }
 trap cleanup EXIT
@@ -75,77 +91,124 @@ fetch_text() {
     fi
 }
 
-resolve_release_contract() {
-    local filename="${1}"
-    if ! command -v python3 > /dev/null 2>&1; then
-        echo "python3 is required to resolve the latest bridge release." >&2
+# Emits the HTTP response headers (including any redirect hops) for a HEAD
+# request to ${url}, and returns non-zero if the URL ultimately 404s/errors.
+# Used to learn the resolved version from GitHub's latest -> versioned-download
+# redirect without downloading the asset body.
+fetch_redirect_headers() {
+    local url="${1}"
+    if command -v curl > /dev/null 2>&1; then
+        curl -fsSL -I -H "User-Agent: sesori-bridge-installer" "${url}"
+    elif command -v wget > /dev/null 2>&1; then
+        wget -S --spider --header="User-Agent: sesori-bridge-installer" "${url}" 2>&1
+    else
+        echo "Neither curl nor wget found. Please install one and retry." >&2
         exit 1
     fi
-    local releases_json='[]'
-    local page_json
-    local page
-    for page in $(seq 1 "${GITHUB_RELEASES_MAX_PAGES}"); do
-        page_json="$(fetch_text "${GITHUB_RELEASES_API_URL}?per_page=${GITHUB_RELEASES_PER_PAGE}&page=${page}")"
-        releases_json="$(RELEASES_JSON="${releases_json}" PAGE_JSON="${page_json}" python3 -c '
-import json, os
+}
 
-releases = json.loads(os.environ["RELEASES_JSON"])
-page = json.loads(os.environ["PAGE_JSON"])
-if not isinstance(releases, list) or not isinstance(page, list):
+# Pure transformation: reads HTTP header text on stdin and prints the X.Y.Z
+# version embedded in a GitHub "releases/download/vX.Y.Z/" redirect Location.
+parse_version_from_headers() {
+    sed -nE 's#.*/releases/download/v([0-9]+\.[0-9]+\.[0-9]+)/.*#\1#p' | head -n 1
+}
+
+# Resolver (primary): GitHub serves an always-latest static asset at
+# releases/latest/download/<file>, redirecting through the versioned download
+# path. Probe it to confirm the asset exists and to learn the version, then
+# publish the resolution contract. Returns non-zero when the latest release does
+# not carry this platform's asset, so the caller can fall back to a scan.
+resolve_release_via_latest() {
+    local filename="${1}"
+    local latest_archive_url="${GITHUB}/${GITHUB_REPO}/releases/latest/download/${filename}"
+
+    local headers
+    headers="$(fetch_redirect_headers "${latest_archive_url}")" || return 1
+
+    local version
+    version="$(printf '%s\n' "${headers}" | parse_version_from_headers)"
+
+    if [ -n "${version}" ]; then
+        RESOLVED_VERSION="${version}"
+        RESOLVED_ARCHIVE_URL="${GITHUB}/${GITHUB_REPO}/releases/download/v${version}/${filename}"
+        RESOLVED_CHECKSUMS_URL="${GITHUB}/${GITHUB_REPO}/releases/download/v${version}/checksums.txt"
+    else
+        # The asset exists but the version was not parseable from the redirect;
+        # download via the always-latest URLs and resolve the version from the
+        # installed binary after extraction.
+        RESOLVED_VERSION=""
+        RESOLVED_ARCHIVE_URL="${latest_archive_url}"
+        RESOLVED_CHECKSUMS_URL="${GITHUB}/${GITHUB_REPO}/releases/latest/download/checksums.txt"
+    fi
+    return 0
+}
+
+# Resolver (fallback): used only when the latest release lacks this platform's
+# asset. Pages recent releases into temp FILES (never argv/env, to avoid the
+# Linux MAX_ARG_STRLEN limit that broke the previous implementation) and selects
+# the newest stable release that carries both the asset and checksums.txt.
+resolve_release_via_scan() {
+    local filename="${1}"
+    if ! command -v python3 > /dev/null 2>&1; then
+        echo "The latest release is missing ${filename}, and resolving an older release requires python3, which was not found." >&2
+        echo "Install python3 and retry, or report this at https://github.com/${GITHUB_REPO}/issues." >&2
+        exit 1
+    fi
+
+    TMPDIR_RELEASES="$(mktemp -d)"
+    local page page_file page_count
+    local page_files=()
+    for page in $(seq 1 "${GITHUB_RELEASES_MAX_PAGES}"); do
+        page_file="${TMPDIR_RELEASES}/releases-page-${page}.json"
+        if ! fetch_text "${GITHUB_RELEASES_API_URL}?per_page=${GITHUB_RELEASES_PER_PAGE}&page=${page}" > "${page_file}"; then
+            echo "Unexpected release metadata returned by GitHub." >&2
+            exit 1
+        fi
+        page_count="$(python3 -c '
+import json, sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    page = json.load(handle)
+if not isinstance(page, list):
     raise SystemExit(1)
-print(json.dumps(releases + page))
-')" || {
+print(len(page))
+' "${page_file}")" || {
             echo "Unexpected release metadata returned by GitHub." >&2
             exit 1
         }
-        if [ "$(PAGE_JSON="${page_json}" python3 -c 'import json, os; page = json.loads(os.environ["PAGE_JSON"]); print(len(page))')" -lt "${GITHUB_RELEASES_PER_PAGE}" ]; then
+        page_files+=("${page_file}")
+        if [ "${page_count}" -lt "${GITHUB_RELEASES_PER_PAGE}" ]; then
             break
         fi
     done
-    local resolved
-resolved="$(RELEASES_JSON="${releases_json}" python3 -c '
-import json, os, sys
+
+    local tag
+    tag="$(python3 -c '
+import json, sys
 from functools import cmp_to_key
 import re
 
 STABLE_VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
 def compare_versions(a: str, b: str) -> int:
-    def split_pre(v: str):
-        if "-" in v:
-            core, pre = v.split("-", 1)
-        else:
-            core, pre = v, None
-        return core, pre
-
-    def parse_core(v: str):
-        return [int(part) for part in v.split(".")]
-
-    a_core, a_pre = split_pre(a)
-    b_core, b_pre = split_pre(b)
-    a_parts = parse_core(a_core)
-    b_parts = parse_core(b_core)
-
+    a_parts = [int(part) for part in a.split(".")]
+    b_parts = [int(part) for part in b.split(".")]
     for left, right in zip(a_parts, b_parts):
         if left != right:
             return 1 if left > right else -1
-
     if len(a_parts) != len(b_parts):
         return 1 if len(a_parts) > len(b_parts) else -1
-
-    if a_pre is None and b_pre is None:
-        return 0
-    if a_pre is None:
-        return 1
-    if b_pre is None:
-        return -1
     return 0
 
 def is_valid_stable_version(v: str) -> bool:
     return bool(STABLE_VERSION_RE.match(v))
 
 filename = sys.argv[1]
-releases = json.loads(os.environ["RELEASES_JSON"])
+releases = []
+for path in sys.argv[2:]:
+    with open(path, encoding="utf-8") as handle:
+        releases.extend(json.load(handle))
+
 eligible = []
 for release in releases:
     tag_name = release.get("tag_name", "")
@@ -157,35 +220,36 @@ for release in releases:
         continue
     if not is_valid_stable_version(version):
         continue
-    assets = {
-        asset.get("name"): asset.get("browser_download_url")
-        for asset in release.get("assets", [])
-    }
-    asset_url = assets.get(filename)
-    checksums_url = assets.get("checksums.txt")
-    if asset_url and checksums_url:
-        eligible.append((version, tag_name, asset_url, checksums_url))
+    asset_names = {asset.get("name") for asset in release.get("assets", [])}
+    if filename in asset_names and "checksums.txt" in asset_names:
+        eligible.append((version, tag_name))
 
 if eligible:
     eligible.sort(key=cmp_to_key(lambda left, right: compare_versions(left[0], right[0])), reverse=True)
-    _, tag_name, asset_url, checksums_url = eligible[0]
-    print(tag_name)
-    print(asset_url)
-    print(checksums_url)
+    print(eligible[0][1])
     sys.exit(0)
 sys.exit(1)
-' "${filename}")" || {
+' "${filename}" "${page_files[@]}")" || {
         echo "Could not resolve a published bridge release for ${filename}." >&2
         exit 1
     }
-    set -- ${resolved}
-    if [ "$#" -ne 3 ]; then
-        echo "Unexpected release metadata returned by GitHub." >&2
-        exit 1
+
+    RESOLVED_VERSION="${tag#v}"
+    RESOLVED_ARCHIVE_URL="${GITHUB}/${GITHUB_REPO}/releases/download/${tag}/${filename}"
+    RESOLVED_CHECKSUMS_URL="${GITHUB}/${GITHUB_REPO}/releases/download/${tag}/checksums.txt"
+    return 0
+}
+
+# Coordinator: resolves the release to install via two peer strategies that
+# publish the same contract (RESOLVED_VERSION / RESOLVED_ARCHIVE_URL /
+# RESOLVED_CHECKSUMS_URL). The always-latest path is tried first; the
+# older-release scan is the fallback.
+resolve_release() {
+    local filename="${1}"
+    if resolve_release_via_latest "${filename}"; then
+        return 0
     fi
-    RESOLVED_RELEASE_TAG="${1}"
-    RESOLVED_ARCHIVE_URL="${2}"
-    RESOLVED_CHECKSUMS_URL="${3}"
+    resolve_release_via_scan "${filename}"
 }
 
 sha256_file() {
@@ -317,19 +381,24 @@ check_conflicts() {
 }
 
 main() {
-    local os arch filename archive_url checksums_url
+    local os arch filename
 
     os="$(detect_os)"
     arch="$(detect_arch)"
     filename="sesori-bridge-${os}-${arch}.tar.gz"
-    resolve_release_contract "${filename}"
-    archive_url="${RESOLVED_ARCHIVE_URL}"
-    checksums_url="${RESOLVED_CHECKSUMS_URL}"
+    resolve_release "${filename}"
+
+    local release_label
+    if [ -n "${RESOLVED_VERSION}" ]; then
+        release_label="v${RESOLVED_VERSION}"
+    else
+        release_label="latest"
+    fi
 
     echo "Sesori Bridge installer"
     echo "======================="
     echo "Platform     : ${os}/${arch}"
-    echo "Release      : ${RESOLVED_RELEASE_TAG}"
+    echo "Release      : ${release_label}"
     echo "Install root : ${INSTALL_DIR}"
     echo "Symlink      : ${SYMLINK}"
     echo ""
@@ -339,8 +408,8 @@ main() {
     local archive="${TMPDIR_WORK}/${filename}"
     local checksums="${TMPDIR_WORK}/checksums.txt"
 
-    download "${archive_url}" "${archive}"
-    download "${checksums_url}" "${checksums}"
+    download "${RESOLVED_ARCHIVE_URL}" "${archive}"
+    download "${RESOLVED_CHECKSUMS_URL}" "${checksums}"
 
     echo "[2/4] Verifying checksum..."
     verify_checksum "${archive}" "${checksums}" "${filename}" "${os}"
@@ -351,13 +420,24 @@ main() {
     tar -xzf "${archive}" -C "${INSTALL_DIR}"
 
     chmod +x "${BINARY}"
-    resolved_version="${RESOLVED_RELEASE_TAG#v}"
-    printf '{"version":"%s"}\n' "${resolved_version}" > "${MANAGED_MANIFEST}"
 
     if [ "${os}" = "macos" ]; then
         xattr -dr com.apple.quarantine "${INSTALL_DIR}" 2>/dev/null || true
         xattr -dr com.apple.provenance "${INSTALL_DIR}" 2>/dev/null || true
     fi
+
+    # The version comes from the resolved release; if the redirect could not be
+    # parsed (rare), fall back to the freshly installed binary. Quarantine xattrs
+    # are stripped above first so the binary can run on macOS.
+    local resolved_version="${RESOLVED_VERSION}"
+    if [ -z "${resolved_version}" ]; then
+        resolved_version="$("${BINARY}" --version 2>/dev/null | head -n 1 | tr -d '[:space:]')"
+    fi
+    if [ -z "${resolved_version}" ]; then
+        echo "Could not determine the installed bridge version." >&2
+        exit 1
+    fi
+    printf '{"version":"%s"}\n' "${resolved_version}" > "${MANAGED_MANIFEST}"
 
     echo "[4/4] Creating symlink..."
     create_symlink "${BINARY}" "${SYMLINK}"
