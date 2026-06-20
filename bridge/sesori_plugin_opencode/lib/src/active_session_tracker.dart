@@ -3,6 +3,7 @@ import "package:sesori_shared/sesori_shared.dart" show ActiveSession, ProjectAct
 
 import "models/openapi/permission_request.g.dart";
 import "models/openapi/question_request.g.dart";
+import "models/openapi/session.g.dart";
 import "models/openapi/session_status.g.dart";
 import "models/sse_event_data.g.dart";
 import "opencode_repository.dart";
@@ -28,10 +29,7 @@ class ActiveSessionTracker {
   ActiveSessionTracker(this._repository);
 
   Future<void> coldStart() async {
-    final (projects, sessions) = await (
-      _repository.getProjects(),
-      _repository.api.listSessions(directory: null, roots: false),
-    ).wait;
+    final projects = await _repository.getProjects();
 
     _projectWorktrees
       ..clear()
@@ -41,9 +39,28 @@ class ActiveSessionTracker {
     _sessionDirectories.clear();
     _sessionParentIds.clear();
 
+    // List sessions per worktree. An unscoped `listSessions(directory: null)`
+    // only targets the OpenCode server's cwd instance, so a session in any other
+    // project worktree — and its parent attribution — would be missing on a cold
+    // start, leaving a child session's parent unknown so its pending input never
+    // rolls up to (or surfaces on) its root until the session is opened later.
+    // Fall back to the cwd when no worktrees are known yet (e.g. a fresh
+    // OpenCode install whose project list is still empty).
+    final sessionQueryDirectories = _projectWorktrees.isEmpty ? <String?>[null] : _projectWorktrees.toList();
+    final sessionLists = await Future.wait(
+      sessionQueryDirectories.map((directory) async {
+        try {
+          return await _repository.api.listSessions(directory: directory, roots: false);
+        } catch (e) {
+          Log.w("coldStart: failed to list sessions for ${directory ?? "<cwd>"}: $e");
+          return <Session>[];
+        }
+      }),
+    );
+
     // Build directory lookup and parent ID mapping from fetched sessions.
     final sessionDirectories = <String, String>{};
-    for (final session in sessions) {
+    for (final session in sessionLists.expand((sessions) => sessions)) {
       sessionDirectories[session.id] = session.directory;
       _sessionParentIds[session.id] = session.parentID;
     }
@@ -368,6 +385,11 @@ class ActiveSessionTracker {
   String? resolveProjectWorktree({required String directory}) {
     return _resolveWorktree(directory);
   }
+
+  /// Project worktree directories discovered at cold start. Exposed so the
+  /// service can hydrate pending input per worktree — an unscoped query only
+  /// covers the OpenCode server's cwd instance.
+  Set<String> get projectWorktrees => Set.unmodifiable(_projectWorktrees);
 
   /// Returns the current status of every session the tracker considers
   /// active (busy or retry).

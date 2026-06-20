@@ -513,20 +513,42 @@ class OpenCodeService {
   /// abort cold start — [ActiveSessionTracker.coldStart] succeeds
   /// independently.
   Future<void> _hydratePendingInput() async {
+    // `directory: null` only covers the OpenCode server's cwd instance, so
+    // hydrate every known project worktree. Fall back to the cwd when no
+    // worktrees are known yet (e.g. the project list failed to load).
+    final directories = tracker.projectWorktrees.isEmpty ? <String?>{null} : tracker.projectWorktrees;
     await (
-      repository
-          .getPendingQuestions(directory: null)
-          .then((questions) => tracker.populatePendingQuestions(questions: questions))
-          .catchError((Object e, StackTrace st) {
-            Log.w("coldStart: failed to hydrate pending questions", e, st);
-          }),
-      repository
-          .getPendingPermissions(directory: null)
-          .then((permissions) => tracker.populatePendingPermissions(permissions: permissions))
-          .catchError((Object e, StackTrace st) {
-            Log.w("coldStart: failed to hydrate pending permissions", e, st);
-          }),
+      _hydratePendingQuestions(directories),
+      _hydratePendingPermissions(directories),
     ).wait;
+  }
+
+  Future<void> _hydratePendingQuestions(Iterable<String?> directories) async {
+    final all = <QuestionRequest>[];
+    await Future.wait(
+      directories.map((directory) async {
+        try {
+          all.addAll(await repository.getPendingQuestions(directory: directory));
+        } catch (e, st) {
+          Log.w("coldStart: failed to hydrate pending questions for ${directory ?? "<cwd>"}", e, st);
+        }
+      }),
+    );
+    tracker.populatePendingQuestions(questions: all);
+  }
+
+  Future<void> _hydratePendingPermissions(Iterable<String?> directories) async {
+    final all = <PermissionRequest>[];
+    await Future.wait(
+      directories.map((directory) async {
+        try {
+          all.addAll(await repository.getPendingPermissions(directory: directory));
+        } catch (e, st) {
+          Log.w("coldStart: failed to hydrate pending permissions for ${directory ?? "<cwd>"}", e, st);
+        }
+      }),
+    );
+    tracker.populatePendingPermissions(permissions: all);
   }
 
   void reset() {
