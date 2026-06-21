@@ -63,12 +63,20 @@ const String openCodeLoopbackHost = "127.0.0.1";
 /// Resolves the host the bridge connects to (HTTP/SSE/health) from the host
 /// OpenCode binds to.
 ///
-/// A wildcard bind address (`0.0.0.0` / `::`) is not a connectable client
-/// target, so the bridge reaches the server over loopback instead. Any other
-/// value (loopback or a concrete interface address) is reachable directly and
-/// is used verbatim.
-String resolveOpenCodeConnectHost({required String bindHost}) =>
-    (bindHost == "0.0.0.0" || bindHost == "::") ? openCodeLoopbackHost : bindHost;
+/// A wildcard bind address is not a connectable client target, so the bridge
+/// reaches the server over loopback in the **same address family** to avoid
+/// failing on IPv6-only sockets: `0.0.0.0` -> `127.0.0.1`, `::` -> `::1`. Any
+/// other value (loopback or a concrete interface address) is reachable directly
+/// and is used verbatim.
+String resolveOpenCodeConnectHost({required String bindHost}) {
+  if (bindHost == "0.0.0.0") {
+    return openCodeLoopbackHost;
+  }
+  if (bindHost == "::") {
+    return "::1";
+  }
+  return bindHost;
+}
 
 /// Maximum crash-restarts attempted within one failure episode before the
 /// monitor reports `PluginFailed`.

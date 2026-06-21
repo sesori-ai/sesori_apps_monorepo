@@ -178,12 +178,37 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       throw const PluginConfigException("The --opencode-no-password flag cannot be used with --opencode-password.");
     }
     // The host is used in both modes (bind target when managed, connect target
-    // when attaching), so reject an empty/whitespace value up front — it would
-    // otherwise produce a malformed server URL deep in the lifecycle.
-    if ((config.value("host") ?? "").trim().isEmpty) {
+    // when attaching), so validate it up front — a malformed value would
+    // otherwise only fail deep in start(), after the startup mutex has run and
+    // the single-live-bridge replacement may have stopped a healthy resident.
+    final host = (config.value("host") ?? "").trim();
+    if (host.isEmpty) {
       throw const PluginConfigException("The --opencode-host option cannot be empty.");
     }
+    // Reject scheme/path/port typos like "http://127.0.0.1": the host is built
+    // into server URLs, so it must be a bare host or IP literal.
+    try {
+      Uri(scheme: "http", host: host, port: 1);
+    } on FormatException {
+      throw PluginConfigException("The --opencode-host option must be a bare host or IP, got '$host'.");
+    }
+    // A non-loopback managed bind with auth disabled would expose an
+    // unauthenticated OpenCode server on the network. Block that combination;
+    // a wildcard/LAN bind with the default Basic-auth password stays allowed,
+    // and --opencode-no-password on a loopback host stays allowed.
+    if (!config.flag("no-auto-start") && config.flag("no-password") && !_isLoopbackHost(host)) {
+      throw PluginConfigException(
+        "The --opencode-no-password flag cannot be combined with a non-loopback --opencode-host "
+        "('$host') when auto-starting: it would expose an unauthenticated OpenCode server on the "
+        "network. Use a loopback host or keep authentication enabled.",
+      );
+    }
   }
+
+  /// Whether [host] only accepts connections from the local machine, so
+  /// disabling authentication does not expose the server to the network.
+  static bool _isLoopbackHost(String host) =>
+      host == "localhost" || host == "::1" || host.startsWith("127.");
 
   @override
   String get id => "opencode";

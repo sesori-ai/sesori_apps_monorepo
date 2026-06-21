@@ -70,8 +70,8 @@ void main() {
       expect(resolveOpenCodeConnectHost(bindHost: "0.0.0.0"), equals("127.0.0.1"));
     });
 
-    test("falls back to loopback for the IPv6 wildcard", () {
-      expect(resolveOpenCodeConnectHost(bindHost: "::"), equals("127.0.0.1"));
+    test("maps the IPv6 wildcard to IPv6 loopback to preserve address family", () {
+      expect(resolveOpenCodeConnectHost(bindHost: "::"), equals("::1"));
     });
 
     test("returns loopback unchanged", () {

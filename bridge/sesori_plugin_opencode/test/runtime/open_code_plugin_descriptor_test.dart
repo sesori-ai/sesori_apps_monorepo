@@ -92,6 +92,46 @@ void main() {
         throwsA(isA<PluginConfigException>()),
       );
     });
+
+    test("validateConfig rejects a host that carries a scheme or path", () {
+      expect(
+        () => descriptor.validateConfig(
+          const PluginConfig(values: {"no-auto-start": false, "port": null, "host": "http://127.0.0.1", "password": "", "bin": "opencode", "no-password": false}),
+        ),
+        throwsA(isA<PluginConfigException>()),
+      );
+    });
+
+    test("validateConfig rejects --no-password with a non-loopback managed bind", () {
+      // 0.0.0.0 + auth disabled would expose an unauthenticated server.
+      expect(
+        () => descriptor.validateConfig(
+          const PluginConfig(values: {"no-auto-start": false, "port": null, "host": "0.0.0.0", "password": "", "bin": "opencode", "no-password": true}),
+        ),
+        throwsA(isA<PluginConfigException>()),
+      );
+      // Loopback + no-password is fine (not network-exposed).
+      expect(
+        () => descriptor.validateConfig(
+          const PluginConfig(values: {"no-auto-start": false, "port": null, "host": "127.0.0.1", "password": "", "bin": "opencode", "no-password": true}),
+        ),
+        returnsNormally,
+      );
+      // 0.0.0.0 with auth (no --no-password) stays allowed — the Docker case.
+      expect(
+        () => descriptor.validateConfig(
+          const PluginConfig(values: {"no-auto-start": false, "port": null, "host": "0.0.0.0", "password": "", "bin": "opencode", "no-password": false}),
+        ),
+        returnsNormally,
+      );
+      // Attach mode does not bind, so a non-loopback host + no-password is fine.
+      expect(
+        () => descriptor.validateConfig(
+          const PluginConfig(values: {"no-auto-start": true, "port": "4096", "host": "10.0.0.5", "password": "", "bin": "opencode", "no-password": true}),
+        ),
+        returnsNormally,
+      );
+    });
   });
 
   group("OpenCodePluginDescriptor.start (managed)", () {
@@ -197,6 +237,34 @@ void main() {
       final plugin = await descriptor().start(concreteHost);
 
       expect(plugin.serverUrl, equals("http://10.0.0.5:51000"));
+
+      await plugin.shutdown(budget: null);
+    });
+
+    test("binding the IPv6 wildcard connects over IPv6 loopback", () async {
+      final wildcardHost = _FakeHost(
+        config: const PluginConfig(
+          values: {
+            "port": null,
+            "host": "::",
+            "no-auto-start": false,
+            "password": "",
+            "bin": "/bin/opencode",
+            "no-password": false,
+          },
+        ),
+      );
+      wildcardHost.ports.defaultBindable = true;
+
+      final plugin = await descriptor().start(wildcardHost);
+
+      // :: resolves to ::1 (same address family), bracketed in the URL.
+      expect(plugin.serverUrl, equals("http://[::1]:51000"));
+      final record = wildcardHost.ownershipRecord("owner-current");
+      expect(
+        record!["openCodeArgs"],
+        equals(<String>["serve", "--port", "51000", "--hostname", "::"]),
+      );
 
       await plugin.shutdown(budget: null);
     });
