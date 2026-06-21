@@ -172,13 +172,19 @@ Future<SpawnedProcess> spawnOpenCodeProcess({
   required PluginHost host,
   required String executablePath,
   required int port,
-  required String password,
+  required String? password,
   required String bindHost,
 }) async {
   final environment = <String, String>{
     ...host.environment,
-    "OPENCODE_SERVER_PASSWORD": password,
   };
+  if (password == null || password.isEmpty) {
+    environment.removeWhere(
+      (key, _) => key.toUpperCase() == "OPENCODE_SERVER_PASSWORD",
+    );
+  } else {
+    environment["OPENCODE_SERVER_PASSWORD"] = password;
+  }
   final process = await host.processes.spawn(
     executable: executablePath,
     arguments: <String>["serve", "--port", "$port", "--hostname", bindHost],
@@ -243,11 +249,12 @@ class _DrainingOpenCodeProcess implements SpawnedProcess {
 }
 
 /// Probes OpenCode health on [port]: `GET /global/health` with Basic auth
-/// `opencode:<password>`, healthy iff the response is HTTP 200 (matching the
-/// legacy probe). Reports unhealthy rather than throwing on any error.
+/// `opencode:<password>` when a password is supplied, or with no auth when
+/// [password] is null or empty. Healthy iff the response is HTTP 200 (matching
+/// the legacy probe). Reports unhealthy rather than throwing on any error.
 Future<RuntimeHealthProbe> probeOpenCodeHealth({
   required int port,
-  required String password,
+  required String? password,
   required http.Client Function() clientFactory,
   required String host,
   Duration timeout = const Duration(seconds: 5),
@@ -256,7 +263,9 @@ Future<RuntimeHealthProbe> probeOpenCodeHealth({
   try {
     final uri = Uri.parse("http://$host:$port/global/health");
     final request = http.Request("GET", uri);
-    request.headers["Authorization"] = "Basic ${base64Encode(utf8.encode("opencode:$password"))}";
+    if (password != null && password.isNotEmpty) {
+      request.headers["Authorization"] = "Basic ${base64Encode(utf8.encode("opencode:$password"))}";
+    }
     // One timeout bounds the send AND the body drain together (mirroring the
     // legacy probe): a service that returns headers but never closes the body
     // must fail the attempt, not hang the supervisor under the startup mutex.
@@ -306,7 +315,7 @@ OpenCodeOwnershipRecord buildOpenCodeOwnershipRecord({required RuntimeRecordDraf
 ManagedRuntimeSpec<OpenCodeOwnershipRecord> buildOpenCodeManagedRuntimeSpec({
   required PluginHost host,
   required String executablePath,
-  required String password,
+  required String? password,
   required RuntimePortPolicy portPolicy,
   required http.Client Function() probeClientFactory,
   required String bindHost,

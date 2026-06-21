@@ -20,7 +20,7 @@ void main() {
       expect(descriptor.displayName, equals("OpenCode"));
       expect(
         descriptor.options.map((o) => o.name).toList(),
-        equals(<String>["port", "host", "no-auto-start", "password", "bin"]),
+        equals(<String>["port", "host", "no-auto-start", "password", "no-password", "bin"]),
       );
     });
 
@@ -39,19 +39,40 @@ void main() {
     test("validateConfig requires --port when --no-auto-start is set", () {
       expect(
         () => descriptor.validateConfig(
-          const PluginConfig(values: {"no-auto-start": true, "port": null, "password": "", "bin": "opencode"}),
+          const PluginConfig(values: {"no-auto-start": true, "port": null, "password": "", "bin": "opencode", "no-password": false}),
         ),
         throwsA(isA<PluginConfigException>()),
       );
       expect(
         () => descriptor.validateConfig(
-          const PluginConfig(values: {"no-auto-start": true, "port": "4096", "password": "", "bin": "opencode"}),
+          const PluginConfig(values: {"no-auto-start": true, "port": "4096", "password": "", "bin": "opencode", "no-password": false}),
         ),
         returnsNormally,
       );
       expect(
         () => descriptor.validateConfig(
-          const PluginConfig(values: {"no-auto-start": false, "port": null, "password": "", "bin": "opencode"}),
+          const PluginConfig(values: {"no-auto-start": false, "port": null, "password": "", "bin": "opencode", "no-password": false}),
+        ),
+        returnsNormally,
+      );
+    });
+
+    test("validateConfig rejects --no-password together with --password", () {
+      expect(
+        () => descriptor.validateConfig(
+          const PluginConfig(values: {"no-auto-start": true, "port": "4096", "password": "secret", "bin": "opencode", "no-password": true}),
+        ),
+        throwsA(isA<PluginConfigException>()),
+      );
+      expect(
+        () => descriptor.validateConfig(
+          const PluginConfig(values: {"no-auto-start": true, "port": "4096", "password": "", "bin": "opencode", "no-password": true}),
+        ),
+        returnsNormally,
+      );
+      expect(
+        () => descriptor.validateConfig(
+          const PluginConfig(values: {"no-auto-start": true, "port": "4096", "password": "secret", "bin": "opencode", "no-password": false}),
         ),
         returnsNormally,
       );
@@ -72,6 +93,7 @@ void main() {
             "no-auto-start": false,
             "password": "",
             "bin": "/bin/opencode",
+            "no-password": false,
           },
         ),
       );
@@ -116,7 +138,14 @@ void main() {
     test("binding 0.0.0.0 records the wildcard but connects over loopback", () async {
       final wildcardHost = _FakeHost(
         config: const PluginConfig(
-          values: {"port": null, "host": "0.0.0.0", "no-auto-start": false, "password": "", "bin": "/bin/opencode"},
+          values: {
+            "port": null,
+            "host": "0.0.0.0",
+            "no-auto-start": false,
+            "password": "",
+            "bin": "/bin/opencode",
+            "no-password": false,
+          },
         ),
       );
       wildcardHost.ports.defaultBindable = true;
@@ -138,7 +167,14 @@ void main() {
     test("binding a concrete host connects to that host verbatim", () async {
       final concreteHost = _FakeHost(
         config: const PluginConfig(
-          values: {"port": null, "host": "10.0.0.5", "no-auto-start": false, "password": "", "bin": "/bin/opencode"},
+          values: {
+            "port": null,
+            "host": "10.0.0.5",
+            "no-auto-start": false,
+            "password": "",
+            "bin": "/bin/opencode",
+            "no-password": false,
+          },
         ),
       );
       concreteHost.ports.defaultBindable = true;
@@ -146,6 +182,32 @@ void main() {
       final plugin = await descriptor().start(concreteHost);
 
       expect(plugin.serverUrl, equals("http://10.0.0.5:51000"));
+
+      await plugin.shutdown(budget: null);
+    });
+
+    test("--no-password spawns without OPENCODE_SERVER_PASSWORD", () async {
+      host = _FakeHost(
+        config: const PluginConfig(
+          values: {
+            "port": null,
+            "host": "127.0.0.1",
+            "no-auto-start": false,
+            "password": "",
+            "bin": "/bin/opencode",
+            "no-password": true,
+          },
+        ),
+      );
+      host.ports.defaultBindable = true;
+      final plugin = await descriptor().start(host);
+
+      expect(plugin.currentStatus, isA<PluginReady>());
+      expect(apiRecorder.last!.password, isNull);
+      expect(host.processes.spawnedProcesses, hasLength(1));
+      final environment = host.processes.spawnEnvironments.single;
+      expect(environment, isNotNull);
+      expect(environment!.containsKey("OPENCODE_SERVER_PASSWORD"), isFalse);
 
       await plugin.shutdown(budget: null);
     });
@@ -337,7 +399,14 @@ void main() {
 
     _FakeHost attachHost() => _FakeHost(
       config: const PluginConfig(
-        values: {"port": "4096", "host": "127.0.0.1", "no-auto-start": true, "password": "", "bin": "opencode"},
+        values: {
+          "port": "4096",
+          "host": "127.0.0.1",
+          "no-auto-start": true,
+          "password": "",
+          "bin": "opencode",
+          "no-password": false,
+        },
       ),
     );
 
@@ -363,7 +432,14 @@ void main() {
     test("attaches to a non-loopback host at the configured address", () async {
       final remoteHost = _FakeHost(
         config: const PluginConfig(
-          values: {"port": "4096", "host": "10.0.0.5", "no-auto-start": true, "password": "", "bin": "opencode"},
+          values: {
+            "port": "4096",
+            "host": "10.0.0.5",
+            "no-auto-start": true,
+            "password": "",
+            "bin": "opencode",
+            "no-password": false,
+          },
         ),
       );
       final descriptor = OpenCodePluginDescriptor(
@@ -376,6 +452,33 @@ void main() {
 
       expect(plugin.currentStatus, isA<PluginReady>());
       expect(plugin.serverUrl, equals("http://10.0.0.5:4096"));
+
+      await plugin.shutdown(budget: null);
+    });
+
+    test("--no-password attaches with a null password", () async {
+      final host = _FakeHost(
+        config: const PluginConfig(
+          values: {
+            "port": "4096",
+            "host": "127.0.0.1",
+            "no-auto-start": true,
+            "password": "",
+            "bin": "opencode",
+            "no-password": true,
+          },
+        ),
+      );
+      final descriptor = OpenCodePluginDescriptor(
+        buildApi: apiRecorder.build,
+        optimizeDb: _noopOptimizeDb,
+        probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
+      );
+
+      final plugin = await descriptor.start(host);
+
+      expect(plugin.currentStatus, isA<PluginReady>());
+      expect(apiRecorder.last!.password, isNull);
 
       await plugin.shutdown(budget: null);
     });
@@ -407,7 +510,14 @@ void main() {
 
       final trimmedHost = _FakeHost(
         config: const PluginConfig(
-          values: {"port": "4096", "host": "127.0.0.1", "no-auto-start": true, "password": "  secret  ", "bin": "opencode"},
+          values: {
+            "port": "4096",
+            "host": "127.0.0.1",
+            "no-auto-start": true,
+            "password": "  secret  ",
+            "bin": "opencode",
+            "no-password": false,
+          },
         ),
       );
       final trimmedPlugin = await descriptor.start(trimmedHost);
@@ -416,7 +526,14 @@ void main() {
 
       final blankHost = _FakeHost(
         config: const PluginConfig(
-          values: {"port": "4096", "host": "127.0.0.1", "no-auto-start": true, "password": "   ", "bin": "opencode"},
+          values: {
+            "port": "4096",
+            "host": "127.0.0.1",
+            "no-auto-start": true,
+            "password": "   ",
+            "bin": "opencode",
+            "no-password": false,
+          },
         ),
       );
       final blankPlugin = await descriptor.start(blankHost);
@@ -665,6 +782,7 @@ class _FakePortService implements HostPortService {
 
 class _FakeHostProcessService implements HostProcessService {
   final List<_FakeSpawnedProcess> spawnedProcesses = <_FakeSpawnedProcess>[];
+  final List<Map<String, String>?> spawnEnvironments = <Map<String, String>?>[];
   final List<String> signals = <String>[];
   final Map<int, ProcessIdentity> inspectResults = <int, ProcessIdentity>{};
   void Function()? onSpawn;
@@ -679,6 +797,7 @@ class _FakeHostProcessService implements HostProcessService {
     required bool runInShell,
   }) async {
     onSpawn?.call();
+    spawnEnvironments.add(environment);
     final process = _FakeSpawnedProcess(pid: nextPid++, executablePath: executable);
     spawnedProcesses.add(process);
     return process;

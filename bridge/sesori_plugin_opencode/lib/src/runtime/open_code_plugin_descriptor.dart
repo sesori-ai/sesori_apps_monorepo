@@ -111,10 +111,11 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   /// The OpenCode CLI options the bridge declares for this plugin.
   ///
   /// Names are bare; the bridge namespaces them to `--opencode-<name>`. The
-  /// pre-namespacing spellings (`--port`, `--no-auto-start`, `--password`) are
-  /// kept as deprecated aliases so existing invocations keep working (with a
-  /// warning). `bin` already namespaces to the historical `--opencode-bin`, so
-  /// it needs no alias.
+  /// pre-namespacing spellings that already shipped (`--port`, `--no-auto-start`,
+  /// `--password`) are kept as deprecated aliases so existing invocations keep
+  /// working (with a warning). `bin` already namespaces to the historical
+  /// `--opencode-bin`, and the never-released `host`/`no-password` flags are new,
+  /// so none of those need an alias.
   static const List<PluginOption> cliOptions = [
     PluginValueOption.integer(
       name: "port",
@@ -152,6 +153,12 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       validate: null,
       deprecatedAliases: ["password"],
     ),
+    PluginFlagOption(
+      name: "no-password",
+      help: "Disable OpenCode server authentication",
+      defaultsTo: false,
+      negatable: false,
+    ),
     PluginValueOption(
       name: "bin",
       help: "Path to opencode binary",
@@ -166,6 +173,9 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   static void validateConfigValues(PluginConfig config) {
     if (config.flag("no-auto-start") && config.intValue("port") == null) {
       throw const PluginConfigException("The --opencode-no-auto-start flag requires --opencode-port to be set.");
+    }
+    if (config.flag("no-password") && (config.value("password")?.isNotEmpty ?? false)) {
+      throw const PluginConfigException("The --opencode-no-password flag cannot be used with --opencode-password.");
     }
   }
 
@@ -310,6 +320,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
 
     final config = host.config;
     final requestedPort = config.intValue("port");
+    final noPassword = config.flag("no-password");
     // Mirror the legacy flow's `password.normalize()`: trim, and map a blank
     // value to "no password supplied" — otherwise the same CLI input would
     // select a different password (or demand auth the user never set) after
@@ -357,11 +368,11 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       final attachPort = requestedPort!;
       port = attachPort;
       serverUrl = "http://$connectHost:$attachPort";
-      apiPassword = providedPassword;
+      apiPassword = noPassword ? null : providedPassword;
       spec = buildOpenCodeManagedRuntimeSpec(
         host: host,
         executablePath: "",
-        password: providedPassword ?? "",
+        password: noPassword ? null : providedPassword,
         portPolicy: ExplicitPortPolicy(port: attachPort),
         probeClientFactory: probeClientFactory,
         bindHost: bindHost,
@@ -381,7 +392,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       }
     } else {
       // Managed mode: spawn and own a new server.
-      final serverPassword = providedPassword ?? generateOpenCodePassword(random: _random);
+      final serverPassword = noPassword ? null : (providedPassword ?? generateOpenCodePassword(random: _random));
       apiPassword = serverPassword;
       final executablePath = config.value("bin")!;
 
