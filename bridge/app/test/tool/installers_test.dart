@@ -243,6 +243,49 @@ printf '%s\n' "\$RESOLVED_VERSION"
       expect((result.stdout as String).trim(), equals('0.4.0'));
     });
 
+    test('treats only the final HTTP status as success, ignoring an intermediate proxy 200', () async {
+      final libraryPath = await _createInstallShLibrary();
+      final tempDir = await Directory.systemTemp.createTemp('install-sh-proxy-');
+      addTearDown(() => tempDir.delete(recursive: true));
+      final releasesPath = p.join(tempDir.path, 'releases.json');
+      await File(releasesPath).writeAsString(
+        jsonEncode([
+          {
+            'tag_name': 'v0.4.0',
+            'draft': false,
+            'prerelease': false,
+            'assets': [
+              {'name': 'sesori-bridge-macos-arm64.tar.gz'},
+              {'name': 'checksums.txt'},
+            ],
+          },
+        ]),
+      );
+
+      // An HTTP proxy emits "200 Connection established" before the real
+      // response. The final status is 404, so the asset must be treated as
+      // missing (matching any 2xx line would wrongly accept it).
+      final result = await _runBashSnippet(
+        script:
+            '''
+source ${jsonEncode(libraryPath)}
+fetch_redirect_headers() {
+  printf '%s\n' 'HTTP/1.1 200 Connection established' 'location: https://github.com/sesori-ai/sesori_apps_monorepo/releases/download/v9.9.9/sesori-bridge-macos-arm64.tar.gz' 'HTTP/2 404'
+}
+fetch_text() { cat ${jsonEncode(releasesPath)}; }
+resolve_release sesori-bridge-macos-arm64.tar.gz
+printf '%s\n' "\$RESOLVED_VERSION"
+''',
+        environment: {
+          'PATH': Platform.environment['PATH'] ?? '',
+          'HOME': tempDir.path,
+        },
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      expect((result.stdout as String).trim(), equals('0.4.0'));
+    });
+
     test('falls back to scanning older releases when latest/download lacks the asset', () async {
       final libraryPath = await _createInstallShLibrary();
       final tempDir = await Directory.systemTemp.createTemp('install-sh-fallback-');

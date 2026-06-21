@@ -113,12 +113,14 @@ parse_version_from_headers() {
     sed -nE 's#.*/releases/download/v([0-9]+\.[0-9]+\.[0-9]+)/.*#\1#p' | head -n 1
 }
 
-# Reads HTTP header text on stdin; succeeds only if a final 2xx status is present.
+# Reads HTTP header text on stdin; succeeds only if the FINAL HTTP status is 2xx.
 # Some older curl builds (< 7.76.0) exit 0 on a 404 HEAD when combining -I with
-# -f, so the exit code alone cannot confirm an asset exists — the redirect hops
-# are 3xx and only a present asset yields a 2xx, so require a 2xx status line.
+# -f, so the exit code alone cannot confirm an asset exists. We inspect the last
+# status line specifically (not any 2xx line) so an intermediate 2xx — e.g. an
+# HTTP proxy's "200 Connection established" before a final 404 — is not misread
+# as success. POSIX awk keeps this portable across BSD (macOS) and GNU awk.
 headers_indicate_success() {
-    grep -qiE '^[[:space:]]*HTTP/[0-9.]+[[:space:]]+2[0-9][0-9]'
+    awk 'toupper($1) ~ /^HTTP\// { status = $2 } END { exit (status ~ /^2[0-9][0-9]$/) ? 0 : 1 }'
 }
 
 # Returns 0 when a HEAD to ${1} ultimately resolves to a 2xx response.
