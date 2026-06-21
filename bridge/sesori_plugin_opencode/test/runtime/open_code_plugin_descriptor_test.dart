@@ -93,13 +93,16 @@ void main() {
       );
     });
 
-    test("validateConfig rejects a host that carries a scheme or path", () {
-      expect(
-        () => descriptor.validateConfig(
-          const PluginConfig(values: {"no-auto-start": false, "port": null, "host": "http://127.0.0.1", "password": "", "bin": "opencode", "no-password": false}),
-        ),
-        throwsA(isA<PluginConfigException>()),
-      );
+    test("validateConfig rejects a host that carries a scheme, path, or whitespace", () {
+      for (final badHost in <String>["http://127.0.0.1", "localhost/api", "example.com/path", "127.0.0.1:9", "local host"]) {
+        expect(
+          () => descriptor.validateConfig(
+            PluginConfig(values: {"no-auto-start": false, "port": null, "host": badHost, "password": "", "bin": "opencode", "no-password": false}),
+          ),
+          throwsA(isA<PluginConfigException>()),
+          reason: "host '$badHost' should be rejected",
+        );
+      }
     });
 
     test("validateConfig rejects --no-password with a non-loopback managed bind", () {

@@ -185,11 +185,12 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     if (host.isEmpty) {
       throw const PluginConfigException("The --opencode-host option cannot be empty.");
     }
-    // Reject scheme/path/port typos like "http://127.0.0.1": the host is built
-    // into server URLs, so it must be a bare host or IP literal.
-    try {
-      Uri(scheme: "http", host: host, port: 1);
-    } on FormatException {
+    // Reject anything that isn't a bare host or IP literal: the value is built
+    // into server URLs. A scheme/path/port typo like "http://127.0.0.1" throws
+    // a FormatException; a value with an escapable delimiter (e.g. internal
+    // whitespace) instead percent-escapes silently, so also require the parsed
+    // host to round-trip unchanged.
+    if (!_isWellFormedHost(host)) {
       throw PluginConfigException("The --opencode-host option must be a bare host or IP, got '$host'.");
     }
     // A non-loopback managed bind with auth disabled would expose an
@@ -203,6 +204,22 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
         "network. Use a loopback host or keep authentication enabled.",
       );
     }
+  }
+
+  /// Whether [host] is a bare host or IP literal usable in a URL authority —
+  /// i.e. it parses as a URI host and round-trips unchanged (case-insensitively).
+  ///
+  /// The round-trip catches values that `Uri` percent-escapes instead of
+  /// rejecting (e.g. internal whitespace), which would otherwise pass and fail
+  /// only later when a connection is attempted.
+  static bool _isWellFormedHost(String host) {
+    final Uri probe;
+    try {
+      probe = Uri(scheme: "http", host: host, port: 1);
+    } on FormatException {
+      return false;
+    }
+    return probe.host.toLowerCase() == host.toLowerCase();
   }
 
   /// Whether [host] only accepts connections from the local machine, so
