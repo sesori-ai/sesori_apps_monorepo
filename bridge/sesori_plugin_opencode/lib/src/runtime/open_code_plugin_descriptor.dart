@@ -207,8 +207,17 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
 
   /// Whether [host] only accepts connections from the local machine, so
   /// disabling authentication does not expose the server to the network.
-  static bool _isLoopbackHost(String host) =>
-      host == "localhost" || host == "::1" || host.startsWith("127.");
+  ///
+  /// Uses [io.InternetAddress] loopback detection (the full `127.0.0.0/8` range
+  /// and `::1`) rather than a string prefix, so a DNS name like `127.evil.com`
+  /// is correctly treated as non-loopback. `localhost` is matched explicitly
+  /// since it is a name, not a parseable IP literal.
+  static bool _isLoopbackHost(String host) {
+    if (host == "localhost") {
+      return true;
+    }
+    return io.InternetAddress.tryParse(host)?.isLoopback ?? false;
+  }
 
   @override
   String get id => "opencode";

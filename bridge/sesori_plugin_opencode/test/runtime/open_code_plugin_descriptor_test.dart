@@ -131,6 +131,21 @@ void main() {
         ),
         returnsNormally,
       );
+      // A DNS name that merely starts with "127." is NOT loopback and must not
+      // bypass the guard.
+      expect(
+        () => descriptor.validateConfig(
+          const PluginConfig(values: {"no-auto-start": false, "port": null, "host": "127.evil.com", "password": "", "bin": "opencode", "no-password": true}),
+        ),
+        throwsA(isA<PluginConfigException>()),
+      );
+      // A non-127.0.0.1 address in the loopback range is still loopback.
+      expect(
+        () => descriptor.validateConfig(
+          const PluginConfig(values: {"no-auto-start": false, "port": null, "host": "127.0.0.2", "password": "", "bin": "opencode", "no-password": true}),
+        ),
+        returnsNormally,
+      );
     });
   });
 
