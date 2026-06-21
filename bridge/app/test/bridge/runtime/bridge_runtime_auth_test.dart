@@ -148,8 +148,6 @@ BridgeCliOptions _options({required String authBackendUrl}) {
   return BridgeCliOptions(
     cliArgs: const [],
     relayUrl: 'wss://relay.example.com',
-    port: null,
-    password: 'password',
     authBackendUrl: authBackendUrl,
     debugPort: null,
     logLevelName: 'info',

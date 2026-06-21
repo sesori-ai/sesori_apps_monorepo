@@ -17,7 +17,7 @@ import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_dispatch.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_logout_runner.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart';
-import 'package:sesori_bridge/src/bridge/runtime/plugin_cli_binding.dart';
+import 'package:sesori_bridge/src/bridge/runtime/plugin_cli_options_mapper.dart';
 import 'package:sesori_bridge/src/bridge/runtime/plugin_registry.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
 import 'package:sesori_bridge/src/repositories/default_editor_repository.dart';
@@ -47,6 +47,10 @@ class RunCommand extends cli.Command<void> {
 
   final BridgePluginDescriptor _selectedPlugin;
 
+  /// Maps the selected plugin's options to/from the CLI parser, namespaced
+  /// under its id (e.g. `--opencode-host`).
+  final PluginCliOptionsMapper _pluginCliMapper;
+
   /// Deferred plugin-selection failure (bad `enabledPlugins`): only running
   /// the bridge needs a valid selection, so the error surfaces here instead
   /// of blocking informational commands like `--help`, logout, or config.
@@ -54,6 +58,7 @@ class RunCommand extends cli.Command<void> {
 
   RunCommand({required BridgePluginDescriptor selectedPlugin, required String? selectionError})
     : _selectedPlugin = selectedPlugin,
+      _pluginCliMapper = PluginCliOptionsMapper(pluginId: selectedPlugin.id),
       _selectionError = selectionError {
     argParser
       ..addFlag(
@@ -71,9 +76,9 @@ class RunCommand extends cli.Command<void> {
         help: 'Plugin backend to run. Defaults to "enabledPlugins" in the bridge settings, then opencode',
         allowed: [for (final plugin in knownPlugins) plugin.id],
       );
-    // The selected plugin contributes its own CLI options (for OpenCode: the
-    // four flags with their historical names, help text, and defaults).
-    registerPluginOptions(parser: argParser, options: _selectedPlugin.options);
+    // The selected plugin contributes its own CLI options, namespaced under the
+    // plugin id (for OpenCode: --opencode-port, --opencode-host, etc.).
+    _pluginCliMapper.register(parser: argParser, options: _selectedPlugin.options);
     argParser
       ..addOption('auth-backend', defaultsTo: '', help: 'Auth backend URL')
       ..addOption(
@@ -105,11 +110,14 @@ class RunCommand extends cli.Command<void> {
 
     final BridgeCliOptions options;
     final PluginConfig pluginConfig;
+    final List<String> pluginConfigDeprecations;
     try {
       // Plugin option validate hooks and config validation run at
       // argument-parse time — strictly before the startup mutex, so a typo'd
       // flag can never terminate a healthy resident bridge.
-      pluginConfig = parsePluginConfig(options: _selectedPlugin.options, results: results);
+      final parsed = _pluginCliMapper.parse(results: results, options: _selectedPlugin.options);
+      pluginConfig = parsed.config;
+      pluginConfigDeprecations = parsed.deprecations;
       _selectedPlugin.validateConfig(pluginConfig);
       options = BridgeCliOptions.fromArgResults(
         cliArgs: globalResults!.arguments,
@@ -123,6 +131,10 @@ class RunCommand extends cli.Command<void> {
       usageException(e.message);
     }
     Log.level = LogLevel.values.byName(options.logLevelName);
+
+    // Surface deprecated-flag usage now that the log level is known. The legacy
+    // flag still worked; this only nudges the user toward the namespaced form.
+    pluginConfigDeprecations.forEach(Log.w);
 
     final settingsRepository = BridgeSettingsRepository(api: BridgeSettingsApi());
     final sleepPreventionService = SleepPreventionService(

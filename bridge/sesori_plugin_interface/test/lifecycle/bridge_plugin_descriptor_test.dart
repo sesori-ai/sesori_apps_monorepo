@@ -124,6 +124,47 @@ void main() {
       );
       expect(option.validate, isNull);
     });
+
+    test('deprecatedAliases default to empty and are carried when supplied', () {
+      const noAliases = PluginValueOption(
+        name: 'host',
+        help: 'Host',
+        defaultsTo: '127.0.0.1',
+        allowedValues: null,
+        valueHelp: null,
+        validate: null,
+      );
+      expect(noAliases.deprecatedAliases, isEmpty);
+
+      const valueWithAlias = PluginValueOption(
+        name: 'password',
+        help: 'Password',
+        defaultsTo: '',
+        allowedValues: null,
+        valueHelp: null,
+        validate: null,
+        deprecatedAliases: ['password'],
+      );
+      expect(valueWithAlias.deprecatedAliases, ['password']);
+
+      const integerWithAlias = PluginValueOption.integer(
+        name: 'port',
+        help: 'Port',
+        defaultsTo: null,
+        valueHelp: null,
+        deprecatedAliases: ['port'],
+      );
+      expect(integerWithAlias.deprecatedAliases, ['port']);
+
+      const flagWithAlias = PluginFlagOption(
+        name: 'no-auto-start',
+        help: 'Attach to an existing server',
+        defaultsTo: false,
+        negatable: true,
+        deprecatedAliases: ['no-auto-start'],
+      );
+      expect(flagWithAlias.deprecatedAliases, ['no-auto-start']);
+    });
   });
 }
 
