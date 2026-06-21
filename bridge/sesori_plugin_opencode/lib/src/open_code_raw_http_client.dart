@@ -65,7 +65,7 @@ class OpenCodeRawHttpClient {
 
   Map<String, String> get _authHeaders {
     final password = _password;
-    if (password == null) return const {};
+    if (password == null || password.isEmpty) return const {};
     final creds = base64.encode(utf8.encode("opencode:$password"));
     return {"Authorization": "Basic $creds"};
   }
