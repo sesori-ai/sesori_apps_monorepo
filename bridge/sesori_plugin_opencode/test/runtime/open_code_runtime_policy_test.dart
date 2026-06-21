@@ -126,6 +126,36 @@ void main() {
       );
     });
 
+    test("omits the Authorization header when password is null", () async {
+      late http.BaseRequest captured;
+      final probe = await probeOpenCodeHealth(
+        port: 51000,
+        password: null,
+        clientFactory: () => MockClient((request) async {
+          captured = request;
+          return http.Response("", 200);
+        }),
+      );
+
+      expect(probe.healthy, isTrue);
+      expect(captured.headers.containsKey("Authorization"), isFalse);
+    });
+
+    test("omits the Authorization header when password is empty", () async {
+      late http.BaseRequest captured;
+      final probe = await probeOpenCodeHealth(
+        port: 51000,
+        password: "",
+        clientFactory: () => MockClient((request) async {
+          captured = request;
+          return http.Response("", 200);
+        }),
+      );
+
+      expect(probe.healthy, isTrue);
+      expect(captured.headers.containsKey("Authorization"), isFalse);
+    });
+
     test("reports unhealthy with an error on a non-200 status", () async {
       final probe = await probeOpenCodeHealth(
         port: 51000,
@@ -183,6 +213,42 @@ void main() {
       expect(recording.environment?["PATH"], equals("/usr/bin"));
       expect(recording.environment?["HOME"], equals("/home/alex"));
       expect(recording.workingDirectory, isNull);
+    });
+
+    test("omits the password env var when password is null", () async {
+      final recording = _RecordingHostProcessService();
+      final host = _SpawnFakeHost(
+        processes: recording,
+        environment: const <String, String>{"PATH": "/usr/bin"},
+      );
+
+      await spawnOpenCodeProcess(
+        host: host,
+        executablePath: "/bin/opencode",
+        port: 51000,
+        password: null,
+      );
+
+      expect(recording.environment, isNotNull);
+      expect(recording.environment!.containsKey("OPENCODE_SERVER_PASSWORD"), isFalse);
+    });
+
+    test("omits the password env var when password is empty", () async {
+      final recording = _RecordingHostProcessService();
+      final host = _SpawnFakeHost(
+        processes: recording,
+        environment: const <String, String>{"PATH": "/usr/bin"},
+      );
+
+      await spawnOpenCodeProcess(
+        host: host,
+        executablePath: "/bin/opencode",
+        port: 51000,
+        password: "",
+      );
+
+      expect(recording.environment, isNotNull);
+      expect(recording.environment!.containsKey("OPENCODE_SERVER_PASSWORD"), isFalse);
     });
   });
 

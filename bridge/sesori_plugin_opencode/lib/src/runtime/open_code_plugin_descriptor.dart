@@ -131,6 +131,12 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       valueHelp: null,
       validate: null,
     ),
+    PluginFlagOption(
+      name: "no-password",
+      help: "Disable OpenCode server authentication",
+      defaultsTo: false,
+      negatable: true,
+    ),
     PluginValueOption(
       name: "opencode-bin",
       help: "Path to opencode binary",
@@ -145,6 +151,9 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   static void validateConfigValues(PluginConfig config) {
     if (config.flag("no-auto-start") && config.intValue("port") == null) {
       throw const PluginConfigException("The --no-auto-start flag requires --port to be set.");
+    }
+    if (config.flag("no-password") && (config.value("password")?.isNotEmpty ?? false)) {
+      throw const PluginConfigException("The --no-password flag cannot be used with --password.");
     }
   }
 
@@ -289,6 +298,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
 
     final config = host.config;
     final requestedPort = config.intValue("port");
+    final noPassword = config.flag("no-password");
     // Mirror the legacy flow's `password.normalize()`: trim, and map a blank
     // value to "no password supplied" — otherwise the same CLI input would
     // select a different password (or demand auth the user never set) after
@@ -329,11 +339,11 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       final attachPort = requestedPort!;
       port = attachPort;
       serverUrl = "http://$openCodeLoopbackHost:$attachPort";
-      apiPassword = providedPassword;
+      apiPassword = noPassword ? null : providedPassword;
       spec = buildOpenCodeManagedRuntimeSpec(
         host: host,
         executablePath: "",
-        password: providedPassword ?? "",
+        password: noPassword ? null : (providedPassword ?? ""),
         portPolicy: ExplicitPortPolicy(port: attachPort),
         probeClientFactory: probeClientFactory,
       );
@@ -351,7 +361,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       }
     } else {
       // Managed mode: spawn and own a new server.
-      final serverPassword = providedPassword ?? generateOpenCodePassword(random: _random);
+      final serverPassword = noPassword ? null : (providedPassword ?? generateOpenCodePassword(random: _random));
       apiPassword = serverPassword;
       final executablePath = config.value("opencode-bin")!;
 
