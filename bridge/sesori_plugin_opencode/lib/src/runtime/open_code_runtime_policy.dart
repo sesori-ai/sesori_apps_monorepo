@@ -261,7 +261,9 @@ Future<RuntimeHealthProbe> probeOpenCodeHealth({
 }) async {
   final client = clientFactory();
   try {
-    final uri = Uri.parse("http://$host:$port/global/health");
+    // Structured fields (not string interpolation) so an IPv6 literal host is
+    // correctly bracketed (e.g. `http://[::1]:port`).
+    final uri = Uri(scheme: "http", host: host, port: port, path: "/global/health");
     final request = http.Request("GET", uri);
     if (password != null && password.isNotEmpty) {
       request.headers["Authorization"] = "Basic ${base64Encode(utf8.encode("opencode:$password"))}";

@@ -39,19 +39,19 @@ void main() {
     test("validateConfig requires --port when --no-auto-start is set", () {
       expect(
         () => descriptor.validateConfig(
-          const PluginConfig(values: {"no-auto-start": true, "port": null, "password": "", "bin": "opencode", "no-password": false}),
+          const PluginConfig(values: {"no-auto-start": true, "port": null, "host": "127.0.0.1", "password": "", "bin": "opencode", "no-password": false}),
         ),
         throwsA(isA<PluginConfigException>()),
       );
       expect(
         () => descriptor.validateConfig(
-          const PluginConfig(values: {"no-auto-start": true, "port": "4096", "password": "", "bin": "opencode", "no-password": false}),
+          const PluginConfig(values: {"no-auto-start": true, "port": "4096", "host": "127.0.0.1", "password": "", "bin": "opencode", "no-password": false}),
         ),
         returnsNormally,
       );
       expect(
         () => descriptor.validateConfig(
-          const PluginConfig(values: {"no-auto-start": false, "port": null, "password": "", "bin": "opencode", "no-password": false}),
+          const PluginConfig(values: {"no-auto-start": false, "port": null, "host": "127.0.0.1", "password": "", "bin": "opencode", "no-password": false}),
         ),
         returnsNormally,
       );
@@ -60,21 +60,36 @@ void main() {
     test("validateConfig rejects --no-password together with --password", () {
       expect(
         () => descriptor.validateConfig(
-          const PluginConfig(values: {"no-auto-start": true, "port": "4096", "password": "secret", "bin": "opencode", "no-password": true}),
+          const PluginConfig(values: {"no-auto-start": true, "port": "4096", "host": "127.0.0.1", "password": "secret", "bin": "opencode", "no-password": true}),
         ),
         throwsA(isA<PluginConfigException>()),
       );
       expect(
         () => descriptor.validateConfig(
-          const PluginConfig(values: {"no-auto-start": true, "port": "4096", "password": "", "bin": "opencode", "no-password": true}),
+          const PluginConfig(values: {"no-auto-start": true, "port": "4096", "host": "127.0.0.1", "password": "", "bin": "opencode", "no-password": true}),
         ),
         returnsNormally,
       );
       expect(
         () => descriptor.validateConfig(
-          const PluginConfig(values: {"no-auto-start": true, "port": "4096", "password": "secret", "bin": "opencode", "no-password": false}),
+          const PluginConfig(values: {"no-auto-start": true, "port": "4096", "host": "127.0.0.1", "password": "secret", "bin": "opencode", "no-password": false}),
         ),
         returnsNormally,
+      );
+    });
+
+    test("validateConfig rejects an empty or whitespace-only host", () {
+      expect(
+        () => descriptor.validateConfig(
+          const PluginConfig(values: {"no-auto-start": false, "port": null, "host": "", "password": "", "bin": "opencode", "no-password": false}),
+        ),
+        throwsA(isA<PluginConfigException>()),
+      );
+      expect(
+        () => descriptor.validateConfig(
+          const PluginConfig(values: {"no-auto-start": false, "port": null, "host": "   ", "password": "", "bin": "opencode", "no-password": false}),
+        ),
+        throwsA(isA<PluginConfigException>()),
       );
     });
   });
@@ -182,6 +197,56 @@ void main() {
       final plugin = await descriptor().start(concreteHost);
 
       expect(plugin.serverUrl, equals("http://10.0.0.5:51000"));
+
+      await plugin.shutdown(budget: null);
+    });
+
+    test("brackets an IPv6 literal host in the server URL", () async {
+      final ipv6Host = _FakeHost(
+        config: const PluginConfig(
+          values: {
+            "port": null,
+            "host": "::1",
+            "no-auto-start": false,
+            "password": "",
+            "bin": "/bin/opencode",
+            "no-password": false,
+          },
+        ),
+      );
+      ipv6Host.ports.defaultBindable = true;
+
+      final plugin = await descriptor().start(ipv6Host);
+
+      expect(plugin.serverUrl, equals("http://[::1]:51000"));
+
+      await plugin.shutdown(budget: null);
+    });
+
+    test("trims surrounding whitespace on the configured host", () async {
+      final paddedHost = _FakeHost(
+        config: const PluginConfig(
+          values: {
+            "port": null,
+            "host": "  0.0.0.0  ",
+            "no-auto-start": false,
+            "password": "",
+            "bin": "/bin/opencode",
+            "no-password": false,
+          },
+        ),
+      );
+      paddedHost.ports.defaultBindable = true;
+
+      final plugin = await descriptor().start(paddedHost);
+
+      // Trimmed to the wildcard, which resolves to the loopback connect host.
+      expect(plugin.serverUrl, equals("http://127.0.0.1:51000"));
+      final record = paddedHost.ownershipRecord("owner-current");
+      expect(
+        record!["openCodeArgs"],
+        equals(<String>["serve", "--port", "51000", "--hostname", "0.0.0.0"]),
+      );
 
       await plugin.shutdown(budget: null);
     });

@@ -177,6 +177,12 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     if (config.flag("no-password") && (config.value("password")?.isNotEmpty ?? false)) {
       throw const PluginConfigException("The --opencode-no-password flag cannot be used with --opencode-password.");
     }
+    // The host is used in both modes (bind target when managed, connect target
+    // when attaching), so reject an empty/whitespace value up front — it would
+    // otherwise produce a malformed server URL deep in the lifecycle.
+    if ((config.value("host") ?? "").trim().isEmpty) {
+      throw const PluginConfigException("The --opencode-host option cannot be empty.");
+    }
   }
 
   @override
@@ -210,7 +216,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     if (config.flag("no-auto-start")) {
       return const PluginAvailable();
     }
-    final executablePath = config.value("bin") ?? "opencode";
+    final executablePath = (config.value("bin") ?? "opencode").trim();
     return _probeOpenCodeBinary(
       executablePath: executablePath,
       processes: processes,
@@ -331,7 +337,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     // defaults to 127.0.0.1. The connect host is what the bridge dials for
     // HTTP/SSE/health — loopback when the bind host is a non-connectable
     // wildcard (0.0.0.0 / ::), otherwise the bind host itself.
-    final bindHost = config.value("host")!;
+    final bindHost = config.value("host")!.trim();
     final connectHost = resolveOpenCodeConnectHost(bindHost: bindHost);
 
     final probeClientFactory = _probeClientFactory ?? http.Client.new;
@@ -367,7 +373,8 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       // Attach mode: probe an existing server, never own or kill it.
       final attachPort = requestedPort!;
       port = attachPort;
-      serverUrl = "http://$connectHost:$attachPort";
+      // Structured Uri so an IPv6 literal connect host is bracketed correctly.
+      serverUrl = Uri(scheme: "http", host: connectHost, port: attachPort).toString();
       apiPassword = noPassword ? null : providedPassword;
       spec = buildOpenCodeManagedRuntimeSpec(
         host: host,
@@ -394,7 +401,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       // Managed mode: spawn and own a new server.
       final serverPassword = noPassword ? null : (providedPassword ?? generateOpenCodePassword(random: _random));
       apiPassword = serverPassword;
-      final executablePath = config.value("bin")!;
+      final executablePath = config.value("bin")!.trim();
 
       final RuntimePortPolicy portPolicy;
       if (requestedPort != null) {
@@ -437,7 +444,8 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
         startAborted: host.startAborted,
       );
       port = handle.port;
-      serverUrl = "http://$connectHost:${handle.port}";
+      // Structured Uri so an IPv6 literal connect host is bracketed correctly.
+      serverUrl = Uri(scheme: "http", host: connectHost, port: handle.port).toString();
       Log.d("[opencode] started on port ${handle.port}");
     }
 

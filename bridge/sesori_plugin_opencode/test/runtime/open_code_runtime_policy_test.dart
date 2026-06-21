@@ -178,6 +178,22 @@ void main() {
       expect(captured.url.toString(), equals("http://10.0.0.5:51000/global/health"));
     });
 
+    test("brackets an IPv6 literal host in the probe URL", () async {
+      late http.BaseRequest captured;
+      final probe = await probeOpenCodeHealth(
+        port: 51000,
+        password: "secret",
+        host: "::1",
+        clientFactory: () => MockClient((request) async {
+          captured = request;
+          return http.Response("", 200);
+        }),
+      );
+
+      expect(probe.healthy, isTrue);
+      expect(captured.url.toString(), equals("http://[::1]:51000/global/health"));
+    });
+
     test("omits the Authorization header when password is null", () async {
       late http.BaseRequest captured;
       final probe = await probeOpenCodeHealth(
