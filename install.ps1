@@ -105,7 +105,7 @@ function Test-RemoteAssetExists {
         $response = Invoke-WebRequest -Uri $Url -Method Head -UseBasicParsing -Headers @{ 'User-Agent' = 'sesori-bridge-installer' }
         return $response.StatusCode -eq 200
     } catch {
-        return $null
+        return $false
     }
 }
 
@@ -129,7 +129,10 @@ function Resolve-BridgeReleaseViaLatest {
     $tagName = $Matches[1]
     $assetUrl = "$RepoBase/releases/download/$tagName/$ArchiveName"
     $checksumsUrl = "$RepoBase/releases/download/$tagName/checksums.txt"
-    if (-not (Test-RemoteAssetExists -Url $assetUrl)) {
+    # Require both the archive and checksums.txt. During a partial publish the
+    # archive can exist without checksums; without this the installer would fail
+    # the later checksum download instead of falling back to an older release.
+    if (-not (Test-RemoteAssetExists -Url $assetUrl) -or -not (Test-RemoteAssetExists -Url $checksumsUrl)) {
         return $null
     }
 

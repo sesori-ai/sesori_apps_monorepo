@@ -113,17 +113,40 @@ parse_version_from_headers() {
     sed -nE 's#.*/releases/download/v([0-9]+\.[0-9]+\.[0-9]+)/.*#\1#p' | head -n 1
 }
 
+# Reads HTTP header text on stdin; succeeds only if a final 2xx status is present.
+# Some older curl builds (< 7.76.0) exit 0 on a 404 HEAD when combining -I with
+# -f, so the exit code alone cannot confirm an asset exists — the redirect hops
+# are 3xx and only a present asset yields a 2xx, so require a 2xx status line.
+headers_indicate_success() {
+    grep -qiE '^[[:space:]]*HTTP/[0-9.]+[[:space:]]+2[0-9][0-9]'
+}
+
+# Returns 0 when a HEAD to ${1} ultimately resolves to a 2xx response.
+remote_asset_exists() {
+    local headers
+    headers="$(fetch_redirect_headers "${1}")" || return 1
+    printf '%s\n' "${headers}" | headers_indicate_success
+}
+
 # Resolver (primary): GitHub serves an always-latest static asset at
 # releases/latest/download/<file>, redirecting through the versioned download
-# path. Probe it to confirm the asset exists and to learn the version, then
-# publish the resolution contract. Returns non-zero when the latest release does
-# not carry this platform's asset, so the caller can fall back to a scan.
+# path. Probe it to confirm the archive AND checksums.txt both exist and to learn
+# the version, then publish the resolution contract. Returns non-zero when the
+# latest release does not carry a complete asset set for this platform, so the
+# caller can fall back to a scan of older releases.
 resolve_release_via_latest() {
     local filename="${1}"
-    local latest_archive_url="${GITHUB}/${GITHUB_REPO}/releases/latest/download/${filename}"
+    local latest_base="${GITHUB}/${GITHUB_REPO}/releases/latest/download"
 
     local headers
-    headers="$(fetch_redirect_headers "${latest_archive_url}")" || return 1
+    headers="$(fetch_redirect_headers "${latest_base}/${filename}")" || return 1
+    # Confirm the archive itself resolved (not just an intermediate redirect).
+    printf '%s\n' "${headers}" | headers_indicate_success || return 1
+
+    # checksums.txt is a separate release asset; during a partial publish the
+    # archive can exist without it. Require both so we fall back to a complete
+    # older release instead of failing the later checksum download.
+    remote_asset_exists "${latest_base}/checksums.txt" || return 1
 
     local version
     version="$(printf '%s\n' "${headers}" | parse_version_from_headers)"
@@ -137,8 +160,8 @@ resolve_release_via_latest() {
         # download via the always-latest URLs and resolve the version from the
         # installed binary after extraction.
         RESOLVED_VERSION=""
-        RESOLVED_ARCHIVE_URL="${latest_archive_url}"
-        RESOLVED_CHECKSUMS_URL="${GITHUB}/${GITHUB_REPO}/releases/latest/download/checksums.txt"
+        RESOLVED_ARCHIVE_URL="${latest_base}/${filename}"
+        RESOLVED_CHECKSUMS_URL="${latest_base}/checksums.txt"
     fi
     return 0
 }

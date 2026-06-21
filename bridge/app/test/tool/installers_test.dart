@@ -128,8 +128,10 @@ printf '%s\n' 'HTTP/2 302' 'location: https://github.com/sesori-ai/sesori_apps_m
         script:
             '''
 source ${jsonEncode(libraryPath)}
+# Both the archive probe and the checksums probe go through fetch_redirect_headers;
+# a 2xx status line is required so the resolver accepts the latest release.
 fetch_redirect_headers() {
-  printf '%s\n' 'location: https://github.com/sesori-ai/sesori_apps_monorepo/releases/download/v4.5.6/sesori-bridge-macos-arm64.tar.gz'
+  printf '%s\n' 'HTTP/2 200' 'location: https://github.com/sesori-ai/sesori_apps_monorepo/releases/download/v4.5.6/sesori-bridge-macos-arm64.tar.gz'
 }
 resolve_release sesori-bridge-macos-arm64.tar.gz
 printf '%s\n%s\n%s\n' "\$RESOLVED_VERSION" "\$RESOLVED_ARCHIVE_URL" "\$RESOLVED_CHECKSUMS_URL"
@@ -151,6 +153,94 @@ printf '%s\n%s\n%s\n' "\$RESOLVED_VERSION" "\$RESOLVED_ARCHIVE_URL" "\$RESOLVED_
           ].join('\n'),
         ),
       );
+    });
+
+    test('falls back to a scan when the latest release is missing checksums.txt', () async {
+      final libraryPath = await _createInstallShLibrary();
+      final tempDir = await Directory.systemTemp.createTemp('install-sh-partial-');
+      addTearDown(() => tempDir.delete(recursive: true));
+      final releasesPath = p.join(tempDir.path, 'releases.json');
+      await File(releasesPath).writeAsString(
+        jsonEncode([
+          {
+            'tag_name': 'v0.4.0',
+            'draft': false,
+            'prerelease': false,
+            'assets': [
+              {'name': 'sesori-bridge-macos-arm64.tar.gz'},
+              {'name': 'checksums.txt'},
+            ],
+          },
+        ]),
+      );
+
+      // Latest has the archive (200) but checksums.txt is still missing (404),
+      // e.g. a partial publish window. The resolver must reject it and scan.
+      final result = await _runBashSnippet(
+        script:
+            '''
+source ${jsonEncode(libraryPath)}
+fetch_redirect_headers() {
+  case "\$1" in
+    *checksums.txt) printf '%s\n' 'HTTP/2 404' ;;
+    *) printf '%s\n' 'HTTP/2 200' 'location: https://github.com/sesori-ai/sesori_apps_monorepo/releases/download/v9.9.9/sesori-bridge-macos-arm64.tar.gz' ;;
+  esac
+}
+fetch_text() { cat ${jsonEncode(releasesPath)}; }
+resolve_release sesori-bridge-macos-arm64.tar.gz
+printf '%s\n' "\$RESOLVED_VERSION"
+''',
+        environment: {
+          'PATH': Platform.environment['PATH'] ?? '',
+          'HOME': tempDir.path,
+        },
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      expect((result.stdout as String).trim(), equals('0.4.0'));
+    });
+
+    test('falls back when a stale curl returns exit 0 for a 404 archive HEAD', () async {
+      final libraryPath = await _createInstallShLibrary();
+      final tempDir = await Directory.systemTemp.createTemp('install-sh-oldcurl-');
+      addTearDown(() => tempDir.delete(recursive: true));
+      final releasesPath = p.join(tempDir.path, 'releases.json');
+      await File(releasesPath).writeAsString(
+        jsonEncode([
+          {
+            'tag_name': 'v0.4.0',
+            'draft': false,
+            'prerelease': false,
+            'assets': [
+              {'name': 'sesori-bridge-macos-arm64.tar.gz'},
+              {'name': 'checksums.txt'},
+            ],
+          },
+        ]),
+      );
+
+      // Simulate old curl: exit 0 even though the final hop is 404 (only 3xx +
+      // 4xx, no 2xx). The version is still parseable from the redirect, so the
+      // 2xx guard is what prevents wrongly accepting the missing asset.
+      final result = await _runBashSnippet(
+        script:
+            '''
+source ${jsonEncode(libraryPath)}
+fetch_redirect_headers() {
+  printf '%s\n' 'HTTP/2 302' 'location: https://github.com/sesori-ai/sesori_apps_monorepo/releases/download/v9.9.9/sesori-bridge-macos-arm64.tar.gz' 'HTTP/2 404'
+}
+fetch_text() { cat ${jsonEncode(releasesPath)}; }
+resolve_release sesori-bridge-macos-arm64.tar.gz
+printf '%s\n' "\$RESOLVED_VERSION"
+''',
+        environment: {
+          'PATH': Platform.environment['PATH'] ?? '',
+          'HOME': tempDir.path,
+        },
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      expect((result.stdout as String).trim(), equals('0.4.0'));
     });
 
     test('falls back to scanning older releases when latest/download lacks the asset', () async {
@@ -445,7 +535,8 @@ cat "\$HOME/.zprofile"
       expect(script, isNot(contains('RELEASES_JSON=')));
       expect(script, isNot(contains('PAGE_JSON=')));
       // Primary path is GitHub's native always-latest static download.
-      expect(script, contains(r'releases/latest/download/${filename}'));
+      expect(script, contains('releases/latest/download'));
+      expect(script, contains(r'${latest_base}/${filename}'));
       // The fallback scan streams each page to a file (paths-as-args only).
       expect(script, contains(r'> "${page_file}"'));
     });
