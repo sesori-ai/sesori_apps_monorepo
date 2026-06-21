@@ -233,11 +233,16 @@ void main() {
       expect(recording.environment!.containsKey("OPENCODE_SERVER_PASSWORD"), isFalse);
     });
 
-    test("omits the password env var when password is empty", () async {
+    test("removes password env vars case-insensitively when password is empty", () async {
       final recording = _RecordingHostProcessService();
       final host = _SpawnFakeHost(
         processes: recording,
-        environment: const <String, String>{"PATH": "/usr/bin"},
+        environment: const <String, String>{
+          "PATH": "/usr/bin",
+          "Opencode_Server_Password": "leak",
+          "opencode_server_password": "leak2",
+          "OPENCODE_SERVER_PASSWORD": "leak3",
+        },
       );
 
       await spawnOpenCodeProcess(
@@ -248,7 +253,10 @@ void main() {
       );
 
       expect(recording.environment, isNotNull);
+      expect(recording.environment!.containsKey("Opencode_Server_Password"), isFalse);
+      expect(recording.environment!.containsKey("opencode_server_password"), isFalse);
       expect(recording.environment!.containsKey("OPENCODE_SERVER_PASSWORD"), isFalse);
+      expect(recording.environment!["PATH"], equals("/usr/bin"));
     });
   });
 

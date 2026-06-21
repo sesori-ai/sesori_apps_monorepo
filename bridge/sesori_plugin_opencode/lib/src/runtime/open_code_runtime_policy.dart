@@ -167,7 +167,9 @@ Future<SpawnedProcess> spawnOpenCodeProcess({
     ...host.environment,
   };
   if (password == null || password.isEmpty) {
-    environment.remove("OPENCODE_SERVER_PASSWORD");
+    environment.removeWhere(
+      (key, _) => key.toUpperCase() == "OPENCODE_SERVER_PASSWORD",
+    );
   } else {
     environment["OPENCODE_SERVER_PASSWORD"] = password;
   }
