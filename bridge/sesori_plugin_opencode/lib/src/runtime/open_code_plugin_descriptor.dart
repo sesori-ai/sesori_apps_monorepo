@@ -135,7 +135,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       name: "no-password",
       help: "Disable OpenCode server authentication",
       defaultsTo: false,
-      negatable: true,
+      negatable: false,
     ),
     PluginValueOption(
       name: "opencode-bin",
