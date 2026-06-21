@@ -108,8 +108,8 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   final Duration _versionProbeTimeout;
   final OpenCodeDbOptimizer? _optimizeDb;
 
-  /// The four OpenCode CLI options, names/help/defaults identical to the flags
-  /// the bridge has always declared.
+  /// The OpenCode CLI options: the four historical flags plus the
+  /// authentication-disabling flag.
   static const List<PluginOption> cliOptions = [
     PluginValueOption.integer(
       name: "port",
@@ -343,7 +343,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       spec = buildOpenCodeManagedRuntimeSpec(
         host: host,
         executablePath: "",
-        password: noPassword ? null : (providedPassword ?? ""),
+        password: noPassword ? null : providedPassword,
         portPolicy: ExplicitPortPolicy(port: attachPort),
         probeClientFactory: probeClientFactory,
       );

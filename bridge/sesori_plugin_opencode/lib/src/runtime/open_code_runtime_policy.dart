@@ -165,8 +165,12 @@ Future<SpawnedProcess> spawnOpenCodeProcess({
 }) async {
   final environment = <String, String>{
     ...host.environment,
-    if (password != null && password.isNotEmpty) "OPENCODE_SERVER_PASSWORD": password,
   };
+  if (password == null || password.isEmpty) {
+    environment.remove("OPENCODE_SERVER_PASSWORD");
+  } else {
+    environment["OPENCODE_SERVER_PASSWORD"] = password;
+  }
   final process = await host.processes.spawn(
     executable: executablePath,
     arguments: <String>["serve", "--port", "$port", "--hostname", openCodeLoopbackHost],
