@@ -99,19 +99,33 @@ class SystemProcessApi {
   /// returns only the matching row. This mirrors [_inspectWindowsProcess] and
   /// avoids enumerating the whole process table just to look up one pid.
   ///
-  /// Unlike [_listPosixProcesses], a non-zero exit here means "no such process"
-  /// (`ps -p` exits non-zero when the pid is gone), so it returns `null` instead
-  /// of throwing. The targeted form drops the `a`/`x` list selectors but keeps
-  /// `-ww` so long command lines are never truncated, and reuses the same
-  /// `-o` column spec so [_parsePosixProcesses]'s 24-char `lstart` regex matches.
+  /// `ps -p` exits non-zero both when the pid is simply gone AND when the
+  /// invocation genuinely fails (e.g. a usage/format error or `ps` itself
+  /// failing), and on BSD `ps` the exit code is `1` in every case — so the exit
+  /// code alone cannot distinguish them. We disambiguate via stderr: a vanished
+  /// pid produces empty stdout and empty stderr, so we treat non-zero + empty
+  /// stderr as "no such process" and return `null`. A non-zero exit with stderr
+  /// content is a real failure and is rethrown as a [ProcessException] — never
+  /// swallowed — because callers such as `BridgeRuntimeRunner` rely on POSIX
+  /// self-inspection errors staying fatal (a marker-less fallback would corrupt
+  /// the startup lock).
+  ///
+  /// The targeted form drops the `a`/`x` list selectors but keeps `-ww` so long
+  /// command lines are never truncated, and reuses the same `-o` column spec so
+  /// [_parsePosixProcesses]'s 24-char `lstart` regex matches.
   Future<ProcessIdentity?> _inspectPosixProcess({required int pid}) async {
+    final (command, args) = ("ps", <String>["-p", "$pid", "-wwo", "pid=,user=,lstart=,command="]);
     final result = await _processRunner.run(
-      "ps",
-      <String>["-p", "$pid", "-wwo", "pid=,user=,lstart=,command="],
+      command,
+      args,
       environment: {"LC_ALL": "C"},
     );
     if (result.exitCode != 0) {
-      return null;
+      final stderr = result.stderr.toString().trim();
+      if (stderr.isEmpty) {
+        return null;
+      }
+      throw ProcessException(command, args, stderr, result.exitCode);
     }
 
     final processes = _parsePosixProcesses(stdout: result.stdout.toString());

@@ -113,8 +113,10 @@ void main() {
       expect(identity.platform, equals("macos"));
     });
 
-    test("inspectProcess returns null (without throwing) when ps exits non-zero", () async {
-      final runner = _RecordingProcessRunner(exitCode: 1, stdout: "");
+    test("inspectProcess returns null (without throwing) when ps exits non-zero with no stderr", () async {
+      // A vanished pid: `ps -p` exits non-zero with empty stdout AND empty
+      // stderr. That is the legitimate "no such process" signal.
+      final runner = _RecordingProcessRunner(exitCode: 1, stdout: "", stderr: "");
       final api = SystemProcessApi(
         processRunner: runner,
         clock: const ServerClock(),
@@ -126,6 +128,25 @@ void main() {
 
       expect(identity, isNull);
       expect(runner.calls.single.arguments, containsAllInOrder(<String>["-p", "999999"]));
+    });
+
+    test("inspectProcess throws (not null) when ps exits non-zero with stderr", () async {
+      // A genuine invocation/format failure writes to stderr. It must NOT be
+      // collapsed to null — callers rely on POSIX self-inspection errors
+      // staying fatal so the startup lock is never poisoned with a
+      // marker-less fallback identity.
+      final runner = _RecordingProcessRunner(exitCode: 1, stdout: "", stderr: "ps: unknown option");
+      final api = SystemProcessApi(
+        processRunner: runner,
+        clock: const ServerClock(),
+        isWindows: false,
+        platform: "macos",
+      );
+
+      await expectLater(
+        api.inspectProcess(pid: 321),
+        throwsA(isA<ProcessException>()),
+      );
     });
 
     test("inspectProcess returns null when ps yields no matching row", () async {
