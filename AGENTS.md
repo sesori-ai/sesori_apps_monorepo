@@ -373,6 +373,7 @@ When waiting for PR CI/reviews, use `pr_monitor` notifications rather than long-
 
 - Always use **named arguments with the `required` keyword**, including for nullable parameters. Never use positional arguments.
   - In Freezed request models, marking a nullable field as `required String? field` does **not** require the key to exist in incoming JSON. Freezed deserializes a missing key to `null`, preserving backwards compatibility while keeping call sites explicit.
+  - **Exception — logging APIs.** The single-message logging entry points (`Console.message`/`warning`/`error` and `Log.v`/`d`/`i`/`w`/`e`) keep their `text`/`message` as a **positional** argument. A positional message is the standard, expected shape for logging calls, and forcing `text:` at every call site adds noise without clarity. Do not "fix" these to named arguments.
 - **Never replace a `switch` statement with a cascade of `if` statements** to satisfy the `prefer_exhaustive_switch` lint. Instead, keep the `switch` and add all missing cases explicitly (return `null` or handle appropriately for unrecognized values).
 
 ```dart
