@@ -39,3 +39,5 @@ export "src/process/process_identity.dart";
 export "src/process/process_user.dart";
 export "src/process/server_clock.dart";
 export "src/process/signal_result.dart";
+export "src/terminal_color_validator.dart";
+export "src/terminal_glyph_validator.dart";
