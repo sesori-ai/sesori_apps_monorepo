@@ -17,14 +17,23 @@ typedef PluginOptionValueValidator = void Function(String name, String value);
 /// has no side effects — descriptors stay inert until started.
 @immutable
 sealed class PluginOption {
-  const PluginOption({required this.name, required this.help});
+  const PluginOption({required this.name, required this.help, this.deprecatedAliases = const <String>[]});
 
-  /// The flag name as typed on the command line, without dashes
-  /// (e.g. `"port"` for `--port`).
+  /// The option's local name, without dashes or a plugin prefix
+  /// (e.g. `"port"`). The bridge namespaces this to `--<pluginId>-<name>`
+  /// when registering it, so plugins never spell their own prefix.
   final String name;
 
   /// One-line help text shown in `--help` output.
   final String help;
+
+  /// Legacy, un-prefixed flag names that still resolve to this option for
+  /// backwards compatibility (e.g. `["port"]` so `--port` keeps working after
+  /// the canonical flag became `--opencode-port`).
+  ///
+  /// The bridge registers each alias as a hidden flag and emits a deprecation
+  /// warning when one is used. Empty for options with no legacy spelling.
+  final List<String> deprecatedAliases;
 }
 
 /// A boolean CLI flag (e.g. `--no-auto-start`).
@@ -34,6 +43,7 @@ final class PluginFlagOption extends PluginOption {
     required super.help,
     required this.defaultsTo,
     required this.negatable,
+    super.deprecatedAliases,
   });
 
   /// Value when the flag is not passed.
@@ -52,6 +62,7 @@ final class PluginValueOption extends PluginOption {
     required this.allowedValues,
     required this.valueHelp,
     required this.validate,
+    super.deprecatedAliases,
   });
 
   /// An option whose value must parse as an integer (e.g. `--port`).
@@ -65,6 +76,7 @@ final class PluginValueOption extends PluginOption {
     required String help,
     required String? defaultsTo,
     required String? valueHelp,
+    List<String> deprecatedAliases = const <String>[],
   }) : this(
          name: name,
          help: help,
@@ -72,6 +84,7 @@ final class PluginValueOption extends PluginOption {
          allowedValues: null,
          valueHelp: valueHelp,
          validate: validateInteger,
+         deprecatedAliases: deprecatedAliases,
        );
 
   /// Value when the option is not passed; `null` means "absent".

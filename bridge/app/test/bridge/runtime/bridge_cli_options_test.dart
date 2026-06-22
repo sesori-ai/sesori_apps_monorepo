@@ -3,16 +3,10 @@ import "package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart";
 import "package:test/test.dart";
 
 void main() {
-  test("omitted port stays unset", () {
+  test("relay URL is read from the flag", () {
     final options = _parseOptions(args: ["--relay", "wss://relay.sesori.test"]);
 
-    expect(options.port, isNull);
-  });
-
-  test("explicit 4096 is preserved", () {
-    final options = _parseOptions(args: ["--port", "4096"]);
-
-    expect(options.port, 4096);
+    expect(options.relayUrl, "wss://relay.sesori.test");
   });
 
   test("auth backend falls back to the default URL", () {
@@ -31,8 +25,6 @@ void main() {
 BridgeCliOptions _parseOptions({required List<String> args}) {
   final parser = ArgParser()
     ..addOption("relay", defaultsTo: "wss://relay.sesori.com")
-    ..addOption("port")
-    ..addOption("password", defaultsTo: "")
     ..addOption("auth-backend", defaultsTo: "")
     ..addOption("debug-port", defaultsTo: "")
     ..addOption(

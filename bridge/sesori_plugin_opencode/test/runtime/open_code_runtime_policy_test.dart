@@ -65,16 +65,35 @@ void main() {
     });
   });
 
+  group("resolveOpenCodeConnectHost", () {
+    test("falls back to loopback for the IPv4 wildcard", () {
+      expect(resolveOpenCodeConnectHost(bindHost: "0.0.0.0"), equals("127.0.0.1"));
+    });
+
+    test("maps the IPv6 wildcard to IPv6 loopback to preserve address family", () {
+      expect(resolveOpenCodeConnectHost(bindHost: "::"), equals("::1"));
+    });
+
+    test("returns loopback unchanged", () {
+      expect(resolveOpenCodeConnectHost(bindHost: "127.0.0.1"), equals("127.0.0.1"));
+    });
+
+    test("returns a concrete interface address verbatim", () {
+      expect(resolveOpenCodeConnectHost(bindHost: "10.0.0.5"), equals("10.0.0.5"));
+    });
+  });
+
   group("buildOpenCodeOwnershipRecord", () {
     test("maps the draft into a starting record with the frozen spawn args", () {
       final record = buildOpenCodeOwnershipRecord(
-        RuntimeRecordDraft(
+        draft: RuntimeRecordDraft(
           ownerSessionId: "owner-1",
           runtimeIdentity: _identity(pid: 4242, executablePath: "/bin/opencode", startMarker: "marker"),
           port: 51000,
           bridgeIdentity: _identity(pid: 900, executablePath: "/bin/bridge", startMarker: "bridge-marker"),
           startedAt: DateTime.utc(2026, 6, 1, 9, 30),
         ),
+        bindHost: "127.0.0.1",
       );
 
       expect(record.ownerSessionId, equals("owner-1"));
@@ -90,15 +109,31 @@ void main() {
       expect(record.status, equals(OpenCodeOwnershipStatus.starting));
     });
 
+    test("records the configured bind host in the spawn args", () {
+      final record = buildOpenCodeOwnershipRecord(
+        draft: RuntimeRecordDraft(
+          ownerSessionId: "owner-3",
+          runtimeIdentity: _identity(pid: 4242, executablePath: "/bin/opencode", startMarker: "marker"),
+          port: 51000,
+          bridgeIdentity: _identity(pid: 900, executablePath: "/bin/bridge", startMarker: "bridge-marker"),
+          startedAt: DateTime.utc(2026, 6, 1, 9, 30),
+        ),
+        bindHost: "0.0.0.0",
+      );
+
+      expect(record.openCodeArgs, equals(<String>["serve", "--port", "51000", "--hostname", "0.0.0.0"]));
+    });
+
     test("falls back to opencode when the runtime executable path is unknown", () {
       final record = buildOpenCodeOwnershipRecord(
-        RuntimeRecordDraft(
+        draft: RuntimeRecordDraft(
           ownerSessionId: "owner-2",
           runtimeIdentity: _identity(pid: 7, executablePath: null, startMarker: null),
           port: 4096,
           bridgeIdentity: _identity(pid: 900, executablePath: "/bin/bridge", startMarker: null),
           startedAt: DateTime.utc(2026, 6, 1),
         ),
+        bindHost: "127.0.0.1",
       );
       expect(record.openCodeExecutablePath, equals(""));
       expect(record.openCodeCommand, equals("opencode"));
@@ -111,6 +146,7 @@ void main() {
       final probe = await probeOpenCodeHealth(
         port: 51000,
         password: "secret",
+        host: "127.0.0.1",
         clientFactory: () => MockClient((request) async {
           captured = request;
           return http.Response("", 200);
@@ -126,11 +162,44 @@ void main() {
       );
     });
 
+    test("probes the supplied host", () async {
+      late http.BaseRequest captured;
+      final probe = await probeOpenCodeHealth(
+        port: 51000,
+        password: "secret",
+        host: "10.0.0.5",
+        clientFactory: () => MockClient((request) async {
+          captured = request;
+          return http.Response("", 200);
+        }),
+      );
+
+      expect(probe.healthy, isTrue);
+      expect(captured.url.toString(), equals("http://10.0.0.5:51000/global/health"));
+    });
+
+    test("brackets an IPv6 literal host in the probe URL", () async {
+      late http.BaseRequest captured;
+      final probe = await probeOpenCodeHealth(
+        port: 51000,
+        password: "secret",
+        host: "::1",
+        clientFactory: () => MockClient((request) async {
+          captured = request;
+          return http.Response("", 200);
+        }),
+      );
+
+      expect(probe.healthy, isTrue);
+      expect(captured.url.toString(), equals("http://[::1]:51000/global/health"));
+    });
+
     test("omits the Authorization header when password is null", () async {
       late http.BaseRequest captured;
       final probe = await probeOpenCodeHealth(
         port: 51000,
         password: null,
+        host: "127.0.0.1",
         clientFactory: () => MockClient((request) async {
           captured = request;
           return http.Response("", 200);
@@ -146,6 +215,7 @@ void main() {
       final probe = await probeOpenCodeHealth(
         port: 51000,
         password: "",
+        host: "127.0.0.1",
         clientFactory: () => MockClient((request) async {
           captured = request;
           return http.Response("", 200);
@@ -160,6 +230,7 @@ void main() {
       final probe = await probeOpenCodeHealth(
         port: 51000,
         password: "secret",
+        host: "127.0.0.1",
         clientFactory: () => MockClient((request) async => http.Response("nope", 503)),
       );
       expect(probe.healthy, isFalse);
@@ -170,6 +241,7 @@ void main() {
       final probe = await probeOpenCodeHealth(
         port: 51000,
         password: "secret",
+        host: "127.0.0.1",
         clientFactory: () => MockClient((request) async => throw const SocketException("refused")),
       );
       expect(probe.healthy, isFalse);
@@ -183,6 +255,7 @@ void main() {
       final probe = await probeOpenCodeHealth(
         port: 51000,
         password: "secret",
+        host: "127.0.0.1",
         clientFactory: _HangingBodyClient.new,
         timeout: const Duration(milliseconds: 100),
       );
@@ -204,6 +277,7 @@ void main() {
         executablePath: "/bin/opencode",
         port: 51000,
         password: "secret",
+        bindHost: "127.0.0.1",
       );
 
       expect(spawned.pid, equals(4242));
@@ -213,6 +287,21 @@ void main() {
       expect(recording.environment?["PATH"], equals("/usr/bin"));
       expect(recording.environment?["HOME"], equals("/home/alex"));
       expect(recording.workingDirectory, isNull);
+    });
+
+    test("binds --hostname to the supplied bind host", () async {
+      final recording = _RecordingHostProcessService();
+      final host = _SpawnFakeHost(processes: recording, environment: const <String, String>{});
+
+      await spawnOpenCodeProcess(
+        host: host,
+        executablePath: "/bin/opencode",
+        port: 51000,
+        password: "secret",
+        bindHost: "0.0.0.0",
+      );
+
+      expect(recording.arguments, equals(<String>["serve", "--port", "51000", "--hostname", "0.0.0.0"]));
     });
 
     test("omits the password env var when password is null", () async {
@@ -227,6 +316,7 @@ void main() {
         executablePath: "/bin/opencode",
         port: 51000,
         password: null,
+        bindHost: "127.0.0.1",
       );
 
       expect(recording.environment, isNotNull);
@@ -250,6 +340,7 @@ void main() {
         executablePath: "/bin/opencode",
         port: 51000,
         password: "",
+        bindHost: "127.0.0.1",
       );
 
       expect(recording.environment, isNotNull);
@@ -268,6 +359,8 @@ void main() {
         password: "secret",
         portPolicy: const ExplicitPortPolicy(port: 4096),
         probeClientFactory: () => MockClient((request) async => http.Response("", 200)),
+        bindHost: "127.0.0.1",
+        connectHost: "127.0.0.1",
       );
 
       expect(spec.recordTiming, equals(RuntimeRecordTiming.intentSideFile));
@@ -277,6 +370,27 @@ void main() {
       expect(health, isA<HealthDeadlinePolicy>());
       expect((health as HealthDeadlinePolicy).deadline, equals(const Duration(seconds: 30)));
       expect(health.pollInterval, equals(const Duration(milliseconds: 500)));
+    });
+
+    test("routes the health probe to the connect host, not the bind host", () async {
+      late http.BaseRequest captured;
+      final spec = buildOpenCodeManagedRuntimeSpec(
+        host: _SpawnFakeHost(processes: _RecordingHostProcessService(), environment: const <String, String>{}),
+        executablePath: "/bin/opencode",
+        password: "secret",
+        portPolicy: const ExplicitPortPolicy(port: 4096),
+        probeClientFactory: () => MockClient((request) async {
+          captured = request;
+          return http.Response("", 200);
+        }),
+        bindHost: "0.0.0.0",
+        connectHost: "127.0.0.1",
+      );
+
+      final probe = await spec.probeHealth(port: 4096);
+
+      expect(probe.healthy, isTrue);
+      expect(captured.url.toString(), equals("http://127.0.0.1:4096/global/health"));
     });
   });
 
