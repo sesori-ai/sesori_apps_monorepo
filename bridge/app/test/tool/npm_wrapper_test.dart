@@ -376,11 +376,14 @@ void _expectInstallSummary({
   required List<String> args,
 }) {
   final nextStep = ['sesori-bridge', ...args].join(' ');
-  expect(result.stdout, contains('Sesori Bridge install complete'));
-  expect(result.stdout, contains('Managed binary : ${_managedBinaryPath(homePath: homePath)}'));
+  // The completion output is styled (banner + boxed "Next steps"). Assert on
+  // stable substrings rather than full styled lines so cosmetic tweaks to the
+  // panel don't break behavior tests. Color is off here (piped, no FORCE_COLOR).
+  expect(result.stdout, contains('Sesori Bridge v'));
+  expect(result.stdout, contains('installed'));
   expect(result.stdout, contains('Next steps'));
-  expect(result.stdout, contains('Run the bridge:'));
-  expect(result.stdout, contains('   $nextStep'));
+  expect(result.stdout, contains('# Start the bridge'));
+  expect(result.stdout, contains(nextStep));
 }
 
 Future<({int exitCode, String stdout, String stderr})> _waitForProcess(Process process) async {
@@ -396,6 +399,7 @@ Future<void> main() async {
     test('fails with a clear message for unsupported platforms', () async {
       final scriptPath = p.join(_wrapperPackageRoot(), 'bin', 'bridge.js');
       final bootstrapPath = p.join(_wrapperPackageRoot(), 'lib', 'bootstrap.js');
+      final uiPath = p.join(_wrapperPackageRoot(), 'lib', 'ui.js');
       final result = await _runNodeHarness(
         source:
             '''
@@ -410,12 +414,19 @@ const sandbox = {
     if (name === '../lib/bootstrap') {
       return require(${jsonEncode(bootstrapPath)});
     }
+    if (name === '../lib/ui') {
+      return require(${jsonEncode(uiPath)});
+    }
     throw new Error('unexpected require: ' + name);
   },
   process: {
     platform: 'sunos',
     arch: 'sparc',
     argv: ['node', 'bridge.js'],
+    env: {},
+    // The styled UI writes through process.stderr; capture it here.
+    stderr: { write(chunk) { stderr.push(String(chunk)); } },
+    stdout: { write() {} },
     exit(code) { exitCode = code; throw new Error('__EXIT__'); },
   },
   console: { error(message) { stderr.push(String(message)); } },
@@ -425,7 +436,7 @@ try {
 } catch (error) {
   if (error.message !== '__EXIT__') throw error;
 }
-console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
+console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
 ''',
       );
 
@@ -433,9 +444,11 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       final decoded = jsonDecode((result.stdout as String).trim()) as Map<String, dynamic>;
       expect(decoded['exitCode'], equals(1));
       final stderr = decoded['stderr'] as String;
-      expect(stderr, contains('sesori-bridge: Unsupported platform: sunos sparc'));
+      expect(stderr, contains('Unsupported platform: sunos sparc'));
       expect(stderr, contains('Supported platforms: darwin arm64, darwin x64, linux x64, linux arm64, win32 x64, win32 arm64'));
-      expect(stderr, contains('npm install @sesori/bridge-darwin-arm64'));
+      // The hint points at the bootstrap entry point (npx), not direct installs
+      // of the internal per-platform payload packages.
+      expect(stderr, contains('npx @sesori/bridge'));
     });
 
     test('bootstrap source renders Windows managed fallback commands via PowerShell invocation', () async {
@@ -603,12 +616,8 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
 
       expect(bootstrapResult.exitCode, equals(0), reason: '${bootstrapResult.stdout}\n${bootstrapResult.stderr}');
       _expectInstallSummary(result: bootstrapResult, homePath: homeDir.path, args: ['serve']);
-      expect(
-        bootstrapResult.stdout,
-        contains(
-          'PATH update    : Persisted ~/.local/bin in ${p.join(homeDir.path, '.bashrc')} and ${p.join(homeDir.path, '.profile')}. Run `source ${p.join(homeDir.path, '.bashrc')}` or open a new terminal.',
-        ),
-      );
+      // The styled completion no longer echoes a "PATH update" status line; the
+      // PATH persistence is asserted directly against the shell rc files below.
       expect(
         File(p.join(homeDir.path, '.bashrc')).readAsStringSync(),
         contains(r'export PATH="$HOME/.local/bin:$PATH"'),
@@ -680,6 +689,46 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       final recorded = await _readRecordedInvocation(recordPath: recordPath);
       expect(recorded['marker'], equals('existing-managed'));
       expect(recorded['libMarker'], equals('existing-lib'));
+    });
+
+    test('no-op bootstrap still shows next-steps when the command is not yet usable', () async {
+      // The runtime is already current (no reinstall), but the bare command is
+      // not resolvable in this shell (~/.local/bin is not on PATH). The bootstrap
+      // recreates the symlink / may persist PATH, so the user must still be told
+      // to open a new terminal — the completion panel must not be suppressed.
+      final wrapperRoot = await _createWrapperFixture();
+      final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
+      addTearDown(() => homeDir.delete(recursive: true));
+
+      await _createPlatformPayload(
+        wrapperRoot: wrapperRoot,
+        version: '1.2.3',
+        binaryMarker: 'payload-runtime',
+        libMarker: 'payload-lib',
+      );
+      await _seedManagedRuntime(
+        homePath: homeDir.path,
+        version: '1.2.3',
+        binaryMarker: 'existing-managed',
+        libMarker: 'existing-lib',
+        includeBinary: true,
+        includeLib: true,
+      );
+
+      // The temp HOME's ~/.local/bin is never on the inherited PATH, so the bare
+      // command is not yet usable — exactly the "no-op but not ready" scenario.
+      final result = await _runWrapperProcess(
+        packageRoot: wrapperRoot,
+        homePath: homeDir.path,
+        args: ['status'],
+        environment: {
+          'SHELL': '/bin/bash',
+        },
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      expect(result.stdout, contains('Next steps'));
+      expect(result.stdout, contains('new terminal'));
     });
 
     test('same-version managed runtime does not require release download fallback', () async {
@@ -975,8 +1024,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
       expect(result.stderr, contains('Failed to persist the managed command path'));
       expect(result.stderr, contains('The managed runtime is installed, but you may need to add it to PATH manually.'));
-      expect(result.stdout, contains('PATH update    : manual action required'));
-      expect(result.stdout, isNot(contains('PATH update    : already configured')));
       final directRun = await _runManagedBinary(
         homePath: homeDir.path,
         args: ['status'],
@@ -1209,6 +1256,64 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('\\n') }));
       expect(recorded['marker'], equals('payload-runtime'));
       expect(recorded['executedPath'], equals(_managedBinaryPath(homePath: homeDir.path)));
       expect(lockDir.existsSync(), isFalse);
+    });
+  });
+
+  group('ui.js', () {
+    // Drives lib/ui.js directly with an in-memory capture stream and an explicit
+    // env, so we can assert the shared visual spec's degradation behavior without
+    // a real terminal. Matches the install.sh color/no-color/ASCII tests.
+    final uiPath = p.join(_wrapperPackageRoot(), 'lib', 'ui.js');
+
+    Future<String> renderUi({required Map<String, String> env}) async {
+      final result = await _runNodeHarness(
+        source:
+            '''
+const ui = require(${jsonEncode(uiPath)});
+const chunks = [];
+const stream = { isTTY: true, write(s) { chunks.push(String(s)); } };
+const env = ${jsonEncode(env)};
+const u = new ui.Ui({ stream, errStream: stream, env });
+u.banner();
+u.summary("darwin/arm64", "v1.2.3");
+u.step(1, "Downloading release");
+u.ok("Downloaded sesori-bridge-macos-arm64.tar.gz");
+u.completion({ version: "1.2.3", location: "~/.local/share/sesori", onPath: false });
+process.stdout.write(JSON.stringify({ out: chunks.join("") }));
+''',
+      );
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      final decoded = jsonDecode((result.stdout as String).trim()) as Map<String, dynamic>;
+      return decoded['out'] as String;
+    }
+
+    test('emits ANSI color and Unicode glyphs under FORCE_COLOR + UTF-8', () async {
+      final out = await renderUi(env: {'FORCE_COLOR': '1', 'LANG': 'en_US.UTF-8'});
+      // Brand-blue step counter and green check escapes.
+      expect(out, contains('\u001b[38;5;39m[1/4]'));
+      expect(out, contains('\u001b[38;5;42m'));
+      // Unicode wordmark + check glyph + box-drawing.
+      expect(out, contains('\u2588'));
+      expect(out, contains('\u2713'));
+      expect(out, contains('\u250c'));
+      expect(out, contains('Installing the Sesori Bridge'));
+      expect(out, contains('# Start the bridge'));
+    });
+
+    test('suppresses ANSI escapes under NO_COLOR', () async {
+      final out = await renderUi(env: {'NO_COLOR': '1', 'LANG': 'en_US.UTF-8'});
+      expect(out, isNot(contains('\u001b[')));
+      expect(out, contains('[1/4] Downloading release'));
+      expect(out, contains('Next steps'));
+    });
+
+    test('falls back to ASCII glyphs in a non-UTF-8 locale', () async {
+      final out = await renderUi(env: {'FORCE_COLOR': '1', 'LANG': 'C', 'LC_ALL': 'C'});
+      // ASCII success marker + ASCII box, no Unicode block/check chars.
+      expect(out, contains('[OK]'));
+      expect(out, contains('+--'));
+      expect(out, isNot(contains('\u2713')));
+      expect(out, isNot(contains('\u2588')));
     });
   });
 }
