@@ -46,14 +46,33 @@ void main() {
       );
     });
 
-    test("FORCE_COLOR forces support without probing the stream", () {
+    test("a non-empty FORCE_COLOR forces support without probing the stream", () {
       expect(
         TerminalColorValidator.isSupported(
           out: _ThrowingStdout(),
-          environment: const {"FORCE_COLOR": ""},
+          environment: const {"FORCE_COLOR": "1"},
         ),
         isTrue,
-        reason: "FORCE_COLOR (even empty) short-circuits before the capability probe",
+        reason: "a non-empty FORCE_COLOR short-circuits before the capability probe",
+      );
+    });
+
+    test("an empty FORCE_COLOR is treated as unset and falls through", () {
+      expect(
+        TerminalColorValidator.isSupported(
+          out: _FakeStdout(supportsAnsiEscapes: false),
+          environment: const {"FORCE_COLOR": ""},
+        ),
+        isFalse,
+        reason: "an empty FORCE_COLOR matches install.sh's -n check (treated as unset)",
+      );
+      expect(
+        TerminalColorValidator.isSupported(
+          out: _FakeStdout(supportsAnsiEscapes: true),
+          environment: const {"FORCE_COLOR": "", "NO_COLOR": "1"},
+        ),
+        isFalse,
+        reason: "an empty FORCE_COLOR falls through to NO_COLOR",
       );
     });
 

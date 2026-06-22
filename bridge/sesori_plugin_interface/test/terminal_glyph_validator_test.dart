@@ -57,6 +57,25 @@ void main() {
       );
     });
 
+    test("skips an empty LC_ALL and falls through to a later locale", () {
+      expect(
+        TerminalGlyphValidator.isSupported(
+          environment: const {"LC_ALL": "", "LANG": "en_US.UTF-8"},
+        ),
+        isTrue,
+        reason: "an empty value is skipped, matching the install.sh locale fallback",
+      );
+    });
+
+    test("all-empty locale variables fall back to ASCII", () {
+      expect(
+        TerminalGlyphValidator.isSupported(
+          environment: const {"LC_ALL": "", "LC_CTYPE": "", "LANG": ""},
+        ),
+        isFalse,
+      );
+    });
+
     test("TERM=dumb forces ASCII even with a UTF-8 locale", () {
       expect(
         TerminalGlyphValidator.isSupported(

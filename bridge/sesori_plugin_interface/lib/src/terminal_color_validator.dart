@@ -5,10 +5,12 @@ import "dart:io";
 /// The rules mirror the Sesori installer scripts (see `install.sh`) so the CLI,
 /// the loggers, and the installers all agree on when color is safe:
 ///
-/// 1. `FORCE_COLOR` (present with any value, even empty) forces color on — an
-///    explicit opt-in that overrides every other signal, including a
-///    non-terminal [out]. This is the only way ANSI escapes reach a redirected
-///    stream.
+/// 1. `FORCE_COLOR` (present and non-empty) forces color on — an explicit
+///    opt-in that overrides every other signal, including a non-terminal
+///    [out]. This is the only way ANSI escapes reach a redirected stream. An
+///    empty `FORCE_COLOR=` is treated as unset (matching `install.sh`'s `-n`
+///    check and the npm bootstrap's truthiness check) and falls through to the
+///    rules below.
 /// 2. `NO_COLOR` (present with any value) forces color off
 ///    (https://no-color.org/).
 /// 3. `TERM=dumb` forces color off.
@@ -27,7 +29,8 @@ class TerminalColorValidator {
     required Stdout out,
     required Map<String, String> environment,
   }) {
-    if (environment.containsKey("FORCE_COLOR")) {
+    final forceColor = environment["FORCE_COLOR"];
+    if (forceColor != null && forceColor.isNotEmpty) {
       return true;
     }
     if (environment.containsKey("NO_COLOR")) {

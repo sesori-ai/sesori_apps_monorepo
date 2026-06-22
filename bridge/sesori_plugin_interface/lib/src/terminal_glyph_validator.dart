@@ -4,8 +4,9 @@
 /// The rules mirror the Sesori installer scripts (see `install.sh`):
 ///
 /// 1. `TERM=dumb` forces ASCII.
-/// 2. Otherwise a UTF-8 locale enables unicode glyphs. The locale is read from
-///    `LC_ALL`, then `LC_CTYPE`, then `LANG` (first set wins) and matched
+/// 2. Otherwise a UTF-8 locale enables unicode glyphs. The locale is the first
+///    non-empty of `LC_ALL`, `LC_CTYPE`, `LANG` (an empty value is skipped,
+///    matching `install.sh`'s `${LC_ALL:-…}` fallback) and matched
 ///    case-insensitively against `utf-8`/`utf8`.
 /// 3. Anything else (including an unset locale) falls back to ASCII.
 ///
@@ -20,8 +21,11 @@ class TerminalGlyphValidator {
     if (environment["TERM"] == "dumb") {
       return false;
     }
-    final locale =
-        (environment["LC_ALL"] ?? environment["LC_CTYPE"] ?? environment["LANG"] ?? "").toLowerCase();
+    final locale = ([
+      environment["LC_ALL"],
+      environment["LC_CTYPE"],
+      environment["LANG"],
+    ].firstWhere((value) => value != null && value.isNotEmpty, orElse: () => "") ?? "").toLowerCase();
     return locale.contains("utf-8") || locale.contains("utf8");
   }
 }
