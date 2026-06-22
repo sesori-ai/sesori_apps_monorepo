@@ -689,6 +689,46 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       expect(recorded['libMarker'], equals('existing-lib'));
     });
 
+    test('no-op bootstrap still shows next-steps when the command is not yet usable', () async {
+      // The runtime is already current (no reinstall), but the bare command is
+      // not resolvable in this shell (~/.local/bin is not on PATH). The bootstrap
+      // recreates the symlink / may persist PATH, so the user must still be told
+      // to open a new terminal — the completion panel must not be suppressed.
+      final wrapperRoot = await _createWrapperFixture();
+      final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
+      addTearDown(() => homeDir.delete(recursive: true));
+
+      await _createPlatformPayload(
+        wrapperRoot: wrapperRoot,
+        version: '1.2.3',
+        binaryMarker: 'payload-runtime',
+        libMarker: 'payload-lib',
+      );
+      await _seedManagedRuntime(
+        homePath: homeDir.path,
+        version: '1.2.3',
+        binaryMarker: 'existing-managed',
+        libMarker: 'existing-lib',
+        includeBinary: true,
+        includeLib: true,
+      );
+
+      // The temp HOME's ~/.local/bin is never on the inherited PATH, so the bare
+      // command is not yet usable — exactly the "no-op but not ready" scenario.
+      final result = await _runWrapperProcess(
+        packageRoot: wrapperRoot,
+        homePath: homeDir.path,
+        args: ['status'],
+        environment: {
+          'SHELL': '/bin/bash',
+        },
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      expect(result.stdout, contains('Next steps'));
+      expect(result.stdout, contains('new terminal'));
+    });
+
     test('same-version managed runtime does not require release download fallback', () async {
       final wrapperRoot = await _createWrapperFixture();
       final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');

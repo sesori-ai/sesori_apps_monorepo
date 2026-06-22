@@ -92,14 +92,21 @@ function isManagedSymlinkReady(installRoot) {
   }
 }
 
+// Whether the bare `sesori-bridge` command resolves in a fresh shell. On Windows
+// there is no ~/.local/bin symlink, so PATH being configured is the only signal;
+// on Unix both the PATH entry and the managed symlink must hold.
+function isCommandReady(installRoot) {
+  var pathConfigured = launcher.isLocalBinInPath();
+  if (process.platform === "win32") {
+    return pathConfigured;
+  }
+  return pathConfigured && isManagedSymlinkReady(installRoot);
+}
+
 function printInstallSummary(options) {
   var commands = nextCommand(options.binaryPath, options.args);
-  var pathConfigured = launcher.isLocalBinInPath();
   var symlinkReady = isManagedSymlinkReady(options.installRoot);
-
-  // On Windows there is no ~/.local/bin symlink; PATH being configured is the
-  // signal that the bare command resolves. On Unix, both must hold.
-  var commandReady = process.platform === "win32" ? pathConfigured : (pathConfigured && symlinkReady);
+  var commandReady = isCommandReady(options.installRoot);
 
   if (commandReady) {
     ui.completion({
@@ -246,6 +253,7 @@ async function runMain(options) {
   var bootstrapResult = await bootstrapManagedRuntime(options && options.pkgName);
   var launcherResult = null;
   var pathStatus = "already configured";
+  var pathChanged = false;
   try {
     launcherResult = launcher.ensureManagedCommandPath({
       binDir: managedBinDir(bootstrapResult.installRoot),
@@ -254,6 +262,7 @@ async function runMain(options) {
       shellPath: process.env.SHELL || "",
     });
     pathStatus = launcherResult && launcherResult.message ? launcherResult.message : "already configured";
+    pathChanged = !!(launcherResult && launcherResult.changed);
   } catch (error) {
     pathStatus = "manual action required";
     ui.error("Failed to persist the managed command path.");
@@ -261,9 +270,14 @@ async function runMain(options) {
     ui.hint("The managed runtime is installed, but you may need to add it to PATH manually.");
   }
 
-  // Stay quiet on a no-op re-bootstrap (runtime already current); only show the
-  // completion panel when an install actually happened.
-  if (bootstrapResult.installed) {
+  // Show the completion panel when there is something actionable to tell the
+  // user: a real install happened, the bootstrap just changed the PATH, or the
+  // command isn't usable yet (PATH not configured / symlink missing) so the
+  // user still needs the "open a new terminal" / direct-binary guidance. Only a
+  // pure no-op — runtime current AND command already usable AND nothing changed
+  // — stays quiet, so repeated launches aren't noisy.
+  var commandReady = isCommandReady(bootstrapResult.installRoot);
+  if (bootstrapResult.installed || pathChanged || !commandReady) {
     printInstallSummary({
       installRoot: bootstrapResult.installRoot,
       binaryPath: bootstrapResult.binaryPath,
