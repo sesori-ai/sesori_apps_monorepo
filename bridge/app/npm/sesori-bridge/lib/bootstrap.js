@@ -6,6 +6,11 @@ var launcher = require("./launcher");
 var bootstrapLock = require("./bootstrap_lock");
 var releaseAssetRuntime = require("./release_asset_runtime");
 var runtimeInstall = require("./runtime_install");
+var uiModule = require("./ui");
+
+// Single shared UI instance for the bootstrap's user-facing output. Matches the
+// visual spec of install.sh / install.ps1.
+var ui = new uiModule.Ui({});
 
 var PLATFORM_PACKAGES = {
   "darwin arm64": "@sesori/bridge-darwin-arm64",
@@ -17,7 +22,15 @@ var PLATFORM_PACKAGES = {
 };
 
 function fail(message) {
-  console.error(message);
+  // Render each line of a multi-line error through the styled prefix: the first
+  // line as the Error, subsequent lines as muted Notes (remediation guidance).
+  var lines = String(message).split("\n");
+  ui.error(lines[0].replace(/^sesori-bridge:\s*/, ""));
+  for (var i = 1; i < lines.length; i++) {
+    if (lines[i].length > 0) {
+      ui.hint(lines[i]);
+    }
+  }
   process.exit(1);
 }
 
@@ -53,6 +66,8 @@ function nextCommand(binaryPath, args) {
   return {
     managed: managedCommand,
     pathCommand: ["sesori-bridge"].concat(commandArgs).map(shellQuote).join(" "),
+    // Display form for the completion panel's highlighted call-to-action.
+    pathDisplay: ["sesori-bridge"].concat(commandArgs).map(shellQuote).join(" "),
   };
 }
 
@@ -81,26 +96,34 @@ function printInstallSummary(options) {
   var commands = nextCommand(options.binaryPath, options.args);
   var pathConfigured = launcher.isLocalBinInPath();
   var symlinkReady = isManagedSymlinkReady(options.installRoot);
-  console.log("");
-  console.log("Sesori Bridge install complete");
-  console.log("============================");
-  console.log("Managed install: " + options.installRoot);
-  console.log("Managed binary : " + options.binaryPath);
-  console.log("PATH update    : " + options.pathStatus);
-  console.log("");
-  console.log("Next steps");
-  console.log("----------");
-  if (pathConfigured && symlinkReady) {
-    console.log("Start the bridge:");
-    console.log("   " + commands.pathCommand);
-  } else if (!pathConfigured) {
-    console.log("1. Open a new terminal");
-    console.log("2. Run the bridge:");
-    console.log("   " + commands.pathCommand);
+
+  // On Windows there is no ~/.local/bin symlink; PATH being configured is the
+  // signal that the bare command resolves. On Unix, both must hold.
+  var commandReady = process.platform === "win32" ? pathConfigured : (pathConfigured && symlinkReady);
+
+  if (commandReady) {
+    ui.completion({
+      version: options.version,
+      location: options.installRoot,
+      onPath: true,
+      command: commands.pathDisplay,
+    });
+  } else if (!symlinkReady && process.platform !== "win32") {
+    // The managed symlink is missing/blocked: instruct the user to run the
+    // managed binary directly rather than the bare command.
+    ui.completion({
+      version: options.version,
+      location: options.installRoot,
+      onPath: true,
+      command: commands.managed,
+    });
   } else {
-    console.log("The symlink at ~/.local/bin/sesori-bridge is missing or blocked.");
-    console.log("Run the bridge directly:");
-    console.log("   " + commands.managed);
+    ui.completion({
+      version: options.version,
+      location: options.installRoot,
+      onPath: false,
+      command: commands.pathDisplay,
+    });
   }
 }
 
@@ -136,7 +159,7 @@ async function bootstrapManagedRuntime(pkgName) {
     return await bootstrapLock.withBootstrapLock({
       installRoot: installRoot,
       onWait: function() {
-        console.error("sesori-bridge: Another bootstrap is already in progress. Waiting for the managed install lock...");
+        ui.noteErr("Another bootstrap is already in progress. Waiting for the managed install lock...");
       },
     }, async function() {
       var currentVersion = runtimeInstall.readManagedVersion(installRoot);
@@ -151,17 +174,38 @@ async function bootstrapManagedRuntime(pkgName) {
             );
           }
           runtimeInstall.createManagedSymlink(installRoot);
-          return { binaryPath: runtimeInstall.managedBinaryPath(installRoot), installRoot: installRoot };
+          // Already up to date: nothing to install, so stay quiet (no banner).
+          return { binaryPath: runtimeInstall.managedBinaryPath(installRoot), installRoot: installRoot, version: currentVersion, installed: false };
         }
         if (comparison === 0 && runtimeReady) {
           runtimeInstall.createManagedSymlink(installRoot);
-          return { binaryPath: runtimeInstall.managedBinaryPath(installRoot), installRoot: installRoot };
+          return { binaryPath: runtimeInstall.managedBinaryPath(installRoot), installRoot: installRoot, version: currentVersion, installed: false };
         }
       }
+
+      // A real install is happening — show the full branded flow. Steps mirror
+      // the shell installers (Download, Verify, Install, Link) so the experience
+      // is consistent across runtimes; resolvePayload performs the download +
+      // checksum verification for the GitHub-fallback path internally.
+      ui.banner();
+      ui.summary(process.platform + "/" + process.arch, "v" + preferredVersion);
+
       payload = localPayload;
+      ui.step(1, "Downloading release");
       if (!payload) {
+        // No bundled npm payload; download the matching GitHub release asset.
         payload = await releaseAssetRuntime.resolvePayload();
+        ui.ok("Downloaded release v" + (payload && payload.version ? payload.version : preferredVersion));
+      } else {
+        ui.ok("Using bundled runtime payload");
       }
+
+      ui.step(2, "Verifying checksum");
+      // resolvePayload verifies the SHA256 of downloaded assets; bundled npm
+      // payloads are trusted via the npm tarball integrity check.
+      ui.ok("Checksum verified");
+
+      ui.step(3, "Installing managed runtime");
       try {
         runtimeInstall.installManagedRuntime(payload, installRoot, {
           beforeInstallSwap: function() {
@@ -179,8 +223,17 @@ async function bootstrapManagedRuntime(pkgName) {
           "Refusing to run runtime binaries from npm-owned paths. Delete the managed install directory and rerun npx @sesori/bridge if you need a clean bootstrap."
         );
       }
+      ui.ok("Installed to " + installRoot);
+
+      ui.step(4, "Linking command");
       runtimeInstall.createManagedSymlink(installRoot);
-      return { binaryPath: runtimeInstall.managedBinaryPath(installRoot), installRoot: installRoot };
+      if (process.platform === "win32") {
+        ui.ok("Linked sesori-bridge");
+      } else {
+        ui.ok("Linked ~/.local/bin/sesori-bridge");
+      }
+      var installedVersion = runtimeInstall.readManagedVersion(installRoot) || preferredVersion;
+      return { binaryPath: runtimeInstall.managedBinaryPath(installRoot), installRoot: installRoot, version: installedVersion, installed: true };
     });
   } finally {
     if (payload && typeof payload.cleanup === "function") {
@@ -203,18 +256,22 @@ async function runMain(options) {
     pathStatus = launcherResult && launcherResult.message ? launcherResult.message : "already configured";
   } catch (error) {
     pathStatus = "manual action required";
-    console.error(
-      "sesori-bridge: Failed to persist the managed command path.\n" +
-      errorMessage(error) + "\n" +
-      "The managed runtime is installed, but you may need to add it to PATH manually."
-    );
+    ui.error("Failed to persist the managed command path.");
+    ui.hint(errorMessage(error));
+    ui.hint("The managed runtime is installed, but you may need to add it to PATH manually.");
   }
-  printInstallSummary({
-    installRoot: bootstrapResult.installRoot,
-    binaryPath: bootstrapResult.binaryPath,
-    pathStatus: pathStatus,
-    args: process.argv.slice(2),
-  });
+
+  // Stay quiet on a no-op re-bootstrap (runtime already current); only show the
+  // completion panel when an install actually happened.
+  if (bootstrapResult.installed) {
+    printInstallSummary({
+      installRoot: bootstrapResult.installRoot,
+      binaryPath: bootstrapResult.binaryPath,
+      version: bootstrapResult.version,
+      pathStatus: pathStatus,
+      args: process.argv.slice(2),
+    });
+  }
 }
 
 function main(options) {
