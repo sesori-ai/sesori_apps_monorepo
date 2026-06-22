@@ -34,4 +34,23 @@ class ProcessRunner {
     );
     return ProcessResult(process.pid, exitCode, stdout.toString(), stderr.toString());
   }
+
+  /// Spawns [executable] and returns its pid without waiting for it to exit.
+  ///
+  /// The child runs with [ProcessStartMode.inheritStdio] so it attaches to the
+  /// same terminal and keeps running after this process exits — used to launch a
+  /// successor bridge during a restart. Throws if the process cannot be started.
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
+    Map<String, String>? environment,
+  }) async {
+    final process = await Process.start(
+      executable,
+      arguments,
+      environment: environment,
+      mode: ProcessStartMode.inheritStdio,
+    );
+    return process.pid;
+  }
 }

@@ -28,6 +28,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/restart_test_support.dart";
 import "../../helpers/test_database.dart";
 import "get_session_diffs_handler_test_helpers.dart";
 import "routing_test_helpers.dart";
@@ -109,6 +110,7 @@ void main() {
         sessionPersistenceService: sessionPersistenceService,
         worktreeService: worktreeService,
         sessionDiffsHandler: sessionDiffsHandler,
+        restartService: buildTestRestartService(),
       );
     });
 
@@ -446,6 +448,7 @@ void main() {
         sessionPersistenceService: sessionPersistenceService,
         worktreeService: worktreeService,
         sessionDiffsHandler: sessionDiffsHandler,
+        restartService: buildTestRestartService(),
       );
 
       final response = await router.route(

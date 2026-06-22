@@ -177,6 +177,15 @@ class _FakeResult {
 }
 
 class _FakeProcessRunner implements ProcessRunner {
+  @override
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
+    Map<String, String>? environment,
+  }) async {
+    throw UnimplementedError();
+  }
+
   final Map<String, _FakeResult> results;
   final Map<String, int> _callCounts = <String, int>{};
 

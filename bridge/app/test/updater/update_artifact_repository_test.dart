@@ -57,6 +57,15 @@ class _FakeChecksumVerifierApi implements ChecksumVerifierApi {
 }
 
 class _FakeProcessRunner implements ProcessRunner {
+  @override
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
+    Map<String, String>? environment,
+  }) async {
+    throw UnimplementedError();
+  }
+
   final int exitCode;
 
   _FakeProcessRunner({required this.exitCode});
@@ -152,6 +161,27 @@ void main() {
       );
 
       expect(result, isFalse);
+    });
+
+    test('rethrows network errors so the caller can classify them as transient', () async {
+      final repository = UpdateArtifactRepository(
+        downloadApi: UpdateDownloadApi(
+          httpClient: _FakeUpdateHttpClient(
+            handler: (request) async => http.StreamedResponse(const Stream.empty(), 200),
+          ),
+        ),
+        checksumManifestApi: _FakeChecksumManifestApi(error: const SocketException('offline')),
+        checksumVerifierApi: _FakeChecksumVerifierApi(result: true),
+        archiveExtractorApi: ArchiveExtractorApi(processRunner: _FakeProcessRunner(exitCode: 0)),
+      );
+
+      await expectLater(
+        repository.verifyDownloadedArchive(
+          release: release,
+          archivePath: '/tmp/.sesori-bridge-update.tar.gz',
+        ),
+        throwsA(isA<SocketException>()),
+      );
     });
 
     test('returns false when checksum verifier throws', () async {

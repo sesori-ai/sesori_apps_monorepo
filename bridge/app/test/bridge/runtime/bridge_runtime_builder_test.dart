@@ -15,6 +15,7 @@ import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
 import "package:test/test.dart";
 
+import "../../helpers/restart_test_support.dart";
 import "../../helpers/test_database.dart";
 import "../../helpers/test_helpers.dart";
 import "../routing/routing_test_helpers.dart" show FakeBridgePlugin;
@@ -55,6 +56,7 @@ void main() {
       database: database,
       processRunner: ProcessRunner(),
       failureReporter: FakeFailureReporter(),
+      restartService: buildTestRestartService(),
     );
     final debugServer = runtime.createDebugServer(port: 0);
 

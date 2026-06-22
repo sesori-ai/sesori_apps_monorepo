@@ -4,7 +4,7 @@ import 'package:sesori_bridge/src/auth/login_email_api.dart';
 import 'package:sesori_bridge/src/auth/login_email_repository.dart';
 import 'package:sesori_bridge/src/auth/login_oauth_service.dart';
 import 'package:sesori_bridge/src/auth/token.dart';
-import 'package:sesori_bridge/src/bridge/foundation/post_update_restart_flag.dart';
+import 'package:sesori_bridge/src/bridge/foundation/legacy_post_update_relaunch.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_runtime_auth.dart';
 import 'package:sesori_shared/sesori_shared.dart';
@@ -12,7 +12,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('BridgeRuntimeAuthService', () {
-    test('promptForProvider throws post-update non-interactive login guidance without reading stdin', () async {
+    test('promptForProvider throws clear guidance when relaunched non-interactively by a legacy auto-update', () async {
       final service = BridgeRuntimeAuthService(
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: _FakeLoginOAuthService(),
@@ -28,7 +28,7 @@ void main() {
           isA<Exception>().having(
             (error) => error.toString(),
             'message',
-            contains('Login required, but this bridge was relaunched non-interactively after an auto-update'),
+            contains('relaunched non-interactively after an auto-update'),
           ),
         ),
       );

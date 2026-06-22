@@ -372,6 +372,15 @@ class _FakeServerClock implements ServerClock {
 }
 
 class _FakeProcessRepository implements ProcessRepository {
+  @override
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
+    Map<String, String>? environment,
+  }) async {
+    throw UnimplementedError();
+  }
+
   final Map<int, List<ProcessIdentity?>> inspectResults = <int, List<ProcessIdentity?>>{};
   Object? inspectError;
   List<ProcessIdentity> identities = <ProcessIdentity>[];

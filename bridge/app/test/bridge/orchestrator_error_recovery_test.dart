@@ -33,6 +33,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 import "package:test/test.dart";
 
+import "../helpers/restart_test_support.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
 import "api/git_remote_api_test.dart";
@@ -108,6 +109,7 @@ void main() {
           sessionRepository: sessionRepository,
           failureReporter: FakeFailureReporter(),
         ),
+        restartService: buildTestRestartService(),
       );
 
       final session = orchestrator.create();
@@ -267,6 +269,7 @@ class _TestHarness {
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      restartService: buildTestRestartService(),
     );
 
     final session = orchestrator.create();

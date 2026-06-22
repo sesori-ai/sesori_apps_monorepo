@@ -5,6 +5,15 @@ import 'package:sesori_bridge/src/updater/foundation/update_lock.dart';
 import 'package:test/test.dart';
 
 class _RecordingProcessRunner implements ProcessRunner {
+  @override
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
+    Map<String, String>? environment,
+  }) async {
+    throw UnimplementedError();
+  }
+
   final int exitCode;
   final String stdout;
   String? lastExecutable;

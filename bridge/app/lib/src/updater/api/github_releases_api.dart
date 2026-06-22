@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:io' show HttpException;
 
 import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
 import 'package:sesori_shared/sesori_shared.dart';
 
 import '../foundation/github_rate_limit_exception.dart';
+import '../foundation/update_policy.dart';
 import '../models/github_release_dto.dart';
 
 const _kGithubApiBaseUrl = 'https://api.github.com/repos/sesori-ai/sesori_apps_monorepo/releases';
@@ -39,6 +41,13 @@ class GitHubReleasesApi {
       }
       if (response.statusCode == 404) {
         throw StateError('GitHub releases endpoint not found');
+      }
+      if (isRetryableHttpStatus(response.statusCode)) {
+        // A transient server-side/throttling outage is retryable, not a genuine
+        // update failure. Surface it as an HttpException so the caller treats it
+        // like the other quiet network errors and retries on the next cycle,
+        // instead of persisting a failure and emitting reinstall guidance.
+        throw HttpException('GitHub releases request failed with status ${response.statusCode}');
       }
       if (response.statusCode != 200) {
         throw StateError('GitHub releases request failed with status ${response.statusCode}');

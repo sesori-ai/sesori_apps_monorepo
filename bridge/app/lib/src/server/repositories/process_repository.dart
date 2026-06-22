@@ -47,6 +47,14 @@ class ProcessRepository {
     return identities.map((ProcessIdentity identity) => _toMatch(identity: identity)).toList();
   }
 
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
+    Map<String, String>? environment,
+  }) {
+    return _api.startDetached(executable: executable, arguments: arguments, environment: environment);
+  }
+
   Future<SignalResult> sendGracefulSignal({required int pid}) {
     return _api.sendGracefulSignal(pid: pid);
   }

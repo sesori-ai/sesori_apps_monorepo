@@ -342,6 +342,15 @@ class _FakeBridgePlugin implements BridgePlugin {
 /// but the fake descriptor short-circuits before any process work.
 class _FakeProcessRepository implements ProcessRepository {
   @override
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
+    Map<String, String>? environment,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
@@ -377,6 +386,12 @@ class _FakeStartupMutexRepository implements StartupMutexRepository {
 }
 
 class _FakeBridgeInstanceService implements BridgeInstanceService {
+  @override
+  Future<void> awaitPredecessorBridgeExit({
+    required int predecessorPid,
+    required Duration timeout,
+  }) async {}
+
   BridgeInstanceResolution resolution = const BridgeInstanceResolution(
     status: BridgeInstanceResolutionStatus.allowed,
     existingBridges: <ProcessIdentity>[],
