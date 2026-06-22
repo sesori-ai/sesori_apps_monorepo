@@ -188,6 +188,19 @@ Ui.prototype.summary = function(platform, version) {
   this._write("");
 };
 
+// Print help/usage text verbatim (no styling beyond the caller's formatting).
+// Goes to stdout for an explicit --help, or to stderr when shown alongside a
+// usage error (so it accompanies the error and doesn't pollute stdout).
+Ui.prototype.usage = function(lines, toStderr) {
+  for (var i = 0; i < lines.length; i++) {
+    if (toStderr) {
+      this._writeErr(lines[i]);
+    } else {
+      this._write(lines[i]);
+    }
+  }
+};
+
 // A "[n/N] message" step header in brand blue.
 Ui.prototype.step = function(number, message) {
   this._write(this.paint(this._c.brand, "[" + number + "/" + TOTAL_STEPS + "]") + " " + message);
