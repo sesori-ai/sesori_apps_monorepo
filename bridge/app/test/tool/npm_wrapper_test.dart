@@ -446,7 +446,9 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final stderr = decoded['stderr'] as String;
       expect(stderr, contains('Unsupported platform: sunos sparc'));
       expect(stderr, contains('Supported platforms: darwin arm64, darwin x64, linux x64, linux arm64, win32 x64, win32 arm64'));
-      expect(stderr, contains('npm install @sesori/bridge-darwin-arm64'));
+      // The hint points at the bootstrap entry point (npx), not direct installs
+      // of the internal per-platform payload packages.
+      expect(stderr, contains('npx @sesori/bridge'));
     });
 
     test('bootstrap source renders Windows managed fallback commands via PowerShell invocation', () async {

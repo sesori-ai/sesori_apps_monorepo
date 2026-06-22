@@ -17,10 +17,8 @@ if (!pkgName) {
   var ui = new uiModule.Ui({ stream: process.stdout, errStream: process.stderr, env: process.env });
   ui.error("Unsupported platform: " + process.platform + " " + process.arch);
   ui.hint("Supported platforms: " + Object.keys(PLATFORM_PACKAGES).join(", "));
-  ui.hint("You can install the correct package manually:");
-  Object.values(PLATFORM_PACKAGES).forEach(function(name) {
-    ui.hint("  npm install " + name);
-  });
+  ui.hint("Install on a supported platform with:");
+  ui.hint("  npx @sesori/bridge");
   process.exit(1);
 }
 
