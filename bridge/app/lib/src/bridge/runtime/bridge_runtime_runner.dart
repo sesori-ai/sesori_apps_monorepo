@@ -250,7 +250,7 @@ class BridgeRuntimeRunner {
         environment: environment,
       );
       if (availability is PluginUnavailable) {
-        Console.error(availability.message);
+        Console.error(text: availability.message);
         return 1;
       }
 
@@ -342,7 +342,7 @@ class BridgeRuntimeRunner {
       registerSignalHandlers(session: runtime.session, subscriptions: subscriptions);
       updateService.updateAvailable
           .listen((version) {
-            Console.message("A new bridge version ($version) is available. Restart to update.");
+            Console.message(text: "A new bridge version ($version) is available. Restart to update.");
           })
           .addTo(subscriptions);
 

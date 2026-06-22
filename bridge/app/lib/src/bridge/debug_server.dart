@@ -51,7 +51,7 @@ class DebugServer {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, port);
     _server = server;
 
-    Console.message("Debug server listening on http://127.0.0.1:${server.port}");
+    Console.message(text: "Debug server listening on http://127.0.0.1:${server.port}");
     server.listen(_handleRequest).addTo(_compositeSubscription);
   }
 

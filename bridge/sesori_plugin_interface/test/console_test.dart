@@ -10,7 +10,7 @@ void main() {
       final err = <String>[];
 
       IOOverrides.runZoned(
-        () => Console.message("hello, user"),
+        () => Console.message(text: "hello, user"),
         stdout: () => _CapturingStdout(out),
         stderr: () => _CapturingStdout(err),
       );
@@ -24,7 +24,7 @@ void main() {
       final err = <String>[];
 
       IOOverrides.runZoned(
-        () => Console.warning("heads up"),
+        () => Console.warning(text: "heads up"),
         stdout: () => _CapturingStdout(out),
         stderr: () => _CapturingStdout(err),
       );
@@ -38,7 +38,7 @@ void main() {
       final err = <String>[];
 
       IOOverrides.runZoned(
-        () => Console.error("something went wrong"),
+        () => Console.error(text: "something went wrong"),
         stdout: () => _CapturingStdout(out),
         stderr: () => _CapturingStdout(err),
       );
@@ -52,8 +52,8 @@ void main() {
 
       IOOverrides.runZoned(
         () {
-          Console.warning("warn");
-          Console.error("boom");
+          Console.warning(text: "warn");
+          Console.error(text: "boom");
         },
         stdout: () => _CapturingStdout(<String>[]),
         stderr: () => _CapturingStdout(err),
@@ -75,7 +75,7 @@ void main() {
       final out = <String>[];
 
       IOOverrides.runZoned(
-        () => Console.message("must still be visible"),
+        () => Console.message(text: "must still be visible"),
         stdout: () => _CapturingStdout(out),
         stderr: () => _CapturingStdout(<String>[]),
       );

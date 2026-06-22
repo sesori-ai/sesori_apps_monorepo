@@ -126,7 +126,7 @@ class BridgeRuntimeAuthService {
   }) async {
     try {
       final username = await fetchUsername(authBackendUrl, accessToken);
-      Console.message('Authenticated as $username');
+      Console.message(text: 'Authenticated as $username');
     } catch (error) {
       Log.w('Authenticated (unable to fetch profile username: $error)');
     }

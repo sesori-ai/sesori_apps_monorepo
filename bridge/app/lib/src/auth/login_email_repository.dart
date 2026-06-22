@@ -22,9 +22,9 @@ class LoginEmailRepository {
         password: credentials.password,
       );
       if (username.isNotEmpty) {
-        Console.message('Login successful! Welcome, $username');
+        Console.message(text: 'Login successful! Welcome, $username');
       } else {
-        Console.message('Login successful!');
+        Console.message(text: 'Login successful!');
       }
       return tokens;
     } on EmailLoginException catch (e) {
