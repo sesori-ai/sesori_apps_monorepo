@@ -76,16 +76,19 @@ class Log {
     stderr.writeln(_colorizeForLevel(msgLevel, buffer.toString()));
   }
 
-  /// Highlights warning lines in yellow and error lines in red when stderr is an
-  /// interactive terminal; other levels are written without color.
+  /// Colorizes log lines by severity when stderr is an interactive terminal:
+  /// verbose is gray, debug is light blue, warning is yellow, and error is red.
+  /// Info lines are written without color.
   static String _colorizeForLevel(LogLevel msgLevel, String text) {
     switch (msgLevel) {
+      case LogLevel.verbose:
+        return AnsiColorFormatter.colorize(text: text, color: AnsiColor.gray, out: stderr);
+      case LogLevel.debug:
+        return AnsiColorFormatter.colorize(text: text, color: AnsiColor.blue, out: stderr);
       case LogLevel.warning:
         return AnsiColorFormatter.colorize(text: text, color: AnsiColor.yellow, out: stderr);
       case LogLevel.error:
         return AnsiColorFormatter.colorize(text: text, color: AnsiColor.red, out: stderr);
-      case LogLevel.verbose:
-      case LogLevel.debug:
       case LogLevel.info:
         return text;
     }

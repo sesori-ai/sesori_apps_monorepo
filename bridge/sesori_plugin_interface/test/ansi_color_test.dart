@@ -10,6 +10,7 @@ void main() {
         text: "hello",
         color: AnsiColor.red,
         out: _FakeStdout(supportsAnsiEscapes: true),
+        environment: const {},
       );
 
       expect(result, equals("${AnsiColor.red.code}hello\x1B[0m"));
@@ -20,6 +21,7 @@ void main() {
         text: "hello",
         color: AnsiColor.yellow,
         out: _FakeStdout(supportsAnsiEscapes: false),
+        environment: const {},
       );
 
       expect(result, equals("hello"));
@@ -30,9 +32,32 @@ void main() {
         text: "hello",
         color: AnsiColor.yellow,
         out: _ThrowingStdout(),
+        environment: const {},
       );
 
       expect(result, equals("hello"));
+    });
+
+    test("returns text unchanged when NO_COLOR is set, even on a capable terminal", () {
+      final result = AnsiColorFormatter.colorize(
+        text: "hello",
+        color: AnsiColor.red,
+        out: _FakeStdout(supportsAnsiEscapes: true),
+        environment: const {"NO_COLOR": "1"},
+      );
+
+      expect(result, equals("hello"), reason: "NO_COLOR must disable color regardless of terminal support");
+    });
+
+    test("honors NO_COLOR even when set to an empty value", () {
+      final result = AnsiColorFormatter.colorize(
+        text: "hello",
+        color: AnsiColor.red,
+        out: _FakeStdout(supportsAnsiEscapes: true),
+        environment: const {"NO_COLOR": ""},
+      );
+
+      expect(result, equals("hello"), reason: "presence of NO_COLOR disables color regardless of its value");
     });
   });
 }
