@@ -253,7 +253,6 @@ async function runMain(options) {
   var bootstrapResult = await bootstrapManagedRuntime(options && options.pkgName);
   var launcherResult = null;
   var pathStatus = "already configured";
-  var pathChanged = false;
   try {
     launcherResult = launcher.ensureManagedCommandPath({
       binDir: managedBinDir(bootstrapResult.installRoot),
@@ -262,7 +261,6 @@ async function runMain(options) {
       shellPath: process.env.SHELL || "",
     });
     pathStatus = launcherResult && launcherResult.message ? launcherResult.message : "already configured";
-    pathChanged = !!(launcherResult && launcherResult.changed);
   } catch (error) {
     pathStatus = "manual action required";
     ui.error("Failed to persist the managed command path.");
@@ -270,26 +268,21 @@ async function runMain(options) {
     ui.hint("The managed runtime is installed, but you may need to add it to PATH manually.");
   }
 
-  // Show the completion panel when there is something actionable to tell the
-  // user: a real install happened, the bootstrap just changed the PATH, the
-  // command isn't usable yet (PATH not configured / symlink missing) so the user
-  // still needs the "open a new terminal" / direct-binary guidance, OR the user
-  // passed args. The npm bootstrap never executes the managed binary, so an
-  // invocation like `npx @sesori/bridge --version` must not exit silently — we
-  // surface the `sesori-bridge <args>` command for the user to run. Only a pure
-  // no-op — runtime current, command usable, nothing changed, no args — stays
-  // quiet so repeated bare launches aren't noisy.
+  // Always show the completion panel. `npx @sesori/bridge` is an explicit,
+  // user-initiated request to set up the bridge, so it must never exit silently
+  // — even when the runtime is already current and the command is already on
+  // PATH, the user expects confirmation ("already installed") plus how to start
+  // it. The npm bootstrap never execs the managed binary, so the panel is the
+  // only feedback the user gets. (The managed binary is launched directly from
+  // PATH, not through this entry point, so this is never on a hot launch path.)
   var forwardedArgs = process.argv.slice(2);
-  var commandReady = isCommandReady(bootstrapResult.installRoot);
-  if (bootstrapResult.installed || pathChanged || !commandReady || forwardedArgs.length > 0) {
-    printInstallSummary({
-      installRoot: bootstrapResult.installRoot,
-      binaryPath: bootstrapResult.binaryPath,
-      version: bootstrapResult.version,
-      pathStatus: pathStatus,
-      args: forwardedArgs,
-    });
-  }
+  printInstallSummary({
+    installRoot: bootstrapResult.installRoot,
+    binaryPath: bootstrapResult.binaryPath,
+    version: bootstrapResult.version,
+    pathStatus: pathStatus,
+    args: forwardedArgs,
+  });
 }
 
 function main(options) {

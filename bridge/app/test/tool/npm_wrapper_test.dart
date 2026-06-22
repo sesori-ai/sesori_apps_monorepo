@@ -731,6 +731,63 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       expect(result.stdout, contains('new terminal'));
     });
 
+    test('bare no-op still confirms install and next-steps when already set up', () async {
+      // The exact `npx @sesori/bridge` (no args) scenario after a prior install:
+      // runtime current, command already on PATH, nothing changes. The bootstrap
+      // never execs the managed binary, so it must still print confirmation +
+      // next-steps rather than exiting silently.
+      final wrapperRoot = await _createWrapperFixture();
+      final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
+      addTearDown(() => homeDir.delete(recursive: true));
+
+      await _createPlatformPayload(
+        wrapperRoot: wrapperRoot,
+        version: '1.2.3',
+        binaryMarker: 'payload-runtime',
+        libMarker: 'payload-lib',
+      );
+      await _seedManagedRuntime(
+        homePath: homeDir.path,
+        version: '1.2.3',
+        binaryMarker: 'existing-managed',
+        libMarker: 'existing-lib',
+        includeBinary: true,
+        includeLib: true,
+      );
+
+      // First run creates the ~/.local/bin/sesori-bridge symlink.
+      await _runWrapperProcess(
+        packageRoot: wrapperRoot,
+        homePath: homeDir.path,
+        args: const [],
+        environment: const {'SHELL': '/bin/bash'},
+      );
+
+      // Second run: put ~/.local/bin on PATH so the command is "ready". Keep the
+      // node binary resolvable by appending the inherited PATH.
+      final localBin = p.join(homeDir.path, '.local', 'bin');
+      final inheritedPath = Platform.environment['PATH'] ?? '';
+      final result = await _runWrapperProcess(
+        packageRoot: wrapperRoot,
+        homePath: homeDir.path,
+        args: const [],
+        environment: {
+          'SHELL': '/bin/bash',
+          'PATH': '$localBin:$inheritedPath',
+        },
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      // Confirmation + next-steps are shown even though nothing was installed and
+      // the command is already usable; the "open a new terminal" line is omitted
+      // because the command already resolves.
+      expect(result.stdout, contains('Sesori Bridge v'));
+      expect(result.stdout, contains('installed'));
+      expect(result.stdout, contains('Next steps'));
+      expect(result.stdout, contains('# Start the bridge'));
+      expect(result.stdout, isNot(contains('new terminal')));
+    });
+
     test('same-version managed runtime does not require release download fallback', () async {
       final wrapperRoot = await _createWrapperFixture();
       final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');

@@ -937,7 +937,9 @@ print_completion() {
     local gap="   "
     local inner=$(( PANEL_WIDTH - 2 ))
     local fits_in_box=true
-    [ $(( ${#command} + ${#gap} + ${#comment} )) -gt "${inner}" ] && fits_in_box=false
+    if [ $(( ${#command} + ${#gap} + ${#comment} )) -gt "${inner}" ]; then
+        fits_in_box=false
+    fi
 
     panel_top "${C_BRAND}"
     panel_row "Next steps" "${C_BOLD}" "${C_BRAND}"
@@ -946,7 +948,9 @@ print_completion() {
         # "new terminal" is a hard requirement, so emphasize it rather than mute
         # the whole line — a faded instruction gets skipped.
         panel_emphasis_row "In a " "new terminal" " window, run:" "${C_BRAND}"
-        [ "${fits_in_box}" = true ] && panel_row "" "" "${C_BRAND}"
+        if [ "${fits_in_box}" = true ]; then
+            panel_row "" "" "${C_BRAND}"
+        fi
     fi
     if [ "${fits_in_box}" = true ]; then
         panel_command_row "${command}" "${comment}" "${C_BRAND}"
