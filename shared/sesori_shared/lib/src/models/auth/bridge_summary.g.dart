@@ -22,5 +22,5 @@ Map<String, dynamic> _$BridgeSummaryToJson(_BridgeSummary instance) =>
       'name': instance.name,
       'platform': instance.platform,
       'addedAt': instance.addedAt.toIso8601String(),
-      'lastSeenAt': instance.lastSeenAt?.toIso8601String(),
+      'lastSeenAt': ?instance.lastSeenAt?.toIso8601String(),
     };

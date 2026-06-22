@@ -1,6 +1,8 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "mappers/plugin_permission_mapper.dart";
+
 /// Layer 2 repository wrapping [plugin_interface.BridgePlugin] for permission operations.
 ///
 /// Delegates directly to the plugin — mandatory even though it's a thin
@@ -14,6 +16,13 @@ class PermissionRepository {
   final BridgePluginApi _plugin;
 
   PermissionRepository({required BridgePluginApi plugin}) : _plugin = plugin;
+
+  /// Pending permissions to surface on [sessionId]'s screen (its own plus any
+  /// descendant session whose root resolves to it).
+  Future<List<PendingPermission>> getPendingPermissions({required String sessionId}) async {
+    final pluginPermissions = await _plugin.getPendingPermissions(sessionId: sessionId);
+    return pluginPermissions.map((p) => p.toSharedPendingPermission()).toList();
+  }
 
   Future<void> replyToPermission({
     required String requestId,

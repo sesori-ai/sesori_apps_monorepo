@@ -1103,6 +1103,9 @@ class _SummaryPlugin implements BridgePluginApi {
   Future<List<PluginAgent>> getAgents({required String projectId}) async => <PluginAgent>[];
 
   @override
+  Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async => [];
+
+  @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async {
     return <PluginPendingQuestion>[];
   }
@@ -1249,6 +1252,9 @@ class _NoopPlugin implements BridgePluginApi {
 
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async => <PluginAgent>[];
+
+  @override
+  Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async => [];
 
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async {

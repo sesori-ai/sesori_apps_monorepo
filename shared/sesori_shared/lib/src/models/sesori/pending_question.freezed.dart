@@ -155,7 +155,10 @@ as List<PendingQuestion>,
 /// @nodoc
 mixin _$PendingQuestion {
 
- String get id; String get sessionID; List<QuestionInfo> get questions;
+ String get id; String get sessionID;/// Top-most root session this request should be surfaced under (for a
+/// child/sub-agent session's request). Null when unknown; consumers fall
+/// back to [sessionID].
+ String? get displaySessionId; List<QuestionInfo> get questions;
 /// Create a copy of PendingQuestion
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -168,16 +171,16 @@ $PendingQuestionCopyWith<PendingQuestion> get copyWith => _$PendingQuestionCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PendingQuestion&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&const DeepCollectionEquality().equals(other.questions, questions));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PendingQuestion&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&const DeepCollectionEquality().equals(other.questions, questions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,const DeepCollectionEquality().hash(questions));
+int get hashCode => Object.hash(runtimeType,id,sessionID,displaySessionId,const DeepCollectionEquality().hash(questions));
 
 @override
 String toString() {
-  return 'PendingQuestion(id: $id, sessionID: $sessionID, questions: $questions)';
+  return 'PendingQuestion(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, questions: $questions)';
 }
 
 
@@ -188,7 +191,7 @@ abstract mixin class $PendingQuestionCopyWith<$Res>  {
   factory $PendingQuestionCopyWith(PendingQuestion value, $Res Function(PendingQuestion) _then) = _$PendingQuestionCopyWithImpl;
 @useResult
 $Res call({
- String id, String sessionID, List<QuestionInfo> questions
+ String id, String sessionID, String? displaySessionId, List<QuestionInfo> questions
 });
 
 
@@ -205,11 +208,12 @@ class _$PendingQuestionCopyWithImpl<$Res>
 
 /// Create a copy of PendingQuestion
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? questions = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? sessionID = null,Object? displaySessionId = freezed,Object? questions = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
-as String,questions: null == questions ? _self.questions : questions // ignore: cast_nullable_to_non_nullable
+as String,displaySessionId: freezed == displaySessionId ? _self.displaySessionId : displaySessionId // ignore: cast_nullable_to_non_nullable
+as String?,questions: null == questions ? _self.questions : questions // ignore: cast_nullable_to_non_nullable
 as List<QuestionInfo>,
   ));
 }
@@ -222,11 +226,15 @@ as List<QuestionInfo>,
 @JsonSerializable()
 
 class _PendingQuestion implements PendingQuestion {
-  const _PendingQuestion({required this.id, required this.sessionID, required final  List<QuestionInfo> questions}): _questions = questions;
+  const _PendingQuestion({required this.id, required this.sessionID, required this.displaySessionId, required final  List<QuestionInfo> questions}): _questions = questions;
   factory _PendingQuestion.fromJson(Map<String, dynamic> json) => _$PendingQuestionFromJson(json);
 
 @override final  String id;
 @override final  String sessionID;
+/// Top-most root session this request should be surfaced under (for a
+/// child/sub-agent session's request). Null when unknown; consumers fall
+/// back to [sessionID].
+@override final  String? displaySessionId;
  final  List<QuestionInfo> _questions;
 @override List<QuestionInfo> get questions {
   if (_questions is EqualUnmodifiableListView) return _questions;
@@ -248,16 +256,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PendingQuestion&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&const DeepCollectionEquality().equals(other._questions, _questions));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PendingQuestion&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&const DeepCollectionEquality().equals(other._questions, _questions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,const DeepCollectionEquality().hash(_questions));
+int get hashCode => Object.hash(runtimeType,id,sessionID,displaySessionId,const DeepCollectionEquality().hash(_questions));
 
 @override
 String toString() {
-  return 'PendingQuestion(id: $id, sessionID: $sessionID, questions: $questions)';
+  return 'PendingQuestion(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, questions: $questions)';
 }
 
 
@@ -268,7 +276,7 @@ abstract mixin class _$PendingQuestionCopyWith<$Res> implements $PendingQuestion
   factory _$PendingQuestionCopyWith(_PendingQuestion value, $Res Function(_PendingQuestion) _then) = __$PendingQuestionCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, List<QuestionInfo> questions
+ String id, String sessionID, String? displaySessionId, List<QuestionInfo> questions
 });
 
 
@@ -285,11 +293,12 @@ class __$PendingQuestionCopyWithImpl<$Res>
 
 /// Create a copy of PendingQuestion
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? questions = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? displaySessionId = freezed,Object? questions = null,}) {
   return _then(_PendingQuestion(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
-as String,questions: null == questions ? _self._questions : questions // ignore: cast_nullable_to_non_nullable
+as String,displaySessionId: freezed == displaySessionId ? _self.displaySessionId : displaySessionId // ignore: cast_nullable_to_non_nullable
+as String?,questions: null == questions ? _self._questions : questions // ignore: cast_nullable_to_non_nullable
 as List<QuestionInfo>,
   ));
 }

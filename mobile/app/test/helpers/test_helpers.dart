@@ -195,9 +195,9 @@ void delegateSessionRepositoryToService({
     (invocation) => service.getPendingQuestions(sessionId: invocation.namedArguments[#sessionId]! as String),
   );
   when(
-    () => repository.getPendingPermissions(),
+    () => repository.getPendingPermissions(sessionId: any(named: "sessionId")),
   ).thenAnswer(
-    (invocation) => service.getPendingPermissions(),
+    (invocation) => service.getPendingPermissions(sessionId: invocation.namedArguments[#sessionId]! as String),
   );
   when(
     () => repository.getChildren(sessionId: any(named: "sessionId")),
@@ -353,6 +353,7 @@ SesoriQuestionAsked testSseQuestionAsked() {
   return const SesoriQuestionAsked(
     id: "question-1",
     sessionID: "session-1",
+    displaySessionId: null,
     questions: [
       QuestionInfo(
         question: "Which option would you like?",
@@ -371,6 +372,7 @@ PendingQuestion testPendingQuestion() {
   return const PendingQuestion(
     id: "question-1",
     sessionID: "session-1",
+    displaySessionId: null,
     questions: [
       QuestionInfo(
         question: "Which option would you like?",
@@ -393,6 +395,7 @@ SesoriQuestionAsked testMultiSseQuestionAsked({
   return SesoriQuestionAsked(
     id: id,
     sessionID: sessionID,
+    displaySessionId: null,
     questions: const [
       QuestionInfo(
         question: "Which language do you prefer?",

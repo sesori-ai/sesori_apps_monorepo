@@ -34,6 +34,7 @@ lib/
 
 - **Freezed sealed classes**: All model/protocol types use `sealed class` (NOT `abstract class`) for exhaustive switch
 - **build.yaml**: `format: false`, `map: false`, `when: false` — reduced generated code
+- **Null keys omitted from wire payloads**: `build.yaml` sets `json_serializable` `include_if_null: false`, so nullable fields are dropped from `toJson()` output by default. Do **NOT** add `@JsonKey(includeIfNull: false)` explicitly — it is already the default here. (Decoding is unaffected: a missing key deserializes to `null`.)
 - **Strict analysis**: `strict-casts`, `strict-inference`, `strict-raw-types` all ON
 - **Barrel export**: All public API re-exported from `lib/sesori_shared.dart`
 - **Line width**: 120 characters

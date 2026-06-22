@@ -91,36 +91,44 @@ class BridgeEventMapper {
         BridgeSsePermissionAsked(
           :final requestID,
           :final sessionID,
+          :final displaySessionId,
           :final tool,
           :final description,
         ) =>
           SesoriSseEvent.permissionAsked(
             requestID: requestID,
             sessionID: sessionID,
+            displaySessionId: displaySessionId,
             tool: tool,
             description: description,
           ),
-        BridgeSsePermissionReplied(:final requestID, :final sessionID, :final reply) =>
+        BridgeSsePermissionReplied(:final requestID, :final sessionID, :final displaySessionId, :final reply) =>
           SesoriSseEvent.permissionReplied(
             requestID: requestID,
             sessionID: sessionID,
+            displaySessionId: displaySessionId,
             reply: reply,
           ),
         BridgeSsePermissionUpdated() => const SesoriSseEvent.permissionUpdated(),
-        BridgeSseQuestionAsked(:final id, :final sessionID, :final questions) => _tryParseSseEvent({
-          "type": "question.asked",
-          "id": id,
-          "sessionID": sessionID,
-          "questions": questions,
-        }),
-        BridgeSseQuestionReplied(:final requestID, :final sessionID) => SesoriSseEvent.questionReplied(
-          requestID: requestID,
-          sessionID: sessionID,
-        ),
-        BridgeSseQuestionRejected(:final requestID, :final sessionID) => SesoriSseEvent.questionRejected(
-          requestID: requestID,
-          sessionID: sessionID,
-        ),
+        BridgeSseQuestionAsked(:final id, :final sessionID, :final displaySessionId, :final questions) =>
+          SesoriSseEvent.questionAsked(
+            id: id,
+            sessionID: sessionID,
+            displaySessionId: displaySessionId,
+            questions: questions.map((q) => q.toSharedQuestionInfo()).toList(),
+          ),
+        BridgeSseQuestionReplied(:final requestID, :final sessionID, :final displaySessionId) =>
+          SesoriSseEvent.questionReplied(
+            requestID: requestID,
+            sessionID: sessionID,
+            displaySessionId: displaySessionId,
+          ),
+        BridgeSseQuestionRejected(:final requestID, :final sessionID, :final displaySessionId) =>
+          SesoriSseEvent.questionRejected(
+            requestID: requestID,
+            sessionID: sessionID,
+            displaySessionId: displaySessionId,
+          ),
         BridgeSseTodoUpdated(:final sessionID) => SesoriSseEvent.todoUpdated(sessionID: sessionID),
         // BridgeSseProjectUpdated is emitted on both activity changes and project
         // metadata changes. We always send the full projectsSummary so the mobile

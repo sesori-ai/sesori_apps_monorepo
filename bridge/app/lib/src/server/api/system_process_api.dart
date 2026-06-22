@@ -26,7 +26,17 @@ class SystemProcessApi {
   }
 
   Future<ProcessIdentity?> inspectProcess({required int pid}) async {
-    final processes = await listProcesses();
+    // A non-positive PID never identifies a real process. Reject it up front so
+    // every platform returns null consistently — otherwise the Windows
+    // `tasklist /FI "PID eq <pid>"` path would exit non-zero and throw, while
+    // the POSIX list-and-filter path would simply find no match.
+    if (pid <= 0) {
+      return null;
+    }
+    if (_isWindows) {
+      return _inspectWindowsProcess(pid: pid);
+    }
+    final processes = await _listPosixProcesses();
     for (final process in processes) {
       if (process.pid == pid) {
         return process;
@@ -125,9 +135,42 @@ class SystemProcessApi {
       );
     }
 
+    return _parseWindowsProcesses(stdout: result.stdout.toString());
+  }
+
+  /// Inspects a single Windows process by querying `tasklist` with its
+  /// server-side `/FI "PID eq <pid>"` filter so the OS returns only the
+  /// matching row. This avoids enumerating the entire process table (the
+  /// `/V` full scan), which is slow enough right after login to exceed the
+  /// [ProcessRunner] timeout.
+  Future<ProcessIdentity?> _inspectWindowsProcess({required int pid}) async {
+    final (command, args) = (
+      "tasklist",
+      <String>["/V", "/FO", "CSV", "/NH", "/FI", "PID eq $pid"],
+    );
+    final result = await _processRunner.run(command, args);
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        command,
+        args,
+        result.stderr.toString(),
+        result.exitCode,
+      );
+    }
+
+    final processes = _parseWindowsProcesses(stdout: result.stdout.toString());
+    for (final process in processes) {
+      if (process.pid == pid) {
+        return process;
+      }
+    }
+    return null;
+  }
+
+  List<ProcessIdentity> _parseWindowsProcesses({required String stdout}) {
     final capturedAt = _clock.now();
     final processes = <ProcessIdentity>[];
-    for (final line in const LineSplitter().convert(result.stdout.toString())) {
+    for (final line in const LineSplitter().convert(stdout)) {
       final trimmed = line.trim();
       if (trimmed.isEmpty) {
         continue;

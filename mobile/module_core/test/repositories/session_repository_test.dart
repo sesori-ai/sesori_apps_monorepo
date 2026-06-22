@@ -19,7 +19,7 @@ void main() {
     when(() => api.getPendingQuestions(sessionId: "session-1")).thenAnswer(
       (_) async => ApiResponse.success(const PendingQuestionResponse(data: <PendingQuestion>[])),
     );
-    when(api.getPendingPermissions).thenAnswer(
+    when(() => api.getPendingPermissions(sessionId: "session-1")).thenAnswer(
       (_) async => ApiResponse.success(const PendingPermissionResponse(data: <PendingPermission>[])),
     );
     when(() => api.getChildren(sessionId: "session-1")).thenAnswer(
@@ -64,7 +64,7 @@ void main() {
     ).thenAnswer((_) async => ApiResponse.success(null));
     await repository.getMessages(sessionId: "session-1");
     await repository.getPendingQuestions(sessionId: "session-1");
-    await repository.getPendingPermissions();
+    await repository.getPendingPermissions(sessionId: "session-1");
     await repository.getChildren(sessionId: "session-1");
     await repository.getSessionStatuses();
     await repository.listAgents(projectId: "project-1");
@@ -89,7 +89,7 @@ void main() {
     await repository.rejectQuestion(requestId: "question-1", sessionId: "session-1");
     verify(() => api.getMessages(sessionId: "session-1")).called(1);
     verify(() => api.getPendingQuestions(sessionId: "session-1")).called(1);
-    verify(api.getPendingPermissions).called(1);
+    verify(() => api.getPendingPermissions(sessionId: "session-1")).called(1);
     verify(() => api.getChildren(sessionId: "session-1")).called(1);
     verify(api.getSessionStatuses).called(1);
     verify(() => api.listAgents(projectId: "project-1")).called(1);

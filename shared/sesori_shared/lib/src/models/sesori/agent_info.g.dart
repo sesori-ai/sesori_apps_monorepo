@@ -33,8 +33,8 @@ _AgentInfo _$AgentInfoFromJson(Map json) => _AgentInfo(
 Map<String, dynamic> _$AgentInfoToJson(_AgentInfo instance) =>
     <String, dynamic>{
       'name': instance.name,
-      'description': instance.description,
-      'model': instance.model?.toJson(),
+      'description': ?instance.description,
+      'model': ?instance.model?.toJson(),
       'mode': _$AgentModeEnumMap[instance.mode]!,
       'hidden': instance.hidden,
     };
@@ -56,5 +56,5 @@ Map<String, dynamic> _$AgentModelToJson(_AgentModel instance) =>
     <String, dynamic>{
       'modelID': instance.modelID,
       'providerID': instance.providerID,
-      'variant': instance.variant,
+      'variant': ?instance.variant,
     };

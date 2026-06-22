@@ -113,6 +113,39 @@ void main() {
       },
     );
 
+    test(
+      "a pending permission is queryable via pendingPermissionsForSession",
+      () async {
+        requests.add(
+          const CodexServerRequest(
+            id: 130,
+            method: "item/commandExecution/requestApproval",
+            params: {
+              "threadId": "t-7",
+              "turnId": "turn-1",
+              "itemId": "i-1",
+              "startedAtMs": 0,
+              "command": "rm -rf build",
+              "reason": "clean build dir",
+            },
+          ),
+        );
+        await pump();
+        final asked = emitted.single as BridgeSsePermissionAsked;
+
+        final pending = registry.pendingPermissionsForSession("t-7");
+        expect(pending, hasLength(1));
+        expect(pending.single.id, equals(asked.requestID));
+        expect(pending.single.sessionID, equals("t-7"));
+        expect(pending.single.displaySessionId, equals("t-7"));
+        expect(pending.single.tool, equals("exec"));
+        expect(pending.single.description, equals("clean build dir"));
+        // Questions and permissions are disjoint: a permission is never a
+        // pending question.
+        expect(registry.pendingForSession("t-7"), isEmpty);
+      },
+    );
+
     test("replyPermission(once) sends the v2 'accept' decision", () async {
       requests.add(
         const CodexServerRequest(

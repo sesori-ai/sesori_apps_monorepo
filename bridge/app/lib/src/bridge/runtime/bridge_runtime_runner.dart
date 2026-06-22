@@ -221,13 +221,13 @@ class BridgeRuntimeRunner {
         accessToken: authTokens.accessToken,
       );
 
-      final currentBridgeIdentity =
-          await processRepository.inspectProcess(pid: io.pid) ??
-          _fallbackCurrentBridgeIdentity(
-            currentUser: currentUser,
-            serverClock: serverClock,
-            cliArgs: options.cliArgs,
-          );
+      final currentBridgeIdentity = await _resolveCurrentBridgeIdentity(
+        processRepository: processRepository,
+        currentUser: currentUser,
+        serverClock: serverClock,
+        cliArgs: options.cliArgs,
+        isWindows: io.Platform.isWindows,
+      );
       final ownerSessionId = _buildOwnerSessionId(currentBridgeIdentity: currentBridgeIdentity);
 
       final descriptor = knownPlugins.firstWhere((descriptor) => descriptor.id == pluginId);
@@ -538,6 +538,53 @@ class BridgeRuntimeRunner {
   static ProcessUser? _resolveCurrentUser({required Map<String, String> environment}) => ProcessUser.fromRawUser(
     environment["USER"] ?? environment["USERNAME"],
   );
+
+  /// Resolves this bridge's own [ProcessIdentity], degrading to a locally
+  /// constructed fallback when the process-table inspection cannot identify it.
+  ///
+  /// Capturing the live identity is best-effort: it only enriches the owner
+  /// session id with the OS-reported start marker.
+  ///
+  /// Failure handling is platform-specific on purpose:
+  ///
+  /// - On Windows the inspection shells out to `tasklist`, which can time out
+  ///   right after login. Windows identities never carry a start marker, so a
+  ///   null-marker fallback is indistinguishable from a real Windows identity
+  ///   and is safe for the startup lock. We therefore tolerate inspection
+  ///   failures and degrade rather than abort startup.
+  /// - On POSIX, `ps` is fast and identities DO carry a start marker. A
+  ///   null-marker fallback would poison the startup lock: a later bridge
+  ///   inspecting the holder reads the real (non-null) marker, sees the
+  ///   mismatch as stale, steals the lock, and starts concurrently. So a POSIX
+  ///   inspection error must stay fatal — we never substitute a marker-less
+  ///   fallback for a process the OS can actually describe.
+  static Future<ProcessIdentity> _resolveCurrentBridgeIdentity({
+    required ProcessRepository processRepository,
+    required ProcessUser? currentUser,
+    required ServerClock serverClock,
+    required List<String> cliArgs,
+    required bool isWindows,
+  }) async {
+    try {
+      final inspected = await processRepository.inspectProcess(pid: io.pid);
+      if (inspected != null) {
+        return inspected;
+      }
+      Log.w("Could not find own process (pid ${io.pid}) in the process table; using fallback identity");
+    } on Object catch (error) {
+      if (!isWindows) {
+        // A marker-less fallback would corrupt the startup lock on POSIX (see
+        // method doc), so surface the failure instead of degrading.
+        rethrow;
+      }
+      Log.w("Failed to inspect own process (pid ${io.pid}); using fallback identity: $error");
+    }
+    return _fallbackCurrentBridgeIdentity(
+      currentUser: currentUser,
+      serverClock: serverClock,
+      cliArgs: cliArgs,
+    );
+  }
 
   static ProcessIdentity _fallbackCurrentBridgeIdentity({
     required ProcessUser? currentUser,

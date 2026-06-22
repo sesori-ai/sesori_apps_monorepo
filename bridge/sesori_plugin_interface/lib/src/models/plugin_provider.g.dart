@@ -11,9 +11,9 @@ Map<String, dynamic> _$PluginModelToJson(_PluginModel instance) =>
       'id': instance.id,
       'name': instance.name,
       'variants': instance.variants,
-      'family': instance.family,
+      'family': ?instance.family,
       'isAvailable': instance.isAvailable,
-      'releaseDate': instance.releaseDate?.toIso8601String(),
+      'releaseDate': ?instance.releaseDate?.toIso8601String(),
     };
 
 Map<String, dynamic> _$PluginProviderAnthropicToJson(
@@ -23,7 +23,7 @@ Map<String, dynamic> _$PluginProviderAnthropicToJson(
   'name': instance.name,
   'authType': _$PluginProviderAuthTypeEnumMap[instance.authType]!,
   'models': instance.models.map((e) => e.toJson()).toList(),
-  'defaultModelID': instance.defaultModelID,
+  'defaultModelID': ?instance.defaultModelID,
   'runtimeType': instance.$type,
 };
 
@@ -40,7 +40,7 @@ Map<String, dynamic> _$PluginProviderOpenAIToJson(
   'name': instance.name,
   'authType': _$PluginProviderAuthTypeEnumMap[instance.authType]!,
   'models': instance.models.map((e) => e.toJson()).toList(),
-  'defaultModelID': instance.defaultModelID,
+  'defaultModelID': ?instance.defaultModelID,
   'runtimeType': instance.$type,
 };
 
@@ -51,7 +51,7 @@ Map<String, dynamic> _$PluginProviderGoogleToJson(
   'name': instance.name,
   'authType': _$PluginProviderAuthTypeEnumMap[instance.authType]!,
   'models': instance.models.map((e) => e.toJson()).toList(),
-  'defaultModelID': instance.defaultModelID,
+  'defaultModelID': ?instance.defaultModelID,
   'runtimeType': instance.$type,
 };
 
@@ -62,7 +62,7 @@ Map<String, dynamic> _$PluginProviderMistralToJson(
   'name': instance.name,
   'authType': _$PluginProviderAuthTypeEnumMap[instance.authType]!,
   'models': instance.models.map((e) => e.toJson()).toList(),
-  'defaultModelID': instance.defaultModelID,
+  'defaultModelID': ?instance.defaultModelID,
   'runtimeType': instance.$type,
 };
 
@@ -72,7 +72,7 @@ Map<String, dynamic> _$PluginProviderGroqToJson(PluginProviderGroq instance) =>
       'name': instance.name,
       'authType': _$PluginProviderAuthTypeEnumMap[instance.authType]!,
       'models': instance.models.map((e) => e.toJson()).toList(),
-      'defaultModelID': instance.defaultModelID,
+      'defaultModelID': ?instance.defaultModelID,
       'runtimeType': instance.$type,
     };
 
@@ -82,7 +82,7 @@ Map<String, dynamic> _$PluginProviderXAIToJson(PluginProviderXAI instance) =>
       'name': instance.name,
       'authType': _$PluginProviderAuthTypeEnumMap[instance.authType]!,
       'models': instance.models.map((e) => e.toJson()).toList(),
-      'defaultModelID': instance.defaultModelID,
+      'defaultModelID': ?instance.defaultModelID,
       'runtimeType': instance.$type,
     };
 
@@ -93,7 +93,7 @@ Map<String, dynamic> _$PluginProviderDeepseekToJson(
   'name': instance.name,
   'authType': _$PluginProviderAuthTypeEnumMap[instance.authType]!,
   'models': instance.models.map((e) => e.toJson()).toList(),
-  'defaultModelID': instance.defaultModelID,
+  'defaultModelID': ?instance.defaultModelID,
   'runtimeType': instance.$type,
 };
 
@@ -104,7 +104,7 @@ Map<String, dynamic> _$PluginProviderAmazonBedrockToJson(
   'name': instance.name,
   'authType': _$PluginProviderAuthTypeEnumMap[instance.authType]!,
   'models': instance.models.map((e) => e.toJson()).toList(),
-  'defaultModelID': instance.defaultModelID,
+  'defaultModelID': ?instance.defaultModelID,
   'runtimeType': instance.$type,
 };
 
@@ -115,7 +115,7 @@ Map<String, dynamic> _$PluginProviderAzureToJson(
   'name': instance.name,
   'authType': _$PluginProviderAuthTypeEnumMap[instance.authType]!,
   'models': instance.models.map((e) => e.toJson()).toList(),
-  'defaultModelID': instance.defaultModelID,
+  'defaultModelID': ?instance.defaultModelID,
   'runtimeType': instance.$type,
 };
 
@@ -126,7 +126,7 @@ Map<String, dynamic> _$PluginProviderCustomToJson(
   'name': instance.name,
   'authType': _$PluginProviderAuthTypeEnumMap[instance.authType]!,
   'models': instance.models.map((e) => e.toJson()).toList(),
-  'defaultModelID': instance.defaultModelID,
+  'defaultModelID': ?instance.defaultModelID,
   'runtimeType': instance.$type,
 };
 

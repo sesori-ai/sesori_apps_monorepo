@@ -75,6 +75,19 @@ class PushNotificationContentBuilder {
     );
   }
 
+  /// The session that actually raised a permission/question prompt (the owner),
+  /// which may differ from [extractSessionId] when a child/sub-agent request is
+  /// surfaced on its root. Used to resolve the notification's project, since the
+  /// owner session (which just triggered the event) is the one most reliably
+  /// known to the push tracker, and a child shares its root's project.
+  String? extractRequestSessionId(SesoriSseEvent event) {
+    return switch (event) {
+      SesoriPermissionAsked(:final sessionID) => sessionID,
+      SesoriQuestionAsked(:final sessionID) => sessionID,
+      _ => null,
+    };
+  }
+
   String? extractSessionId(SesoriSseEvent event) {
     return switch (event) {
       SesoriSessionCreated(:final info) => info.id,
@@ -89,8 +102,11 @@ class PushNotificationContentBuilder {
       SesoriMessagePartUpdated(:final part) => part.sessionID,
       SesoriMessagePartDelta(:final sessionID) => sessionID,
       SesoriMessagePartRemoved(:final sessionID) => sessionID,
-      SesoriPermissionAsked(:final sessionID) => sessionID,
-      SesoriQuestionAsked(:final sessionID) => sessionID,
+      // Attribute permission/question prompts to their display (root) session so
+      // the notification's collapse key and deep-link target open the session
+      // the request is surfaced on (a sub-agent request surfaces on its root).
+      SesoriPermissionAsked(:final sessionID, :final displaySessionId) => displaySessionId ?? sessionID,
+      SesoriQuestionAsked(:final sessionID, :final displaySessionId) => displaySessionId ?? sessionID,
       SesoriQuestionReplied(:final sessionID) => sessionID,
       SesoriQuestionRejected(:final sessionID) => sessionID,
       SesoriTodoUpdated(:final sessionID) => sessionID,

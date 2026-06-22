@@ -10,14 +10,14 @@ Map<String, dynamic> _$PluginAgentModelToJson(_PluginAgentModel instance) =>
     <String, dynamic>{
       'modelID': instance.modelID,
       'providerID': instance.providerID,
-      'variant': instance.variant,
+      'variant': ?instance.variant,
     };
 
 Map<String, dynamic> _$PluginAgentToJson(_PluginAgent instance) =>
     <String, dynamic>{
       'name': instance.name,
-      'description': instance.description,
-      'model': instance.model?.toJson(),
+      'description': ?instance.description,
+      'model': ?instance.model?.toJson(),
       'mode': _$PluginAgentModeEnumMap[instance.mode]!,
       'hidden': instance.hidden,
     };

@@ -42,7 +42,7 @@ bridge/ workspace modules (siblings of app/):
 
 | Task             | Location                           | Notes                                                   |
 | ---------------- | ---------------------------------- | ------------------------------------------------------- |
-| CLI flags        | `bin/bridge.dart`                  | Bridge core flags (`--relay`, `--plugin`, etc.); the selected plugin contributes its own (OpenCode adds `--port`, `--no-auto-start`) |
+| CLI flags        | `bin/bridge.dart`                  | Bridge core flags (`--relay`, `--plugin`, etc.); the selected plugin contributes its own, namespaced by plugin id (OpenCode adds `--opencode-port`, `--opencode-host`, `--opencode-no-auto-start`, …) |
 | Auth flow        | `lib/src/auth/`                    | OAuth PKCE with token persistence to disk               |
 | Relay connection | `lib/src/bridge/relay_client.dart` | WebSocket + auth handshake + reconnection               |
 | Key exchange     | `lib/src/bridge/key_exchange.dart` | X25519 → HKDF → room key delivery                       |
@@ -54,6 +54,7 @@ bridge/ workspace modules (siblings of app/):
 ## CONVENTIONS
 
 - **Plugin architecture** — all backend-specific code lives in sibling plugin packages under `bridge/` (e.g. `sesori_plugin_opencode`). The bridge `lib/src/` is plugin-agnostic — it only imports from `sesori_plugin_interface`, never from concrete plugins. `bin/bridge.dart`'s registry (`plugin_registry.dart`) imports `opencode_plugin` for the const descriptor — that is the supported descriptor registration point.
+- **Plugin CLI options are namespaced** — plugins declare **bare** option names in their descriptor (`port`, `host`, `bin`, …). `PluginCliOptionsMapper` namespaces each to `--<pluginId>-<name>` (e.g. `--opencode-host`) at registration so options can't collide once multiple plugins run in parallel. Never bake the plugin prefix into the declared name. When renaming/migrating a previously un-prefixed flag, keep the old spelling working via `PluginOption.deprecatedAliases` (registered hidden, emits a `Log.w` deprecation when used) rather than breaking existing invocations. Plugin code reads values by the **bare** name through `PluginConfig`, unaware of namespacing.
 - **Explicit routing** — every supported route has a dedicated handler; `RequestRouter` returns 404 for unmatched routes (no catch-all proxy).
 - **User-facing output vs logging** — use `Console` (from `sesori_plugin_interface`) for anything the user must see to operate the bridge: prompts, requests, the login URL/code, essential startup status. `Console.message` writes to stdout, `Console.error` to stderr, and neither is gated by `--log-level`. Use `Log` only for diagnostics that can be safely ignored; all `Log` levels write to stderr and are suppressible via `--log-level`. The bridge must stay fully operable with logging silenced (`--log-level error` or `2>/dev/null`), so never put an essential prompt or actionable status behind `Log`.
 - **Crypto from `sesori_shared`** — all crypto primitives imported from shared package, not duplicated
@@ -81,7 +82,7 @@ bridge/ workspace modules (siblings of app/):
 ## ANTI-PATTERNS
 
 - **Never duplicate crypto** — use `sesori_shared` package for all encryption/protocol types
-- **Never hardcode URLs** — relay and auth backend are CLI-configurable. Server is always localhost (only port is configurable)
+- **Never hardcode URLs** — relay and auth backend are CLI-configurable. The OpenCode server defaults to loopback (`127.0.0.1`) but its host and port are CLI-configurable too (`--opencode-host`, `--opencode-port`)
 - **Never inline HTTP calls in business logic** — extract to a dedicated API class with typed return values
 - **Never pass raw JSON maps through layers** — always deserialize at the boundary (API class) and use Freezed objects downstream
 - **Never construct classes with server URLs/passwords directly** — inject an API client instance instead

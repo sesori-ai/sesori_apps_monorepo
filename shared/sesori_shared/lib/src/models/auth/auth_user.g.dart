@@ -17,5 +17,5 @@ Map<String, dynamic> _$AuthUserToJson(_AuthUser instance) => <String, dynamic>{
   'id': instance.id,
   'provider': authProviderConverter.toJson(instance.provider),
   'providerUserId': instance.providerUserId,
-  'providerUsername': instance.providerUsername,
+  'providerUsername': ?instance.providerUsername,
 };

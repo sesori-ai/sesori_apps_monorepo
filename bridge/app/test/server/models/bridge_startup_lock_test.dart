@@ -21,6 +21,12 @@ void main() {
       const nullMarkerLock = BridgeStartupLock(bridgePid: 123, bridgeStartMarker: null);
 
       expect(lock.matchesStartMarkerOf(identity: _identity(startMarker: null)), isFalse);
+      // A null lock marker against a real (e.g. POSIX) inspected marker is read
+      // as a mismatch — i.e. the holder looks stale and the lock would be
+      // stolen. This is exactly why a POSIX self-inspection failure must NOT
+      // degrade to a marker-less fallback identity (which would write
+      // bridgeStartMarker: null into the lock); on POSIX such failures stay
+      // fatal instead. See BridgeRuntimeRunner._resolveCurrentBridgeIdentity.
       expect(nullMarkerLock.matchesStartMarkerOf(identity: _identity(startMarker: 'marker')), isFalse);
     });
 

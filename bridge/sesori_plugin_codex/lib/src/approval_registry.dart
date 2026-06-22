@@ -1,7 +1,6 @@
 import "dart:async";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" as shared;
 
 import "codex_app_server_client.dart";
 
@@ -177,6 +176,16 @@ class ApprovalRegistry {
         .toList(growable: false);
   }
 
+  /// Permission asks still waiting for the user, scoped to one session.
+  List<PluginPendingPermission> pendingPermissionsForSession(String sessionId) {
+    return _pending.values
+        .where(
+          (e) => e.kind == _PendingKind.permission && e.sessionId == sessionId,
+        )
+        .map(_toPluginPendingPermission)
+        .toList(growable: false);
+  }
+
   /// Returns the session id for a pending request, or null if the id is
   /// unknown.
   String? sessionIdFor(String bridgeRequestId) =>
@@ -194,6 +203,7 @@ class ApprovalRegistry {
       BridgeSsePermissionReplied(
         requestID: bridgeRequestId,
         sessionID: entry.sessionId,
+        displaySessionId: entry.sessionId,
         reply: reply.name,
       ),
     );
@@ -211,6 +221,7 @@ class ApprovalRegistry {
       BridgeSseQuestionReplied(
         requestID: bridgeRequestId,
         sessionID: entry.sessionId,
+        displaySessionId: entry.sessionId,
       ),
     );
     return true;
@@ -233,6 +244,7 @@ class ApprovalRegistry {
       BridgeSseQuestionRejected(
         requestID: bridgeRequestId,
         sessionID: entry.sessionId,
+        displaySessionId: entry.sessionId,
       ),
     );
     return true;
@@ -265,50 +277,69 @@ class ApprovalRegistry {
         BridgeSsePermissionAsked(
           requestID: bridgeRequestId,
           sessionID: entry.sessionId,
+          // codex has no sub-agent hierarchy, so a request's display root is
+          // its own session.
+          displaySessionId: entry.sessionId,
           tool: _toolHintFor(method),
-          description:
-              (request.params["reason"] as String?) ??
-              _descriptionFallback(method, request.params),
+          description: _permissionDescriptionFor(entry),
         ),
       );
     } else {
-      // BridgeSseQuestionAsked.questions must carry QuestionInfo-shaped maps
-      // (the bridge parses them via SesoriSseEvent.fromJson → QuestionInfo).
-      final reason =
-          (request.params["message"] as String?) ??
-          (request.params["reason"] as String?) ??
-          _descriptionFallback(method, request.params);
       _emit(
         BridgeSseQuestionAsked(
           id: bridgeRequestId,
           sessionID: entry.sessionId,
-          questions: [
-            shared.QuestionInfo(question: reason, header: method).toJson(),
-          ],
+          displaySessionId: entry.sessionId,
+          questions: [_questionInfoFor(entry)],
         ),
       );
     }
   }
 
   PluginPendingQuestion _toPluginPendingQuestion(_PendingApproval entry) {
+    return PluginPendingQuestion(
+      id: entry.bridgeRequestId,
+      sessionID: entry.sessionId,
+      // codex has no sub-agent hierarchy, so a request's display root is its
+      // own session.
+      displaySessionId: entry.sessionId,
+      questions: [_questionInfoFor(entry)],
+    );
+  }
+
+  PluginPendingPermission _toPluginPendingPermission(_PendingApproval entry) {
+    return PluginPendingPermission(
+      id: entry.bridgeRequestId,
+      sessionID: entry.sessionId,
+      displaySessionId: entry.sessionId,
+      tool: _toolHintFor(entry.method),
+      description: _permissionDescriptionFor(entry),
+    );
+  }
+
+  /// Builds the single free-form question payload for a codex elicitation /
+  /// user-input request: codex supplies no structured option set, so it is
+  /// always a [PluginQuestionInfo.custom] question headed by the wire method.
+  PluginQuestionInfo _questionInfoFor(_PendingApproval entry) {
     final reason =
         (entry.params["message"] as String?) ??
         (entry.params["reason"] as String?) ??
         _descriptionFallback(entry.method, entry.params);
-    return PluginPendingQuestion(
-      id: entry.bridgeRequestId,
-      sessionID: entry.sessionId,
-      questions: [
-        PluginQuestionInfo(
-          question: reason,
-          header: entry.method,
-          options: const [],
-          multiple: false,
-          custom: true,
-        ),
-      ],
+    return PluginQuestionInfo(
+      question: reason,
+      header: entry.method,
+      options: const [],
+      multiple: false,
+      custom: true,
     );
   }
+
+  /// Human-readable description for a permission ask, shared by the
+  /// `PermissionAsked` event and the pending-permission snapshot so the two
+  /// never drift.
+  String _permissionDescriptionFor(_PendingApproval entry) =>
+      (entry.params["reason"] as String?) ??
+      _descriptionFallback(entry.method, entry.params);
 
   /// Builds the JSON-RPC result payload for a permission reply, keyed by the
   /// request's wire method:

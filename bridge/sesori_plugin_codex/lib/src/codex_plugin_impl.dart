@@ -788,6 +788,12 @@ class CodexPlugin implements CodexManagedApi {
       _approvalRegistry?.pendingForSession(sessionId) ?? const [];
 
   @override
+  Future<List<PluginPendingPermission>> getPendingPermissions({
+    required String sessionId,
+  }) async =>
+      _approvalRegistry?.pendingPermissionsForSession(sessionId) ?? const [];
+
+  @override
   Future<List<PluginPendingQuestion>> getProjectQuestions({
     required String projectId,
   }) async {

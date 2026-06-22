@@ -356,7 +356,7 @@ void main() {
 
       final questions = await service.getPendingQuestionsForSession(sessionId: "root");
 
-      expect(questions.map((question) => question.id), equals(["q-root"]));
+      expect(questions.map((question) => question.request.id), equals(["q-root"]));
       expect(repository.pendingQuestionDirectories, equals(["/repo"]));
       expect(repository.getSessionCalls, equals(0));
     });
@@ -395,7 +395,7 @@ void main() {
 
       final questions = await service.getPendingQuestionsForSession(sessionId: "root");
 
-      expect(questions.map((question) => question.id), equals(["q-root"]));
+      expect(questions.map((question) => question.request.id), equals(["q-root"]));
       expect(repository.lastGetSessionId, equals("root"));
       expect(repository.lastGetSessionDirectory, isNull);
       expect(tracker.lastRegisteredSessionId, equals("root"));
@@ -417,7 +417,7 @@ void main() {
 
       final questions = await service.getPendingQuestionsForSession(sessionId: "root");
 
-      expect(questions.map((question) => question.id), equals(["q-root"]));
+      expect(questions.map((question) => question.request.id), equals(["q-root"]));
     });
 
     test("throws 502 when the session directory cannot be resolved", () async {
@@ -443,6 +443,88 @@ void main() {
       );
       // Never falls back to an unscoped (directory: null) query.
       expect(repository.pendingQuestionDirectories, isEmpty);
+    });
+
+    test("surfaces a child session's question on the root and stamps displaySessionId", () async {
+      final repository = FakeOpenCodeRepository(
+        pendingQuestionsByDirectory: {
+          "/repo": [
+            _question(id: "q-root", sessionId: "root"),
+            _question(id: "q-child", sessionId: "child"),
+            _question(id: "q-sibling", sessionId: "sibling"),
+          ],
+        },
+      );
+      final tracker = FakeActiveSessionTracker(sessionDirectories: const {"root": "/repo"})
+        ..displayRoots = const {"child": "root"};
+      final service = OpenCodeService(repository, tracker);
+
+      final questions = await service.getPendingQuestionsForSession(sessionId: "root");
+
+      expect(questions.map((question) => question.request.id), equals(["q-root", "q-child"]));
+      expect(
+        questions.firstWhere((question) => question.request.id == "q-child").displaySessionId,
+        equals("root"),
+      );
+    });
+  });
+
+  group("OpenCodeService.getPendingPermissionsForSession", () {
+    test("returns the root's own permission and stamps displaySessionId", () async {
+      final repository = FakeOpenCodeRepository(
+        pendingPermissionsByDirectory: {
+          "/repo": [_permission(id: "p-root", sessionId: "root")],
+        },
+      );
+      final tracker = FakeActiveSessionTracker(sessionDirectories: const {"root": "/repo"});
+      final service = OpenCodeService(repository, tracker);
+
+      final permissions = await service.getPendingPermissionsForSession(sessionId: "root");
+
+      expect(permissions.map((permission) => permission.request.id), equals(["p-root"]));
+      expect(permissions.single.displaySessionId, equals("root"));
+    });
+
+    test("surfaces a child session's permission on the root and excludes siblings", () async {
+      final repository = FakeOpenCodeRepository(
+        pendingPermissionsByDirectory: {
+          "/repo": [
+            _permission(id: "p-root", sessionId: "root"),
+            _permission(id: "p-child", sessionId: "child"),
+            _permission(id: "p-sibling", sessionId: "sibling"),
+          ],
+        },
+      );
+      final tracker = FakeActiveSessionTracker(sessionDirectories: const {"root": "/repo"})
+        ..displayRoots = const {"child": "root"};
+      final service = OpenCodeService(repository, tracker);
+
+      final permissions = await service.getPendingPermissionsForSession(sessionId: "root");
+
+      expect(permissions.map((permission) => permission.request.id), equals(["p-root", "p-child"]));
+      expect(
+        permissions.firstWhere((permission) => permission.request.id == "p-child").displaySessionId,
+        equals("root"),
+      );
+    });
+
+    test("throws 502 when the session directory cannot be resolved", () async {
+      final repository = FakeOpenCodeRepository(
+        pendingPermissionsByDirectory: {
+          "/repo": [_permission(id: "p-root", sessionId: "root")],
+        },
+      );
+      final tracker = FakeActiveSessionTracker();
+      final service = OpenCodeService(repository, tracker);
+
+      await expectLater(
+        () => service.getPendingPermissionsForSession(sessionId: "out-of-cwd"),
+        throwsA(
+          isA<PluginApiException>()
+              .having((error) => error.statusCode, "statusCode", equals(502))
+              .having((error) => error.endpoint, "endpoint", equals("GET /session/out-of-cwd/permission")),
+        ),
+      );
     });
   });
 
@@ -1245,6 +1327,29 @@ void main() {
       expect(tracker.coldStartCalls, equals(1));
     });
 
+    test("coldStart hydrates pending input for every project worktree", () async {
+      final tracker = FakeActiveSessionTracker()..worktreesForHydration = {"/repo-a", "/repo-b"};
+      final repository = FakeOpenCodeRepository(
+        pendingPermissionsByDirectory: {
+          "/repo-a": [_permission(id: "p-a", sessionId: "s-a")],
+          "/repo-b": [_permission(id: "p-b", sessionId: "s-b")],
+        },
+        pendingQuestionsByDirectory: {
+          "/repo-a": [_question(id: "q-a", sessionId: "s-a")],
+          "/repo-b": [_question(id: "q-b", sessionId: "s-b")],
+        },
+      );
+      final service = OpenCodeService(repository, tracker);
+
+      await service.coldStart();
+
+      // Queried the cwd instance (directory: null) plus every worktree.
+      expect(repository.pendingPermissionDirectories, containsAll(<String?>[null, "/repo-a", "/repo-b"]));
+      // Aggregated pending input from all worktrees was handed to the tracker.
+      expect(tracker.populatedPermissions.map((p) => p.id), containsAll(<String>["p-a", "p-b"]));
+      expect(tracker.populatedQuestions.map((q) => q.id), containsAll(<String>["q-a", "q-b"]));
+    });
+
     test("reset delegates to tracker", () {
       final tracker = FakeActiveSessionTracker();
       final service = OpenCodeService(FakeOpenCodeRepository(), tracker);
@@ -1589,6 +1694,18 @@ String? _messageId(PluginMessageWithParts message) {
 
 QuestionRequest _question({required String id, required String sessionId}) {
   return QuestionRequest(id: id, sessionID: sessionId, questions: const [], tool: null);
+}
+
+PermissionRequest _permission({required String id, required String sessionId}) {
+  return PermissionRequest(
+    id: id,
+    sessionID: sessionId,
+    permission: "bash",
+    patterns: const ["ls"],
+    metadata: const {},
+    always: const [],
+    tool: null,
+  );
 }
 
 SseEventData _questionAsked(String id, String sessionId) {
@@ -2093,6 +2210,13 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
     return _sessionDirectories[sessionId];
   }
 
+  /// Maps a session id to the root it should display under. Unmapped ids
+  /// resolve to themselves (best-effort, like the real tracker).
+  Map<String, String> displayRoots = const {};
+
+  @override
+  String resolveDisplaySessionId(String sessionId) => displayRoots[sessionId] ?? sessionId;
+
   @override
   String? getSessionIdForQuestion({required String questionId}) {
     lastGetSessionIdForQuestionQuestionId = questionId;
@@ -2103,6 +2227,11 @@ class FakeActiveSessionTracker extends ActiveSessionTracker {
   String? resolveProjectWorktree({required String directory}) {
     return resolvedWorktree;
   }
+
+  Set<String> worktreesForHydration = const {};
+
+  @override
+  Set<String> get projectWorktrees => worktreesForHydration;
 
   @override
   void populatePendingQuestions({required List<QuestionRequest> questions}) {

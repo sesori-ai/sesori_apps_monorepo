@@ -100,7 +100,10 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
       valueHelp: null,
     ),
     PluginValueOption(
-      name: "codex-bin",
+      // Bare local name; the bridge namespaces it to `--codex-bin` under this
+      // plugin's id. (Pre-namespacing this was declared as "codex-bin", which
+      // would now double-prefix to `--codex-codex-bin`.)
+      name: "bin",
       help: "Path to codex binary",
       defaultsTo: "codex",
       allowedValues: null,
@@ -137,7 +140,7 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
     required HostProcessService processes,
     required Map<String, String> environment,
   }) async {
-    final binFlag = config.value("codex-bin") ?? "codex";
+    final binFlag = config.value("bin") ?? "codex";
     final resolver = _resolver(binFlag: binFlag, environment: environment);
     final executablePath = await resolver.probe();
     final availability = await _probeCodexBinary(
@@ -255,7 +258,7 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
 
     final config = host.config;
     final requestedPort = config.intValue("port");
-    final binFlag = config.value("codex-bin") ?? "codex";
+    final binFlag = config.value("bin") ?? "codex";
     final executablePath = await _resolveBinary(binFlag: binFlag, environment: host.environment);
     if (host.startAborted.isAborted) {
       throw const PluginStartAbortedException();

@@ -9,7 +9,7 @@ import "package:test/test.dart";
 void main() {
   group("OpenCodePluginDescriptor.checkAvailability", () {
     const managedConfig = PluginConfig(
-      values: {"no-auto-start": false, "port": null, "password": "", "opencode-bin": "opencode"},
+      values: {"no-auto-start": false, "port": null, "password": "", "bin": "opencode", "no-password": false},
     );
 
     test("attach mode (--no-auto-start) reports available without spawning a probe", () async {
@@ -19,7 +19,7 @@ void main() {
 
       final result = await const OpenCodePluginDescriptor().checkAvailability(
         config: const PluginConfig(
-          values: {"no-auto-start": true, "port": "4096", "password": "", "opencode-bin": "opencode"},
+          values: {"no-auto-start": true, "port": "4096", "password": "", "bin": "opencode", "no-password": false},
         ),
         processes: processes,
         environment: const <String, String>{},
@@ -107,7 +107,7 @@ void main() {
 
       final result = await const OpenCodePluginDescriptor().checkAvailability(
         config: const PluginConfig(
-          values: {"no-auto-start": false, "port": null, "password": "", "opencode-bin": null},
+          values: {"no-auto-start": false, "port": null, "password": "", "bin": null, "no-password": false},
         ),
         processes: processes,
         environment: const <String, String>{},
@@ -148,7 +148,7 @@ void main() {
 
       final result = await const OpenCodePluginDescriptor().checkAvailability(
         config: const PluginConfig(
-          values: {"no-auto-start": false, "port": null, "password": "", "opencode-bin": "/custom/opencode"},
+          values: {"no-auto-start": false, "port": null, "password": "", "bin": "/custom/opencode", "no-password": false},
         ),
         processes: processes,
         environment: const <String, String>{},
