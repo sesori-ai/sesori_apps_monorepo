@@ -508,9 +508,9 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
       return colors.bgPrimary;
     }
 
-    // Regular secondary: bg-primary_alt at rest. Hover darkening is handled by
+    // Regular secondary: bgSecondary at rest. Hover darkening is handled by
     // the PregoTappable overlay (bgPrimaryHover = rgba(0,0,0,0.16) composited
-    // on top of bg-primary_alt).
+    // on top of bgSecondary).
     if (_isFocused) return colors.bgPrimary;
     return colors.bgSecondary;
   }
