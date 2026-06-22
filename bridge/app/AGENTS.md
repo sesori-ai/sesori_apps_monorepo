@@ -42,7 +42,7 @@ bridge/ workspace modules (siblings of app/):
 
 | Task             | Location                           | Notes                                                   |
 | ---------------- | ---------------------------------- | ------------------------------------------------------- |
-| CLI flags        | `bin/bridge.dart`                  | Bridge core flags (`--relay`, `--plugin`, etc.); the selected plugin contributes its own (OpenCode adds `--port`, `--no-auto-start`) |
+| CLI flags        | `bin/bridge.dart`                  | Bridge core flags (`--relay`, `--plugin`, etc.); the selected plugin contributes its own, namespaced by plugin id (OpenCode adds `--opencode-port`, `--opencode-host`, `--opencode-no-auto-start`, …) |
 | Auth flow        | `lib/src/auth/`                    | OAuth PKCE with token persistence to disk               |
 | Relay connection | `lib/src/bridge/relay_client.dart` | WebSocket + auth handshake + reconnection               |
 | Key exchange     | `lib/src/bridge/key_exchange.dart` | X25519 → HKDF → room key delivery                       |
