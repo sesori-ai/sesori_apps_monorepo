@@ -46,13 +46,7 @@ class SystemProcessApi {
     if (_isWindows) {
       return _inspectWindowsProcess(pid: pid);
     }
-    final processes = await _listPosixProcesses();
-    for (final process in processes) {
-      if (process.pid == pid) {
-        return process;
-      }
-    }
-    return null;
+    return _inspectPosixProcess(pid: pid);
   }
 
   Future<SignalResult> sendGracefulSignal({required int pid}) => _sendSignal(
@@ -98,9 +92,41 @@ class SystemProcessApi {
       );
     }
 
+    return _parsePosixProcesses(stdout: result.stdout.toString());
+  }
+
+  /// Inspects a single POSIX process by querying `ps -p <pid>` so the OS
+  /// returns only the matching row. This mirrors [_inspectWindowsProcess] and
+  /// avoids enumerating the whole process table just to look up one pid.
+  ///
+  /// Unlike [_listPosixProcesses], a non-zero exit here means "no such process"
+  /// (`ps -p` exits non-zero when the pid is gone), so it returns `null` instead
+  /// of throwing. The targeted form drops the `a`/`x` list selectors but keeps
+  /// `-ww` so long command lines are never truncated, and reuses the same
+  /// `-o` column spec so [_parsePosixProcesses]'s 24-char `lstart` regex matches.
+  Future<ProcessIdentity?> _inspectPosixProcess({required int pid}) async {
+    final result = await _processRunner.run(
+      "ps",
+      <String>["-p", "$pid", "-wwo", "pid=,user=,lstart=,command="],
+      environment: {"LC_ALL": "C"},
+    );
+    if (result.exitCode != 0) {
+      return null;
+    }
+
+    final processes = _parsePosixProcesses(stdout: result.stdout.toString());
+    for (final process in processes) {
+      if (process.pid == pid) {
+        return process;
+      }
+    }
+    return null;
+  }
+
+  List<ProcessIdentity> _parsePosixProcesses({required String stdout}) {
     final capturedAt = _clock.now();
     final processes = <ProcessIdentity>[];
-    for (final line in const LineSplitter().convert(result.stdout.toString())) {
+    for (final line in const LineSplitter().convert(stdout)) {
       final trimmed = line.trim();
       if (trimmed.isEmpty) {
         continue;

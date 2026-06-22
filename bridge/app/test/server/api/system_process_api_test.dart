@@ -79,13 +79,89 @@ void main() {
       expect(runner.calls, isEmpty);
     });
   });
+
+  group("SystemProcessApi (POSIX)", () {
+    test("inspectProcess issues a PID-scoped ps query and parses one identity", () async {
+      final runner = _RecordingProcessRunner(
+        stdout: "  321 alex     Mon Jun 22 09:15:01 2026 /usr/local/bin/sesori-bridge --relay wss://relay\n",
+      );
+      final api = SystemProcessApi(
+        processRunner: runner,
+        clock: const ServerClock(),
+        isWindows: false,
+        platform: "macos",
+      );
+
+      final identity = await api.inspectProcess(pid: 321);
+
+      // The OS must do the filtering — never a full process-table scan.
+      expect(runner.calls, hasLength(1));
+      final call = runner.calls.single;
+      expect(call.executable, equals("ps"));
+      expect(call.arguments, containsAllInOrder(<String>["-p", "321"]));
+      expect(call.arguments, contains("-wwo"));
+      // The list selectors `a`/`x` must be dropped for the targeted lookup.
+      expect(call.arguments, isNot(contains("-axwwo")));
+      expect(call.environment, equals(<String, String>{"LC_ALL": "C"}));
+
+      expect(identity, isNotNull);
+      expect(identity!.pid, equals(321));
+      expect(identity.startMarker, equals("Mon Jun 22 09:15:01 2026"));
+      expect(identity.executablePath, equals("/usr/local/bin/sesori-bridge"));
+      expect(identity.commandLine, equals("/usr/local/bin/sesori-bridge --relay wss://relay"));
+      expect(identity.ownerUser, equals(ProcessUser.fromRawUser("alex")));
+      expect(identity.platform, equals("macos"));
+    });
+
+    test("inspectProcess returns null (without throwing) when ps exits non-zero", () async {
+      final runner = _RecordingProcessRunner(exitCode: 1, stdout: "");
+      final api = SystemProcessApi(
+        processRunner: runner,
+        clock: const ServerClock(),
+        isWindows: false,
+        platform: "macos",
+      );
+
+      final identity = await api.inspectProcess(pid: 999999);
+
+      expect(identity, isNull);
+      expect(runner.calls.single.arguments, containsAllInOrder(<String>["-p", "999999"]));
+    });
+
+    test("inspectProcess returns null when ps yields no matching row", () async {
+      final runner = _RecordingProcessRunner(stdout: "\n");
+      final api = SystemProcessApi(
+        processRunner: runner,
+        clock: const ServerClock(),
+        isWindows: false,
+        platform: "macos",
+      );
+
+      expect(await api.inspectProcess(pid: 321), isNull);
+    });
+
+    test("inspectProcess returns null for a non-positive PID without shelling out", () async {
+      final runner = _RecordingProcessRunner();
+      final api = SystemProcessApi(
+        processRunner: runner,
+        clock: const ServerClock(),
+        isWindows: false,
+        platform: "macos",
+      );
+
+      expect(await api.inspectProcess(pid: 0), isNull);
+      expect(await api.inspectProcess(pid: -1), isNull);
+      expect(runner.calls, isEmpty);
+    });
+  });
 }
 
 class _RecordedCall {
-  _RecordedCall({required this.executable, required this.arguments});
+  _RecordedCall({required this.executable, required this.arguments, required this.environment});
 
   final String executable;
   final List<String> arguments;
+  final Map<String, String>? environment;
 }
 
 class _RecordingProcessRunner implements ProcessRunner {
@@ -104,7 +180,16 @@ class _RecordingProcessRunner implements ProcessRunner {
     Map<String, String>? environment,
     Duration timeout = const Duration(seconds: 15),
   }) async {
-    calls.add(_RecordedCall(executable: executable, arguments: arguments));
+    calls.add(_RecordedCall(executable: executable, arguments: arguments, environment: environment));
     return ProcessResult(1, exitCode, stdout, stderr);
+  }
+
+  @override
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
+    Map<String, String>? environment,
+  }) {
+    throw UnsupportedError("startDetached is not used by SystemProcessApi process-inspection tests");
   }
 }
