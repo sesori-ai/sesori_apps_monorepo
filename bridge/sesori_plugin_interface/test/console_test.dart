@@ -19,6 +19,20 @@ void main() {
       expect(err, isEmpty);
     });
 
+    test("warning writes to stderr and never to stdout", () {
+      final out = <String>[];
+      final err = <String>[];
+
+      IOOverrides.runZoned(
+        () => Console.warning("heads up"),
+        stdout: () => _CapturingStdout(out),
+        stderr: () => _CapturingStdout(err),
+      );
+
+      expect(err, equals(["heads up"]));
+      expect(out, isEmpty);
+    });
+
     test("error writes to stderr and never to stdout", () {
       final out = <String>[];
       final err = <String>[];
@@ -31,6 +45,25 @@ void main() {
 
       expect(err, equals(["something went wrong"]));
       expect(out, isEmpty);
+    });
+
+    test("warning and error are not colorized for non-terminal stderr", () {
+      final err = <String>[];
+
+      IOOverrides.runZoned(
+        () {
+          Console.warning("warn");
+          Console.error("boom");
+        },
+        stdout: () => _CapturingStdout(<String>[]),
+        stderr: () => _CapturingStdout(err),
+      );
+
+      expect(
+        err.every((line) => !line.contains("\x1B[")),
+        isTrue,
+        reason: "ANSI escapes must not leak into redirected/non-terminal output",
+      );
     });
 
     test("message output is never gated by Log.level", () {

@@ -50,8 +50,8 @@ void main() {
       expect(err, hasLength(2), reason: "only warning and error pass at the warning level");
     });
 
-    test("info level is prefixed with the resolved caller class like every other level", () {
-      Log.level = LogLevel.info;
+    test("debug level is prefixed with the resolved caller class", () {
+      Log.level = LogLevel.debug;
       final err = <String>[];
 
       IOOverrides.runZoned(
@@ -64,9 +64,49 @@ void main() {
       expect(
         err.single,
         startsWith("[_LogCaller]"),
-        reason: "the caller-frame index must resolve to the calling class",
+        reason: "the caller-frame index must resolve to the calling class at debug verbosity",
       );
       expect(err.single, contains("from-caller"));
+    });
+
+    test("info level omits the caller class tag to keep output clean", () {
+      Log.level = LogLevel.info;
+      final err = <String>[];
+
+      IOOverrides.runZoned(
+        () => _LogCaller().emit(),
+        stdout: () => _CapturingStdout(<String>[]),
+        stderr: () => _CapturingStdout(err),
+      );
+
+      expect(err, hasLength(1));
+      expect(
+        err.single,
+        isNot(contains("[_LogCaller]")),
+        reason: "the [Class] tag is debug-only noise and must be hidden at info level",
+      );
+      expect(err.single, equals("from-caller"));
+    });
+
+    test("warning and error are not colorized when stderr is not a terminal", () {
+      Log.level = LogLevel.verbose;
+      final err = <String>[];
+
+      IOOverrides.runZoned(
+        () {
+          Log.w("w-msg");
+          Log.e("e-msg");
+        },
+        stdout: () => _CapturingStdout(<String>[]),
+        stderr: () => _CapturingStdout(err),
+      );
+
+      expect(err, hasLength(2));
+      expect(
+        err.every((line) => !line.contains("\x1B[")),
+        isTrue,
+        reason: "ANSI escapes must not leak into redirected/non-terminal output",
+      );
     });
   });
 }

@@ -1,5 +1,7 @@
 import "dart:io";
 
+import "ansi_color.dart";
+
 /// Log levels ordered from most to least verbose.
 ///
 /// The [index] of each value determines filtering: messages with a level
@@ -49,12 +51,15 @@ class Log {
   ) {
     if (msgLevel.index < level.index) return;
 
-    final callerClass = _getCallerClassName();
-
     final buffer = StringBuffer();
-    buffer.write("[$callerClass]");
-    if (!rawMessage.startsWith("[")) {
-      buffer.write(" ");
+    // The [CallerClass] tag is debugging noise at normal verbosity. Only show it
+    // when the configured level is debug/verbose, where the extra context helps.
+    if (level.index <= LogLevel.debug.index) {
+      final callerClass = _getCallerClassName();
+      buffer.write("[$callerClass]");
+      if (!rawMessage.startsWith("[")) {
+        buffer.write(" ");
+      }
     }
     buffer.write(rawMessage);
     if (error != null && level.index < LogLevel.info.index) {
@@ -68,7 +73,22 @@ class Log {
     // All diagnostic logs go to stderr so the log stream stays separate from
     // user-facing output (which [Console] writes to stdout) and can be
     // silenced without making the bridge unoperable.
-    stderr.writeln(buffer.toString());
+    stderr.writeln(_colorizeForLevel(msgLevel, buffer.toString()));
+  }
+
+  /// Highlights warning lines in yellow and error lines in red when stderr is an
+  /// interactive terminal; other levels are written without color.
+  static String _colorizeForLevel(LogLevel msgLevel, String text) {
+    switch (msgLevel) {
+      case LogLevel.warning:
+        return AnsiColorFormatter.colorize(text: text, color: AnsiColor.yellow, out: stderr);
+      case LogLevel.error:
+        return AnsiColorFormatter.colorize(text: text, color: AnsiColor.red, out: stderr);
+      case LogLevel.verbose:
+      case LogLevel.debug:
+      case LogLevel.info:
+        return text;
+    }
   }
 
   static String _getCallerClassName() {
