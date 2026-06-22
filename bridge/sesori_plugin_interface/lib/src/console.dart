@@ -17,15 +17,15 @@ class Console {
   Console._();
 
   /// Writes a user-facing message to stdout, followed by a newline.
-  static void message({required String text}) => stdout.writeln(text);
+  static void message(String text) => stdout.writeln(text);
 
   /// Writes a user-facing warning to stderr in yellow, followed by a newline.
-  static void warning({required String text}) => stderr.writeln(
+  static void warning(String text) => stderr.writeln(
         AnsiColorFormatter.colorize(text: text, color: AnsiColor.yellow, out: stderr),
       );
 
   /// Writes a user-facing error to stderr in red, followed by a newline.
-  static void error({required String text}) => stderr.writeln(
+  static void error(String text) => stderr.writeln(
         AnsiColorFormatter.colorize(text: text, color: AnsiColor.red, out: stderr),
       );
 }

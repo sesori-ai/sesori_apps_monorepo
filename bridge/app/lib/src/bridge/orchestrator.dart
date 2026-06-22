@@ -342,9 +342,9 @@ class OrchestratorSession {
       throw Exception("failed to connect to relay: $e");
     }
 
-    Console.message(text: "Relay:  ${config.relayURL}");
-    Console.message(text: "Target: ${config.pluginEndpoint}\n");
-    Console.message(text: "Waiting for relay events...");
+    Console.message("Relay:  ${config.relayURL}");
+    Console.message("Target: ${config.pluginEndpoint}\n");
+    Console.message("Waiting for relay events...");
 
     try {
       while (!_cancelled) {

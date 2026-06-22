@@ -180,25 +180,25 @@ class LoginOAuthService {
     final openability = _browserOpenability();
     switch (openability) {
       case BrowserOpenability.yes:
-        Console.message(text: "Opening your browser to complete ${provider.label} login...");
-        Console.message(text: "If it doesn't open automatically, open this URL manually to continue:");
+        Console.message("Opening your browser to complete ${provider.label} login...");
+        Console.message("If it doesn't open automatically, open this URL manually to continue:");
       case BrowserOpenability.unknown:
-        Console.message(text: "Attempting to open your browser to complete ${provider.label} login...");
-        Console.message(text: "If it doesn't open, open this URL manually to continue:");
+        Console.message("Attempting to open your browser to complete ${provider.label} login...");
+        Console.message("If it doesn't open, open this URL manually to continue:");
       case BrowserOpenability.no:
-        Console.message(text: "No graphical browser detected (e.g. a headless or SSH session).");
-        Console.message(text: "Open this URL to complete ${provider.label} login:");
+        Console.message("No graphical browser detected (e.g. a headless or SSH session).");
+        Console.message("Open this URL to complete ${provider.label} login:");
     }
-    Console.message(text: initResp.authUrl);
+    Console.message(initResp.authUrl);
     if (openability != BrowserOpenability.no) {
       try {
         await _browserLauncher(initResp.authUrl);
       } catch (e) {
-        Console.message(text: "Could not open a browser automatically; open the URL above manually: $e");
+        Console.message("Could not open a browser automatically; open the URL above manually: $e");
       }
     }
 
-    Console.message(text: "Waiting for authorization...");
+    Console.message("Waiting for authorization...");
     final tokens = await _pollForCompletion(provider: provider, sessionToken: sessionToken);
     return (tokens: tokens, sessionToken: sessionToken);
   }
@@ -231,9 +231,9 @@ class LoginOAuthService {
             }
             final username = user.providerUsername ?? "";
             if (username.isNotEmpty) {
-              Console.message(text: "Login successful! Welcome, $username");
+              Console.message("Login successful! Welcome, $username");
             } else {
-              Console.message(text: "Login successful!");
+              Console.message("Login successful!");
             }
             return TokenData(
               accessToken: accessToken,
@@ -278,7 +278,7 @@ class LoginOAuthService {
 
     // Printed as a single write so the box renders atomically as one block.
     Console.message(
-      text: [
+      [
         "",
         line,
         empty,
@@ -288,7 +288,6 @@ class LoginOAuthService {
         beforeLine,
         empty,
         bottomLine,
-        "",
         "",
       ].join("\n"),
     );

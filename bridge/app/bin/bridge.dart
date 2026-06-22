@@ -135,9 +135,7 @@ class RunCommand extends cli.Command<void> {
     // Surface deprecated-flag usage to the user directly. The legacy flag still
     // worked; this only nudges the user toward the namespaced form, so it must
     // be visible regardless of --log-level and is not a diagnostic.
-    for (final deprecation in pluginConfigDeprecations) {
-      Console.warning(text: deprecation);
-    }
+    pluginConfigDeprecations.forEach(Console.warning);
 
     final settingsRepository = BridgeSettingsRepository(api: BridgeSettingsApi());
     final sleepPreventionService = SleepPreventionService(
@@ -224,18 +222,18 @@ class LogoutCommand extends cli.Command<void> {
     final result = await logoutRunner.logout(currentPid: pid);
     switch (result.status) {
       case BridgeLogoutStatus.loggedOut:
-        Console.message(text: 'Authentication cleared. You will be asked to log in on next start.');
+        Console.message('Authentication cleared. You will be asked to log in on next start.');
       case BridgeLogoutStatus.loggedOutWithRunningBridges:
-        Console.message(text: 'Authentication cleared. You will be asked to log in on next start.');
+        Console.message('Authentication cleared. You will be asked to log in on next start.');
         Console.message(
-          text: 'Warning: ${result.runningBridgeCount} bridge instance(s) are still running '
-              'and may re-create tokens when they refresh their session.',
+          'Warning: ${result.runningBridgeCount} bridge instance(s) are still running '
+          'and may re-create tokens when they refresh their session.',
         );
       case BridgeLogoutStatus.cancelled:
-        Console.message(text: 'Logout cancelled; stored tokens were not cleared.');
+        Console.message('Logout cancelled; stored tokens were not cleared.');
         exitCode = 1;
       case BridgeLogoutStatus.failed:
-        Console.error(text: 'Error: Failed to clear authentication tokens: ${result.error}');
+        Console.error('Error: Failed to clear authentication tokens: ${result.error}');
         exitCode = 1;
     }
   }
@@ -317,7 +315,7 @@ class ConfigEditCommand extends cli.Command<void> {
     );
 
     final configFilePath = await configService.openConfigFile();
-    Console.message(text: 'Opening config file at $configFilePath');
+    Console.message('Opening config file at $configFilePath');
   }
 }
 
