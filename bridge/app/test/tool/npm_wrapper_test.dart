@@ -1315,5 +1315,27 @@ process.stdout.write(JSON.stringify({ out: chunks.join("") }));
       expect(out, isNot(contains('\u2713')));
       expect(out, isNot(contains('\u2588')));
     });
+
+    test('keeps a long runnable command intact (printed below the box, not truncated)', () async {
+      const longCommand =
+          '/var/folders/very/long/managed/path/.local/share/sesori/bin/sesori-bridge status --verbose';
+      final result = await _runNodeHarness(
+        source:
+            '''
+const ui = require(${jsonEncode(uiPath)});
+const chunks = [];
+const stream = { isTTY: true, write(s) { chunks.push(String(s)); } };
+const u = new ui.Ui({ stream, errStream: stream, env: { FORCE_COLOR: '1', LANG: 'en_US.UTF-8' } });
+u.completion({ version: "1.2.3", location: "x", onPath: true, command: ${jsonEncode(longCommand)} });
+process.stdout.write(JSON.stringify({ out: chunks.join("") }));
+''',
+      );
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      final out =
+          (jsonDecode((result.stdout as String).trim()) as Map<String, dynamic>)['out'] as String;
+      // The full command appears verbatim (copy/paste-able) and is never ellipsized.
+      expect(out, contains(longCommand));
+      expect(out, isNot(contains('\u2026')));
+    });
   });
 }

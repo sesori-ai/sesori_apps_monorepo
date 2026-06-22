@@ -333,15 +333,34 @@ Ui.prototype.completion = function(options) {
   this._write("");
 
   var border = this._c.brand;
+  var comment = "# Start the bridge";
+  var gap = "   ";
+  var inner = PANEL_WIDTH - 2;
+  // A runnable command must stay intact (copy/paste-able). If it fits a panel
+  // row inside the box, keep the polished boxed layout; otherwise render the
+  // full, un-truncated command on its own line BELOW the box so a long managed
+  // path or long forwarded args are never ellipsized.
+  var fitsInBox = command.length + gap.length + comment.length <= inner;
+
   this.panelTop(border);
   this.panelRow("Next steps", this._c.bold, border);
   this.panelRow("", "", border);
   if (!onPath) {
     this.panelEmphasisRow("In a ", "new terminal", " window, run:", border);
-    this.panelRow("", "", border);
+    if (fitsInBox) {
+      this.panelRow("", "", border);
+    }
   }
-  this.panelCommandRow(command, "# Start the bridge", border);
+  if (fitsInBox) {
+    this.panelCommandRow(command, comment, border);
+  }
   this.panelBottom(border);
+
+  if (!fitsInBox) {
+    // Full command on its own line, never truncated.
+    this._write("");
+    this._write("    " + this.paint(this._c.brand + this._c.bold, command));
+  }
   this._write("");
 };
 

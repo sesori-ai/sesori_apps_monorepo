@@ -654,15 +654,30 @@ try {
     Write-Line ((Use-Paint $Script:C_DIM 'Location') + ' ' + (Use-Paint $Script:C_DIM $InstallRoot))
     Write-Line ''
 
+    # A runnable command must stay intact (copy/paste-able): if it fits a panel
+    # row we keep the boxed layout, otherwise we print the full, un-truncated
+    # command on its own line below the box rather than ellipsizing it.
+    $nextCommand = 'sesori-bridge'
+    $nextComment = '# Start the bridge'
+    $gap = '   '
+    $inner = $Script:PanelWidth - 2
+    $fitsInBox = ($nextCommand.Length + $gap.Length + $nextComment.Length) -le $inner
+
     Write-PanelTop $Script:C_BRAND
     Write-PanelRow 'Next steps' $Script:C_BOLD $Script:C_BRAND
     Write-PanelRow '' '' $Script:C_BRAND
     if (-not $onPath) {
         Write-PanelEmphasisRow 'In a ' 'new terminal' ' window, run:' $Script:C_BRAND
-        Write-PanelRow '' '' $Script:C_BRAND
+        if ($fitsInBox) { Write-PanelRow '' '' $Script:C_BRAND }
     }
-    Write-PanelCommandRow 'sesori-bridge' '# Start the bridge' $Script:C_BRAND
+    if ($fitsInBox) {
+        Write-PanelCommandRow $nextCommand $nextComment $Script:C_BRAND
+    }
     Write-PanelBottom $Script:C_BRAND
+    if (-not $fitsInBox) {
+        Write-Line ''
+        Write-Line ('    ' + (Use-Paint ($Script:C_BRAND + $Script:C_BOLD) $nextCommand))
+    }
     Write-Line ''
 
 } finally {

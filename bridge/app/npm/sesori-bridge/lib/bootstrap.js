@@ -271,19 +271,23 @@ async function runMain(options) {
   }
 
   // Show the completion panel when there is something actionable to tell the
-  // user: a real install happened, the bootstrap just changed the PATH, or the
-  // command isn't usable yet (PATH not configured / symlink missing) so the
-  // user still needs the "open a new terminal" / direct-binary guidance. Only a
-  // pure no-op — runtime current AND command already usable AND nothing changed
-  // — stays quiet, so repeated launches aren't noisy.
+  // user: a real install happened, the bootstrap just changed the PATH, the
+  // command isn't usable yet (PATH not configured / symlink missing) so the user
+  // still needs the "open a new terminal" / direct-binary guidance, OR the user
+  // passed args. The npm bootstrap never executes the managed binary, so an
+  // invocation like `npx @sesori/bridge --version` must not exit silently — we
+  // surface the `sesori-bridge <args>` command for the user to run. Only a pure
+  // no-op — runtime current, command usable, nothing changed, no args — stays
+  // quiet so repeated bare launches aren't noisy.
+  var forwardedArgs = process.argv.slice(2);
   var commandReady = isCommandReady(bootstrapResult.installRoot);
-  if (bootstrapResult.installed || pathChanged || !commandReady) {
+  if (bootstrapResult.installed || pathChanged || !commandReady || forwardedArgs.length > 0) {
     printInstallSummary({
       installRoot: bootstrapResult.installRoot,
       binaryPath: bootstrapResult.binaryPath,
       version: bootstrapResult.version,
       pathStatus: pathStatus,
-      args: process.argv.slice(2),
+      args: forwardedArgs,
     });
   }
 }
