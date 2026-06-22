@@ -101,7 +101,7 @@ class _OnboardingHero extends StatelessWidget {
         children: [
           // Aurora landscape: a centred panel (sized by the factors below)
           // whose edges fade out via the foreground vignette. The fade colour
-          // (auroraEdge) matches the Scaffold's bgPrimaryAlt background, so the
+          // (auroraEdge) matches the Scaffold's bgSecondary background, so the
           // panel blends in seamlessly even though it doesn't span full width —
           // keep those two colours in sync. Image -> background decoration;
           // radial gradient -> foreground vignette painted on top.

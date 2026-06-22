@@ -126,7 +126,7 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
     final prego = context.prego;
 
     return Scaffold(
-      backgroundColor: prego.colors.bgPrimary,
+      backgroundColor: prego.colors.bgSecondary,
       // TODO: we need to have app wide navigation bar component
       appBar: AppBar(
         backgroundColor: Colors.transparent,
