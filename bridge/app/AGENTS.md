@@ -82,7 +82,7 @@ bridge/ workspace modules (siblings of app/):
 ## ANTI-PATTERNS
 
 - **Never duplicate crypto** — use `sesori_shared` package for all encryption/protocol types
-- **Never hardcode URLs** — relay and auth backend are CLI-configurable. Server is always localhost (only port is configurable)
+- **Never hardcode URLs** — relay and auth backend are CLI-configurable. The OpenCode server defaults to loopback (`127.0.0.1`) but its host and port are CLI-configurable too (`--opencode-host`, `--opencode-port`)
 - **Never inline HTTP calls in business logic** — extract to a dedicated API class with typed return values
 - **Never pass raw JSON maps through layers** — always deserialize at the boundary (API class) and use Freezed objects downstream
 - **Never construct classes with server URLs/passwords directly** — inject an API client instance instead
