@@ -7,42 +7,6 @@ import "../../../core/extensions/build_context_x.dart";
 import "../../../core/extensions/remote_failure_x.dart";
 import "queued_message_bubble.dart";
 
-class SessionDetailTitle extends StatelessWidget {
-  final SessionDetailState state;
-  final String fallbackTitle;
-
-  const SessionDetailTitle({super.key, required this.state, required this.fallbackTitle});
-
-  @override
-  Widget build(BuildContext context) {
-    final subtitle = switch (state) {
-      SessionDetailLoaded(:final agent, :final assistantAgentModel) => [
-        ?agent,
-        assistantAgentModel?.modelID,
-      ].join(" · "),
-      SessionDetailLoading() || SessionDetailFailed() => "",
-    };
-    final title = switch (state) {
-      SessionDetailLoaded(:final sessionTitle) => sessionTitle ?? fallbackTitle,
-      SessionDetailLoading() || SessionDetailFailed() => fallbackTitle,
-    };
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title),
-        if (subtitle.isNotEmpty)
-          Text(
-            subtitle,
-            style: context.prego.textTheme.textXs.regular.copyWith(
-              color: context.prego.colors.textSecondary,
-            ),
-          ),
-      ],
-    );
-  }
-}
-
 class SessionDetailPendingBanner extends StatelessWidget {
   final IconData icon;
   final Color backgroundColor;

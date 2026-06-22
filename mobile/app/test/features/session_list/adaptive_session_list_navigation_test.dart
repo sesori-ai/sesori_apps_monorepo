@@ -7,6 +7,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_list/session_list_panel.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../core/routing/adaptive_session_router_test_harness.dart";
 import "../../helpers/test_helpers.dart";
@@ -63,10 +64,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
-    expect(find.byType(BackButton), findsOneWidget);
+    // The narrow session list (SessionListScaffold → PregoGlassScaffold) renders
+    // the back affordance as the glass bar button, not a stock BackButton.
+    final backButton = find.byIcon(TablerRegular.chevron_left);
+    expect(backButton, findsOneWidget);
     expect(harness.router.canPop(), isTrue);
 
-    await tester.tap(find.byType(BackButton));
+    await tester.tap(backButton);
     await tester.pumpAndSettle();
 
     expect(Uri.parse(harness.currentLocation).path, "/projects");
@@ -105,9 +109,11 @@ void main() {
     unawaited(harness.router.push("/projects/p1/sessions?name=Project+One"));
     await tester.pumpAndSettle();
 
-    expect(find.byType(BackButton), findsOneWidget);
+    // Narrow session list renders the glass bar back button (see above).
+    final backButton = find.byIcon(TablerRegular.chevron_left);
+    expect(backButton, findsOneWidget);
 
-    await tester.tap(find.byType(BackButton));
+    await tester.tap(backButton);
     await tester.pumpAndSettle();
 
     expect(harness.router.canPop(), isFalse);

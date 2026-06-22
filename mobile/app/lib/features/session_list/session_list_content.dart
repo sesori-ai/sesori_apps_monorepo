@@ -8,8 +8,24 @@ import "../../core/constants.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/extensions/remote_failure_x.dart";
 import "../../core/routing/app_router.dart";
-import "../../l10n/app_localizations.dart";
 import "session_tile.dart";
+
+/// Pull-to-refresh handler shared by [SessionListScaffold] and
+/// [SessionListPanel]: re-fetches the session list and reports the outcome via
+/// a snackbar. Both hosts own their own scroll view (and thus their own
+/// [RefreshIndicator]), so the refresh action lives here, next to the content.
+Future<void> refreshSessionList(BuildContext context) async {
+  final loc = context.loc;
+  final success = await context.read<SessionListCubit>().refreshSessions(waitForPrData: true);
+  if (!context.mounted) return;
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(success ? loc.sessionListRefreshSuccess : loc.sessionListRefreshFailed),
+      duration: kSnackBarDuration,
+    ),
+  );
+}
 
 class SessionListContent extends StatelessWidget {
   final String? selectedSessionId;
@@ -25,77 +41,64 @@ class SessionListContent extends StatelessWidget {
     required this.onSessionSwipe,
   });
 
+  /// Returns the page content as a single sliver per state, so it slots
+  /// directly into [PregoGlassScaffold]'s scroll view. Pull-to-refresh and the
+  /// `isRefreshing` progress bar are owned by [SessionListScaffold]; this only
+  /// renders the list/empty/error content.
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
     final state = context.watch<SessionListCubit>().state;
 
     return switch (state) {
-      SessionListLoading() => const Center(child: CircularProgressIndicator()),
-      SessionListLoaded(:final sessions, :final isRefreshing, :final showArchived, :final activeSessionIds) => Column(
-        children: [
-          if (isRefreshing) const LinearProgressIndicator(),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: () async {
-                await _refreshSessions(context: context, loc: loc);
-              },
-              child: sessions.isEmpty
-                  ? CustomScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      slivers: [
-                        SliverFillRemaining(
-                          child: Center(
-                            child: Text(showArchived ? loc.sessionListEmptyArchived : loc.sessionListEmpty),
-                          ),
-                        ),
-                      ],
-                    )
-                  : ListView.builder(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      itemCount: sessions.length,
-                      itemBuilder: (_, index) {
-                        final session = sessions[index];
-                        final isArchived = session.time?.archived != null;
-                        final activityInfo = activeSessionIds[session.id];
-
-                        return SessionTile(
-                          session: session,
-                          isArchived: isArchived,
-                          isActive: activityInfo != null,
-                          selected: selectedSessionId == session.id,
-                          awaitingInput: activityInfo?.awaitingInput ?? false,
-                          isRetrying: activityInfo?.isRetrying ?? false,
-                          backgroundTaskCount: activityInfo?.backgroundTaskCount ?? 0,
-                          onTap: () => onSessionTap(session),
-                          onLongPress: () => onSessionLongPress(session),
-                          onSwipe: () => onSessionSwipe(session),
-                        );
-                      },
-                    ),
-            ),
-          ),
-        ],
+      SessionListLoading() => const SliverFillRemaining(
+        hasScrollBody: false,
+        child: Center(child: CircularProgressIndicator()),
       ),
-      SessionListStaleProject() => _StaleProjectView(onBack: () => _exitSessionShell(context)),
-      SessionListFailed(:final reason) => _ErrorView(
-        reason: reason,
-        onRetry: () => context.read<SessionListCubit>().retryLoadSessions(),
+      SessionListLoaded(:final sessions, :final showArchived, :final activeSessionIds) =>
+        sessions.isEmpty
+            ? SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: Text(showArchived ? loc.sessionListEmptyArchived : loc.sessionListEmpty),
+                ),
+              )
+            : SliverPadding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                sliver: SliverList.builder(
+                  itemCount: sessions.length,
+                  itemBuilder: (_, index) {
+                    final session = sessions[index];
+                    final isArchived = session.time?.archived != null;
+                    final activityInfo = activeSessionIds[session.id];
+
+                    return SessionTile(
+                      session: session,
+                      isArchived: isArchived,
+                      isActive: activityInfo != null,
+                      selected: selectedSessionId == session.id,
+                      awaitingInput: activityInfo?.awaitingInput ?? false,
+                      isRetrying: activityInfo?.isRetrying ?? false,
+                      backgroundTaskCount: activityInfo?.backgroundTaskCount ?? 0,
+                      onTap: () => onSessionTap(session),
+                      onLongPress: () => onSessionLongPress(session),
+                      onSwipe: () => onSessionSwipe(session),
+                    );
+                  },
+                ),
+              ),
+      SessionListStaleProject() => SliverFillRemaining(
+        hasScrollBody: false,
+        child: _StaleProjectView(onBack: () => _exitSessionShell(context)),
+      ),
+      SessionListFailed(:final reason) => SliverFillRemaining(
+        hasScrollBody: false,
+        child: _ErrorView(
+          reason: reason,
+          onRetry: () => context.read<SessionListCubit>().retryLoadSessions(),
+        ),
       ),
     };
-  }
-
-  Future<void> _refreshSessions({required BuildContext context, required AppLocalizations loc}) async {
-    final success = await context.read<SessionListCubit>().refreshSessions(waitForPrData: true);
-    if (!context.mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(success ? loc.sessionListRefreshSuccess : loc.sessionListRefreshFailed),
-        duration: kSnackBarDuration,
-      ),
-    );
   }
 
   void _exitSessionShell(BuildContext context) {
