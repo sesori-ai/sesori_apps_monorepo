@@ -96,6 +96,15 @@ String resolveOpenCodeConnectHost({required String bindHost}) {
 /// connect-host probe catches a specific-address squatter and the bind-host
 /// probe catches a wildcard squatter. When the two hosts are equal (loopback or
 /// a concrete interface address) this collapses to a single probe.
+///
+/// The distinct hosts are probed **sequentially**, not concurrently. Each probe
+/// opens a real `ServerSocket` for the duration of the bind check, and on
+/// platforms where a wildcard bind and a same-port specific-address bind are
+/// mutually exclusive (notably Linux, a bridge build target) a concurrent probe
+/// would have one host's open socket make the other host's probe report `false`
+/// — falsely rejecting a genuinely free port. Probing one host at a time means
+/// no probe is ever live while another runs, so only a real foreign listener
+/// (never our own probe) can fail a bind.
 Future<bool> probeOpenCodePortBindable({
   required HostPortService ports,
   required int port,
@@ -103,10 +112,12 @@ Future<bool> probeOpenCodePortBindable({
   required String connectHost,
 }) async {
   final hosts = <String>{bindHost, connectHost};
-  final results = await Future.wait<bool>(
-    hosts.map((host) => ports.isBindable(host: host, port: port)),
-  );
-  return results.every((bindable) => bindable);
+  for (final host in hosts) {
+    if (!await ports.isBindable(host: host, port: port)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /// Maximum crash-restarts attempted within one failure episode before the
