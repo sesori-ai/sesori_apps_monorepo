@@ -394,6 +394,67 @@ void main() {
     });
   });
 
+  group("probeOpenCodePortBindable", () {
+    test("probes a single host once when bind and connect hosts are equal", () async {
+      final ports = _RecordingHostPortService(unbindableHosts: const <String>{});
+
+      final bindable = await probeOpenCodePortBindable(
+        ports: ports,
+        port: 4096,
+        bindHost: "127.0.0.1",
+        connectHost: "127.0.0.1",
+      );
+
+      expect(bindable, isTrue);
+      expect(ports.probedHosts, equals(<String>["127.0.0.1"]));
+    });
+
+    test("rejects a specific-address squatter the wildcard bind probe alone would miss", () async {
+      // The bug scenario: --opencode-host 0.0.0.0 while another opencode holds
+      // 127.0.0.1. Binding 0.0.0.0 would succeed, but the connect host probe
+      // catches the squatter.
+      final ports = _RecordingHostPortService(unbindableHosts: const <String>{"127.0.0.1"});
+
+      final bindable = await probeOpenCodePortBindable(
+        ports: ports,
+        port: 4096,
+        bindHost: "0.0.0.0",
+        connectHost: "127.0.0.1",
+      );
+
+      expect(bindable, isFalse);
+      expect(ports.probedHosts, containsAll(<String>["0.0.0.0", "127.0.0.1"]));
+    });
+
+    test("rejects a wildcard squatter the connect-host probe alone would miss", () async {
+      final ports = _RecordingHostPortService(unbindableHosts: const <String>{"0.0.0.0"});
+
+      final bindable = await probeOpenCodePortBindable(
+        ports: ports,
+        port: 4096,
+        bindHost: "0.0.0.0",
+        connectHost: "127.0.0.1",
+      );
+
+      expect(bindable, isFalse);
+      expect(ports.probedHosts, containsAll(<String>["0.0.0.0", "127.0.0.1"]));
+    });
+
+    test("reports free only when both hosts are bindable", () async {
+      final ports = _RecordingHostPortService(unbindableHosts: const <String>{});
+
+      final bindable = await probeOpenCodePortBindable(
+        ports: ports,
+        port: 4096,
+        bindHost: "0.0.0.0",
+        connectHost: "127.0.0.1",
+      );
+
+      expect(bindable, isTrue);
+      expect(ports.probedHosts.toSet(), equals(<String>{"0.0.0.0", "127.0.0.1"}));
+    });
+  });
+
   group("buildOpenCodeRestartPolicy", () {
     test("builds the bounded pinned-port restart pacing", () {
       final policy = buildOpenCodeRestartPolicy();
@@ -513,4 +574,20 @@ class _FakeSpawnedProcess implements SpawnedProcess {
 
   @override
   Stream<List<int>> get stderr => Stream<List<int>>.value(const <int>[]);
+}
+
+/// Records every host probed and reports any host in [unbindableHosts] as
+/// occupied — a stand-in for a foreign listener already holding the port on
+/// that specific address.
+class _RecordingHostPortService implements HostPortService {
+  _RecordingHostPortService({required Set<String> unbindableHosts}) : _unbindableHosts = unbindableHosts;
+
+  final Set<String> _unbindableHosts;
+  final List<String> probedHosts = <String>[];
+
+  @override
+  Future<bool> isBindable({required String host, required int port}) async {
+    probedHosts.add(host);
+    return !_unbindableHosts.contains(host);
+  }
 }
