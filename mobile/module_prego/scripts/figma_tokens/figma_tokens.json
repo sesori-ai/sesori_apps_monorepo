@@ -32,7 +32,7 @@
         }
       },
       {
-        "name": "Colors/Base/transparent",
+        "name": "Colors/Base/transparent white",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -56,7 +56,7 @@
         }
       },
       {
-        "name": "Colors/Gray (light mode)/25",
+        "name": "Colors/Gray/25",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -68,19 +68,19 @@
         }
       },
       {
-        "name": "Colors/Gray (light mode)/50",
+        "name": "Colors/Gray/50",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
-            "r": 0.9801960587501526,
-            "g": 0.9803071618080139,
-            "b": 0.9805882573127747,
+            "r": 0.9900000095367432,
+            "g": 0.9900000095367432,
+            "b": 0.9900000095367432,
             "a": 1
           }
         }
       },
       {
-        "name": "Colors/Gray (light mode)/100",
+        "name": "Colors/Gray/100",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -92,259 +92,163 @@
         }
       },
       {
-        "name": "Colors/Gray (light mode)/200",
+        "name": "Colors/Gray/200",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
-            "r": 0.9137254953384399,
-            "g": 0.9163398742675781,
-            "b": 0.9215686321258545,
+            "r": 0.9411764740943909,
+            "g": 0.9411764740943909,
+            "b": 0.9411764740943909,
             "a": 1
           }
         }
       },
       {
-        "name": "Colors/Gray (light mode)/300",
+        "name": "Colors/Gray/300",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
-            "r": 0.8358039259910583,
-            "g": 0.8420000076293945,
-            "b": 0.8543921709060669,
+            "r": 0.9038461446762085,
+            "g": 0.9038461446762085,
+            "b": 0.9038461446762085,
             "a": 1
           }
         }
       },
       {
-        "name": "Colors/Gray (light mode)/400",
+        "name": "Colors/Gray/350",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
-            "r": 0.6425098180770874,
-            "g": 0.656000018119812,
+            "r": 0.8600000143051147,
+            "g": 0.8600000143051147,
+            "b": 0.8600000143051147,
+            "a": 1
+          }
+        }
+      },
+      {
+        "name": "Colors/Gray/400",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.6829804182052612,
+            "g": 0.6829804182052612,
             "b": 0.6829804182052612,
             "a": 1
           }
         }
       },
       {
-        "name": "Colors/Gray (light mode)/500",
+        "name": "Colors/Gray/425",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
-            "r": 0.4431372582912445,
-            "g": 0.4627451002597809,
-            "b": 0.501960813999176,
+            "r": 0.6000000238418579,
+            "g": 0.6000000238418579,
+            "b": 0.6000000238418579,
             "a": 1
           }
         }
       },
       {
-        "name": "Colors/Gray (light mode)/600",
+        "name": "Colors/Gray/450",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
-            "r": 0.3265098035335541,
-            "g": 0.3454379141330719,
-            "b": 0.38329413533210754,
+            "r": 0.550000011920929,
+            "g": 0.550000011920929,
+            "b": 0.550000011920929,
             "a": 1
           }
         }
       },
       {
-        "name": "Colors/Gray (light mode)/700",
+        "name": "Colors/Gray/525",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
-            "r": 0.2549019753932953,
-            "g": 0.27581700682640076,
-            "b": 0.3176470696926117,
+            "r": 0.4313725531101227,
+            "g": 0.4313725531101227,
+            "b": 0.4313725531101227,
             "a": 1
           }
         }
       },
       {
-        "name": "Colors/Gray (light mode)/800",
+        "name": "Colors/Gray/500",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
-            "r": 0.15333333611488342,
-            "g": 0.17137254774570465,
-            "b": 0.2074509859085083,
+            "r": 0.23999999463558197,
+            "g": 0.23999999463558197,
+            "b": 0.23999999463558197,
             "a": 1
           }
         }
       },
       {
-        "name": "Colors/Gray (light mode)/900",
+        "name": "Colors/Gray/600",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
-            "r": 0.09882353246212006,
-            "g": 0.11529411375522614,
-            "b": 0.14823530614376068,
+            "r": 0.1764705926179886,
+            "g": 0.1764705926179886,
+            "b": 0.1764705926179886,
             "a": 1
           }
         }
       },
       {
-        "name": "Colors/Gray (light mode)/950",
+        "name": "Colors/Gray/700",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
-            "r": 0.04172549024224281,
-            "g": 0.05050980672240257,
-            "b": 0.0680784359574318,
+            "r": 0.1411764770746231,
+            "g": 0.1411764770746231,
+            "b": 0.1411764770746231,
             "a": 1
           }
         }
       },
       {
-        "name": "Colors/Gray (dark mode)/25",
+        "name": "Colors/Gray/800",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
-            "r": 0.9495000243186951,
-            "g": 0.9498999714851379,
-            "b": 0.9505000114440918,
+            "r": 0.1411764770746231,
+            "g": 0.1411764770746231,
+            "b": 0.1411764770746231,
             "a": 1
           }
         }
       },
       {
-        "name": "Colors/Gray (dark mode)/50",
+        "name": "Colors/Gray/900",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
-            "r": 0.8867000341415405,
-            "g": 0.8893397450447083,
-            "b": 0.8932999968528748,
+            "r": 0.0941176488995552,
+            "g": 0.0941176488995552,
+            "b": 0.0941176488995552,
             "a": 1
           }
         }
       },
       {
-        "name": "Colors/Gray (dark mode)/100",
+        "name": "Colors/Gray/950",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
-            "r": 0.8104490041732788,
-            "g": 0.8180897831916809,
-            "b": 0.8295510411262512,
+            "r": 0.048114482313394547,
+            "g": 0.048114482313394547,
+            "b": 0.048114482313394547,
             "a": 1
           }
         }
       },
       {
-        "name": "Colors/Gray (dark mode)/200",
-        "resolvedType": "COLOR",
-        "valuesByMode": {
-          "75:0": {
-            "r": 0.7472652792930603,
-            "g": 0.7574530243873596,
-            "b": 0.7727347016334534,
-            "a": 1
-          }
-        }
-      },
-      {
-        "name": "Colors/Gray (dark mode)/300",
-        "resolvedType": "COLOR",
-        "valuesByMode": {
-          "75:0": {
-            "r": 0.6840816736221313,
-            "g": 0.6968162655830383,
-            "b": 0.7159183621406555,
-            "a": 1
-          }
-        }
-      },
-      {
-        "name": "Colors/Gray (dark mode)/400",
-        "resolvedType": "COLOR",
-        "valuesByMode": {
-          "75:0": {
-            "r": 0.5998367071151733,
-            "g": 0.615967333316803,
-            "b": 0.6401633024215698,
-            "a": 1
-          }
-        }
-      },
-      {
-        "name": "Colors/Gray (dark mode)/500",
-        "resolvedType": "COLOR",
-        "valuesByMode": {
-          "75:0": {
-            "r": 0.4930841028690338,
-            "g": 0.514616847038269,
-            "b": 0.5469158887863159,
-            "a": 1
-          }
-        }
-      },
-      {
-        "name": "Colors/Gray (dark mode)/600",
-        "resolvedType": "COLOR",
-        "valuesByMode": {
-          "75:0": {
-            "r": 0.39680981636047363,
-            "g": 0.4153619706630707,
-            "b": 0.44319018721580505,
-            "a": 1
-          }
-        }
-      },
-      {
-        "name": "Colors/Gray (dark mode)/700",
-        "resolvedType": "COLOR",
-        "valuesByMode": {
-          "75:0": {
-            "r": 0.3028571307659149,
-            "g": 0.316571444272995,
-            "b": 0.33714285492897034,
-            "a": 1
-          }
-        }
-      },
-      {
-        "name": "Colors/Gray (dark mode)/800",
-        "resolvedType": "COLOR",
-        "valuesByMode": {
-          "75:0": {
-            "r": 0.19016394019126892,
-            "g": 0.19803278148174286,
-            "b": 0.20983606576919556,
-            "a": 1
-          }
-        }
-      },
-      {
-        "name": "Colors/Gray (dark mode)/900",
-        "resolvedType": "COLOR",
-        "valuesByMode": {
-          "75:0": {
-            "r": 0.09400000423192978,
-            "g": 0.09879999607801437,
-            "b": 0.10599999874830246,
-            "a": 1
-          }
-        }
-      },
-      {
-        "name": "Colors/Gray (dark mode)/950",
-        "resolvedType": "COLOR",
-        "valuesByMode": {
-          "75:0": {
-            "r": 0.0117647061124444,
-            "g": 0.01568627543747425,
-            "b": 0.019607843831181526,
-            "a": 1
-          }
-        }
-      },
-      {
-        "name": "Colors/Gray (dark mode alpha)/25",
+        "name": "Colors/Alpha White/25",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -356,7 +260,7 @@
         }
       },
       {
-        "name": "Colors/Gray (dark mode alpha)/50",
+        "name": "Colors/Alpha White/50",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -368,7 +272,7 @@
         }
       },
       {
-        "name": "Colors/Gray (dark mode alpha)/100",
+        "name": "Colors/Alpha White/100",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -380,7 +284,7 @@
         }
       },
       {
-        "name": "Colors/Gray (dark mode alpha)/200",
+        "name": "Colors/Alpha White/200",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -392,7 +296,7 @@
         }
       },
       {
-        "name": "Colors/Gray (dark mode alpha)/300",
+        "name": "Colors/Alpha White/300",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -404,7 +308,7 @@
         }
       },
       {
-        "name": "Colors/Gray (dark mode alpha)/400",
+        "name": "Colors/Alpha White/400",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -416,7 +320,7 @@
         }
       },
       {
-        "name": "Colors/Gray (dark mode alpha)/500",
+        "name": "Colors/Alpha White/500",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -428,7 +332,7 @@
         }
       },
       {
-        "name": "Colors/Gray (dark mode alpha)/600",
+        "name": "Colors/Alpha White/600",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -440,7 +344,7 @@
         }
       },
       {
-        "name": "Colors/Gray (dark mode alpha)/700",
+        "name": "Colors/Alpha White/700",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -452,7 +356,7 @@
         }
       },
       {
-        "name": "Colors/Gray (dark mode alpha)/800",
+        "name": "Colors/Alpha White/800",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -464,7 +368,7 @@
         }
       },
       {
-        "name": "Colors/Gray (dark mode alpha)/900",
+        "name": "Colors/Alpha White/900",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -476,7 +380,7 @@
         }
       },
       {
-        "name": "Colors/Gray (dark mode alpha)/950",
+        "name": "Colors/Alpha White/950",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -488,7 +392,7 @@
         }
       },
       {
-        "name": "Colors/Gray (light mode alpha)/25",
+        "name": "Colors/Alpha Black/25",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -500,7 +404,7 @@
         }
       },
       {
-        "name": "Colors/Gray (light mode alpha)/50",
+        "name": "Colors/Alpha Black/50",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -512,7 +416,7 @@
         }
       },
       {
-        "name": "Colors/Gray (light mode alpha)/100",
+        "name": "Colors/Alpha Black/100",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -524,7 +428,7 @@
         }
       },
       {
-        "name": "Colors/Gray (light mode alpha)/200",
+        "name": "Colors/Alpha Black/200",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -536,7 +440,7 @@
         }
       },
       {
-        "name": "Colors/Gray (light mode alpha)/300",
+        "name": "Colors/Alpha Black/300",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -548,7 +452,7 @@
         }
       },
       {
-        "name": "Colors/Gray (light mode alpha)/400",
+        "name": "Colors/Alpha Black/400",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -560,7 +464,7 @@
         }
       },
       {
-        "name": "Colors/Gray (light mode alpha)/500",
+        "name": "Colors/Alpha Black/500",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -572,7 +476,7 @@
         }
       },
       {
-        "name": "Colors/Gray (light mode alpha)/600",
+        "name": "Colors/Alpha Black/600",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -584,7 +488,7 @@
         }
       },
       {
-        "name": "Colors/Gray (light mode alpha)/700",
+        "name": "Colors/Alpha Black/700",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -596,7 +500,7 @@
         }
       },
       {
-        "name": "Colors/Gray (light mode alpha)/800",
+        "name": "Colors/Alpha Black/800",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -608,7 +512,7 @@
         }
       },
       {
-        "name": "Colors/Gray (light mode alpha)/900",
+        "name": "Colors/Alpha Black/900",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -620,7 +524,7 @@
         }
       },
       {
-        "name": "Colors/Gray (light mode alpha)/950",
+        "name": "Colors/Alpha Black/950",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -632,7 +536,163 @@
         }
       },
       {
-        "name": "Colors/Brand Blue/25",
+        "name": "Colors/Alpha Gray/25",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9901961088180542,
+            "g": 0.9901961088180542,
+            "b": 0.9901961088180542,
+            "a": 0
+          }
+        }
+      },
+      {
+        "name": "Colors/Alpha Gray/50",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9900000095367432,
+            "g": 0.9900000095367432,
+            "b": 0.9900000095367432,
+            "a": 0
+          }
+        }
+      },
+      {
+        "name": "Colors/Alpha Gray/100",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.96039217710495,
+            "g": 0.9606797695159912,
+            "b": 0.9611764550209045,
+            "a": 0
+          }
+        }
+      },
+      {
+        "name": "Colors/Alpha Gray/200",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9411764740943909,
+            "g": 0.9411764740943909,
+            "b": 0.9411764740943909,
+            "a": 0
+          }
+        }
+      },
+      {
+        "name": "Colors/Alpha Gray/300",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.9038461446762085,
+            "g": 0.9038461446762085,
+            "b": 0.9038461446762085,
+            "a": 0
+          }
+        }
+      },
+      {
+        "name": "Colors/Alpha Gray/350",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.8600000143051147,
+            "g": 0.8600000143051147,
+            "b": 0.8600000143051147,
+            "a": 0
+          }
+        }
+      },
+      {
+        "name": "Colors/Alpha Gray/400",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.6829804182052612,
+            "g": 0.6829804182052612,
+            "b": 0.6829804182052612,
+            "a": 0
+          }
+        }
+      },
+      {
+        "name": "Colors/Alpha Gray/500",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.23999999463558197,
+            "g": 0.23999999463558197,
+            "b": 0.23999999463558197,
+            "a": 0
+          }
+        }
+      },
+      {
+        "name": "Colors/Alpha Gray/600",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.1764705926179886,
+            "g": 0.1764705926179886,
+            "b": 0.1764705926179886,
+            "a": 0
+          }
+        }
+      },
+      {
+        "name": "Colors/Alpha Gray/700",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.1411764770746231,
+            "g": 0.1411764770746231,
+            "b": 0.1411764770746231,
+            "a": 0
+          }
+        }
+      },
+      {
+        "name": "Colors/Alpha Gray/800",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.1411764770746231,
+            "g": 0.1411764770746231,
+            "b": 0.1411764770746231,
+            "a": 0
+          }
+        }
+      },
+      {
+        "name": "Colors/Alpha Gray/900",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.0941176488995552,
+            "g": 0.0941176488995552,
+            "b": 0.0941176488995552,
+            "a": 0
+          }
+        }
+      },
+      {
+        "name": "Colors/Alpha Gray/950",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:0": {
+            "r": 0.048114482313394547,
+            "g": 0.048114482313394547,
+            "b": 0.048114482313394547,
+            "a": 0
+          }
+        }
+      },
+      {
+        "name": "Colors/Blue/25",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -644,7 +704,7 @@
         }
       },
       {
-        "name": "Colors/Brand Blue/50",
+        "name": "Colors/Blue/50",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -656,7 +716,7 @@
         }
       },
       {
-        "name": "Colors/Brand Blue/100",
+        "name": "Colors/Blue/100",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -668,7 +728,7 @@
         }
       },
       {
-        "name": "Colors/Brand Blue/200",
+        "name": "Colors/Blue/200",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -680,7 +740,7 @@
         }
       },
       {
-        "name": "Colors/Brand Blue/300",
+        "name": "Colors/Blue/300",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -692,7 +752,7 @@
         }
       },
       {
-        "name": "Colors/Brand Blue/400",
+        "name": "Colors/Blue/400",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -704,7 +764,7 @@
         }
       },
       {
-        "name": "Colors/Brand Blue/500",
+        "name": "Colors/Blue/500",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -716,7 +776,7 @@
         }
       },
       {
-        "name": "Colors/Brand Blue/600",
+        "name": "Colors/Blue/600",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -728,7 +788,7 @@
         }
       },
       {
-        "name": "Colors/Brand Blue/700",
+        "name": "Colors/Blue/700",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -740,7 +800,7 @@
         }
       },
       {
-        "name": "Colors/Brand Blue/800",
+        "name": "Colors/Blue/800",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -752,7 +812,7 @@
         }
       },
       {
-        "name": "Colors/Brand Blue/900",
+        "name": "Colors/Blue/900",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -764,7 +824,7 @@
         }
       },
       {
-        "name": "Colors/Brand Blue/950",
+        "name": "Colors/Blue/950",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:0": {
@@ -1590,27 +1650,87 @@
     ],
     "variables": [
       {
-        "name": "Colors/Text/text-primary (900)",
+        "name": "Colors/Text/text-primary (950)",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.04172549024224281,
-            "g": 0.05050980672240257,
-            "b": 0.0680784359574318,
+            "r": 0.048114482313394547,
+            "g": 0.048114482313394547,
+            "b": 0.048114482313394547,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/950"
+            "_alias": "Colors/Gray/950"
           },
           "75:4": {
-            "r": 0.9495000243186951,
-            "g": 0.9498999714851379,
-            "b": 0.9505000114440918,
+            "r": 0.9901961088180542,
+            "g": 0.9901961088180542,
+            "b": 0.9901961088180542,
             "a": 1,
-            "_alias": "Colors/Gray (dark mode)/25"
+            "_alias": "Colors/Gray/25"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-secondary (600)",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.23999999463558197,
+            "g": 0.23999999463558197,
+            "b": 0.23999999463558197,
+            "a": 1,
+            "_alias": "Colors/Gray/500"
+          },
+          "75:4": {
+            "r": 0.6829804182052612,
+            "g": 0.6829804182052612,
+            "b": 0.6829804182052612,
+            "a": 1,
+            "_alias": "Colors/Gray/400"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-tertiary (450)",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.4313725531101227,
+            "g": 0.4313725531101227,
+            "b": 0.4313725531101227,
+            "a": 1,
+            "_alias": "Colors/Gray/525"
+          },
+          "75:4": {
+            "r": 0.550000011920929,
+            "g": 0.550000011920929,
+            "b": 0.550000011920929,
+            "a": 1,
+            "_alias": "Colors/Gray/450"
           }
         }
       },
       {
         "name": "Colors/Text/text-primary_on-brand",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.07999999821186066,
+            "g": 0.44799986481666565,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Blue/500"
+          },
+          "75:4": {
+            "r": 0.5,
+            "g": 0.6999999284744263,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Blue/300"
+          }
+        }
+      },
+      {
+        "name": "Colors/Text/text-primary_on-white",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
@@ -1621,49 +1741,11 @@
             "_alias": "Colors/Base/white"
           },
           "75:4": {
-            "r": 0.8867000341415405,
-            "g": 0.8893397450447083,
-            "b": 0.8932999968528748,
+            "r": 0,
+            "g": 0,
+            "b": 0,
             "a": 1,
-            "_alias": "Colors/Gray (dark mode)/50"
-          }
-        }
-      },
-      {
-        "name": "Colors/Text/text-primary_on-white",
-        "resolvedType": "COLOR",
-        "valuesByMode": {
-          "75:2": {
-            "r": 0.03921568766236305,
-            "g": 0.04967320337891579,
-            "b": 0.07058823853731155,
-            "a": 1
-          },
-          "75:4": {
-            "r": 0.03921568766236305,
-            "g": 0.05098039284348488,
-            "b": 0.07058823853731155,
-            "a": 1
-          }
-        }
-      },
-      {
-        "name": "Colors/Text/text-secondary (600)",
-        "resolvedType": "COLOR",
-        "valuesByMode": {
-          "75:2": {
-            "r": 0.2549019753932953,
-            "g": 0.27581700682640076,
-            "b": 0.3176470696926117,
-            "a": 1,
-            "_alias": "Colors/Gray (light mode)/700"
-          },
-          "75:4": {
-            "r": 0.5998367071151733,
-            "g": 0.615967333316803,
-            "b": 0.6401633024215698,
-            "a": 1,
-            "_alias": "Colors/Gray (dark mode)/400"
+            "_alias": "Colors/Base/black"
           }
         }
       },
@@ -1679,11 +1761,11 @@
             "_alias": "Colors/Gray (light mode)/800"
           },
           "75:4": {
-            "r": 0.7472652792930603,
-            "g": 0.7574530243873596,
-            "b": 0.7727347016334534,
+            "r": 0.550000011920929,
+            "g": 0.550000011920929,
+            "b": 0.550000011920929,
             "a": 1,
-            "_alias": "Colors/Gray (dark mode)/200"
+            "_alias": "Colors/Gray/450"
           }
         }
       },
@@ -1696,7 +1778,7 @@
             "g": 0.5799999237060547,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/400"
+            "_alias": "Colors/Blue/400"
           },
           "75:4": {
             "r": 1,
@@ -1708,42 +1790,22 @@
         }
       },
       {
-        "name": "Colors/Text/text-tertiary (600)",
-        "resolvedType": "COLOR",
-        "valuesByMode": {
-          "75:2": {
-            "r": 0.3265098035335541,
-            "g": 0.3454379141330719,
-            "b": 0.38329413533210754,
-            "a": 1,
-            "_alias": "Colors/Gray (light mode)/600"
-          },
-          "75:4": {
-            "r": 0.6425098180770874,
-            "g": 0.656000018119812,
-            "b": 0.6829804182052612,
-            "a": 1,
-            "_alias": "Colors/Gray (light mode)/400"
-          }
-        }
-      },
-      {
         "name": "Colors/Text/text-tertiary_hover",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.2549019753932953,
-            "g": 0.27581700682640076,
-            "b": 0.3176470696926117,
+            "r": 0.1411764770746231,
+            "g": 0.1411764770746231,
+            "b": 0.1411764770746231,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/700"
+            "_alias": "Colors/Gray/700"
           },
           "75:4": {
-            "r": 0.6840816736221313,
-            "g": 0.6968162655830383,
-            "b": 0.7159183621406555,
+            "r": 0.6000000238418579,
+            "g": 0.6000000238418579,
+            "b": 0.6000000238418579,
             "a": 1,
-            "_alias": "Colors/Gray (dark mode)/300"
+            "_alias": "Colors/Gray/425"
           }
         }
       },
@@ -1756,14 +1818,14 @@
             "g": 0.8199999332427979,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/200"
+            "_alias": "Colors/Blue/200"
           },
           "75:4": {
-            "r": 0.5998367071151733,
-            "g": 0.615967333316803,
-            "b": 0.6401633024215698,
+            "r": 0.30000001192092896,
+            "g": 0.5799999237060547,
+            "b": 1,
             "a": 1,
-            "_alias": "Colors/Gray (dark mode)/400"
+            "_alias": "Colors/Blue/400"
           }
         }
       },
@@ -1779,31 +1841,11 @@
             "_alias": "Colors/Gray (light mode)/400"
           },
           "75:4": {
-            "r": 0.5998367071151733,
-            "g": 0.615967333316803,
-            "b": 0.6401633024215698,
+            "r": 0.23999999463558197,
+            "g": 0.23999999463558197,
+            "b": 0.23999999463558197,
             "a": 1,
-            "_alias": "Colors/Gray (dark mode)/400"
-          }
-        }
-      },
-      {
-        "name": "Colors/Text/text-quaternary_on-brand",
-        "resolvedType": "COLOR",
-        "valuesByMode": {
-          "75:2": {
-            "r": 0.5,
-            "g": 0.6999999284744263,
-            "b": 1,
-            "a": 1,
-            "_alias": "Colors/Brand Blue/300"
-          },
-          "75:4": {
-            "r": 0.5998367071151733,
-            "g": 0.615967333316803,
-            "b": 0.6401633024215698,
-            "a": 1,
-            "_alias": "Colors/Gray (dark mode)/400"
+            "_alias": "Colors/Gray/500"
           }
         }
       },
@@ -1832,18 +1874,18 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.4431372582912445,
-            "g": 0.4627451002597809,
-            "b": 0.501960813999176,
+            "r": 0.6829804182052612,
+            "g": 0.6829804182052612,
+            "b": 0.6829804182052612,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/500"
+            "_alias": "Colors/Gray/400"
           },
           "75:4": {
-            "r": 0.4930841028690338,
-            "g": 0.514616847038269,
-            "b": 0.5469158887863159,
+            "r": 0.23999999463558197,
+            "g": 0.23999999463558197,
+            "b": 0.23999999463558197,
             "a": 1,
-            "_alias": "Colors/Gray (dark mode)/500"
+            "_alias": "Colors/Gray/500"
           }
         }
       },
@@ -1852,18 +1894,18 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.6425098180770874,
-            "g": 0.656000018119812,
+            "r": 0.6829804182052612,
+            "g": 0.6829804182052612,
             "b": 0.6829804182052612,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/400"
+            "_alias": "Colors/Gray/400"
           },
           "75:4": {
-            "r": 0.39680981636047363,
-            "g": 0.4153619706630707,
-            "b": 0.44319018721580505,
+            "r": 0.1764705926179886,
+            "g": 0.1764705926179886,
+            "b": 0.1764705926179886,
             "a": 1,
-            "_alias": "Colors/Gray (dark mode)/600"
+            "_alias": "Colors/Gray/600"
           }
         }
       },
@@ -1872,18 +1914,18 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.8358039259910583,
-            "g": 0.8420000076293945,
-            "b": 0.8543921709060669,
+            "r": 0.9038461446762085,
+            "g": 0.9038461446762085,
+            "b": 0.9038461446762085,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/300"
+            "_alias": "Colors/Gray/300"
           },
           "75:4": {
-            "r": 0.3028571307659149,
-            "g": 0.316571444272995,
-            "b": 0.33714285492897034,
+            "r": 0.1411764770746231,
+            "g": 0.1411764770746231,
+            "b": 0.1411764770746231,
             "a": 1,
-            "_alias": "Colors/Gray (dark mode)/700"
+            "_alias": "Colors/Gray/700"
           }
         }
       },
@@ -1896,14 +1938,14 @@
             "g": 0.1199999675154686,
             "b": 0.30000001192092896,
             "a": 1,
-            "_alias": "Colors/Brand Blue/900"
+            "_alias": "Colors/Blue/900"
           },
           "75:4": {
-            "r": 0.8867000341415405,
-            "g": 0.8893397450447083,
-            "b": 0.8932999968528748,
+            "r": 0.699999988079071,
+            "g": 0.8199999332427979,
+            "b": 1,
             "a": 1,
-            "_alias": "Colors/Gray (dark mode)/50"
+            "_alias": "Colors/Blue/200"
           }
         }
       },
@@ -1916,14 +1958,14 @@
             "g": 0.27999991178512573,
             "b": 0.699999988079071,
             "a": 1,
-            "_alias": "Colors/Brand Blue/700"
+            "_alias": "Colors/Blue/700"
           },
           "75:4": {
-            "r": 0.6840816736221313,
-            "g": 0.6968162655830383,
-            "b": 0.7159183621406555,
+            "r": 0.5,
+            "g": 0.6999999284744263,
+            "b": 1,
             "a": 1,
-            "_alias": "Colors/Gray (dark mode)/300"
+            "_alias": "Colors/Blue/300"
           }
         }
       },
@@ -1936,14 +1978,14 @@
             "g": 0.19199994206428528,
             "b": 0.47999998927116394,
             "a": 1,
-            "_alias": "Colors/Brand Blue/800"
+            "_alias": "Colors/Blue/800"
           },
           "75:4": {
-            "r": 0.7472652792930603,
-            "g": 0.7574530243873596,
-            "b": 0.7727347016334534,
+            "r": 0,
+            "g": 0.3599998652935028,
+            "b": 0.8999999761581421,
             "a": 1,
-            "_alias": "Colors/Gray (dark mode)/200"
+            "_alias": "Colors/Blue/600"
           }
         }
       },
@@ -1956,14 +1998,14 @@
             "g": 0.3599998652935028,
             "b": 0.8999999761581421,
             "a": 1,
-            "_alias": "Colors/Brand Blue/600"
+            "_alias": "Colors/Blue/600"
           },
           "75:4": {
-            "r": 0.5998367071151733,
-            "g": 0.615967333316803,
-            "b": 0.6401633024215698,
+            "r": 0,
+            "g": 0.19199994206428528,
+            "b": 0.47999998927116394,
             "a": 1,
-            "_alias": "Colors/Gray (dark mode)/400"
+            "_alias": "Colors/Blue/800"
           }
         }
       },
@@ -1976,14 +2018,14 @@
             "g": 0.3599998652935028,
             "b": 0.8999999761581421,
             "a": 1,
-            "_alias": "Colors/Brand Blue/600"
+            "_alias": "Colors/Blue/600"
           },
           "75:4": {
             "r": 0.699999988079071,
             "g": 0.8199999332427979,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/200"
+            "_alias": "Colors/Blue/200"
           }
         }
       },
@@ -2072,18 +2114,18 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.8358039259910583,
-            "g": 0.8420000076293945,
-            "b": 0.8543921709060669,
-            "a": 1,
-            "_alias": "Colors/Gray (light mode)/300"
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.1599999964237213,
+            "_alias": "Colors/Alpha Black/200"
           },
           "75:4": {
-            "r": 0.3028571307659149,
-            "g": 0.316571444272995,
-            "b": 0.33714285492897034,
+            "r": 0.23999999463558197,
+            "g": 0.23999999463558197,
+            "b": 0.23999999463558197,
             "a": 1,
-            "_alias": "Colors/Gray (dark mode)/700"
+            "_alias": "Colors/Gray/500"
           }
         }
       },
@@ -2092,18 +2134,18 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.9137254953384399,
-            "g": 0.9163398742675781,
-            "b": 0.9215686321258545,
-            "a": 1,
-            "_alias": "Colors/Gray (light mode)/200"
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.07999999821186066,
+            "_alias": "Colors/Alpha Black/100"
           },
           "75:4": {
-            "r": 0.19016394019126892,
-            "g": 0.19803278148174286,
-            "b": 0.20983606576919556,
+            "r": 0.1764705926179886,
+            "g": 0.1764705926179886,
+            "b": 0.1764705926179886,
             "a": 1,
-            "_alias": "Colors/Gray (dark mode)/800"
+            "_alias": "Colors/Gray/600"
           }
         }
       },
@@ -2118,11 +2160,11 @@
             "a": 0.05000000074505806
           },
           "75:4": {
-            "r": 0,
-            "g": 0,
-            "b": 0,
-            "a": 1,
-            "_alias": "Colors/Base/black"
+            "r": 0.9901961088180542,
+            "g": 0.9901961088180542,
+            "b": 0.9901961088180542,
+            "a": 0,
+            "_alias": "Colors/Alpha Gray/25"
           }
         }
       },
@@ -2131,18 +2173,18 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.96039217710495,
-            "g": 0.9606797695159912,
-            "b": 0.9611764550209045,
-            "a": 1,
-            "_alias": "Colors/Gray (light mode)/100"
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.03999999910593033,
+            "_alias": "Colors/Alpha Black/50"
           },
           "75:4": {
-            "r": 0.19016394019126892,
-            "g": 0.19803278148174286,
-            "b": 0.20983606576919556,
-            "a": 1,
-            "_alias": "Colors/Gray (dark mode)/800"
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.03999999910593033,
+            "_alias": "Colors/Alpha White/900"
           }
         }
       },
@@ -2151,18 +2193,18 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.8358039259910583,
-            "g": 0.8420000076293945,
-            "b": 0.8543921709060669,
+            "r": 0.8600000143051147,
+            "g": 0.8600000143051147,
+            "b": 0.8600000143051147,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/300"
+            "_alias": "Colors/Gray/350"
           },
           "75:4": {
-            "r": 0.3028571307659149,
-            "g": 0.316571444272995,
-            "b": 0.33714285492897034,
+            "r": 0.23999999463558197,
+            "g": 0.23999999463558197,
+            "b": 0.23999999463558197,
             "a": 1,
-            "_alias": "Colors/Gray (dark mode)/700"
+            "_alias": "Colors/Gray/500"
           }
         }
       },
@@ -2171,18 +2213,18 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.9137254953384399,
-            "g": 0.9163398742675781,
-            "b": 0.9215686321258545,
+            "r": 0.9411764740943909,
+            "g": 0.9411764740943909,
+            "b": 0.9411764740943909,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/200"
+            "_alias": "Colors/Gray/200"
           },
           "75:4": {
-            "r": 0.19016394019126892,
-            "g": 0.19803278148174286,
-            "b": 0.20983606576919556,
+            "r": 0.1411764770746231,
+            "g": 0.1411764770746231,
+            "b": 0.1411764770746231,
             "a": 1,
-            "_alias": "Colors/Gray (dark mode)/800"
+            "_alias": "Colors/Gray/800"
           }
         }
       },
@@ -2198,11 +2240,11 @@
             "_alias": "Colors/Base/white"
           },
           "75:4": {
-            "r": 0.19016394019126892,
-            "g": 0.19803278148174286,
-            "b": 0.20983606576919556,
+            "r": 0,
+            "g": 0,
+            "b": 0,
             "a": 1,
-            "_alias": "Colors/Gray (dark mode)/800"
+            "_alias": "Colors/Base/black"
           }
         }
       },
@@ -2215,34 +2257,14 @@
             "g": 0.44799986481666565,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/500"
+            "_alias": "Colors/Blue/500"
           },
           "75:4": {
             "r": 0.30000001192092896,
             "g": 0.5799999237060547,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/400"
-          }
-        }
-      },
-      {
-        "name": "Colors/Border/border-brand_alt",
-        "resolvedType": "COLOR",
-        "valuesByMode": {
-          "75:2": {
-            "r": 0,
-            "g": 0.3599998652935028,
-            "b": 0.8999999761581421,
-            "a": 1,
-            "_alias": "Colors/Brand Blue/600"
-          },
-          "75:4": {
-            "r": 0.3028571307659149,
-            "g": 0.316571444272995,
-            "b": 0.33714285492897034,
-            "a": 1,
-            "_alias": "Colors/Gray (dark mode)/700"
+            "_alias": "Colors/Blue/400"
           }
         }
       },
@@ -2323,15 +2345,35 @@
         }
       },
       {
+        "name": "Colors/Border/border-selected",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.0941176488995552,
+            "g": 0.0941176488995552,
+            "b": 0.0941176488995552,
+            "a": 1,
+            "_alias": "Colors/Gray/900"
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Base/white"
+          }
+        }
+      },
+      {
         "name": "Colors/Foreground/fg-primary (900)",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.09882353246212006,
-            "g": 0.11529411375522614,
-            "b": 0.14823530614376068,
+            "r": 0.09400000423192978,
+            "g": 0.09879999607801437,
+            "b": 0.10599999874830246,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/900"
+            "_alias": "Colors/Gray (dark mode)/900"
           },
           "75:4": {
             "r": 1,
@@ -2347,11 +2389,11 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.2549019753932953,
-            "g": 0.27581700682640076,
-            "b": 0.3176470696926117,
+            "r": 0.1411764770746231,
+            "g": 0.1411764770746231,
+            "b": 0.1411764770746231,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/700"
+            "_alias": "Colors/Gray/700"
           },
           "75:4": {
             "r": 0.6840816736221313,
@@ -2367,11 +2409,11 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.15333333611488342,
-            "g": 0.17137254774570465,
-            "b": 0.2074509859085083,
+            "r": 0.1411764770746231,
+            "g": 0.1411764770746231,
+            "b": 0.1411764770746231,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/800"
+            "_alias": "Colors/Gray/800"
           },
           "75:4": {
             "r": 0.7472652792930603,
@@ -2387,11 +2429,11 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.3265098035335541,
-            "g": 0.3454379141330719,
-            "b": 0.38329413533210754,
+            "r": 0.1764705926179886,
+            "g": 0.1764705926179886,
+            "b": 0.1764705926179886,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/600"
+            "_alias": "Colors/Gray/600"
           },
           "75:4": {
             "r": 0.5998367071151733,
@@ -2407,11 +2449,11 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.2549019753932953,
-            "g": 0.27581700682640076,
-            "b": 0.3176470696926117,
+            "r": 0.1411764770746231,
+            "g": 0.1411764770746231,
+            "b": 0.1411764770746231,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/700"
+            "_alias": "Colors/Gray/700"
           },
           "75:4": {
             "r": 0.6840816736221313,
@@ -2427,11 +2469,11 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.6425098180770874,
-            "g": 0.656000018119812,
+            "r": 0.6829804182052612,
+            "g": 0.6829804182052612,
             "b": 0.6829804182052612,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/400"
+            "_alias": "Colors/Gray/400"
           },
           "75:4": {
             "r": 0.39680981636047363,
@@ -2447,11 +2489,11 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.4431372582912445,
-            "g": 0.4627451002597809,
-            "b": 0.501960813999176,
+            "r": 0.23999999463558197,
+            "g": 0.23999999463558197,
+            "b": 0.23999999463558197,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/500"
+            "_alias": "Colors/Gray/500"
           },
           "75:4": {
             "r": 0.4930841028690338,
@@ -2487,11 +2529,11 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.6425098180770874,
-            "g": 0.656000018119812,
+            "r": 0.6829804182052612,
+            "g": 0.6829804182052612,
             "b": 0.6829804182052612,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/400"
+            "_alias": "Colors/Gray/400"
           },
           "75:4": {
             "r": 0.4930841028690338,
@@ -2507,11 +2549,11 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.8358039259910583,
-            "g": 0.8420000076293945,
-            "b": 0.8543921709060669,
+            "r": 0.9038461446762085,
+            "g": 0.9038461446762085,
+            "b": 0.9038461446762085,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/300"
+            "_alias": "Colors/Gray/300"
           },
           "75:4": {
             "r": 0.39680981636047363,
@@ -2531,14 +2573,14 @@
             "g": 0.3599998652935028,
             "b": 0.8999999761581421,
             "a": 1,
-            "_alias": "Colors/Brand Blue/600"
+            "_alias": "Colors/Blue/600"
           },
           "75:4": {
             "r": 0.07999999821186066,
             "g": 0.44799986481666565,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/500"
+            "_alias": "Colors/Blue/500"
           }
         }
       },
@@ -2551,7 +2593,7 @@
             "g": 0.3599998652935028,
             "b": 0.8999999761581421,
             "a": 1,
-            "_alias": "Colors/Brand Blue/600"
+            "_alias": "Colors/Blue/600"
           },
           "75:4": {
             "r": 0.6840816736221313,
@@ -2571,7 +2613,7 @@
             "g": 0.44799986481666565,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/500"
+            "_alias": "Colors/Blue/500"
           },
           "75:4": {
             "r": 0.4930841028690338,
@@ -2591,7 +2633,7 @@
             "g": 0.44799986481666565,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/500"
+            "_alias": "Colors/Blue/500"
           },
           "75:4": {
             "r": 0.39680981636047363,
@@ -2611,7 +2653,7 @@
             "g": 0.44799986481666565,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/500"
+            "_alias": "Colors/Blue/500"
           },
           "75:4": {
             "r": 0.4930841028690338,
@@ -2747,18 +2789,18 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 1,
-            "g": 1,
-            "b": 1,
+            "r": 0.9038461446762085,
+            "g": 0.9038461446762085,
+            "b": 0.9038461446762085,
             "a": 0,
-            "_alias": "Colors/Base/transparent"
+            "_alias": "Colors/Alpha Gray/300"
           },
           "75:4": {
-            "r": 0,
-            "g": 0,
-            "b": 0,
+            "r": 0.048114482313394547,
+            "g": 0.048114482313394547,
+            "b": 0.048114482313394547,
             "a": 0,
-            "_alias": "Colors/Base/transparent black"
+            "_alias": "Colors/Alpha Gray/950"
           }
         }
       },
@@ -2767,23 +2809,83 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 1,
-            "g": 1,
-            "b": 1,
+            "r": 0.9038461446762085,
+            "g": 0.9038461446762085,
+            "b": 0.9038461446762085,
             "a": 1,
-            "_alias": "Colors/Base/white"
+            "_alias": "Colors/Gray/300"
           },
           "75:4": {
-            "r": 0.0117647061124444,
-            "g": 0.01568627543747425,
-            "b": 0.019607843831181526,
+            "r": 0.048114482313394547,
+            "g": 0.048114482313394547,
+            "b": 0.048114482313394547,
             "a": 1,
-            "_alias": "Colors/Gray (dark mode)/950"
+            "_alias": "Colors/Gray/950"
           }
         }
       },
       {
-        "name": "Colors/Background/bg-primary_alt",
+        "name": "Colors/Background/bg-surface_1",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9411764740943909,
+            "g": 0.9411764740943909,
+            "b": 0.9411764740943909,
+            "a": 1,
+            "_alias": "Colors/Gray/200"
+          },
+          "75:4": {
+            "r": 0.0941176488995552,
+            "g": 0.0941176488995552,
+            "b": 0.0941176488995552,
+            "a": 1,
+            "_alias": "Colors/Gray/900"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-surface_2",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.96039217710495,
+            "g": 0.9606797695159912,
+            "b": 0.9611764550209045,
+            "a": 1,
+            "_alias": "Colors/Gray/100"
+          },
+          "75:4": {
+            "r": 0.1411764770746231,
+            "g": 0.1411764770746231,
+            "b": 0.1411764770746231,
+            "a": 1,
+            "_alias": "Colors/Gray/700"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-surface_3",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.9900000095367432,
+            "g": 0.9900000095367432,
+            "b": 0.9900000095367432,
+            "a": 1,
+            "_alias": "Colors/Gray/50"
+          },
+          "75:4": {
+            "r": 0.1764705926179886,
+            "g": 0.1764705926179886,
+            "b": 0.1764705926179886,
+            "a": 1,
+            "_alias": "Colors/Gray/600"
+          }
+        }
+      },
+      {
+        "name": "Colors/Background/bg-overlay",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
@@ -2794,11 +2896,11 @@
             "_alias": "Colors/Base/white"
           },
           "75:4": {
-            "r": 0.09400000423192978,
-            "g": 0.09879999607801437,
-            "b": 0.10599999874830246,
+            "r": 0.23999999463558197,
+            "g": 0.23999999463558197,
+            "b": 0.23999999463558197,
             "a": 1,
-            "_alias": "Colors/Background/bg-secondary"
+            "_alias": "Colors/Gray/500"
           }
         }
       },
@@ -2811,14 +2913,14 @@
             "g": 0,
             "b": 0,
             "a": 0.1599999964237213,
-            "_alias": "Colors/Gray (light mode alpha)/200"
+            "_alias": "Colors/Alpha Black/200"
           },
           "75:4": {
             "r": 1,
             "g": 1,
             "b": 1,
             "a": 0.1599999964237213,
-            "_alias": "Colors/Gray (dark mode alpha)/700"
+            "_alias": "Colors/Alpha White/700"
           }
         }
       },
@@ -2831,14 +2933,14 @@
             "g": 0,
             "b": 0,
             "a": 0.3499999940395355,
-            "_alias": "Colors/Gray (light mode alpha)/300"
+            "_alias": "Colors/Alpha Black/300"
           },
           "75:4": {
             "r": 1,
             "g": 1,
             "b": 1,
             "a": 0.5,
-            "_alias": "Colors/Gray (dark mode alpha)/500"
+            "_alias": "Colors/Alpha White/500"
           }
         }
       },
@@ -2851,14 +2953,14 @@
             "g": 0,
             "b": 0,
             "a": 0.03999999910593033,
-            "_alias": "Colors/Gray (light mode alpha)/50"
+            "_alias": "Colors/Alpha Black/50"
           },
           "75:4": {
             "r": 1,
             "g": 1,
             "b": 1,
             "a": 0.07999999821186066,
-            "_alias": "Colors/Gray (dark mode alpha)/800"
+            "_alias": "Colors/Alpha White/800"
           }
         }
       },
@@ -2871,14 +2973,14 @@
             "g": 0,
             "b": 0,
             "a": 0.1599999964237213,
-            "_alias": "Colors/Gray (light mode alpha)/200"
+            "_alias": "Colors/Alpha Black/200"
           },
           "75:4": {
             "r": 1,
             "g": 1,
             "b": 1,
             "a": 0.25,
-            "_alias": "Colors/Gray (dark mode alpha)/600"
+            "_alias": "Colors/Alpha White/600"
           }
         }
       },
@@ -2891,14 +2993,14 @@
             "g": 0,
             "b": 0,
             "a": 0.1599999964237213,
-            "_alias": "Colors/Gray (light mode alpha)/200"
+            "_alias": "Colors/Alpha Black/200"
           },
           "75:4": {
             "r": 1,
             "g": 1,
             "b": 1,
             "a": 0.03999999910593033,
-            "_alias": "Colors/Gray (dark mode alpha)/900"
+            "_alias": "Colors/Alpha White/900"
           }
         }
       },
@@ -2910,15 +3012,15 @@
             "r": 0,
             "g": 0,
             "b": 0,
-            "a": 0.5,
-            "_alias": "Colors/Gray (light mode alpha)/400"
+            "a": 0.3499999940395355,
+            "_alias": "Colors/Alpha Black/300"
           },
           "75:4": {
             "r": 1,
             "g": 1,
             "b": 1,
             "a": 0.1599999964237213,
-            "_alias": "Colors/Gray (dark mode alpha)/700"
+            "_alias": "Colors/Alpha White/700"
           }
         }
       },
@@ -2967,11 +3069,11 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.04172549024224281,
-            "g": 0.05050980672240257,
-            "b": 0.0680784359574318,
+            "r": 0.048114482313394547,
+            "g": 0.048114482313394547,
+            "b": 0.048114482313394547,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/950"
+            "_alias": "Colors/Gray/950"
           },
           "75:4": {
             "r": 0.09400000423192978,
@@ -2987,11 +3089,11 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.9801960587501526,
-            "g": 0.9803071618080139,
-            "b": 0.9805882573127747,
+            "r": 0.9900000095367432,
+            "g": 0.9900000095367432,
+            "b": 0.9900000095367432,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/50"
+            "_alias": "Colors/Gray/50"
           },
           "75:4": {
             "r": 0.09400000423192978,
@@ -3007,16 +3109,16 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.9801960587501526,
-            "g": 0.9803071618080139,
-            "b": 0.9805882573127747,
+            "r": 0.9900000095367432,
+            "g": 0.9900000095367432,
+            "b": 0.9900000095367432,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/50"
+            "_alias": "Colors/Gray/50"
           },
           "75:4": {
-            "r": 0.0117647061124444,
-            "g": 0.01568627543747425,
-            "b": 0.019607843831181526,
+            "r": 0.048114482313394547,
+            "g": 0.048114482313394547,
+            "b": 0.048114482313394547,
             "a": 1,
             "_alias": "Colors/Background/bg-primary"
           }
@@ -3031,7 +3133,7 @@
             "g": 0.9606797695159912,
             "b": 0.9611764550209045,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/100"
+            "_alias": "Colors/Gray/100"
           },
           "75:4": {
             "r": 0.19016394019126892,
@@ -3051,7 +3153,7 @@
             "g": 0.9901961088180542,
             "b": 0.9901961088180542,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/25"
+            "_alias": "Colors/Gray (light mode)/5"
           },
           "75:4": {
             "r": 0.09400000423192978,
@@ -3067,11 +3169,11 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.3265098035335541,
-            "g": 0.3454379141330719,
-            "b": 0.38329413533210754,
+            "r": 0.1764705926179886,
+            "g": 0.1764705926179886,
+            "b": 0.1764705926179886,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/600"
+            "_alias": "Colors/Gray/600"
           },
           "75:4": {
             "r": 0.39680981636047363,
@@ -3091,7 +3193,7 @@
             "g": 0.9606797695159912,
             "b": 0.9611764550209045,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/100"
+            "_alias": "Colors/Gray/100"
           },
           "75:4": {
             "r": 0.19016394019126892,
@@ -3107,11 +3209,11 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.9137254953384399,
-            "g": 0.9163398742675781,
-            "b": 0.9215686321258545,
+            "r": 0.9411764740943909,
+            "g": 0.9411764740943909,
+            "b": 0.9411764740943909,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/200"
+            "_alias": "Colors/Gray/200"
           },
           "75:4": {
             "r": 0.3028571307659149,
@@ -3127,11 +3229,11 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.9801960587501526,
-            "g": 0.9803071618080139,
-            "b": 0.9805882573127747,
+            "r": 0.9900000095367432,
+            "g": 0.9900000095367432,
+            "b": 0.9900000095367432,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/50"
+            "_alias": "Colors/Gray/50"
           },
           "75:4": {
             "r": 0.19016394019126892,
@@ -3147,18 +3249,18 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.96039217710495,
-            "g": 0.9606797695159912,
-            "b": 0.9611764550209045,
+            "r": 0.9411764740943909,
+            "g": 0.9411764740943909,
+            "b": 0.9411764740943909,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/100"
+            "_alias": "Colors/Gray/200"
           },
           "75:4": {
-            "r": 0.19016394019126892,
-            "g": 0.19803278148174286,
-            "b": 0.20983606576919556,
+            "r": 0.1411764770746231,
+            "g": 0.1411764770746231,
+            "b": 0.1411764770746231,
             "a": 1,
-            "_alias": "Colors/Gray (dark mode)/800"
+            "_alias": "Colors/Gray/800"
           }
         }
       },
@@ -3167,11 +3269,11 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.9801960587501526,
-            "g": 0.9803071618080139,
-            "b": 0.9805882573127747,
+            "r": 0.9900000095367432,
+            "g": 0.9900000095367432,
+            "b": 0.9900000095367432,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/50"
+            "_alias": "Colors/Gray/50"
           },
           "75:4": {
             "r": 0.09400000423192978,
@@ -3179,26 +3281,6 @@
             "b": 0.10599999874830246,
             "a": 1,
             "_alias": "Colors/Gray (dark mode)/900"
-          }
-        }
-      },
-      {
-        "name": "Colors/Background/bg-overlay",
-        "resolvedType": "COLOR",
-        "valuesByMode": {
-          "75:2": {
-            "r": 0.04172549024224281,
-            "g": 0.05050980672240257,
-            "b": 0.0680784359574318,
-            "a": 1,
-            "_alias": "Colors/Gray (light mode)/950"
-          },
-          "75:4": {
-            "r": 0.19016394019126892,
-            "g": 0.19803278148174286,
-            "b": 0.20983606576919556,
-            "a": 1,
-            "_alias": "Colors/Gray (dark mode)/800"
           }
         }
       },
@@ -3211,14 +3293,14 @@
             "g": 0.9280000329017639,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/50"
+            "_alias": "Colors/Blue/50"
           },
           "75:4": {
             "r": 0.07999999821186066,
             "g": 0.44799986481666565,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/500"
+            "_alias": "Colors/Blue/500"
           }
         }
       },
@@ -3231,7 +3313,7 @@
             "g": 0.9280000329017639,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/50"
+            "_alias": "Colors/Blue/50"
           },
           "75:4": {
             "r": 0.09400000423192978,
@@ -3251,14 +3333,14 @@
             "g": 0.8920000791549683,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/100"
+            "_alias": "Colors/Blue/100"
           },
           "75:4": {
             "r": 0,
             "g": 0.3599998652935028,
             "b": 0.8999999761581421,
             "a": 1,
-            "_alias": "Colors/Brand Blue/600"
+            "_alias": "Colors/Blue/600"
           }
         }
       },
@@ -3271,14 +3353,14 @@
             "g": 0.3599998652935028,
             "b": 0.8999999761581421,
             "a": 1,
-            "_alias": "Colors/Brand Blue/600"
+            "_alias": "Colors/Blue/600"
           },
           "75:4": {
             "r": 0,
             "g": 0.3599998652935028,
             "b": 0.8999999761581421,
             "a": 1,
-            "_alias": "Colors/Brand Blue/600"
+            "_alias": "Colors/Blue/600"
           }
         }
       },
@@ -3291,14 +3373,14 @@
             "g": 0.27999991178512573,
             "b": 0.699999988079071,
             "a": 1,
-            "_alias": "Colors/Brand Blue/700"
+            "_alias": "Colors/Blue/700"
           },
           "75:4": {
             "r": 0.07999999821186066,
             "g": 0.44799986481666565,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/500"
+            "_alias": "Colors/Blue/500"
           }
         }
       },
@@ -3311,7 +3393,7 @@
             "g": 0.19199994206428528,
             "b": 0.47999998927116394,
             "a": 1,
-            "_alias": "Colors/Brand Blue/800"
+            "_alias": "Colors/Blue/800"
           },
           "75:4": {
             "r": 0.09400000423192978,
@@ -3331,7 +3413,7 @@
             "g": 0.9606797695159912,
             "b": 0.9611764550209045,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/100"
+            "_alias": "Colors/Gray/100"
           },
           "75:4": {
             "r": 0.0117647061124444,
@@ -3551,14 +3633,14 @@
             "g": 0.44799986481666565,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/500"
+            "_alias": "Colors/Blue/500"
           },
           "75:4": {
             "r": 0.07999999821186066,
             "g": 0.44799986481666565,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/500"
+            "_alias": "Colors/Blue/500"
           }
         }
       },
@@ -3597,7 +3679,7 @@
             "g": 1,
             "b": 1,
             "a": 0,
-            "_alias": "Colors/Base/transparent"
+            "_alias": "Colors/Base/transparent white"
           }
         }
       },
@@ -3616,7 +3698,7 @@
             "g": 1,
             "b": 1,
             "a": 0,
-            "_alias": "Colors/Base/transparent"
+            "_alias": "Colors/Base/transparent white"
           }
         }
       },
@@ -3635,7 +3717,7 @@
             "g": 1,
             "b": 1,
             "a": 0,
-            "_alias": "Colors/Base/transparent"
+            "_alias": "Colors/Base/transparent white"
           }
         }
       },
@@ -3654,7 +3736,7 @@
             "g": 1,
             "b": 1,
             "a": 0,
-            "_alias": "Colors/Base/transparent"
+            "_alias": "Colors/Base/transparent white"
           }
         }
       },
@@ -3673,7 +3755,7 @@
             "g": 1,
             "b": 1,
             "a": 0,
-            "_alias": "Colors/Base/transparent"
+            "_alias": "Colors/Base/transparent white"
           }
         }
       },
@@ -3692,7 +3774,7 @@
             "g": 1,
             "b": 1,
             "a": 0,
-            "_alias": "Colors/Base/transparent"
+            "_alias": "Colors/Base/transparent white"
           }
         }
       },
@@ -3711,7 +3793,7 @@
             "g": 1,
             "b": 1,
             "a": 0,
-            "_alias": "Colors/Base/transparent"
+            "_alias": "Colors/Base/transparent white"
           }
         }
       },
@@ -3730,7 +3812,7 @@
             "g": 1,
             "b": 1,
             "a": 0,
-            "_alias": "Colors/Base/transparent"
+            "_alias": "Colors/Base/transparent white"
           }
         }
       },
@@ -3749,7 +3831,7 @@
             "g": 1,
             "b": 1,
             "a": 0,
-            "_alias": "Colors/Base/transparent"
+            "_alias": "Colors/Base/transparent white"
           }
         }
       },
@@ -3768,7 +3850,7 @@
             "g": 1,
             "b": 1,
             "a": 0,
-            "_alias": "Colors/Base/transparent"
+            "_alias": "Colors/Base/transparent white"
           }
         }
       },
@@ -3787,7 +3869,7 @@
             "g": 1,
             "b": 1,
             "a": 0,
-            "_alias": "Colors/Base/transparent"
+            "_alias": "Colors/Base/transparent white"
           }
         }
       },
@@ -3806,7 +3888,7 @@
             "g": 1,
             "b": 1,
             "a": 0,
-            "_alias": "Colors/Base/transparent"
+            "_alias": "Colors/Base/transparent white"
           }
         }
       },
@@ -3825,7 +3907,7 @@
             "g": 1,
             "b": 1,
             "a": 0,
-            "_alias": "Colors/Base/transparent"
+            "_alias": "Colors/Base/transparent white"
           }
         }
       },
@@ -3844,7 +3926,7 @@
             "g": 1,
             "b": 1,
             "a": 0,
-            "_alias": "Colors/Base/transparent"
+            "_alias": "Colors/Base/transparent white"
           }
         }
       },
@@ -3863,7 +3945,7 @@
             "g": 1,
             "b": 1,
             "a": 0,
-            "_alias": "Colors/Base/transparent"
+            "_alias": "Colors/Base/transparent white"
           }
         }
       },
@@ -3882,7 +3964,7 @@
             "g": 0,
             "b": 0,
             "a": 0.1599999964237213,
-            "_alias": "Colors/Gray (light mode alpha)/200"
+            "_alias": "Colors/Alpha Black/200"
           }
         }
       },
@@ -4790,14 +4872,14 @@
             "g": 0.6999999284744263,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/300"
+            "_alias": "Colors/Blue/300"
           },
           "75:4": {
             "r": 0.5,
             "g": 0.6999999284744263,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/300"
+            "_alias": "Colors/Blue/300"
           }
         }
       },
@@ -4810,14 +4892,14 @@
             "g": 0.8199999332427979,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/200"
+            "_alias": "Colors/Blue/200"
           },
           "75:4": {
             "r": 0.699999988079071,
             "g": 0.8199999332427979,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/200"
+            "_alias": "Colors/Blue/200"
           }
         }
       },
@@ -4866,18 +4948,18 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0,
-            "g": 0,
-            "b": 0,
-            "a": 0.03999999910593033,
-            "_alias": "Colors/Gray (light mode alpha)/50"
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 0.5600000023841858,
+            "_alias": "Colors/Alpha White/400"
           },
           "75:4": {
             "r": 1,
             "g": 1,
             "b": 1,
             "a": 0.03999999910593033,
-            "_alias": "Colors/Gray (dark mode alpha)/900"
+            "_alias": "Colors/Alpha White/900"
           }
         }
       },
@@ -4889,15 +4971,15 @@
             "r": 0,
             "g": 0,
             "b": 0,
-            "a": 0.07999999821186066,
-            "_alias": "Colors/Gray (light mode alpha)/100"
+            "a": 0,
+            "_alias": "Colors/Alpha Black/25"
           },
           "75:4": {
             "r": 1,
             "g": 1,
             "b": 1,
             "a": 0.07999999821186066,
-            "_alias": "Colors/Gray (dark mode alpha)/800"
+            "_alias": "Colors/Alpha White/800"
           }
         }
       },
@@ -4910,7 +4992,7 @@
             "g": 0.3599998652935028,
             "b": 0.8999999761581421,
             "a": 1,
-            "_alias": "Colors/Brand Blue/600"
+            "_alias": "Colors/Blue/600"
           },
           "75:4": {
             "r": 0.5998367071151733,
@@ -4930,7 +5012,7 @@
             "g": 0.8199999332427979,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/200"
+            "_alias": "Colors/Blue/200"
           },
           "75:4": {
             "r": 0.5998367071151733,
@@ -4950,14 +5032,14 @@
             "g": 0.3599998652935028,
             "b": 0.8999999761581421,
             "a": 1,
-            "_alias": "Colors/Brand Blue/600"
+            "_alias": "Colors/Blue/600"
           },
           "75:4": {
             "r": 0.699999988079071,
             "g": 0.8199999332427979,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/200"
+            "_alias": "Colors/Blue/200"
           }
         }
       },
@@ -4966,18 +5048,18 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.4431372582912445,
-            "g": 0.4627451002597809,
-            "b": 0.501960813999176,
+            "r": 0.23999999463558197,
+            "g": 0.23999999463558197,
+            "b": 0.23999999463558197,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/500"
+            "_alias": "Colors/Gray/500"
           },
           "75:4": {
             "r": 1,
             "g": 1,
             "b": 1,
             "a": 0.9200000166893005,
-            "_alias": "Colors/Gray (dark mode alpha)/200"
+            "_alias": "Colors/Alpha White/200"
           }
         }
       },
@@ -5046,11 +5128,11 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.9801960587501526,
-            "g": 0.9803071618080139,
-            "b": 0.9805882573127747,
+            "r": 0.9900000095367432,
+            "g": 0.9900000095367432,
+            "b": 0.9900000095367432,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/50"
+            "_alias": "Colors/Gray/50"
           },
           "75:4": {
             "r": 0.39680981636047363,
@@ -5066,18 +5148,18 @@
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
-            "r": 0.8358039259910583,
-            "g": 0.8420000076293945,
-            "b": 0.8543921709060669,
+            "r": 0.048114482313394547,
+            "g": 0.048114482313394547,
+            "b": 0.048114482313394547,
             "a": 1,
-            "_alias": "Colors/Gray (light mode)/300"
+            "_alias": "Colors/Gray/950"
           },
           "75:4": {
             "r": 1,
             "g": 1,
             "b": 1,
             "a": 0,
-            "_alias": "Colors/Base/transparent"
+            "_alias": "Colors/Base/transparent white"
           }
         }
       },
@@ -5097,7 +5179,7 @@
             "g": 1,
             "b": 1,
             "a": 0,
-            "_alias": "Colors/Base/transparent"
+            "_alias": "Colors/Base/transparent white"
           }
         }
       },
@@ -5117,12 +5199,12 @@
             "g": 1,
             "b": 1,
             "a": 0,
-            "_alias": "Colors/Base/transparent"
+            "_alias": "Colors/Base/transparent white"
           }
         }
       },
       {
-        "name": "Component colors/Components/Icons/Main Avatar/gradient-top",
+        "name": "Component colors/Components/Icons/Hero Avatar/brand-gradient-top",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
@@ -5130,7 +5212,7 @@
             "g": 0.5799999237060547,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/400"
+            "_alias": "Colors/Blue/400"
           },
           "75:4": {
             "r": 1,
@@ -5142,7 +5224,7 @@
         }
       },
       {
-        "name": "Component colors/Components/Icons/Main Avatar/gradient-bottom",
+        "name": "Component colors/Components/Icons/Hero Avatar/brand-gradient-bottom",
         "resolvedType": "COLOR",
         "valuesByMode": {
           "75:2": {
@@ -5150,14 +5232,134 @@
             "g": 0.27999991178512573,
             "b": 0.699999988079071,
             "a": 1,
-            "_alias": "Colors/Brand Blue/700"
+            "_alias": "Colors/Blue/700"
           },
           "75:4": {
             "r": 0.5,
             "g": 0.6999999284744263,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/300"
+            "_alias": "Colors/Blue/300"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Icons/Hero Avatar/purple-gradient-top",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8352941274642944,
+            "g": 0.6745098233222961,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Purple/300"
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Base/white"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Icons/Hero Avatar/purple-gradient-bottom",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.3294117748737335,
+            "g": 0.062745101749897,
+            "b": 0.5764706134796143,
+            "a": 1,
+            "_alias": "Colors/Purple/900"
+          },
+          "75:4": {
+            "r": 0.8352941274642944,
+            "g": 0.6745098233222961,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Purple/300"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Icons/Hero Avatar/orange-gradient-top",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8613921999931335,
+            "g": 0.4089790880680084,
+            "b": 0.013117611408233643,
+            "a": 1,
+            "_alias": "Colors/Warning/600"
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Base/white"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Icons/Hero Avatar/orange-gradient-bottom",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.8526000380516052,
+            "g": 0.17574664950370789,
+            "b": 0.1273999810218811,
+            "a": 1,
+            "_alias": "Colors/Error/600"
+          },
+          "75:4": {
+            "r": 0.9919999837875366,
+            "g": 0.6336000561714172,
+            "b": 0.6080000400543213,
+            "a": 1,
+            "_alias": "Colors/Error/300"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Icons/Hero Avatar/green-gradient-top 2",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.4598628282546997,
+            "g": 0.877392053604126,
+            "b": 0.6547098159790039,
+            "a": 1,
+            "_alias": "Colors/Success/300"
+          },
+          "75:4": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1,
+            "_alias": "Colors/Base/white"
+          }
+        }
+      },
+      {
+        "name": "Component colors/Components/Icons/Hero Avatar/green-gradient-bottom",
+        "resolvedType": "COLOR",
+        "valuesByMode": {
+          "75:2": {
+            "r": 0.02800002694129944,
+            "g": 0.3014117479324341,
+            "b": 0.19204704463481903,
+            "a": 1,
+            "_alias": "Colors/Success/900"
+          },
+          "75:4": {
+            "r": 0.6686275601387024,
+            "g": 0.9392156004905701,
+            "b": 0.776862621307373,
+            "a": 1,
+            "_alias": "Colors/Success/200"
           }
         }
       },
@@ -5170,14 +5372,14 @@
             "g": 0.9280000329017639,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/50"
+            "_alias": "Colors/Blue/50"
           },
           "75:4": {
             "r": 0,
             "g": 0.1199999675154686,
             "b": 0.30000001192092896,
             "a": 1,
-            "_alias": "Colors/Brand Blue/900"
+            "_alias": "Colors/Blue/900"
           }
         }
       },
@@ -5190,14 +5392,14 @@
             "g": 0.8920000791549683,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/100"
+            "_alias": "Colors/Blue/100"
           },
           "75:4": {
             "r": 0,
             "g": 0.19199994206428528,
             "b": 0.47999998927116394,
             "a": 1,
-            "_alias": "Colors/Brand Blue/800"
+            "_alias": "Colors/Blue/800"
           }
         }
       },
@@ -5210,14 +5412,14 @@
             "g": 0.8199999332427979,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/200"
+            "_alias": "Colors/Blue/200"
           },
           "75:4": {
             "r": 0,
             "g": 0.27999991178512573,
             "b": 0.699999988079071,
             "a": 1,
-            "_alias": "Colors/Brand Blue/700"
+            "_alias": "Colors/Blue/700"
           }
         }
       },
@@ -5230,14 +5432,14 @@
             "g": 0.6999999284744263,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/300"
+            "_alias": "Colors/Blue/300"
           },
           "75:4": {
             "r": 0,
             "g": 0.3599998652935028,
             "b": 0.8999999761581421,
             "a": 1,
-            "_alias": "Colors/Brand Blue/600"
+            "_alias": "Colors/Blue/600"
           }
         }
       },
@@ -5250,14 +5452,14 @@
             "g": 0.5799999237060547,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/400"
+            "_alias": "Colors/Blue/400"
           },
           "75:4": {
             "r": 0.07999999821186066,
             "g": 0.44799986481666565,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/500"
+            "_alias": "Colors/Blue/500"
           }
         }
       },
@@ -5270,14 +5472,14 @@
             "g": 0.44799986481666565,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/500"
+            "_alias": "Colors/Blue/500"
           },
           "75:4": {
             "r": 0.30000001192092896,
             "g": 0.5799999237060547,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/400"
+            "_alias": "Colors/Blue/400"
           }
         }
       },
@@ -5290,14 +5492,14 @@
             "g": 0.3599998652935028,
             "b": 0.8999999761581421,
             "a": 1,
-            "_alias": "Colors/Brand Blue/600"
+            "_alias": "Colors/Blue/600"
           },
           "75:4": {
             "r": 0.5,
             "g": 0.6999999284744263,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/300"
+            "_alias": "Colors/Blue/300"
           }
         }
       },
@@ -5310,14 +5512,14 @@
             "g": 0.27999991178512573,
             "b": 0.699999988079071,
             "a": 1,
-            "_alias": "Colors/Brand Blue/700"
+            "_alias": "Colors/Blue/700"
           },
           "75:4": {
             "r": 0.699999988079071,
             "g": 0.8199999332427979,
             "b": 1,
             "a": 1,
-            "_alias": "Colors/Brand Blue/200"
+            "_alias": "Colors/Blue/200"
           }
         }
       }
