@@ -91,41 +91,226 @@ void main() {
       expect(result.stderr, contains('Sesori Bridge supports macOS and Linux only.'));
     });
 
-    test('resolves the newest stable bridge release with matching asset and checksums', () async {
+    test('parses the version from a release-download redirect Location header', () async {
       final libraryPath = await _createInstallShLibrary();
-      final tempDir = await Directory.systemTemp.createTemp('install-sh-release-');
+      final tempDir = await Directory.systemTemp.createTemp('install-sh-parse-');
+      addTearDown(() => tempDir.delete(recursive: true));
+
+      final result = await _runBashSnippet(
+        script:
+            '''
+source ${jsonEncode(libraryPath)}
+printf '%s\n' 'HTTP/2 302' 'location: https://github.com/sesori-ai/sesori_apps_monorepo/releases/download/v1.2.3/sesori-bridge-linux-x64.tar.gz' | parse_version_from_headers
+''',
+        environment: {
+          'PATH': Platform.environment['PATH'] ?? '',
+          'HOME': tempDir.path,
+        },
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      expect((result.stdout as String).trim(), equals('1.2.3'));
+    });
+
+    test('resolves the latest release via the static latest/download redirect (no API, no Python)', () async {
+      final libraryPath = await _createInstallShLibrary();
+      final tempDir = await Directory.systemTemp.createTemp('install-sh-latest-');
+      addTearDown(() => tempDir.delete(recursive: true));
+      final binDir = await Directory(p.join(tempDir.path, 'bin')).create();
+      // A python3 that always fails proves the primary path never invokes it.
+      await _createExecutable(
+        binDir: binDir,
+        name: 'python3',
+        body: '#!/bin/sh\nexit 1\n',
+      );
+
+      final result = await _runBashSnippet(
+        script:
+            '''
+source ${jsonEncode(libraryPath)}
+# Both the archive probe and the checksums probe go through fetch_redirect_headers;
+# a 2xx status line is required so the resolver accepts the latest release.
+fetch_redirect_headers() {
+  printf '%s\n' 'HTTP/2 200' 'location: https://github.com/sesori-ai/sesori_apps_monorepo/releases/download/v4.5.6/sesori-bridge-macos-arm64.tar.gz'
+}
+resolve_release sesori-bridge-macos-arm64.tar.gz
+printf '%s\n%s\n%s\n' "\$RESOLVED_VERSION" "\$RESOLVED_ARCHIVE_URL" "\$RESOLVED_CHECKSUMS_URL"
+''',
+        environment: {
+          'PATH': '${binDir.path}:${Platform.environment['PATH'] ?? ''}',
+          'HOME': tempDir.path,
+        },
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      expect(
+        (result.stdout as String).trim(),
+        equals(
+          [
+            '4.5.6',
+            'https://github.com/sesori-ai/sesori_apps_monorepo/releases/download/v4.5.6/sesori-bridge-macos-arm64.tar.gz',
+            'https://github.com/sesori-ai/sesori_apps_monorepo/releases/download/v4.5.6/checksums.txt',
+          ].join('\n'),
+        ),
+      );
+    });
+
+    test('falls back to a scan when the latest release is missing checksums.txt', () async {
+      final libraryPath = await _createInstallShLibrary();
+      final tempDir = await Directory.systemTemp.createTemp('install-sh-partial-');
       addTearDown(() => tempDir.delete(recursive: true));
       final releasesPath = p.join(tempDir.path, 'releases.json');
       await File(releasesPath).writeAsString(
         jsonEncode([
           {
+            'tag_name': 'v0.4.0',
+            'draft': false,
+            'prerelease': false,
+            'assets': [
+              {'name': 'sesori-bridge-macos-arm64.tar.gz'},
+              {'name': 'checksums.txt'},
+            ],
+          },
+        ]),
+      );
+
+      // Latest has the archive (200) but checksums.txt is still missing (404),
+      // e.g. a partial publish window. The resolver must reject it and scan.
+      final result = await _runBashSnippet(
+        script:
+            '''
+source ${jsonEncode(libraryPath)}
+fetch_redirect_headers() {
+  case "\$1" in
+    *checksums.txt) printf '%s\n' 'HTTP/2 404' ;;
+    *) printf '%s\n' 'HTTP/2 200' 'location: https://github.com/sesori-ai/sesori_apps_monorepo/releases/download/v9.9.9/sesori-bridge-macos-arm64.tar.gz' ;;
+  esac
+}
+fetch_text() { cat ${jsonEncode(releasesPath)}; }
+resolve_release sesori-bridge-macos-arm64.tar.gz
+printf '%s\n' "\$RESOLVED_VERSION"
+''',
+        environment: {
+          'PATH': Platform.environment['PATH'] ?? '',
+          'HOME': tempDir.path,
+        },
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      expect((result.stdout as String).trim(), equals('0.4.0'));
+    });
+
+    test('falls back when a stale curl returns exit 0 for a 404 archive HEAD', () async {
+      final libraryPath = await _createInstallShLibrary();
+      final tempDir = await Directory.systemTemp.createTemp('install-sh-oldcurl-');
+      addTearDown(() => tempDir.delete(recursive: true));
+      final releasesPath = p.join(tempDir.path, 'releases.json');
+      await File(releasesPath).writeAsString(
+        jsonEncode([
+          {
+            'tag_name': 'v0.4.0',
+            'draft': false,
+            'prerelease': false,
+            'assets': [
+              {'name': 'sesori-bridge-macos-arm64.tar.gz'},
+              {'name': 'checksums.txt'},
+            ],
+          },
+        ]),
+      );
+
+      // Simulate old curl: exit 0 even though the final hop is 404 (only 3xx +
+      // 4xx, no 2xx). The version is still parseable from the redirect, so the
+      // 2xx guard is what prevents wrongly accepting the missing asset.
+      final result = await _runBashSnippet(
+        script:
+            '''
+source ${jsonEncode(libraryPath)}
+fetch_redirect_headers() {
+  printf '%s\n' 'HTTP/2 302' 'location: https://github.com/sesori-ai/sesori_apps_monorepo/releases/download/v9.9.9/sesori-bridge-macos-arm64.tar.gz' 'HTTP/2 404'
+}
+fetch_text() { cat ${jsonEncode(releasesPath)}; }
+resolve_release sesori-bridge-macos-arm64.tar.gz
+printf '%s\n' "\$RESOLVED_VERSION"
+''',
+        environment: {
+          'PATH': Platform.environment['PATH'] ?? '',
+          'HOME': tempDir.path,
+        },
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      expect((result.stdout as String).trim(), equals('0.4.0'));
+    });
+
+    test('treats only the final HTTP status as success, ignoring an intermediate proxy 200', () async {
+      final libraryPath = await _createInstallShLibrary();
+      final tempDir = await Directory.systemTemp.createTemp('install-sh-proxy-');
+      addTearDown(() => tempDir.delete(recursive: true));
+      final releasesPath = p.join(tempDir.path, 'releases.json');
+      await File(releasesPath).writeAsString(
+        jsonEncode([
+          {
+            'tag_name': 'v0.4.0',
+            'draft': false,
+            'prerelease': false,
+            'assets': [
+              {'name': 'sesori-bridge-macos-arm64.tar.gz'},
+              {'name': 'checksums.txt'},
+            ],
+          },
+        ]),
+      );
+
+      // An HTTP proxy emits "200 Connection established" before the real
+      // response. The final status is 404, so the asset must be treated as
+      // missing (matching any 2xx line would wrongly accept it).
+      final result = await _runBashSnippet(
+        script:
+            '''
+source ${jsonEncode(libraryPath)}
+fetch_redirect_headers() {
+  printf '%s\n' 'HTTP/1.1 200 Connection established' 'location: https://github.com/sesori-ai/sesori_apps_monorepo/releases/download/v9.9.9/sesori-bridge-macos-arm64.tar.gz' 'HTTP/2 404'
+}
+fetch_text() { cat ${jsonEncode(releasesPath)}; }
+resolve_release sesori-bridge-macos-arm64.tar.gz
+printf '%s\n' "\$RESOLVED_VERSION"
+''',
+        environment: {
+          'PATH': Platform.environment['PATH'] ?? '',
+          'HOME': tempDir.path,
+        },
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      expect((result.stdout as String).trim(), equals('0.4.0'));
+    });
+
+    test('falls back to scanning older releases when latest/download lacks the asset', () async {
+      final libraryPath = await _createInstallShLibrary();
+      final tempDir = await Directory.systemTemp.createTemp('install-sh-fallback-');
+      addTearDown(() => tempDir.delete(recursive: true));
+      final releasesPath = p.join(tempDir.path, 'releases.json');
+      await File(releasesPath).writeAsString(
+        jsonEncode([
+          // Non-"v" tag: ignored.
+          {
             'tag_name': 'repo-v9.9.9',
             'draft': false,
             'prerelease': false,
             'assets': [
-              {
-                'name': 'sesori-bridge-macos-arm64.tar.gz',
-                'browser_download_url': 'https://example.com/repo-v9.9.9/sesori-bridge-macos-arm64.tar.gz',
-              },
-              {
-                'name': 'checksums.txt',
-                'browser_download_url': 'https://example.com/repo-v9.9.9/checksums.txt',
-              },
+              {'name': 'sesori-bridge-macos-arm64.tar.gz'},
+              {'name': 'checksums.txt'},
             ],
           },
+          // Prerelease: ignored even though it is the newest.
           {
             'tag_name': 'v0.4.0-beta.1',
             'draft': false,
             'prerelease': true,
             'assets': [
-              {
-                'name': 'sesori-bridge-macos-arm64.tar.gz',
-                'browser_download_url': 'https://example.com/v0.4.0-beta.1/sesori-bridge-macos-arm64.tar.gz',
-              },
-              {
-                'name': 'checksums.txt',
-                'browser_download_url': 'https://example.com/v0.4.0-beta.1/checksums.txt',
-              },
+              {'name': 'sesori-bridge-macos-arm64.tar.gz'},
+              {'name': 'checksums.txt'},
             ],
           },
           {
@@ -133,14 +318,8 @@ void main() {
             'draft': false,
             'prerelease': false,
             'assets': [
-              {
-                'name': 'sesori-bridge-macos-arm64.tar.gz',
-                'browser_download_url': 'https://example.com/v0.3.1/sesori-bridge-macos-arm64.tar.gz',
-              },
-              {
-                'name': 'checksums.txt',
-                'browser_download_url': 'https://example.com/v0.3.1/checksums.txt',
-              },
+              {'name': 'sesori-bridge-macos-arm64.tar.gz'},
+              {'name': 'checksums.txt'},
             ],
           },
           {
@@ -148,14 +327,8 @@ void main() {
             'draft': false,
             'prerelease': false,
             'assets': [
-              {
-                'name': 'sesori-bridge-macos-arm64.tar.gz',
-                'browser_download_url': 'https://example.com/v0.4.0/sesori-bridge-macos-arm64.tar.gz',
-              },
-              {
-                'name': 'checksums.txt',
-                'browser_download_url': 'https://example.com/v0.4.0/checksums.txt',
-              },
+              {'name': 'sesori-bridge-macos-arm64.tar.gz'},
+              {'name': 'checksums.txt'},
             ],
           },
         ]),
@@ -165,9 +338,10 @@ void main() {
         script:
             '''
 source ${jsonEncode(libraryPath)}
+fetch_redirect_headers() { return 1; }
 fetch_text() { cat ${jsonEncode(releasesPath)}; }
-resolve_release_contract sesori-bridge-macos-arm64.tar.gz
-printf '%s\n%s\n%s\n' "\$RESOLVED_RELEASE_TAG" "\$RESOLVED_ARCHIVE_URL" "\$RESOLVED_CHECKSUMS_URL"
+resolve_release sesori-bridge-macos-arm64.tar.gz
+printf '%s\n%s\n%s\n' "\$RESOLVED_VERSION" "\$RESOLVED_ARCHIVE_URL" "\$RESOLVED_CHECKSUMS_URL"
 ''',
         environment: {
           'PATH': Platform.environment['PATH'] ?? '',
@@ -180,37 +354,32 @@ printf '%s\n%s\n%s\n' "\$RESOLVED_RELEASE_TAG" "\$RESOLVED_ARCHIVE_URL" "\$RESOL
         (result.stdout as String).trim(),
         equals(
           [
-            'v0.4.0',
-            'https://example.com/v0.4.0/sesori-bridge-macos-arm64.tar.gz',
-            'https://example.com/v0.4.0/checksums.txt',
+            '0.4.0',
+            'https://github.com/sesori-ai/sesori_apps_monorepo/releases/download/v0.4.0/sesori-bridge-macos-arm64.tar.gz',
+            'https://github.com/sesori-ai/sesori_apps_monorepo/releases/download/v0.4.0/checksums.txt',
           ].join('\n'),
         ),
       );
     });
 
-    test('paginates release resolution until a later page contains the highest eligible stable release', () async {
+    test('paginates the fallback scan until a later page contains the highest eligible stable release', () async {
       final libraryPath = await _createInstallShLibrary();
       final tempDir = await Directory.systemTemp.createTemp('install-sh-pagination-');
       addTearDown(() => tempDir.delete(recursive: true));
       final pageOnePath = p.join(tempDir.path, 'page-1.json');
       final pageTwoPath = p.join(tempDir.path, 'page-2.json');
+      // A full page (per_page=30) forces the scan to fetch a second page.
       await File(pageOnePath).writeAsString(
         jsonEncode(
-          List.generate(100, (index) {
+          List.generate(30, (index) {
             final version = '0.3.${index + 1}';
             return {
               'tag_name': 'v$version',
               'draft': false,
               'prerelease': false,
               'assets': [
-                {
-                  'name': 'sesori-bridge-linux-x64.tar.gz',
-                    'browser_download_url': 'https://example.com/v$version/sesori-bridge-linux-x64.tar.gz',
-                },
-                {
-                  'name': 'checksums.txt',
-                    'browser_download_url': 'https://example.com/v$version/checksums.txt',
-                },
+                {'name': 'sesori-bridge-macos-arm64.tar.gz'},
+                {'name': 'checksums.txt'},
               ],
             };
           }),
@@ -223,14 +392,8 @@ printf '%s\n%s\n%s\n' "\$RESOLVED_RELEASE_TAG" "\$RESOLVED_ARCHIVE_URL" "\$RESOL
             'draft': false,
             'prerelease': false,
             'assets': [
-              {
-                'name': 'sesori-bridge-macos-arm64.tar.gz',
-                'browser_download_url': 'https://example.com/v0.4.0/sesori-bridge-macos-arm64.tar.gz',
-              },
-              {
-                'name': 'checksums.txt',
-                'browser_download_url': 'https://example.com/v0.4.0/checksums.txt',
-              },
+              {'name': 'sesori-bridge-macos-arm64.tar.gz'},
+              {'name': 'checksums.txt'},
             ],
           },
         ]),
@@ -240,6 +403,7 @@ printf '%s\n%s\n%s\n' "\$RESOLVED_RELEASE_TAG" "\$RESOLVED_ARCHIVE_URL" "\$RESOL
         script:
             '''
 source ${jsonEncode(libraryPath)}
+fetch_redirect_headers() { return 1; }
 fetch_text() {
   case "\$1" in
     *page=1) cat ${jsonEncode(pageOnePath)} ;;
@@ -247,8 +411,8 @@ fetch_text() {
     *) printf '[]' ;;
   esac
 }
-resolve_release_contract sesori-bridge-macos-arm64.tar.gz
-printf '%s\n%s\n%s\n' "\$RESOLVED_RELEASE_TAG" "\$RESOLVED_ARCHIVE_URL" "\$RESOLVED_CHECKSUMS_URL"
+resolve_release sesori-bridge-macos-arm64.tar.gz
+printf '%s\n' "\$RESOLVED_VERSION"
 ''',
         environment: {
           'PATH': Platform.environment['PATH'] ?? '',
@@ -257,16 +421,50 @@ printf '%s\n%s\n%s\n' "\$RESOLVED_RELEASE_TAG" "\$RESOLVED_ARCHIVE_URL" "\$RESOL
       );
 
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
-      expect(
-        (result.stdout as String).trim(),
-        equals(
-          [
-            'v0.4.0',
-            'https://example.com/v0.4.0/sesori-bridge-macos-arm64.tar.gz',
-            'https://example.com/v0.4.0/checksums.txt',
-          ].join('\n'),
-        ),
+      expect((result.stdout as String).trim(), equals('0.4.0'));
+    });
+
+    test('resolves a >128KB release page through the fallback without an argument-length failure', () async {
+      final libraryPath = await _createInstallShLibrary();
+      final tempDir = await Directory.systemTemp.createTemp('install-sh-bigpage-');
+      addTearDown(() => tempDir.delete(recursive: true));
+      final releasesPath = p.join(tempDir.path, 'releases.json');
+      // A single release whose body alone exceeds Linux MAX_ARG_STRLEN (128KB).
+      // The previous implementation passed this JSON through an env var and
+      // failed with "Argument list too long"; reading from a file must not.
+      await File(releasesPath).writeAsString(
+        jsonEncode([
+          {
+            'tag_name': 'v0.9.9',
+            'draft': false,
+            'prerelease': false,
+            'body': 'x' * 200000,
+            'assets': [
+              {'name': 'sesori-bridge-linux-x64.tar.gz'},
+              {'name': 'checksums.txt'},
+            ],
+          },
+        ]),
       );
+      expect(await File(releasesPath).length(), greaterThan(131072));
+
+      final result = await _runBashSnippet(
+        script:
+            '''
+source ${jsonEncode(libraryPath)}
+fetch_redirect_headers() { return 1; }
+fetch_text() { cat ${jsonEncode(releasesPath)}; }
+resolve_release sesori-bridge-linux-x64.tar.gz
+printf '%s\n' "\$RESOLVED_VERSION"
+''',
+        environment: {
+          'PATH': Platform.environment['PATH'] ?? '',
+          'HOME': tempDir.path,
+        },
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      expect((result.stdout as String).trim(), equals('0.9.9'));
     });
 
     test('verifies checksum manifests by asset basename', () async {
@@ -353,22 +551,37 @@ cat "\$HOME/.zprofile"
       );
     });
 
-    test('writes managed runtime manifest with resolved version', () {
+    test('writes managed runtime manifest with the resolved version', () {
       final script = File(_installShPath()).readAsStringSync();
 
       expect(script, contains(r'MANAGED_MANIFEST="${INSTALL_DIR}/.managed-runtime.json"'));
-      expect(script, contains(r'resolved_version="${RESOLVED_RELEASE_TAG#v}"'));
+      expect(script, contains(r'local resolved_version="${RESOLVED_VERSION}"'));
+      expect(script, contains(r'"${BINARY}" --version'));
       expect(script, contains('printf'));
       expect(script, contains('"%s"'));
       expect(script, contains(r'"${resolved_version}" > "${MANAGED_MANIFEST}"'));
     });
 
-    test('accepts only v release tags', () {
+    test('the fallback scan accepts only stable v release tags', () {
       final script = File(_installShPath()).readAsStringSync();
 
       expect(script, contains('if tag_name.startswith("v"):'));
       expect(script, contains('version = tag_name.replace("v", "", 1)'));
       expect(script, isNot(contains('bridge-v')));
+    });
+
+    test('never passes release JSON through argv/env and uses static latest/download', () {
+      final script = File(_installShPath()).readAsStringSync();
+
+      // The original "Argument list too long" failure came from passing the
+      // release JSON to python3 via RELEASES_JSON/PAGE_JSON environment vars.
+      expect(script, isNot(contains('RELEASES_JSON=')));
+      expect(script, isNot(contains('PAGE_JSON=')));
+      // Primary path is GitHub's native always-latest static download.
+      expect(script, contains('releases/latest/download'));
+      expect(script, contains(r'${latest_base}/${filename}'));
+      // The fallback scan streams each page to a file (paths-as-args only).
+      expect(script, contains(r'> "${page_file}"'));
     });
   });
 
@@ -395,7 +608,19 @@ cat "\$HOME/.zprofile"
       expect(script, contains('falling back to the x64 build'));
     });
 
-    test('resolves stable bridge-tagged release assets and checksum basenames', () {
+    test('resolves via latest/download with a retained scan fallback', () {
+      // Coordinator dispatches to two peer resolvers.
+      expect(script, contains('function Resolve-BridgeRelease {'));
+      expect(script, contains('function Resolve-BridgeReleaseViaLatest {'));
+      expect(script, contains('function Resolve-BridgeReleaseViaScan {'));
+
+      // Primary: GitHub-native always-latest static asset; version from redirect.
+      expect(script, contains(r'releases/latest/download/$ArchiveName'));
+      expect(script, contains('Get-RedirectLocation'));
+      expect(script, contains(r'releases/download/(v[0-9]+\.[0-9]+\.[0-9]+)/'));
+      expect(script, contains('Test-RemoteAssetExists'));
+
+      // Fallback scan retained: pagination + client-side filtering + version sort.
       expect(script, contains(r"$tagName.StartsWith('v')"));
       expect(script, contains(r'''$release.draft -or $release.prerelease'''));
       expect(script, contains(r'[version]::TryParse($versionText, [ref]$parsedVersion)'));
@@ -404,6 +629,8 @@ cat "\$HOME/.zprofile"
       expect(script, contains('Sort-Object Version -Descending'));
       expect(script, contains(r'''Where-Object { $_.name -eq $ArchiveName }'''));
       expect(script, contains(r'''Where-Object { $_.name -eq 'checksums.txt' }'''));
+
+      // Checksum entries are still matched by asset basename (unchanged).
       expect(script, contains(r'''if ($line -match '^([a-fA-F0-9]{64})\s+\*?(.+)$')'''));
       expect(script, contains(r'''if ($filePart -eq $ArchiveName) {'''));
     });
