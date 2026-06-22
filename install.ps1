@@ -48,7 +48,7 @@ $Script:G_BAR_EMPTY = ''
 
 $Script:UseColor = $false
 $Script:UseUnicode = $false
-$Script:PanelWidth = 52
+$Script:PanelWidth = 56
 
 # Color is emitted unless NO_COLOR is set, output is redirected, or TERM=dumb.
 # FORCE_COLOR forces it on. On Windows a console host generally supports ANSI
@@ -203,12 +203,6 @@ function Write-Step {
 function Write-Ok {
     param([string]$Message)
     Write-Line ('      ' + (Use-Paint $Script:C_GREEN $Script:G_CHECK) + ' ' + (Use-Paint $Script:C_DIM $Message))
-}
-
-# A muted, indented note under a step.
-function Write-Note {
-    param([string]$Message)
-    Write-Line ('      ' + (Use-Paint $Script:C_DIM $Message))
 }
 
 # Error / warning / note prefixes. Errors and warnings go to stderr so they are

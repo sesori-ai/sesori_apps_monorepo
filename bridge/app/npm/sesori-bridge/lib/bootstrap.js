@@ -65,9 +65,9 @@ function nextCommand(binaryPath, args) {
   }
   return {
     managed: managedCommand,
+    // Bare-command form used both as the runnable next step and as the
+    // completion panel's highlighted call-to-action.
     pathCommand: ["sesori-bridge"].concat(commandArgs).map(shellQuote).join(" "),
-    // Display form for the completion panel's highlighted call-to-action.
-    pathDisplay: ["sesori-bridge"].concat(commandArgs).map(shellQuote).join(" "),
   };
 }
 
@@ -106,7 +106,7 @@ function printInstallSummary(options) {
       version: options.version,
       location: options.installRoot,
       onPath: true,
-      command: commands.pathDisplay,
+      command: commands.pathCommand,
     });
   } else if (!symlinkReady && process.platform !== "win32") {
     // The managed symlink is missing/blocked: instruct the user to run the
@@ -122,7 +122,7 @@ function printInstallSummary(options) {
       version: options.version,
       location: options.installRoot,
       onPath: false,
-      command: commands.pathDisplay,
+      command: commands.pathCommand,
     });
   }
 }

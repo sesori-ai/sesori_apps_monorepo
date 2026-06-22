@@ -10,7 +10,7 @@
 // TERM=dumb, non-UTF-8 locale). FORCE_COLOR forces color on.
 
 var TOTAL_STEPS = 4;
-var PANEL_WIDTH = 52;
+var PANEL_WIDTH = 56;
 var ESC = "\u001b";
 
 // ┌─ PALETTE ───────────────────────────────────────────────────────────────────
@@ -273,18 +273,32 @@ Ui.prototype.panelRow = function(content, contentColor, border) {
 };
 
 // A panel row highlighting a runnable command plus a muted inline comment. Width
-// is computed from the plain text so colored escapes don't skew alignment.
+// is computed from the plain text so colored escapes don't skew alignment. If the
+// command alone exceeds the panel width the comment is dropped (and the command
+// truncated as a last resort) so the right border stays aligned.
 Ui.prototype.panelCommandRow = function(command, comment, border) {
   var c = this._panelChars();
   var gap = "   ";
-  var plain = command + gap + comment;
   var inner = PANEL_WIDTH - 2;
+  var ellipsis = this._useUnicode ? "\u2026" : "...";
+
+  // Drop the comment if command + gap + comment overflows.
+  if (command.length + gap.length + comment.length > inner) {
+    comment = "";
+  }
+  // Truncate the command itself if it still overflows on its own.
+  if (command.length > inner) {
+    command = command.slice(0, inner - ellipsis.length) + ellipsis;
+  }
+
+  var plain = comment ? command + gap + comment : command;
   var pad = inner - plain.length;
   if (pad < 0) {
     pad = 0;
   }
-  var painted =
-    this.paint(this._c.brand + this._c.bold, command) + gap + this.paint(this._c.dim, comment);
+  var painted = comment
+    ? this.paint(this._c.brand + this._c.bold, command) + gap + this.paint(this._c.dim, comment)
+    : this.paint(this._c.brand + this._c.bold, command);
   this._write(
     "  " + border + c.v + this._c.reset + " " + painted + repeat(" ", pad) + " " + border + c.v + this._c.reset
   );

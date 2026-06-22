@@ -204,7 +204,7 @@ hint() {
 # Box-drawing helpers for a panel. Unicode by default, ASCII when Unicode is
 # unsafe. PANEL_WIDTH is the inner width (between the borders). The border color
 # is passed in (${1}) so the same panel can frame different kinds of content.
-PANEL_WIDTH=52
+PANEL_WIDTH=56
 
 panel_top() {
     local border="${1:-${C_BRAND}}"
@@ -262,20 +262,41 @@ panel_command_row() {
     [ "${USE_UNICODE}" = true ] && bar="│"
 
     local gap="   "
-    local plain="${command}${gap}${comment}"
     local inner=$(( PANEL_WIDTH - 2 ))
+    local ellipsis="..."
+    [ "${USE_UNICODE}" = true ] && ellipsis="…"
+
+    # Drop the comment if command + gap + comment overflows; truncate the command
+    # itself only as a last resort, so the right border stays aligned.
+    if [ $(( ${#command} + ${#gap} + ${#comment} )) -gt "${inner}" ]; then
+        comment=""
+    fi
+    if [ "${#command}" -gt "${inner}" ]; then
+        command="${command:0:$(( inner - ${#ellipsis} ))}${ellipsis}"
+    fi
+
+    local plain="${command}"
+    [ -n "${comment}" ] && plain="${command}${gap}${comment}"
     local pad=$(( inner - ${#plain} ))
     [ "${pad}" -lt 0 ] && pad=0
     local spaces
     spaces="$(printf '%*s' "${pad}" '')"
 
-    printf '  %s%s%s %s%s%s%s %s%s%s\n' \
-        "${border}" "${bar}" "${C_RESET}" \
-        "$(paint "${C_BRAND}${C_BOLD}" "${command}")" \
-        "${gap}" \
-        "$(paint "${C_DIM}" "${comment}")" \
-        "${spaces}" \
-        "${border}" "${bar}" "${C_RESET}"
+    if [ -n "${comment}" ]; then
+        printf '  %s%s%s %s%s%s%s %s%s%s\n' \
+            "${border}" "${bar}" "${C_RESET}" \
+            "$(paint "${C_BRAND}${C_BOLD}" "${command}")" \
+            "${gap}" \
+            "$(paint "${C_DIM}" "${comment}")" \
+            "${spaces}" \
+            "${border}" "${bar}" "${C_RESET}"
+    else
+        printf '  %s%s%s %s%s %s%s%s\n' \
+            "${border}" "${bar}" "${C_RESET}" \
+            "$(paint "${C_BRAND}${C_BOLD}" "${command}")" \
+            "${spaces}" \
+            "${border}" "${bar}" "${C_RESET}"
+    fi
 }
 
 # A panel row with an emphasized middle segment: "${1}<bold ${2}>${3}". The
@@ -446,27 +467,30 @@ download_with_progress_curl() {
     curl --trace-ascii "${tracefile}" -fsSL -o "${dest}" "${url}" &
     local curl_pid=$!
 
-    local total=0 bytes=0 size lower
+    # --trace-ascii emits a hex/ASCII dump of the WHOLE payload (millions of lines
+    # for a binary). Pre-filter with grep so the bash loop only sees the handful of
+    # content-length / recv-data lines, and parse with bash's built-in regex so we
+    # never fork tr/sed per line.
+    local total=0 bytes=0
     while IFS= read -r line; do
-        lower="$(printf '%s' "${line}" | tr '[:upper:]' '[:lower:]')"
-        case "${lower}" in
-            "0000: content-length:"*)
-                total="$(printf '%s' "${lower}" | sed -nE 's/^0000: content-length: *([0-9]+).*/\1/p')"
-                [ -n "${total}" ] || total=0
-                bytes=0
-                ;;
-            "<= recv data"*)
-                size="$(printf '%s' "${lower}" | sed -nE 's/^<= recv data, ([0-9]+) bytes.*/\1/p')"
-                if [ -n "${size}" ] && [ "${total}" -gt 0 ]; then
-                    bytes=$(( bytes + size ))
-                    render_progress "${bytes}" "${total}"
-                fi
-                ;;
-        esac
-    done < "${tracefile}"
+        if [[ "${line}" =~ [Cc]ontent-[Ll]ength:[[:space:]]*([0-9]+) ]]; then
+            total="${BASH_REMATCH[1]}"
+            bytes=0
+        elif [[ "${line}" =~ [Rr]ecv[[:space:]]data,[[:space:]]*([0-9]+)[[:space:]]bytes ]]; then
+            if [ "${total}" -gt 0 ]; then
+                bytes=$(( bytes + BASH_REMATCH[1] ))
+                render_progress "${bytes}" "${total}"
+            fi
+        fi
+    done < <(grep -E -i '^0000: content-length:|^<= recv data' "${tracefile}" 2>/dev/null || true)
 
-    wait "${curl_pid}"
-    local status=$?
+    # Capture curl's exit status WITHOUT tripping errexit, so the terminal-state
+    # cleanup below always runs even when the download fails (network error, 404,
+    # interrupted transfer). Otherwise a failed install would leave the cursor
+    # hidden and fd 4 open.
+    local status=0
+    wait "${curl_pid}" || status=$?
+
     rm -f "${tracefile}"
     # Restore cursor, end the bar line, and release fd 4.
     printf '\n' >&4
