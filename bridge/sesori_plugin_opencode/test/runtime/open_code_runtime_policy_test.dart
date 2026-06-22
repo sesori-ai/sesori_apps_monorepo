@@ -394,6 +394,88 @@ void main() {
     });
   });
 
+  group("probeOpenCodePortBindable", () {
+    test("probes a single host once when bind and connect hosts are equal", () async {
+      final ports = _RecordingHostPortService(unbindableHosts: const <String>{});
+
+      final bindable = await probeOpenCodePortBindable(
+        ports: ports,
+        port: 4096,
+        bindHost: "127.0.0.1",
+        connectHost: "127.0.0.1",
+      );
+
+      expect(bindable, isTrue);
+      expect(ports.probedHosts, equals(<String>["127.0.0.1"]));
+    });
+
+    test("rejects a specific-address squatter the wildcard bind probe alone would miss", () async {
+      // The bug scenario: --opencode-host 0.0.0.0 while another opencode holds
+      // 127.0.0.1. Binding 0.0.0.0 would succeed, but the connect host probe
+      // catches the squatter.
+      final ports = _RecordingHostPortService(unbindableHosts: const <String>{"127.0.0.1"});
+
+      final bindable = await probeOpenCodePortBindable(
+        ports: ports,
+        port: 4096,
+        bindHost: "0.0.0.0",
+        connectHost: "127.0.0.1",
+      );
+
+      expect(bindable, isFalse);
+      // 0.0.0.0 probes bindable first, then the 127.0.0.1 squatter is detected.
+      expect(ports.probedHosts, equals(<String>["0.0.0.0", "127.0.0.1"]));
+    });
+
+    test("rejects a wildcard squatter the connect-host probe alone would miss", () async {
+      final ports = _RecordingHostPortService(unbindableHosts: const <String>{"0.0.0.0"});
+
+      final bindable = await probeOpenCodePortBindable(
+        ports: ports,
+        port: 4096,
+        bindHost: "0.0.0.0",
+        connectHost: "127.0.0.1",
+      );
+
+      expect(bindable, isFalse);
+      // The bind host (0.0.0.0) is probed first and fails, so the probe
+      // short-circuits before dialing the connect host.
+      expect(ports.probedHosts, equals(<String>["0.0.0.0"]));
+    });
+
+    test("reports free only when both hosts are bindable", () async {
+      final ports = _RecordingHostPortService(unbindableHosts: const <String>{});
+
+      final bindable = await probeOpenCodePortBindable(
+        ports: ports,
+        port: 4096,
+        bindHost: "0.0.0.0",
+        connectHost: "127.0.0.1",
+      );
+
+      expect(bindable, isTrue);
+      expect(ports.probedHosts.toSet(), equals(<String>{"0.0.0.0", "127.0.0.1"}));
+    });
+
+    test("probes the distinct hosts sequentially, never holding two probes at once", () async {
+      // A concurrent probe would let one host's open ServerSocket make the
+      // other host's bind probe fail on platforms where wildcard and
+      // specific-address binds are mutually exclusive (e.g. Linux). Asserting
+      // that no two probes overlap pins the sequential contract.
+      final ports = _RecordingHostPortService(unbindableHosts: const <String>{});
+
+      final bindable = await probeOpenCodePortBindable(
+        ports: ports,
+        port: 4096,
+        bindHost: "0.0.0.0",
+        connectHost: "127.0.0.1",
+      );
+
+      expect(bindable, isTrue);
+      expect(ports.maxConcurrentProbes, equals(1));
+    });
+  });
+
   group("buildOpenCodeRestartPolicy", () {
     test("builds the bounded pinned-port restart pacing", () {
       final policy = buildOpenCodeRestartPolicy();
@@ -513,4 +595,36 @@ class _FakeSpawnedProcess implements SpawnedProcess {
 
   @override
   Stream<List<int>> get stderr => Stream<List<int>>.value(const <int>[]);
+}
+
+/// Records every host probed and reports any host in [unbindableHosts] as
+/// occupied — a stand-in for a foreign listener already holding the port on
+/// that specific address.
+///
+/// Tracks the peak number of overlapping `isBindable` calls so a test can
+/// assert the caller never runs two probes concurrently. Each probe yields to
+/// the event loop while "in flight", so any concurrent caller would observe an
+/// overlap.
+class _RecordingHostPortService implements HostPortService {
+  _RecordingHostPortService({required Set<String> unbindableHosts}) : _unbindableHosts = unbindableHosts;
+
+  final Set<String> _unbindableHosts;
+  final List<String> probedHosts = <String>[];
+  int _inFlight = 0;
+  int maxConcurrentProbes = 0;
+
+  @override
+  Future<bool> isBindable({required String host, required int port}) async {
+    probedHosts.add(host);
+    _inFlight += 1;
+    maxConcurrentProbes = _inFlight > maxConcurrentProbes ? _inFlight : maxConcurrentProbes;
+    try {
+      // Yield so an overlapping probe (if the caller raced them) would be
+      // observed while this one is still counted as in flight.
+      await Future<void>.delayed(Duration.zero);
+      return !_unbindableHosts.contains(host);
+    } finally {
+      _inFlight -= 1;
+    }
+  }
 }
