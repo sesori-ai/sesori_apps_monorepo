@@ -512,7 +512,7 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
     // the PregoTappable overlay (bgPrimaryHover = rgba(0,0,0,0.16) composited
     // on top of bg-primary_alt).
     if (_isFocused) return colors.bgPrimary;
-    return colors.bgPrimaryAlt;
+    return colors.bgSecondary;
   }
 
   Color _tertiaryBgColor({

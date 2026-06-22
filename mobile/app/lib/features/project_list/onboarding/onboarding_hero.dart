@@ -86,7 +86,7 @@ class _OnboardingHero extends StatelessWidget {
     // Read brightness off the same PregoColors instance that supplies the
     // vignette edge below, so the artwork and the fade colour can't disagree.
     final colors = context.prego.colors;
-    final auroraEdge = colors.bgPrimaryAlt;
+    final auroraEdge = colors.bgSecondary;
     final isDark = colors.brightness == Brightness.dark;
     final auroraAsset = isDark ? _kAuroraDarkAsset : _kAuroraLightAsset;
     final laptopAsset = isDark ? _kLaptopDarkAsset : _kLaptopLightAsset;

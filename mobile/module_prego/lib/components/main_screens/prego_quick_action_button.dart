@@ -180,7 +180,7 @@ class _PregoQuickActionButtonCore extends StatelessWidget {
     required bool isEnabled,
     required BorderSide borderSide,
   }) => ShapeDecoration(
-    color: isEnabled ? prego.colors.bgPrimaryAlt : prego.colors.bgDisabled,
+    color: isEnabled ? prego.colors.bgSecondary : prego.colors.bgDisabled,
     shape: RoundedSuperellipseBorder(
       side: borderSide,
       borderRadius: BorderRadius.circular(PregoRadius.x4l),
