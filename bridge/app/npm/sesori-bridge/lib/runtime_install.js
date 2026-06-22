@@ -4,6 +4,7 @@ var child_process = require("child_process");
 var fs = require("fs");
 var os = require("os");
 var path = require("path");
+var ui = require("./ui").shared();
 
 function fail(message) {
   console.error(message);
@@ -171,7 +172,8 @@ function createManagedSymlink(installRoot) {
     }
     fs.symlinkSync(binaryPath, symlinkPath);
   } catch (error) {
-    console.warn("sesori-bridge: Failed to create symlink at " + symlinkPath + ". You may need to add " + path.dirname(binaryPath) + " to PATH manually.");
+    ui.warn("Failed to create symlink at " + symlinkPath + ".");
+    ui.hint("You may need to add " + path.dirname(binaryPath) + " to PATH manually.");
   }
 }
 
@@ -184,7 +186,7 @@ function stripMacOSAttributes(installRoot) {
     try {
       child_process.execFileSync("xattr", ["-dr", attr, installRoot], { stdio: "pipe" });
     } catch (error) {
-      console.warn("sesori-bridge: Failed to strip " + attr + " from " + installRoot + ": " + error.message);
+      ui.warn("Failed to strip " + attr + " from " + installRoot + ": " + error.message);
     }
   });
 }

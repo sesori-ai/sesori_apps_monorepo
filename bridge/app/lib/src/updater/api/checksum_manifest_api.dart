@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io' show HttpException;
 
 import 'package:http/http.dart' as http;
 
+import '../foundation/update_policy.dart';
 import '../models/checksum_manifest.dart';
 
 const Duration _kChecksumManifestTimeout = Duration(seconds: 10);
@@ -18,6 +20,13 @@ class ChecksumManifestApi {
 
   Future<ChecksumManifest?> fetchManifest({required String url}) async {
     final response = await _httpClient.get(Uri.parse(url)).timeout(_requestTimeout);
+    if (isRetryableHttpStatus(response.statusCode)) {
+      // A transient server-side/throttling outage is not a missing manifest.
+      // Throw so verifyDownloadedArchive propagates it as a network error
+      // (retryable, quiet) rather than letting a null manifest be treated as a
+      // genuine checksum failure with reinstall guidance.
+      throw HttpException('Checksum manifest request failed with status ${response.statusCode}');
+    }
     if (response.statusCode != 200) {
       return null;
     }

@@ -1,24 +1,24 @@
 import 'package:meta/meta.dart';
 
-import 'pending_windows_update.dart';
 import 'update_result.dart';
 
+/// Outcome of staging an update (download → verify → extract → stage).
+///
+/// On success [stagingPath] points at the extracted, verified payload ready for
+/// the in-place swap. On any failure [stagingPath] is `null` and [result]
+/// carries the cause.
 @immutable
 class UpdateInstallResult {
   final UpdateResult result;
-  final PendingWindowsUpdate? pendingWindowsUpdate;
+  final String? stagingPath;
 
   const UpdateInstallResult({
     required this.result,
-    required this.pendingWindowsUpdate,
+    required this.stagingPath,
   });
 
-  const UpdateInstallResult.completed({required UpdateResult result})
-    : this(result: result, pendingWindowsUpdate: null);
+  const UpdateInstallResult.staged({required String stagingPath})
+    : this(result: UpdateResult.success, stagingPath: stagingPath);
 
-  const UpdateInstallResult.pending({required PendingWindowsUpdate pendingWindowsUpdate})
-    : this(
-        result: UpdateResult.success,
-        pendingWindowsUpdate: pendingWindowsUpdate,
-      );
+  const UpdateInstallResult.failed({required UpdateResult result}) : this(result: result, stagingPath: null);
 }

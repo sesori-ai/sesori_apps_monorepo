@@ -1,4 +1,5 @@
 import 'package:collection/collection.dart';
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 
 import '../api/github_releases_api.dart';
 import '../api/update_cache_api.dart';
@@ -161,17 +162,26 @@ class ReleaseRepository {
     }
 
     if (assetUrl != null && checksumsUrl != null) {
-      await _cache.write(
-        release: CachedRelease(
-          latestVersion: latestVersion.toString(),
-          downloadUrl: assetUrl,
-          checksumsUrl: checksumsUrl,
-          assetName: assetName,
-          track: _track.wireValue,
-          publishedAt: publishedAt,
-          checkedAt: DateTime.now(),
-        ),
-      );
+      // Best-effort: the cache is a 10-minute TTL optimization to avoid
+      // re-hitting GitHub every cycle. It is written before the "is this newer?"
+      // comparison below, so a write failure (e.g. a full/unwritable cache dir)
+      // must not turn an otherwise-successful check — including "no newer
+      // release" — into a genuine update failure with reinstall guidance.
+      try {
+        await _cache.write(
+          release: CachedRelease(
+            latestVersion: latestVersion.toString(),
+            downloadUrl: assetUrl,
+            checksumsUrl: checksumsUrl,
+            assetName: assetName,
+            track: _track.wireValue,
+            publishedAt: publishedAt,
+            checkedAt: DateTime.now(),
+          ),
+        );
+      } on Object catch (error) {
+        Log.w('Failed to cache the latest release metadata: $error');
+      }
     }
 
     if (!_isEligible(latestVersion)) {

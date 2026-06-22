@@ -15,6 +15,15 @@ class Invocation {
 }
 
 class FakeProcessRunner implements ProcessRunner {
+  @override
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
+    Map<String, String>? environment,
+  }) async {
+    throw UnimplementedError();
+  }
+
   ProcessResult Function({required List<String> arguments}) responder = _defaultResponder;
   final List<Invocation> invocations = <Invocation>[];
 

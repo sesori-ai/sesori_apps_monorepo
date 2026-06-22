@@ -107,4 +107,13 @@ class _RecordingProcessRunner implements ProcessRunner {
     calls.add(_RecordedCall(executable: executable, arguments: arguments));
     return ProcessResult(1, exitCode, stdout, stderr);
   }
+
+  @override
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
+    Map<String, String>? environment,
+  }) {
+    throw UnimplementedError();
+  }
 }

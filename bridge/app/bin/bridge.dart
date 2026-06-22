@@ -132,9 +132,10 @@ class RunCommand extends cli.Command<void> {
     }
     Log.level = LogLevel.values.byName(options.logLevelName);
 
-    // Surface deprecated-flag usage now that the log level is known. The legacy
-    // flag still worked; this only nudges the user toward the namespaced form.
-    pluginConfigDeprecations.forEach(Log.w);
+    // Surface deprecated-flag usage to the user directly. The legacy flag still
+    // worked; this only nudges the user toward the namespaced form, so it must
+    // be visible regardless of --log-level and is not a diagnostic.
+    pluginConfigDeprecations.forEach(Console.warning);
 
     final settingsRepository = BridgeSettingsRepository(api: BridgeSettingsApi());
     final sleepPreventionService = SleepPreventionService(

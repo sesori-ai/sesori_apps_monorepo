@@ -7,6 +7,15 @@ import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
 import 'package:test/test.dart';
 
 class _FakeProcessRunner implements ProcessRunner {
+  @override
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
+    Map<String, String>? environment,
+  }) async {
+    throw UnimplementedError();
+  }
+
   final Future<ProcessResult> Function(String, List<String>) _handler;
 
   _FakeProcessRunner(this._handler);

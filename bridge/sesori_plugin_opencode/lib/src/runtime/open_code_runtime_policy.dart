@@ -4,7 +4,8 @@ import "dart:io" as io;
 import "dart:math";
 
 import "package:http/http.dart" as http;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginHost, ProcessIdentity, SpawnedProcess;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show HostPortService, PluginHost, ProcessIdentity, SpawnedProcess;
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
 import "open_code_ownership_record.dart";
@@ -76,6 +77,47 @@ String resolveOpenCodeConnectHost({required String bindHost}) {
     return "::1";
   }
   return bindHost;
+}
+
+/// Whether [port] is free for a managed OpenCode start, probed across both the
+/// host OpenCode will bind and the host the bridge will dial.
+///
+/// A single-address bind probe is not enough when the two differ. With a
+/// wildcard bind (`0.0.0.0`/`::`) the connect host is a specific loopback
+/// (`127.0.0.1`/`::1`), and the OS lets a wildcard bind and a specific-address
+/// listener on the same port coexist: a `ServerSocket.bind("0.0.0.0", port)`
+/// probe succeeds even though something already holds `127.0.0.1:port`, and the
+/// reverse is also true. Probing only one host therefore lets a foreign server
+/// already listening on the *other* address slip through pre-start, after which
+/// the spawned child co-binds the wildcard, never exits, and the health probe —
+/// dialing the connect host — is answered by that foreign listener.
+///
+/// Requiring **every** distinct host to be bindable closes both gaps: the
+/// connect-host probe catches a specific-address squatter and the bind-host
+/// probe catches a wildcard squatter. When the two hosts are equal (loopback or
+/// a concrete interface address) this collapses to a single probe.
+///
+/// The distinct hosts are probed **sequentially**, not concurrently. Each probe
+/// opens a real `ServerSocket` for the duration of the bind check, and on
+/// platforms where a wildcard bind and a same-port specific-address bind are
+/// mutually exclusive (notably Linux, a bridge build target) a concurrent probe
+/// would have one host's open socket make the other host's probe report `false`
+/// — falsely rejecting a genuinely free port. Probing one host at a time means
+/// no probe is ever live while another runs, so only a real foreign listener
+/// (never our own probe) can fail a bind.
+Future<bool> probeOpenCodePortBindable({
+  required HostPortService ports,
+  required int port,
+  required String bindHost,
+  required String connectHost,
+}) async {
+  final hosts = <String>{bindHost, connectHost};
+  for (final host in hosts) {
+    if (!await ports.isBindable(host: host, port: port)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /// Maximum crash-restarts attempted within one failure episode before the
@@ -341,7 +383,8 @@ ManagedRuntimeSpec<OpenCodeOwnershipRecord> buildOpenCodeManagedRuntimeSpec({
     ),
     probeHealth: ({required int port}) =>
         probeOpenCodeHealth(port: port, password: password, clientFactory: probeClientFactory, host: connectHost),
-    probePortBindable: ({required int port}) => host.ports.isBindable(host: bindHost, port: port),
+    probePortBindable: ({required int port}) =>
+        probeOpenCodePortBindable(ports: host.ports, port: port, bindHost: bindHost, connectHost: connectHost),
     buildRecord: (draft) => buildOpenCodeOwnershipRecord(draft: draft, bindHost: bindHost),
     portPolicy: portPolicy,
     healthPolicy: RuntimeHealthPolicy.deadline(

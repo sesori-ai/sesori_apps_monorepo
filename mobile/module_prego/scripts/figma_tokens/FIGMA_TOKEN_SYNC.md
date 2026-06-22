@@ -4,7 +4,7 @@ Extracts design token variables (colors, spacing, radius, dimensions) from the F
 
 ## Prerequisites
 
-- Access to the VESPR Figma Design System file (file key: `8CQtJDHrN4nxfTPlmCxK9B`)
+- Access to the VESPR Figma Design System file (file key: `DTKWZawsS3zfA7TPA4OlGr`)
 - Figma Desktop app (for plugin console access)
 
 ## Step 1: Export variables from Figma
@@ -12,7 +12,7 @@ Extracts design token variables (colors, spacing, radius, dimensions) from the F
 The Figma REST API's `/variables/local` endpoint requires an Enterprise plan. Since we're on Pro, we use the Figma Plugin API via the console instead.
 
 1. Open the Design System file in **Figma Desktop**
-2. Go to **Plugins > Development > Open console**
+2. Go to **Plugins > Development > Show/Hide console**
 3. Paste and run the following script:
 
 ```js

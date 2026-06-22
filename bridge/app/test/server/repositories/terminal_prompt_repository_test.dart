@@ -51,6 +51,13 @@ void main() {
         equals('Another Sesori bridge is still starting up (pid 1234). Kill it and start fresh? [y/N]'),
       );
     });
+
+    test('promptForEmailCredentials throws without reading when non-interactive', () {
+      api.isInteractiveValue = false;
+
+      expect(repository.promptForEmailCredentials, throwsA(isA<Exception>()));
+      expect(api.readCount, equals(0));
+    });
   });
 }
 

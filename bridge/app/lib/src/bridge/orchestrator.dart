@@ -13,6 +13,7 @@ import "../auth/token_refresher.dart";
 import "../push/completion_push_listener.dart";
 import "../push/maintenance_push_listener.dart";
 import "../push/push_dispatcher.dart";
+import "../server/services/bridge_restart_service.dart";
 import "foundation/process_runner.dart";
 import "key_exchange.dart";
 import "metadata_service.dart";
@@ -63,6 +64,7 @@ class Orchestrator {
   final SessionPersistenceService _sessionPersistenceService;
   final WorktreeService _worktreeService;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
+  final BridgeRestartService _restartService;
 
   Orchestrator({
     required this.config,
@@ -83,6 +85,7 @@ class Orchestrator {
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
+    required BridgeRestartService restartService,
   }) : _client = client,
        _plugin = plugin,
        _metadataService = metadataService,
@@ -99,7 +102,8 @@ class Orchestrator {
        _questionRepository = questionRepository,
        _sessionPersistenceService = sessionPersistenceService,
        _worktreeService = worktreeService,
-       _sessionEventEnrichmentService = sessionEventEnrichmentService;
+       _sessionEventEnrichmentService = sessionEventEnrichmentService,
+       _restartService = restartService;
 
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorSession create() {
@@ -147,6 +151,7 @@ class Orchestrator {
       sessionArchiveService: sessionArchiveService,
       sessionAbortService: sessionAbortService,
       sessionEventEnrichmentService: _sessionEventEnrichmentService,
+      restartService: _restartService,
     );
   }
 
@@ -180,9 +185,14 @@ class OrchestratorSession {
   final PrSyncService _prSyncService;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final SessionAbortService _sessionAbortService;
+  final BridgeRestartService _restartService;
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
   bool _cancelled = false;
+
+  /// Guards [handleRestartHandoff] so concurrent relay + debug restart triggers
+  /// spawn at most one successor.
+  bool _restartHandoffStarted = false;
 
   /// When the first [cancel] was requested. Used only for shutdown timing
   /// diagnostics (the logger emits no timestamps, so durations are explicit).
@@ -222,6 +232,7 @@ class OrchestratorSession {
     required SessionArchiveService sessionArchiveService,
     required SessionAbortService sessionAbortService,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
+    required BridgeRestartService restartService,
   }) : _client = client,
        _plugin = plugin,
        _pushDispatcher = pushDispatcher,
@@ -235,6 +246,7 @@ class OrchestratorSession {
        _failureReporter = failureReporter,
        _prSyncService = prSyncService,
        _sessionAbortService = sessionAbortService,
+       _restartService = restartService,
        _router = RequestRouter(
          plugin: plugin,
          getCommandsHandler: GetCommandsHandler(
@@ -267,6 +279,7 @@ class OrchestratorSession {
            sessionRepository: sessionRepository,
            processRunner: ProcessRunner(),
          ),
+         restartService: restartService,
        ),
        _mapper = BridgeEventMapper(
          plugin: plugin,
@@ -460,6 +473,41 @@ class OrchestratorSession {
         Log.v("[shutdown] early plugin dispose error (ignored): $e");
       }),
     );
+  }
+
+  /// Performs the restart handoff after the `{restarting:true}` reply has been
+  /// enqueued: spawns the successor, then drives the normal graceful shutdown
+  /// ([cancel]) — which flushes the queued reply by closing the relay and lets
+  /// this process exit. The successor waits for this pid to exit before it
+  /// enforces single-live-bridge, so the handoff is clean.
+  ///
+  /// Public because both restart triggers drive the same handoff: the relay
+  /// request loop (below) and the local [DebugServer], which reuses this
+  /// session's [RequestRouter] and so reaches the same `RestartBridgeHandler`.
+  Future<void> handleRestartHandoff() async {
+    // Single-flight: the relay and debug-server triggers share the same restart
+    // flag but run independently, so without this guard two near-simultaneous
+    // `POST /global/restart` requests could each spawn a successor. The flag is
+    // set synchronously (no await before it), so the check-and-set is atomic on
+    // the event loop. It is reset only when the spawn fails and we keep running,
+    // so a later restart can retry.
+    if (_restartHandoffStarted) {
+      Log.v("[restart] handoff already in progress; ignoring duplicate trigger");
+      return;
+    }
+    _restartHandoffStarted = true;
+    Log.i("[restart] restart requested; spawning successor bridge");
+    final bool spawned = await _restartService.spawnSuccessor();
+    if (!spawned) {
+      _restartHandoffStarted = false;
+      Console.error(
+        "Restart requested but a new bridge could not be started; continuing to run. "
+        "Re-run the install script if this persists: https://sesori.com/",
+      );
+      return;
+    }
+    Log.i("[restart] successor spawned; shutting down for handoff");
+    await cancel();
   }
 
   Future<void> _processPluginEvent(BridgeSseEvent event) async {
@@ -703,6 +751,13 @@ class OrchestratorSession {
         Log.v("RelayRequest: ${req.method} ${req.path}");
         _inFlightRequestLabel = "${req.method} ${req.path}";
         final routeSw = Stopwatch()..start();
+        // Defensively discard any restart flag left armed before routing this
+        // relay request. The local DebugServer reuses this RequestRouter but
+        // consumes and acts on its own restart flag synchronously right after it
+        // routes, so it should never leak one here; this clear still guarantees
+        // that only a restart requested during THIS relay request can trigger a
+        // handoff from the relay path.
+        _restartService.consumeRestartRequest();
         // If shutdown wins the race below, this future keeps running in the
         // background. ignore() marks any later failure as handled so it can
         // never surface as an unhandled async exception after abandonment.
@@ -712,6 +767,11 @@ class OrchestratorSession {
             routeFuture,
             _shutdownCompleter.future.then((_) => throw const _ShutdownInProgressException()),
           ]);
+          // Consume the restart flag now — it was set (if at all) by THIS
+          // request during routing. Tying consumption to this request means a
+          // failed/abandoned response can never leave the flag armed to trigger
+          // a delayed, unintended restart on a later request.
+          final bool restartRequested = _restartService.consumeRestartRequest();
           if (_cancelled) {
             Log.v(
               "[shutdown] route ${req.method} ${req.path} completed after cancel — "
@@ -728,6 +788,9 @@ class OrchestratorSession {
           Log.v("response: status=${response.status}");
           await _encryptAndSend(connID: connID, message: response);
           Log.v("response sent to connID=$connID");
+          if (restartRequested) {
+            await handleRestartHandoff();
+          }
         } on _ShutdownInProgressException {
           Log.v(
             "[shutdown] route ${req.method} ${req.path} abandoned because shutdown was requested",

@@ -513,7 +513,9 @@ printf '%s\n' "\$RESOLVED_VERSION"
       );
 
       expect(result.exitCode, equals(0));
-      expect(result.stderr, contains('Warning: another sesori-bridge found at $shadowPath'));
+      // Styled warning/note prefixes vary (glyph/color depend on the terminal);
+      // assert on the stable message text only.
+      expect(result.stderr, contains('Another sesori-bridge was found at $shadowPath'));
       expect(result.stderr, contains('It may shadow the newly installed version.'));
     });
 
@@ -543,11 +545,17 @@ cat "\$HOME/.zprofile"
         RegExp(r'export PATH="\$HOME/.local/bin:\$PATH"').allMatches(result.stdout as String).length,
         equals(2),
       );
+      // Styled confirmation: the rc files are named in the "Added ... to your
+      // PATH" line, with the source hint on the following note line.
       expect(
         result.stdout,
         contains(
-          "PATH: persisted ~/.local/bin in ${p.join(tempDir.path, '.zshrc')} and ${p.join(tempDir.path, '.zprofile')}. Run 'source ${p.join(tempDir.path, '.zshrc')}' or open a new terminal.",
+          'Added ~/.local/bin to your PATH in ${p.join(tempDir.path, '.zshrc')} and ${p.join(tempDir.path, '.zprofile')}',
         ),
+      );
+      expect(
+        result.stdout,
+        contains("Run 'source ${p.join(tempDir.path, '.zshrc')}' or open a new terminal to use it."),
       );
     });
 
@@ -560,6 +568,74 @@ cat "\$HOME/.zprofile"
       expect(script, contains('printf'));
       expect(script, contains('"%s"'));
       expect(script, contains(r'"${resolved_version}" > "${MANAGED_MANIFEST}"'));
+    });
+
+    test('emits ANSI color and the SESORI banner when FORCE_COLOR is set', () async {
+      final libraryPath = await _createInstallShLibrary();
+
+      final result = await _runBashSnippet(
+        script: 'source ${jsonEncode(libraryPath)}; init_style; print_banner; step 1 "Downloading release"; ok "done"',
+        environment: {
+          'PATH': Platform.environment['PATH'] ?? '',
+          'FORCE_COLOR': '1',
+          'LANG': 'en_US.UTF-8',
+        },
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      final out = result.stdout as String;
+      // Brand-blue step counter + green check escapes are present.
+      expect(out, contains('\u001b[38;5;39m[1/4]'));
+      expect(out, contains('\u001b[38;5;42m'));
+      // The tagline accompanies the banner.
+      expect(out, contains('Installing the Sesori Bridge'));
+      // Unicode glyph + wordmark block char in a UTF-8 locale.
+      expect(out, contains('\u2713'));
+      expect(out, contains('\u2588'));
+    });
+
+    test('suppresses all ANSI escapes when NO_COLOR is set', () async {
+      final libraryPath = await _createInstallShLibrary();
+
+      final result = await _runBashSnippet(
+        script: 'source ${jsonEncode(libraryPath)}; init_style; print_banner; step 1 "Downloading release"; ok "done"',
+        environment: {
+          'PATH': Platform.environment['PATH'] ?? '',
+          'NO_COLOR': '1',
+          'LANG': 'en_US.UTF-8',
+        },
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      final out = result.stdout as String;
+      // No escape sequences at all.
+      expect(out, isNot(contains('\u001b[')));
+      // Copy still present, just unstyled.
+      expect(out, contains('[1/4] Downloading release'));
+      expect(out, contains('Installing the Sesori Bridge'));
+    });
+
+    test('falls back to ASCII glyphs in a non-UTF-8 locale', () async {
+      final libraryPath = await _createInstallShLibrary();
+
+      final result = await _runBashSnippet(
+        script: 'source ${jsonEncode(libraryPath)}; init_style; print_banner; ok "done"',
+        environment: {
+          'PATH': Platform.environment['PATH'] ?? '',
+          'FORCE_COLOR': '1',
+          'LANG': 'C',
+          'LC_ALL': 'C',
+        },
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      final out = result.stdout as String;
+      // ASCII success marker instead of the ✓ glyph.
+      expect(out, contains('[OK]'));
+      expect(out, isNot(contains('\u2713')));
+      // ASCII wordmark instead of block-char Unicode.
+      expect(out, isNot(contains('\u2588')));
+      expect(out, contains('____'));
     });
 
     test('the fallback scan accepts only stable v release tags', () {
@@ -637,14 +713,48 @@ cat "\$HOME/.zprofile"
 
     test('warns about PATH conflicts and only appends the managed bin dir once', () {
       expect(script, contains("Get-Command 'sesori-bridge' -ErrorAction SilentlyContinue"));
-      expect(script, contains("Write-Warning \"Another sesori-bridge was found at '"));
+      // Conflict is surfaced via the styled warning helper.
+      expect(script, contains("Write-Warn \"Another sesori-bridge was found at '"));
       expect(script, contains(r'''$pathEntries | Where-Object { $_.TrimEnd('\') -ieq $BinDir.TrimEnd('\') }'''));
       expect(script, contains(r"[Environment]::SetEnvironmentVariable('PATH', $newPath, 'User')"));
-      expect(script, contains(r'PATH: persisted $BinDir in the user PATH.'));
-      expect(script, contains('Write-Host "Start the bridge:"'));
-      expect(script, contains('Write-Host "   sesori-bridge"'));
-      expect(script, contains('Write-Host "1. Open a new terminal"'));
-      expect(script, contains('Write-Host "2. Run the bridge:"'));
+      // PATH persistence is confirmed via the styled success helper.
+      expect(script, contains(r'Write-Ok "Added $BinDir to your PATH"'));
+    });
+
+    test('renders the styled banner, steps, and next-steps panel', () {
+      // Banner + tagline header.
+      expect(script, contains('function Write-Banner'));
+      expect(script, contains('Installing the Sesori Bridge'));
+      // Numbered steps use the shared [n/4] helper.
+      expect(script, contains("Write-Step 1 'Downloading release'"));
+      expect(script, contains("Write-Step 2 'Verifying checksum'"));
+      expect(script, contains("Write-Step 3 'Installing managed runtime'"));
+      expect(script, contains("Write-Step 4 'Linking command'"));
+      // Completion: quiet success line + boxed "Next steps" with highlighted cmd.
+      expect(script, contains(r'Sesori Bridge v$resolvedVersionLabel installed'));
+      expect(script, contains("Write-PanelRow 'Next steps'"));
+      expect(script, contains("Write-PanelEmphasisRow 'In a ' 'new terminal' ' window, run:'"));
+      // The runnable command is kept intact: boxed when it fits, otherwise
+      // printed in full below the box (never ellipsized).
+      expect(script, contains(r"$nextCommand = 'sesori-bridge'"));
+      expect(script, contains(r'Write-PanelCommandRow $nextCommand $nextComment'));
+      expect(script, contains(r'if (-not $fitsInBox)'));
+    });
+
+    test('degrades gracefully: color/unicode detection and ASCII fallback', () {
+      // Honors NO_COLOR / FORCE_COLOR / TERM=dumb / redirected output.
+      expect(script, contains('function Test-ShouldUseColor'));
+      expect(script, contains(r'if ($env:FORCE_COLOR)'));
+      expect(script, contains(r'if ($env:NO_COLOR)'));
+      expect(script, contains(r"if ($env:TERM -eq 'dumb')"));
+      expect(script, contains('IsOutputRedirected'));
+      // UTF-8 output + Unicode capability detection, with ASCII glyph fallback.
+      expect(script, contains('function Test-ShouldUseUnicode'));
+      expect(script, contains(r'[System.Text.UTF8Encoding]::new($false)'));
+      expect(script, contains(r"$Script:G_CHECK = '[OK]'"));
+      // Palette is centralized for easy retheming.
+      expect(script, contains('PALETTE_BANNER'));
+      expect(script, contains('PALETTE_BRAND'));
     });
 
     test('writes managed runtime manifest with resolved version', () {

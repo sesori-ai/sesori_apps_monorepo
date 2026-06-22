@@ -8,7 +8,7 @@ import '../../auth/login_oauth_service.dart';
 import '../../auth/profile.dart';
 import '../../auth/token.dart';
 import '../../auth/validate.dart';
-import '../foundation/post_update_restart_flag.dart';
+import '../foundation/legacy_post_update_relaunch.dart';
 import 'bridge_cli_options.dart';
 
 const Duration _oAuthAckTimeout = Duration(seconds: 5);
@@ -37,8 +37,13 @@ class BridgeRuntimeAuthService {
 
   Future<AuthProvider> promptForProvider() async {
     if (_environment[sesoriPostUpdateRestartEnvVar] == '1') {
+      // Legacy upgrade: an old binary relaunched us (possibly non-interactively)
+      // after applying an update, and there are no usable stored tokens. Don't
+      // block on an unanswerable prompt — tell the user to start again from a
+      // terminal.
       throw Exception(
-        'Login required, but this bridge was relaunched non-interactively after an auto-update. Run sesori-bridge again from a terminal to log in.',
+        'Login required, but this bridge was relaunched non-interactively after an auto-update. '
+        'Run sesori-bridge again from a terminal to log in.',
       );
     }
 

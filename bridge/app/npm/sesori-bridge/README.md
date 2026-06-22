@@ -2,12 +2,12 @@
 
 Bootstrap launcher for the [Sesori Bridge](https://github.com/sesori-ai/sesori_apps_monorepo) — a lightweight CLI that connects an AI coding assistant running on your laptop to the Sesori mobile app via an encrypted relay.
 
-This npm package is a **bootstrap launcher**, not the runtime itself. When you run `sesori-bridge` (or `npx @sesori/bridge`), it installs and updates a managed native binary under your home directory:
+This npm package is a **bootstrap launcher**, not the runtime itself. Running `npx @sesori/bridge` installs (or refreshes) a managed native binary under your home directory and tells you how to start it — it does **not** start the bridge:
 
 - macOS / Linux: `~/.local/share/sesori/`
 - Windows: `%LOCALAPPDATA%\sesori\`
 
-The platform-specific native binary is pulled from the matching optional dependency (`@sesori/bridge-<os>-<arch>`), with a fallback to the tagged GitHub Release asset if the npm payload is unavailable. After install, the `sesori-bridge` command runs the managed runtime, which keeps itself up to date.
+The platform-specific native binary is pulled from the matching optional dependency (`@sesori/bridge-<os>-<arch>`), with a fallback to the tagged GitHub Release asset if the npm payload is unavailable. After install, you run the managed `sesori-bridge` command yourself; the runtime keeps itself up to date from then on.
 
 ## Install
 
@@ -16,13 +16,25 @@ The platform-specific native binary is pulled from the matching optional depende
 npx @sesori/bridge
 ```
 
-After the first run, the managed `sesori-bridge` command is installed. On all platforms, open a new terminal so the new PATH entry is picked up (macOS/Linux: `~/.local/bin`; Windows: `%LOCALAPPDATA%\sesori\bin`), then verify:
+This installs the managed runtime and prints the next step. The bootstrap only installs — it never starts the bridge, and it forwards no arguments to it. On all platforms, open a new terminal so the new PATH entry is picked up (macOS/Linux: `~/.local/bin`; Windows: `%LOCALAPPDATA%\sesori\bin`), then start the bridge and check the version:
 
 ```bash
-sesori-bridge --version
+sesori-bridge            # start the bridge
+sesori-bridge --version  # check the installed version
 ```
 
 On Windows, the bootstrap persists the User PATH via a child PowerShell process that cannot refresh the current terminal — a new terminal is required before `sesori-bridge` is available. Alternatively, run the binary directly: `& "$env:LOCALAPPDATA\sesori\bin\sesori-bridge.exe" --version`.
+
+### Options
+
+```bash
+npx @sesori/bridge --force   # -f: reinstall the bundled version, overwriting
+                             #     whatever is installed (even a newer or
+                             #     incomplete/corrupt runtime)
+npx @sesori/bridge --help    # -h: show usage
+```
+
+By default the bootstrap leaves an already-current or newer healthy runtime in place, and refuses to overwrite a newer-but-incomplete runtime with an older payload. Use `--force` to override all of that and (re)install the bundled version unconditionally — useful for repairing a wedged install.
 
 Prefer a shell installer with no Node.js dependency?
 

@@ -140,7 +140,7 @@ class PregoButtonsIconGlass extends StatelessWidget {
           return colors.buttonGlassPrimaryHover;
         }
 
-        return colors.buttonGlassPrimaryBackground;
+        return null;
       }),
       containerBuilder: ({required Widget child, required Set<WidgetState> state}) {
         // iOS: real frosted glass via the liquid_glass_plus shader. The icon

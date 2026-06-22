@@ -86,7 +86,7 @@ class _OnboardingHero extends StatelessWidget {
     // Read brightness off the same PregoColors instance that supplies the
     // vignette edge below, so the artwork and the fade colour can't disagree.
     final colors = context.prego.colors;
-    final auroraEdge = colors.bgPrimaryAlt;
+    final auroraEdge = colors.bgSecondary;
     final isDark = colors.brightness == Brightness.dark;
     final auroraAsset = isDark ? _kAuroraDarkAsset : _kAuroraLightAsset;
     final laptopAsset = isDark ? _kLaptopDarkAsset : _kLaptopLightAsset;
@@ -101,7 +101,7 @@ class _OnboardingHero extends StatelessWidget {
         children: [
           // Aurora landscape: a centred panel (sized by the factors below)
           // whose edges fade out via the foreground vignette. The fade colour
-          // (auroraEdge) matches the Scaffold's bgPrimaryAlt background, so the
+          // (auroraEdge) matches the Scaffold's bgSecondary background, so the
           // panel blends in seamlessly even though it doesn't span full width —
           // keep those two colours in sync. Image -> background decoration;
           // radial gradient -> foreground vignette painted on top.

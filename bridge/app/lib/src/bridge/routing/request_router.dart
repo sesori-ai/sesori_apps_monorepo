@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../server/services/bridge_restart_service.dart";
 import "../repositories/permission_repository.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/provider_repository.dart";
@@ -41,6 +42,7 @@ import "rename_session_handler.dart";
 import "reply_to_permission_handler.dart";
 import "reply_to_question_handler.dart";
 import "request_handler.dart";
+import "restart_bridge_handler.dart";
 import "send_prompt_handler.dart";
 import "set_base_branch_handler.dart";
 import "update_session_archive_status_handler.dart";
@@ -73,6 +75,7 @@ class RequestRouter {
     required GetSessionDiffsHandler sessionDiffsHandler,
     required GetAgentsHandler getAgentsHandler,
     required PostAgentsHandler postAgentsHandler,
+    required BridgeRestartService restartService,
   }) : _handlers = _buildHandlers(
          plugin: plugin,
          getCommandsHandler: getCommandsHandler,
@@ -91,6 +94,7 @@ class RequestRouter {
          sessionDiffsHandler: sessionDiffsHandler,
          getAgentsHandler: getAgentsHandler,
          postAgentsHandler: postAgentsHandler,
+         restartService: restartService,
        );
 
   static List<RequestHandlerBase> _buildHandlers({
@@ -111,9 +115,11 @@ class RequestRouter {
     required GetSessionDiffsHandler sessionDiffsHandler,
     required GetAgentsHandler getAgentsHandler,
     required PostAgentsHandler postAgentsHandler,
+    required BridgeRestartService restartService,
   }) {
     return [
       HealthCheckHandler(plugin),
+      RestartBridgeHandler(restartService: restartService),
       GetCurrentProjectHandler(plugin),
       GetProjectsHandler(projectRepository: projectRepository),
       getCommandsHandler,

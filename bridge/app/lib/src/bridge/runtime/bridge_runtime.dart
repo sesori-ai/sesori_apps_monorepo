@@ -18,6 +18,7 @@ import "../../push/push_notification_client.dart";
 import "../../push/push_notification_content_builder.dart";
 import "../../push/push_rate_limiter.dart";
 import "../../push/push_session_state_tracker.dart";
+import "../../server/services/bridge_restart_service.dart";
 import "../api/gh_cli_api.dart";
 import "../api/git_cli_api.dart";
 import "../bandwidth_tracker.dart";
@@ -46,6 +47,7 @@ class BridgeRuntime {
   final BridgePluginApi _plugin;
   final FailureReporter _failureReporter;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
+  final BridgeRestartService _restartService;
   final OrchestratorSession session;
 
   BridgeRuntime({
@@ -53,11 +55,13 @@ class BridgeRuntime {
     required BridgePluginApi plugin,
     required FailureReporter failureReporter,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
+    required BridgeRestartService restartService,
     required this.session,
   }) : _database = database,
        _plugin = plugin,
        _failureReporter = failureReporter,
-       _sessionEventEnrichmentService = sessionEventEnrichmentService;
+       _sessionEventEnrichmentService = sessionEventEnrichmentService,
+       _restartService = restartService;
 
   static BridgeRuntime create({
     required BridgeConfig config,
@@ -69,6 +73,7 @@ class BridgeRuntime {
     required AppDatabase database,
     required ProcessRunner processRunner,
     required FailureReporter failureReporter,
+    required BridgeRestartService restartService,
   }) {
     final pullRequestRepository = PullRequestRepository(
       pullRequestDao: database.pullRequestDao,
@@ -111,6 +116,7 @@ class BridgeRuntime {
       plugin: plugin,
       failureReporter: failureReporter,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
+      restartService: restartService,
       session: Orchestrator(
         config: config,
         client: RelayClient(
@@ -166,6 +172,7 @@ class BridgeRuntime {
           ),
         ),
         sessionEventEnrichmentService: sessionEventEnrichmentService,
+        restartService: restartService,
       ).create(),
     );
   }
@@ -181,6 +188,8 @@ class BridgeRuntime {
       port: port,
       failureReporter: _failureReporter,
       sessionEventEnrichmentService: _sessionEventEnrichmentService,
+      restartService: _restartService,
+      restartHandoff: session.handleRestartHandoff,
     );
   }
 
