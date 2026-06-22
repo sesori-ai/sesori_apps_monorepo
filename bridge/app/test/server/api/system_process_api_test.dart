@@ -190,6 +190,6 @@ class _RecordingProcessRunner implements ProcessRunner {
     required List<String> arguments,
     Map<String, String>? environment,
   }) {
-    throw UnsupportedError("startDetached is not used by SystemProcessApi process-inspection tests");
+    throw UnimplementedError();
   }
 }
