@@ -191,6 +191,10 @@ class SesoriApp extends StatelessWidget {
         fontFamily: PregoTextTheme.fontFamily,
         fontFamilyFallback: PregoTextTheme.fontFamilyFallback,
         extensions: [PregoDesignSystem.light],
+        // Dark status-bar icons for the light theme's light backgrounds.
+        // Without this, transparent AppBars (e.g. ProjectListScreen) default
+        // to light/white icons that vanish against a light background.
+        appBarTheme: const AppBarTheme(systemOverlayStyle: SystemUiOverlayStyle.dark),
       ),
       darkTheme: ThemeData(
         colorScheme: PregoColors.dark.toFlutterColorScheme(),
@@ -198,6 +202,8 @@ class SesoriApp extends StatelessWidget {
         fontFamily: PregoTextTheme.fontFamily,
         fontFamilyFallback: PregoTextTheme.fontFamilyFallback,
         extensions: [PregoDesignSystem.dark],
+        // Light status-bar icons for the dark theme's dark backgrounds.
+        appBarTheme: const AppBarTheme(systemOverlayStyle: SystemUiOverlayStyle.light),
       ),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
