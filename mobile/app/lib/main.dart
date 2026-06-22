@@ -191,10 +191,21 @@ class SesoriApp extends StatelessWidget {
         fontFamily: PregoTextTheme.fontFamily,
         fontFamilyFallback: PregoTextTheme.fontFamilyFallback,
         extensions: [PregoDesignSystem.light],
-        // Dark status-bar icons for the light theme's light backgrounds.
-        // Without this, transparent AppBars (e.g. ProjectListScreen) default
-        // to light/white icons that vanish against a light background.
-        appBarTheme: const AppBarTheme(systemOverlayStyle: SystemUiOverlayStyle.dark),
+        // Status bar: dark icons for the light theme's light backgrounds.
+        // Without this, transparent AppBars (e.g. ProjectListScreen) default to
+        // light/white icons that vanish against a light background. Bars are
+        // kept transparent so the edge-to-edge layout set up in main() survives
+        // — the bare SystemUiOverlayStyle.dark constant would force a black
+        // Android navigation bar.
+        appBarTheme: const AppBarTheme(
+          systemOverlayStyle: SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
+            statusBarBrightness: Brightness.light,
+            systemNavigationBarColor: Colors.transparent,
+            systemNavigationBarIconBrightness: Brightness.dark,
+          ),
+        ),
       ),
       darkTheme: ThemeData(
         colorScheme: PregoColors.dark.toFlutterColorScheme(),
@@ -202,8 +213,19 @@ class SesoriApp extends StatelessWidget {
         fontFamily: PregoTextTheme.fontFamily,
         fontFamilyFallback: PregoTextTheme.fontFamilyFallback,
         extensions: [PregoDesignSystem.dark],
-        // Light status-bar icons for the dark theme's dark backgrounds.
-        appBarTheme: const AppBarTheme(systemOverlayStyle: SystemUiOverlayStyle.light),
+        // Status bar: light icons for the dark theme's dark backgrounds. Bars
+        // kept transparent to preserve edge-to-edge — the bare
+        // SystemUiOverlayStyle.light constant would force a black Android
+        // navigation bar.
+        appBarTheme: const AppBarTheme(
+          systemOverlayStyle: SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.light,
+            statusBarBrightness: Brightness.dark,
+            systemNavigationBarColor: Colors.transparent,
+            systemNavigationBarIconBrightness: Brightness.light,
+          ),
+        ),
       ),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
