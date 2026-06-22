@@ -82,7 +82,7 @@ Future<ProcessResult> _runNodeHarness({required String source}) async {
 Future<ProcessResult> _runWrapperProcess({
   required Directory packageRoot,
   required String homePath,
-  required List<String> args,
+  List<String> args = const [],
   Map<String, String> environment = const {},
 }) {
   return Process.run(
@@ -115,7 +115,7 @@ Future<ProcessResult> _runManagedBinary({
 Future<Process> _startWrapperProcess({
   required Directory packageRoot,
   required String homePath,
-  required List<String> args,
+  List<String> args = const [],
   Map<String, String> environment = const {},
 }) {
   return Process.start(
@@ -373,17 +373,16 @@ Future<String> _readWrapperVersion() async {
 void _expectInstallSummary({
   required ProcessResult result,
   required String homePath,
-  required List<String> args,
 }) {
-  final nextStep = ['sesori-bridge', ...args].join(' ');
-  // The completion output is styled (banner + boxed "Next steps"). Assert on
-  // stable substrings rather than full styled lines so cosmetic tweaks to the
-  // panel don't break behavior tests. Color is off here (piped, no FORCE_COLOR).
+  // The bootstrap only installs; it never forwards arguments to the bridge, so
+  // the next-step command is always the bare `sesori-bridge`. The completion
+  // output is styled (banner + boxed "Next steps"); assert on stable substrings
+  // rather than full styled lines. Color is off here (piped, no FORCE_COLOR).
   expect(result.stdout, contains('Sesori Bridge v'));
   expect(result.stdout, contains('installed'));
   expect(result.stdout, contains('Next steps'));
   expect(result.stdout, contains('# Start the bridge'));
-  expect(result.stdout, contains(nextStep));
+  expect(result.stdout, contains('sesori-bridge'));
 }
 
 Future<({int exitCode, String stdout, String stderr})> _waitForProcess(Process process) async {
@@ -455,9 +454,11 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final source = await File(p.join(_wrapperPackageRoot(), 'lib', 'bootstrap.js')).readAsString();
 
       expect(source, contains('function powershellQuote(value)'));
+      // The bootstrap forwards no arguments, so the managed fallback command is
+      // just the quoted binary path invoked via PowerShell's call operator.
       expect(
         source,
-        contains('managedCommand = "& " + [binaryPath].concat(commandArgs).map(powershellQuote).join(" ")'),
+        contains('managedCommand = "& " + powershellQuote(binaryPath)'),
       );
     });
 
@@ -481,7 +482,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final result = await _runWrapperProcess(
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
-        args: ['doctor'],
         environment: {
           'SESORI_BRIDGE_RECORD_PATH': bootstrapRecordPath,
           'SESORI_BRIDGE_RELEASES_BASE_URL': releasesBaseUrl,
@@ -489,7 +489,7 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       );
 
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
-      _expectInstallSummary(result: result, homePath: homeDir.path, args: ['doctor']);
+      _expectInstallSummary(result: result, homePath: homeDir.path);
       expect(File(bootstrapRecordPath).existsSync(), isFalse);
       final directRun = await _runManagedBinary(
         homePath: homeDir.path,
@@ -522,7 +522,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final result = await _runWrapperProcess(
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
-        args: ['--version'],
         environment: {'SESORI_BRIDGE_RELEASES_BASE_URL': releasesBaseUrl},
       );
 
@@ -543,7 +542,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final result = await _runWrapperProcess(
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
-        args: ['doctor'],
         environment: {'SESORI_BRIDGE_RELEASES_BASE_URL': releasesBaseUrl},
       );
 
@@ -571,11 +569,10 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final result = await _runWrapperProcess(
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
-        args: ['serve', '--port', '4096'],
       );
 
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
-      _expectInstallSummary(result: result, homePath: homeDir.path, args: ['serve', '--port', '4096']);
+      _expectInstallSummary(result: result, homePath: homeDir.path);
       expect(File(recordPath).existsSync(), isFalse);
       final managedBinary = _managedBinaryPath(homePath: homeDir.path);
       final directRun = await _runManagedBinary(
@@ -608,14 +605,13 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final bootstrapResult = await _runWrapperProcess(
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
-        args: ['serve'],
         environment: {
           'SHELL': '/bin/bash',
         },
       );
 
       expect(bootstrapResult.exitCode, equals(0), reason: '${bootstrapResult.stdout}\n${bootstrapResult.stderr}');
-      _expectInstallSummary(result: bootstrapResult, homePath: homeDir.path, args: ['serve']);
+      _expectInstallSummary(result: bootstrapResult, homePath: homeDir.path);
       // The styled completion no longer echoes a "PATH update" status line; the
       // PATH persistence is asserted directly against the shell rc files below.
       expect(
@@ -676,7 +672,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final result = await _runWrapperProcess(
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
-        args: ['status'],
       );
 
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
@@ -720,7 +715,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final result = await _runWrapperProcess(
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
-        args: ['status'],
         environment: {
           'SHELL': '/bin/bash',
         },
@@ -729,6 +723,63 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
       expect(result.stdout, contains('Next steps'));
       expect(result.stdout, contains('new terminal'));
+    });
+
+    test('bare no-op still confirms install and next-steps when already set up', () async {
+      // The exact `npx @sesori/bridge` (no args) scenario after a prior install:
+      // runtime current, command already on PATH, nothing changes. The bootstrap
+      // never execs the managed binary, so it must still print confirmation +
+      // next-steps rather than exiting silently.
+      final wrapperRoot = await _createWrapperFixture();
+      final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
+      addTearDown(() => homeDir.delete(recursive: true));
+
+      await _createPlatformPayload(
+        wrapperRoot: wrapperRoot,
+        version: '1.2.3',
+        binaryMarker: 'payload-runtime',
+        libMarker: 'payload-lib',
+      );
+      await _seedManagedRuntime(
+        homePath: homeDir.path,
+        version: '1.2.3',
+        binaryMarker: 'existing-managed',
+        libMarker: 'existing-lib',
+        includeBinary: true,
+        includeLib: true,
+      );
+
+      // First run creates the ~/.local/bin/sesori-bridge symlink.
+      await _runWrapperProcess(
+        packageRoot: wrapperRoot,
+        homePath: homeDir.path,
+        args: const [],
+        environment: const {'SHELL': '/bin/bash'},
+      );
+
+      // Second run: put ~/.local/bin on PATH so the command is "ready". Keep the
+      // node binary resolvable by appending the inherited PATH.
+      final localBin = p.join(homeDir.path, '.local', 'bin');
+      final inheritedPath = Platform.environment['PATH'] ?? '';
+      final result = await _runWrapperProcess(
+        packageRoot: wrapperRoot,
+        homePath: homeDir.path,
+        args: const [],
+        environment: {
+          'SHELL': '/bin/bash',
+          'PATH': '$localBin:$inheritedPath',
+        },
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      // Confirmation + next-steps are shown even though nothing was installed and
+      // the command is already usable; the "open a new terminal" line is omitted
+      // because the command already resolves.
+      expect(result.stdout, contains('Sesori Bridge v'));
+      expect(result.stdout, contains('installed'));
+      expect(result.stdout, contains('Next steps'));
+      expect(result.stdout, contains('# Start the bridge'));
+      expect(result.stdout, isNot(contains('new terminal')));
     });
 
     test('same-version managed runtime does not require release download fallback', () async {
@@ -749,7 +800,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final result = await _runWrapperProcess(
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
-        args: ['status'],
         environment: {
           'SESORI_BRIDGE_RELEASES_BASE_URL': 'http://127.0.0.1:1/releases/download',
         },
@@ -791,7 +841,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final result = await _runWrapperProcess(
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
-        args: ['doctor'],
       );
 
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
@@ -830,7 +879,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final result = await _runWrapperProcess(
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
-        args: ['doctor'],
         environment: {
           'SESORI_BRIDGE_RELEASES_BASE_URL': 'http://127.0.0.1:1/releases/download',
         },
@@ -872,7 +920,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final result = await _runWrapperProcess(
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
-        args: ['status'],
       );
 
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
@@ -917,7 +964,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final result = await _runWrapperProcess(
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
-        args: ['status'],
       );
 
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
@@ -956,16 +1002,147 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final result = await _runWrapperProcess(
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
-        args: ['status'],
         environment: {'SESORI_BRIDGE_RECORD_PATH': recordPath},
       );
 
       expect(result.exitCode, equals(1));
       expect(result.stderr, contains('Managed runtime 9.9.9 is incomplete/corrupt and newer than npm payload 1.2.3'));
       expect(result.stderr, contains('Refusing to repair it with an older npm payload'));
-      expect(result.stderr, contains('bootstrap again with npx'));
+      // The remediation now points at --force (and the manual-delete fallback).
+      expect(result.stderr, contains('npx @sesori/bridge --force'));
       expect(Directory(_bootstrapLockPath(homePath: homeDir.path)).existsSync(), isFalse);
       expect(File(recordPath).existsSync(), isFalse);
+    });
+
+    test('--force overwrites a newer incomplete managed runtime with the payload', () async {
+      // Same setup as "fails closed when a newer managed runtime is incomplete",
+      // but --force bypasses the guard and reinstalls the bundled version.
+      final wrapperRoot = await _createWrapperFixture();
+      final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
+      addTearDown(() => homeDir.delete(recursive: true));
+      final recordPath = p.join(homeDir.path, 'record.json');
+
+      await _createPlatformPayload(
+        wrapperRoot: wrapperRoot,
+        version: '1.2.3',
+        binaryMarker: 'payload-runtime',
+        libMarker: 'payload-lib',
+      );
+      await _seedManagedRuntime(
+        homePath: homeDir.path,
+        version: '9.9.9',
+        binaryMarker: 'broken-newer-managed',
+        libMarker: 'broken-lib',
+        includeBinary: true,
+        includeLib: false,
+      );
+
+      final result = await _runWrapperProcess(
+        packageRoot: wrapperRoot,
+        homePath: homeDir.path,
+        args: const ['--force'],
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      // The newer-but-broken 9.9.9 runtime is overwritten by the 1.2.3 payload.
+      final directRun = await _runManagedBinary(
+        homePath: homeDir.path,
+        args: const ['status'],
+        environment: {'SESORI_BRIDGE_RECORD_PATH': recordPath},
+      );
+      expect(directRun.exitCode, equals(0), reason: '${directRun.stdout}\n${directRun.stderr}');
+      final recorded = await _readRecordedInvocation(recordPath: recordPath);
+      expect(recorded['marker'], equals('payload-runtime'));
+      expect(recorded['libMarker'], equals('payload-lib'));
+    });
+
+    test('--force reinstalls even when the same version is already healthy', () async {
+      final wrapperRoot = await _createWrapperFixture();
+      final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
+      addTearDown(() => homeDir.delete(recursive: true));
+
+      await _createPlatformPayload(
+        wrapperRoot: wrapperRoot,
+        version: '1.2.3',
+        binaryMarker: 'payload-runtime',
+        libMarker: 'payload-lib',
+      );
+      await _seedManagedRuntime(
+        homePath: homeDir.path,
+        version: '1.2.3',
+        binaryMarker: 'existing-managed',
+        libMarker: 'existing-lib',
+        includeBinary: true,
+        includeLib: true,
+      );
+
+      final result = await _runWrapperProcess(
+        packageRoot: wrapperRoot,
+        homePath: homeDir.path,
+        args: const ['-f'],
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      // A no-op would have kept 'existing-managed'; --force reinstalls the payload.
+      final recordPath = p.join(homeDir.path, 'record.json');
+      final directRun = await _runManagedBinary(
+        homePath: homeDir.path,
+        args: const ['status'],
+        environment: {'SESORI_BRIDGE_RECORD_PATH': recordPath},
+      );
+      expect(directRun.exitCode, equals(0), reason: '${directRun.stdout}\n${directRun.stderr}');
+      final recorded = await _readRecordedInvocation(recordPath: recordPath);
+      expect(recorded['marker'], equals('payload-runtime'));
+    });
+
+    test('--help prints usage and exits 0 without installing', () async {
+      final wrapperRoot = await _createWrapperFixture();
+      final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
+      addTearDown(() => homeDir.delete(recursive: true));
+
+      await _createPlatformPayload(
+        wrapperRoot: wrapperRoot,
+        version: '1.2.3',
+        binaryMarker: 'payload-runtime',
+        libMarker: 'payload-lib',
+      );
+
+      final result = await _runWrapperProcess(
+        packageRoot: wrapperRoot,
+        homePath: homeDir.path,
+        args: const ['--help'],
+      );
+
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      expect(result.stdout, contains('Usage: npx @sesori/bridge'));
+      expect(result.stdout, contains('--force'));
+      // No install happened: the managed runtime was never created.
+      expect(File(_managedBinaryPath(homePath: homeDir.path)).existsSync(), isFalse);
+    });
+
+    test('rejects unknown options with usage and a non-zero exit', () async {
+      final wrapperRoot = await _createWrapperFixture();
+      final homeDir = await Directory.systemTemp.createTemp('npm-wrapper-home-');
+      addTearDown(() => homeDir.delete(recursive: true));
+
+      await _createPlatformPayload(
+        wrapperRoot: wrapperRoot,
+        version: '1.2.3',
+        binaryMarker: 'payload-runtime',
+        libMarker: 'payload-lib',
+      );
+
+      final result = await _runWrapperProcess(
+        packageRoot: wrapperRoot,
+        homePath: homeDir.path,
+        args: const ['--bogus'],
+      );
+
+      expect(result.exitCode, equals(1));
+      expect(result.stderr, contains('Unknown option: --bogus'));
+      expect(result.stderr, contains('Usage: npx @sesori/bridge'));
+      // Nothing was installed.
+      expect(File(_managedBinaryPath(homePath: homeDir.path)).existsSync(), isFalse);
     });
 
     test('fails closed on managed install write failure', () async {
@@ -984,7 +1161,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final result = await _runWrapperProcess(
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
-        args: ['status'],
         environment: {
           'SESORI_BRIDGE_TEST_WRITE_FAIL': '1',
         },
@@ -1015,7 +1191,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final result = await _runWrapperProcess(
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
-        args: ['status'],
         environment: {
           'SHELL': '/usr/bin/fish',
         },
@@ -1050,7 +1225,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final bootstrapResult = await _runWrapperProcess(
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
-        args: ['serve'],
       );
       expect(bootstrapResult.exitCode, equals(0), reason: '${bootstrapResult.stdout}\n${bootstrapResult.stderr}');
 
@@ -1131,7 +1305,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final firstProcess = await _startWrapperProcess(
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
-        args: ['serve', 'first'],
         environment: {
           'SESORI_BRIDGE_TEST_BOOTSTRAP_HOLD_MS': '800',
           'SESORI_BRIDGE_TEST_INSTALL_COUNTER_PATH': installCounterPath,
@@ -1143,7 +1316,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final secondProcess = await _startWrapperProcess(
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
-        args: ['serve', 'second'],
         environment: {
           'SESORI_BRIDGE_TEST_INSTALL_COUNTER_PATH': installCounterPath,
         },
@@ -1178,7 +1350,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final firstProcess = await _startWrapperProcess(
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
-        args: ['serve', 'first'],
         environment: {
           'SESORI_BRIDGE_TEST_BOOTSTRAP_HOLD_MS': '1200',
           'SESORI_BRIDGE_TEST_BOOTSTRAP_LOCK_STALE_MS': '300',
@@ -1192,7 +1363,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final secondProcess = await _startWrapperProcess(
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
-        args: ['serve', 'second'],
         environment: {
           'SESORI_BRIDGE_TEST_BOOTSTRAP_LOCK_STALE_MS': '300',
           'SESORI_BRIDGE_TEST_BOOTSTRAP_LOCK_TIMEOUT_MS': '4000',
@@ -1238,7 +1408,6 @@ console.log(JSON.stringify({ exitCode, stderr: stderr.join('') }));
       final result = await _runWrapperProcess(
         packageRoot: wrapperRoot,
         homePath: homeDir.path,
-        args: ['status'],
         environment: {
           'SESORI_BRIDGE_TEST_BOOTSTRAP_LOCK_STALE_MS': '200',
           'SESORI_BRIDGE_TEST_BOOTSTRAP_LOCK_TIMEOUT_MS': '2000',
@@ -1314,6 +1483,28 @@ process.stdout.write(JSON.stringify({ out: chunks.join("") }));
       expect(out, contains('+--'));
       expect(out, isNot(contains('\u2713')));
       expect(out, isNot(contains('\u2588')));
+    });
+
+    test('keeps a long runnable command intact (printed below the box, not truncated)', () async {
+      const longCommand =
+          '/var/folders/very/long/managed/path/.local/share/sesori/bin/sesori-bridge status --verbose';
+      final result = await _runNodeHarness(
+        source:
+            '''
+const ui = require(${jsonEncode(uiPath)});
+const chunks = [];
+const stream = { isTTY: true, write(s) { chunks.push(String(s)); } };
+const u = new ui.Ui({ stream, errStream: stream, env: { FORCE_COLOR: '1', LANG: 'en_US.UTF-8' } });
+u.completion({ version: "1.2.3", location: "x", onPath: true, command: ${jsonEncode(longCommand)} });
+process.stdout.write(JSON.stringify({ out: chunks.join("") }));
+''',
+      );
+      expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
+      final out =
+          (jsonDecode((result.stdout as String).trim()) as Map<String, dynamic>)['out'] as String;
+      // The full command appears verbatim (copy/paste-able) and is never ellipsized.
+      expect(out, contains(longCommand));
+      expect(out, isNot(contains('\u2026')));
     });
   });
 }

@@ -38,6 +38,43 @@ function errorMessage(error) {
   return String(error && error.message ? error.message : error);
 }
 
+// Print bootstrap usage. The bootstrap ONLY installs/refreshes the managed
+// runtime; it never starts the bridge, so it forwards no arguments. When shown
+// after a usage error, route it to stderr so it accompanies the error.
+function printUsage(toStderr) {
+  ui.usage([
+    "Usage: npx @sesori/bridge [options]",
+    "",
+    "Installs or refreshes the managed Sesori Bridge runtime, then tells you how",
+    "to start it. It does not start the bridge itself.",
+    "",
+    "Options:",
+    "  -f, --force    Reinstall the bundled runtime version, overwriting whatever",
+    "                 is currently installed (even a newer or corrupt runtime).",
+    "  -h, --help     Show this help.",
+  ], toStderr);
+}
+
+// Parse the bootstrap's own arguments. The bootstrap consumes ALL arguments —
+// none are forwarded to the bridge — so anything other than the known flags is a
+// usage error. Returns { force } on success, or throws _UsageError / signals help.
+function parseArgs(argv) {
+  var result = { force: false, help: false };
+  for (var i = 0; i < argv.length; i++) {
+    var arg = argv[i];
+    if (arg === "-f" || arg === "--force") {
+      result.force = true;
+    } else if (arg === "-h" || arg === "--help") {
+      result.help = true;
+    } else {
+      var err = new Error("Unknown option: " + arg);
+      err.isUsageError = true;
+      throw err;
+    }
+  }
+  return result;
+}
+
 function shellQuote(value) {
   if (!value) {
     return "''";
@@ -55,19 +92,20 @@ function powershellQuote(value) {
   return "'" + String(value).replace(/'/g, "''") + "'";
 }
 
-function nextCommand(binaryPath, args) {
-  var commandArgs = Array.isArray(args) ? args : [];
+// Build the "start the bridge" commands shown in the completion panel. The
+// bootstrap forwards no arguments — it only installs — so these are the bare
+// command (resolved via PATH) and the direct managed-binary path (fallback when
+// the symlink is missing/blocked).
+function nextCommand(binaryPath) {
   var managedCommand;
   if (process.platform === "win32") {
-    managedCommand = "& " + [binaryPath].concat(commandArgs).map(powershellQuote).join(" ");
+    managedCommand = "& " + powershellQuote(binaryPath);
   } else {
-    managedCommand = [binaryPath].concat(commandArgs).map(shellQuote).join(" ");
+    managedCommand = shellQuote(binaryPath);
   }
   return {
     managed: managedCommand,
-    // Bare-command form used both as the runnable next step and as the
-    // completion panel's highlighted call-to-action.
-    pathCommand: ["sesori-bridge"].concat(commandArgs).map(shellQuote).join(" "),
+    pathCommand: "sesori-bridge",
   };
 }
 
@@ -104,7 +142,7 @@ function isCommandReady(installRoot) {
 }
 
 function printInstallSummary(options) {
-  var commands = nextCommand(options.binaryPath, options.args);
+  var commands = nextCommand(options.binaryPath);
   var symlinkReady = isManagedSymlinkReady(options.installRoot);
   var commandReady = isCommandReady(options.installRoot);
 
@@ -157,7 +195,8 @@ function recordInstallAttempt() {
   fs.writeFileSync(counterPath, String(currentValue + 1), "utf8");
 }
 
-async function bootstrapManagedRuntime(pkgName) {
+async function bootstrapManagedRuntime(pkgName, parsedOptions) {
+  var force = !!(parsedOptions && parsedOptions.force);
   var installRoot = runtimeInstall.managedInstallRoot();
   var localPayload = runtimeInstall.tryResolvePayload(pkgName);
   var preferredVersion = localPayload ? localPayload.version : releaseAssetRuntime.wrapperVersion();
@@ -171,13 +210,16 @@ async function bootstrapManagedRuntime(pkgName) {
     }, async function() {
       var currentVersion = runtimeInstall.readManagedVersion(installRoot);
       var runtimeReady = runtimeInstall.isManagedRuntimeReady(installRoot);
-      if (currentVersion !== null) {
+      // --force bypasses all version/readiness gating: reinstall the payload
+      // version unconditionally, overwriting whatever exists (newer, corrupt, or
+      // same) via the atomic staged swap below.
+      if (!force && currentVersion !== null) {
         var comparison = runtimeInstall.compareVersions(currentVersion, preferredVersion);
         if (comparison > 0) {
           if (!runtimeReady) {
             throw new Error(
               "sesori-bridge: Managed runtime " + currentVersion + " is incomplete/corrupt and newer than npm payload " + preferredVersion + ".\n" +
-              "Refusing to repair it with an older npm payload. Reinstall the managed runtime explicitly, or delete the managed install directory and bootstrap again with npx."
+              "Refusing to repair it with an older npm payload. Reinstall it explicitly with `npx @sesori/bridge --force`, or delete the managed install directory and bootstrap again."
             );
           }
           runtimeInstall.createManagedSymlink(installRoot);
@@ -250,10 +292,10 @@ async function bootstrapManagedRuntime(pkgName) {
 }
 
 async function runMain(options) {
-  var bootstrapResult = await bootstrapManagedRuntime(options && options.pkgName);
+  var parsed = (options && options.parsed) || { force: false };
+  var bootstrapResult = await bootstrapManagedRuntime(options && options.pkgName, parsed);
   var launcherResult = null;
   var pathStatus = "already configured";
-  var pathChanged = false;
   try {
     launcherResult = launcher.ensureManagedCommandPath({
       binDir: managedBinDir(bootstrapResult.installRoot),
@@ -262,7 +304,6 @@ async function runMain(options) {
       shellPath: process.env.SHELL || "",
     });
     pathStatus = launcherResult && launcherResult.message ? launcherResult.message : "already configured";
-    pathChanged = !!(launcherResult && launcherResult.changed);
   } catch (error) {
     pathStatus = "manual action required";
     ui.error("Failed to persist the managed command path.");
@@ -270,26 +311,38 @@ async function runMain(options) {
     ui.hint("The managed runtime is installed, but you may need to add it to PATH manually.");
   }
 
-  // Show the completion panel when there is something actionable to tell the
-  // user: a real install happened, the bootstrap just changed the PATH, or the
-  // command isn't usable yet (PATH not configured / symlink missing) so the
-  // user still needs the "open a new terminal" / direct-binary guidance. Only a
-  // pure no-op — runtime current AND command already usable AND nothing changed
-  // — stays quiet, so repeated launches aren't noisy.
-  var commandReady = isCommandReady(bootstrapResult.installRoot);
-  if (bootstrapResult.installed || pathChanged || !commandReady) {
-    printInstallSummary({
-      installRoot: bootstrapResult.installRoot,
-      binaryPath: bootstrapResult.binaryPath,
-      version: bootstrapResult.version,
-      pathStatus: pathStatus,
-      args: process.argv.slice(2),
-    });
-  }
+  // Always show the completion panel. `npx @sesori/bridge` is an explicit,
+  // user-initiated request to set up the bridge, so it must never exit silently
+  // — even when the runtime is already current and the command is already on
+  // PATH, the user expects confirmation ("already installed") plus how to start
+  // it. The npm bootstrap never execs the managed binary, so the panel is the
+  // only feedback the user gets, and it always suggests the bare `sesori-bridge`
+  // command (the bootstrap forwards no arguments to the bridge).
+  printInstallSummary({
+    installRoot: bootstrapResult.installRoot,
+    binaryPath: bootstrapResult.binaryPath,
+    version: bootstrapResult.version,
+    pathStatus: pathStatus,
+  });
 }
 
 function main(options) {
-  runMain(options).catch(function(error) {
+  var parsed;
+  try {
+    parsed = parseArgs(process.argv.slice(2));
+  } catch (error) {
+    // Unknown option: show the error and usage on stderr, then exit non-zero.
+    ui.error(errorMessage(error));
+    printUsage(true);
+    process.exit(1);
+    return;
+  }
+  if (parsed.help) {
+    printUsage();
+    return;
+  }
+  var runOptions = Object.assign({}, options, { parsed: parsed });
+  runMain(runOptions).catch(function(error) {
     fail(errorMessage(error));
   });
 }

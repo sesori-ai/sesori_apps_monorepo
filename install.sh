@@ -928,7 +928,19 @@ print_completion() {
         on_path=true
     fi
 
-    # Boxed "Next steps" call-to-action, framed in brand blue.
+    # Boxed "Next steps" call-to-action, framed in brand blue. A runnable command
+    # must stay intact (copy/paste-able): if it fits a panel row we keep the boxed
+    # layout, otherwise we print the full, un-truncated command on its own line
+    # below the box rather than ellipsizing it.
+    local command="sesori-bridge"
+    local comment="# Start the bridge"
+    local gap="   "
+    local inner=$(( PANEL_WIDTH - 2 ))
+    local fits_in_box=true
+    if [ $(( ${#command} + ${#gap} + ${#comment} )) -gt "${inner}" ]; then
+        fits_in_box=false
+    fi
+
     panel_top "${C_BRAND}"
     panel_row "Next steps" "${C_BOLD}" "${C_BRAND}"
     panel_row "" "" "${C_BRAND}"
@@ -936,10 +948,19 @@ print_completion() {
         # "new terminal" is a hard requirement, so emphasize it rather than mute
         # the whole line — a faded instruction gets skipped.
         panel_emphasis_row "In a " "new terminal" " window, run:" "${C_BRAND}"
-        panel_row "" "" "${C_BRAND}"
+        if [ "${fits_in_box}" = true ]; then
+            panel_row "" "" "${C_BRAND}"
+        fi
     fi
-    panel_command_row "sesori-bridge" "# Start the bridge" "${C_BRAND}"
+    if [ "${fits_in_box}" = true ]; then
+        panel_command_row "${command}" "${comment}" "${C_BRAND}"
+    fi
     panel_bottom "${C_BRAND}"
+
+    if [ "${fits_in_box}" != true ]; then
+        printf '\n'
+        printf '    %s\n' "$(paint "${C_BRAND}${C_BOLD}" "${command}")"
+    fi
     printf '\n'
 }
 

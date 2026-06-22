@@ -734,7 +734,11 @@ cat "\$HOME/.zprofile"
       expect(script, contains(r'Sesori Bridge v$resolvedVersionLabel installed'));
       expect(script, contains("Write-PanelRow 'Next steps'"));
       expect(script, contains("Write-PanelEmphasisRow 'In a ' 'new terminal' ' window, run:'"));
-      expect(script, contains("Write-PanelCommandRow 'sesori-bridge' '# Start the bridge'"));
+      // The runnable command is kept intact: boxed when it fits, otherwise
+      // printed in full below the box (never ellipsized).
+      expect(script, contains(r"$nextCommand = 'sesori-bridge'"));
+      expect(script, contains(r'Write-PanelCommandRow $nextCommand $nextComment'));
+      expect(script, contains(r'if (-not $fitsInBox)'));
     });
 
     test('degrades gracefully: color/unicode detection and ASCII fallback', () {
