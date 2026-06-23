@@ -58,7 +58,20 @@ class OpenCodeRuntimeProvisionService {
     }
 
     // 2. Fall back to the managed runtime.
-    final PlatformTarget target = PlatformTarget.current();
+    final PlatformTarget target;
+    try {
+      target = PlatformTarget.current();
+    } on Object catch (error) {
+      // An unsupported/undetectable OS or CPU must degrade non-fatally, not
+      // crash startup with a raw error from platform detection.
+      Log.w("[opencode] could not determine the host platform target: $error");
+      yield ProvisionFailed(
+        message:
+            "Could not determine this machine's platform for the OpenCode runtime ($error). "
+            "Install OpenCode manually: https://opencode.ai/docs#install",
+      );
+      return;
+    }
     final OpenCodeRuntimeAsset? asset = _manifest.assetFor(target: target);
     if (asset == null) {
       yield ProvisionFailed(message: _unsupportedPlatformMessage(target: target, osVersion: osVersion, min: min));
@@ -82,10 +95,21 @@ class OpenCodeRuntimeProvisionService {
       binaryFileName: _manifest.binaryFileName,
       sha256: asset.sha256,
     )) {
-      Log.i("[opencode] managed OpenCode $bundled already installed");
-      yield ProvisionReady(binaryPath: binaryPath);
-      await _sweep(host: host, keepVersion: bundled.toString());
-      return;
+      // Confirm the cached binary still runs: a sentinel match proves the bytes
+      // were verified at install, but the binary could have since lost its
+      // executable bit or been corrupted. If it no longer runs, fall through and
+      // reinstall rather than emitting a ProvisionReady that start() can't spawn.
+      final SemanticVersion? managedVersion = await _versionValidator.detectVersion(
+        executable: binaryPath,
+        environment: host.environment,
+      );
+      if (managedVersion != null) {
+        Log.i("[opencode] managed OpenCode $bundled already installed");
+        yield ProvisionReady(binaryPath: binaryPath);
+        await _sweep(host: host, keepVersion: bundled.toString());
+        return;
+      }
+      Log.w("[opencode] cached managed runtime at '$binaryPath' is not runnable; reinstalling");
     }
 
     try {
@@ -121,10 +145,17 @@ class OpenCodeRuntimeProvisionService {
   }
 
   Future<void> _sweep({required PluginHost host, required String keepVersion}) async {
-    await _cleaner.sweep(
-      managedDir: p.join(host.stateDirectory, managedDirName),
-      keepVersion: keepVersion,
-    );
+    // Cleanup runs after the runtime is already healthy (often after a terminal
+    // ProvisionReady), so a filesystem error here must never turn a successful
+    // provision into a startup failure.
+    try {
+      await _cleaner.sweep(
+        managedDir: p.join(host.stateDirectory, managedDirName),
+        keepVersion: keepVersion,
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("[opencode] failed to sweep superseded managed runtimes", error, stackTrace);
+    }
   }
 
   String _unsupportedPlatformMessage({

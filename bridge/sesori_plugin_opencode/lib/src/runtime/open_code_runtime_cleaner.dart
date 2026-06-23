@@ -21,7 +21,17 @@ class OpenCodeRuntimeCleaner {
       return;
     }
 
-    for (final FileSystemEntity entity in dir.listSync(followLinks: false)) {
+    final List<FileSystemEntity> entries;
+    try {
+      entries = dir.listSync(followLinks: false);
+    } on Object catch (error) {
+      // Best-effort cleanup: a permission/IO error listing the managed dir must
+      // not propagate (this runs after the runtime is already healthy).
+      Log.w("[opencode] failed to list managed runtime dir '$managedDir': $error");
+      return;
+    }
+
+    for (final FileSystemEntity entity in entries) {
       if (entity is! Directory) {
         continue;
       }

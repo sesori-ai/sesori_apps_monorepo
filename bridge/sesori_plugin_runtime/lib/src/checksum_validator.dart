@@ -1,6 +1,7 @@
 import "dart:io";
 
 import "package:crypto/crypto.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 /// Validates a downloaded file against an expected SHA-256 digest.
 ///
@@ -9,8 +10,9 @@ import "package:crypto/crypto.dart";
 /// confirm a payload before it is unpacked or placed.
 class ChecksumValidator {
   /// Whether [filePath] hashes to [expectedHash] (case-insensitive hex).
-  /// Returns `false` when the file is missing rather than throwing, so a caller
-  /// can treat a vanished download as a failed verification.
+  /// Returns `false` (rather than throwing) when the file is missing or cannot
+  /// be read, so a caller can treat a vanished/unreadable download as a failed
+  /// verification and stay fail-soft.
   Future<bool> verify({
     required String filePath,
     required String expectedHash,
@@ -20,7 +22,15 @@ class ChecksumValidator {
       return false;
     }
 
-    final computedHash = await computeSha256(filePath: filePath);
+    final String computedHash;
+    try {
+      computedHash = await computeSha256(filePath: filePath);
+    } on Object catch (error) {
+      // TOCTOU / read failure: the file vanished or became unreadable after the
+      // existence check. Treat as a failed verification rather than aborting.
+      Log.w("ChecksumValidator: failed to read '$filePath' for verification: $error");
+      return false;
+    }
     return computedHash.toLowerCase() == expectedHash.toLowerCase();
   }
 

@@ -46,6 +46,11 @@ void main() {
       expect(version?.toString(), equals("1.2.3"));
     });
 
+    test("strips a leading 'v' from the version token", () async {
+      final version = await detect(_FakeCommandExecutor(result: const CommandResult(exitCode: 0, stdout: "v1.17.9\n", stderr: "")));
+      expect(version?.toString(), equals("1.17.9"));
+    });
+
     test("runs '<bin> --version'", () async {
       final executor = _FakeCommandExecutor(result: const CommandResult(exitCode: 0, stdout: "1.0.0", stderr: ""));
       await detect(executor);

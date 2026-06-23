@@ -82,7 +82,23 @@ class BinaryDownloadClient {
   }) async* {
     final Uri uri = Uri.parse(url);
     final http.Request request = http.Request("GET", uri);
-    final http.StreamedResponse response = await _httpClient.send(request).timeout(_requestTimeout);
+
+    // Connection phase: classify transport failures into a DownloadException so
+    // a raw SocketException/TimeoutException can never escape the contract.
+    final http.StreamedResponse response;
+    try {
+      response = await _httpClient.send(request).timeout(_requestTimeout);
+    } on TimeoutException catch (error) {
+      throw DownloadException(kind: DownloadFailureKind.network, message: "Download connection timed out: $error");
+    } on SocketException catch (error) {
+      throw DownloadException(kind: DownloadFailureKind.network, message: "Download connection failed: $error");
+    } on HttpException catch (error) {
+      throw DownloadException(kind: DownloadFailureKind.network, message: "Download HTTP error: $error");
+    } on http.ClientException catch (error) {
+      throw DownloadException(kind: DownloadFailureKind.network, message: "Download client error: $error");
+    } on Object catch (error) {
+      throw DownloadException(kind: DownloadFailureKind.failed, message: "Download failed to start: $error");
+    }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw DownloadException(
@@ -93,9 +109,17 @@ class BinaryDownloadClient {
     }
 
     final int? totalBytes = response.contentLength;
-    final File destinationFile = File(destinationPath);
-    final IOSink sink = destinationFile.openWrite();
+    // Opening the destination is part of the contract too: a filesystem error
+    // here is a failed download, not a raw FileSystemException.
+    final IOSink sink;
+    try {
+      sink = File(destinationPath).openWrite();
+    } on Object catch (error) {
+      throw DownloadException(kind: DownloadFailureKind.failed, message: "Could not open download destination: $error");
+    }
+
     var receivedBytes = 0;
+    var failing = false;
     try {
       await for (final List<int> chunk in response.stream.timeout(_streamInactivityTimeout)) {
         sink.add(chunk);
@@ -103,29 +127,48 @@ class BinaryDownloadClient {
         yield DownloadProgress(receivedBytes: receivedBytes, totalBytes: totalBytes);
       }
     } on TimeoutException catch (error) {
+      failing = true;
+      await _closeQuietly(sink);
       throw DownloadException(kind: DownloadFailureKind.network, message: "Download stream stalled: $error");
     } on SocketException catch (error) {
+      failing = true;
+      await _closeQuietly(sink);
       throw DownloadException(kind: DownloadFailureKind.network, message: "Download connection failed: $error");
     } on HttpException catch (error) {
+      failing = true;
+      await _closeQuietly(sink);
       throw DownloadException(kind: DownloadFailureKind.network, message: "Download HTTP error: $error");
     } on http.ClientException catch (error) {
       // A connection reset/drop while reading the body (after a 2xx) is the same
       // transient outage class as a pre-response failure — keep it retryable.
+      failing = true;
+      await _closeQuietly(sink);
       throw DownloadException(kind: DownloadFailureKind.network, message: "Download connection dropped: $error");
-    } on DownloadException {
-      rethrow;
     } on Object catch (error) {
+      failing = true;
+      await _closeQuietly(sink);
       throw DownloadException(kind: DownloadFailureKind.failed, message: "Download failed: $error");
-    } finally {
-      // A failed body stream leaves the sink in an errored/closed state, so
-      // closing here can throw "File closed". Guard it so a close failure never
-      // masks the classification above (the partial file is cleaned up by the
-      // caller on a non-success result).
+    }
+
+    // Success path: the close must succeed too, otherwise the on-disk file may
+    // be truncated (buffered writes lost to a disk-full/quota error) and a
+    // caller would treat an incomplete file as a completed download.
+    if (!failing) {
       try {
         await sink.close();
       } on Object catch (error) {
-        Log.d("BinaryDownloadClient: ignoring sink close failure during teardown: $error");
+        throw DownloadException(kind: DownloadFailureKind.failed, message: "Could not finalize download: $error");
       }
+    }
+  }
+
+  /// Closes [sink] while an error is already being thrown, so a teardown failure
+  /// never masks the download error that triggered it.
+  Future<void> _closeQuietly(IOSink sink) async {
+    try {
+      await sink.close();
+    } on Object catch (error) {
+      Log.d("BinaryDownloadClient: ignoring sink close failure during teardown: $error");
     }
   }
 

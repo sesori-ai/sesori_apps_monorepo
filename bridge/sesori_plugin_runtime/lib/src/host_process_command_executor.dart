@@ -70,8 +70,22 @@ class HostProcessCommandExecutor implements CommandExecutor {
       }
       rethrow;
     } finally {
-      await stdoutSub.cancel();
-      await stderrSub.cancel();
+      // Isolate each cancel: a cancel failure must neither mask the in-flight
+      // command result/error nor skip the other subscription's teardown.
+      await _cancelQuietly(stdoutSub, stream: "stdout", executable: executable);
+      await _cancelQuietly(stderrSub, stream: "stderr", executable: executable);
+    }
+  }
+
+  Future<void> _cancelQuietly(
+    StreamSubscription<void> subscription, {
+    required String stream,
+    required String executable,
+  }) async {
+    try {
+      await subscription.cancel();
+    } on Object catch (error) {
+      Log.d("HostProcessCommandExecutor: ignoring '$executable' $stream cancel failure: $error");
     }
   }
 }

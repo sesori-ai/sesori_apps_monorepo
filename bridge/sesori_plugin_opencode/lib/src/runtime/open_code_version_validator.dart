@@ -44,10 +44,14 @@ class OpenCodeVersionValidator {
   }
 
   /// Extracts the first whitespace-separated token that parses as a semantic
-  /// version (OpenCode prints a bare `X.Y.Z`, but tolerate a prefixed form).
+  /// version. OpenCode prints a bare `X.Y.Z`, but a leading `v`/`V` (e.g.
+  /// `v1.17.9`) is stripped so a prefixed build is not misdetected as
+  /// unsupported.
   SemanticVersion? _parseVersion(String output) {
-    for (final token in output.split(RegExp(r"\s+"))) {
-      final version = SemanticVersion.tryParse(value: token.trim());
+    for (final rawToken in output.split(RegExp(r"\s+"))) {
+      final token = rawToken.trim();
+      final candidate = (token.startsWith("v") || token.startsWith("V")) ? token.substring(1) : token;
+      final version = SemanticVersion.tryParse(value: candidate);
       if (version != null) {
         return version;
       }

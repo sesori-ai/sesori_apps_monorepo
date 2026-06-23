@@ -61,6 +61,16 @@ void main() {
     expect(progress.last.fraction, equals(1.0));
   });
 
+  test("a connection-phase failure is wrapped as a network DownloadException", () async {
+    final client = _SendErrorClient(const SocketException("connection refused"));
+    await expectLater(
+      BinaryDownloadClient(httpClient: client)
+          .download(url: "https://example.test/asset.tar.gz", destinationPath: "/tmp/should-not-be-written")
+          .drain<void>(),
+      throwsA(isA<DownloadException>().having((e) => e.kind, "kind", DownloadFailureKind.network)),
+    );
+  });
+
   test("a ClientException while streaming the body -> network failure (retryable)", () async {
     final tempDir = await Directory.systemTemp.createTemp("binary-download-client");
     addTearDown(() async {
@@ -96,5 +106,18 @@ class _StreamErrorClient extends http.BaseClient {
     controller.addError(_streamError);
     unawaited(controller.close());
     return http.StreamedResponse(controller.stream, 200);
+  }
+}
+
+/// Throws from `send`, simulating a connection-phase transport failure (before
+/// any response headers arrive).
+class _SendErrorClient extends http.BaseClient {
+  _SendErrorClient(this._sendError);
+
+  final Object _sendError;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    throw _sendError;
   }
 }

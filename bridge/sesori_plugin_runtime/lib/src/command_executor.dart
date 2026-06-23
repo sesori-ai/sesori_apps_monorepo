@@ -1,3 +1,5 @@
+import "package:meta/meta.dart";
+
 /// Runs a child process to completion and returns its captured output.
 ///
 /// This is the run-to-completion seam used by runtime-acquisition primitives
@@ -20,6 +22,7 @@ abstract class CommandExecutor {
 }
 
 /// The captured outcome of a [CommandExecutor.run] call.
+@immutable
 class CommandResult {
   const CommandResult({
     required this.exitCode,
@@ -30,4 +33,17 @@ class CommandResult {
   final int exitCode;
   final String stdout;
   final String stderr;
+
+  @override
+  bool operator ==(Object other) =>
+      other is CommandResult &&
+      other.exitCode == exitCode &&
+      other.stdout == stdout &&
+      other.stderr == stderr;
+
+  @override
+  int get hashCode => Object.hash(exitCode, stdout, stderr);
+
+  @override
+  String toString() => "CommandResult(exitCode: $exitCode, stdout: $stdout, stderr: $stderr)";
 }
