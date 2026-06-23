@@ -491,7 +491,7 @@ class UpdateCommand extends cli.Command<void> {
         errorStream: stderr,
         environment: environment,
       );
-      for (final line in formatter.format(outcome)) {
+      for (final line in formatter.format(outcome: outcome)) {
         if (line.isError) {
           stderr.writeln(line.text);
         } else {

@@ -47,7 +47,7 @@ class UpdateCommandFormatter {
   static const String _dim = '\x1B[2m';
   static const String _bold = '\x1B[1m';
 
-  List<RenderedLine> format(ExplicitUpdateOutcome outcome) {
+  List<RenderedLine> format({required ExplicitUpdateOutcome outcome}) {
     switch (outcome) {
       case ExplicitUpdateApplied():
         return _applied(outcome);

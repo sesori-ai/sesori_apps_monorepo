@@ -25,7 +25,7 @@ void main() {
   group('UpdateCommandFormatter', () {
     test('renders a plain ASCII upgrade with no color', () {
       final lines = _formatter().format(
-        const ExplicitUpdateApplied(
+        outcome: const ExplicitUpdateApplied(
           fromVersion: '1.0.0',
           toVersion: '2.0.0',
           kind: UpdateAppliedKind.upgrade,
@@ -43,7 +43,7 @@ void main() {
 
     test('uses unicode glyphs and ANSI when supported', () {
       final lines = _formatter(color: true, unicode: true).format(
-        const ExplicitUpdateApplied(
+        outcome: const ExplicitUpdateApplied(
           fromVersion: '1.0.0',
           toVersion: '2.0.0',
           kind: UpdateAppliedKind.upgrade,
@@ -58,7 +58,7 @@ void main() {
 
     test('reinstall and downgrade headlines read naturally', () {
       final reinstall = _formatter().format(
-        const ExplicitUpdateApplied(
+        outcome: const ExplicitUpdateApplied(
           fromVersion: '2.0.0',
           toVersion: '2.0.0',
           kind: UpdateAppliedKind.reinstall,
@@ -68,7 +68,7 @@ void main() {
       expect(reinstall.first.text, '[OK] Reinstalled v2.0.0 (stable).');
 
       final downgrade = _formatter().format(
-        const ExplicitUpdateApplied(
+        outcome: const ExplicitUpdateApplied(
           fromVersion: '2.0.0-internal.3',
           toVersion: '1.5.0',
           kind: UpdateAppliedKind.downgrade,
@@ -80,7 +80,7 @@ void main() {
 
     test('already-latest is a single stdout line', () {
       final lines = _formatter().format(
-        const ExplicitUpdateAlreadyLatest(version: '2.0.0', track: ReleaseTrack.stable),
+        outcome: const ExplicitUpdateAlreadyLatest(version: '2.0.0', track: ReleaseTrack.stable),
       );
 
       expect(lines, hasLength(1));
@@ -90,7 +90,7 @@ void main() {
 
     test('track mismatch is informational on stdout with a force hint', () {
       final lines = _formatter().format(
-        const ExplicitUpdateTrackMismatch(
+        outcome: const ExplicitUpdateTrackMismatch(
           currentVersion: '2.0.0-internal.3',
           latestVersion: '1.5.0',
           track: ReleaseTrack.stable,
@@ -104,20 +104,22 @@ void main() {
 
     test('failures and refusals go to stderr', () {
       expect(
-        _formatter().format(const ExplicitUpdateNotManaged(executablePath: '/x')).first.isError,
+        _formatter().format(outcome: const ExplicitUpdateNotManaged(executablePath: '/x')).first.isError,
         isTrue,
       );
       expect(
-        _formatter().format(const ExplicitUpdateNpmDirect(message: 'use npx @sesori/bridge')).first.isError,
+        _formatter().format(outcome: const ExplicitUpdateNpmDirect(message: 'use npx @sesori/bridge')).first.isError,
         isTrue,
       );
-      expect(_formatter().format(const ExplicitUpdateLockBusy()).first.isError, isTrue);
+      expect(_formatter().format(outcome: const ExplicitUpdateLockBusy()).first.isError, isTrue);
       expect(
-        _formatter().format(const ExplicitUpdateNoEligibleRelease(track: ReleaseTrack.stable)).first.isError,
+        _formatter().format(outcome: const ExplicitUpdateNoEligibleRelease(track: ReleaseTrack.stable)).first.isError,
         isTrue,
       );
 
-      final failed = _formatter().format(const ExplicitUpdateFailed(reason: 'boom', logPath: '/tmp/log'));
+      final failed = _formatter().format(
+        outcome: const ExplicitUpdateFailed(reason: 'boom', logPath: '/tmp/log'),
+      );
       expect(failed.every((line) => line.isError), isTrue);
       expect(failed.any((line) => line.text.contains('boom')), isTrue);
       expect(failed.any((line) => line.text.contains('/tmp/log')), isTrue);
@@ -131,7 +133,7 @@ void main() {
       );
 
       final lines = formatter.format(
-        const ExplicitUpdateAlreadyLatest(version: '2.0.0', track: ReleaseTrack.stable),
+        outcome: const ExplicitUpdateAlreadyLatest(version: '2.0.0', track: ReleaseTrack.stable),
       );
 
       expect(lines.first.text, isNot(contains('\x1B')));
