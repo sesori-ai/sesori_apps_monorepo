@@ -58,7 +58,7 @@ iOS and macOS pull native dependencies (Firebase, Google SDKs, leveldb, gRPC, et
 
 These are the two files Phase 5 refreshes and commits. The sibling `Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved` copies are NOT touched by `flutter build` (they sit stale/divergent from the project copies) — leave them alone; do not hand-edit or force-sync them.
 
-These lockfiles change on most weekly runs because native SDK patch releases land continuously, **independent of pubspec.yaml**. They MUST be re-resolved every run (Phase 5) via `flutter build … --config-only` — NOT `xcodebuild -resolvePackageDependencies`, which honors the existing pins and silently no-ops, leaving native deps stale. Skipping (or using the wrong resolve command) is a silent, recurring miss — e.g. one past run bumped firebase-ios-sdk but left GoogleUtilities/nanopb/promises stale; another run's bare `xcodebuild` resolve reported "no changes" while a `flutter build --config-only` picked up GTMSessionFetcher 4.5.0→5.3.0, GoogleUtilities 8.1.0→8.1.1, nanopb, and Promises.
+These lockfiles change on most weekly runs because native SDK patch releases land continuously, **independent of pubspec.yaml**. They MUST be re-resolved every run (Phase 5) via `flutter build --config-only` — NOT `xcodebuild -resolvePackageDependencies`, which honors the existing pins and silently no-ops, leaving native deps stale. Skipping (or using the wrong resolve command) is a silent, recurring miss — e.g. one past run bumped firebase-ios-sdk but left GoogleUtilities/nanopb/promises stale; another run's bare `xcodebuild` resolve reported "no changes" while a `flutter build --config-only` picked up GTMSessionFetcher 4.5.0→5.3.0, GoogleUtilities 8.1.0→8.1.1, nanopb, and Promises.
 </swiftpm_files>
 </project_structure>
 
@@ -336,7 +336,7 @@ If a generator dependency is later added to a currently-skipped package, update 
 
 These lockfiles pin the native Firebase / Google / gRPC / leveldb versions pulled in transitively by the Flutter native plugins. They drift independently of pubspec.yaml (new native patch releases land continuously), so they MUST be re-resolved every run — skipping this leaves native deps stale even when Dart deps are current.
 
-**Use `flutter build … --config-only`, NOT `xcodebuild -resolvePackageDependencies`.** `flutter build --config-only` runs the full iOS/macOS build *configuration*: it regenerates the `FlutterGeneratedPluginSwiftPackage` from the (already-bumped, post-Phase-3) plugin versions AND re-resolves SwiftPM at the project level, writing the newest versions allowed by those constraints into the build-authoritative `Runner.xcodeproj/project.xcworkspace/.../Package.resolved`. A bare `xcodebuild -resolvePackageDependencies` honors the existing pins and silently no-ops — it will NOT pick up new native patch releases (this was a real recurring miss). `--config-only` stops after configuration (no compile); `--no-codesign` avoids signing on the iOS release config.
+**Use `flutter build --config-only`, NOT `xcodebuild -resolvePackageDependencies`.** `flutter build --config-only` runs the full iOS/macOS build *configuration*: it regenerates the `FlutterGeneratedPluginSwiftPackage` from the (already-bumped, post-Phase-3) plugin versions AND re-resolves SwiftPM at the project level, writing the newest versions allowed by those constraints into the build-authoritative `Runner.xcodeproj/project.xcworkspace/.../Package.resolved`. A bare `xcodebuild -resolvePackageDependencies` honors the existing pins and silently no-ops — it will NOT pick up new native patch releases (this was a real recurring miss). `--config-only` stops after configuration (no compile); `--no-codesign` avoids signing on the iOS release config.
 
 ```bash
 set -e
@@ -361,7 +361,7 @@ This updates the two build-authoritative `Runner.xcodeproj/project.xcworkspace/.
 git diff --stat -- '*Package.resolved'
 ```
 
-If there are NO changes, confirm that's genuine (the native graph really was current) and not a resolve that silently failed — re-check the `flutter build … --config-only` exit codes from 5.1. A `git diff` showing nothing while a resolve "succeeded" is the classic symptom of the wrong resolve command: make sure 5.1 used `flutter build`, not `xcodebuild -resolvePackageDependencies`.
+If there are NO changes, confirm that's genuine (the native graph really was current) and not a resolve that silently failed — re-check the `flutter build --config-only` exit codes from 5.1. A `git diff` showing nothing while a resolve "succeeded" is the classic symptom of the wrong resolve command: make sure 5.1 used `flutter build`, not `xcodebuild -resolvePackageDependencies`.
 </step>
 
 <step name="5.3">Check the latest fastlane version:
@@ -455,7 +455,7 @@ Report this list at the end of the update process for visibility.
 - Version constraints bumped to latest resolvable versions in every pubspec EXCEPT `shared/no_slop_linter/pubspec.yaml`
 - All three workspaces (shared, bridge, mobile) are individually accounted for: each either has bumped constraints or provably had no upgradable deps (Phase 3.4)
 - All pubspec.lock files regenerated (workspace roots + 2 standalone packages = 4 lockfiles)
-- iOS + macOS SwiftPM `Package.resolved` re-resolved via `flutter build … --config-only` (the 2 authoritative `Runner.xcodeproj/project.xcworkspace` lockfiles), or recorded as deferred if no Xcode toolchain
+- iOS + macOS SwiftPM `Package.resolved` re-resolved via `flutter build --config-only` (the 2 authoritative `Runner.xcodeproj/project.xcworkspace` lockfiles), or recorded as deferred if no Xcode toolchain
 - `(cd shared && make analyze)`, `(cd bridge && make analyze)`, `(cd mobile && make analyze)` all pass
 - `(cd shared && make test)`, `(cd bridge && make test)`, `(cd mobile && make test)` all pass
 - `(cd shared && make codegen)`, `(cd bridge && make codegen)`, `(cd mobile && make codegen)` all complete cleanly
