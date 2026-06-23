@@ -63,6 +63,7 @@ class _FakeUpdateLock implements UpdateLock {
     required Future<T> Function() onLockAcquired,
     required Future<T> Function(LockAcquireResult result) onLockRejected,
     required bool Function(T value) shouldReleaseLock,
+    Duration? staleLockMaxAge,
   }) {
     if (outcome == LockAcquireResult.acquired) {
       return onLockAcquired();

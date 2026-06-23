@@ -38,6 +38,16 @@ act as follows, addressing everything in the report in one batch:
 | Approved + CI passing + 0 unresolved threads | Nothing to fix — summarize the PR state to the user. |
 | `— MERGED` / `— CLOSED` | The monitor already stopped itself. Nothing to do. |
 
+> **Owner-account comments are NOT your own replies.** The agent pushes commits
+> and posts review replies using the **same GitHub account as the human owner**,
+> so a report that lists new comments from that account (e.g. "1 new: 1
+> &lt;owner&gt;") may be the **human giving you an instruction**, not an echo of
+> your own reply. Agent replies always start with `[Sesori reply]` (see the
+> `address-pr-comments` skill). Treat any owner-account comment **without** that
+> prefix as a human instruction — fetch it and act on it (including when it
+> overrides a decision you already made). Never skip a reported owner-account
+> comment by assuming you wrote it.
+
 ## After handling a report — no manual flush needed
 
 A delivered `[PR Monitor]` report has **already advanced** the "new since last flush"

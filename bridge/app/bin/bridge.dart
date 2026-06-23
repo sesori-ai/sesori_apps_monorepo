@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:args/args.dart' show ArgParserException;
 import 'package:args/command_runner.dart' as cli;
+import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
 import 'package:sesori_bridge/src/api/default_editor_api.dart';
@@ -30,7 +31,31 @@ import 'package:sesori_bridge/src/server/repositories/terminal_prompt_repository
 import 'package:sesori_bridge/src/server/services/bridge_instance_service.dart';
 import 'package:sesori_bridge/src/services/bridge_config_service.dart';
 import 'package:sesori_bridge/src/services/sleep_prevention_service.dart';
+import 'package:sesori_bridge/src/updater/api/archive_extractor_api.dart';
+import 'package:sesori_bridge/src/updater/api/checksum_manifest_api.dart';
+import 'package:sesori_bridge/src/updater/api/checksum_verifier_api.dart';
+import 'package:sesori_bridge/src/updater/api/github_releases_api.dart';
+import 'package:sesori_bridge/src/updater/api/managed_runtime_manifest_api.dart';
+import 'package:sesori_bridge/src/updater/api/platform_update_api.dart';
+import 'package:sesori_bridge/src/updater/api/update_attempt_api.dart';
+import 'package:sesori_bridge/src/updater/api/update_cache_api.dart';
+import 'package:sesori_bridge/src/updater/api/update_download_api.dart';
+import 'package:sesori_bridge/src/updater/api/update_log_api.dart';
+import 'package:sesori_bridge/src/updater/formatters/update_command_formatter.dart';
+import 'package:sesori_bridge/src/updater/foundation/filesystem_cleaner.dart';
 import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
+import 'package:sesori_bridge/src/updater/foundation/update_lock.dart';
+import 'package:sesori_bridge/src/updater/models/distribution_target.dart';
+import 'package:sesori_bridge/src/updater/models/explicit_update_outcome.dart';
+import 'package:sesori_bridge/src/updater/repositories/release_repository.dart';
+import 'package:sesori_bridge/src/updater/repositories/update_artifact_repository.dart';
+import 'package:sesori_bridge/src/updater/repositories/update_attempt_repository.dart';
+import 'package:sesori_bridge/src/updater/repositories/update_installation_repository.dart';
+import 'package:sesori_bridge/src/updater/repositories/update_log_repository.dart';
+import 'package:sesori_bridge/src/updater/services/managed_runtime_path_service.dart';
+import 'package:sesori_bridge/src/updater/services/manual_update_service.dart';
+import 'package:sesori_bridge/src/updater/services/update_apply_service.dart';
+import 'package:sesori_bridge/src/updater/services/update_install_service.dart';
 import 'package:sesori_bridge/src/version.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart'
     show BridgePluginDescriptor, Console, Log, LogLevel, PluginConfig, PluginConfigException, ProcessUser, ServerClock;
@@ -369,6 +394,142 @@ class ConfigTrackCommand extends cli.Command<void> {
   }
 }
 
+class UpdateCommand extends cli.Command<void> {
+  @override
+  final name = 'update';
+
+  @override
+  final description = 'Update the bridge to the latest release on your track, then exit';
+
+  UpdateCommand() {
+    argParser.addFlag(
+      'force',
+      abbr: 'f',
+      negatable: false,
+      help:
+          'Reinstall the latest release for your track even if you are already on it, '
+          'and switch from an internal build back to stable when the track is stable.',
+    );
+  }
+
+  @override
+  Future<void> run() async {
+    final bool force = argResults!['force'] as bool;
+    final environment = Platform.environment;
+    final managedRuntimePaths = const ManagedRuntimePathService().currentPaths(environment: environment);
+    final installRoot = managedRuntimePaths.installRoot;
+    const clock = Clock();
+    const filesystemCleaner = FilesystemCleaner();
+    final releaseTrack = await _resolveReleaseTrack();
+
+    // Opportunistically authenticate GitHub release checks; the first non-empty
+    // of GITHUB_TOKEN / GH_TOKEN lifts the 60/hour anonymous limit to 5000/hour.
+    final githubToken =
+        [
+              environment['GITHUB_TOKEN'],
+              environment['GH_TOKEN'],
+            ]
+            .map((token) => token?.trim())
+            .firstWhere(
+              (token) => token != null && token.isNotEmpty,
+              orElse: () => null,
+            );
+
+    final httpClient = http.Client();
+    try {
+      final processRunner = ProcessRunner();
+      final logRepository = UpdateLogRepository(
+        api: UpdateLogApi(installRoot: installRoot, clock: clock),
+      );
+      final attemptRepository = UpdateAttemptRepository(api: UpdateAttemptApi(installRoot: installRoot));
+      final installationRepository = UpdateInstallationRepository(
+        platformUpdateApi: PlatformUpdateApi.forPlatform(processRunner: processRunner),
+        manifestApi: const ManagedRuntimeManifestApi(),
+      );
+      final updateLock = UpdateLock(currentPid: pid, processRunner: processRunner, clock: clock);
+
+      final manualUpdateService = ManualUpdateService(
+        releaseRepository: ReleaseRepository(
+          api: GitHubReleasesApi(httpClient: httpClient, authToken: githubToken),
+          cache: UpdateCacheApi(cacheDirectory: managedRuntimePaths.cacheDirectory, clock: clock),
+          currentVersion: appVersion,
+          target: currentDistributionTarget(),
+          track: releaseTrack,
+        ),
+        updateInstallService: UpdateInstallService(
+          updateArtifactRepository: UpdateArtifactRepository(
+            downloadApi: UpdateDownloadApi(httpClient: httpClient),
+            checksumManifestApi: ChecksumManifestApi(httpClient: httpClient),
+            checksumVerifierApi: ChecksumVerifierApi(),
+            archiveExtractorApi: ArchiveExtractorApi(processRunner: processRunner),
+          ),
+          filesystemCleaner: filesystemCleaner,
+          // Stage into a per-process workspace so a manual update can't clobber
+          // (or be clobbered by) a resident bridge's background staging.
+          workspaceLabel: 'manual.$pid',
+        ),
+        updateApplyService: UpdateApplyService(
+          installationRepository: installationRepository,
+          attemptRepository: attemptRepository,
+          logRepository: logRepository,
+          updateLock: updateLock,
+          filesystemCleaner: filesystemCleaner,
+          clock: clock,
+          currentVersion: appVersion,
+          installRoot: installRoot,
+        ),
+        track: releaseTrack,
+        installRoot: installRoot,
+        executablePath: Platform.resolvedExecutable,
+        managedExecutablePath: managedRuntimePaths.binaryPath,
+      );
+
+      final outcome = await manualUpdateService.runUpdate(force: force);
+
+      final formatter = UpdateCommandFormatter(
+        outStream: stdout,
+        errorStream: stderr,
+        environment: environment,
+      );
+      for (final line in formatter.format(outcome: outcome)) {
+        if (line.isError) {
+          stderr.writeln(line.text);
+        } else {
+          stdout.writeln(line.text);
+        }
+      }
+      exitCode = _exitCodeFor(outcome);
+    } finally {
+      httpClient.close();
+    }
+  }
+
+  Future<ReleaseTrack> _resolveReleaseTrack() async {
+    try {
+      final settings = await BridgeSettingsRepository(api: BridgeSettingsApi()).loadSettings();
+      return settings.releaseTrack;
+    } on Object catch (error) {
+      Log.w('Failed to resolve release track; defaulting to stable: $error');
+      return ReleaseTrack.stable;
+    }
+  }
+
+  int _exitCodeFor(ExplicitUpdateOutcome outcome) {
+    switch (outcome) {
+      case ExplicitUpdateApplied():
+      case ExplicitUpdateAlreadyLatest():
+      case ExplicitUpdateTrackMismatch():
+        return 0;
+      case ExplicitUpdateNoEligibleRelease():
+      case ExplicitUpdateNotManaged():
+      case ExplicitUpdateNpmDirect():
+      case ExplicitUpdateLockBusy():
+      case ExplicitUpdateFailed():
+        return 1;
+    }
+  }
+}
+
 /// Best-effort `enabledPlugins` read for plugin selection. Selection also
 /// runs for `--help` and `logout`, so it must never crash on (or create)
 /// a missing/broken config — failures resolve to "unset". Diagnostics go
@@ -411,7 +572,8 @@ Future<void> main(List<String> args) async {
   final runner = cli.CommandRunner<void>('sesori-bridge', 'Sesori Bridge CLI')
     ..addCommand(RunCommand(selectedPlugin: selectedPlugin, selectionError: pluginSelectionError))
     ..addCommand(LogoutCommand())
-    ..addCommand(ConfigCommand());
+    ..addCommand(ConfigCommand())
+    ..addCommand(UpdateCommand());
 
   try {
     await runner.run(effectiveCliArgs(args));

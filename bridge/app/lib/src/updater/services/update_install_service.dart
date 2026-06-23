@@ -13,25 +13,37 @@ import '../repositories/update_artifact_repository.dart';
 /// Stages an update payload: download → checksum-verify → extract into a staging
 /// directory. It performs no swap and makes no apply decisions — on success it
 /// returns the [UpdateInstallResult.stagingPath] for the apply step to consume.
+///
+/// The archive + staging paths live under the install root (they must share a
+/// filesystem with it so the apply step can rename rather than copy). Pass a
+/// `null` [workspaceLabel] to use the shared, fixed paths. A separate,
+/// concurrent stager — e.g. an explicit `update` process running while a
+/// resident bridge's background updater is mid-stage — passes a distinct
+/// [workspaceLabel] so the two do not clobber each other's archive/staging on
+/// the way to the lock-guarded swap.
 class UpdateInstallService {
   UpdateInstallService({
     required UpdateArtifactRepository updateArtifactRepository,
     required FilesystemCleaner filesystemCleaner,
+    required String? workspaceLabel,
   }) : _updateArtifactRepository = updateArtifactRepository,
-       _filesystemCleaner = filesystemCleaner;
+       _filesystemCleaner = filesystemCleaner,
+       _workspaceLabel = workspaceLabel;
 
   final UpdateArtifactRepository _updateArtifactRepository;
   final FilesystemCleaner _filesystemCleaner;
+  final String? _workspaceLabel;
 
   Future<UpdateInstallResult> stageUpdate({
     required ReleaseInfo release,
     required String installRoot,
   }) async {
+    final String suffix = _workspaceLabel == null ? '' : '.$_workspaceLabel';
     final String archivePath = p.join(
       installRoot,
-      Platform.isWindows ? '.sesori-bridge-update.zip' : '.sesori-bridge-update.tar.gz',
+      Platform.isWindows ? '.sesori-bridge-update$suffix.zip' : '.sesori-bridge-update$suffix.tar.gz',
     );
-    final String stagingPath = p.join(installRoot, '.sesori-bridge-staging');
+    final String stagingPath = p.join(installRoot, '.sesori-bridge-staging$suffix');
     var staged = false;
 
     try {

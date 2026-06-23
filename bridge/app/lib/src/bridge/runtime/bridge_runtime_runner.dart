@@ -578,13 +578,12 @@ class BridgeRuntimeRunner {
       platformUpdateApi: PlatformUpdateApi.forPlatform(processRunner: processRunner),
       manifestApi: const ManagedRuntimeManifestApi(),
     );
-    final updateLock = UpdateLock(currentPid: io.pid, processRunner: processRunner);
+    final updateLock = UpdateLock(currentPid: io.pid, processRunner: processRunner, clock: clock);
     final updateApplyService = UpdateApplyService(
       installationRepository: installationRepository,
       attemptRepository: attemptRepository,
       logRepository: logRepository,
       updateLock: updateLock,
-      messageFormatter: messageFormatter,
       filesystemCleaner: filesystemCleaner,
       clock: clock,
       currentVersion: appVersion,
@@ -610,6 +609,8 @@ class BridgeRuntimeRunner {
           archiveExtractorApi: ArchiveExtractorApi(processRunner: processRunner),
         ),
         filesystemCleaner: filesystemCleaner,
+        // The background updater uses the shared, fixed staging paths.
+        workspaceLabel: null,
       ),
       updateApplyService: updateApplyService,
       logRepository: logRepository,

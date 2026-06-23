@@ -810,6 +810,106 @@ void main() {
         expect(httpCallCount, equals(1), reason: 'a stable cache must not satisfy an internal-track check');
       });
     });
+
+    // -----------------------------------------------------------------------
+    group('resolveUpdate', () {
+      test('returns the latest eligible release and current eligibility', () async {
+        final repository = _makeRepository(
+          httpClient: _mockOk(
+            body: [
+              _releaseJson(version: '0.4.0'),
+              _releaseJson(version: '0.3.1'),
+            ],
+          ),
+          currentVersion: '0.2.0',
+        );
+
+        final resolution = await repository.resolveUpdate();
+
+        expect(resolution.latestEligible?.version, equals('0.4.0'));
+        expect(resolution.latestVersion?.toString(), equals('0.4.0'));
+        expect(resolution.currentVersion.toString(), equals('0.2.0'));
+        expect(resolution.currentEligible, isTrue);
+      });
+
+      test('returns the latest eligible release even when it is not newer (for --force)', () async {
+        final repository = _makeRepository(
+          httpClient: _mockOk(body: [_releaseJson(version: '0.3.0')]),
+          currentVersion: '0.5.0',
+        );
+
+        final resolution = await repository.resolveUpdate();
+
+        // checkForNewerRelease() would return null here; resolveUpdate must not.
+        expect(resolution.latestEligible?.version, equals('0.3.0'));
+        expect(resolution.latestVersion?.toString(), equals('0.3.0'));
+      });
+
+      test('reports an off-track running build as ineligible', () async {
+        final repository = _makeRepository(
+          httpClient: _mockOk(body: [_releaseJson(version: '0.3.0')]),
+          currentVersion: '0.5.0-internal.3',
+        );
+
+        final resolution = await repository.resolveUpdate();
+
+        expect(resolution.currentEligible, isFalse);
+        expect(resolution.latestEligible?.version, equals('0.3.0'));
+      });
+
+      test('always fetches fresh, ignoring a fresh cache', () async {
+        var httpCallCount = 0;
+        final client = MockClient((_) async {
+          httpCallCount++;
+          return http.Response(jsonEncode([_releaseJson(version: '0.4.0')]), 200);
+        });
+        final cached = CachedRelease(
+          latestVersion: '9.9.9',
+          downloadUrl: 'https://example.com/dl/asset.tar.gz',
+          checksumsUrl: 'https://example.com/dl/checksums.txt',
+          assetName: _defaultTarget.assetName,
+          track: 'stable',
+          publishedAt: DateTime.parse('2024-06-01T00:00:00Z'),
+          checkedAt: DateTime.now(),
+        );
+        final repository = _makeRepository(
+          httpClient: client,
+          cache: _FakeCache(readResult: cached),
+          currentVersion: '0.2.0',
+        );
+
+        final resolution = await repository.resolveUpdate();
+
+        expect(httpCallCount, equals(1), reason: 'resolveUpdate bypasses the read cache');
+        expect(resolution.latestEligible?.version, equals('0.4.0'));
+      });
+
+      test('returns a null latest when no eligible release exists', () async {
+        final repository = _makeRepository(
+          httpClient: _mockOk(body: <Map<String, dynamic>>[]),
+          currentVersion: '0.2.0',
+        );
+
+        final resolution = await repository.resolveUpdate();
+
+        expect(resolution.latestEligible, isNull);
+        expect(resolution.latestVersion, isNull);
+      });
+
+      test('writes the resolved release to the cache as a side effect', () async {
+        final cache = _FakeCache();
+        final repository = _makeRepository(
+          httpClient: _mockOk(body: [_releaseJson(version: '0.4.0')]),
+          cache: cache,
+          currentVersion: '0.2.0',
+        );
+
+        await repository.resolveUpdate();
+
+        expect(cache.writtenReleases, hasLength(1));
+        expect(cache.writtenReleases.first.latestVersion, equals('0.4.0'));
+      });
+    });
   });
 
   // -------------------------------------------------------------------------

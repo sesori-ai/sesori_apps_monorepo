@@ -74,13 +74,15 @@ bridge/ workspace modules (siblings of app/):
     fooRequest = FooRequest.fromJson(
       jsonDecodeMap(request.body),
     );
-  } catch {
+  } catch (error) {
+    Log.d("Rejecting request with an invalid JSON body: $error");
     return buildErrorResponse(request, 400, "invalid JSON body");
   }
   ```
 
 ## ANTI-PATTERNS
 
+- **Never catch and swallow** — every `catch` must log (a `debug`/`warning` including the caught error), even no-op/best-effort/intentional-degradation handlers. A silent `catch` (empty body or a bare comment with no log) is forbidden.
 - **Never duplicate crypto** — use `sesori_shared` package for all encryption/protocol types
 - **Never hardcode URLs** — relay and auth backend are CLI-configurable. The OpenCode server defaults to loopback (`127.0.0.1`) but its host and port are CLI-configurable too (`--opencode-host`, `--opencode-port`)
 - **Never inline HTTP calls in business logic** — extract to a dedicated API class with typed return values

@@ -10,6 +10,7 @@ import '../foundation/github_rate_limit_exception.dart';
 import '../foundation/update_message_formatter.dart';
 import '../foundation/update_policy.dart';
 import '../models/release_info.dart';
+import '../models/update_apply_outcome.dart';
 import '../models/update_result.dart';
 import '../repositories/release_repository.dart';
 import '../repositories/update_log_repository.dart';
@@ -57,6 +58,9 @@ class UpdateService {
 
   StreamSubscription<void>? _subscription;
   bool _disposed = false;
+
+  @visibleForTesting
+  void Function(String message) emitMessage = Console.message;
 
   @visibleForTesting
   void Function(String message) emitError = Console.error;
@@ -164,13 +168,30 @@ class UpdateService {
       if (_disposed) {
         return;
       }
-      final applied = await _updateApplyService.apply(release: release, stagingPath: stagingPath);
-      if (applied) {
-        // The release is now staged for activation on the next launch. This
-        // process still reports the old appVersion, so left running it would
-        // keep "finding" and re-applying the same release every interval —
-        // stop the cycle until a restart.
-        _stopPolling();
+      final UpdateApplyOutcome outcome = await _updateApplyService.apply(
+        release: release,
+        stagingPath: stagingPath,
+      );
+      switch (outcome) {
+        case UpdateApplied(:final version):
+          emitMessage(_messageFormatter.installedPendingActivation(toVersion: version));
+          // The release is now staged for activation on the next launch. This
+          // process still reports the old appVersion, so left running it would
+          // keep "finding" and re-applying the same release every interval —
+          // stop the cycle until a restart.
+          _stopPolling();
+        case UpdateApplyLockBusy():
+          // Another update is in progress — benign; apply logged a diagnostic.
+          // The next cycle retries.
+          break;
+        case UpdateApplyFailed(:final reason, :final logPath):
+          emitError(
+            _messageFormatter.failureGuidance(
+              toVersion: release.version,
+              reason: reason,
+              logPath: logPath,
+            ),
+          );
       }
     } on Object catch (error, stackTrace) {
       await _reportGenuineFailure(

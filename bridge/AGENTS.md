@@ -119,9 +119,9 @@ If a concept has a fixed set of values (PR state, mergeable status, review decis
 
 API methods must **throw** on unexpected errors. Never return empty lists, `null`, or `false` to hide failures — the caller should decide how to handle the error. A single `catch` block is fine if all errors are handled identically; don't split into multiple catches that do the same thing.
 
-### Log Unexpected Degradation Paths
+### Never Swallow Exceptions — Every `catch` Logs
 
-When a service/repository intentionally degrades on an unexpected `catch`, emit a warning/debug log with enough context to understand what failed. Silent fallback is only acceptable when the code is explicitly best-effort and the lack of logging is intentional.
+Every `catch` block must log. When a service/repository degrades on an unexpected `catch`, emit a warning/debug log (including the caught error) with enough context to understand what failed. This applies to **no-op and best-effort handlers too**: a silent `catch` — an empty body, or a bare comment with no log — is forbidden. If continuing really is safe, record that decision and the error with `Log.d`/`Log.w`; never discard an exception without a trace.
 
 ### No Redundant Model Layers
 
