@@ -93,7 +93,7 @@ import "bridge_shutdown_coordinator.dart";
 import "plugin_failure_latch.dart";
 import "plugin_manager.dart";
 import "plugin_registry.dart";
-import "runtime_provision_reporter.dart";
+import "runtime_provision_formatter.dart";
 
 Future<int> runBridgeApp({
   required BridgeCliOptions options,
@@ -444,9 +444,12 @@ class BridgeRuntimeRunner {
     required BridgePluginDescriptor descriptor,
     required BridgePluginHostImpl host,
   }) async {
-    final reporter = RuntimeProvisionReporter();
+    final formatter = RuntimeProvisionFormatter(interactive: io.stderr.hasTerminal);
     await for (final RuntimeProvisionProgress event in descriptor.ensureRuntime(host: host)) {
-      reporter.report(event);
+      final String? rendered = formatter.format(event);
+      if (rendered != null) {
+        io.stderr.write(rendered);
+      }
       if (event is ProvisionReady) {
         host.provisionedRuntimePath = event.binaryPath;
       }
