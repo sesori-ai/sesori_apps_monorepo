@@ -2,6 +2,10 @@
 
 Pure Dart library — crypto primitives + protocol types shared by `sesori_bridge_dart` and `sesori_mobile`. No Flutter dependency. Works in native binaries and Flutter apps.
 
+## Error Handling
+
+**Never catch and swallow.** Every `catch` must log — even a no-op, best-effort, or intentional-degradation handler must emit at least a `debug`/`warning` log that includes the caught error and why continuing is safe. A silent `catch` (empty body or a bare comment with no log) is forbidden.
+
 ## STRUCTURE
 
 ```

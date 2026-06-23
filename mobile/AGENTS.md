@@ -91,6 +91,10 @@ If a feature needs a platform capability not already abstracted:
 
 There is ONE production implementation per interface. Do not add factories, alternatives, or abstract factories unless there is a real second implementor (e.g., a test fake is NOT a second implementor — see "No Pointless Interfaces" philosophy in the bridge AGENTS.md; `implements` works on any class in Dart 3).
 
+## Error Handling
+
+**Never catch and swallow.** Every `catch` must log — even a no-op, best-effort, or intentional-degradation handler must emit at least a `debug`/`warning` log that includes the caught error and why continuing is safe. A silent `catch` (empty body or a bare comment with no log) is forbidden.
+
 ## Forbidden
 
 - `module_core` MUST NOT import `package:flutter`. It is pure Dart and must remain testable without Flutter.
