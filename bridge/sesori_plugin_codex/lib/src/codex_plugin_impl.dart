@@ -707,7 +707,7 @@ class CodexPlugin implements CodexManagedApi {
 
   @override
   Future<List<PluginSession>> getChildSessions(String sessionId) async {
-    // codex-cli 0.139.0's rollout headers do not record a parent/`forked_from`
+    // codex-cli 0.142.0's rollout headers do not record a parent/`forked_from`
     // link, so we have no way to reconstruct the parent→child relationship from
     // disk. Until codex surfaces it, return empty — the bridge contract
     // treats this as "no children known", not as an error.

@@ -6,7 +6,7 @@ import "codex_app_server_client.dart";
 
 /// Codex methods that we surface as permission asks.
 ///
-/// These are the JSON-RPC method names codex `app-server` (0.139.0) sends as
+/// These are the JSON-RPC method names codex `app-server` (0.142.0) sends as
 /// server-originated requests when it needs the user to allow / deny a
 /// destructive action. The bridge drives turns exclusively via the **v2**
 /// `turn/start` API, so codex only ever emits the slash-delimited

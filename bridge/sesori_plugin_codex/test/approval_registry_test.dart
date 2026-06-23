@@ -283,7 +283,7 @@ void main() {
     // --- legacy (sendUserTurn) approvals are no longer supported ---
     //
     // The bridge drives turns exclusively via the v2 turn/start API, so codex
-    // 0.139.0 only ever emits the `item/.../requestApproval` names. The dropped
+    // 0.142.0 only ever emits the `item/.../requestApproval` names. The dropped
     // legacy `execCommandApproval`/`applyPatchApproval` requests are not routed:
     // they fall through to a soft -32601 and never surface a permission card.
 
