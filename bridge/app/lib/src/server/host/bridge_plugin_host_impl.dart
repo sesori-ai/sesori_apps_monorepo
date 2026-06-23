@@ -101,6 +101,12 @@ class BridgePluginHostImpl implements PluginHost {
   @override
   final String stateDirectory;
 
+  /// Set by the bridge runner from `ensureRuntime`'s [ProvisionReady] result,
+  /// after the host is built and before `start()` runs; `null` when the plugin
+  /// did no provisioning or it failed.
+  @override
+  String? provisionedRuntimePath;
+
   @override
   final Map<String, String> environment;
 

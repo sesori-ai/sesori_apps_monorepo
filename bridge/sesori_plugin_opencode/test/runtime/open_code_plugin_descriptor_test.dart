@@ -854,6 +854,9 @@ class _FakeHost implements PluginHost {
   final String stateDirectory = "/runtime";
 
   @override
+  String? provisionedRuntimePath;
+
+  @override
   final Map<String, String> environment = const <String, String>{"PATH": "/usr/bin"};
 
   @override
