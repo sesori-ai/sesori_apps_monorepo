@@ -58,10 +58,10 @@ class UpdateCommandFormatter {
       case ExplicitUpdateTrackMismatch():
         final track = outcome.track.wireValue;
         return [
-          _warn("Running v${outcome.currentVersion}, which isn't on the $track track.", isError: false),
+          _warn("You're on v${outcome.currentVersion}, not the latest $track build.", isError: false),
           _dimLine('  Latest $track is v${outcome.latestVersion}.', isError: false),
           _note(
-            'Run  ${_command('sesori-bridge update --force', isError: false)}  to switch to $track.',
+            'Run  ${_command('sesori-bridge update --force', isError: false)}  to install it.',
             isError: false,
           ),
         ];

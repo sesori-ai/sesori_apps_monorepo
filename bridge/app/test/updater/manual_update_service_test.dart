@@ -145,6 +145,24 @@ void main() {
       expect(install.stageCount, 0);
     });
 
+    test('reports a mismatch (force hint) when ahead of the latest published build', () async {
+      // A stable-looking build that is ahead of the latest published release —
+      // a copied dev/QA build, or a release that was yanked. This must NOT
+      // report "already latest"; --force is the only path back to the latest
+      // published build.
+      release.onResolve = () => _resolution(current: '9.9.9', currentEligible: true, latest: '1.5.0');
+
+      final outcome = await buildService().runUpdate(force: false);
+
+      expect(
+        outcome,
+        isA<ExplicitUpdateTrackMismatch>()
+            .having((o) => o.currentVersion, 'current', '9.9.9')
+            .having((o) => o.latestVersion, 'latest', '1.5.0'),
+      );
+      expect(install.stageCount, 0);
+    });
+
     test('reports no eligible release when none is found', () async {
       release.onResolve = () => _resolution(current: '1.0.0', currentEligible: true, latest: null);
 

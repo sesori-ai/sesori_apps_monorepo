@@ -464,6 +464,9 @@ class UpdateCommand extends cli.Command<void> {
             archiveExtractorApi: ArchiveExtractorApi(processRunner: processRunner),
           ),
           filesystemCleaner: filesystemCleaner,
+          // Stage into a per-process workspace so a manual update can't clobber
+          // (or be clobbered by) a resident bridge's background staging.
+          workspaceLabel: 'manual.$pid',
         ),
         updateApplyService: UpdateApplyService(
           installationRepository: installationRepository,

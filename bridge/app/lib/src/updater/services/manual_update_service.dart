@@ -92,12 +92,15 @@ class ManualUpdateService {
       if (comparison > 0) {
         return _stageAndApply(release: latest, fromVersion: current, kind: UpdateAppliedKind.upgrade);
       }
-      if (resolution.currentEligible) {
+      if (comparison == 0) {
         return ExplicitUpdateAlreadyLatest(version: current.toString(), track: _track);
       }
-      // The running binary is not on the active track and the latest eligible
-      // release is not newer (e.g. an `-internal.*` build while track=stable),
-      // so a plain update can't help — point the user at `--force`.
+      // comparison < 0: the running build is not the latest published build for
+      // the track. Either it is off-track (e.g. an `-internal.*` build while the
+      // track is stable), or it is "ahead" of the latest published release (a
+      // copied dev/QA build, or a release that was yanked). A plain update can't
+      // reach the published latest — only `--force` can — so point the user at
+      // it rather than misreporting "already latest".
       return ExplicitUpdateTrackMismatch(
         currentVersion: current.toString(),
         latestVersion: latestVersion.toString(),

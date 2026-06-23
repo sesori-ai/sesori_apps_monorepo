@@ -127,4 +127,26 @@ void main() {
     expect(result.stagingPath, isNull);
     expect(Directory(p.join(installRoot.path, '.sesori-bridge-staging')).existsSync(), isFalse);
   });
+
+  test('a workspace label isolates the archive and staging paths from the default', () async {
+    final service = UpdateInstallService(
+      updateArtifactRepository: _FakeArtifactRepository(),
+      filesystemCleaner: const FilesystemCleaner(),
+      workspaceLabel: 'manual.4242',
+    );
+
+    final result = await service.stageUpdate(release: _release(), installRoot: installRoot.path);
+
+    expect(result.result, UpdateResult.success);
+    expect(result.stagingPath, p.join(installRoot.path, '.sesori-bridge-staging.manual.4242'));
+    expect(Directory(result.stagingPath!).existsSync(), isTrue);
+    // The shared default staging path is never touched, so a concurrent default
+    // stager (a resident bridge's background updater) cannot collide with it.
+    expect(Directory(p.join(installRoot.path, '.sesori-bridge-staging')).existsSync(), isFalse);
+    expect(
+      File(p.join(installRoot.path, '.sesori-bridge-update.manual.4242.tar.gz')).existsSync(),
+      isFalse,
+      reason: 'the suffixed archive is cleaned after extraction',
+    );
+  });
 }

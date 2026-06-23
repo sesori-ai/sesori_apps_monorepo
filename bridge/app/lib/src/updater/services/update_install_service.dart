@@ -13,15 +13,25 @@ import '../repositories/update_artifact_repository.dart';
 /// Stages an update payload: download → checksum-verify → extract into a staging
 /// directory. It performs no swap and makes no apply decisions — on success it
 /// returns the [UpdateInstallResult.stagingPath] for the apply step to consume.
+///
+/// The archive + staging paths live under the install root (they must share a
+/// filesystem with it so the apply step can rename rather than copy). They are
+/// shared, fixed paths by default. A separate, concurrent stager — e.g. an
+/// explicit `update` process running while a resident bridge's background
+/// updater is mid-stage — must pass a distinct [workspaceLabel] so the two do
+/// not clobber each other's archive/staging on the way to the lock-guarded swap.
 class UpdateInstallService {
   UpdateInstallService({
     required UpdateArtifactRepository updateArtifactRepository,
     required FilesystemCleaner filesystemCleaner,
+    String workspaceLabel = '',
   }) : _updateArtifactRepository = updateArtifactRepository,
-       _filesystemCleaner = filesystemCleaner;
+       _filesystemCleaner = filesystemCleaner,
+       _workspaceSuffix = workspaceLabel.isEmpty ? '' : '.$workspaceLabel';
 
   final UpdateArtifactRepository _updateArtifactRepository;
   final FilesystemCleaner _filesystemCleaner;
+  final String _workspaceSuffix;
 
   Future<UpdateInstallResult> stageUpdate({
     required ReleaseInfo release,
@@ -29,9 +39,11 @@ class UpdateInstallService {
   }) async {
     final String archivePath = p.join(
       installRoot,
-      Platform.isWindows ? '.sesori-bridge-update.zip' : '.sesori-bridge-update.tar.gz',
+      Platform.isWindows
+          ? '.sesori-bridge-update$_workspaceSuffix.zip'
+          : '.sesori-bridge-update$_workspaceSuffix.tar.gz',
     );
-    final String stagingPath = p.join(installRoot, '.sesori-bridge-staging');
+    final String stagingPath = p.join(installRoot, '.sesori-bridge-staging$_workspaceSuffix');
     var staged = false;
 
     try {
