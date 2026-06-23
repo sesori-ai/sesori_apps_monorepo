@@ -444,7 +444,10 @@ class BridgeRuntimeRunner {
     required BridgePluginDescriptor descriptor,
     required BridgePluginHostImpl host,
   }) async {
-    final formatter = RuntimeProvisionFormatter(interactive: io.stderr.hasTerminal);
+    final formatter = RuntimeProvisionFormatter(
+      interactive: io.stderr.hasTerminal,
+      runtimeName: descriptor.displayName,
+    );
     await for (final RuntimeProvisionProgress event in descriptor.ensureRuntime(host: host)) {
       final String? rendered = formatter.format(event);
       if (rendered != null) {

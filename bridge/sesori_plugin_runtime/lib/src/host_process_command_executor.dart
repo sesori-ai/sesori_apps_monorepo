@@ -47,8 +47,14 @@ class HostProcessCommandExecutor implements CommandExecutor {
     // allowMalformed: tool output (tar/unzip listings) is not guaranteed valid
     // UTF-8; a decode error must not crash a command run.
     const decoder = Utf8Decoder(allowMalformed: true);
-    final stdoutSub = process.stdout.transform(decoder).listen(stdoutBuffer.write, onError: (Object _) {});
-    final stderrSub = process.stderr.transform(decoder).listen(stderrBuffer.write, onError: (Object _) {});
+    final stdoutSub = process.stdout.transform(decoder).listen(
+      stdoutBuffer.write,
+      onError: (Object error) => Log.d("HostProcessCommandExecutor: ignoring '$executable' stdout error: $error"),
+    );
+    final stderrSub = process.stderr.transform(decoder).listen(
+      stderrBuffer.write,
+      onError: (Object error) => Log.d("HostProcessCommandExecutor: ignoring '$executable' stderr error: $error"),
+    );
     try {
       final int exitCode = await process.exitCode.timeout(timeout ?? _defaultTimeout);
       return CommandResult(

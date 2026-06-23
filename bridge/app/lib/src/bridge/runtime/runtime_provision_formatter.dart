@@ -18,14 +18,20 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 /// recent runtime already on PATH — formats to nothing (resolving and a no-work
 /// "ready" are silent), so a healthy startup is not cluttered. The formatter
 /// owns only redraw bookkeeping; the caller owns the I/O.
+///
+/// Backend-neutral: the user-facing [_runtimeName] (the plugin's display name)
+/// is injected, so the bridge core never hard-codes a specific backend.
 class RuntimeProvisionFormatter {
   final bool _interactive;
+  final String _runtimeName;
 
   bool _barActive = false;
   bool _didWork = false;
   int _lastReportedPercent = -1;
 
-  RuntimeProvisionFormatter({required bool interactive}) : _interactive = interactive;
+  RuntimeProvisionFormatter({required bool interactive, required String runtimeName})
+    : _interactive = interactive,
+      _runtimeName = runtimeName;
 
   static const int _barWidth = 24;
 
@@ -37,15 +43,15 @@ class RuntimeProvisionFormatter {
       case ProvisionDownloading(:final receivedBytes, :final totalBytes):
         return _downloading(receivedBytes: receivedBytes, totalBytes: totalBytes);
       case ProvisionExtracting():
-        return _line("Extracting the OpenCode runtime…");
+        return _line("Extracting the $_runtimeName runtime…");
       case ProvisionVerifying():
-        return _line("Verifying the OpenCode runtime…");
+        return _line("Verifying the $_runtimeName runtime…");
       case ProvisionNotice(:final message):
         return _line(message);
       case ProvisionReady():
-        return _didWork ? _line("OpenCode runtime ready.") : _finishBar();
+        return _didWork ? _line("$_runtimeName runtime ready.") : _finishBar();
       case ProvisionFailed(:final message):
-        return _line("OpenCode runtime setup failed: $message");
+        return _line("$_runtimeName runtime setup failed: $message");
     }
   }
 
@@ -57,18 +63,18 @@ class RuntimeProvisionFormatter {
       }
       final megabytes = (receivedBytes / (1024 * 1024)).toStringAsFixed(1);
       _barActive = true;
-      return "\rDownloading the OpenCode runtime…  $megabytes MB";
+      return "\rDownloading the $_runtimeName runtime…  $megabytes MB";
     }
 
     final int percent = ((receivedBytes / totalBytes) * 100).clamp(0, 100).floor();
     if (_interactive) {
       _barActive = true;
-      return "\rDownloading the OpenCode runtime  ${_bar(percent)}  $percent%";
+      return "\rDownloading the $_runtimeName runtime  ${_bar(percent)}  $percent%";
     }
     // Non-interactive: one line per 10% step (and the final 100%).
     if (percent >= _lastReportedPercent + 10 || percent == 100) {
       _lastReportedPercent = percent;
-      return _line("Downloading the OpenCode runtime… $percent%");
+      return _line("Downloading the $_runtimeName runtime… $percent%");
     }
     return null;
   }
