@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:clock/clock.dart';
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 import 'package:sesori_shared/sesori_shared.dart';
 
 import '../../bridge/foundation/process_runner.dart';
@@ -108,22 +109,35 @@ class UpdateLock {
   }
 
   /// Creates [lockFile] exclusively and writes the owner record. If the write
-  /// fails after the file was created, the empty/partial lock file is removed
-  /// before the error propagates — a transient write failure must not leave a
-  /// lock file that blocks other acquirers until the stale-lock grace period
-  /// reclaims it.
+  /// fails after the file was created, the empty lock file is cleaned up before
+  /// the error propagates — a transient write failure must not leave a lock file
+  /// that blocks other acquirers until the stale-lock grace period reclaims it.
   Future<void> _createAndWriteLock({required File lockFile, required String ownerJson}) async {
     await lockFile.create(exclusive: true);
     try {
       await lockFile.writeAsString(ownerJson, flush: true);
     } on Object {
-      try {
-        await lockFile.delete();
-      } on Object {
-        // Best-effort: if the cleanup delete also fails, the stale-lock grace
-        // period still reclaims the empty file on a later attempt.
-      }
+      await _cleanupUnwrittenLock(lockFile: lockFile);
       rethrow;
+    }
+  }
+
+  /// Removes the lock file [_createAndWriteLock] just created when its
+  /// owner-record write failed — but only while it is still the empty file we
+  /// created.
+  ///
+  /// If a slow write let the empty lock age past [_invalidLockGracePeriod],
+  /// another acquirer may have already reaped it and created its own
+  /// owner-stamped lock at the same path; deleting that would break mutual
+  /// exclusion, so a non-empty file is left untouched. Best-effort, but never
+  /// silent — a cleanup failure is logged rather than swallowed.
+  Future<void> _cleanupUnwrittenLock({required File lockFile}) async {
+    try {
+      if ((await lockFile.readAsString()).isEmpty) {
+        await lockFile.delete();
+      }
+    } on Object catch (error, stackTrace) {
+      Log.w('Failed to clean up the empty lock file after a write failure: $error', error, stackTrace);
     }
   }
 

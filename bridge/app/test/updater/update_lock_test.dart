@@ -41,6 +41,12 @@ class _RecordingProcessRunner implements ProcessRunner {
 /// fails, so the owner record is never written. Records whether `delete` was
 /// called, to verify the empty lock file is cleaned up on a write failure.
 class _WriteFailingFile implements File {
+  _WriteFailingFile({this.contentAfterFailedWrite = ''});
+
+  /// What `readAsString` returns during cleanup. Empty means the empty file we
+  /// created is still there; non-empty simulates another acquirer having reaped
+  /// it and written its own owner-stamped lock at the same path.
+  final String contentAfterFailedWrite;
   bool deleted = false;
 
   @override
@@ -55,6 +61,9 @@ class _WriteFailingFile implements File {
   }) async {
     throw const FileSystemException('simulated write failure');
   }
+
+  @override
+  Future<String> readAsString({Encoding encoding = utf8}) async => contentAfterFailedWrite;
 
   @override
   Future<FileSystemEntity> delete({bool recursive = false}) async {
@@ -357,6 +366,29 @@ void main() {
       // The empty lock file is removed rather than left to block other
       // acquirers until the grace period reclaims it.
       expect(lockFile.deleted, isTrue);
+    });
+
+    test('a write failure does not delete a lock another process recreated', () async {
+      // Simulate a slow write: by the time cleanup runs, another acquirer has
+      // reaped the empty lock and written its own owner-stamped lock at the
+      // same path. We must not delete that one.
+      final lockFile = _WriteFailingFile(contentAfterFailedWrite: '{"pid":4242,"processMarker":"other"}');
+      final lock = UpdateLock(
+        currentPid: pid,
+        processRunner: _RecordingProcessRunner(exitCode: 1),
+        clock: const Clock(),
+      );
+
+      await expectLater(
+        lock.locked<int>(
+          lockFile: lockFile,
+          onLockAcquired: () async => 1,
+          onLockRejected: (_) async => -1,
+          shouldReleaseLock: (_) => true,
+        ),
+        throwsA(isA<FileSystemException>()),
+      );
+      expect(lockFile.deleted, isFalse);
     });
   });
 }
