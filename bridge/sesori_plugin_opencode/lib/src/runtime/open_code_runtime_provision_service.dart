@@ -103,13 +103,16 @@ class OpenCodeRuntimeProvisionService {
         executable: binaryPath,
         environment: host.environment,
       );
-      if (managedVersion != null) {
+      if (managedVersion != null && managedVersion.compareTo(bundled) == 0) {
         Log.i("[opencode] managed OpenCode $bundled already installed");
         yield ProvisionReady(binaryPath: binaryPath);
         await _sweep(host: host, keepVersion: bundled.toString());
         return;
       }
-      Log.w("[opencode] cached managed runtime at '$binaryPath' is not runnable; reinstalling");
+      Log.w(
+        "[opencode] cached managed runtime at '$binaryPath' is version "
+        "'${managedVersion ?? "unrunnable"}' (expected '$bundled'); reinstalling",
+      );
     }
 
     try {

@@ -148,6 +148,15 @@ void main() {
       expect((events.last as ProvisionReady).binaryPath, equals(managedBinaryPath));
     });
 
+    test("reinstalls when the cached managed runtime runs but reports the wrong version", () async {
+      final install = _FakeInstallService(installed: true, installEvents: const [ProvisionExtracting()]);
+      // Runnable, but an unexpected version (not the pinned bundled 1.17.9).
+      final events = await run(build(install: install, managedVersion: SemanticVersion.parse(value: "1.0.0")));
+
+      expect(install.installCalled, isTrue);
+      expect(events.last, isA<ProvisionReady>());
+    });
+
   test("downloads the managed runtime when absent and not yet installed", () async {
     final install = _FakeInstallService(installEvents: const [ProvisionExtracting()]);
     final events = await run(build(install: install));

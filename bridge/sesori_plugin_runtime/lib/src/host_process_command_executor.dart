@@ -55,8 +55,22 @@ class HostProcessCommandExecutor implements CommandExecutor {
       stderrBuffer.write,
       onError: (Object error) => Log.d("HostProcessCommandExecutor: ignoring '$executable' stderr error: $error"),
     );
+    // Completes when each stream is fully delivered (the child has exited AND the
+    // pipe is drained). Draining happens via the listeners above, so awaiting
+    // these alongside exitCode never deadlocks on a full pipe.
+    final Future<void> stdoutDone = stdoutSub.asFuture<void>();
+    final Future<void> stderrDone = stderrSub.asFuture<void>();
     try {
       final int exitCode = await process.exitCode.timeout(timeout ?? _defaultTimeout);
+      // Wait for the output streams to finish before reading the buffers, so a
+      // command whose stdout/stderr is still buffered at exit (e.g. a fast
+      // `--version` or a `tar -tzf` listing) is not captured truncated. Bounded
+      // so a pipe that never closes after exit can't hang the result.
+      try {
+        await Future.wait<void>([stdoutDone, stderrDone]).timeout(const Duration(seconds: 5));
+      } on TimeoutException catch (error) {
+        Log.d("HostProcessCommandExecutor: '$executable' output streams did not close promptly after exit: $error");
+      }
       return CommandResult(
         exitCode: exitCode,
         stdout: stdoutBuffer.toString(),

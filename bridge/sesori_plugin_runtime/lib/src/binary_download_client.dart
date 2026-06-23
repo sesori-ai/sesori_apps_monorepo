@@ -119,56 +119,49 @@ class BinaryDownloadClient {
     }
 
     var receivedBytes = 0;
-    var failing = false;
+    var bodyCompleted = false;
     try {
       await for (final List<int> chunk in response.stream.timeout(_streamInactivityTimeout)) {
         sink.add(chunk);
         receivedBytes += chunk.length;
         yield DownloadProgress(receivedBytes: receivedBytes, totalBytes: totalBytes);
       }
+      bodyCompleted = true;
     } on TimeoutException catch (error) {
-      failing = true;
-      await _closeQuietly(sink);
       throw DownloadException(kind: DownloadFailureKind.network, message: "Download stream stalled: $error");
     } on SocketException catch (error) {
-      failing = true;
-      await _closeQuietly(sink);
       throw DownloadException(kind: DownloadFailureKind.network, message: "Download connection failed: $error");
     } on HttpException catch (error) {
-      failing = true;
-      await _closeQuietly(sink);
       throw DownloadException(kind: DownloadFailureKind.network, message: "Download HTTP error: $error");
     } on http.ClientException catch (error) {
       // A connection reset/drop while reading the body (after a 2xx) is the same
       // transient outage class as a pre-response failure — keep it retryable.
-      failing = true;
-      await _closeQuietly(sink);
       throw DownloadException(kind: DownloadFailureKind.network, message: "Download connection dropped: $error");
     } on Object catch (error) {
-      failing = true;
-      await _closeQuietly(sink);
       throw DownloadException(kind: DownloadFailureKind.failed, message: "Download failed: $error");
-    }
-
-    // Success path: the close must succeed too, otherwise the on-disk file may
-    // be truncated (buffered writes lost to a disk-full/quota error) and a
-    // caller would treat an incomplete file as a completed download.
-    if (!failing) {
-      try {
-        await sink.close();
-      } on Object catch (error) {
-        throw DownloadException(kind: DownloadFailureKind.failed, message: "Could not finalize download: $error");
+    } finally {
+      // The finally also runs when the consumer cancels the subscription
+      // mid-stream, so the sink is always closed — no leaked handle or locked
+      // partial file on an abort/retry.
+      if (bodyCompleted) {
+        // Success: a close failure means the on-disk file may be truncated
+        // (buffered writes lost to a disk-full/quota error), so it must fail the
+        // download rather than be silently swallowed. There is no in-flight
+        // exception here, so throwing from finally surfaces it as the result.
+        try {
+          await sink.close();
+        } on Object catch (error) {
+          throw DownloadException(kind: DownloadFailureKind.failed, message: "Could not finalize download: $error");
+        }
+      } else {
+        // Error or cancellation: close quietly so a teardown failure never masks
+        // the in-flight error (and cancellation produces no error to mask).
+        try {
+          await sink.close();
+        } on Object catch (error) {
+          Log.d("BinaryDownloadClient: ignoring sink close failure during teardown: $error");
+        }
       }
-    }
-  }
-
-  /// Closes [sink] while an error is already being thrown, so a teardown failure
-  /// never masks the download error that triggered it.
-  Future<void> _closeQuietly(IOSink sink) async {
-    try {
-      await sink.close();
-    } on Object catch (error) {
-      Log.d("BinaryDownloadClient: ignoring sink close failure during teardown: $error");
     }
   }
 
