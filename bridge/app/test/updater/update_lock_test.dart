@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:clock/clock.dart';
@@ -34,6 +35,38 @@ class _RecordingProcessRunner implements ProcessRunner {
     lastArguments = arguments;
     return ProcessResult(1, exitCode, stdout, '');
   }
+}
+
+/// A lock file whose exclusive `create` succeeds but whose `writeAsString`
+/// fails, so the owner record is never written. Records whether `delete` was
+/// called, to verify the empty lock file is cleaned up on a write failure.
+class _WriteFailingFile implements File {
+  bool deleted = false;
+
+  @override
+  Future<File> create({bool recursive = false, bool exclusive = false}) async => this;
+
+  @override
+  Future<File> writeAsString(
+    String contents, {
+    FileMode mode = FileMode.write,
+    Encoding encoding = utf8,
+    bool flush = false,
+  }) async {
+    throw const FileSystemException('simulated write failure');
+  }
+
+  @override
+  Future<FileSystemEntity> delete({bool recursive = false}) async {
+    deleted = true;
+    return this;
+  }
+
+  @override
+  String get path => '/tmp/.update.lock';
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 void main() {
@@ -302,6 +335,28 @@ void main() {
 
       expect(result, equals(LockAcquireResult.alreadyLocked));
       expect(lockFile.existsSync(), isTrue);
+    });
+
+    test('a write failure after create deletes the empty lock file', () async {
+      final lockFile = _WriteFailingFile();
+      final lock = UpdateLock(
+        currentPid: pid,
+        processRunner: _RecordingProcessRunner(exitCode: 1),
+        clock: const Clock(),
+      );
+
+      await expectLater(
+        lock.locked<int>(
+          lockFile: lockFile,
+          onLockAcquired: () async => 1,
+          onLockRejected: (_) async => -1,
+          shouldReleaseLock: (_) => true,
+        ),
+        throwsA(isA<FileSystemException>()),
+      );
+      // The empty lock file is removed rather than left to block other
+      // acquirers until the grace period reclaims it.
+      expect(lockFile.deleted, isTrue);
     });
   });
 }

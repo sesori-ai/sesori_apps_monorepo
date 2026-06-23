@@ -77,8 +77,7 @@ class UpdateLock {
     );
 
     try {
-      await lockFile.create(exclusive: true);
-      await lockFile.writeAsString(ownerJson, flush: true);
+      await _createAndWriteLock(lockFile: lockFile, ownerJson: ownerJson);
       return LockAcquireResult.acquired;
     } on PathExistsException {
       final LockAcquireResult staleLockResult = await _removeStaleLockIfNeeded(
@@ -90,8 +89,7 @@ class UpdateLock {
       }
 
       try {
-        await lockFile.create(exclusive: true);
-        await lockFile.writeAsString(ownerJson, flush: true);
+        await _createAndWriteLock(lockFile: lockFile, ownerJson: ownerJson);
         return LockAcquireResult.acquired;
       } on PathExistsException {
         return LockAcquireResult.alreadyLocked;
@@ -104,6 +102,26 @@ class UpdateLock {
     } on FileSystemException catch (error) {
       if (_isPermissionDenied(error: error)) {
         return LockAcquireResult.permissionDenied;
+      }
+      rethrow;
+    }
+  }
+
+  /// Creates [lockFile] exclusively and writes the owner record. If the write
+  /// fails after the file was created, the empty/partial lock file is removed
+  /// before the error propagates — a transient write failure must not leave a
+  /// lock file that blocks other acquirers until the stale-lock grace period
+  /// reclaims it.
+  Future<void> _createAndWriteLock({required File lockFile, required String ownerJson}) async {
+    await lockFile.create(exclusive: true);
+    try {
+      await lockFile.writeAsString(ownerJson, flush: true);
+    } on Object {
+      try {
+        await lockFile.delete();
+      } on Object {
+        // Best-effort: if the cleanup delete also fails, the stale-lock grace
+        // period still reclaims the empty file on a later attempt.
       }
       rethrow;
     }
