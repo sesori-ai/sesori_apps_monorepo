@@ -59,6 +59,7 @@ void main() {
     final service = UpdateInstallService(
       updateArtifactRepository: _FakeArtifactRepository(),
       filesystemCleaner: const FilesystemCleaner(),
+      workspaceLabel: null,
     );
 
     final result = await service.stageUpdate(release: _release(), installRoot: installRoot.path);
@@ -77,6 +78,7 @@ void main() {
     final service = UpdateInstallService(
       updateArtifactRepository: _FakeArtifactRepository()..downloadResult = UpdateResult.networkError,
       filesystemCleaner: const FilesystemCleaner(),
+      workspaceLabel: null,
     );
 
     final result = await service.stageUpdate(release: _release(), installRoot: installRoot.path);
@@ -89,6 +91,7 @@ void main() {
     final service = UpdateInstallService(
       updateArtifactRepository: _FakeArtifactRepository()..checksumValid = false,
       filesystemCleaner: const FilesystemCleaner(),
+      workspaceLabel: null,
     );
 
     final result = await service.stageUpdate(release: _release(), installRoot: installRoot.path);
@@ -107,6 +110,7 @@ void main() {
     final service = UpdateInstallService(
       updateArtifactRepository: _FakeArtifactRepository(),
       filesystemCleaner: const FilesystemCleaner(),
+      workspaceLabel: null,
     );
 
     final result = await service.stageUpdate(release: _release(), installRoot: installRoot.path);
@@ -119,6 +123,7 @@ void main() {
     final service = UpdateInstallService(
       updateArtifactRepository: _FakeArtifactRepository()..extracted = false,
       filesystemCleaner: const FilesystemCleaner(),
+      workspaceLabel: null,
     );
 
     final result = await service.stageUpdate(release: _release(), installRoot: installRoot.path);

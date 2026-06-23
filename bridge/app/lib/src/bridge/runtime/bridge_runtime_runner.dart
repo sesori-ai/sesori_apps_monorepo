@@ -609,6 +609,8 @@ class BridgeRuntimeRunner {
           archiveExtractorApi: ArchiveExtractorApi(processRunner: processRunner),
         ),
         filesystemCleaner: filesystemCleaner,
+        // The background updater uses the shared, fixed staging paths.
+        workspaceLabel: null,
       ),
       updateApplyService: updateApplyService,
       logRepository: logRepository,
