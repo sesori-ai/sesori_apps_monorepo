@@ -390,5 +390,45 @@ void main() {
       );
       expect(lockFile.deleted, isFalse);
     });
+
+    test('a write failure deletes a partially written (unparseable) lock file', () async {
+      final lockFile = _WriteFailingFile(contentAfterFailedWrite: '{"pid":12');
+      final lock = UpdateLock(
+        currentPid: pid,
+        processRunner: _RecordingProcessRunner(exitCode: 1),
+        clock: const Clock(),
+      );
+
+      await expectLater(
+        lock.locked<int>(
+          lockFile: lockFile,
+          onLockAcquired: () async => 1,
+          onLockRejected: (_) async => -1,
+          shouldReleaseLock: (_) => true,
+        ),
+        throwsA(isA<FileSystemException>()),
+      );
+      expect(lockFile.deleted, isTrue);
+    });
+
+    test('a write failure deletes a lock still stamped with our own pid', () async {
+      final lockFile = _WriteFailingFile(contentAfterFailedWrite: '{"pid":$pid,"processMarker":"self"}');
+      final lock = UpdateLock(
+        currentPid: pid,
+        processRunner: _RecordingProcessRunner(exitCode: 1),
+        clock: const Clock(),
+      );
+
+      await expectLater(
+        lock.locked<int>(
+          lockFile: lockFile,
+          onLockAcquired: () async => 1,
+          onLockRejected: (_) async => -1,
+          shouldReleaseLock: (_) => true,
+        ),
+        throwsA(isA<FileSystemException>()),
+      );
+      expect(lockFile.deleted, isTrue);
+    });
   });
 }

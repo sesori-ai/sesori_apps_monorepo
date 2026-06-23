@@ -123,21 +123,22 @@ class UpdateLock {
   }
 
   /// Removes the lock file [_createAndWriteLock] just created when its
-  /// owner-record write failed — but only while it is still the empty file we
-  /// created.
+  /// owner-record write failed — but only while it is still ours.
   ///
-  /// If a slow write let the empty lock age past [_invalidLockGracePeriod],
-  /// another acquirer may have already reaped it and created its own
-  /// owner-stamped lock at the same path; deleting that would break mutual
-  /// exclusion, so a non-empty file is left untouched. Best-effort, but never
-  /// silent — a cleanup failure is logged rather than swallowed.
+  /// "Ours" is an empty, partial, or otherwise unparseable write, or a record
+  /// stamped with our own pid. If a slow write let the file age past
+  /// [_invalidLockGracePeriod], another acquirer may have reaped it and written
+  /// its own owner-stamped lock at the same path; deleting that would break
+  /// mutual exclusion, so a record owned by a different pid is left untouched.
+  /// Best-effort, but never silent — a cleanup failure is logged.
   Future<void> _cleanupUnwrittenLock({required File lockFile}) async {
     try {
-      if ((await lockFile.readAsString()).isEmpty) {
+      final _LockOwner? owner = _parseOwner(content: await lockFile.readAsString());
+      if (owner == null || owner.pid == _currentPid) {
         await lockFile.delete();
       }
     } on Object catch (error, stackTrace) {
-      Log.w('Failed to clean up the empty lock file after a write failure: $error', error, stackTrace);
+      Log.w('Failed to clean up the lock file after a write failure: $error', error, stackTrace);
     }
   }
 
