@@ -17,6 +17,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginUnavailable,
         ProcessIdentity,
         ProcessUser,
+        ProvisionReady,
+        RuntimeProvisionProgress,
         ServerClock,
         StartAbortController,
         StartAbortSignal;
@@ -91,6 +93,7 @@ import "bridge_shutdown_coordinator.dart";
 import "plugin_failure_latch.dart";
 import "plugin_manager.dart";
 import "plugin_registry.dart";
+import "runtime_provision_reporter.dart";
 
 Future<int> runBridgeApp({
   required BridgeCliOptions options,
@@ -430,6 +433,26 @@ class BridgeRuntimeRunner {
     }
   }
 
+  /// Runs the plugin's runtime-provisioning phase, rendering progress and
+  /// recording the resolved launch path on [host] for `start()` to read.
+  ///
+  /// A [ProvisionFailed] terminal event is non-fatal: it is rendered, the path
+  /// stays unset, and `start()` proceeds in a degraded state. A cooperative
+  /// abort during provisioning surfaces as [PluginStartAbortedException], which
+  /// the caller already treats as "aborted as requested".
+  static Future<void> _ensurePluginRuntime({
+    required BridgePluginDescriptor descriptor,
+    required BridgePluginHostImpl host,
+  }) async {
+    final reporter = RuntimeProvisionReporter();
+    await for (final RuntimeProvisionProgress event in descriptor.ensureRuntime(host: host)) {
+      reporter.report(event);
+      if (event is ProvisionReady) {
+        host.provisionedRuntimePath = event.binaryPath;
+      }
+    }
+  }
+
   /// Runs the selected plugin descriptor under the cross-instance startup
   /// mutex: mutex → enforce-single-bridge → build host → descriptor.start.
   ///
@@ -493,6 +516,11 @@ class BridgeRuntimeRunner {
                 ports: const BridgeHostPortService(loopbackPortApi: LoopbackPortApi()),
                 store: BridgeHostJsonStore(fileApi: runtimeFileApi),
               );
+              // Ensure the plugin's backend runtime exists (download it if
+              // needed), recording the resolved launch path on the host, before
+              // start(). Runs under the mutex so concurrent bridge instances
+              // can't install the same managed runtime at once.
+              await _ensurePluginRuntime(descriptor: descriptor, host: host);
               return descriptor.start(host);
             case BridgeInstanceResolutionStatus.declined:
               throw const BridgeRuntimeServerException(
