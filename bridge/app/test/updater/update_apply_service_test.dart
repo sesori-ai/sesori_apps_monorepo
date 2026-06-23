@@ -233,6 +233,9 @@ void main() {
     expect(installation.applyCount, 0);
     expect(attempts.saved, isEmpty);
     expect(warnings, hasLength(1));
+    // The swap never ran, so the staged payload is cleaned up rather than left
+    // to accumulate (important for the per-process manual staging dirs).
+    expect(Directory(stagingPath).existsSync(), isFalse);
   });
 
   test('lock permission denied surfaces a failure', () async {
@@ -246,5 +249,6 @@ void main() {
       isA<UpdateApplyFailed>().having((o) => o.reason, 'reason', contains('permission denied')),
     );
     expect(installation.applyCount, 0);
+    expect(Directory(stagingPath).existsSync(), isFalse);
   });
 }

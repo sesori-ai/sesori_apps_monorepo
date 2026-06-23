@@ -61,20 +61,28 @@ class UpdateApplyService {
       staleLockMaxAge: UpdateLock.updateStaleLockMaxAge,
       onLockAcquired: () => _applyLocked(release: release, stagingPath: stagingPath),
       onLockRejected: (LockAcquireResult result) async {
+        final UpdateApplyOutcome outcome;
         switch (result) {
           case LockAcquireResult.alreadyLocked:
             // Another bridge is applying — benign; the next cycle retries.
             logWarning('Skipping in-place update to ${release.version}: another update is in progress');
-            return const UpdateApplyLockBusy();
+            outcome = const UpdateApplyLockBusy();
           case LockAcquireResult.permissionDenied:
             // A stale/root-owned `.update.lock` the user can't read or delete
             // blocks every future update — surface it instead of silently
             // re-downloading and warning forever.
-            return _recordLockPermissionFailure(release: release);
+            outcome = await _recordLockPermissionFailure(release: release);
           case LockAcquireResult.acquired:
             // Never delivered to onLockRejected.
-            return const UpdateApplyLockBusy();
+            outcome = const UpdateApplyLockBusy();
         }
+        // The swap never ran, so the staged payload we were handed is ours to
+        // remove. Staging paths are per-stager, so this never deletes the
+        // payload the lock-holding applier is consuming. Without it, a manual
+        // update's per-process staging dir would accumulate on every attempt
+        // made during a resident update or a stale lock.
+        await _cleanupStaging(stagingPath: stagingPath);
+        return outcome;
       },
       shouldReleaseLock: (_) => true,
     );
