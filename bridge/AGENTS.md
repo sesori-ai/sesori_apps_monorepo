@@ -22,10 +22,31 @@ From `bridge/app/`:
 Dependencies flow in one direction:
 
 1. `sesori_plugin_interface` — no internal deps; defines the contract
-2. `sesori_plugin_opencode` — depends on interface + `sesori_shared`
-3. `app` — depends on both plugin packages + `sesori_shared`
+2. `sesori_plugin_runtime` — depends on interface; Layer-0 runtime supervision + acquisition primitives (`ManagedProcessService`, `SemanticVersion`, `PlatformTarget`, `ChecksumValidator`, `BinaryDownloadClient`, format-keyed `ArchiveExtractor`, `CommandExecutor`/`HostProcessCommandExecutor`)
+3. `sesori_plugin_opencode` — depends on interface + runtime + `sesori_shared`
+4. `app` — depends on all plugin packages + `sesori_shared`
 
 When changing shared types, update in this order.
+
+Shared runtime-acquisition primitives (download, extract, checksum, version, platform target) live in `sesori_plugin_runtime` and are reused by both the bridge self-updater (`app/lib/src/updater/`) and the OpenCode managed runtime. Do not duplicate them per consumer; map their neutral results into a consumer's own vocabulary at that consumer's boundary (e.g. `UpdateArtifactRepository` maps `DownloadException` → `UpdateResult`).
+
+## Plugin Runtime Provisioning (`ensureRuntime`)
+
+`BridgePluginDescriptor` has an `ensureRuntime({host})` phase that runs **after** `checkAvailability` and **immediately before** `start()`, under the cross-instance startup mutex (so two bridges never install the same managed runtime at once). It returns a `Stream<RuntimeProvisionProgress>` whose terminal event is `ProvisionReady(binaryPath)` or `ProvisionFailed(message)`. The default is a no-op (remote/attach plugins need no runtime).
+
+- The runner consumes the stream, renders progress (`RuntimeProvisionReporter`), and records `ProvisionReady.binaryPath` on the host (`PluginHost.provisionedRuntimePath`) for `start()` to launch.
+- **`ProvisionFailed` is non-fatal**: the bridge proceeds to `start()`, which returns a **degraded** plugin (`PluginDegraded`, never `PluginFailed` — a `PluginFailed` status exits the bridge). The relay/phone stay connected; a restart re-attempts provisioning.
+- A cooperative abort during provisioning surfaces as `PluginStartAbortedException` (a stream error), handled by the runner as "aborted as requested".
+- When mapping a long-running primitive stream into provisioning progress, prefer `await for (...) { yield ... }` over `yield*` if you need to **catch** errors from the inner stream: `yield*` forwards the inner stream's error straight to the consumer and bypasses your surrounding `try/catch`.
+
+### Bumping the managed OpenCode runtime
+
+The managed runtime is pinned in `sesori_plugin_opencode/lib/src/runtime/open_code_runtime_manifest.dart`:
+
+1. Pick the new `vX.Y.Z` release of `anomalyco/opencode`.
+2. Update `bundledVersion`.
+3. Replace all six per-platform `sha256` values from that release's asset digests — GitHub's release API exposes each asset's `digest: "sha256:…"` (`opencode-darwin-{arm64,x64}.zip`, `opencode-linux-{arm64,x64}.tar.gz`, `opencode-windows-{arm64,x64}.zip`).
+4. Raise `minSupportedVersion` only when new bridge code needs a newer OpenCode API than older PATH installs provide (keep it conservative — prefer the user's own install, and never force a download that would migrate a newer OpenCode's local DB).
 
 ## Testing
 

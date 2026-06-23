@@ -173,6 +173,9 @@ lib/src/
 ├── active_session_tracker.dart  # Layer 2 — tracks session state from SSE
 ├── opencode_service.dart    # Layer 3 — coordinates Repository + Tracker
 ├── opencode_plugin_impl.dart    # Layer 4 — BridgePlugin implementation (top-level composition)
+├── runtime/                 # OpenCode lifecycle: descriptor, managed runtime supervision, and
+│                            #   runtime provisioning (manifest, version validator, install/cleaner,
+│                            #   ProvisionService) for the descriptor's ensureRuntime phase
 └── sse/                     # SSE pipeline components (SseConnection, SseEventParser, SseEventMapper)
 ```
 
@@ -270,6 +273,7 @@ module_auth/lib/src/
 ## Key Architectural Patterns
 
 - **Bridge plugin system:** `BridgePluginApi` abstract class in `sesori_plugin_interface` defines the backend contract (projects, sessions, messages, events, health). THIS BELONGS TO Layer 1 (API layer). `sesori_plugin_opencode` implements it for OpenCode. New backends implement this interface.
+- **Plugin lifecycle:** `BridgePluginDescriptor` runs `validateConfig` → `checkAvailability` → `ensureRuntime` (download/install the backend runtime, emitting typed `RuntimeProvisionProgress`; non-fatal on failure) → `start`. `ensureRuntime` and shared runtime-acquisition primitives (download/extract/checksum/version) live in `sesori_plugin_runtime`. See `bridge/AGENTS.md` for the provisioning + degrade contract and the managed-runtime version-bump workflow.
 - **Relay protocol:** `RelayMessage` sealed class in `sesori_shared` defines all message types (auth, key_exchange, ready, request, response, sse_event, etc.). Binary wire format: `[version_byte][nonce (24B)][ciphertext + auth tag]`.
 - **Request routing (bridge):** Explicit handler chain. `RequestRouter` tries each registered handler in order; first match wins. Unmatched routes return 404 — there is no catch-all proxy.
 - **SSE pipeline (bridge):** `SseConnection` → `SseEventParser` → plugin event stream → `Orchestrator` → `SSEManager` → per-phone encrypted delivery with event buffering.
