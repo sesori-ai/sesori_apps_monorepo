@@ -7,13 +7,12 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:sesori_bridge/src/updater/api/github_releases_api.dart';
 import 'package:sesori_bridge/src/updater/api/update_cache_api.dart';
-import 'package:sesori_bridge/src/updater/foundation/platform_info.dart';
 import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
-import 'package:sesori_bridge/src/updater/models/bridge_version.dart';
 import 'package:sesori_bridge/src/updater/models/cached_release.dart';
 import 'package:sesori_bridge/src/updater/models/distribution_target.dart';
 import 'package:sesori_bridge/src/updater/models/release_info.dart';
 import 'package:sesori_bridge/src/updater/repositories/release_repository.dart';
+import 'package:sesori_plugin_runtime/sesori_plugin_runtime.dart';
 import 'package:test/test.dart';
 
 // ---------------------------------------------------------------------------
@@ -56,8 +55,8 @@ class _ThrowingCache extends UpdateCacheApi {
 
 /// Minimal GitHub API response shape for the `/releases` endpoint.
 final DistributionTarget _defaultTarget = DistributionTarget(
-  os: DistributionPlatformOs.macos,
-  arch: DistributionPlatformArch.arm64,
+  os: PlatformOs.macos,
+  arch: PlatformArch.arm64,
 );
 
 Map<String, dynamic> _releaseJson({
@@ -165,8 +164,8 @@ void main() {
 
       test('typed windows target selects zip asset and checksum url', () async {
         final windowsTarget = DistributionTarget(
-          os: DistributionPlatformOs.windows,
-          arch: DistributionPlatformArch.x64,
+          os: PlatformOs.windows,
+          arch: PlatformArch.x64,
         );
         final repository = _makeRepository(
           httpClient: _mockOk(
@@ -909,112 +908,6 @@ void main() {
         expect(cache.writtenReleases, hasLength(1));
         expect(cache.writtenReleases.first.latestVersion, equals('0.4.0'));
       });
-    });
-  });
-
-  // -------------------------------------------------------------------------
-  group('BridgeVersion', () {
-    test('newer major compares positive', () {
-      expect(
-        BridgeVersion.parse(value: '2.0.0').compareTo(BridgeVersion.parse(value: '1.0.0')),
-        isPositive,
-      );
-    });
-
-    test('newer minor compares positive', () {
-      expect(
-        BridgeVersion.parse(value: '0.3.0').compareTo(BridgeVersion.parse(value: '0.2.0')),
-        isPositive,
-      );
-    });
-
-    test('newer patch compares positive', () {
-      expect(
-        BridgeVersion.parse(value: '0.2.1').compareTo(BridgeVersion.parse(value: '0.2.0')),
-        isPositive,
-      );
-    });
-
-    test('equal versions compare to zero', () {
-      expect(
-        BridgeVersion.parse(value: '1.2.3').compareTo(BridgeVersion.parse(value: '1.2.3')),
-        equals(0),
-      );
-    });
-
-    test('older major compares negative', () {
-      expect(
-        BridgeVersion.parse(value: '0.1.0').compareTo(BridgeVersion.parse(value: '0.2.0')),
-        isNegative,
-      );
-    });
-
-    test('prerelease is lower precedence than stable with same base', () {
-      expect(
-        BridgeVersion.parse(value: '1.0.0-beta').compareTo(BridgeVersion.parse(value: '1.0.0')),
-        isNegative,
-      );
-    });
-
-    test('stable is higher precedence than prerelease with same base', () {
-      expect(
-        BridgeVersion.parse(value: '1.0.0').compareTo(BridgeVersion.parse(value: '1.0.0-beta')),
-        isPositive,
-      );
-    });
-
-    test('stable is higher precedence than internal build with same base', () {
-      expect(
-        BridgeVersion.parse(value: '9.8.7').compareTo(BridgeVersion.parse(value: '9.8.7-internal.53')),
-        isPositive,
-      );
-      expect(
-        BridgeVersion.parse(value: '9.8.7-internal.53').compareTo(BridgeVersion.parse(value: '9.8.7')),
-        isNegative,
-      );
-    });
-
-    test('internal builds with same base compare numerically by build number', () {
-      expect(
-        BridgeVersion.parse(value: '1.0.9-internal.9').compareTo(BridgeVersion.parse(value: '1.0.9-internal.53')),
-        isNegative,
-      );
-      expect(
-        BridgeVersion.parse(value: '1.0.9-internal.54').compareTo(BridgeVersion.parse(value: '1.0.9-internal.53')),
-        isPositive,
-      );
-    });
-
-    test('internal build of a newer base is higher than an older stable', () {
-      expect(
-        BridgeVersion.parse(value: '1.0.9-internal.53').compareTo(BridgeVersion.parse(value: '1.0.8')),
-        isPositive,
-      );
-    });
-
-    test('prerelease with newer numeric base still compares positive', () {
-      expect(
-        BridgeVersion.parse(value: '2.0.0-beta').compareTo(BridgeVersion.parse(value: '1.9.9')),
-        isPositive,
-      );
-    });
-
-    test('prerelease identifiers compare lexically when numeric base matches', () {
-      expect(
-        BridgeVersion.parse(value: '1.0.0-alpha').compareTo(BridgeVersion.parse(value: '1.0.0-beta')),
-        isNegative,
-      );
-    });
-
-    test('build metadata does not affect comparison precedence', () {
-      expect(
-        BridgeVersion.parse(value: '1.2.3+build.1').compareTo(BridgeVersion.parse(value: '1.2.3+build.9')),
-        equals(0),
-      );
-    });
-
-    test('tryParse returns null for invalid strings', () {
-      expect(BridgeVersion.tryParse(value: 'not-a-version'), isNull);
     });
   });
 

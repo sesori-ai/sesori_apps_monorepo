@@ -20,6 +20,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         ServerClock,
         StartAbortController,
         StartAbortSignal;
+import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart" show ArchiveExtractor, BinaryDownloadClient, ChecksumValidator;
 
 import "../../api/bridge_settings_api.dart";
 import "../../auth/bridge_registration_api.dart";
@@ -49,15 +50,12 @@ import "../../server/repositories/startup_mutex_repository.dart";
 import "../../server/repositories/terminal_prompt_repository.dart";
 import "../../server/services/bridge_instance_service.dart";
 import "../../server/services/bridge_restart_service.dart";
-import "../../updater/api/archive_extractor_api.dart";
 import "../../updater/api/checksum_manifest_api.dart";
-import "../../updater/api/checksum_verifier_api.dart";
 import "../../updater/api/github_releases_api.dart";
 import "../../updater/api/managed_runtime_manifest_api.dart";
 import "../../updater/api/platform_update_api.dart";
 import "../../updater/api/update_attempt_api.dart";
 import "../../updater/api/update_cache_api.dart";
-import "../../updater/api/update_download_api.dart";
 import "../../updater/api/update_log_api.dart";
 import "../../updater/foundation/filesystem_cleaner.dart";
 import "../../updater/foundation/release_track.dart";
@@ -79,6 +77,7 @@ import "../../updater/services/update_reconciliation_service.dart";
 import "../../updater/services/update_service.dart";
 import "../../version.dart";
 import "../foundation/process_runner.dart";
+import "../foundation/process_runner_command_executor.dart";
 import "../log_failure_reporter.dart";
 import "../models/bridge_config.dart";
 import "../persistence/bridge_diagnostics.dart";
@@ -590,6 +589,9 @@ class BridgeRuntimeRunner {
       installRoot: installRoot,
     );
 
+    final distributionTarget = currentDistributionTarget();
+    final commandExecutor = ProcessRunnerCommandExecutor(processRunner: processRunner);
+
     final updateService = UpdateService(
       releaseRepository: ReleaseRepository(
         api: GitHubReleasesApi(httpClient: httpClient, authToken: githubToken),
@@ -598,15 +600,16 @@ class BridgeRuntimeRunner {
           clock: clock,
         ),
         currentVersion: appVersion,
-        target: currentDistributionTarget(),
+        target: distributionTarget,
         track: releaseTrack,
       ),
       updateInstallService: UpdateInstallService(
         updateArtifactRepository: UpdateArtifactRepository(
-          downloadApi: UpdateDownloadApi(httpClient: httpClient),
+          downloadClient: BinaryDownloadClient(httpClient: httpClient),
           checksumManifestApi: ChecksumManifestApi(httpClient: httpClient),
-          checksumVerifierApi: ChecksumVerifierApi(),
-          archiveExtractorApi: ArchiveExtractorApi(processRunner: processRunner),
+          checksumValidator: ChecksumValidator(),
+          archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
+          archiveFormat: distributionTarget.archiveFormat,
         ),
         filesystemCleaner: filesystemCleaner,
         // The background updater uses the shared, fixed staging paths.

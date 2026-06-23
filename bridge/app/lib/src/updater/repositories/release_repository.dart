@@ -1,10 +1,10 @@
 import 'package:collection/collection.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
+import 'package:sesori_plugin_runtime/sesori_plugin_runtime.dart';
 
 import '../api/github_releases_api.dart';
 import '../api/update_cache_api.dart';
 import '../foundation/release_track.dart';
-import '../models/bridge_version.dart';
 import '../models/cached_release.dart';
 import '../models/distribution_target.dart';
 import '../models/github_release_dto.dart';
@@ -14,7 +14,7 @@ import '../models/update_resolution.dart';
 class ReleaseRepository {
   final GitHubReleasesApi _api;
   final UpdateCacheApi _cache;
-  final BridgeVersion _currentVersion;
+  final SemanticVersion _currentVersion;
   final DistributionTarget _target;
   final ReleaseTrack _track;
 
@@ -26,7 +26,7 @@ class ReleaseRepository {
     required ReleaseTrack track,
   }) : _api = api,
        _cache = cache,
-       _currentVersion = BridgeVersion.parse(value: currentVersion),
+       _currentVersion = SemanticVersion.parse(value: currentVersion),
        _target = target,
        _track = track;
 
@@ -35,7 +35,7 @@ class ReleaseRepository {
   /// - internal: stable releases plus `-internal.*` pre-releases. Other
   ///   pre-release kinds (e.g. `-rc`, `-beta`) are intentionally excluded so
   ///   "internal" means exactly the internal lane, not "any non-stable build".
-  bool _isEligible(BridgeVersion version) {
+  bool _isEligible(SemanticVersion version) {
     if (version.isStable) {
       return true;
     }
@@ -69,7 +69,7 @@ class ReleaseRepository {
     final selected = _selectLatestBridgeRelease(releases: releases);
 
     ReleaseInfo? latestEligible;
-    BridgeVersion? latestVersion;
+    SemanticVersion? latestVersion;
     if (selected != null) {
       final extracted = await _extractReleaseInfo(release: selected);
       if (extracted != null) {
@@ -91,7 +91,7 @@ class ReleaseRepository {
       return null;
     }
 
-    final BridgeVersion? latestVersion = BridgeVersion.tryParse(value: cached.latestVersion);
+    final SemanticVersion? latestVersion = SemanticVersion.tryParse(value: cached.latestVersion);
     if (latestVersion == null || !_isEligible(latestVersion)) {
       return null;
     }
@@ -130,7 +130,7 @@ class ReleaseRepository {
           (release) {
             final tagName = release.tagName;
             final versionString = tagName.replaceFirst('v', '');
-            final version = BridgeVersion.tryParse(value: versionString);
+            final version = SemanticVersion.tryParse(value: versionString);
             return version != null && _isEligible(version)
                 ? (
                     release: release,
@@ -171,7 +171,7 @@ class ReleaseRepository {
   /// URLs + published date) and writes the metadata cache as a side effect.
   /// Returns `null` when the tag/version is unparseable or the required assets
   /// are missing. Applies NO eligibility or "is newer" gating — callers decide.
-  Future<({ReleaseInfo info, BridgeVersion version})?> _extractReleaseInfo({
+  Future<({ReleaseInfo info, SemanticVersion version})?> _extractReleaseInfo({
     required GitHubReleaseDto release,
   }) async {
     final tagName = release.tagName;
@@ -180,7 +180,7 @@ class ReleaseRepository {
     }
 
     final versionString = tagName.replaceFirst('v', '');
-    final BridgeVersion? version = BridgeVersion.tryParse(value: versionString);
+    final SemanticVersion? version = SemanticVersion.tryParse(value: versionString);
     if (version == null) {
       return null;
     }

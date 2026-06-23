@@ -1,4 +1,5 @@
-import 'bridge_version.dart';
+import 'package:sesori_plugin_runtime/sesori_plugin_runtime.dart';
+
 import 'release_info.dart';
 
 /// A snapshot for deciding an explicit update.
@@ -9,7 +10,7 @@ import 'release_info.dart';
 /// only compare the already-typed values.
 class UpdateResolution {
   /// The version of the currently running binary.
-  final BridgeVersion currentVersion;
+  final SemanticVersion currentVersion;
 
   /// Whether [currentVersion] is eligible for the active track (e.g. an
   /// `-internal.*` build is not eligible while the track is `stable`).
@@ -20,7 +21,7 @@ class UpdateResolution {
   final ReleaseInfo? latestEligible;
 
   /// The typed version of [latestEligible], or `null` when there is none.
-  final BridgeVersion? latestVersion;
+  final SemanticVersion? latestVersion;
 
   const UpdateResolution({
     required this.currentVersion,

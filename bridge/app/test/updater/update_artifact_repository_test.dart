@@ -1,14 +1,11 @@
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
-import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
-import 'package:sesori_bridge/src/updater/api/archive_extractor_api.dart';
 import 'package:sesori_bridge/src/updater/api/checksum_manifest_api.dart';
-import 'package:sesori_bridge/src/updater/api/checksum_verifier_api.dart';
-import 'package:sesori_bridge/src/updater/api/update_download_api.dart';
 import 'package:sesori_bridge/src/updater/models/checksum_manifest.dart';
 import 'package:sesori_bridge/src/updater/models/release_info.dart';
 import 'package:sesori_bridge/src/updater/repositories/update_artifact_repository.dart';
+import 'package:sesori_plugin_runtime/sesori_plugin_runtime.dart';
 import 'package:test/test.dart';
 
 class _FakeUpdateHttpClient extends http.BaseClient {
@@ -36,12 +33,12 @@ class _FakeChecksumManifestApi implements ChecksumManifestApi {
   }
 }
 
-class _FakeChecksumVerifierApi implements ChecksumVerifierApi {
+class _FakeChecksumValidator implements ChecksumValidator {
   final bool result;
   final Object? error;
   String? lastExpectedHash;
 
-  _FakeChecksumVerifierApi({required this.result, this.error});
+  _FakeChecksumValidator({required this.result, this.error});
 
   @override
   Future<String> computeSha256({required String filePath}) async => 'unused';
@@ -56,30 +53,38 @@ class _FakeChecksumVerifierApi implements ChecksumVerifierApi {
   }
 }
 
-class _FakeProcessRunner implements ProcessRunner {
+/// A no-op [CommandExecutor]: these tests exercise only checksum verification,
+/// so the extractor is constructed but never invoked.
+class _UnusedCommandExecutor implements CommandExecutor {
   @override
-  Future<int> startDetached({
-    required String executable,
-    required List<String> arguments,
+  Future<CommandResult> run(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
     Map<String, String>? environment,
+    Duration? timeout,
   }) async {
     throw UnimplementedError();
   }
+}
 
-  final int exitCode;
-
-  _FakeProcessRunner({required this.exitCode});
-
-  @override
-  Future<ProcessResult> run(
-    String executable,
-    List<String> arguments, {
-    Map<String, String>? environment,
-    String? workingDirectory,
-    Duration timeout = const Duration(seconds: 15),
-  }) async {
-    return ProcessResult(1, exitCode, '', '');
-  }
+/// Builds a repository whose download/extract collaborators are inert, varying
+/// only the manifest + validator that the verify-path tests care about.
+UpdateArtifactRepository buildRepository({
+  required ChecksumManifestApi checksumManifestApi,
+  required ChecksumValidator checksumValidator,
+}) {
+  return UpdateArtifactRepository(
+    downloadClient: BinaryDownloadClient(
+      httpClient: _FakeUpdateHttpClient(
+        handler: (request) async => http.StreamedResponse(const Stream.empty(), 200),
+      ),
+    ),
+    checksumManifestApi: checksumManifestApi,
+    checksumValidator: checksumValidator,
+    archiveExtractor: ArchiveExtractor(commandExecutor: _UnusedCommandExecutor()),
+    archiveFormat: ArchiveFormat.tarGz,
+  );
 }
 
 void main() {
@@ -96,20 +101,14 @@ void main() {
     });
 
     test('uses published release asset filename when resolving checksum', () async {
-      final verifier = _FakeChecksumVerifierApi(result: true);
-      final repository = UpdateArtifactRepository(
-        downloadApi: UpdateDownloadApi(
-          httpClient: _FakeUpdateHttpClient(
-            handler: (request) async => http.StreamedResponse(const Stream.empty(), 200),
-          ),
-        ),
+      final validator = _FakeChecksumValidator(result: true);
+      final repository = buildRepository(
         checksumManifestApi: _FakeChecksumManifestApi(
           manifest: ChecksumManifest(
             entries: {'sesori-bridge-macos-arm64.tar.gz': 'a' * 64},
           ),
         ),
-        checksumVerifierApi: verifier,
-        archiveExtractorApi: ArchiveExtractorApi(processRunner: _FakeProcessRunner(exitCode: 0)),
+        checksumValidator: validator,
       );
 
       final result = await repository.verifyDownloadedArchive(
@@ -118,21 +117,15 @@ void main() {
       );
 
       expect(result, isTrue);
-      expect(verifier.lastExpectedHash, equals('a' * 64));
+      expect(validator.lastExpectedHash, equals('a' * 64));
     });
 
     test('returns false when manifest does not contain published asset filename', () async {
-      final repository = UpdateArtifactRepository(
-        downloadApi: UpdateDownloadApi(
-          httpClient: _FakeUpdateHttpClient(
-            handler: (request) async => http.StreamedResponse(const Stream.empty(), 200),
-          ),
-        ),
+      final repository = buildRepository(
         checksumManifestApi: _FakeChecksumManifestApi(
           manifest: ChecksumManifest(entries: {'bridge.tar.gz': 'a' * 64}),
         ),
-        checksumVerifierApi: _FakeChecksumVerifierApi(result: true),
-        archiveExtractorApi: ArchiveExtractorApi(processRunner: _FakeProcessRunner(exitCode: 0)),
+        checksumValidator: _FakeChecksumValidator(result: true),
       );
 
       final result = await repository.verifyDownloadedArchive(
@@ -144,15 +137,9 @@ void main() {
     });
 
     test('returns false when checksum manifest api throws', () async {
-      final repository = UpdateArtifactRepository(
-        downloadApi: UpdateDownloadApi(
-          httpClient: _FakeUpdateHttpClient(
-            handler: (request) async => http.StreamedResponse(const Stream.empty(), 200),
-          ),
-        ),
+      final repository = buildRepository(
         checksumManifestApi: _FakeChecksumManifestApi(error: StateError('boom')),
-        checksumVerifierApi: _FakeChecksumVerifierApi(result: true),
-        archiveExtractorApi: ArchiveExtractorApi(processRunner: _FakeProcessRunner(exitCode: 0)),
+        checksumValidator: _FakeChecksumValidator(result: true),
       );
 
       final result = await repository.verifyDownloadedArchive(
@@ -164,15 +151,9 @@ void main() {
     });
 
     test('rethrows network errors so the caller can classify them as transient', () async {
-      final repository = UpdateArtifactRepository(
-        downloadApi: UpdateDownloadApi(
-          httpClient: _FakeUpdateHttpClient(
-            handler: (request) async => http.StreamedResponse(const Stream.empty(), 200),
-          ),
-        ),
+      final repository = buildRepository(
         checksumManifestApi: _FakeChecksumManifestApi(error: const SocketException('offline')),
-        checksumVerifierApi: _FakeChecksumVerifierApi(result: true),
-        archiveExtractorApi: ArchiveExtractorApi(processRunner: _FakeProcessRunner(exitCode: 0)),
+        checksumValidator: _FakeChecksumValidator(result: true),
       );
 
       await expectLater(
@@ -184,23 +165,17 @@ void main() {
       );
     });
 
-    test('returns false when checksum verifier throws', () async {
-      final repository = UpdateArtifactRepository(
-        downloadApi: UpdateDownloadApi(
-          httpClient: _FakeUpdateHttpClient(
-            handler: (request) async => http.StreamedResponse(const Stream.empty(), 200),
-          ),
-        ),
+    test('returns false when checksum validator throws', () async {
+      final repository = buildRepository(
         checksumManifestApi: _FakeChecksumManifestApi(
           manifest: ChecksumManifest(
             entries: {'sesori-bridge-macos-arm64.tar.gz': 'a' * 64},
           ),
         ),
-        checksumVerifierApi: _FakeChecksumVerifierApi(
+        checksumValidator: _FakeChecksumValidator(
           result: true,
           error: StateError('verify failed'),
         ),
-        archiveExtractorApi: ArchiveExtractorApi(processRunner: _FakeProcessRunner(exitCode: 0)),
       );
 
       final result = await repository.verifyDownloadedArchive(

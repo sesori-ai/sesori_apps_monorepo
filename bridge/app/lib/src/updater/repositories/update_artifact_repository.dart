@@ -4,38 +4,56 @@ import 'dart:io';
 import 'package:http/http.dart' show ClientException;
 import 'package:path/path.dart' as p;
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
+import 'package:sesori_plugin_runtime/sesori_plugin_runtime.dart';
 
-import '../api/archive_extractor_api.dart';
 import '../api/checksum_manifest_api.dart';
-import '../api/checksum_verifier_api.dart';
-import '../api/update_download_api.dart';
 import '../models/release_info.dart';
 import '../models/update_result.dart';
 
+/// Acquires and verifies a bridge release archive, mapping the neutral outcomes
+/// of the shared runtime primitives ([BinaryDownloadClient], [ChecksumValidator],
+/// [ArchiveExtractor]) into the updater's [UpdateResult] vocabulary. The mapping
+/// boundary lives here so the primitives stay reusable by other consumers.
 class UpdateArtifactRepository {
-  final UpdateDownloadApi _downloadApi;
+  final BinaryDownloadClient _downloadClient;
   final ChecksumManifestApi _checksumManifestApi;
-  final ChecksumVerifierApi _checksumVerifierApi;
-  final ArchiveExtractorApi _archiveExtractorApi;
+  final ChecksumValidator _checksumValidator;
+  final ArchiveExtractor _archiveExtractor;
+  final ArchiveFormat _archiveFormat;
 
   UpdateArtifactRepository({
-    required UpdateDownloadApi downloadApi,
+    required BinaryDownloadClient downloadClient,
     required ChecksumManifestApi checksumManifestApi,
-    required ChecksumVerifierApi checksumVerifierApi,
-    required ArchiveExtractorApi archiveExtractorApi,
-  }) : _downloadApi = downloadApi,
+    required ChecksumValidator checksumValidator,
+    required ArchiveExtractor archiveExtractor,
+    required ArchiveFormat archiveFormat,
+  }) : _downloadClient = downloadClient,
        _checksumManifestApi = checksumManifestApi,
-       _checksumVerifierApi = checksumVerifierApi,
-       _archiveExtractorApi = archiveExtractorApi;
+       _checksumValidator = checksumValidator,
+       _archiveExtractor = archiveExtractor,
+       _archiveFormat = archiveFormat;
 
   Future<UpdateResult> downloadArchive({
     required ReleaseInfo release,
     required String archivePath,
-  }) {
-    return _downloadApi.downloadTo(
-      url: release.assetUrl,
-      destinationPath: archivePath,
-    );
+  }) async {
+    try {
+      // Drain the progress stream: the background/explicit updaters only need
+      // the terminal success/failure, not byte progress. A connection-phase
+      // error (e.g. SocketException from the initial send) propagates raw and is
+      // classified by the install service, matching the prior behavior.
+      await _downloadClient
+          .download(url: release.assetUrl, destinationPath: archivePath)
+          .drain<void>();
+      return UpdateResult.success;
+    } on DownloadException catch (error) {
+      switch (error.kind) {
+        case DownloadFailureKind.network:
+          return UpdateResult.networkError;
+        case DownloadFailureKind.failed:
+          return UpdateResult.downloadFailed;
+      }
+    }
   }
 
   Future<bool> verifyDownloadedArchive({
@@ -55,7 +73,7 @@ class UpdateArtifactRepository {
         return false;
       }
 
-      return await _checksumVerifierApi.verify(
+      return await _checksumValidator.verify(
         filePath: archivePath,
         expectedHash: expectedChecksum,
       );
@@ -87,9 +105,10 @@ class UpdateArtifactRepository {
     required String archivePath,
     required String stagingPath,
   }) {
-    return _archiveExtractorApi.extract(
+    return _archiveExtractor.extract(
       archivePath: archivePath,
       stagingPath: stagingPath,
+      format: _archiveFormat,
     );
   }
 

@@ -1,8 +1,14 @@
+export "src/archive_extractor.dart";
+export "src/binary_download_client.dart";
+export "src/checksum_validator.dart";
+export "src/command_executor.dart";
 export "src/host_json_runtime_ownership_repository.dart";
 export "src/managed_process_service.dart";
 export "src/managed_runtime_monitor.dart";
 export "src/managed_runtime_spec.dart";
+export "src/platform_target.dart";
 export "src/runtime_ownership_repository.dart";
 export "src/runtime_record_mapper.dart";
 export "src/runtime_restart_policy.dart";
 export "src/runtime_start_intent.dart";
+export "src/semantic_version.dart";

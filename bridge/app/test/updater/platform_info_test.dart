@@ -1,9 +1,9 @@
 import 'dart:io' show Platform;
 
-import 'package:sesori_bridge/src/updater/foundation/platform_info.dart';
 import 'package:sesori_bridge/src/updater/foundation/update_policy.dart';
 import 'package:sesori_bridge/src/updater/models/distribution_target.dart';
 import 'package:sesori_bridge/src/updater/services/managed_runtime_path_service.dart';
+import 'package:sesori_plugin_runtime/sesori_plugin_runtime.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -12,43 +12,43 @@ void main() {
       final targets = <(DistributionTarget, String)>[
         (
           DistributionTarget(
-            os: DistributionPlatformOs.macos,
-            arch: DistributionPlatformArch.arm64,
+            os: PlatformOs.macos,
+            arch: PlatformArch.arm64,
           ),
           'sesori-bridge-macos-arm64.tar.gz',
         ),
         (
           DistributionTarget(
-            os: DistributionPlatformOs.macos,
-            arch: DistributionPlatformArch.x64,
+            os: PlatformOs.macos,
+            arch: PlatformArch.x64,
           ),
           'sesori-bridge-macos-x64.tar.gz',
         ),
         (
           DistributionTarget(
-            os: DistributionPlatformOs.linux,
-            arch: DistributionPlatformArch.x64,
+            os: PlatformOs.linux,
+            arch: PlatformArch.x64,
           ),
           'sesori-bridge-linux-x64.tar.gz',
         ),
         (
           DistributionTarget(
-            os: DistributionPlatformOs.linux,
-            arch: DistributionPlatformArch.arm64,
+            os: PlatformOs.linux,
+            arch: PlatformArch.arm64,
           ),
           'sesori-bridge-linux-arm64.tar.gz',
         ),
         (
           DistributionTarget(
-            os: DistributionPlatformOs.windows,
-            arch: DistributionPlatformArch.x64,
+            os: PlatformOs.windows,
+            arch: PlatformArch.x64,
           ),
           'sesori-bridge-windows-x64.zip',
         ),
         (
           DistributionTarget(
-            os: DistributionPlatformOs.windows,
-            arch: DistributionPlatformArch.arm64,
+            os: PlatformOs.windows,
+            arch: PlatformArch.arm64,
           ),
           'sesori-bridge-windows-arm64.zip',
         ),
@@ -59,69 +59,18 @@ void main() {
       }
     });
 
-    // All six os×arch combinations are now supported; unsupported-os handling
-    // is already covered by the DistributionPlatformOs group below.
-    test('throws ArgumentError for unsupported operating system', () {
+    test('maps the archive format per platform', () {
       expect(
-        () => DistributionPlatformOs.fromPlatform(operatingSystem: 'freebsd'),
-        throwsA(isA<ArgumentError>()),
-      );
-    });
-  });
-
-  group('DistributionPlatformOs', () {
-    test('maps supported runtime operating systems', () {
-      expect(
-        DistributionPlatformOs.fromPlatform(operatingSystem: 'macos'),
-        equals(DistributionPlatformOs.macos),
+        DistributionTarget(os: PlatformOs.macos, arch: PlatformArch.arm64).archiveFormat,
+        equals(ArchiveFormat.tarGz),
       );
       expect(
-        DistributionPlatformOs.fromPlatform(operatingSystem: 'linux'),
-        equals(DistributionPlatformOs.linux),
+        DistributionTarget(os: PlatformOs.linux, arch: PlatformArch.x64).archiveFormat,
+        equals(ArchiveFormat.tarGz),
       );
       expect(
-        DistributionPlatformOs.fromPlatform(operatingSystem: 'windows'),
-        equals(DistributionPlatformOs.windows),
-      );
-    });
-
-    test('throws ArgumentError for unsupported os', () {
-      expect(
-        () => DistributionPlatformOs.fromPlatform(operatingSystem: 'freebsd'),
-        throwsA(isA<ArgumentError>()),
-      );
-    });
-  });
-
-  group('DistributionPlatformArch', () {
-    test('detects arm64 from runtime version variants', () {
-      expect(
-        DistributionPlatformArch.detectCurrent(platformVersion: 'Dart VM version on arm64'),
-        equals(DistributionPlatformArch.arm64),
-      );
-      expect(
-        DistributionPlatformArch.detectCurrent(platformVersion: 'Dart VM version on aarch64'),
-        equals(DistributionPlatformArch.arm64),
-      );
-    });
-
-    test('detects x64 from runtime version variants', () {
-      expect(
-        DistributionPlatformArch.detectCurrent(platformVersion: 'Dart VM version on x86_64'),
-        equals(DistributionPlatformArch.x64),
-      );
-      expect(
-        DistributionPlatformArch.detectCurrent(platformVersion: 'Dart VM version on x64'),
-        equals(DistributionPlatformArch.x64),
-      );
-    });
-
-    test('throws ArgumentError when runtime version is unknown', () {
-      expect(
-        () => DistributionPlatformArch.detectCurrent(
-          platformVersion: 'Dart VM version on something-else',
-        ),
-        throwsA(isA<ArgumentError>()),
+        DistributionTarget(os: PlatformOs.windows, arch: PlatformArch.x64).archiveFormat,
+        equals(ArchiveFormat.zip),
       );
     });
   });

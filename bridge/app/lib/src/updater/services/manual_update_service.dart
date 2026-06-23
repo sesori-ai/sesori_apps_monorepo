@@ -2,11 +2,11 @@ import 'dart:async';
 import 'dart:io' show HttpException, SocketException;
 
 import 'package:http/http.dart' show ClientException;
+import 'package:sesori_plugin_runtime/sesori_plugin_runtime.dart';
 
 import '../foundation/github_rate_limit_exception.dart';
 import '../foundation/release_track.dart';
 import '../foundation/update_policy.dart';
-import '../models/bridge_version.dart';
 import '../models/explicit_update_outcome.dart';
 import '../models/release_info.dart';
 import '../models/update_apply_outcome.dart';
@@ -80,12 +80,12 @@ class ManualUpdateService {
     }
 
     final ReleaseInfo? latest = resolution.latestEligible;
-    final BridgeVersion? latestVersion = resolution.latestVersion;
+    final SemanticVersion? latestVersion = resolution.latestVersion;
     if (latest == null || latestVersion == null) {
       return ExplicitUpdateNoEligibleRelease(track: _track);
     }
 
-    final BridgeVersion current = resolution.currentVersion;
+    final SemanticVersion current = resolution.currentVersion;
     final int comparison = latestVersion.compareTo(current);
 
     if (!force) {
@@ -141,7 +141,7 @@ class ManualUpdateService {
 
   Future<ExplicitUpdateOutcome> _stageAndApply({
     required ReleaseInfo release,
-    required BridgeVersion fromVersion,
+    required SemanticVersion fromVersion,
     required UpdateAppliedKind kind,
   }) async {
     final UpdateInstallResult staged;
