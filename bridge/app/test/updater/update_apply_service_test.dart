@@ -4,8 +4,8 @@ import 'package:clock/clock.dart';
 import 'package:path/path.dart' as p;
 import 'package:sesori_bridge/src/updater/foundation/filesystem_cleaner.dart';
 import 'package:sesori_bridge/src/updater/foundation/update_lock.dart';
-import 'package:sesori_bridge/src/updater/foundation/update_message_formatter.dart';
 import 'package:sesori_bridge/src/updater/models/release_info.dart';
+import 'package:sesori_bridge/src/updater/models/update_apply_outcome.dart';
 import 'package:sesori_bridge/src/updater/models/update_attempt.dart';
 import 'package:sesori_bridge/src/updater/repositories/update_attempt_repository.dart';
 import 'package:sesori_bridge/src/updater/repositories/update_installation_repository.dart';
@@ -95,6 +95,7 @@ class _FakeUpdateLock implements UpdateLock {
     required Future<T> Function() onLockAcquired,
     required Future<T> Function(LockAcquireResult result) onLockRejected,
     required bool Function(T value) shouldReleaseLock,
+    Duration? staleLockMaxAge,
   }) {
     if (outcome == LockAcquireResult.acquired) {
       return onLockAcquired();
@@ -120,8 +121,6 @@ void main() {
   late _FakeAttemptRepository attempts;
   late _FakeLogRepository logs;
   late _FakeUpdateLock lock;
-  late List<String> infoMessages;
-  late List<String> errorMessages;
   late List<String> warnings;
 
   UpdateApplyService buildService() {
@@ -130,14 +129,11 @@ void main() {
       attemptRepository: attempts,
       logRepository: logs,
       updateLock: lock,
-      messageFormatter: const UpdateMessageFormatter(),
       filesystemCleaner: const FilesystemCleaner(),
       clock: Clock.fixed(DateTime.utc(2026, 6, 17)),
       currentVersion: '1.0.0',
       installRoot: installRoot.path,
     );
-    service.emitMessage = infoMessages.add;
-    service.emitError = errorMessages.add;
     service.logWarning = warnings.add;
     return service;
   }
@@ -150,8 +146,6 @@ void main() {
     attempts = _FakeAttemptRepository();
     logs = _FakeLogRepository();
     lock = _FakeUpdateLock();
-    infoMessages = <String>[];
-    errorMessages = <String>[];
     warnings = <String>[];
   });
 
@@ -161,12 +155,12 @@ void main() {
     }
   });
 
-  test('successful apply records pending activation and reports it', () async {
+  test('successful apply records pending activation and returns applied', () async {
     final service = buildService();
 
-    final applied = await service.apply(release: _release(), stagingPath: stagingPath);
+    final outcome = await service.apply(release: _release(), stagingPath: stagingPath);
 
-    expect(applied, isTrue);
+    expect(outcome, isA<UpdateApplied>().having((o) => o.version, 'version', '2.0.0'));
     expect(installation.applyCount, 1);
     // The managed-runtime manifest is bumped so the npm bootstrap won't clobber
     // the freshly swapped binary.
@@ -174,8 +168,6 @@ void main() {
     expect(attempts.saved.first.status, UpdateAttemptStatus.inFlight);
     expect(attempts.saved.last.status, UpdateAttemptStatus.appliedPendingActivation);
     expect(attempts.saved.last.stage, UpdateStage.activated);
-    expect(infoMessages.single, contains('2.0.0'));
-    expect(errorMessages, isEmpty);
     // The staging directory is cleaned after a successful apply.
     expect(Directory(stagingPath).existsSync(), isFalse);
   });
@@ -184,11 +176,11 @@ void main() {
     attempts.throwOnSaveStatus = UpdateAttemptStatus.appliedPendingActivation;
     final service = buildService();
 
-    final applied = await service.apply(release: _release(), stagingPath: stagingPath);
+    final outcome = await service.apply(release: _release(), stagingPath: stagingPath);
 
     // The swap landed, so apply still succeeds; recording activation is
     // best-effort.
-    expect(applied, isTrue);
+    expect(outcome, isA<UpdateApplied>());
     expect(installation.applyCount, 1);
     // The inFlight record could not be advanced to appliedPendingActivation, so
     // it is cleared — the next launch must not reconcile this successful update
@@ -206,38 +198,53 @@ void main() {
     logs.throwOnMessageContaining = 'pending activation on next launch';
     final service = buildService();
 
-    final applied = await service.apply(release: _release(), stagingPath: stagingPath);
+    final outcome = await service.apply(release: _release(), stagingPath: stagingPath);
 
-    expect(applied, isTrue);
+    expect(outcome, isA<UpdateApplied>());
     expect(attempts.saved.last.status, UpdateAttemptStatus.appliedPendingActivation);
     expect(installation.recordedVersion, '2.0.0');
     expect(warnings, contains(predicate<String>((w) => w.contains('pending activation'))));
   });
 
-  test('failed swap records a failure and surfaces guidance', () async {
+  test('failed swap records a failure and returns it with the log path', () async {
     installation.applyError = StateError('disk full');
     final service = buildService();
 
-    final applied = await service.apply(release: _release(), stagingPath: stagingPath);
+    final outcome = await service.apply(release: _release(), stagingPath: stagingPath);
 
-    expect(applied, isFalse);
+    expect(
+      outcome,
+      isA<UpdateApplyFailed>()
+          .having((o) => o.reason, 'reason', contains('disk full'))
+          .having((o) => o.logPath, 'logPath', logs.logPath),
+    );
     expect(attempts.saved.first.status, UpdateAttemptStatus.inFlight);
     expect(attempts.saved.last.status, UpdateAttemptStatus.failed);
     expect(attempts.saved.last.reason, contains('disk full'));
-    expect(errorMessages.single, contains('https://sesori.com/'));
-    expect(infoMessages, isEmpty);
   });
 
   test('lock contention is benign: no apply, a warning, no attempt record', () async {
     lock.outcome = LockAcquireResult.alreadyLocked;
     final service = buildService();
 
-    final applied = await service.apply(release: _release(), stagingPath: stagingPath);
+    final outcome = await service.apply(release: _release(), stagingPath: stagingPath);
 
-    expect(applied, isFalse);
+    expect(outcome, isA<UpdateApplyLockBusy>());
     expect(installation.applyCount, 0);
     expect(attempts.saved, isEmpty);
     expect(warnings, hasLength(1));
-    expect(errorMessages, isEmpty);
+  });
+
+  test('lock permission denied surfaces a failure', () async {
+    lock.outcome = LockAcquireResult.permissionDenied;
+    final service = buildService();
+
+    final outcome = await service.apply(release: _release(), stagingPath: stagingPath);
+
+    expect(
+      outcome,
+      isA<UpdateApplyFailed>().having((o) => o.reason, 'reason', contains('permission denied')),
+    );
+    expect(installation.applyCount, 0);
   });
 }

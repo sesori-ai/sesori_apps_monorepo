@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:clock/clock.dart';
 import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/updater/foundation/update_lock.dart';
 import 'package:test/test.dart';
@@ -56,6 +57,7 @@ void main() {
       final lock = UpdateLock(
         currentPid: pid,
         processRunner: _RecordingProcessRunner(exitCode: 1),
+        clock: const Clock(),
       );
 
       var acquired = false;
@@ -83,6 +85,7 @@ void main() {
       final lock = UpdateLock(
         currentPid: pid,
         processRunner: _RecordingProcessRunner(exitCode: 1),
+        clock: const Clock(),
       );
 
       final result = await lock.locked<int>(
@@ -101,6 +104,7 @@ void main() {
       final lock = UpdateLock(
         currentPid: pid,
         processRunner: runner,
+        clock: const Clock(),
       );
 
       final result = await lock.isProcessAlive(pidToCheck: 999999);
@@ -120,6 +124,7 @@ void main() {
       final lock = UpdateLock(
         currentPid: pid,
         processRunner: _RecordingProcessRunner(exitCode: 1),
+        clock: const Clock(),
       );
 
       final result = await lock.locked<int>(
@@ -152,6 +157,7 @@ void main() {
       final lock = UpdateLock(
         currentPid: pid,
         processRunner: _RecordingProcessRunner(exitCode: 1),
+        clock: const Clock(),
       );
 
       final result = await lock.locked<LockAcquireResult>(
@@ -169,6 +175,7 @@ void main() {
       final lock = UpdateLock(
         currentPid: pid,
         processRunner: _RecordingProcessRunner(exitCode: 1),
+        clock: const Clock(),
       );
 
       final result = await lock.locked<int>(
@@ -195,6 +202,7 @@ void main() {
           exitCode: 0,
           stdout: 'new-process-marker\n',
         ),
+        clock: const Clock(),
       );
 
       final result = await lock.locked<int>(
@@ -226,6 +234,7 @@ void main() {
       final lock = UpdateLock(
         currentPid: pid,
         processRunner: _RecordingProcessRunner(exitCode: 1),
+        clock: const Clock(),
       );
 
       final result = await lock.locked<LockAcquireResult>(
@@ -236,6 +245,63 @@ void main() {
       );
 
       expect(result, equals(LockAcquireResult.permissionDenied));
+    });
+
+    test('a held lock older than staleLockMaxAge is reaped as a last resort', () async {
+      if (Platform.isWindows) {
+        return;
+      }
+
+      final lockFile = File('${tempDir.path}/.update.lock');
+      await lockFile.writeAsString('{"pid":999999,"processMarker":"marker"}', flush: true);
+      // Make the lock look far older than any real swap would take.
+      await lockFile.setLastModified(DateTime.now().subtract(const Duration(minutes: 20)));
+
+      final lock = UpdateLock(
+        currentPid: pid,
+        // exitCode 0 makes the recorded-marker read match and the liveness
+        // (kill -0) probe report the holder as alive, so only the age guard can
+        // reclaim the lock.
+        processRunner: _RecordingProcessRunner(exitCode: 0, stdout: 'marker\n'),
+        clock: Clock.fixed(DateTime.now()),
+      );
+
+      final result = await lock.locked<int>(
+        lockFile: lockFile,
+        onLockAcquired: () async => 1,
+        onLockRejected: (_) async => -1,
+        shouldReleaseLock: (_) => true,
+        staleLockMaxAge: const Duration(minutes: 15),
+      );
+
+      expect(result, equals(1));
+      expect(lockFile.existsSync(), isFalse);
+    });
+
+    test('a held lock within staleLockMaxAge stays locked', () async {
+      if (Platform.isWindows) {
+        return;
+      }
+
+      final lockFile = File('${tempDir.path}/.update.lock');
+      await lockFile.writeAsString('{"pid":999999,"processMarker":"marker"}', flush: true);
+
+      final lock = UpdateLock(
+        currentPid: pid,
+        processRunner: _RecordingProcessRunner(exitCode: 0, stdout: 'marker\n'),
+        clock: Clock.fixed(DateTime.now()),
+      );
+
+      final result = await lock.locked<LockAcquireResult>(
+        lockFile: lockFile,
+        onLockAcquired: () async => LockAcquireResult.acquired,
+        onLockRejected: (reason) async => reason,
+        shouldReleaseLock: (_) => true,
+        staleLockMaxAge: const Duration(minutes: 15),
+      );
+
+      expect(result, equals(LockAcquireResult.alreadyLocked));
+      expect(lockFile.existsSync(), isTrue);
     });
   });
 }

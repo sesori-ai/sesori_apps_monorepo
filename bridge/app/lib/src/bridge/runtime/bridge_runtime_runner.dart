@@ -578,13 +578,12 @@ class BridgeRuntimeRunner {
       platformUpdateApi: PlatformUpdateApi.forPlatform(processRunner: processRunner),
       manifestApi: const ManagedRuntimeManifestApi(),
     );
-    final updateLock = UpdateLock(currentPid: io.pid, processRunner: processRunner);
+    final updateLock = UpdateLock(currentPid: io.pid, processRunner: processRunner, clock: clock);
     final updateApplyService = UpdateApplyService(
       installationRepository: installationRepository,
       attemptRepository: attemptRepository,
       logRepository: logRepository,
       updateLock: updateLock,
-      messageFormatter: messageFormatter,
       filesystemCleaner: filesystemCleaner,
       clock: clock,
       currentVersion: appVersion,

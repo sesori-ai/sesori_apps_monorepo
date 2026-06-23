@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:clock/clock.dart';
 import 'package:sesori_shared/sesori_shared.dart';
 
 import '../../bridge/foundation/process_runner.dart';
@@ -14,22 +15,39 @@ enum LockAcquireResult {
 }
 
 class UpdateLock {
+  /// Default age after which a still-"held" `.update.lock` is reaped as stale,
+  /// even when the holder PID still appears alive.
+  ///
+  /// Liveness (PID + process start marker) is the primary, precise check; this
+  /// is a last-resort guard against the rare wedge where a crashed holder's PID
+  /// is reused by an unrelated long-lived process while the recorded marker was
+  /// unavailable. Generous on purpose: a real in-place swap holds the lock for
+  /// well under a second, so this never trips a legitimate update.
+  static const Duration updateStaleLockMaxAge = Duration(minutes: 15);
+
   final int _currentPid;
   final ProcessRunner _processRunner;
+  final Clock _clock;
 
   UpdateLock({
     required int currentPid,
     required ProcessRunner processRunner,
+    required Clock clock,
   }) : _currentPid = currentPid,
-       _processRunner = processRunner;
+       _processRunner = processRunner,
+       _clock = clock;
 
   Future<T> locked<T>({
     required File lockFile,
     required Future<T> Function() onLockAcquired,
     required Future<T> Function(LockAcquireResult result) onLockRejected,
     required bool Function(T value) shouldReleaseLock,
+    Duration? staleLockMaxAge,
   }) async {
-    final LockAcquireResult lockResult = await _acquireLock(lockFile: lockFile);
+    final LockAcquireResult lockResult = await _acquireLock(
+      lockFile: lockFile,
+      staleLockMaxAge: staleLockMaxAge,
+    );
     if (lockResult != LockAcquireResult.acquired) {
       return onLockRejected(lockResult);
     }
@@ -47,7 +65,10 @@ class UpdateLock {
     }
   }
 
-  Future<LockAcquireResult> _acquireLock({required File lockFile}) async {
+  Future<LockAcquireResult> _acquireLock({
+    required File lockFile,
+    required Duration? staleLockMaxAge,
+  }) async {
     final String ownerJson = jsonEncode(
       _LockOwner(
         pid: _currentPid,
@@ -60,7 +81,10 @@ class UpdateLock {
       await lockFile.writeAsString(ownerJson, flush: true);
       return LockAcquireResult.acquired;
     } on PathExistsException {
-      final LockAcquireResult staleLockResult = await _removeStaleLockIfNeeded(lockFile: lockFile);
+      final LockAcquireResult staleLockResult = await _removeStaleLockIfNeeded(
+        lockFile: lockFile,
+        staleLockMaxAge: staleLockMaxAge,
+      );
       if (staleLockResult != LockAcquireResult.acquired) {
         return staleLockResult;
       }
@@ -85,7 +109,10 @@ class UpdateLock {
     }
   }
 
-  Future<LockAcquireResult> _removeStaleLockIfNeeded({required File lockFile}) async {
+  Future<LockAcquireResult> _removeStaleLockIfNeeded({
+    required File lockFile,
+    required Duration? staleLockMaxAge,
+  }) async {
     final String content;
     try {
       content = await lockFile.readAsString();
@@ -101,10 +128,7 @@ class UpdateLock {
 
     final _LockOwner? owner = _parseOwner(content: content);
     if (owner == null) {
-      final FileStat stat = lockFile.statSync();
-      final DateTime lastModified = stat.modified;
-      final Duration age = DateTime.now().difference(lastModified);
-      if (age < _invalidLockGracePeriod) {
+      if (_lockAge(lockFile: lockFile) < _invalidLockGracePeriod) {
         return LockAcquireResult.alreadyLocked;
       }
       return _deleteStaleLock(lockFile: lockFile);
@@ -121,10 +145,22 @@ class UpdateLock {
 
     final bool isAlive = await isProcessAlive(pidToCheck: owner.pid);
     if (isAlive) {
+      // Liveness says the holder is still running. As a last resort, reap a
+      // lock held far longer than any real swap takes (which is sub-second);
+      // this only ever clears the rare wedge of a crashed holder whose PID was
+      // reused by an unrelated long-lived process.
+      if (staleLockMaxAge != null && _lockAge(lockFile: lockFile) > staleLockMaxAge) {
+        return _deleteStaleLock(lockFile: lockFile);
+      }
       return LockAcquireResult.alreadyLocked;
     }
 
     return _deleteStaleLock(lockFile: lockFile);
+  }
+
+  Duration _lockAge({required File lockFile}) {
+    final FileStat stat = lockFile.statSync();
+    return _clock.now().difference(stat.modified);
   }
 
   Future<String?> _currentProcessMarker() {

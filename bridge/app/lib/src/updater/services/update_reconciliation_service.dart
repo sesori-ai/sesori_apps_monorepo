@@ -62,6 +62,7 @@ class UpdateReconciliationService {
     try {
       await _updateLock.locked<void>(
         lockFile: File(p.join(_installRoot, '.update.lock')),
+        staleLockMaxAge: UpdateLock.updateStaleLockMaxAge,
         onLockAcquired: _reconcileLocked,
         onLockRejected: (LockAcquireResult result) async {
           switch (result) {
