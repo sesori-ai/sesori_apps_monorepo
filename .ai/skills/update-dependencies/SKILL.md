@@ -340,12 +340,19 @@ These lockfiles pin the native Firebase / Google / gRPC / leveldb versions pulle
 
 ```bash
 set -e
-(cd mobile && flutter pub get)   # regenerate the SwiftPM package from current plugin versions
-(cd mobile/app/ios && xcodebuild -resolvePackageDependencies -workspace Runner.xcworkspace -scheme Runner)
-(cd mobile/app/macos && xcodebuild -resolvePackageDependencies -workspace Runner.xcworkspace -scheme Runner)
+(cd mobile/app && flutter pub get)   # regenerate the SwiftPM package; run in mobile/app (it owns ios/ + macos/), not the workspace root
+if command -v xcodebuild >/dev/null 2>&1; then
+  (cd mobile/app/ios && xcodebuild -resolvePackageDependencies -workspace Runner.xcworkspace -scheme Runner)
+  (cd mobile/app/macos && xcodebuild -resolvePackageDependencies -workspace Runner.xcworkspace -scheme Runner)
+else
+  echo "xcodebuild unavailable (non-macOS host) — record SwiftPM resolution as deferred in the conflict list"
+fi
 ```
 
-This updates only the two build-authoritative `Runner.xcworkspace/.../Package.resolved` files (see `<swiftpm_files>`). Note: this uses `flutter pub get`, not the Makefile `dart pub get` — only the Flutter tool regenerates the SwiftPM package. Requires Xcode + the iOS/macOS toolchain on the machine; if unavailable, record SwiftPM as deferred in the conflict list rather than silently skipping.
+This updates only the two build-authoritative `Runner.xcworkspace/.../Package.resolved` files (see `<swiftpm_files>`). Notes:
+
+- Run `flutter pub get` from `mobile/app`, not the `mobile` workspace root — `mobile/app` is the package that owns the `ios/`/`macos/` dirs, so it is what regenerates their `FlutterGeneratedPluginSwiftPackage` (running from a pub-workspace member still resolves the whole workspace). Use `flutter pub get`, not the Makefile `dart pub get` — only the Flutter tool regenerates the SwiftPM package.
+- `xcodebuild` is macOS-only, and under `set -e` a bare call would abort the whole run on a non-macOS host; the `command -v` guard lets the workflow continue and record SwiftPM as deferred instead of silently skipping.
 </step>
 
 <step name="5.2">Verify the SwiftPM lockfiles resolved (changes here are expected on most weekly runs):
