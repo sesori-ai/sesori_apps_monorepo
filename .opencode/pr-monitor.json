@@ -1,3 +1,6 @@
 {
-  "ignoreCommentTag": "[Sesori reply]"
+  "ignoreCommentTag": "[Sesori reply]",
+  "maxCiWaitMinutes": 30,
+  "debounceMinutes": 2,
+  "pollIntervalSeconds": 45
 }

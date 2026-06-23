@@ -107,6 +107,7 @@ For each valid comment:
 
 Fix guidelines:
 - Fix minimally. Do not refactor unrelated code.
+- A small, safe hardening or cleanup a reviewer flags **inside a file or class your PR already modifies** is in scope — implement it rather than declining it as "pre-existing" or "out of scope." Reserve those reasons for genuinely unrelated files or large/risky refactors.
 - Follow existing codebase conventions (style, naming, patterns)
 - If a comment requests a specific approach and you disagree, use your judgment but explain in the reply
 - If you are changing logic or fixing logic bugs/edge case omissions/etc, use TDD (write a failing test first)

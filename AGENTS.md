@@ -410,6 +410,10 @@ Do not skip either step. The reviewers exist because violations compound — one
 - Never rely on users reviewing uncommitted changes. Remote PR state is the review source of truth unless the user explicitly says otherwise.
 - Never use `git commit --amend` anywhere in this repo workflow. There are no exceptions; if follow-up changes are needed, create a new commit instead.
 
+## Error Handling
+
+**Never catch and swallow.** Every `catch` block must log. Even a no-op, best-effort, or intentional-degradation handler must emit at least a `debug`/`warning` log that includes the caught error and (briefly) why continuing is safe. A silent `catch` — an empty body, or a bare comment with no log — is forbidden. If you genuinely want to ignore an error, you still log it. This applies in every workspace (bridge, mobile, shared).
+
 ## Forbidden
 
 - Don't modify `shared/sesori_shared` without considering impact on both bridge and mobile consumers.

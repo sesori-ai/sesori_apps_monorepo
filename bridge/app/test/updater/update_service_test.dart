@@ -2,7 +2,9 @@ import 'package:fake_async/fake_async.dart';
 import 'package:sesori_bridge/src/updater/foundation/github_rate_limit_exception.dart';
 import 'package:sesori_bridge/src/updater/foundation/update_message_formatter.dart';
 import 'package:sesori_bridge/src/updater/models/release_info.dart';
+import 'package:sesori_bridge/src/updater/models/update_apply_outcome.dart';
 import 'package:sesori_bridge/src/updater/models/update_install_result.dart';
+import 'package:sesori_bridge/src/updater/models/update_resolution.dart';
 import 'package:sesori_bridge/src/updater/models/update_result.dart';
 import 'package:sesori_bridge/src/updater/repositories/release_repository.dart';
 import 'package:sesori_bridge/src/updater/repositories/update_log_repository.dart';
@@ -22,6 +24,9 @@ class _FakeReleaseRepository implements ReleaseRepository {
     checkCount++;
     return onCheck == null ? null : onCheck!();
   }
+
+  @override
+  Future<UpdateResolution> resolveUpdate() => throw UnimplementedError();
 }
 
 class _FakeInstallService implements UpdateInstallService {
@@ -37,20 +42,15 @@ class _FakeInstallService implements UpdateInstallService {
 
 class _FakeApplyService implements UpdateApplyService {
   final List<String> appliedVersions = <String>[];
-
-  @override
-  void Function(String message) emitMessage = (_) {};
-
-  @override
-  void Function(String message) emitError = (_) {};
+  UpdateApplyOutcome Function(ReleaseInfo release)? onApply;
 
   @override
   void Function(String message) logWarning = (_) {};
 
   @override
-  Future<bool> apply({required ReleaseInfo release, required String stagingPath}) async {
+  Future<UpdateApplyOutcome> apply({required ReleaseInfo release, required String stagingPath}) async {
     appliedVersions.add(release.version);
-    return true;
+    return onApply?.call(release) ?? UpdateApplied(version: release.version);
   }
 }
 
@@ -79,6 +79,7 @@ void main() {
   late _FakeInstallService install;
   late _FakeApplyService apply;
   late _FakeLogRepository logs;
+  late List<String> infoMessages;
   late List<String> errors;
   late List<String> warnings;
 
@@ -97,6 +98,7 @@ void main() {
       managedExecutablePath: _managedPath,
       environment: environment,
     );
+    service.emitMessage = infoMessages.add;
     service.emitError = errors.add;
     service.logWarning = warnings.add;
     return service;
@@ -107,6 +109,7 @@ void main() {
     install = _FakeInstallService();
     apply = _FakeApplyService();
     logs = _FakeLogRepository();
+    infoMessages = <String>[];
     errors = <String>[];
     warnings = <String>[];
   });
@@ -128,7 +131,32 @@ void main() {
       expect(release.checkCount, 1);
       expect(install.stageCount, 1);
       expect(apply.appliedVersions, equals(['2.0.0']));
+      expect(infoMessages.single, contains('2.0.0'));
       expect(errors, isEmpty);
+    });
+  });
+
+  test('an apply failure surfaces an error and stays quiet on success output', () {
+    release.onCheck = () async => _release(version: '2.0.0');
+    apply.onApply = (_) => const UpdateApplyFailed(reason: 'disk full', logPath: '/tmp/.sesori-bridge-update.log');
+
+    runStarted(buildService(), (async) {
+      expect(apply.appliedVersions, equals(['2.0.0']));
+      expect(errors, hasLength(1));
+      expect(errors.single, contains('disk full'));
+      expect(errors.single, contains('https://sesori.com/'));
+      expect(infoMessages, isEmpty);
+    });
+  });
+
+  test('apply lock contention stays quiet', () {
+    release.onCheck = () async => _release(version: '2.0.0');
+    apply.onApply = (_) => const UpdateApplyLockBusy();
+
+    runStarted(buildService(), (async) {
+      expect(apply.appliedVersions, equals(['2.0.0']));
+      expect(errors, isEmpty);
+      expect(infoMessages, isEmpty);
     });
   });
 
