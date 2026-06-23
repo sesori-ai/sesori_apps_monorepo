@@ -16,7 +16,12 @@ import "open_code_bridge_plugin.dart";
 import "open_code_managed_api.dart";
 import "open_code_ownership_record.dart";
 import "open_code_record_mapper.dart";
+import "open_code_runtime_cleaner.dart";
+import "open_code_runtime_install_service.dart";
+import "open_code_runtime_manifest.dart";
 import "open_code_runtime_policy.dart";
+import "open_code_runtime_provision_service.dart";
+import "open_code_version_validator.dart";
 
 /// Builds the [OpenCodeManagedApi] for a resolved server. The production default
 /// constructs an [OpenCodePlugin] with auto-initialization disabled (the
@@ -90,6 +95,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     Duration coldStartBudget = openCodeColdStartBudget,
     Duration versionProbeTimeout = openCodeVersionProbeTimeout,
     OpenCodeDbOptimizer? optimizeDb,
+    OpenCodeRuntimeProvisionService? provisionService,
   }) : _buildApi = buildApi,
        _probeClientFactory = probeClientFactory,
        _candidatePorts = candidatePorts,
@@ -97,7 +103,8 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
        _degradedDebounce = degradedDebounce,
        _coldStartBudget = coldStartBudget,
        _versionProbeTimeout = versionProbeTimeout,
-       _optimizeDb = optimizeDb;
+       _optimizeDb = optimizeDb,
+       _provisionService = provisionService;
 
   final OpenCodeManagedApiFactory? _buildApi;
   final http.Client Function()? _probeClientFactory;
@@ -107,6 +114,10 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   final Duration _coldStartBudget;
   final Duration _versionProbeTimeout;
   final OpenCodeDbOptimizer? _optimizeDb;
+
+  /// Test seam for the runtime provisioner. Production builds a default in
+  /// [ensureRuntime] from the host's process service and an HTTP client.
+  final OpenCodeRuntimeProvisionService? _provisionService;
 
   /// The OpenCode CLI options the bridge declares for this plugin.
   ///
@@ -161,8 +172,11 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     ),
     PluginValueOption(
       name: "bin",
-      help: "Path to opencode binary",
-      defaultsTo: "opencode",
+      help:
+          "Path to a specific opencode binary. When set, it is used as-is "
+          "(no version gate); when unset, the bridge uses a recent enough "
+          "opencode on PATH or downloads a managed runtime.",
+      defaultsTo: null,
       allowedValues: null,
       valueHelp: null,
       validate: null,
@@ -248,16 +262,16 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   @override
   void validateConfig(PluginConfig config) => validateConfigValues(config);
 
-  /// Confirms the OpenCode CLI is installed and runnable before the bridge
-  /// commits to startup.
+  /// Confirms an explicitly-configured OpenCode binary is runnable before the
+  /// bridge commits to startup.
   ///
-  /// Only the managed (auto-start) path needs a local binary: in attach mode
-  /// (`--no-auto-start`) the user runs their own server, so the binary is
-  /// irrelevant and we report available — `start()` keeps its existing
-  /// fail-soft reachability behavior there. Otherwise we run
-  /// `<opencode-bin> --version`: exit 0 within [openCodeVersionProbeTimeout]
-  /// means available; a failed launch (not installed / not on PATH), a
-  /// non-zero exit, or a timeout mean unavailable.
+  /// In attach mode (`--no-auto-start`) the user runs their own server, so no
+  /// binary is needed — report available. When `--opencode-bin` is set, probe
+  /// it: an explicit override is a user promise, so a broken one is a fatal
+  /// config error (run `<bin> --version`; exit 0 within
+  /// [openCodeVersionProbeTimeout] is available). When no binary is configured,
+  /// runtime resolution (a recent-enough PATH install or a managed download) is
+  /// deferred to [ensureRuntime], so report available here.
   @override
   Future<PluginAvailability> checkAvailability({
     required PluginConfig config,
@@ -267,11 +281,70 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     if (config.flag("no-auto-start")) {
       return const PluginAvailable();
     }
-    final executablePath = (config.value("bin") ?? "opencode").trim();
-    return _probeOpenCodeBinary(
-      executablePath: executablePath,
-      processes: processes,
-      environment: environment,
+    final explicitBin = config.value("bin")?.trim();
+    if (explicitBin != null && explicitBin.isNotEmpty) {
+      return _probeOpenCodeBinary(
+        executablePath: explicitBin,
+        processes: processes,
+        environment: environment,
+      );
+    }
+    return const PluginAvailable();
+  }
+
+  /// Resolves the OpenCode runtime (a recent-enough PATH install, otherwise a
+  /// managed download) and reports progress. Skipped in attach mode and when an
+  /// explicit `--opencode-bin` is set (both already have their binary). The
+  /// resolved launch path is surfaced via [ProvisionReady]; a failure is
+  /// non-fatal and `start()` degrades.
+  @override
+  Stream<RuntimeProvisionProgress> ensureRuntime({required PluginHost host}) async* {
+    final config = host.config;
+    if (config.flag("no-auto-start")) {
+      return;
+    }
+    final explicitBin = config.value("bin")?.trim();
+    if (explicitBin != null && explicitBin.isNotEmpty) {
+      return;
+    }
+
+    final injected = _provisionService;
+    if (injected != null) {
+      yield* injected.provision(host: host);
+      return;
+    }
+
+    final http.Client client = (_probeClientFactory ?? http.Client.new)();
+    try {
+      yield* _buildDefaultProvisionService(host: host, httpClient: client).provision(host: host);
+    } finally {
+      client.close();
+    }
+  }
+
+  /// Assembles the production provisioner from the host's process service (so
+  /// helper commands go through the host, never a raw spawn) and [httpClient].
+  OpenCodeRuntimeProvisionService _buildDefaultProvisionService({
+    required PluginHost host,
+    required http.Client httpClient,
+  }) {
+    final commandExecutor = HostProcessCommandExecutor(
+      processes: host.processes,
+      runInShell: io.Platform.isWindows,
+    );
+    return OpenCodeRuntimeProvisionService(
+      manifest: const OpenCodeRuntimeManifest(),
+      versionValidator: OpenCodeVersionValidator(
+        commandExecutor: commandExecutor,
+        probeTimeout: _versionProbeTimeout,
+      ),
+      installService: OpenCodeRuntimeInstallService(
+        downloadClient: BinaryDownloadClient(httpClient: httpClient),
+        checksumValidator: ChecksumValidator(),
+        archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
+        commandExecutor: commandExecutor,
+      ),
+      cleaner: OpenCodeRuntimeCleaner(),
     );
   }
 
@@ -452,52 +525,85 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       // Managed mode: spawn and own a new server.
       final serverPassword = noPassword ? null : (providedPassword ?? generateOpenCodePassword(random: _random));
       apiPassword = serverPassword;
-      final executablePath = config.value("bin")!.trim();
+      // Precedence: an explicit --opencode-bin wins (trusted, no version gate),
+      // else the path ensureRuntime resolved (a recent PATH install or the
+      // managed download), exposed via the host.
+      final explicitBin = config.value("bin")?.trim();
+      final resolvedExecutable = (explicitBin != null && explicitBin.isNotEmpty)
+          ? explicitBin
+          : host.provisionedRuntimePath;
 
-      final RuntimePortPolicy portPolicy;
-      if (requestedPort != null) {
-        Log.d("[opencode] starting on port $requestedPort");
-        // Pre-probe the explicit port so an occupied port fails with a
-        // diagnosis instead of spawning a child doomed to lose the bind race.
-        portPolicy = ExplicitPortPolicy(port: requestedPort, preProbeBindable: true);
-      } else {
-        Log.d("[opencode] starting on a dynamic port");
-        portPolicy = DynamicPortPolicy(
-          candidates: openCodeDynamicCandidates(candidates: _candidatePorts, random: _random),
-          maxAttempts: dynamicOpenCodeMaxAttempts,
-          reservedPort: openCodeDefaultPort,
-          minPort: dynamicOpenCodePortMin,
-          maxPort: dynamicOpenCodePortMax,
-          // A spawn that cannot even launch (e.g. ENOENT on the binary) fails
-          // the same way on every candidate — fail fast instead of retrying.
-          failFastOnSpawnError: true,
+      if (resolvedExecutable == null) {
+        // Runtime provisioning failed and no explicit binary was given. Stay
+        // alive in a degraded state instead of failing the whole bridge: bind a
+        // placeholder server URL the background cold-start keeps retrying,
+        // exactly as the attach-unreachable path below does. A bridge restart
+        // re-attempts provisioning.
+        Log.w(
+          "[opencode] no runnable OpenCode binary available; starting degraded. "
+          "Install OpenCode or pass --opencode-bin, then restart.",
         );
+        port = openCodeDefaultPort;
+        // Structured Uri so an IPv6 literal connect host is bracketed correctly.
+        serverUrl = Uri(scheme: "http", host: connectHost, port: port).toString();
+        spec = buildOpenCodeManagedRuntimeSpec(
+          host: host,
+          executablePath: "",
+          password: serverPassword,
+          portPolicy: const ExplicitPortPolicy(port: openCodeDefaultPort),
+          probeClientFactory: probeClientFactory,
+          bindHost: bindHost,
+          connectHost: connectHost,
+        );
+        handle = null;
+      } else {
+        final executablePath = resolvedExecutable;
+
+        final RuntimePortPolicy portPolicy;
+        if (requestedPort != null) {
+          Log.d("[opencode] starting on port $requestedPort");
+          // Pre-probe the explicit port so an occupied port fails with a
+          // diagnosis instead of spawning a child doomed to lose the bind race.
+          portPolicy = ExplicitPortPolicy(port: requestedPort, preProbeBindable: true);
+        } else {
+          Log.d("[opencode] starting on a dynamic port");
+          portPolicy = DynamicPortPolicy(
+            candidates: openCodeDynamicCandidates(candidates: _candidatePorts, random: _random),
+            maxAttempts: dynamicOpenCodeMaxAttempts,
+            reservedPort: openCodeDefaultPort,
+            minPort: dynamicOpenCodePortMin,
+            maxPort: dynamicOpenCodePortMax,
+            // A spawn that cannot even launch (e.g. ENOENT on the binary) fails
+            // the same way on every candidate — fail fast instead of retrying.
+            failFastOnSpawnError: true,
+          );
+        }
+
+        spec = buildOpenCodeManagedRuntimeSpec(
+          host: host,
+          executablePath: executablePath,
+          password: serverPassword,
+          portPolicy: portPolicy,
+          probeClientFactory: probeClientFactory,
+          bindHost: bindHost,
+          connectHost: connectHost,
+        );
+
+        // start() cleans up stale owned runtimes, selects a port, spawns, and
+        // confirms health before returning — rolling everything back (and throwing
+        // PluginStartException / PluginStartAbortedException) on failure. The
+        // replaced-bridge identities authorize cleanup to reclaim records owned
+        // by a bridge this one just replaced, even when its pid still looks live.
+        handle = await service.start(
+          spec: spec,
+          terminatedBridgeIdentities: host.bridge.terminatedBridgeIdentities,
+          startAborted: host.startAborted,
+        );
+        port = handle.port;
+        // Structured Uri so an IPv6 literal connect host is bracketed correctly.
+        serverUrl = Uri(scheme: "http", host: connectHost, port: handle.port).toString();
+        Log.d("[opencode] started on port ${handle.port}");
       }
-
-      spec = buildOpenCodeManagedRuntimeSpec(
-        host: host,
-        executablePath: executablePath,
-        password: serverPassword,
-        portPolicy: portPolicy,
-        probeClientFactory: probeClientFactory,
-        bindHost: bindHost,
-        connectHost: connectHost,
-      );
-
-      // start() cleans up stale owned runtimes, selects a port, spawns, and
-      // confirms health before returning — rolling everything back (and throwing
-      // PluginStartException / PluginStartAbortedException) on failure. The
-      // replaced-bridge identities authorize cleanup to reclaim records owned
-      // by a bridge this one just replaced, even when its pid still looks live.
-      handle = await service.start(
-        spec: spec,
-        terminatedBridgeIdentities: host.bridge.terminatedBridgeIdentities,
-        startAborted: host.startAborted,
-      );
-      port = handle.port;
-      // Structured Uri so an IPv6 literal connect host is bracketed correctly.
-      serverUrl = Uri(scheme: "http", host: connectHost, port: handle.port).toString();
-      Log.d("[opencode] started on port ${handle.port}");
     }
 
     // Honor a late abort: a managed start the supervisor returned just as the
