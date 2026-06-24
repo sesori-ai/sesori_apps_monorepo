@@ -29,7 +29,7 @@ class PregoScrollEdgeBlur extends StatelessWidget {
     required this.height,
     required this.plateauHeight,
     this.sigma = 1,
-    this.bands = 10,
+    this.bands = 5,
   });
 
   /// Total height of the blur zone, measured from the very top of the bar.
