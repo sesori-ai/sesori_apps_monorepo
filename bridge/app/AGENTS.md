@@ -82,7 +82,7 @@ bridge/ workspace modules (siblings of app/):
 
 ## ANTI-PATTERNS
 
-- **Never catch and swallow** — every `catch` must log (a `debug`/`warning` including the caught error), even no-op/best-effort/intentional-degradation handlers. A silent `catch` (empty body or a bare comment with no log) is forbidden.
+- **Never silently swallow** — a `catch` that swallows and continues (no-op/best-effort cleanup) must log; a catch-all (`on Object catch`/`catch (e)`) should generally log since the cause is unknown. But do NOT add a redundant log when the catch already surfaces the failure (rethrows, throws a typed exception, or returns/yields an explicit failure like `ExplicitUpdateFailed`/`ProvisionFailed`) — that double-logs. When you do log a caught error, pass it as the logger argument (`Log.w("msg", error, stackTrace)`), don't string-interpolate it.
 - **Never duplicate crypto** — use `sesori_shared` package for all encryption/protocol types
 - **Never hardcode URLs** — relay and auth backend are CLI-configurable. The OpenCode server defaults to loopback (`127.0.0.1`) but its host and port are CLI-configurable too (`--opencode-host`, `--opencode-port`)
 - **Never inline HTTP calls in business logic** — extract to a dedicated API class with typed return values

@@ -7,11 +7,11 @@ import 'package:http/testing.dart';
 import 'package:path/path.dart' as p;
 import 'package:sesori_bridge/src/updater/api/github_releases_api.dart';
 import 'package:sesori_bridge/src/updater/api/update_cache_api.dart';
-import 'package:sesori_bridge/src/updater/foundation/platform_info.dart';
 import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
 import 'package:sesori_bridge/src/updater/models/cached_release.dart';
 import 'package:sesori_bridge/src/updater/models/distribution_target.dart';
 import 'package:sesori_bridge/src/updater/repositories/release_repository.dart';
+import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:test/test.dart';
 
 class _NoCache extends UpdateCacheApi {
@@ -73,8 +73,8 @@ void main() {
 
     setUp(() {
       final target = DistributionTarget(
-        os: DistributionPlatformOs.macos,
-        arch: DistributionPlatformArch.arm64,
+        os: PlatformOs.macos,
+        arch: PlatformArch.arm64,
       );
       final client = MockClient((_) async {
         return http.Response(

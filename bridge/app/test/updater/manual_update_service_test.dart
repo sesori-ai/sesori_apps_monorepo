@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
-import 'package:sesori_bridge/src/updater/models/bridge_version.dart';
 import 'package:sesori_bridge/src/updater/models/explicit_update_outcome.dart';
 import 'package:sesori_bridge/src/updater/models/release_info.dart';
 import 'package:sesori_bridge/src/updater/models/update_apply_outcome.dart';
@@ -12,6 +11,7 @@ import 'package:sesori_bridge/src/updater/repositories/release_repository.dart';
 import 'package:sesori_bridge/src/updater/services/manual_update_service.dart';
 import 'package:sesori_bridge/src/updater/services/update_apply_service.dart';
 import 'package:sesori_bridge/src/updater/services/update_install_service.dart';
+import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:test/test.dart';
 
 const String _managed = '/usr/local/bin/sesori-bridge';
@@ -28,10 +28,10 @@ UpdateResolution _resolution({
   required bool currentEligible,
   String? latest,
 }) => UpdateResolution(
-  currentVersion: BridgeVersion.parse(value: current),
+  currentVersion: SemanticVersion.parse(value: current),
   currentEligible: currentEligible,
   latestEligible: latest == null ? null : _release(latest),
-  latestVersion: latest == null ? null : BridgeVersion.parse(value: latest),
+  latestVersion: latest == null ? null : SemanticVersion.parse(value: latest),
 );
 
 class _FakeReleaseRepository implements ReleaseRepository {

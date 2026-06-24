@@ -4,7 +4,7 @@ Business logic, state management, services, and models for the Sesori ecosystem.
 
 ## Error Handling
 
-**Never catch and swallow** (see the repo-root `AGENTS.md`): every `catch` must log — even a no-op or best-effort handler emits at least a `debug`/`warning` that includes the caught error. A silent `catch` is forbidden.
+**Never silently swallow** (see the repo-root `AGENTS.md`): a `catch` that swallows and continues (no-op/best-effort) must log, and a catch-all especially. But don't double-log when the catch already surfaces the failure (rethrows, or returns/yields an explicit failure the caller renders). Pass the error as the logger argument (`Log.w("msg", error, st)`), don't string-interpolate it.
 
 ## Package Structure
 

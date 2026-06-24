@@ -1,11 +1,17 @@
-final class BridgeVersion implements Comparable<BridgeVersion> {
+/// A parsed semantic version (`X.Y.Z` with optional `-prerelease` and
+/// `+build` metadata) that orders per the semver precedence rules.
+///
+/// Transport/DTO layers keep versions as raw strings; map them into this typed
+/// value object in repository code rather than comparing version strings ad
+/// hoc. Used to gate bridge self-updates and the managed OpenCode runtime.
+final class SemanticVersion implements Comparable<SemanticVersion> {
   final int major;
   final int minor;
   final int patch;
   final List<String> prereleaseIdentifiers;
   final List<String> buildMetadataIdentifiers;
 
-  const BridgeVersion._({
+  const SemanticVersion._({
     required this.major,
     required this.minor,
     required this.patch,
@@ -13,7 +19,7 @@ final class BridgeVersion implements Comparable<BridgeVersion> {
     required this.buildMetadataIdentifiers,
   });
 
-  factory BridgeVersion.parse({required String value}) {
+  factory SemanticVersion.parse({required String value}) {
     final String normalized = value.trim();
     if (normalized.isEmpty) {
       throw const FormatException('Version is empty.');
@@ -44,7 +50,7 @@ final class BridgeVersion implements Comparable<BridgeVersion> {
         ? _parseIdentifiers(value: prereleaseSplit[1], label: 'prerelease')
         : const [];
 
-    return BridgeVersion._(
+    return SemanticVersion._(
       major: parsedCore[0],
       minor: parsedCore[1],
       patch: parsedCore[2],
@@ -53,9 +59,9 @@ final class BridgeVersion implements Comparable<BridgeVersion> {
     );
   }
 
-  static BridgeVersion? tryParse({required String value}) {
+  static SemanticVersion? tryParse({required String value}) {
     try {
-      return BridgeVersion.parse(value: value);
+      return SemanticVersion.parse(value: value);
     } on FormatException {
       return null;
     }
@@ -64,7 +70,7 @@ final class BridgeVersion implements Comparable<BridgeVersion> {
   bool get isStable => prereleaseIdentifiers.isEmpty;
 
   @override
-  int compareTo(BridgeVersion other) {
+  int compareTo(SemanticVersion other) {
     final int majorComparison = major.compareTo(other.major);
     if (majorComparison != 0) {
       return majorComparison;
