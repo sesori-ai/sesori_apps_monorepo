@@ -4,23 +4,30 @@ import "package:opencode_plugin/src/runtime/open_code_runtime_manifest.dart";
 import "package:opencode_plugin/src/runtime/open_code_runtime_provision_service.dart";
 import "package:opencode_plugin/src/runtime/open_code_version_validator.dart";
 import "package:path/path.dart" as p;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
 class _FakeValidator implements OpenCodeVersionValidator {
-  _FakeValidator({this.osVersion, this.managedVersion});
+  _FakeValidator({this.osVersion, List<SemanticVersion?>? managedVersions})
+    : _managedVersions = managedVersions ?? const [];
 
   /// Version reported for the PATH `opencode`.
   final SemanticVersion? osVersion;
 
-  /// Version reported when probing a managed (absolute-path) binary — the
-  /// cached-runtime runnability check.
-  final SemanticVersion? managedVersion;
+  /// Versions reported, in order, when probing a managed (absolute-path) binary:
+  /// the cached-runtime check, then the post-install check. Beyond the list,
+  /// `null` (not runnable).
+  final List<SemanticVersion?> _managedVersions;
+  int _managedCalls = 0;
 
   @override
   Future<SemanticVersion?> detectVersion({required String executable, required Map<String, String>? environment}) async {
-    return executable == "opencode" ? osVersion : managedVersion;
+    if (executable == "opencode") {
+      return osVersion;
+    }
+    final index = _managedCalls++;
+    return index < _managedVersions.length ? _managedVersions[index] : null;
   }
 }
 
@@ -87,13 +94,13 @@ void main() {
 
   OpenCodeRuntimeProvisionService build({
     SemanticVersion? osVersion,
-    SemanticVersion? managedVersion,
+    List<SemanticVersion?>? managedVersions,
     _FakeInstallService? install,
     _FakeCleaner? cleaner,
   }) {
     return OpenCodeRuntimeProvisionService(
       manifest: const OpenCodeRuntimeManifest(),
-      versionValidator: _FakeValidator(osVersion: osVersion, managedVersion: managedVersion),
+      versionValidator: _FakeValidator(osVersion: osVersion, managedVersions: managedVersions),
       installService: install ?? _FakeInstallService(),
       cleaner: cleaner ?? _FakeCleaner(),
     );
@@ -119,7 +126,13 @@ void main() {
 
   test("falls back to the managed runtime with a notice when PATH OpenCode is too old", () async {
     final install = _FakeInstallService(installEvents: const [ProvisionDownloading(receivedBytes: 1, totalBytes: 2)]);
-    final events = await run(build(osVersion: SemanticVersion.parse(value: "0.9.0"), install: install));
+    final events = await run(
+      build(
+        osVersion: SemanticVersion.parse(value: "0.9.0"),
+        install: install,
+        managedVersions: [SemanticVersion.parse(value: "1.17.9")], // post-install probe
+      ),
+    );
 
     expect(events.whereType<ProvisionNotice>(), isNotEmpty);
     expect(events.whereType<ProvisionDownloading>(), isNotEmpty);
@@ -128,42 +141,58 @@ void main() {
     expect(install.installCalled, isTrue);
   });
 
-    test("reuses an already-installed, runnable managed runtime without a notice when PATH OpenCode is absent", () async {
-      final install = _FakeInstallService(installed: true);
-      final events = await run(build(install: install, managedVersion: SemanticVersion.parse(value: "1.17.9")));
+  test("reuses an already-installed, runnable managed runtime without a notice when PATH OpenCode is absent", () async {
+    final install = _FakeInstallService(installed: true);
+    final events = await run(build(install: install, managedVersions: [SemanticVersion.parse(value: "1.17.9")]));
 
-      expect(events.whereType<ProvisionNotice>(), isEmpty);
-      expect(events.last, isA<ProvisionReady>());
-      expect((events.last as ProvisionReady).binaryPath, equals(managedBinaryPath));
-      expect(install.installCalled, isFalse);
-    });
+    expect(events.whereType<ProvisionNotice>(), isEmpty);
+    expect(events.last, isA<ProvisionReady>());
+    expect((events.last as ProvisionReady).binaryPath, equals(managedBinaryPath));
+    expect(install.installCalled, isFalse);
+  });
 
-    test("reinstalls when the cached managed runtime is present but not runnable", () async {
-      // isInstalled true (sentinel matches) but the binary does not run.
-      final install = _FakeInstallService(installed: true, installEvents: const [ProvisionExtracting()]);
-      final events = await run(build(install: install));
-
-      expect(install.installCalled, isTrue);
-      expect(events.last, isA<ProvisionReady>());
-      expect((events.last as ProvisionReady).binaryPath, equals(managedBinaryPath));
-    });
-
-    test("reinstalls when the cached managed runtime runs but reports the wrong version", () async {
-      final install = _FakeInstallService(installed: true, installEvents: const [ProvisionExtracting()]);
-      // Runnable, but an unexpected version (not the pinned bundled 1.17.9).
-      final events = await run(build(install: install, managedVersion: SemanticVersion.parse(value: "1.0.0")));
-
-      expect(install.installCalled, isTrue);
-      expect(events.last, isA<ProvisionReady>());
-    });
-
-  test("downloads the managed runtime when absent and not yet installed", () async {
-    final install = _FakeInstallService(installEvents: const [ProvisionExtracting()]);
-    final events = await run(build(install: install));
+  test("reinstalls when the cached managed runtime is present but not runnable", () async {
+    // isInstalled true (sentinel matches) but the cached binary does not run;
+    // after reinstall the freshly-placed binary reports the bundled version.
+    final install = _FakeInstallService(installed: true, installEvents: const [ProvisionExtracting()]);
+    final events = await run(build(install: install, managedVersions: [null, SemanticVersion.parse(value: "1.17.9")]));
 
     expect(install.installCalled, isTrue);
     expect(events.last, isA<ProvisionReady>());
     expect((events.last as ProvisionReady).binaryPath, equals(managedBinaryPath));
+  });
+
+  test("reinstalls when the cached managed runtime runs but reports the wrong version", () async {
+    final install = _FakeInstallService(installed: true, installEvents: const [ProvisionExtracting()]);
+    // Cached probe: runnable but wrong version -> reinstall; post-install: correct.
+    final events = await run(
+      build(
+        install: install,
+        managedVersions: [SemanticVersion.parse(value: "1.0.0"), SemanticVersion.parse(value: "1.17.9")],
+      ),
+    );
+
+    expect(install.installCalled, isTrue);
+    expect(events.last, isA<ProvisionReady>());
+  });
+
+  test("downloads the managed runtime when absent and not yet installed", () async {
+    final install = _FakeInstallService(installEvents: const [ProvisionExtracting()]);
+    final events = await run(build(install: install, managedVersions: [SemanticVersion.parse(value: "1.17.9")]));
+
+    expect(install.installCalled, isTrue);
+    expect(events.last, isA<ProvisionReady>());
+    expect((events.last as ProvisionReady).binaryPath, equals(managedBinaryPath));
+  });
+
+  test("reports a non-fatal failure when a freshly-installed runtime is not runnable", () async {
+    // Install succeeds but the placed binary does not run on this host.
+    final install = _FakeInstallService(installEvents: const [ProvisionExtracting()]);
+    final events = await run(build(install: install, managedVersions: const [null]));
+
+    expect(install.installCalled, isTrue);
+    expect(events.last, isA<ProvisionFailed>());
+    expect((events.last as ProvisionFailed).message, contains("not runnable"));
   });
 
   test("reports a non-fatal failure when the managed install fails", () async {

@@ -11,7 +11,7 @@ import 'package:sesori_bridge/src/updater/repositories/release_repository.dart';
 import 'package:sesori_bridge/src/updater/services/manual_update_service.dart';
 import 'package:sesori_bridge/src/updater/services/update_apply_service.dart';
 import 'package:sesori_bridge/src/updater/services/update_install_service.dart';
-import 'package:sesori_plugin_runtime/sesori_plugin_runtime.dart';
+import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:test/test.dart';
 
 const String _managed = '/usr/local/bin/sesori-bridge';

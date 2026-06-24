@@ -1,7 +1,7 @@
 import "package:path/path.dart" as p;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show Log, PluginHost, PluginStartAbortedException, ProvisionFailed, ProvisionNotice, ProvisionReady, ProvisionResolving, RuntimeProvisionProgress;
-import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
 import "open_code_runtime_cleaner.dart";
 import "open_code_runtime_install_service.dart";
@@ -138,6 +138,24 @@ class OpenCodeRuntimeProvisionService {
       return;
     } on Object catch (error) {
       yield ProvisionFailed(message: "Could not install the OpenCode runtime: $error");
+      return;
+    }
+
+    // Probe the freshly-placed binary before trusting it (the same check the
+    // cached path runs above): a downloaded asset that can't execute on this
+    // host (CPU/dynamic-loader mismatch) must degrade via ProvisionFailed, not
+    // crash start() with a PluginStartException.
+    final SemanticVersion? installedVersion = await _versionValidator.detectVersion(
+      executable: binaryPath,
+      environment: host.environment,
+    );
+    if (installedVersion == null || installedVersion.compareTo(bundled) != 0) {
+      yield ProvisionFailed(
+        message:
+            "The downloaded OpenCode runtime is not runnable on this machine "
+            "(reported '${installedVersion ?? "no version"}', expected '$bundled'). "
+            "Install OpenCode manually: https://opencode.ai/docs#install",
+      );
       return;
     }
 

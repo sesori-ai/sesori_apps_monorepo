@@ -1,6 +1,6 @@
 import 'package:collection/collection.dart';
+import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
-import 'package:sesori_plugin_runtime/sesori_plugin_runtime.dart';
 
 import '../api/github_releases_api.dart';
 import '../api/update_cache_api.dart';

@@ -3,8 +3,8 @@ import 'dart:io';
 
 import 'package:http/http.dart' show ClientException;
 import 'package:path/path.dart' as p;
+import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
-import 'package:sesori_plugin_runtime/sesori_plugin_runtime.dart';
 
 import '../api/checksum_manifest_api.dart';
 import '../models/release_info.dart';

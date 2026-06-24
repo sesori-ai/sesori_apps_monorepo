@@ -3,7 +3,7 @@ import 'dart:io' show Platform;
 import 'package:sesori_bridge/src/updater/foundation/update_policy.dart';
 import 'package:sesori_bridge/src/updater/models/distribution_target.dart';
 import 'package:sesori_bridge/src/updater/services/managed_runtime_path_service.dart';
-import 'package:sesori_plugin_runtime/sesori_plugin_runtime.dart';
+import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:test/test.dart';
 
 void main() {

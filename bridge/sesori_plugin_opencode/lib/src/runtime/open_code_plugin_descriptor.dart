@@ -4,6 +4,7 @@ import "dart:io" as io;
 import "dart:math";
 
 import "package:http/http.dart" as http;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:sesori_shared/sesori_shared.dart" show StringExtensions;
@@ -172,10 +173,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     ),
     PluginValueOption(
       name: "bin",
-      help:
-          "Path to a specific opencode binary. When set, it is used as-is "
-          "(no version gate); when unset, the bridge uses a recent enough "
-          "opencode on PATH or downloads a managed runtime.",
+      help: "Path to opencode binary",
       defaultsTo: null,
       allowedValues: null,
       valueHelp: null,
@@ -265,8 +263,8 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   /// Confirms an explicitly-configured OpenCode binary is runnable before the
   /// bridge commits to startup.
   ///
-  /// In attach mode (`--no-auto-start`) the user runs their own server, so no
-  /// binary is needed — report available. When `--opencode-bin` is set, probe
+  /// In attach mode (`--opencode-no-auto-start`) the user runs their own server,
+  /// so no binary is needed — report available. When `--opencode-bin` is set, probe
   /// it: an explicit override is a user promise, so a broken one is a fatal
   /// config error (run `<bin> --version`; exit 0 within
   /// [openCodeVersionProbeTimeout] is available). When no binary is configured,
@@ -552,14 +550,17 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
           "[opencode] no runnable OpenCode binary available; starting degraded. "
           "Install OpenCode or pass --opencode-bin, then restart.",
         );
-        port = openCodeDefaultPort;
+        // Honor an explicit --opencode-port so the degraded cold-start keeps
+        // retrying the address the user actually configured (otherwise a bridge
+        // started for port 5000 would silently retry 4096).
+        port = requestedPort ?? openCodeDefaultPort;
         // Structured Uri so an IPv6 literal connect host is bracketed correctly.
         serverUrl = Uri(scheme: "http", host: connectHost, port: port).toString();
         spec = buildOpenCodeManagedRuntimeSpec(
           host: host,
           executablePath: "",
           password: serverPassword,
-          portPolicy: const ExplicitPortPolicy(port: openCodeDefaultPort),
+          portPolicy: ExplicitPortPolicy(port: port),
           probeClientFactory: probeClientFactory,
           bindHost: bindHost,
           connectHost: connectHost,

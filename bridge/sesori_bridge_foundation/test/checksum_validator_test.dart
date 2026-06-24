@@ -1,7 +1,7 @@
 import "dart:io";
 
 import "package:crypto/crypto.dart";
-import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:test/test.dart";
 
 void main() {

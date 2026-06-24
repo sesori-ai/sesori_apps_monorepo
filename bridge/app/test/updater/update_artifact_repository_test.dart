@@ -5,7 +5,7 @@ import 'package:sesori_bridge/src/updater/api/checksum_manifest_api.dart';
 import 'package:sesori_bridge/src/updater/models/checksum_manifest.dart';
 import 'package:sesori_bridge/src/updater/models/release_info.dart';
 import 'package:sesori_bridge/src/updater/repositories/update_artifact_repository.dart';
-import 'package:sesori_plugin_runtime/sesori_plugin_runtime.dart';
+import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:test/test.dart';
 
 class _FakeUpdateHttpClient extends http.BaseClient {

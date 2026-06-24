@@ -1,6 +1,6 @@
 import "dart:io" show ProcessResult;
 
-import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 
 import "process_runner.dart";
 

@@ -23,6 +23,7 @@ The repo has two Dart workspaces and two standalone packages. Workspace members 
 
 - `bridge/pubspec.yaml` — workspace root, env only
 - `bridge/sesori_plugin_interface/pubspec.yaml`
+- `bridge/sesori_bridge_foundation/pubspec.yaml` (depends on `sesori_plugin_interface`; bridge-wide shared primitives)
 - `bridge/sesori_plugin_runtime/pubspec.yaml` (depends on `sesori_plugin_interface`)
 - `bridge/sesori_plugin_opencode/pubspec.yaml`
 - `bridge/app/pubspec.yaml` (CLI relay server)
@@ -130,6 +131,7 @@ For each pubspec.yaml below, read its `environment` section and update only the 
 | `bridge/pubspec.yaml` | ✅ | — | caret |
 | `bridge/app/pubspec.yaml` | ✅ | — | caret |
 | `bridge/sesori_plugin_interface/pubspec.yaml` | ✅ | — | caret |
+| `bridge/sesori_bridge_foundation/pubspec.yaml` | ✅ | — | caret |
 | `bridge/sesori_plugin_runtime/pubspec.yaml` | ✅ | — | caret |
 | `bridge/sesori_plugin_opencode/pubspec.yaml` | ✅ | — | caret |
 | `shared/sesori_shared/pubspec.yaml` | ✅ | — | caret |
@@ -228,7 +230,7 @@ set -e
 <step name="3.1">For each pubspec.yaml, in this order:
 
 1. `shared/sesori_shared/pubspec.yaml` (consumed by both workspaces)
-2. Bridge workspace members (dependency order): `bridge/sesori_plugin_interface`, `bridge/sesori_plugin_runtime`, `bridge/sesori_plugin_opencode`, `bridge/app`
+2. Bridge workspace members (dependency order): `bridge/sesori_plugin_interface`, `bridge/sesori_bridge_foundation`, `bridge/sesori_plugin_runtime`, `bridge/sesori_plugin_opencode`, `bridge/app`
 3. Mobile workspace members: `mobile/module_auth`, `mobile/module_core`, `mobile/module_prego`, `mobile/app`
 
 **SKIP** `shared/no_slop_linter/pubspec.yaml` — analyzer-plugin constraints are bumped manually (see the project structure note). Do not edit it here even if `pub outdated` reports newer versions.

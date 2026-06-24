@@ -1,4 +1,4 @@
-import 'package:sesori_plugin_runtime/sesori_plugin_runtime.dart';
+import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 
 /// Maps the host [PlatformTarget] to the bridge's own published release asset
 /// (name + archive format). Platform detection and the os/arch vocabulary are

@@ -1,6 +1,6 @@
 import "dart:io" show Platform;
 
-import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 
 /// One platform's pinned OpenCode release archive: the asset name, its container
 /// [format], and the SHA-256 the download is verified against.

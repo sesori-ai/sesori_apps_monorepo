@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io' show HttpException, SocketException;
 
 import 'package:http/http.dart' show ClientException;
-import 'package:sesori_plugin_runtime/sesori_plugin_runtime.dart';
+import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 
 import '../foundation/github_rate_limit_exception.dart';
 import '../foundation/release_track.dart';

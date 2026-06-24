@@ -11,6 +11,8 @@ dependencies:
     path: ../sesori_plugin_interface
   sesori_plugin_runtime:
     path: ../sesori_plugin_runtime
+  sesori_bridge_foundation:
+    path: ../sesori_bridge_foundation
   sesori_shared:
     path: ../../shared/sesori_shared
   collection: ^1.19.0

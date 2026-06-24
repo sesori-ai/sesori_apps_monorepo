@@ -1,5 +1,5 @@
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
-import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
 /// Probes a candidate OpenCode binary's version by running `<bin> --version`.
 ///

@@ -21,20 +21,21 @@ From `bridge/app/`:
 
 Dependencies flow in one direction:
 
-1. `sesori_plugin_interface` — no internal deps; defines the contract
-2. `sesori_plugin_runtime` — depends on interface; Layer-0 runtime supervision + acquisition primitives (`ManagedProcessService`, `SemanticVersion`, `PlatformTarget`, `ChecksumValidator`, `BinaryDownloadClient`, format-keyed `ArchiveExtractor`, `CommandExecutor`/`HostProcessCommandExecutor`)
-3. `sesori_plugin_opencode` — depends on interface + runtime + `sesori_shared`
-4. `app` — depends on all plugin packages + `sesori_shared`
+1. `sesori_plugin_interface` — no internal deps; defines the contract (also the home of foundational primitives like `Log`, `Console`, `HostProcessService`)
+2. `sesori_bridge_foundation` — depends on interface; **bridge-wide** Layer-0 primitives shared by the main app AND plugins (`SemanticVersion`, `PlatformTarget`, `ChecksumValidator`, `BinaryDownloadClient`, format-keyed `ArchiveExtractor`, `CommandExecutor`/`HostProcessCommandExecutor`). NOT plugin-only.
+3. `sesori_plugin_runtime` — depends on interface; **plugin-only** managed-runtime supervision (`ManagedProcessService`, `ManagedRuntimeMonitor`, ownership/restart/intent). Used by plugins to supervise their backend process; the main app does not depend on it.
+4. `sesori_plugin_opencode` — depends on interface + foundation + runtime + `sesori_shared`
+5. `app` — depends on interface + foundation + `opencode_plugin` + `sesori_shared` (NOT runtime)
 
 When changing shared types, update in this order.
 
-Shared runtime-acquisition primitives (download, extract, checksum, version, platform target) live in `sesori_plugin_runtime` and are reused by both the bridge self-updater (`app/lib/src/updater/`) and the OpenCode managed runtime. Do not duplicate them per consumer; map their neutral results into a consumer's own vocabulary at that consumer's boundary (e.g. `UpdateArtifactRepository` maps `DownloadException` → `UpdateResult`).
+Decide placement by audience: a primitive used by **both** the app and plugins (download, extract, checksum, version, platform target, command execution) belongs in `sesori_bridge_foundation`, not `sesori_plugin_runtime` (which is plugin-only supervision). Do not duplicate these per consumer; map their neutral results into a consumer's own vocabulary at that consumer's boundary (e.g. `UpdateArtifactRepository` maps `DownloadException` → `UpdateResult`).
 
 ## Plugin Runtime Provisioning (`ensureRuntime`)
 
 `BridgePluginDescriptor` has an `ensureRuntime({host})` phase that runs **after** `checkAvailability` and **immediately before** `start()`, under the cross-instance startup mutex (so two bridges never install the same managed runtime at once). It returns a `Stream<RuntimeProvisionProgress>` whose terminal event is `ProvisionReady(binaryPath)` or `ProvisionFailed(message)`. The default is a no-op (remote/attach plugins need no runtime).
 
-- The runner consumes the stream, renders progress (`RuntimeProvisionReporter`), and records `ProvisionReady.binaryPath` on the host (`PluginHost.provisionedRuntimePath`) for `start()` to launch.
+- The runner consumes the stream, renders progress (`RuntimeProvisionFormatter`), and records `ProvisionReady.binaryPath` on the host (`PluginHost.provisionedRuntimePath`) for `start()` to launch.
 - **`ProvisionFailed` is non-fatal**: the bridge proceeds to `start()`, which returns a **degraded** plugin (`PluginDegraded`, never `PluginFailed` — a `PluginFailed` status exits the bridge). The relay/phone stay connected; a restart re-attempts provisioning.
 - A cooperative abort during provisioning surfaces as `PluginStartAbortedException` (a stream error), handled by the runner as "aborted as requested".
 - When mapping a long-running primitive stream into provisioning progress, prefer `await for (...) { yield ... }` over `yield*` if you need to **catch** errors from the inner stream: `yield*` forwards the inner stream's error straight to the consumer and bypasses your surrounding `try/catch`.

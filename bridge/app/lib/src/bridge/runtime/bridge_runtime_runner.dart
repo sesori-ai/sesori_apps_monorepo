@@ -5,6 +5,7 @@ import "package:clock/clock.dart";
 import "package:http/http.dart" as http;
 import "package:path/path.dart" as path;
 import "package:rxdart/rxdart.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show ArchiveExtractor, BinaryDownloadClient, ChecksumValidator;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         BridgePlugin,
@@ -22,7 +23,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         ServerClock,
         StartAbortController,
         StartAbortSignal;
-import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart" show ArchiveExtractor, BinaryDownloadClient, ChecksumValidator;
 
 import "../../api/bridge_settings_api.dart";
 import "../../auth/bridge_registration_api.dart";

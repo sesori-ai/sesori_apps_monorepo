@@ -55,9 +55,9 @@ import 'package:sesori_bridge/src/updater/services/manual_update_service.dart';
 import 'package:sesori_bridge/src/updater/services/update_apply_service.dart';
 import 'package:sesori_bridge/src/updater/services/update_install_service.dart';
 import 'package:sesori_bridge/src/version.dart';
+import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart'
     show BridgePluginDescriptor, Console, Log, LogLevel, PluginConfig, PluginConfigException, ProcessUser, ServerClock;
-import 'package:sesori_plugin_runtime/sesori_plugin_runtime.dart';
 
 const String _defaultRelayURL = 'wss://relay.sesori.com';
 const String _defaultAuthURL = 'https://api.sesori.com';
