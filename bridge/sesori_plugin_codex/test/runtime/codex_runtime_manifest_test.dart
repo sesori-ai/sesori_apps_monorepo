@@ -6,15 +6,6 @@ import "package:test/test.dart";
 void main() {
   const manifest = CodexRuntimeManifest();
 
-  // codex publishes builds for every target except windows-arm64.
-  const supported = [
-    PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
-    PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.x64),
-    PlatformTarget(os: PlatformOs.linux, arch: PlatformArch.arm64),
-    PlatformTarget(os: PlatformOs.linux, arch: PlatformArch.x64),
-    PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.x64),
-  ];
-
   group("CodexRuntimeManifest", () {
     test("pinned versions", () {
       expect(manifest.bundledVersion.toString(), "0.142.0");
@@ -23,33 +14,31 @@ void main() {
       expect(manifest.pathExecutableName, "codex");
     });
 
-    test("pins a sha256 asset for every supported platform target", () {
-      for (final target in supported) {
-        final asset = manifest.assetFor(target: target);
-        expect(asset, isNotNull, reason: "missing asset for ${target.key}");
-        expect(asset!.sha256, matches(RegExp(r"^[0-9a-f]{64}$")), reason: "${target.key} sha256");
-        expect(asset.assetName, isNotEmpty);
+    test("pins a sha256 asset for every platform target", () {
+      for (final os in PlatformOs.values) {
+        for (final arch in PlatformArch.values) {
+          final asset = manifest.assetFor(target: PlatformTarget(os: os, arch: arch));
+          expect(asset, isNotNull, reason: "missing asset for $os/$arch");
+          expect(asset!.sha256, matches(RegExp(r"^[0-9a-f]{64}$")), reason: "$os/$arch sha256");
+          expect(asset.assetName, isNotEmpty);
+        }
       }
     });
 
-    test("windows-arm64 is unsupported (codex publishes no build)", () {
-      expect(
-        manifest.assetFor(target: const PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.arm64)),
-        isNull,
-      );
-    });
-
     test("darwin/linux ship .tar.gz, windows ships .exe.zip", () {
-      RuntimeAsset asset(PlatformTarget target) => manifest.assetFor(target: target)!;
+      RuntimeAsset asset(PlatformOs os, PlatformArch arch) =>
+          manifest.assetFor(target: PlatformTarget(os: os, arch: arch))!;
 
-      expect(asset(supported[0]).format, ArchiveFormat.tarGz);
-      expect(asset(supported[0]).assetName, endsWith(".tar.gz"));
-      expect(asset(supported[3]).format, ArchiveFormat.tarGz);
-      expect(asset(supported[3]).assetName, endsWith(".tar.gz"));
+      expect(asset(PlatformOs.macos, PlatformArch.arm64).format, ArchiveFormat.tarGz);
+      expect(asset(PlatformOs.macos, PlatformArch.arm64).assetName, endsWith(".tar.gz"));
+      expect(asset(PlatformOs.linux, PlatformArch.x64).format, ArchiveFormat.tarGz);
+      expect(asset(PlatformOs.linux, PlatformArch.x64).assetName, endsWith(".tar.gz"));
 
-      final windows = asset(const PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.x64));
-      expect(windows.format, ArchiveFormat.zip);
-      expect(windows.assetName, endsWith(".exe.zip"));
+      for (final arch in PlatformArch.values) {
+        final windows = asset(PlatformOs.windows, arch);
+        expect(windows.format, ArchiveFormat.zip, reason: "windows/$arch format");
+        expect(windows.assetName, endsWith(".exe.zip"), reason: "windows/$arch asset");
+      }
     });
 
     test("archive member is the target-triple name (asset name minus extension)", () {

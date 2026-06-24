@@ -38,7 +38,6 @@ class CodexRuntimeManifest implements RuntimeManifest {
   /// named with the full target triple (e.g. `codex-aarch64-apple-darwin`), so
   /// [RuntimeAsset.archiveBinaryName] carries that member name and the installer
   /// normalizes it to the canonical [binaryFileName] (`codex` / `codex.exe`).
-  /// codex publishes no windows-arm64 build, so that target resolves to `null`.
   static const Map<PlatformOs, Map<PlatformArch, RuntimeAsset>> _assets = {
     PlatformOs.macos: {
       PlatformArch.arm64: RuntimeAsset(
@@ -69,6 +68,12 @@ class CodexRuntimeManifest implements RuntimeManifest {
       ),
     },
     PlatformOs.windows: {
+      PlatformArch.arm64: RuntimeAsset(
+        assetName: "codex-aarch64-pc-windows-msvc.exe.zip",
+        format: ArchiveFormat.zip,
+        sha256: "bfed1f82f822e4a749be336a5924d5a858949413498f6fc2ae9c1f806d3e02a9",
+        archiveBinaryName: "codex-aarch64-pc-windows-msvc.exe",
+      ),
       PlatformArch.x64: RuntimeAsset(
         assetName: "codex-x86_64-pc-windows-msvc.exe.zip",
         format: ArchiveFormat.zip,

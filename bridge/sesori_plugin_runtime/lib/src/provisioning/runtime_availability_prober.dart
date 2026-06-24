@@ -29,6 +29,12 @@ class RuntimeAvailabilityProber {
   /// Stable backend id used only for diagnostic log tagging (e.g. "codex").
   final String runtimeId;
 
+  /// Upper bound on retained `--version` stdout. The output is a short version
+  /// string kept only for a diagnostic log, so retaining past this cap serves no
+  /// purpose; bounding it prevents a misbehaving probed binary from causing
+  /// memory pressure before the probe timeout fires.
+  static const int _maxRetainedStdout = 64 * 1024;
+
   /// Runs `<executablePath> --version` through [processes] and classifies the
   /// outcome. `exit 0` within [versionProbeTimeout] is [PluginAvailable];
   /// anything else is [PluginUnavailable] with guidance. Never throws.
@@ -58,10 +64,17 @@ class RuntimeAvailabilityProber {
     // Accumulate stdout (the version string, for diagnostics) and drain stderr
     // so the child can never block on a full pipe. Subscriptions, not joined
     // futures, so a hung binary that never closes its streams cannot keep us
-    // waiting past the timeout below.
+    // waiting past the timeout below. The buffer is capped: a `--version` print
+    // is tiny and only used for a diagnostic log, so a misbehaving binary that
+    // spews output before the timeout cannot grow it without bound (we keep
+    // draining the stream, we just stop retaining bytes past the cap).
     final stdoutBuffer = StringBuffer();
     final stdoutSubscription = process.stdout.transform(utf8.decoder).listen(
-      stdoutBuffer.write,
+      (chunk) {
+        if (stdoutBuffer.length < _maxRetainedStdout) {
+          stdoutBuffer.write(chunk);
+        }
+      },
       onError: (Object error, StackTrace stackTrace) =>
           Log.w("[$runtimeId] version-probe stdout stream error", error, stackTrace),
     );
