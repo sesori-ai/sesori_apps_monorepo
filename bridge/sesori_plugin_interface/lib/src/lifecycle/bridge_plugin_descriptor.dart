@@ -6,6 +6,7 @@ import "bridge_plugin.dart";
 import "plugin_availability.dart";
 import "plugin_config.dart";
 import "plugin_option.dart";
+import "runtime_provision_progress.dart";
 
 /// The registration unit for a bridge plugin.
 ///
@@ -58,6 +59,25 @@ abstract class BridgePluginDescriptor {
     required HostProcessService processes,
     required Map<String, String> environment,
   }) async => const PluginAvailable();
+
+  /// Ensures the plugin's backend runtime is installed and runnable, acquiring
+  /// (e.g. downloading) it when necessary, and reports progress.
+  ///
+  /// Runs after [checkAvailability] returns [PluginAvailable] and immediately
+  /// before [start] — under the bridge's startup mutex, so concurrent bridge
+  /// instances can never install the same managed runtime at once. The stream's
+  /// final event is terminal: [ProvisionReady] carries the resolved launch path,
+  /// which the bridge exposes to [start] via [PluginHost.provisionedRuntimePath];
+  /// [ProvisionFailed] is **non-fatal** — the bridge proceeds to [start], which
+  /// reports a degraded status rather than terminating a healthy resident bridge.
+  ///
+  /// Provisioning must observe [PluginHost.startAborted] at each phase boundary
+  /// so a slow download can be cancelled. The default emits nothing, which suits
+  /// plugins that need no runtime acquisition (remote-server or attach-mode
+  /// plugins).
+  Stream<RuntimeProvisionProgress> ensureRuntime({required PluginHost host}) {
+    return const Stream<RuntimeProvisionProgress>.empty();
+  }
 
   /// Starts the plugin and returns its live instance.
   ///

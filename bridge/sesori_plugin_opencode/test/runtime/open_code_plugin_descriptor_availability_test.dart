@@ -100,9 +100,9 @@ void main() {
       expect(processes.forceSignals, equals(<int>[99]));
     });
 
-    test("falls back to 'opencode' when --opencode-bin is null", () async {
+    test("defers to ensureRuntime (available, no probe) when --opencode-bin is unset", () async {
       final processes = _ProbeProcessService(
-        spawnError: const ProcessException("opencode", ["--version"], "No such file or directory", 2),
+        spawnError: StateError("checkAvailability must not probe when no binary is configured"),
       );
 
       final result = await const OpenCodePluginDescriptor().checkAvailability(
@@ -113,9 +113,10 @@ void main() {
         environment: const <String, String>{},
       );
 
-      expect(result, isA<PluginUnavailable>());
-      expect((result as PluginUnavailable).message, contains("opencode --version"));
-      expect(processes.spawnedExecutables, equals(<String>["opencode"]));
+      // Resolution (PATH-or-managed) is deferred to ensureRuntime, so no
+      // version probe runs and startup proceeds.
+      expect(result, isA<PluginAvailable>());
+      expect(processes.spawnedExecutables, isEmpty);
     });
 
     test("reports unavailable when exitCode completes with an error", () async {

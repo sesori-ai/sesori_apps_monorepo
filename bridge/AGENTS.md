@@ -21,11 +21,33 @@ From `bridge/app/`:
 
 Dependencies flow in one direction:
 
-1. `sesori_plugin_interface` — no internal deps; defines the contract
-2. `sesori_plugin_opencode` — depends on interface + `sesori_shared`
-3. `app` — depends on both plugin packages + `sesori_shared`
+1. `sesori_plugin_interface` — no internal deps; defines the contract (also the home of foundational primitives like `Log`, `Console`, `HostProcessService`)
+2. `sesori_bridge_foundation` — depends on interface; **bridge-wide** Layer-0 primitives shared by the main app AND plugins (`SemanticVersion`, `PlatformTarget`, `ChecksumValidator`, `BinaryDownloadClient`, format-keyed `ArchiveExtractor`, `CommandExecutor`/`HostProcessCommandExecutor`). NOT plugin-only.
+3. `sesori_plugin_runtime` — depends on interface; **plugin-only** managed-runtime supervision (`ManagedProcessService`, `ManagedRuntimeMonitor`, ownership/restart/intent). Used by plugins to supervise their backend process; the main app does not depend on it.
+4. `sesori_plugin_opencode` — depends on interface + foundation + runtime + `sesori_shared`
+5. `app` — depends on interface + foundation + `opencode_plugin` + `sesori_shared` (NOT runtime)
 
 When changing shared types, update in this order.
+
+Decide placement by audience: a primitive used by **both** the app and plugins (download, extract, checksum, version, platform target, command execution) belongs in `sesori_bridge_foundation`, not `sesori_plugin_runtime` (which is plugin-only supervision). Do not duplicate these per consumer; map their neutral results into a consumer's own vocabulary at that consumer's boundary (e.g. `UpdateArtifactRepository` maps `DownloadException` → `UpdateResult`).
+
+## Plugin Runtime Provisioning (`ensureRuntime`)
+
+`BridgePluginDescriptor` has an `ensureRuntime({host})` phase that runs **after** `checkAvailability` and **immediately before** `start()`, under the cross-instance startup mutex (so two bridges never install the same managed runtime at once). It returns a `Stream<RuntimeProvisionProgress>` whose terminal event is `ProvisionReady(binaryPath)` or `ProvisionFailed(message)`. The default is a no-op (remote/attach plugins need no runtime).
+
+- The runner consumes the stream, renders progress (`RuntimeProvisionFormatter`), and records `ProvisionReady.binaryPath` on the host (`PluginHost.provisionedRuntimePath`) for `start()` to launch.
+- **`ProvisionFailed` is non-fatal**: the bridge proceeds to `start()`, which returns a **degraded** plugin (`PluginDegraded`, never `PluginFailed` — a `PluginFailed` status exits the bridge). The relay/phone stay connected; a restart re-attempts provisioning.
+- A cooperative abort during provisioning surfaces as `PluginStartAbortedException` (a stream error), handled by the runner as "aborted as requested".
+- When mapping a long-running primitive stream into provisioning progress, prefer `await for (...) { yield ... }` over `yield*` if you need to **catch** errors from the inner stream: `yield*` forwards the inner stream's error straight to the consumer and bypasses your surrounding `try/catch`.
+
+### Bumping the managed OpenCode runtime
+
+The managed runtime is pinned in `sesori_plugin_opencode/lib/src/runtime/open_code_runtime_manifest.dart`:
+
+1. Pick the new `vX.Y.Z` release of `anomalyco/opencode`.
+2. Update `bundledVersion`.
+3. Replace all six per-platform `sha256` values from that release's asset digests — GitHub's release API exposes each asset's `digest: "sha256:…"` (`opencode-darwin-{arm64,x64}.zip`, `opencode-linux-{arm64,x64}.tar.gz`, `opencode-windows-{arm64,x64}.zip`).
+4. Raise `minSupportedVersion` only when new bridge code needs a newer OpenCode API than older PATH installs provide (keep it conservative — prefer the user's own install, and never force a download that would migrate a newer OpenCode's local DB).
 
 ## Testing
 
@@ -119,9 +141,14 @@ If a concept has a fixed set of values (PR state, mergeable status, review decis
 
 API methods must **throw** on unexpected errors. Never return empty lists, `null`, or `false` to hide failures — the caller should decide how to handle the error. A single `catch` block is fine if all errors are handled identically; don't split into multiple catches that do the same thing.
 
-### Never Swallow Exceptions — Every `catch` Logs
+### Never Silently Swallow Exceptions
 
-Every `catch` block must log. When a service/repository degrades on an unexpected `catch`, emit a warning/debug log (including the caught error) with enough context to understand what failed. This applies to **no-op and best-effort handlers too**: a silent `catch` — an empty body, or a bare comment with no log — is forbidden. If continuing really is safe, record that decision and the error with `Log.d`/`Log.w`; never discard an exception without a trace.
+The target is a `catch` that **discards an error and continues as if nothing happened, with no trace** (`catch (e) { /* no-op */ }`) — if it fails for everyone, you'd never know.
+
+- **Swallow-and-continue must log.** A handler that recovers/degrades and keeps going (no-op and best-effort cleanup included) emits at least a `debug`/`warning` with enough context to know what failed and why continuing is safe.
+- **Catch-all (`on Object catch (error)` / `catch (e)`) should generally log** — reaching it means the cause is unknown.
+- **Don't double-log a surfaced failure.** When the catch already makes the failure observable — rethrow, throw a typed exception, or return/yield an explicit failure the caller renders (`ExplicitUpdateFailed`, `ProvisionFailed`, a `PluginUnavailable`, etc.) — do NOT add a redundant upfront `Log`. The returned/thrown failure is the signal.
+- **Pass the error as the logger argument, not inlined.** `Log.w("what failed", error, stackTrace)`, never `Log.w("what failed: $error")`. `Log.d`/`Log.i` take only a message, so use `Log.w`/`Log.e` when attaching the caught error/stack.
 
 ### No Redundant Model Layers
 

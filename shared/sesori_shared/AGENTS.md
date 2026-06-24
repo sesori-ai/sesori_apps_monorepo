@@ -4,7 +4,7 @@ Pure Dart library — crypto primitives + protocol types shared by `sesori_bridg
 
 ## Error Handling
 
-**Never catch and swallow.** Every `catch` must log — even a no-op, best-effort, or intentional-degradation handler must emit at least a `debug`/`warning` log that includes the caught error and why continuing is safe. A silent `catch` (empty body or a bare comment with no log) is forbidden.
+**Never silently swallow.** The target is a `catch` that discards an error and continues with no trace (`catch (e) { /* no-op */ }`). A handler that swallows and continues (no-op/best-effort cleanup included) must log, and a catch-all (`on Object catch`/`catch (e)`) especially, since the cause is unknown. But do NOT add a redundant log when the catch already surfaces the failure — rethrows, throws a typed exception, or returns/yields an explicit failure the caller renders — that just double-logs. When you log a caught error, pass it as the logger argument (`Log.w("msg", error, stackTrace)`), don't string-interpolate it.
 
 ## STRUCTURE
 

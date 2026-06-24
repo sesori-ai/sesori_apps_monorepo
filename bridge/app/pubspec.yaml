@@ -22,8 +22,8 @@ dependencies:
   rxdart: ^0.28.0
   sesori_plugin_interface:
     path: ../sesori_plugin_interface
-  sesori_plugin_runtime:
-    path: ../sesori_plugin_runtime
+  sesori_bridge_foundation:
+    path: ../sesori_bridge_foundation
   opencode_plugin:
     path: ../sesori_plugin_opencode
   meta: ^1.18.3

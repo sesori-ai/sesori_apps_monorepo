@@ -23,6 +23,13 @@ abstract class PluginHost {
   /// bridge before `start()` runs. Files managed through [store] live here.
   String get stateDirectory;
 
+  /// The runtime launch path resolved by `BridgePluginDescriptor.ensureRuntime`
+  /// (an absolute managed-binary path, an explicit override, or a PATH-resolved
+  /// command), or `null` when the plugin did no provisioning or it failed. The
+  /// bridge sets this between `ensureRuntime` and `start`; `start` reads it to
+  /// launch the backend.
+  String? get provisionedRuntimePath;
+
   /// The process environment the bridge was started with.
   Map<String, String> get environment;
 

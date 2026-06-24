@@ -14,6 +14,7 @@ import 'package:sesori_bridge/src/auth/token.dart';
 import 'package:sesori_bridge/src/auth/token_manager.dart';
 import 'package:sesori_bridge/src/bridge/foundation/device_type_detector.dart';
 import 'package:sesori_bridge/src/bridge/foundation/process_runner.dart';
+import 'package:sesori_bridge/src/bridge/foundation/process_runner_command_executor.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_dispatch.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart';
 import 'package:sesori_bridge/src/bridge/runtime/bridge_logout_runner.dart';
@@ -31,15 +32,12 @@ import 'package:sesori_bridge/src/server/repositories/terminal_prompt_repository
 import 'package:sesori_bridge/src/server/services/bridge_instance_service.dart';
 import 'package:sesori_bridge/src/services/bridge_config_service.dart';
 import 'package:sesori_bridge/src/services/sleep_prevention_service.dart';
-import 'package:sesori_bridge/src/updater/api/archive_extractor_api.dart';
 import 'package:sesori_bridge/src/updater/api/checksum_manifest_api.dart';
-import 'package:sesori_bridge/src/updater/api/checksum_verifier_api.dart';
 import 'package:sesori_bridge/src/updater/api/github_releases_api.dart';
 import 'package:sesori_bridge/src/updater/api/managed_runtime_manifest_api.dart';
 import 'package:sesori_bridge/src/updater/api/platform_update_api.dart';
 import 'package:sesori_bridge/src/updater/api/update_attempt_api.dart';
 import 'package:sesori_bridge/src/updater/api/update_cache_api.dart';
-import 'package:sesori_bridge/src/updater/api/update_download_api.dart';
 import 'package:sesori_bridge/src/updater/api/update_log_api.dart';
 import 'package:sesori_bridge/src/updater/formatters/update_command_formatter.dart';
 import 'package:sesori_bridge/src/updater/foundation/filesystem_cleaner.dart';
@@ -57,6 +55,7 @@ import 'package:sesori_bridge/src/updater/services/manual_update_service.dart';
 import 'package:sesori_bridge/src/updater/services/update_apply_service.dart';
 import 'package:sesori_bridge/src/updater/services/update_install_service.dart';
 import 'package:sesori_bridge/src/version.dart';
+import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart'
     show BridgePluginDescriptor, Console, Log, LogLevel, PluginConfig, PluginConfigException, ProcessUser, ServerClock;
 
@@ -447,21 +446,24 @@ class UpdateCommand extends cli.Command<void> {
         manifestApi: const ManagedRuntimeManifestApi(),
       );
       final updateLock = UpdateLock(currentPid: pid, processRunner: processRunner, clock: clock);
+      final distributionTarget = currentDistributionTarget();
+      final commandExecutor = ProcessRunnerCommandExecutor(processRunner: processRunner);
 
       final manualUpdateService = ManualUpdateService(
         releaseRepository: ReleaseRepository(
           api: GitHubReleasesApi(httpClient: httpClient, authToken: githubToken),
           cache: UpdateCacheApi(cacheDirectory: managedRuntimePaths.cacheDirectory, clock: clock),
           currentVersion: appVersion,
-          target: currentDistributionTarget(),
+          target: distributionTarget,
           track: releaseTrack,
         ),
         updateInstallService: UpdateInstallService(
           updateArtifactRepository: UpdateArtifactRepository(
-            downloadApi: UpdateDownloadApi(httpClient: httpClient),
+            downloadClient: BinaryDownloadClient(httpClient: httpClient),
             checksumManifestApi: ChecksumManifestApi(httpClient: httpClient),
-            checksumVerifierApi: ChecksumVerifierApi(),
-            archiveExtractorApi: ArchiveExtractorApi(processRunner: processRunner),
+            checksumValidator: ChecksumValidator(),
+            archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
+            archiveFormat: distributionTarget.archiveFormat,
           ),
           filesystemCleaner: filesystemCleaner,
           // Stage into a per-process workspace so a manual update can't clobber
