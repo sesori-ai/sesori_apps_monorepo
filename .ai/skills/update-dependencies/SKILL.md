@@ -201,6 +201,7 @@ set -e
 set -e
 (cd bridge && dart pub get)
 (cd bridge/sesori_plugin_interface && dart pub outdated)
+(cd bridge/sesori_bridge_foundation && dart pub outdated)
 (cd bridge/sesori_plugin_runtime && dart pub outdated)
 (cd bridge/sesori_plugin_opencode && dart pub outdated)
 (cd bridge/app && dart pub outdated)
@@ -276,7 +277,7 @@ git diff --name-only -- '*.yaml' | sort
 Account for EACH of the three resolution units independently:
 
 - **shared** — `shared/sesori_shared/pubspec.yaml`
-- **bridge** — `bridge/**/pubspec.yaml` (all members, including `sesori_plugin_runtime`)
+- **bridge** — `bridge/**/pubspec.yaml` (all members, including `sesori_bridge_foundation` and `sesori_plugin_runtime`)
 - **mobile** — `mobile/**/pubspec.yaml`
 
 For each, confirm one of two outcomes: either (a) its pubspec(s) appear in the diff because you bumped constraints, OR (b) you can point to the Phase 2 `outdated` output showing it genuinely had no upgradable direct/dev deps.
@@ -293,7 +294,7 @@ For each, confirm one of two outcomes: either (a) its pubspec(s) appear in the d
 ```bash
 set -e
 (cd shared && make analyze)   # sesori_shared + no_slop_linter
-(cd bridge && make analyze)   # sesori_plugin_interface, sesori_plugin_runtime, sesori_plugin_opencode, app
+(cd bridge && make analyze)   # sesori_plugin_interface, sesori_bridge_foundation, sesori_plugin_runtime, sesori_plugin_opencode, app
 (cd mobile && make analyze)   # module_auth, module_core, module_prego, app (with --fatal-infos)
 ```
 
@@ -453,7 +454,7 @@ Report this list at the end of the update process for visibility.
 <success_criteria>
 
 - Preflight discovery (Phase 0) ran; every discovered source pubspec and workspace member is accounted for, with none silently skipped
-- Environment constraints (sdk, flutter) updated in 11 pubspec.yaml files (every pubspec EXCEPT `shared/no_slop_linter/pubspec.yaml`, which is excluded entirely — the count INCLUDES `bridge/sesori_plugin_runtime`)
+- Environment constraints (sdk, flutter) updated in 12 pubspec.yaml files (every pubspec EXCEPT `shared/no_slop_linter/pubspec.yaml`, which is excluded entirely — the count INCLUDES `bridge/sesori_bridge_foundation` and `bridge/sesori_plugin_runtime`)
 - Version constraints bumped to latest resolvable versions in every pubspec EXCEPT `shared/no_slop_linter/pubspec.yaml`
 - All three workspaces (shared, bridge, mobile) are individually accounted for: each either has bumped constraints or provably had no upgradable deps (Phase 3.4)
 - All pubspec.lock files regenerated (workspace roots + 2 standalone packages = 4 lockfiles)
