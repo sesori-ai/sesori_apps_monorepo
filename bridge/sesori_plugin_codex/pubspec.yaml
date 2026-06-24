@@ -7,6 +7,8 @@ environment:
   sdk: ^3.12.2
 
 dependencies:
+  sesori_bridge_foundation:
+    path: ../sesori_bridge_foundation
   sesori_plugin_interface:
     path: ../sesori_plugin_interface
   sesori_plugin_runtime:
@@ -15,7 +17,6 @@ dependencies:
     path: ../../shared/sesori_shared
   web_socket_channel: ^3.0.3
   http: ^1.6.0
-  crypto: ^3.0.7
   path: ^1.9.0
   freezed_annotation: ^3.1.0
   json_annotation: ^4.12.0

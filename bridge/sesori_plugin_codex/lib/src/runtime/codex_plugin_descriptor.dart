@@ -1,17 +1,18 @@
 import "dart:async";
-import "dart:convert";
 import "dart:io" as io;
 import "dart:math";
 
+import "package:http/http.dart" as http;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
-import "../codex_binary_resolver.dart";
 import "../codex_plugin_impl.dart";
 import "codex_bridge_plugin.dart";
 import "codex_managed_api.dart";
 import "codex_ownership_record.dart";
 import "codex_record_mapper.dart";
+import "codex_runtime_manifest.dart";
 import "codex_runtime_policy.dart";
 import "codex_status_reporter.dart";
 
@@ -37,23 +38,8 @@ CodexManagedApi _defaultBuildApi({
   );
 }
 
-/// Resolves the codex binary path. Production builds the real
-/// [CodexBinaryResolver]; tests inject a stub.
-typedef CodexBinaryResolverFactory =
-    CodexBinaryResolver Function({
-      required String codexBinFlag,
-      required Map<String, String> environment,
-    });
-
-CodexBinaryResolver _defaultBuildBinaryResolver({
-  required String codexBinFlag,
-  required Map<String, String> environment,
-}) {
-  return CodexBinaryResolver(codexBinFlag: codexBinFlag, environment: environment);
-}
-
 /// The Codex plugin descriptor: it owns the full `codex app-server` runtime
-/// lifecycle (binary resolution, stale cleanup, start, health, ownership
+/// lifecycle (runtime provisioning, stale cleanup, start, health, ownership
 /// persistence, exit monitoring) over the [PluginHost] and the
 /// `sesori_plugin_runtime` supervisor — mirroring the OpenCode descriptor,
 /// adapted for codex's loopback-WebSocket transport.
@@ -62,34 +48,41 @@ CodexBinaryResolver _defaultBuildBinaryResolver({
 /// at launch with `--plugin codex` (or the `enabledPlugins` bridge setting).
 /// Unlike OpenCode there is no attach (`--no-auto-start`) mode and no crash
 /// restart: the codex WebSocket client does not auto-reconnect, so an
-/// unexpected child exit surfaces as `PluginFailed`.
+/// unexpected child exit surfaces as `PluginFailed`, and a runtime that cannot
+/// be provisioned fails the start rather than degrading.
 ///
 /// The optional constructor parameters are test seams; the registered
 /// descriptor is `const CodexPluginDescriptor()`.
 class CodexPluginDescriptor extends BridgePluginDescriptor {
   const CodexPluginDescriptor({
     CodexManagedApiFactory? buildApi,
-    CodexBinaryResolverFactory? buildBinaryResolver,
     Iterable<int>? candidatePorts,
     Random? random,
     Duration degradedDebounce = const Duration(seconds: 5),
     Duration coldStartBudget = codexColdStartBudget,
     Duration versionProbeTimeout = codexVersionProbeTimeout,
+    ManagedRuntimeProvisionService? provisionService,
+    http.Client Function()? probeClientFactory,
   }) : _buildApi = buildApi,
-       _buildBinaryResolver = buildBinaryResolver,
        _candidatePorts = candidatePorts,
        _random = random,
        _degradedDebounce = degradedDebounce,
        _coldStartBudget = coldStartBudget,
-       _versionProbeTimeout = versionProbeTimeout;
+       _versionProbeTimeout = versionProbeTimeout,
+       _provisionService = provisionService,
+       _probeClientFactory = probeClientFactory;
 
   final CodexManagedApiFactory? _buildApi;
-  final CodexBinaryResolverFactory? _buildBinaryResolver;
   final Iterable<int>? _candidatePorts;
   final Random? _random;
   final Duration _degradedDebounce;
   final Duration _coldStartBudget;
   final Duration _versionProbeTimeout;
+
+  /// Test seam for the runtime provisioner. Production builds a default in
+  /// [ensureRuntime] from the host's process service and an HTTP client.
+  final ManagedRuntimeProvisionService? _provisionService;
+  final http.Client Function()? _probeClientFactory;
 
   /// The codex CLI options the bridge registers when this plugin is selected.
   static const List<PluginOption> cliOptions = [
@@ -121,133 +114,101 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
   @override
   List<PluginOption> get options => cliOptions;
 
-  /// Confirms the codex CLI is available before the bridge commits to startup.
-  /// This is a READ-ONLY probe — it never mutates disk or hits the network:
+  /// The explicit `--codex-bin` override path, or `null` when unset, empty, or
+  /// left at the bare default `codex` (which means "resolve via [ensureRuntime]":
+  /// a recent-enough PATH codex or the pinned managed download).
+  String? _explicitBin(PluginConfig config) {
+    final value = config.value("bin")?.trim();
+    if (value == null || value.isEmpty || value == "codex") {
+      return null;
+    }
+    return value;
+  }
+
+  /// Confirms an explicitly-configured codex binary is runnable before the
+  /// bridge commits to startup.
   ///
-  ///   1. Resolve the binary with no side effects ([CodexBinaryResolver.probe]:
-  ///      override / usable cached binary / PATH) and run `<codex-bin>
-  ///      --version`; exit 0 within [_versionProbeTimeout] means available.
-  ///   2. If that finds no runnable codex but [start]'s download-capable
-  ///      resolution *would* fetch the pinned managed binary for this platform
-  ///      ([CodexBinaryResolver.willDownloadManagedBinary]), report available
-  ///      anyway — a fresh install where codex is absent on PATH but
-  ///      downloadable must not be blocked here; the fetch happens in [start].
-  ///   3. Otherwise unavailable (failed launch, non-zero exit, or timeout with
-  ///      nothing downloadable).
+  /// When `--codex-bin` is an explicit path, probe it: an explicit override is a
+  /// user promise, so a broken one is a fatal config error. When no binary is
+  /// configured, runtime resolution (a recent-enough PATH install or a managed
+  /// download) is deferred to [ensureRuntime], so report available here. This is
+  /// a READ-ONLY probe — it never mutates disk or hits the network.
   @override
   Future<PluginAvailability> checkAvailability({
     required PluginConfig config,
     required HostProcessService processes,
     required Map<String, String> environment,
   }) async {
-    final binFlag = config.value("bin") ?? "codex";
-    final resolver = _resolver(binFlag: binFlag, environment: environment);
-    final executablePath = await resolver.probe();
-    final availability = await _probeCodexBinary(
-      executablePath: executablePath,
-      processes: processes,
-      environment: environment,
-    );
-    if (availability is PluginAvailable) return availability;
-    // No runnable codex right now, but if start()'s resolve() would
-    // auto-download the pinned managed binary, the install is fine — defer the
-    // fetch to start() rather than blocking startup. Stays side-effect free.
-    if (await resolver.willDownloadManagedBinary()) {
-      Log.d("[codex] available: managed binary will be downloaded at startup");
+    final explicitBin = _explicitBin(config);
+    if (explicitBin == null) {
       return const PluginAvailable();
     }
-    return availability;
-  }
-
-  CodexBinaryResolver _resolver({
-    required String binFlag,
-    required Map<String, String> environment,
-  }) {
-    return (_buildBinaryResolver ?? _defaultBuildBinaryResolver)(
-      codexBinFlag: binFlag,
+    const manifest = CodexRuntimeManifest();
+    return RuntimeAvailabilityProber(
+      displayName: manifest.displayName,
+      installDocsUrl: manifest.installDocsUrl,
+      runtimeId: manifest.runtimeId,
+    ).probe(
+      executablePath: explicitBin,
+      processes: processes,
       environment: environment,
+      versionProbeTimeout: _versionProbeTimeout,
+      runInShell: io.Platform.isWindows,
     );
   }
 
-  /// Download-capable resolution for actual startup (override / cached /
-  /// auto-download / PATH).
-  Future<String> _resolveBinary({
-    required String binFlag,
-    required Map<String, String> environment,
-  }) async {
-    return _resolver(binFlag: binFlag, environment: environment).resolve();
-  }
-
-  /// Runs `<executablePath> --version` and classifies the outcome. Never
-  /// throws: every failure mode maps to a [PluginUnavailable] with user-facing
-  /// guidance.
-  Future<PluginAvailability> _probeCodexBinary({
-    required String executablePath,
-    required HostProcessService processes,
-    required Map<String, String> environment,
-  }) async {
-    final SpawnedProcess process;
-    try {
-      process = await processes.spawn(
-        executable: executablePath,
-        arguments: const ["--version"],
-        environment: environment,
-        workingDirectory: null,
-        runInShell: io.Platform.isWindows,
-      );
-    } on Object catch (error) {
-      Log.d("[codex] availability probe could not launch '$executablePath --version': $error");
-      return PluginUnavailable(message: _notInstalledMessage(executablePath: executablePath));
+  /// Resolves the codex runtime (a recent-enough PATH install, otherwise a
+  /// managed download) and reports progress. Skipped when an explicit
+  /// `--codex-bin` path is set (it already names the binary). The resolved
+  /// launch path is surfaced via [ProvisionReady]; a failure is non-fatal here
+  /// and `start()` fails with guidance.
+  @override
+  Stream<RuntimeProvisionProgress> ensureRuntime({required PluginHost host}) async* {
+    if (_explicitBin(host.config) != null) {
+      return;
     }
 
-    final stdoutBuffer = StringBuffer();
-    final stdoutSubscription = process.stdout.transform(utf8.decoder).listen(stdoutBuffer.write, onError: (Object _) {});
-    final stderrSubscription = process.stderr.listen((_) {}, onError: (Object _) {});
+    final injected = _provisionService;
+    if (injected != null) {
+      yield* injected.provision(host: host);
+      return;
+    }
+
+    final http.Client client = (_probeClientFactory ?? http.Client.new)();
     try {
-      final exitCode = await process.exitCode.timeout(_versionProbeTimeout);
-      if (exitCode == 0) {
-        final version = stdoutBuffer.toString().trim();
-        Log.d("[codex] available: '$executablePath --version' -> ${version.isEmpty ? "exit 0 (no output)" : version}");
-        return const PluginAvailable();
-      }
-      Log.d("[codex] availability probe '$executablePath --version' exited with code $exitCode");
-      return PluginUnavailable(message: _notWorkingMessage(executablePath: executablePath));
-    } on TimeoutException {
-      Log.d(
-        "[codex] availability probe '$executablePath --version' did not exit within "
-        "${_versionProbeTimeout.inSeconds}s",
-      );
-      try {
-        await processes.signalForce(pid: process.pid);
-      } on Object {
-        // Best-effort: reap the hung probe so it does not linger.
-      }
-      return PluginUnavailable(message: _notWorkingMessage(executablePath: executablePath));
-    } on Object catch (error) {
-      Log.d("[codex] availability probe '$executablePath --version' failed with error: $error");
-      return PluginUnavailable(message: _notWorkingMessage(executablePath: executablePath));
+      yield* _buildDefaultProvisionService(host: host, httpClient: client).provision(host: host);
     } finally {
-      await stdoutSubscription.cancel();
-      await stderrSubscription.cancel();
+      client.close();
     }
   }
 
-  String _notInstalledMessage({required String executablePath}) {
-    return [
-      "Codex was not found — the Sesori bridge needs the Codex CLI to run the codex backend.",
-      "",
-      "Verify it is installed:  $executablePath --version",
-      "Install Codex:           https://github.com/openai/codex",
-    ].join("\n");
-  }
-
-  String _notWorkingMessage({required String executablePath}) {
-    return [
-      'Codex is installed but did not respond to "$executablePath --version".',
-      "",
-      "Re-check your install:  $executablePath --version",
-      "Reinstall Codex:        https://github.com/openai/codex",
-    ].join("\n");
+  /// Assembles the production provisioner from the host's process service (so
+  /// helper commands go through the host, never a raw spawn) and [httpClient].
+  ManagedRuntimeProvisionService _buildDefaultProvisionService({
+    required PluginHost host,
+    required http.Client httpClient,
+  }) {
+    const manifest = CodexRuntimeManifest();
+    final commandExecutor = HostProcessCommandExecutor(
+      processes: host.processes,
+      runInShell: io.Platform.isWindows,
+    );
+    return ManagedRuntimeProvisionService(
+      manifest: manifest,
+      versionValidator: RuntimeVersionValidator(
+        commandExecutor: commandExecutor,
+        runtimeId: manifest.runtimeId,
+        probeTimeout: _versionProbeTimeout,
+      ),
+      installService: RuntimeInstallService(
+        downloadClient: BinaryDownloadClient(httpClient: httpClient),
+        checksumValidator: ChecksumValidator(),
+        archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
+        commandExecutor: commandExecutor,
+        runtimeId: manifest.runtimeId,
+      ),
+      cleaner: ManagedRuntimeCleaner(runtimeId: manifest.runtimeId),
+    );
   }
 
   @override
@@ -258,8 +219,21 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
 
     final config = host.config;
     final requestedPort = config.intValue("port");
-    final binFlag = config.value("bin") ?? "codex";
-    final executablePath = await _resolveBinary(binFlag: binFlag, environment: host.environment);
+    // Precedence: an explicit --codex-bin override wins (trusted, no version
+    // gate); otherwise the path ensureRuntime resolved (a recent PATH codex or
+    // the managed download), exposed via the host.
+    final executablePath = _explicitBin(config) ?? host.provisionedRuntimePath;
+    if (executablePath == null) {
+      // Runtime provisioning failed and no explicit binary was given. codex has
+      // no attach/degraded mode (its WebSocket client cannot reconnect), so it
+      // needs a real binary to run — fail the start with actionable guidance
+      // rather than spawning an empty command.
+      throw const PluginStartException(
+        "No runnable codex binary is available. Install codex "
+        "(https://github.com/openai/codex) or pass --codex-bin, then restart.",
+        cause: null,
+      );
+    }
     if (host.startAborted.isAborted) {
       throw const PluginStartAbortedException();
     }
