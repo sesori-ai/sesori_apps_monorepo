@@ -63,8 +63,8 @@ class OpenCodeRuntimeProvisionService {
       target = PlatformTarget.current();
     } on Object catch (error) {
       // An unsupported/undetectable OS or CPU must degrade non-fatally, not
-      // crash startup with a raw error from platform detection.
-      Log.w("[opencode] could not determine the host platform target: $error");
+      // crash startup with a raw error from platform detection. The failure is
+      // surfaced (and rendered) via ProvisionFailed, so no separate log here.
       yield ProvisionFailed(
         message:
             "Could not determine this machine's platform for the OpenCode runtime ($error). "
@@ -133,11 +133,10 @@ class OpenCodeRuntimeProvisionService {
       // the runner aborts startup rather than treating it as a failure.
       rethrow;
     } on OpenCodeRuntimeInstallException catch (error) {
-      Log.w("[opencode] managed runtime install failed: ${error.message}");
+      // Surfaced (and rendered) via ProvisionFailed — no separate upfront log.
       yield ProvisionFailed(message: "Could not install the OpenCode runtime: ${error.message}");
       return;
-    } on Object catch (error, stackTrace) {
-      Log.w("[opencode] managed runtime install failed unexpectedly", error, stackTrace);
+    } on Object catch (error) {
       yield ProvisionFailed(message: "Could not install the OpenCode runtime: $error");
       return;
     }

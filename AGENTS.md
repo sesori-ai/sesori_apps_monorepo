@@ -416,7 +416,22 @@ Do not skip either step. The reviewers exist because violations compound — one
 
 ## Error Handling
 
-**Never catch and swallow.** Every `catch` block must log. Even a no-op, best-effort, or intentional-degradation handler must emit at least a `debug`/`warning` log that includes the caught error and (briefly) why continuing is safe. A silent `catch` — an empty body, or a bare comment with no log — is forbidden. If you genuinely want to ignore an error, you still log it. This applies in every workspace (bridge, mobile, shared).
+**Never silently swallow.** The failure mode this rule targets is a `catch` that **discards an error and continues as if nothing happened, leaving no trace** — the classic:
+
+```dart
+} catch (err) {
+  // no-op / best-effort
+}
+```
+
+If something there fails for everyone, you'd never know. So:
+
+- **A catch that swallows and continues — log it.** Any handler that recovers/degrades and keeps going (including no-op and best-effort cleanup) must emit at least a `debug`/`warning`, with enough context to know what failed and why continuing is safe.
+- **A catch-all (`on Object catch (error)` / `catch (e)`) should generally log**, because reaching it means you don't actually know what went wrong.
+- **Do NOT add a redundant log when the catch already surfaces the failure.** If you take a real action that makes the failure observable — rethrow, throw a typed exception, or return/yield an explicit failure result the caller renders (e.g. `ExplicitUpdateFailed`, `ProvisionFailed`) — an extra upfront log just double-logs the same failure. Don't add it.
+- **Pass the error to the logger; don't inline it.** Use the logger's error (and stack-trace) argument: `Log.w("what failed", error, stackTrace)` — not `Log.w("what failed: $error")`. (Single-message levels like `Log.d`/`Log.i` take no error argument; use `Log.w`/`Log.e` when you want to attach the caught error.)
+
+This applies in every workspace (bridge, mobile, shared).
 
 ## Forbidden
 

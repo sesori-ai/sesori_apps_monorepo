@@ -25,10 +25,11 @@ class ChecksumValidator {
     final String computedHash;
     try {
       computedHash = await computeSha256(filePath: filePath);
-    } on Object catch (error) {
+    } on Object catch (error, stackTrace) {
       // TOCTOU / read failure: the file vanished or became unreadable after the
-      // existence check. Treat as a failed verification rather than aborting.
-      Log.w("ChecksumValidator: failed to read '$filePath' for verification: $error");
+      // existence check. Treat as a failed verification (the bare `false` result
+      // does not convey the cause, so log it) rather than aborting.
+      Log.w("ChecksumValidator: failed to read '$filePath' for verification", error, stackTrace);
       return false;
     }
     return computedHash.toLowerCase() == expectedHash.toLowerCase();

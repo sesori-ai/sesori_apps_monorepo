@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io' show HttpException, SocketException;
 
 import 'package:http/http.dart' show ClientException;
-import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 import 'package:sesori_plugin_runtime/sesori_plugin_runtime.dart';
 
 import '../foundation/github_rate_limit_exception.dart';
@@ -67,22 +66,16 @@ class ManualUpdateService {
     try {
       resolution = await _releaseRepository.resolveUpdate();
     } on GitHubRateLimitException catch (error) {
-      Log.w('Explicit update: release check hit GitHub rate limit: $error');
       return ExplicitUpdateFailed(reason: _rateLimitReason(error), logPath: null);
     } on SocketException catch (error) {
-      Log.w('Explicit update: release check failed (network): $error');
       return ExplicitUpdateFailed(reason: "couldn't reach GitHub: $error", logPath: null);
     } on TimeoutException catch (error) {
-      Log.w('Explicit update: release check timed out: $error');
       return ExplicitUpdateFailed(reason: 'the release check timed out: $error', logPath: null);
     } on HttpException catch (error) {
-      Log.w('Explicit update: release check failed (http): $error');
       return ExplicitUpdateFailed(reason: 'a network error occurred: $error', logPath: null);
     } on ClientException catch (error) {
-      Log.w('Explicit update: release check failed (client): $error');
       return ExplicitUpdateFailed(reason: 'a network error occurred: $error', logPath: null);
     } on Object catch (error) {
-      Log.w('Explicit update: release check failed unexpectedly: $error');
       return ExplicitUpdateFailed(reason: error.toString(), logPath: null);
     }
 
@@ -155,7 +148,6 @@ class ManualUpdateService {
     try {
       staged = await _updateInstallService.stageUpdate(release: release, installRoot: _installRoot);
     } on Object catch (error) {
-      Log.w('Explicit update: staging the release failed: $error');
       return ExplicitUpdateFailed(reason: error.toString(), logPath: null);
     }
 
@@ -168,7 +160,6 @@ class ManualUpdateService {
     try {
       applyOutcome = await _updateApplyService.apply(release: release, stagingPath: stagingPath);
     } on Object catch (error) {
-      Log.w('Explicit update: applying the staged release failed: $error');
       return ExplicitUpdateFailed(reason: error.toString(), logPath: null);
     }
 

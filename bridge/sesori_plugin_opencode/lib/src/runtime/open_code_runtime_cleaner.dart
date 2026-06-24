@@ -24,10 +24,10 @@ class OpenCodeRuntimeCleaner {
     final List<FileSystemEntity> entries;
     try {
       entries = dir.listSync(followLinks: false);
-    } on Object catch (error) {
+    } on Object catch (error, stackTrace) {
       // Best-effort cleanup: a permission/IO error listing the managed dir must
       // not propagate (this runs after the runtime is already healthy).
-      Log.w("[opencode] failed to list managed runtime dir '$managedDir': $error");
+      Log.w("[opencode] failed to list managed runtime dir '$managedDir'", error, stackTrace);
       return;
     }
 
@@ -42,8 +42,8 @@ class OpenCodeRuntimeCleaner {
       try {
         entity.deleteSync(recursive: true);
         Log.d("[opencode] removed superseded managed runtime '$name'");
-      } on Object catch (error) {
-        Log.w("[opencode] failed to remove superseded managed runtime '$name': $error");
+      } on Object catch (error, stackTrace) {
+        Log.w("[opencode] failed to remove superseded managed runtime '$name'", error, stackTrace);
       }
     }
   }

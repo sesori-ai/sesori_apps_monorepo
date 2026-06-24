@@ -140,9 +140,14 @@ If a concept has a fixed set of values (PR state, mergeable status, review decis
 
 API methods must **throw** on unexpected errors. Never return empty lists, `null`, or `false` to hide failures — the caller should decide how to handle the error. A single `catch` block is fine if all errors are handled identically; don't split into multiple catches that do the same thing.
 
-### Never Swallow Exceptions — Every `catch` Logs
+### Never Silently Swallow Exceptions
 
-Every `catch` block must log. When a service/repository degrades on an unexpected `catch`, emit a warning/debug log (including the caught error) with enough context to understand what failed. This applies to **no-op and best-effort handlers too**: a silent `catch` — an empty body, or a bare comment with no log — is forbidden. If continuing really is safe, record that decision and the error with `Log.d`/`Log.w`; never discard an exception without a trace.
+The target is a `catch` that **discards an error and continues as if nothing happened, with no trace** (`catch (e) { /* no-op */ }`) — if it fails for everyone, you'd never know.
+
+- **Swallow-and-continue must log.** A handler that recovers/degrades and keeps going (no-op and best-effort cleanup included) emits at least a `debug`/`warning` with enough context to know what failed and why continuing is safe.
+- **Catch-all (`on Object catch (error)` / `catch (e)`) should generally log** — reaching it means the cause is unknown.
+- **Don't double-log a surfaced failure.** When the catch already makes the failure observable — rethrow, throw a typed exception, or return/yield an explicit failure the caller renders (`ExplicitUpdateFailed`, `ProvisionFailed`, a `PluginUnavailable`, etc.) — do NOT add a redundant upfront `Log`. The returned/thrown failure is the signal.
+- **Pass the error as the logger argument, not inlined.** `Log.w("what failed", error, stackTrace)`, never `Log.w("what failed: $error")`. `Log.d`/`Log.i` take only a message, so use `Log.w`/`Log.e` when attaching the caught error/stack.
 
 ### No Redundant Model Layers
 

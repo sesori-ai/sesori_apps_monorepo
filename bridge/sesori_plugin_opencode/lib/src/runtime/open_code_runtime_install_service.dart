@@ -61,8 +61,10 @@ class OpenCodeRuntimeInstallService {
     }
     try {
       return sentinel.readAsStringSync().trim().toLowerCase() == sha256.toLowerCase();
-    } on Object catch (error) {
-      Log.d("[opencode] managed runtime sentinel unreadable at '$versionDir': $error");
+    } on Object catch (error, stackTrace) {
+      // The bare `false` result (treat as not-installed and reinstall) does not
+      // convey why the sentinel could not be read, so log the cause.
+      Log.w("[opencode] managed runtime sentinel unreadable at '$versionDir'", error, stackTrace);
       return false;
     }
   }
@@ -190,8 +192,8 @@ class OpenCodeRuntimeInstallService {
       if (entity.existsSync()) {
         entity.deleteSync(recursive: true);
       }
-    } on Object catch (error) {
-      Log.d("[opencode] best-effort cleanup of '${entity.path}' failed: $error");
+    } on Object catch (error, stackTrace) {
+      Log.w("[opencode] best-effort cleanup of '${entity.path}' failed", error, stackTrace);
     }
   }
 }

@@ -158,8 +158,8 @@ class BinaryDownloadClient {
         // the in-flight error (and cancellation produces no error to mask).
         try {
           await sink.close();
-        } on Object catch (error) {
-          Log.d("BinaryDownloadClient: ignoring sink close failure during teardown: $error");
+        } on Object catch (error, stackTrace) {
+          Log.w("BinaryDownloadClient: sink close failed during teardown", error, stackTrace);
         }
       }
     }

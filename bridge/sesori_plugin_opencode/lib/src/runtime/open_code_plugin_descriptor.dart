@@ -382,11 +382,13 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     final stdoutBuffer = StringBuffer();
     final stdoutSubscription = process.stdout.transform(utf8.decoder).listen(
       stdoutBuffer.write,
-      onError: (Object error) => Log.d("[opencode] ignoring version-probe stdout error: $error"),
+      onError: (Object error, StackTrace stackTrace) =>
+          Log.w("[opencode] version-probe stdout stream error", error, stackTrace),
     );
     final stderrSubscription = process.stderr.listen(
       (_) {},
-      onError: (Object error) => Log.d("[opencode] ignoring version-probe stderr error: $error"),
+      onError: (Object error, StackTrace stackTrace) =>
+          Log.w("[opencode] version-probe stderr stream error", error, stackTrace),
     );
     try {
       final exitCode = await process.exitCode.timeout(_versionProbeTimeout);
@@ -404,9 +406,9 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
       );
       try {
         await processes.signalForce(pid: process.pid);
-      } on Object catch (error) {
+      } on Object catch (error, stackTrace) {
         // Best-effort: reap the hung probe so it does not linger.
-        Log.d("[opencode] failed to reap a hung version probe (pid ${process.pid}): $error");
+        Log.w("[opencode] failed to reap a hung version probe (pid ${process.pid})", error, stackTrace);
       }
       return PluginUnavailable(message: _notWorkingMessage(executablePath: executablePath));
     } on Object catch (error) {

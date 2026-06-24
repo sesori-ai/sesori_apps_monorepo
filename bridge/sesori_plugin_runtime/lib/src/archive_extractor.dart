@@ -165,10 +165,10 @@ class ArchiveExtractor {
       if (dir.existsSync()) {
         dir.deleteSync(recursive: true);
       }
-    } on Object catch (error) {
+    } on Object catch (error, stackTrace) {
       // Best-effort: a failed stage is treated as a failure upstream, but record
       // why cleanup of the rejected tree did not complete.
-      Log.d("ArchiveExtractor: ignoring failure to delete rejected staging tree: $error");
+      Log.w("ArchiveExtractor: failed to delete rejected staging tree", error, stackTrace);
     }
   }
 }

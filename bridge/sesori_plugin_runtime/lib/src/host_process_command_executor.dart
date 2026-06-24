@@ -49,11 +49,13 @@ class HostProcessCommandExecutor implements CommandExecutor {
     const decoder = Utf8Decoder(allowMalformed: true);
     final stdoutSub = process.stdout.transform(decoder).listen(
       stdoutBuffer.write,
-      onError: (Object error) => Log.d("HostProcessCommandExecutor: ignoring '$executable' stdout error: $error"),
+      onError: (Object error, StackTrace stackTrace) =>
+          Log.w("HostProcessCommandExecutor: '$executable' stdout stream error", error, stackTrace),
     );
     final stderrSub = process.stderr.transform(decoder).listen(
       stderrBuffer.write,
-      onError: (Object error) => Log.d("HostProcessCommandExecutor: ignoring '$executable' stderr error: $error"),
+      onError: (Object error, StackTrace stackTrace) =>
+          Log.w("HostProcessCommandExecutor: '$executable' stderr stream error", error, stackTrace),
     );
     // Completes when each stream is fully delivered (the child has exited AND the
     // pipe is drained). Draining happens via the listeners above, so awaiting
@@ -68,8 +70,12 @@ class HostProcessCommandExecutor implements CommandExecutor {
       // so a pipe that never closes after exit can't hang the result.
       try {
         await Future.wait<void>([stdoutDone, stderrDone]).timeout(const Duration(seconds: 5));
-      } on TimeoutException catch (error) {
-        Log.d("HostProcessCommandExecutor: '$executable' output streams did not close promptly after exit: $error");
+      } on TimeoutException catch (error, stackTrace) {
+        Log.w(
+          "HostProcessCommandExecutor: '$executable' output streams did not close promptly after exit",
+          error,
+          stackTrace,
+        );
       }
       return CommandResult(
         exitCode: exitCode,
@@ -79,8 +85,8 @@ class HostProcessCommandExecutor implements CommandExecutor {
     } on TimeoutException {
       try {
         await _processes.signalForce(pid: process.pid);
-      } on Object catch (error) {
-        Log.d("HostProcessCommandExecutor: failed to kill timed-out '$executable': $error");
+      } on Object catch (error, stackTrace) {
+        Log.w("HostProcessCommandExecutor: failed to kill timed-out '$executable'", error, stackTrace);
       }
       rethrow;
     } finally {
@@ -98,8 +104,8 @@ class HostProcessCommandExecutor implements CommandExecutor {
   }) async {
     try {
       await subscription.cancel();
-    } on Object catch (error) {
-      Log.d("HostProcessCommandExecutor: ignoring '$executable' $stream cancel failure: $error");
+    } on Object catch (error, stackTrace) {
+      Log.w("HostProcessCommandExecutor: '$executable' $stream cancel failed", error, stackTrace);
     }
   }
 }
