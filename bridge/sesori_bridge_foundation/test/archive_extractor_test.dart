@@ -69,13 +69,13 @@ void main() {
       writeFile(p.join("lib", "a.dll"), "A");
       final archive = await tarPayload();
 
-      final ok = await extractor().extract(
+      final result = await extractor().extract(
         archivePath: archive,
         stagingPath: stagingPath,
         format: ArchiveFormat.tarGz,
       );
 
-      expect(ok, isTrue);
+      expect(result.succeeded, isTrue);
       expect(File(p.join(stagingPath, "bin", "sesori-bridge")).readAsStringSync(), "BIN");
       expect(File(p.join(stagingPath, "lib", "a.dll")).readAsStringSync(), "A");
     });
@@ -87,13 +87,14 @@ void main() {
       Link(p.join(payloadDir, "lib", "evil")).createSync("/etc/passwd");
       final archive = await tarPayload();
 
-      final ok = await extractor().extract(
+      final result = await extractor().extract(
         archivePath: archive,
         stagingPath: stagingPath,
         format: ArchiveFormat.tarGz,
       );
 
-      expect(ok, isFalse);
+      expect(result.succeeded, isFalse);
+      expect(result.failureReason, contains("symlink"));
       // Fail-closed: nothing is left staged for the placement step.
       expect(Directory(stagingPath).existsSync(), isFalse);
     });
@@ -115,13 +116,13 @@ void main() {
       }
       expect(zipResult.exitCode, 0, reason: "zip failed: ${zipResult.stderr}");
 
-      final ok = await extractor().extract(
+      final result = await extractor().extract(
         archivePath: archive,
         stagingPath: stagingPath,
         format: ArchiveFormat.zip,
       );
 
-      expect(ok, isTrue);
+      expect(result.succeeded, isTrue);
       expect(File(p.join(stagingPath, "bin", "opencode")).readAsStringSync(), "BIN");
       expect(File(p.join(stagingPath, "lib", "a.txt")).readAsStringSync(), "A");
     });

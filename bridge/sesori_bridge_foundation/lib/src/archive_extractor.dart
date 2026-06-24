@@ -12,6 +12,22 @@ import "command_executor.dart";
 /// `.tar.gz` on Linux).
 enum ArchiveFormat { tarGz, zip }
 
+/// The outcome of an [ArchiveExtractor.extract] attempt.
+///
+/// On failure, [failureReason] carries the underlying cause (the failing tool's
+/// exit code + stderr, or which hardening check rejected the payload) so the
+/// caller can surface it instead of a bare "extraction failed". A swallowed
+/// extractor error is otherwise invisible — the platform tool's stderr is the
+/// only signal of what actually went wrong (corrupt archive, missing tool,
+/// permission denied, PowerShell constrained-language mode, …).
+class ArchiveExtractionResult {
+  const ArchiveExtractionResult.success() : succeeded = true, failureReason = null;
+  const ArchiveExtractionResult.failure(String reason) : succeeded = false, failureReason = reason;
+
+  final bool succeeded;
+  final String? failureReason;
+}
+
 /// Extracts a downloaded runtime archive into a staging directory.
 ///
 /// The archive has already been checksum-verified, but extraction is still
@@ -28,7 +44,7 @@ class ArchiveExtractor {
   static const Duration _listTimeout = Duration(seconds: 30);
   static const Duration _extractTimeout = Duration(minutes: 2);
 
-  Future<bool> extract({
+  Future<ArchiveExtractionResult> extract({
     required String archivePath,
     required String stagingPath,
     required ArchiveFormat format,
@@ -39,14 +55,14 @@ class ArchiveExtractor {
     }
     stagingDir.createSync(recursive: true);
 
-    final bool extracted = switch (format) {
+    final ArchiveExtractionResult extracted = switch (format) {
       ArchiveFormat.tarGz => await _extractTarGz(archivePath: archivePath, stagingPath: stagingPath),
       ArchiveFormat.zip => Platform.isWindows
           ? await _extractZipWindows(archivePath: archivePath, stagingPath: stagingPath)
           : await _extractZipPosix(archivePath: archivePath, stagingPath: stagingPath),
     };
-    if (!extracted) {
-      return false;
+    if (!extracted.succeeded) {
+      return extracted;
     }
 
     // A symlink could point outside the install root and be followed when the
@@ -54,14 +70,15 @@ class ArchiveExtractor {
     // on a later launch — escaping the sandbox. Payloads never ship symlinks, so
     // reject the whole staged tree if any are present.
     if (_containsSymlink(stagingDir)) {
-      Log.w("Rejecting archive payload: the archive contains symlink entries.");
+      const String reason = "the archive contains symlink entries";
+      Log.w("Rejecting archive payload: $reason.");
       _deleteQuietly(stagingDir);
-      return false;
+      return const ArchiveExtractionResult.failure(reason);
     }
-    return true;
+    return const ArchiveExtractionResult.success();
   }
 
-  Future<bool> _extractTarGz({
+  Future<ArchiveExtractionResult> _extractTarGz({
     required String archivePath,
     required String stagingPath,
   }) async {
@@ -70,10 +87,11 @@ class ArchiveExtractor {
     // before writing anything.
     final CommandResult listing = await _commandExecutor.run("tar", ["-tzf", archivePath], timeout: _listTimeout);
     if (listing.exitCode != 0) {
-      return false;
+      return ArchiveExtractionResult.failure(_toolFailure(tool: "tar -tzf", result: listing));
     }
-    if (_anyMemberEscapes(stagingPath: stagingPath, listing: listing.stdout)) {
-      return false;
+    final String? escapeReason = _firstEscapingMember(stagingPath: stagingPath, listing: listing.stdout);
+    if (escapeReason != null) {
+      return ArchiveExtractionResult.failure(escapeReason);
     }
 
     final CommandResult result = await _commandExecutor.run(
@@ -81,10 +99,13 @@ class ArchiveExtractor {
       ["-xzf", archivePath, "-C", stagingPath],
       timeout: _extractTimeout,
     );
-    return result.exitCode == 0;
+    if (result.exitCode != 0) {
+      return ArchiveExtractionResult.failure(_toolFailure(tool: "tar -xzf", result: result));
+    }
+    return const ArchiveExtractionResult.success();
   }
 
-  Future<bool> _extractZipPosix({
+  Future<ArchiveExtractionResult> _extractZipPosix({
     required String archivePath,
     required String stagingPath,
   }) async {
@@ -92,10 +113,11 @@ class ArchiveExtractor {
     // would escape before extracting.
     final CommandResult listing = await _commandExecutor.run("unzip", ["-Z1", archivePath], timeout: _listTimeout);
     if (listing.exitCode != 0) {
-      return false;
+      return ArchiveExtractionResult.failure(_toolFailure(tool: "unzip -Z1", result: listing));
     }
-    if (_anyMemberEscapes(stagingPath: stagingPath, listing: listing.stdout)) {
-      return false;
+    final String? escapeReason = _firstEscapingMember(stagingPath: stagingPath, listing: listing.stdout);
+    if (escapeReason != null) {
+      return ArchiveExtractionResult.failure(escapeReason);
     }
 
     final CommandResult result = await _commandExecutor.run(
@@ -103,10 +125,13 @@ class ArchiveExtractor {
       ["-o", "-q", archivePath, "-d", stagingPath],
       timeout: _extractTimeout,
     );
-    return result.exitCode == 0;
+    if (result.exitCode != 0) {
+      return ArchiveExtractionResult.failure(_toolFailure(tool: "unzip", result: result));
+    }
+    return const ArchiveExtractionResult.success();
   }
 
-  Future<bool> _extractZipWindows({
+  Future<ArchiveExtractionResult> _extractZipWindows({
     required String archivePath,
     required String stagingPath,
   }) async {
@@ -116,26 +141,43 @@ class ArchiveExtractor {
     final CommandResult result = await _commandExecutor.run(
       "powershell",
       [
+        "-NoProfile",
         "-Command",
-        "Expand-Archive -LiteralPath '$psArchive' -DestinationPath '$psStaging' -Force",
+        "\$ProgressPreference = 'SilentlyContinue'; Expand-Archive -LiteralPath '$psArchive' -DestinationPath '$psStaging' -Force",
       ],
       timeout: _extractTimeout,
     );
-    return result.exitCode == 0;
+    if (result.exitCode != 0) {
+      return ArchiveExtractionResult.failure(_toolFailure(tool: "powershell Expand-Archive", result: result));
+    }
+    return const ArchiveExtractionResult.success();
   }
 
-  bool _anyMemberEscapes({required String stagingPath, required String listing}) {
+  /// A one-line description of a failed helper command, including its exit code
+  /// and the tail of its stderr (or stdout, if stderr is empty) so the real
+  /// cause is visible rather than swallowed.
+  String _toolFailure({required String tool, required CommandResult result}) {
+    String detail = result.stderr.trim();
+    if (detail.isEmpty) {
+      detail = result.stdout.trim();
+    }
+    final String suffix = detail.isEmpty ? "" : ": $detail";
+    return "$tool exited with code ${result.exitCode}$suffix";
+  }
+
+  String? _firstEscapingMember({required String stagingPath, required String listing}) {
     for (final String line in const LineSplitter().convert(listing)) {
       final String member = line.trim();
       if (member.isEmpty) {
         continue;
       }
       if (_escapesStaging(stagingPath: stagingPath, member: member)) {
-        Log.w("Rejecting archive payload: archive member escapes staging: $member");
-        return true;
+        final String reason = "archive member escapes staging: $member";
+        Log.w("Rejecting archive payload: $reason");
+        return reason;
       }
     }
-    return false;
+    return null;
   }
 
   /// Whether [member] (an archive entry path) would resolve outside [stagingPath]

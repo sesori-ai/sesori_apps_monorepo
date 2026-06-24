@@ -100,13 +100,13 @@ class OpenCodeRuntimeInstallService {
       _throwIfAborted(startAborted);
 
       yield const ProvisionExtracting();
-      final bool extracted = await _archiveExtractor.extract(
+      final ArchiveExtractionResult extracted = await _archiveExtractor.extract(
         archivePath: downloadPath,
         stagingPath: stagingPath,
         format: asset.format,
       );
-      if (!extracted) {
-        throw OpenCodeRuntimeInstallException("failed to extract ${asset.assetName}");
+      if (!extracted.succeeded) {
+        throw OpenCodeRuntimeInstallException("failed to extract ${asset.assetName} (${extracted.failureReason})");
       }
       _throwIfAborted(startAborted);
 
