@@ -104,12 +104,18 @@ class UpdateArtifactRepository {
   Future<bool> extractArchive({
     required String archivePath,
     required String stagingPath,
-  }) {
-    return _archiveExtractor.extract(
+  }) async {
+    final ArchiveExtractionResult result = await _archiveExtractor.extract(
       archivePath: archivePath,
       stagingPath: stagingPath,
       format: _archiveFormat,
     );
+    if (!result.succeeded) {
+      // The caller maps a false result onto a generic UpdateResult that drops
+      // the cause, so log the extractor's reason here to keep it observable.
+      Log.w('extractArchive: failed to extract release archive: ${result.failureReason}');
+    }
+    return result.succeeded;
   }
 
   String _publishedAssetFileName({required String assetUrl}) {
