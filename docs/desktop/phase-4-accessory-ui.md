@@ -31,27 +31,42 @@ Aristotle verdicts · Findings log · Plan-deltas.
 - **Acceptance:** `client/app` consumes the moved code via the package, builds +
   tests pass, **no dependency cycle** `module_app_ui` → `client/app`.
 
+> **Standing rule for every move PR (4.2–4.6):** the package-boundary hazard
+> from PR 4.1 applies to **screens too** — current screens (e.g.
+> `splash_screen.dart`, `settings_screen.dart`, session-detail widgets) import
+> app DI / routing / app-owned widgets directly. **Each move PR must first push
+> those couplings out** (DI/routing behind constructor params or callbacks;
+> depend on the shared widgets already in `module_app_ui`) and declare the
+> screen's legitimate direct package deps, so no move creates a cycle back to
+> `client/app` or leaves unresolved relative imports. Every move PR's acceptance
+> includes **"no `module_app_ui` → `client/app` cycle."**
+
 ## PR 4.2 — Move voice capture UI
-- **Goal:** Move `capabilities/voice/` UI (plugin deps: `record`, `wakelock_plus`).
+- **Goal:** Refactor app-coupling out, then move `capabilities/voice/` UI (plugin
+  deps: `record`, `wakelock_plus`).
 - **Risk:** Med. **Size:** M.
-- **Acceptance:** voice capture works on mobile via the package.
+- **Acceptance:** voice capture works on mobile via the package; no cycle.
 
 ## PR 4.3 — Move login/splash
+- **Goal:** Push DI/routing out of `splash_screen.dart`/login screens, then move.
 - **Risk:** Med. **Size:** M.
-- **Acceptance:** mobile login/splash unchanged.
+- **Acceptance:** mobile login/splash unchanged; no cycle.
 
 ## PR 4.4 — Move project_list + session_list
+- **Goal:** Decouple app DI/routing, then move.
 - **Risk:** Med. **Size:** M.
-- **Acceptance:** mobile lists unchanged.
+- **Acceptance:** mobile lists unchanged; no cycle.
 
 ## PR 4.5 — Move session_detail + session_diffs + new_session
-- **Goal:** Move the heavier session screens. **Split further if >size cap.**
+- **Goal:** Decouple app DI/routing/app-owned widgets, then move the heavier
+  session screens. **Split further if >size cap.**
 - **Risk:** Med. **Size:** M (split if needed).
-- **Acceptance:** mobile session screens unchanged.
+- **Acceptance:** mobile session screens unchanged; no cycle.
 
 ## PR 4.6 — Move settings
+- **Goal:** Decouple app DI/routing out of `settings_screen.dart`, then move.
 - **Risk:** Low-Med. **Size:** S-M.
-- **Acceptance:** mobile settings unchanged.
+- **Acceptance:** mobile settings unchanged; no cycle.
 
 ## PR 4.7 — Desktop router composition + wire accessory UI into window
 - **Goal:** Compose the desktop GoRouter from the shared screens; render the full

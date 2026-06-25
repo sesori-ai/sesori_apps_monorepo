@@ -236,6 +236,7 @@ Legend: ☐ pending · ◐ in-progress · ☑ done. Sizes: **S** ≤150 LOC · *
 - ☐ 2.2 Desktop platform adapters (SecureStorage, UrlLauncher) — Low-Med / S-M
 - ☐ 2.3 Login reuse (`AuthManager` browser-poll OAuth) — Med / M
 - ☐ 2.4 Relay connection + bridge online/offline — Low-Med / S-M
+- ☐ 2.5a Re-export `AuthTokenProvider` from `module_core` (seam) — Low / S
 - ☐ 2.5 `ControlChannelServer` + `ControlMessageDispatcher` + token responder — Med / M
 - ☐ 2.6 `BridgeProcessService`: spawn/kill/path + control flags — High / M
 - ☐ 2.7 Exit-code state machine (86/0/other + backoff) — High / M
@@ -256,7 +257,7 @@ Legend: ☐ pending · ◐ in-progress · ☑ done. Sizes: **S** ≤150 LOC · *
 - ☐ 3.2 macOS codesign + notarize + staple — High / M
 - ☐ 3.3 Windows leg: build + bundle + installer (unsigned) — High / M
 - ☐ 3.4 Windows code signing (needs cert) — Med / S-M
-- ☐ 3.5 Linux AppImage + bundle (+ optional GPG) — Med-High / M
+- ☐ 3.5 Linux AppImage + bundle + **mandatory** GPG signing — Med-High / M
 - ☐ 3.6 macOS self-update (Sparkle) + EdDSA + appcast — High / M
 - ☐ 3.7 Windows self-update (WinSparkle) + appcast — High / M
 - ☐ 3.8 Linux self-update (zsync/AppImageUpdate) — Med-High / M

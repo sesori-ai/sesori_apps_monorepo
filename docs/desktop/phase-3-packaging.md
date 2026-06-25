@@ -51,11 +51,15 @@ Aristotle verdicts · Findings log · Plan-deltas.
 - **Risk:** Med. **Size:** S-M.
 - **Acceptance:** signed installer runs without SmartScreen "unknown publisher".
 
-## PR 3.5 — Linux AppImage + bundle (+ optional GPG)
-- **Goal:** Build Flutter Linux (x64 + arm64), bundle the bridge, produce AppImage
-  (+ optional GPG sign) with zsync metadata.
+## PR 3.5 — Linux AppImage + bundle + GPG signing
+- **Goal:** Build Flutter Linux (x64 + arm64), bundle the bridge, produce a
+  **GPG-signed** AppImage with zsync metadata. Decision #13 locks "fully signed
+  on all three OSes," so Linux signing is **mandatory**, not optional (an
+  unsigned AppImage + unauthenticated zsync update path would contradict the
+  locked release-security decision).
 - **Risk:** Med-High. **Size:** M.
-- **Acceptance:** AppImage runs on a clean distro; bridge spawns.
+- **Acceptance:** AppImage runs on a clean distro; bridge spawns; the AppImage +
+  zsync update path is GPG-signed and verified.
 
 ## PR 3.6 — macOS self-update (Sparkle)
 - **Goal:** `auto_updater`/Sparkle + EdDSA keys + appcast generation from GitHub

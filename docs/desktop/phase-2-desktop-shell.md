@@ -49,17 +49,28 @@ Aristotle verdicts · Findings log · Plan-deltas.
 - **Acceptance:** relay connects with the auth token; status reflects bridge
   presence.
 
+## PR 2.5a — Re-export `AuthTokenProvider` from `module_core` (seam, precursor)
+- **Goal:** `sesori_dart_core` re-exports `AuthSession`/`OAuthFlowProvider` but
+  **not** `AuthTokenProvider` (verified). The desktop dispatcher is app-level and
+  may only import `sesori_auth` for the `configureAuthDependencies` DI call, so it
+  needs a `module_core` seam to consume the token provider with typed DI. Add the
+  `AuthTokenProvider` re-export to the `module_core` barrel.
+- **Risk:** Low. **Size:** S. (Mobile-product change — keep `client/app` green.)
+- **Acceptance:** `module_core` exposes `AuthTokenProvider`; mobile build + tests
+  green.
+
 ## PR 2.5 — `ControlChannelServer` + `ControlMessageDispatcher` + token responder
 - **Goal:** GUI-hosted loopback WS host + off-argv per-spawn secret;
   `ControlMessageDispatcher` (Layer 3) routes inbound: token req →
-  `AuthTokenProvider`, status/progress → `BridgeStatusTracker`, **prompts → a
-  Layer-3 prompt store/tracker** that the cubit consumes (the Layer-3 dispatcher
-  must NOT depend upward on the Layer-4 `BridgeControlCubit`/UI — deps point
-  downward, ADR A14). Tested against a fake helper client.
+  `AuthTokenProvider` (via the `module_core` re-export from PR 2.5a — **not** a
+  direct `module_auth` import in source), status/progress → `BridgeStatusTracker`,
+  **prompts → a Layer-3 prompt store/tracker** that the cubit consumes (the
+  Layer-3 dispatcher must NOT depend upward on the Layer-4 `BridgeControlCubit`/UI
+  — deps point downward, ADR A14). Tested against a fake helper client.
 - **Risk:** Med. **Size:** M.
 - **Acceptance:** a fake helper connects with the secret, requests + receives a
   token; bad secret rejected; prompts surface as state/stream with no
-  dispatcher→cubit dependency.
+  dispatcher→cubit dependency; no direct `module_auth` import in non-DI source.
 
 ## PR 2.6 — `BridgeProcessService`: spawn/kill/path + control flags
 - **Goal:** Spawn the bridge binary (path resolution dev + packaged) passing
@@ -123,12 +134,18 @@ Aristotle verdicts · Findings log · Plan-deltas.
   unreachable** — and `bridgeId` is helper-owned, so the GUI would otherwise have
   nothing to unregister and the registration would leak. So the GUI keeps a
   **readable copy of `bridgeId`** (exposed/persisted on the GUI side) and a
-  **GUI-side unregister fallback** (call `DELETE /auth/bridges/{id}` with the
-  still-valid token) **before** invalidating tokens (ADR A13).
+  **GUI-side unregister fallback** **before** invalidating tokens (ADR A13).
+  The DELETE must go **through a `module_core` seam, not a direct auth-API call**:
+  `module_core`'s `BridgeApi`/`BridgeRepository` currently cover only
+  `GET /auth/bridges`, so add a `deleteBridge(id)` method on `BridgeApi` +
+  `BridgeRepository` and have the GUI call that (app code must not call auth APIs
+  or import the auth HTTP client directly). This `module_core` addition is a
+  precursor sub-step of this PR.
 - **Risk:** Med. **Size:** M.
 - **Acceptance:** logout unregisters the bridge before token invalidation in
-  **both** the live-helper and helper-absent/crashed paths; no leaked
-  registration.
+  **both** the live-helper and helper-absent/crashed paths; the GUI calls the
+  `module_core` `BridgeRepository.deleteBridge` seam (no direct auth-API/HTTP
+  import in app code); no leaked registration; mobile build stays green.
 
 ## PR 2.14 — Desktop `FailureReporter` impl
 - **Goal:** Crash/error reporting for the tray app (decide Crashlytics vs other

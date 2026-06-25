@@ -23,10 +23,21 @@ DoD · Aristotle verdicts · Findings log · Plan-deltas.
     `_reusable-next-build-number.yml`, `_reusable-ios-testflight.yml`,
     `_reusable-android-internal.yml`, `submit-release.yml`,
     `release-all-platforms.yml`, `lint-suppressions.yml`).
+    - **Scope path filters to the mobile *product*, not all of `client/`.** A
+      mechanical `mobile/**` → `client/**` would make future `client/desktop`
+      PRs trigger TestFlight/Play and bridge release jobs, violating
+      release-safety invariant #3 (desktop is non-blocking, ships no artifact
+      before Phase 3). Use explicit mobile-product paths instead:
+      `client/app/**` + shared mobile modules (`client/module_core/**`,
+      `client/module_auth/**`, `client/module_prego/**`) and later
+      `client/module_app_ui/**` — **excluding** `client/desktop/**`.
   - `.github/actions/setup-flutter/action.yml` (`default: 'mobile'`).
   - `tool/sync_versions.dart` (path joins **and** hardcoded `'mobile'` error
     strings) and `tool/generate_release_notes.dart:364`
-    (`path.startsWith('mobile/')` PR classification).
+    (`path.startsWith('mobile/')` PR classification) — re-scope the classifier
+    to the mobile-product paths (not blanket `client/`) so later
+    `client/desktop` PRs aren't mislabeled as **App** changes; desktop gets its
+    own classification when the Desktop section lands (Phase 3 / PR 3.10).
   - Fastlane references; `.gitignore` (`!mobile/pubspec.lock`).
   - `AGENTS.md` files + `README.md` references.
 - **Risk:** **Med-High.** Hazards: silent breakage of release-note

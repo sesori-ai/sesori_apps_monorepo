@@ -65,11 +65,13 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 
 ## PR 1.3 — Supervised auth bootstrap
 - **Goal:** In supervised mode, short-circuit
-  `BridgeRuntimeAuthService.ensureAuthenticated`/`promptForProvider` (no stdin);
-  obtain the initial token from the control channel; keep an equivalent
-  `logAuthenticatedUser` after the token arrives.
+  `BridgeRuntimeAuthService.ensureAuthenticated`/`promptForProvider` (no
+  interactive **auth/prompt** input); obtain the initial token from the control
+  channel; keep an equivalent `logAuthenticatedUser` after the token arrives.
 - **Risk:** Med (auth path). **Size:** M.
-- **Acceptance:** supervised start never reads stdin; standalone interactive flow
+- **Acceptance:** supervised start performs **no interactive auth/prompt stdin
+  reads** (this is distinct from PR 1.1's optional one-shot secret-bootstrap
+  stdin handshake, which is not an auth prompt); standalone interactive flow
   untouched.
 - **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
 
@@ -98,11 +100,12 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 - **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
 
 ## PR 1.6 — Supervised registration + `bridgeId` out of `token.json`
-- **Goal:** Persist `bridgeId` via `BridgeIdentityFileApi` (L1) +
-  `BridgeIdentityRepository` (L2), separate from `token.json`; supervised
-  registration uses the supplied token; preserve carry-over semantics. Use
-  **synchronous** filesystem checks (`existsSync`/`statSync`) for the
-  `avoid_slow_async_io` lint.
+- **Goal:** Persist `bridgeId` separately from `token.json` in a small
+  file-backed store that lives **inside the `auth/` subsystem** (NOT new
+  top-level `api/`+`repositories/` classes — that would make `auth/` depend back
+  on the core repository layer; see ADR A6). Supervised registration uses the
+  supplied token; preserve carry-over semantics. Use **synchronous** filesystem
+  checks (`existsSync`/`statSync`) for the `avoid_slow_async_io` lint.
 - **Risk:** Med (touches `TokenData` persistence). **Size:** M.
 - **Acceptance:** supervised registers + persists bridgeId; standalone token.json
   path unchanged.
