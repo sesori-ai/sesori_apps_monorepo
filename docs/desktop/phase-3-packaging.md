@@ -122,11 +122,15 @@ Aristotle verdicts · Findings log · Plan-deltas.
   module_core seam from PR 2.13) using the still-available token + GUI-persisted
   `bridgeId` **before** clearing GUI-owned credentials/state — otherwise a stale
   offline bridge is orphaned on the account and deleting the local copy first
-  makes later cleanup impossible. Failure is non-fatal (logged), since the server
-  record can also be removed from the account UI.
+  makes later cleanup impossible. This step is **best-effort and exempt from the
+  capture-and-rethrow policy below**: its failure is logged and swallowed (the
+  server record can also be removed from the account UI), so a network/unregister
+  error never aborts the uninstall or gets rethrown.
 - **Scope note:** wrap each cleanup step in its own `on Object catch` so one
   failure (permissions/missing file) doesn't block the rest; capture the first
-  meaningful error and rethrow after all steps run.
+  meaningful error and rethrow after all steps run — **except** the best-effort
+  server-unregister step above, which is logged-and-swallowed and never
+  contributes to the rethrown error.
 - **Risk:** Low-Med. **Size:** S-M.
 - **Acceptance:** uninstall removes the login item + GUI state; a co-installed
   standalone CLI remains logged in and runnable; a forced mid-step failure still
