@@ -371,7 +371,7 @@ When waiting for PR CI/reviews, use `pr_monitor` notifications rather than long-
 | ------------------------ | -------------- |
 | bridge modules           | `dart test`    |
 | client/app               | `flutter test` |
-| mobile pure Dart modules | `dart test`    |
+| client pure Dart modules | `dart test`    |
 
 ## Dart Coding Conventions
 

@@ -365,7 +365,11 @@ Future<_PrEntry?> _loadPr({required _GitHubApi api, required int number}) async 
       // Mobile product = everything under client/ EXCEPT client/desktop/**.
       // Excluding desktop keeps future client/desktop PRs from being misfiled
       // as App changes in the release notes (release-safety invariant #3).
+      // `mobile/` is kept as a historical alias so PRs merged before the
+      // mobile/->client/ rename are still classified as App in release notes
+      // whose comparison range spans the rename.
       touchesApp = touchesApp ||
+          path.startsWith('mobile/') ||
           (path.startsWith('client/') && !path.startsWith('client/desktop/'));
       touchesBridge = touchesBridge || path.startsWith('bridge/');
       touchesShared = touchesShared || path.startsWith('shared/');

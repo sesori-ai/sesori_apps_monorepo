@@ -117,17 +117,21 @@ jobs:
 
           # 3) Read marketing version from pubspec.yaml on the resolved commit
           # (NOT current main) so the submit tag matches the binary's version,
-          # and assert mobile and bridge are in sync at that commit.
-          VERSION=$(git show "${SHA}:client/app/pubspec.yaml" \
+          # and assert client and bridge are in sync at that commit. Try the
+          # client/app path first and fall back to the legacy mobile/app path so
+          # build tags created before the mobile/->client/ rename still promote.
+          CLIENT_PUBSPEC=$(git show "${SHA}:client/app/pubspec.yaml" 2>/dev/null \
+            || git show "${SHA}:mobile/app/pubspec.yaml" 2>/dev/null || true)
+          VERSION=$(printf '%s\n' "$CLIENT_PUBSPEC" \
             | awk '/^version:/{split($2,a,"+"); print a[1]; exit}')
           if [[ -z "$VERSION" ]]; then
-            echo "::error::Could not parse version from mobile pubspec.yaml at ${SHA}"
+            echo "::error::Could not parse version from client/app (or legacy mobile/app) pubspec.yaml at ${SHA}"
             exit 1
           fi
           BRIDGE_VERSION=$(git show "${SHA}:bridge/app/pubspec.yaml" \
             | awk '/^version:/{print $2; exit}')
           if [[ "$VERSION" != "$BRIDGE_VERSION" ]]; then
-            echo "::error::Mobile ($VERSION) and bridge ($BRIDGE_VERSION) versions differ at ${SHA}. This commit predates a version sync — pick a newer build."
+            echo "::error::Client ($VERSION) and bridge ($BRIDGE_VERSION) versions differ at ${SHA}. This commit predates a version sync — pick a newer build."
             exit 1
           fi
 
