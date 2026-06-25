@@ -339,7 +339,9 @@ void main() {
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
 
     // Simulate system back navigation (which should be allowed while sending).
-    await tester.pageBack();
+    // PregoTopNavigation renders a glass back button (not a stock BackButton),
+    // so tester.pageBack() can't find it — tap the glass chevron directly.
+    await tester.tap(find.byIcon(TablerRegular.chevron_left));
     await tester.pump();
     // The snackbar is scheduled via a post-frame callback (so it stays safe
     // when the pop is invoked during build), so pump once more to render it.
@@ -380,7 +382,9 @@ void main() {
     expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
 
     // User leaves while the creation request is still in flight.
-    await tester.pageBack();
+    // PregoTopNavigation renders a glass back button (not a stock BackButton),
+    // so tester.pageBack() can't find it — tap the glass chevron directly.
+    await tester.tap(find.byIcon(TablerRegular.chevron_left));
     await tester.pump();
     // The launching-in-background snackbar is deferred to a post-frame
     // callback; pump once more to render it.

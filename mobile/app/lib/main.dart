@@ -7,6 +7,7 @@ import "package:firebase_messaging/firebase_messaging.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
+import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -26,6 +27,9 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Pre-warm the liquid-glass shaders so the frosted top nav / glass buttons
+  // render without a first-frame compile hitch. No-ops on Skia/web.
+  await LiquidGlassWidgets.initialize();
   // The native splash runs in fullscreen, which leaves the status/nav bars
   // hidden on iOS until the engine is told otherwise. Restore them and let
   // content draw behind them so the background image still reaches the edges.

@@ -107,8 +107,11 @@ void main() {
 
       // Scroll a little into the first file's body so aaa's header is
       // pinned at the top of the viewport (we've scrolled past its natural
-      // position) and bbb's header is below it.
-      await tester.drag(scrollFinder, const Offset(0, -50));
+      // position) and bbb's header is below it. PregoGlassScaffold adds a
+      // collapsing large title (~80px) above the file list, so the drag must
+      // clear that before it reaches aaa's body — pinned headers then clamp at
+      // the viewport top regardless of any extra scroll.
+      await tester.drag(scrollFinder, const Offset(0, -130));
       await tester.pumpAndSettle();
 
       final aaaHeader = find.text("aaa.dart");

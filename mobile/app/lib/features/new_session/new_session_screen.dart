@@ -199,12 +199,30 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
             });
           }
         },
-        child: Scaffold(
-          appBar: AppBar(title: Text(loc.sessionListNewSession)),
-          body: Stack(
-            fit: StackFit.expand,
-            children: [
-              AbsorbPointer(
+        child: PregoGlassScaffold(
+          title: loc.sessionListNewSession,
+          // The loading scrim must dim the body while the glass back button
+          // stays tappable (the user can abort while creation is in flight),
+          // so it goes through the scaffold's bar-aware overlay slot rather
+          // than an outer Stack that would also cover the bar.
+          overlay: isSending
+              ? NewSessionLoadingOverlay(
+                  semanticsLabel: loc.newSessionLoadingSemantics,
+                  messages: [
+                    loc.newSessionLoadingMessage1,
+                    loc.newSessionLoadingMessage2,
+                    loc.newSessionLoadingMessage3,
+                  ],
+                )
+              : null,
+          slivers: [
+            // The screen doesn't scroll: a single fill-remaining sliver holds
+            // the worktree toggle at the top and pins the composer to the
+            // bottom. With the scaffold's keyboard resize (Scaffold default),
+            // the composer rides above the keyboard when the field is focused.
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: AbsorbPointer(
                 absorbing: isSending,
                 child: Column(
                   children: [
@@ -253,17 +271,8 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                   ],
                 ),
               ),
-              if (isSending)
-                NewSessionLoadingOverlay(
-                  semanticsLabel: loc.newSessionLoadingSemantics,
-                  messages: [
-                    loc.newSessionLoadingMessage1,
-                    loc.newSessionLoadingMessage2,
-                    loc.newSessionLoadingMessage3,
-                  ],
-                ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

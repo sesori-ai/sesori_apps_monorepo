@@ -117,92 +117,94 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
     final screenHeight = MediaQuery.sizeOf(context).height;
     final prego = context.prego;
 
-    return SizedBox(
-      height: screenHeight * 0.7,
-      child: Padding(
-        padding: EdgeInsetsDirectional.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-        child: Column(
-          children: [
-            const SizedBox(height: 8),
-            Center(
-              child: Container(
-                width: 32,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: prego.colors.textSecondary.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(2),
+    return SafeArea(
+      child: SizedBox(
+        height: screenHeight * 0.7,
+        child: Padding(
+          padding: EdgeInsetsDirectional.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+          child: Column(
+            children: [
+              const SizedBox(height: 8),
+              Center(
+                child: Container(
+                  width: 32,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: prego.colors.textSecondary.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(loc.addProject, style: prego.textTheme.textMd.bold),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(loc.addProject, style: prego.textTheme.textMd.bold),
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: _DirectoryBrowser(
-                key: _browserKey,
-                onPathChanged: (path) => setState(() => _browsingPath = path),
+              const SizedBox(height: 8),
+              Expanded(
+                child: _DirectoryBrowser(
+                  key: _browserKey,
+                  onPathChanged: (path) => setState(() => _browsingPath = path),
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  OutlinedButton(
-                    onPressed: _actionLoading || _browsingPath.isEmpty ? null : _onOpen,
-                    child: _actionLoading
-                        ? Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const _CompactSpinner(),
-                              const SizedBox(width: 8),
-                              Text(loc.discoveringProject),
-                            ],
-                          )
-                        : Text(loc.openAsProject),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SizedBox(
-                          height: 48,
-                          child: TextField(
-                            controller: _nameController,
-                            decoration: InputDecoration(
-                              hintText: loc.projectNameHint,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                              border: const OutlineInputBorder(),
-                              isDense: true,
+              Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    OutlinedButton(
+                      onPressed: _actionLoading || _browsingPath.isEmpty ? null : _onOpen,
+                      child: _actionLoading
+                          ? Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const _CompactSpinner(),
+                                const SizedBox(width: 8),
+                                Text(loc.discoveringProject),
+                              ],
+                            )
+                          : Text(loc.openAsProject),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: 48,
+                            child: TextField(
+                              controller: _nameController,
+                              decoration: InputDecoration(
+                                hintText: loc.projectNameHint,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                                border: const OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                              onChanged: (_) => setState(() {}),
                             ),
-                            onChanged: (_) => setState(() {}),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      SizedBox(
-                        height: 48,
-                        child: FilledButton(
-                          onPressed: _actionLoading || _nameController.text.trim().isEmpty || _browsingPath.isEmpty
-                              ? null
-                              : _onCreate,
-                          child: _actionLoading
-                              ? const _CompactSpinner(color: Colors.white)
-                              : Text(loc.createProjectButton),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          height: 48,
+                          child: FilledButton(
+                            onPressed: _actionLoading || _nameController.text.trim().isEmpty || _browsingPath.isEmpty
+                                ? null
+                                : _onCreate,
+                            child: _actionLoading
+                                ? const _CompactSpinner(color: Colors.white)
+                                : Text(loc.createProjectButton),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
