@@ -45,12 +45,13 @@ class SessionDetailLoadedView extends StatefulWidget {
 }
 
 class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
-  /// Measured height of the floating composer overlaying the bottom of the
-  /// chat. Fed to the message list so the newest message rests just above the
-  /// composer (and the "jump to latest" pill clears it) while older content
-  /// scrolls up behind the composer's fade. Stays 0 in the read-only variant,
-  /// which renders no composer.
-  double _composerHeight = 0;
+  /// Measured height of the floating bottom controls overlaying the bottom of
+  /// the chat — the background-tasks bar, queued messages and the composer. Fed
+  /// to the message list so the newest message rests just above them (and the
+  /// "jump to latest" pill clears them) while older content scrolls up behind
+  /// the composer's fade. Stays 0 in the read-only variant, which renders none
+  /// of these controls.
+  double _bottomControlsHeight = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -80,20 +81,13 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                       retryErrorMessage: state.retryErrorMessage,
                       // Pad the oldest-message edge clear of the bar it scrolls
                       // behind, and the newest-message edge clear of the floating
-                      // composer overlaid below; content in between scrolls up
-                      // behind the bar's fade and the composer's fade.
+                      // bottom controls overlaid below (background-tasks bar,
+                      // queued messages and composer); content in between scrolls
+                      // up behind the bar's fade and the composer's fade.
                       topInset: topInset,
-                      bottomInset: _composerHeight,
+                      bottomInset: _bottomControlsHeight,
                     ),
             ),
-            if (state.children.isNotEmpty && !widget.readOnly)
-              BackgroundTasksBar(
-                projectId: widget.projectId,
-                children: state.children,
-                childStatuses: state.childStatuses,
-              ),
-            if (!widget.readOnly && state.queuedMessages.isNotEmpty)
-              SessionDetailQueuedMessagesSection(messages: state.queuedMessages),
           ],
         ),
         // The refresh indicator and pending banners pin just below the
@@ -128,42 +122,64 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
             ],
           ),
         ),
+        // Floating bottom controls — the background-tasks bar, queued messages
+        // and the composer, stacked in that order above the composer at the
+        // bottom edge. They sit over the chat (which scrolls behind them) and
+        // are measured as one cluster so the chat insets its newest message
+        // clear of the whole stack — and so the tasks bar/queued stay tappable
+        // above the composer instead of hidden behind it.
         if (!widget.readOnly)
           Positioned(
             bottom: 0,
-            left: 16,
-            right: 16,
+            left: 0,
+            right: 0,
             child: _MeasureSize(
               onChange: (size) {
-                if (!mounted || size.height == _composerHeight) return;
-                setState(() => _composerHeight = size.height);
+                if (!mounted || size.height == _bottomControlsHeight) return;
+                setState(() => _bottomControlsHeight = size.height);
               },
-              child: PromptInput(
-                draftKey: widget.sessionId,
-                isBusy: hasActiveWork(
-                  sessionStatus: state.sessionStatus,
-                  childStatuses: state.childStatuses,
-                ),
-                onSend: (text, command) => context.read<SessionDetailCubit>().sendMessage(
-                  text: text,
-                  command: command,
-                ),
-                onAbort: () => context.read<SessionDetailCubit>().abort(),
-                header: null,
-                composerHeader: AgentModelButtons(
-                  agents: state.availableAgents,
-                  selectedAgent: state.selectedAgent,
-                  onAgentSelected: context.read<SessionDetailCubit>().selectAgent,
-                  providers: state.availableProviders,
-                  selectedAgentModel: state.selectedAgentModel,
-                  onModelSelected: context.read<SessionDetailCubit>().selectModel,
-                  availableVariants: state.availableVariants,
-                  onVariantSelected: context.read<SessionDetailCubit>().selectVariant,
-                ),
-                availableCommands: state.availableCommands,
-                stagedCommand: state.stagedCommand,
-                onCommandSelected: context.read<SessionDetailCubit>().stageCommand,
-                onCommandCleared: context.read<SessionDetailCubit>().clearStagedCommand,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (state.children.isNotEmpty)
+                    BackgroundTasksBar(
+                      projectId: widget.projectId,
+                      children: state.children,
+                      childStatuses: state.childStatuses,
+                    ),
+                  if (state.queuedMessages.isNotEmpty)
+                    SessionDetailQueuedMessagesSection(messages: state.queuedMessages),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: PromptInput(
+                      draftKey: widget.sessionId,
+                      isBusy: hasActiveWork(
+                        sessionStatus: state.sessionStatus,
+                        childStatuses: state.childStatuses,
+                      ),
+                      onSend: (text, command) => context.read<SessionDetailCubit>().sendMessage(
+                        text: text,
+                        command: command,
+                      ),
+                      onAbort: () => context.read<SessionDetailCubit>().abort(),
+                      header: null,
+                      composerHeader: AgentModelButtons(
+                        agents: state.availableAgents,
+                        selectedAgent: state.selectedAgent,
+                        onAgentSelected: context.read<SessionDetailCubit>().selectAgent,
+                        providers: state.availableProviders,
+                        selectedAgentModel: state.selectedAgentModel,
+                        onModelSelected: context.read<SessionDetailCubit>().selectModel,
+                        availableVariants: state.availableVariants,
+                        onVariantSelected: context.read<SessionDetailCubit>().selectVariant,
+                      ),
+                      availableCommands: state.availableCommands,
+                      stagedCommand: state.stagedCommand,
+                      onCommandSelected: context.read<SessionDetailCubit>().stageCommand,
+                      onCommandCleared: context.read<SessionDetailCubit>().clearStagedCommand,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
