@@ -17,8 +17,17 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    # Mobile-PRODUCT paths only (not blanket client/**) so future client/desktop
+    # PRs never trigger a mobile or bridge release — release-safety invariant #3.
     paths:
-      - 'mobile/**'
+      - 'client/app/**'
+      - 'client/module_core/**'
+      - 'client/module_auth/**'
+      - 'client/module_prego/**'
+      - 'client/pubspec.yaml'
+      - 'client/pubspec.lock'
+      - 'client/analysis_options.yaml'
+      - 'client/Makefile'
       - 'shared/**'
       - 'bridge/**'
 
@@ -45,7 +54,7 @@ jobs:
         id: check
         run: |
           set -euo pipefail
-          MOBILE_VERSION=$(awk '/^version:/{split($2,a,"+"); print a[1]; exit}' mobile/app/pubspec.yaml)
+          MOBILE_VERSION=$(awk '/^version:/{split($2,a,"+"); print a[1]; exit}' client/app/pubspec.yaml)
           BRIDGE_VERSION=$(awk '/^version:/{print $2; exit}' bridge/app/pubspec.yaml)
           if [[ -z "$MOBILE_VERSION" || -z "$BRIDGE_VERSION" ]]; then
             echo "::error::Could not parse versions (mobile: '$MOBILE_VERSION', bridge: '$BRIDGE_VERSION')."

@@ -10,7 +10,7 @@ require "shellwords"
 # ABSOLUTE path only when the directory exists and is non-empty; otherwise nil,
 # so submit_android cleanly falls back to "promotion only" and behaves exactly
 # as it did before this feature existed. Absolute because fastlane runs from
-# mobile/app/android while the clone lives at the workspace root.
+# client/app/android while the clone lives at the workspace root.
 def metadata_dir_from_env(var)
   raw = ENV[var].to_s.strip
   return nil if raw.empty?
@@ -47,7 +47,7 @@ platform :android do
   # CI (where they're injected via secrets). Existing on-disk files are not
   # overwritten unless the corresponding env var is set.
   private_lane :_materialize_secret_files do
-    android_root = File.expand_path("..", Dir.pwd) # mobile/app/android/
+    android_root = File.expand_path("..", Dir.pwd) # client/app/android/
 
     keystore_b64 = ENV["ANDROID_KEYSTORE_BASE64"].to_s.strip
     unless keystore_b64.empty?
@@ -157,10 +157,10 @@ platform :android do
     new_build_number
   end
 
-  # Runs `flutter build appbundle` from the Flutter project root (mobile/app/),
+  # Runs `flutter build appbundle` from the Flutter project root (client/app/),
   # not from the fastlane folder. Output lands at
-  # mobile/app/build/app/outputs/bundle/release/app-release.aab thanks to the
-  # build dir redirect in mobile/app/android/build.gradle.kts.
+  # client/app/build/app/outputs/bundle/release/app-release.aab thanks to the
+  # build dir redirect in client/app/android/build.gradle.kts.
   private_lane :_flutter_build_appbundle do |options|
     build_number = options[:build_number]
     flutter_root = File.expand_path(File.join("..", ".."), Dir.pwd)
@@ -197,7 +197,7 @@ platform :android do
         UI.message("Skipping build, using pre-built AAB from AAB_PATH=#{ENV['AAB_PATH']}")
       end
 
-      # Flutter outputs the AAB to `mobile/app/build/app/outputs/bundle/release/`
+      # Flutter outputs the AAB to `client/app/build/app/outputs/bundle/release/`
       # because the Android root build.gradle.kts redirects rootProject build
       # dir up two levels (standard Flutter pattern). Anchor to __dir__ (the
       # fastlane folder) so the absolute path is correct regardless of which

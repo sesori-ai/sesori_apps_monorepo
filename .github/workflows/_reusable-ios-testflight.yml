@@ -76,8 +76,8 @@ jobs:
       - name: Cache CocoaPods
         uses: actions/cache@v5
         with:
-          path: mobile/app/ios/Pods
-          key: ${{ runner.os }}-pods-${{ env.COCOAPODS_VERSION }}-${{ hashFiles('mobile/app/ios/Podfile.lock') }}
+          path: client/app/ios/Pods
+          key: ${{ runner.os }}-pods-${{ env.COCOAPODS_VERSION }}-${{ hashFiles('client/app/ios/Podfile.lock') }}
           restore-keys: |
             ${{ runner.os }}-pods-${{ env.COCOAPODS_VERSION }}-
 
@@ -86,15 +86,15 @@ jobs:
         with:
           ruby-version: '3.3'
           bundler-cache: true
-          working-directory: mobile/app/ios
+          working-directory: client/app/ios
 
       - name: Generate iOS build config
         run: flutter build ios --config-only --release --no-codesign
-        working-directory: mobile/app
+        working-directory: client/app
 
       - name: Deploy to TestFlight
         run: bundle exec fastlane deploy_testflight
-        working-directory: mobile/app/ios
+        working-directory: client/app/ios
 
       - name: Upload build artifacts on failure
         if: failure()
@@ -102,14 +102,14 @@ jobs:
         with:
           name: ios-build-logs-${{ github.run_id }}
           path: |
-            mobile/app/ios/build/Logs/
+            client/app/ios/build/Logs/
             ~/Library/Logs/DiagnosticReports/
           retention-days: 7
 
       - name: Summary
         if: success()
         run: |
-          source mobile/app/ios/build_info.env
+          source client/app/ios/build_info.env
           echo "## iOS TestFlight Deploy Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Version**: ${VERSION} (${BUILD_NUMBER})" >> $GITHUB_STEP_SUMMARY

@@ -179,7 +179,7 @@ lib/src/
 └── sse/                     # SSE pipeline components (SseConnection, SseEventParser, SseEventMapper)
 ```
 
-### Mobile workspace (`mobile/`)
+### Mobile workspace (`client/`)
 
 **Module dependency direction (never reverse, never skip):**
 
@@ -293,7 +293,7 @@ When adding a feature that consumes real-time data, subscribe to the existing st
 ## Monorepo Layout
 
 - `bridge/` — pure Dart CLI workspace (relay server + plugin system)
-- `mobile/` — Flutter workspace (mobile client)
+- `client/` — Flutter workspace (mobile client)
 - `shared/sesori_shared/` — pure Dart, shared crypto and protocol types
 
 Two independent Dart workspaces. `shared/sesori_shared` is consumed via path dependency by both.
@@ -304,7 +304,7 @@ Run `dart pub get` from the workspace root, not from individual module dirs:
 
 ```sh
 cd bridge && dart pub get
-cd mobile && dart pub get
+cd client && dart pub get
 ```
 
 Bridge workspace also exposes:
@@ -370,7 +370,7 @@ When waiting for PR CI/reviews, use `pr_monitor` notifications rather than long-
 | Location                 | Command        |
 | ------------------------ | -------------- |
 | bridge modules           | `dart test`    |
-| mobile/app               | `flutter test` |
+| client/app               | `flutter test` |
 | mobile pure Dart modules | `dart test`    |
 
 ## Dart Coding Conventions

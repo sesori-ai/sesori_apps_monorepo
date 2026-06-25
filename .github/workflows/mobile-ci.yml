@@ -3,12 +3,28 @@ name: Mobile CI
 on:
   push:
     branches: [main]
+    # Scoped to the mobile PRODUCT paths (not blanket client/**) so future
+    # client/desktop PRs never trigger mobile CI — release-safety invariant #3.
     paths:
-      - 'mobile/**'
+      - 'client/app/**'
+      - 'client/module_core/**'
+      - 'client/module_auth/**'
+      - 'client/module_prego/**'
+      - 'client/pubspec.yaml'
+      - 'client/pubspec.lock'
+      - 'client/analysis_options.yaml'
+      - 'client/Makefile'
       - 'shared/**'
   pull_request:
     paths:
-      - 'mobile/**'
+      - 'client/app/**'
+      - 'client/module_core/**'
+      - 'client/module_auth/**'
+      - 'client/module_prego/**'
+      - 'client/pubspec.yaml'
+      - 'client/pubspec.lock'
+      - 'client/analysis_options.yaml'
+      - 'client/Makefile'
       - 'shared/**'
 
 jobs:
@@ -34,31 +50,31 @@ jobs:
 
       - name: Get dependencies (workspace)
         run: dart pub get
-        working-directory: mobile
+        working-directory: client
 
-      - name: Analyze mobile/app
+      - name: Analyze client/app
         run: dart analyze --fatal-infos
-        working-directory: mobile/app
+        working-directory: client/app
 
       - name: Analyze module_core
         run: dart analyze --fatal-infos
-        working-directory: mobile/module_core
+        working-directory: client/module_core
 
       - name: Analyze module_auth
         run: dart analyze --fatal-infos
-        working-directory: mobile/module_auth
+        working-directory: client/module_auth
 
       - name: Run tests for module_core
         run: dart test
-        working-directory: mobile/module_core
+        working-directory: client/module_core
 
       - name: Run tests for module_auth
         run: dart test
-        working-directory: mobile/module_auth
+        working-directory: client/module_auth
 
-      - name: Run tests for mobile/app
+      - name: Run tests for client/app
         run: flutter test
-        working-directory: mobile/app
+        working-directory: client/app
 
       - name: Get dependencies (no_slop_linter)
         run: dart pub get

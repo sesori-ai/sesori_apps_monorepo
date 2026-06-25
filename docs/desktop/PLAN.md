@@ -8,7 +8,7 @@
 
 ## Current pointer
 
-- **Last completed phase:** none — plan only; no implementation phase completed yet
+- **Last completed phase:** Phase 0 — `mobile/`→`client/` rename (PR 0.1)
 - **In-flight PR:** none
 - **Branch:** one feature branch per PR, cut from `main`
 
@@ -19,7 +19,7 @@
 > index (§9).
 >
 > **Keep the plan true.** If a PR reveals that an assumption here was wrong — a
-> locked decision (§3), release-safety invariant (§4), component boundary (§6),
+> locked decision (§3), release-safety invariant (§4), component design (§6),
 > or ADR (§7) no longer holds — fix it in the **same PR**: record it in the phase
 > doc's **Plan-deltas** and amend the affected section above. A stale plan is
 > worse than none.
@@ -229,7 +229,7 @@ and consumes only the exported interfaces (`AuthTokenProvider`/`OAuthFlowProvide
 Legend: ☐ pending · ◐ in-progress · ☑ done. Sizes: **S** ≤150 LOC · **M** 150–350 · **L** (rename only, mechanical).
 
 ### Phase 0 — Rename → `phase-0-rename.md`
-- ☐ 0.1 `mobile/`→`client/` everywhere (atomic) — **Med-High / L**
+- ☑ 0.1 `mobile/`→`client/` everywhere (atomic) — **Med-High / L**
 
 ### Phase 1 — Bridge supervised mode → `phase-1-bridge-supervised.md`
 - ☐ 1.1 `--control-url` + off-argv secret bootstrap + `ControlChannelClient` skeleton — Low-Med / M

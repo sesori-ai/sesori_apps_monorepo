@@ -90,7 +90,7 @@ the workflows.
 make bump-version TYPE=patch
 ```
 
-That bump step is the source of truth for the release version. It must keep `bridge/app/pubspec.yaml`, `bridge/app/lib/src/version.dart`, all six npm package manifests in `bridge/app/npm/`, and `mobile/app/pubspec.yaml` aligned to the same `X.Y.Z` semantic release. For an explicit version, run `make bump-version VERSION=X.Y.Z`. The bump is REQUIRED after every production release: `release-all-platforms.yml` fails its preflight guard for any main push whose version already has a `v<version>` tag.
+That bump step is the source of truth for the release version. It must keep `bridge/app/pubspec.yaml`, `bridge/app/lib/src/version.dart`, all six npm package manifests in `bridge/app/npm/`, and `client/app/pubspec.yaml` aligned to the same `X.Y.Z` semantic release. For an explicit version, run `make bump-version VERSION=X.Y.Z`. The bump is REQUIRED after every production release: `release-all-platforms.yml` fails its preflight guard for any main push whose version already has a `v<version>` tag.
 
 ### 2. Merge to main
 

@@ -52,9 +52,9 @@ Reject as too vague if the plan:
 
 1. Apply the Pre-Review Gate. If it fails, stop and emit the gate failure output.
 
-2. Determine which workspaces the plan touches. The plan must state this explicitly. Map each proposed change to `mobile/`, `bridge/`, or `shared/sesori_shared/`.
+2. Determine which workspaces the plan touches. The plan must state this explicitly. Map each proposed change to `client/`, `bridge/`, or `shared/sesori_shared/`.
 
-3. Apply the matching Section B subsection for each touched workspace. State which you applied and which you skipped. Do not skip a subsection because a workspace is lightly touched. Even a single proposed line of change in `mobile/` requires full B-Mobile review.
+3. Apply the matching Section B subsection for each touched workspace. State which you applied and which you skipped. Do not skip a subsection because a workspace is lightly touched. Even a single proposed line of change in `client/` requires full B-Mobile review.
 
 4. Walk every rule in order. For each rule in Sections A and B, internally verify whether the plan satisfies it. Only emit violations in the final output, but do not shortcut this check.
 
@@ -273,7 +273,7 @@ Core rules that apply universally:
 - Within a layer: NO cross-dependency between same-level classes unless they are base classes/abstractions designed to be reused within that layer. Review carefully: flag if an abstraction was added but seems pointless, and flag if one was NOT added but should have been to reduce duplication
 - Directory structure MUST mirror layers so violations are visible in import paths
 
-#### B-Mobile: Mobile Workspace (`mobile/`)
+#### B-Mobile: Mobile Workspace (`client/`)
 
 **B-M1. Layer Dependency Diagram**
 

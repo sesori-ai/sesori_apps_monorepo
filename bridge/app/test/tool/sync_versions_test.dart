@@ -30,7 +30,7 @@ class _FixtureApp {
 
   final String rootPath;
 
-  String get mobilePubspecPath => p.join(rootPath, 'mobile', 'app', 'pubspec.yaml');
+  String get clientPubspecPath => p.join(rootPath, 'client', 'app', 'pubspec.yaml');
   String get bridgePubspecPath => p.join(rootPath, 'bridge', 'app', 'pubspec.yaml');
   String get bridgeVersionPath => p.join(rootPath, 'bridge', 'app', 'lib', 'src', 'version.dart');
   String get wrapperPackagePath => p.join(rootPath, 'bridge', 'app', 'npm', 'sesori-bridge', 'package.json');
@@ -40,10 +40,10 @@ class _FixtureApp {
       .toList();
 }
 
-Future<_FixtureApp> _createFixtureApp({required String mobileVersion, String? bridgeVersion}) async {
+Future<_FixtureApp> _createFixtureApp({required String clientVersion, String? bridgeVersion}) async {
   final tempDir = await Directory.systemTemp.createTemp('sync-versions-fixture-');
   final rootPath = tempDir.path;
-  final resolvedBridgeVersion = bridgeVersion ?? mobileVersion.split('+').first;
+  final resolvedBridgeVersion = bridgeVersion ?? clientVersion.split('+').first;
 
   for (final relativeDir in <List<String>>[
     ['tool'],
@@ -55,14 +55,14 @@ Future<_FixtureApp> _createFixtureApp({required String mobileVersion, String? br
     ['bridge', 'app', 'npm', 'sesori-bridge-linux-x64'],
     ['bridge', 'app', 'npm', 'sesori-bridge-win32-arm64'],
     ['bridge', 'app', 'npm', 'sesori-bridge-win32-x64'],
-    ['mobile', 'app'],
+    ['client', 'app'],
   ]) {
     await Directory(p.joinAll(<String>[rootPath, ...relativeDir])).create(recursive: true);
   }
 
-  await File(p.join(rootPath, 'mobile', 'app', 'pubspec.yaml')).writeAsString('''
+  await File(p.join(rootPath, 'client', 'app', 'pubspec.yaml')).writeAsString('''
 name: sync_versions_fixture
-version: $mobileVersion
+version: $clientVersion
 environment:
   sdk: ^3.11.0
 ''');
@@ -147,42 +147,42 @@ void main() {
     });
 
     test('dry-run computes patch, minor, and major targets without mutations', () async {
-      fixture = await _createFixtureApp(mobileVersion: '1.0.6+8');
+      fixture = await _createFixtureApp(clientVersion: '1.0.6+8');
       final currentFixture = fixture!;
       final beforeBridgePubspec = await File(currentFixture.bridgePubspecPath).readAsString();
-      final beforeMobilePubspec = await File(currentFixture.mobilePubspecPath).readAsString();
+      final beforeClientPubspec = await File(currentFixture.clientPubspecPath).readAsString();
       final beforeWrapper = await File(currentFixture.wrapperPackagePath).readAsString();
 
       final patchResult = await _runTool(fixture: currentFixture, args: <String>['--dry-run', '--type', 'patch']);
       expect(patchResult.exitCode, equals(0), reason: '${patchResult.stdout}\n${patchResult.stderr}');
       expect(patchResult.stdout, contains('Target bridge version: 1.0.7'));
-      expect(patchResult.stdout, contains('Target mobile version: 1.0.7+8'));
+      expect(patchResult.stdout, contains('Target client version: 1.0.7+8'));
       expect(patchResult.stdout, contains('Planned releaseTag: v1.0.7'));
       expect(patchResult.stdout, contains('bridge/app/pubspec.yaml'));
-      expect(patchResult.stdout, contains('mobile/app/pubspec.yaml'));
+      expect(patchResult.stdout, contains('client/app/pubspec.yaml'));
       expect(await File(currentFixture.bridgePubspecPath).readAsString(), equals(beforeBridgePubspec));
-      expect(await File(currentFixture.mobilePubspecPath).readAsString(), equals(beforeMobilePubspec));
+      expect(await File(currentFixture.clientPubspecPath).readAsString(), equals(beforeClientPubspec));
       expect(await File(currentFixture.wrapperPackagePath).readAsString(), equals(beforeWrapper));
 
       final minorResult = await _runTool(fixture: currentFixture, args: <String>['--dry-run', '--type=minor']);
       expect(minorResult.exitCode, equals(0));
       expect(minorResult.stdout, contains('Target bridge version: 1.1.0'));
-      expect(minorResult.stdout, contains('Target mobile version: 1.1.0+8'));
+      expect(minorResult.stdout, contains('Target client version: 1.1.0+8'));
 
       final majorResult = await _runTool(fixture: currentFixture, args: <String>['--dry-run', '--type=major']);
       expect(majorResult.exitCode, equals(0));
       expect(majorResult.stdout, contains('Target bridge version: 2.0.0'));
-      expect(majorResult.stdout, contains('Target mobile version: 2.0.0+8'));
+      expect(majorResult.stdout, contains('Target client version: 2.0.0+8'));
     });
 
-    test('release-type sync preserves the mobile build suffix exactly', () async {
-      fixture = await _createFixtureApp(mobileVersion: '1.0.6+8');
+    test('release-type sync preserves the client build suffix exactly', () async {
+      fixture = await _createFixtureApp(clientVersion: '1.0.6+8');
       final currentFixture = fixture!;
 
-      final cases = <({String type, String bridgeVersion, String mobileVersion})>[
-        (type: 'patch', bridgeVersion: '1.0.7', mobileVersion: '1.0.7+8'),
-        (type: 'minor', bridgeVersion: '1.1.0', mobileVersion: '1.1.0+8'),
-        (type: 'major', bridgeVersion: '2.0.0', mobileVersion: '2.0.0+8'),
+      final cases = <({String type, String bridgeVersion, String clientVersion})>[
+        (type: 'patch', bridgeVersion: '1.0.7', clientVersion: '1.0.7+8'),
+        (type: 'minor', bridgeVersion: '1.1.0', clientVersion: '1.1.0+8'),
+        (type: 'major', bridgeVersion: '2.0.0', clientVersion: '2.0.0+8'),
       ];
 
       for (final testCase in cases) {
@@ -193,7 +193,7 @@ publish_to: none
 resolution: workspace
 ''');
         await File(currentFixture.bridgeVersionPath).writeAsString("const String appVersion = '1.0.6';\n");
-        await File(currentFixture.mobilePubspecPath).writeAsString('''
+        await File(currentFixture.clientPubspecPath).writeAsString('''
 name: sesori_mobile
 version: 1.0.6+8
 environment:
@@ -238,12 +238,12 @@ environment:
 
         final bridgePubspec = await File(currentFixture.bridgePubspecPath).readAsString();
         final bridgeVersion = await File(currentFixture.bridgeVersionPath).readAsString();
-        final mobilePubspec = await File(currentFixture.mobilePubspecPath).readAsString();
+        final clientPubspec = await File(currentFixture.clientPubspecPath).readAsString();
         final wrapperPackage = await _readJson(path: currentFixture.wrapperPackagePath);
 
         expect(bridgePubspec, contains('version: ${testCase.bridgeVersion}'));
         expect(bridgeVersion, equals("const String appVersion = '${testCase.bridgeVersion}';\n"));
-        expect(mobilePubspec, contains('version: ${testCase.mobileVersion}'));
+        expect(clientPubspec, contains('version: ${testCase.clientVersion}'));
         expect(wrapperPackage['version'] as String, equals(testCase.bridgeVersion));
         expect((wrapperPackage['sesoriBridge'] as Map<String, dynamic>)['releaseTag'], equals('v${testCase.bridgeVersion}'));
 
@@ -264,8 +264,8 @@ environment:
       }
     });
 
-    test('rejects diverged bridge and mobile versions', () async {
-      fixture = await _createFixtureApp(mobileVersion: '1.0.6+8', bridgeVersion: '1.0.5');
+    test('rejects diverged bridge and client versions', () async {
+      fixture = await _createFixtureApp(clientVersion: '1.0.6+8', bridgeVersion: '1.0.5');
       final currentFixture = fixture!;
 
       final result = await _runTool(fixture: currentFixture, args: <String>['--dry-run', '--type', 'patch']);
@@ -275,28 +275,28 @@ environment:
     });
 
     test('allows explicit --version to realign diverged versions', () async {
-      fixture = await _createFixtureApp(mobileVersion: '1.0.6+8', bridgeVersion: '1.0.5');
+      fixture = await _createFixtureApp(clientVersion: '1.0.6+8', bridgeVersion: '1.0.5');
       final currentFixture = fixture!;
 
       final result = await _runTool(fixture: currentFixture, args: <String>['--dry-run', '--version', '1.0.7']);
 
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
-      expect(result.stdout, contains('Target mobile version: 1.0.7+8'));
+      expect(result.stdout, contains('Target client version: 1.0.7+8'));
       expect(result.stdout, contains('Target bridge version: 1.0.7'));
     });
 
-    test('works without mobile build number', () async {
-      fixture = await _createFixtureApp(mobileVersion: '1.0.6');
+    test('works without client build number', () async {
+      fixture = await _createFixtureApp(clientVersion: '1.0.6');
       final currentFixture = fixture!;
 
       final result = await _runTool(fixture: currentFixture, args: <String>['--dry-run', '--type', 'patch']);
 
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
-      expect(result.stdout, contains('Target mobile version: 1.0.7'));
+      expect(result.stdout, contains('Target client version: 1.0.7'));
     });
 
-    test('rejects invalid inputs and malformed mobile versions', () async {
-      fixture = await _createFixtureApp(mobileVersion: '1.0.6+8');
+    test('rejects invalid inputs and malformed client versions', () async {
+      fixture = await _createFixtureApp(clientVersion: '1.0.6+8');
       final currentFixture = fixture!;
 
       final cases = <({List<String> args, String stderr})>[
@@ -316,10 +316,10 @@ environment:
       }
 
       for (final malformedVersion in <String>['1.2+8', '1.2.3+abc']) {
-        fixture = await _createFixtureApp(mobileVersion: malformedVersion);
+        fixture = await _createFixtureApp(clientVersion: malformedVersion);
         final malformedResult = await _runTool(fixture: fixture!, args: <String>['--dry-run', '--type', 'patch']);
         expect(malformedResult.exitCode, isNot(0));
-        expect(malformedResult.stderr, contains('Error: Invalid mobile version "$malformedVersion"'));
+        expect(malformedResult.stderr, contains('Error: Invalid client version "$malformedVersion"'));
       }
     });
   });

@@ -51,10 +51,10 @@ jobs:
         with:
           ruby-version: '3.3'
           bundler-cache: true
-          working-directory: mobile/app/android
+          working-directory: client/app/android
 
       - name: Build and Deploy to Internal Track
-        working-directory: mobile/app/android
+        working-directory: client/app/android
         env:
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -64,9 +64,9 @@ jobs:
       - name: Cleanup credentials
         if: always()
         run: |
-          rm -f mobile/app/android/fastlane/service-account.json
-          rm -f mobile/app/android/keystore/release.keystore
-          rm -f mobile/app/android/release.properties
+          rm -f client/app/android/fastlane/service-account.json
+          rm -f client/app/android/keystore/release.keystore
+          rm -f client/app/android/release.properties
 
       - name: Upload build artifacts on failure
         if: failure()
@@ -74,14 +74,14 @@ jobs:
         with:
           name: android-build-logs-${{ github.run_id }}
           path: |
-            mobile/app/android/app/build/reports/
-            mobile/app/build/app/outputs/logs/
+            client/app/android/app/build/reports/
+            client/app/build/app/outputs/logs/
           retention-days: 7
 
       - name: Summary
         if: success()
         run: |
-          source mobile/app/android/build_info.env
+          source client/app/android/build_info.env
           echo "## Android Internal Deploy Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Version**: ${VERSION} (${VERSION_CODE})" >> $GITHUB_STEP_SUMMARY
