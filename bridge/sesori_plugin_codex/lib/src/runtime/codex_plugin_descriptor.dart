@@ -94,8 +94,7 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
     ),
     PluginValueOption(
       // Bare local name; the bridge namespaces it to `--codex-bin` under this
-      // plugin's id. (Pre-namespacing this was declared as "codex-bin", which
-      // would now double-prefix to `--codex-codex-bin`.)
+      // plugin's id.
       name: "bin",
       help: "Path to codex binary",
       defaultsTo: "codex",
