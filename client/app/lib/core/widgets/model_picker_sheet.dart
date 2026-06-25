@@ -23,21 +23,35 @@ class ModelPickerSheet extends StatefulWidget {
   final String selectedProviderID;
   final String selectedModelID;
   final void Function({required String providerID, required String modelID}) onModelChanged;
+
+  /// Whether the search field grabs focus (and raises the keyboard) as soon as
+  /// the sheet opens. Used when the sheet is opened straight into "search mode"
+  /// from the composer's model menu.
+  final bool autofocusSearch;
+
   const ModelPickerSheet({
     super.key,
     required this.providers,
     required this.selectedProviderID,
     required this.selectedModelID,
     required this.onModelChanged,
+    this.autofocusSearch = false,
   });
 
   /// Shows the model picker as a modal bottom sheet.
+  ///
+  /// [fullScreen] makes the sheet rise to just below the top safe area instead
+  /// of the default 70 % height — used when escalating from the composer's
+  /// compact model menu into a roomy, keyboard-friendly search surface.
+  /// [autofocusSearch] opens the sheet with the search field already focused.
   static Future<void> show(
     BuildContext context, {
     required List<ProviderInfo> providers,
     required String selectedProviderID,
     required String selectedModelID,
     required void Function({required String providerID, required String modelID}) onModelChanged,
+    bool fullScreen = false,
+    bool autofocusSearch = false,
   }) {
     return showAppModalBottomSheet(
       context: context,
@@ -48,7 +62,14 @@ class ModelPickerSheet extends StatefulWidget {
       // than having the whole sheet lifted above the indicator.
       handleBottomSafeArea: false,
       builder: (sheetContext) {
-        final height = MediaQuery.sizeOf(sheetContext).height * 0.7;
+        final media = MediaQuery.of(sheetContext);
+        // Full screen: fill from just below the notch to the bottom edge. The
+        // keyboard inset is subtracted here (and re-added as bottom padding by
+        // showAppModalBottomSheet) so the content never overflows above the
+        // top safe area when the keyboard is up.
+        final height = fullScreen
+            ? media.size.height - media.viewPadding.top - media.viewInsets.bottom
+            : media.size.height * 0.7;
         final prego = sheetContext.prego;
         // Material (not a decorated Container) so the ListTiles inside can
         // paint their ink and selection effects on the sheet surface.
@@ -62,6 +83,7 @@ class ModelPickerSheet extends StatefulWidget {
               providers: providers,
               selectedProviderID: selectedProviderID,
               selectedModelID: selectedModelID,
+              autofocusSearch: autofocusSearch,
               onModelChanged: ({required String providerID, required String modelID}) {
                 onModelChanged(providerID: providerID, modelID: modelID);
                 context.pop();
@@ -175,7 +197,7 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: TextField(
-            autofocus: false,
+            autofocus: widget.autofocusSearch,
             decoration: InputDecoration(
               hintText: loc.sessionDetailModelSearch,
               prefixIcon: const Icon(Icons.search, size: 20),

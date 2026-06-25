@@ -3,6 +3,7 @@ import "dart:math" as math;
 
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
+import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -25,8 +26,7 @@ class PromptInput extends StatefulWidget {
   final ValueChanged<CommandInfo> onCommandSelected;
   final VoidCallback onCommandCleared;
 
-  /// Optional widget rendered inside the prompt container, above the text field
-  /// but below the separator line.
+  /// Optional widget rendered inside the composer, above the text-field row.
   final Widget? header;
 
   /// Key under which the in-progress draft is persisted across navigation /
@@ -274,13 +274,24 @@ class _PromptInputState extends State<PromptInput> {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final loc = context.loc;
 
-    return Container(
+    return DecoratedBox(
+      // Floating composer: no bar surface, no separator line. The scaffold
+      // background fades up behind the floating controls so chat content
+      // dissolves as it scrolls past — the same scrim the glass top navigation
+      // bar uses (PregoGlassScaffold), mirrored to the bottom edge: opaque
+      // where the controls sit, transparent where content emerges above. The
+      // controls keep their own glass.
       decoration: BoxDecoration(
-        color: prego.colors.bgPrimary,
-        border: Border(
-          top: BorderSide(color: prego.colors.borderSecondary),
+        gradient: LinearGradient(
+          begin: Alignment.center,
+          end: Alignment.topCenter,
+          colors: [
+            prego.colors.bgPrimary.withValues(alpha: 0.9),
+            prego.colors.bgPrimary.withValues(alpha: 0.7),
+            prego.colors.bgPrimary.withValues(alpha: 0),
+          ],
+          stops: const [0, 0.8, 1.0],
         ),
       ),
       child: Column(
@@ -293,18 +304,8 @@ class _PromptInputState extends State<PromptInput> {
               padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 12, 2),
               child: Align(
                 alignment: AlignmentDirectional.centerStart,
-                child: InputChip(
-                  label: Text("/${commandInfo.name}"),
-                  avatar: CircleAvatar(
-                    backgroundColor: prego.colors.bgBrandPrimary,
-                    child: Text(
-                      "/",
-                      style: prego.textTheme.textMd.bold.copyWith(
-                        color: prego.colors.textBrandPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
+                child: GlassChip(
+                  label: "/${commandInfo.name}",
                   onDeleted: widget.onCommandCleared,
                   deleteIcon: const Icon(Icons.close, size: 18),
                 ),
@@ -314,19 +315,17 @@ class _PromptInputState extends State<PromptInput> {
 
           Padding(
             padding: EdgeInsetsDirectional.only(
-              start: 12,
-              end: 8,
               top: widget.header != null ? 4 : 8,
               bottom: MediaQuery.of(context).padding.bottom + 8,
             ),
             child: Row(
+              spacing: 8,
               crossAxisAlignment: .end,
               children: [
                 _SlashButton(
                   enabled: _voiceState == _VoiceState.idle,
                   onTap: _openCommandPicker,
                 ),
-                const SizedBox(width: 8),
                 Expanded(
                   child: switch (_voiceState) {
                     _VoiceState.recording => _RecordingIndicator(amplitudeStream: _voiceService.amplitudeStream),
@@ -338,48 +337,38 @@ class _PromptInputState extends State<PromptInput> {
                         const SingleActivator(LogicalKeyboardKey.enter, meta: true): _handleSend,
                         const SingleActivator(LogicalKeyboardKey.enter, control: true): _handleSend,
                       },
-                      child: TextField(
+                      child: GlassTextField(
                         controller: _controller,
                         focusNode: _focusNode,
                         minLines: 1,
                         maxLines: 5,
                         textInputAction: TextInputAction.newline,
-                        decoration: InputDecoration(
-                          hintText: _commandHintText(context),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(24),
-                            borderSide: BorderSide.none,
-                          ),
-                          filled: true,
-                          fillColor: prego.colors.bgQuaternary,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                          isDense: true,
-                        ),
+                        // Command-aware placeholder: the staged command's hint,
+                        // else the default prompt hint. The glass field supplies
+                        // its own surface/fill/border, so only the hint text
+                        // carries over from the old InputDecoration.
+                        placeholder: _commandHintText(context),
                       ),
                     ),
                   },
                 ),
-                const SizedBox(width: 8),
                 _MicButton(
                   voiceState: _voiceState,
                   onTap: _handleMicTap,
                 ),
                 if (_voiceState == _VoiceState.idle) ...[
-                  IconButton(
+                  GlassIconButton(
                     onPressed: _handleSend,
                     icon: const Icon(Icons.send),
-                    color: prego.colors.bgBrandSolid,
-                    tooltip: loc.sessionDetailSend,
+                    glowColor: prego.colors.bgBrandSolid,
+                    // tooltip: loc.sessionDetailSend,
                   ),
                   if (widget.isBusy)
-                    IconButton(
+                    GlassIconButton(
                       onPressed: widget.onAbort,
                       icon: const Icon(Icons.stop_circle),
-                    color: prego.colors.fgErrorPrimary,
-                      tooltip: loc.sessionDetailAbort,
+                      glowColor: prego.colors.fgErrorPrimary,
+                      // tooltip: loc.sessionDetailAbort,
                     ),
                 ],
               ],
@@ -409,9 +398,7 @@ class _SlashButton extends StatelessWidget {
     final prego = context.prego;
 
     return Material(
-      color: enabled
-          ? prego.colors.bgQuaternary
-          : prego.colors.bgQuaternary.withValues(alpha: 0.5),
+      color: enabled ? prego.colors.bgQuaternary : prego.colors.bgQuaternary.withValues(alpha: 0.5),
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),
@@ -447,26 +434,25 @@ class _MicButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final loc = context.loc;
 
     return switch (voiceState) {
-      _VoiceState.idle => IconButton(
+      _VoiceState.idle => GlassIconButton(
         onPressed: onTap,
         icon: const Icon(Icons.mic_none),
-        color: prego.colors.textSecondary,
-        tooltip: loc.voiceRecord,
+        glowColor: prego.colors.textSecondary,
+        // tooltip: loc.voiceRecord,
       ),
-      _VoiceState.recording => IconButton(
+      _VoiceState.recording => GlassIconButton(
         onPressed: onTap,
         icon: const Icon(Icons.stop_circle_outlined),
-        color: prego.colors.fgErrorPrimary,
-        tooltip: loc.voiceStopRecording,
+        glowColor: prego.colors.fgErrorPrimary,
+        // tooltip: loc.voiceStopRecording,
       ),
-      _VoiceState.transcribing => IconButton(
+      _VoiceState.transcribing => GlassIconButton(
         onPressed: onTap,
         icon: const Icon(Icons.close),
-        color: prego.colors.fgErrorPrimary,
-        tooltip: loc.voiceCancelTranscription,
+        glowColor: prego.colors.fgErrorPrimary,
+        // tooltip: loc.voiceCancelTranscription,
       ),
     };
   }

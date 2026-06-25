@@ -16,18 +16,24 @@ class JumpToEdgePill extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
+  /// Extra distance lifted above the bottom edge so the pill clears a floating
+  /// composer overlaid on the scrollable. Zero when nothing overlays the bottom
+  /// (e.g. the read-only variant).
+  final double bottomInset;
+
   const JumpToEdgePill({
     super.key,
     required this.tapTargetKey,
     required this.label,
     required this.onTap,
+    this.bottomInset = 0,
   });
 
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     return Positioned(
-      bottom: 12,
+      bottom: 12 + bottomInset,
       left: 0,
       right: 0,
       child: Center(

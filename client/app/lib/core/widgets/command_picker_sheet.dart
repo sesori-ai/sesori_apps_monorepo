@@ -27,6 +27,7 @@ class CommandPickerSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      handleBottomSafeArea: false,
       builder: (sheetContext) {
         final height = MediaQuery.sizeOf(sheetContext).height * 0.7;
         final prego = sheetContext.prego;
