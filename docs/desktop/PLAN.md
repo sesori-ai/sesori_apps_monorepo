@@ -36,11 +36,16 @@ Sesori.app (.dmg) / Sesori installer (.exe) / Sesori.AppImage
 
 - **Binary A** is the existing `sesori-bridge`, in **two run modes** from one
   library: **standalone** (terminal/systemd, unchanged) and **supervised**
-  (launched by the GUI with `--control-url`/`--control-secret`).
-- **GUI ↔ helper** talk over a **GUI-hosted loopback WebSocket control channel**
-  (per-spawn secret). It carries ONLY: fresh-token requests, token-stream
-  pushes, status pushes, runtime-provisioning progress, and prompts
-  (replace-bridge, unregister-and-exit). **No project data.**
+  (launched by the GUI; supervised mode is selected by a `--control-url` flag).
+- **GUI ↔ helper** talk over a **GUI-hosted loopback WebSocket control channel**.
+  The channel carries ONLY: fresh-token requests, token-stream pushes, status
+  pushes, runtime-provisioning progress, and prompts (replace-bridge,
+  unregister-and-exit). **No project data.**
+- **Control-channel secret is NOT passed in argv.** Command-line arguments are
+  inspectable by any other local process/user, and this channel issues bearer
+  tokens — so a leaked secret = token theft. The per-spawn secret is delivered
+  off-argv (inherited pipe/FD or a stdin handshake at spawn); only the
+  loopback URL may be a flag. See ADR A8.
 - **Project data** flows phone-style over the relay (`relay.sesori.com`). The
   desktop UI (v1.x) is a relay client like the phone, reusing `module_core`
   transport unchanged.
@@ -96,14 +101,16 @@ mobile release.**
    standalone defaults**. Each Phase 1 PR asserts standalone behaviour is
    unchanged.
 2. **Mobile stays releasable** — Phase 0 (rename) acceptance includes a **mobile
-   release-pipeline dry-run**; each Phase 4 extraction PR keeps `mobile/app`
-   building, tests green, and a release dry-run passing.
+   release-pipeline dry-run**. After the rename the mobile app lives at
+   `client/app`, so every later gate is phrased against the **mobile product**
+   (path `client/app`, NOT `mobile/app`); each Phase 4 extraction PR keeps
+   `client/app` building, tests green, and a release dry-run passing.
 3. **Desktop CI is non-blocking** for CLI/mobile releases until desktop is
    stable. The existing all-or-nothing release `finalize` must **not** gate on
    desktop legs (a desktop build failure can never abort a CLI/mobile release).
    Folding desktop into the release gate is a later, deliberate decision.
 4. **Workspace integrity** — after each desktop PR, `dart pub get` +
-   `mobile/app` build/test stay green (desktop-only deps are platform-scoped).
+   `client/app` (the mobile product) build/test stay green (desktop-only deps are platform-scoped).
 5. **`make bump-version` stays backward-compatible** — bumps CLI+mobile even
    while desktop is mid-development; before Phase 3, releases ship no desktop
    artifact.
@@ -130,7 +137,7 @@ mobile release.**
 
 | Component | Layer / dir | Role |
 |---|---|---|
-| `ControlChannelClient` | Layer 0 `bridge/foundation/` | loopback WS client; connect/reconnect; send/receive |
+| `ControlChannelClient` | Layer 0 `bridge/app/lib/src/.../foundation/` (target layer, not the legacy nested tree) | loopback WS client; connect/reconnect; send/receive |
 | Control-protocol Freezed DTOs | `shared/sesori_shared` | pure wire types (incl. provision-progress mirror) |
 | `ControlChannelTokenService` | Layer 3 `auth/` | implements `AccessTokenProvider`/`TokenRefresher`; pull + push token stream |
 | `BridgeControlMessageDispatcher` | Layer 4 | routes inbound control msgs (token push → token service, restart → handoff, logout → unregister-and-exit) |
@@ -173,12 +180,18 @@ and consumes only the exported interfaces (`AuthTokenProvider`/`OAuthFlowProvide
 | A5 | `ControlChannelServer` name kept (vs Aristotle's `Listener`) | `Listener` implies one-way subscription; this is a duplex socket host; `DebugServer` precedent |
 | A6 | `bridgeId` persistence = file API + thin repo (no Dao) | one string; no DB/migration needed |
 | A7 | First-run provisioning UI is **v1** | first launch downloads OpenCode; user must see progress |
+| A8 | Control-channel secret delivered **off-argv** (inherited FD/pipe or stdin handshake), not `--control-secret` | argv is readable by other local processes/users; this channel issues bearer tokens, so an argv-leaked secret = token theft |
+| A9 | Helper exits on **control-channel loss** after a short grace period | if the GUI crashes/force-quits, the OS does not reliably kill the child; the helper must not linger invisibly with a live token |
+| A10 | Desktop uninstall touches **only desktop-owned state** | `token.json` + managed runtime live under the shared Sesori data root used by the standalone CLI; deleting them would break/log-out the terminal bridge |
 
 ## 8. Open risks & lead-time register
 
 | Item | Status | Owner | Notes |
 |---|---|---|---|
 | Windows code-signing cert | **OPEN — lead time** | TBD | blocks PR 3.4 (signed Windows); EV clears SmartScreen faster |
+| Control-channel secret bootstrap (off-argv) | OPEN | TBD | ADR A8; designed in PR 1.1 / PR 2.5 |
+| Orphaned helper on GUI crash | OPEN | TBD | ADR A9; parent-loss policy in PR 1.1 |
+| Uninstall vs shared CLI state | OPEN | TBD | ADR A10; scope cleanup in PR 3.11 |
 | CI secrets (Dev ID, notarization key, EdDSA appcast, GPG) | OPEN | TBD | PR 3.0b |
 | Flutter multi-window viability (v2 popover) | OPEN | TBD | de-risk with a spike before Phase 5 popover |
 | macOS login-item arg detection (`--hidden`) | OPEN | TBD | `SMAppService` may need a shim |
@@ -193,7 +206,7 @@ Legend: ☐ pending · ◐ in-progress · ☑ done. Sizes: **S** ≤150 LOC · *
 - ☐ 0.1 `mobile/`→`client/` everywhere (atomic) — **Med-High / L**
 
 ### Phase 1 — Bridge supervised mode → `phase-1-bridge-supervised.md`
-- ☐ 1.1 `--control-url`/`--control-secret` + `ControlChannelClient` skeleton — Low / M
+- ☐ 1.1 `--control-url` + off-argv secret bootstrap + `ControlChannelClient` skeleton — Low-Med / M
 - ☐ 1.2 Control-protocol Freezed DTOs (incl. provision-progress mirror) — Low / S-M
 - ☐ 1.3 Supervised auth bootstrap (short-circuit `ensureAuthenticated`) — Med / M
 - ☐ 1.4 Token provider **pull** over channel (+ timeout/GUI-down) — Med / M

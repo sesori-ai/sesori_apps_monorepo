@@ -6,7 +6,7 @@
 > bridge, the phone connects.
 
 **Standing acceptance (all Phase 2 PRs):** after merge `dart pub get` +
-`mobile/app` build/test stay green (release-safety invariant #4); desktop-only
+`client/app` (the mobile product) build/test stay green (release-safety invariant #4); desktop-only
 deps are platform-scoped and don't enter mobile builds.
 
 **Per-PR template:** Goal · Scope · Risk · Review-size · Acceptance · DoD ·
@@ -49,11 +49,15 @@ Aristotle verdicts · Findings log · Plan-deltas.
 
 ## PR 2.6 — `BridgeProcessService`: spawn/kill/path + control flags
 - **Goal:** Spawn the bridge binary (path resolution dev + packaged) passing
-  `--control-url`/`--control-secret`; kill; monitor exit. Layer-3 service over a
-  Layer-2 `BridgeProcessRepository` over a Layer-1 process API (mirrors
-  `HostProcessCommandExecutor`). No exit-code state machine yet.
+  `--control-url` + the **off-argv** control secret (ADR A8); kill; monitor exit.
+  Layer-3 service over a Layer-2 `BridgeProcessRepository` over a Layer-1 process
+  API (mirrors `HostProcessCommandExecutor`). No exit-code state machine yet.
+- **Scope note:** guard against invalid/non-positive PIDs (`pid <= 0`) at the
+  process-API entry point so platform tools (e.g. Windows `tasklist` PID filter)
+  don't throw on bad input — consistent cross-platform behaviour.
 - **Risk:** High (process lifecycle, cross-platform spawn). **Size:** M.
-- **Acceptance:** spawns + connects to the control server; clean kill.
+- **Acceptance:** spawns + connects to the control server; clean kill; secret
+  not visible in `ps`/argv; non-positive PIDs handled gracefully.
 
 ## PR 2.7 — Exit-code state machine
 - **Goal:** 86→respawn (no backoff), 0→stop (no respawn), other→crash backoff +

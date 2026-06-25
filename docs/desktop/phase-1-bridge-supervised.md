@@ -1,7 +1,7 @@
 # Phase 1 — Bridge Supervised Mode
 
 > Goal: teach the existing `sesori-bridge` a **supervised mode** (gated by
-> `--control-url`/`--control-secret`) where the GUI is its token authority and
+> `--control-url` + an off-argv secret) where the GUI is its token authority and
 > lifecycle owner. **Every PR is additive and gated** so the standalone CLI is
 > provably unchanged and the relay protocol is untouched (release-safety
 > invariant #1). All PRs target the bridge workspace and can proceed in parallel
@@ -14,19 +14,38 @@ Aristotle verdicts · Findings log · Plan-deltas.
 (asserted by test) · relay protocol untouched · `--control-url` absent ⇒ exact
 current behaviour.
 
+> **Exception — PR 1.2** writes shared wire DTOs into `sesori_shared`, which is
+> consumed by **both** the bridge and the mobile/client. That PR additionally
+> requires shared codegen/tests to pass **and** a `client/app` (mobile product)
+> compatibility check — the bridge-only gate is not sufficient for it.
+
 **Rebase note:** main #322 added `_ensurePluginRuntime` + foundation imports to
 `bridge_runtime_runner.dart`; supervised wiring layers on top. `ensureRuntime`
 runs **under the startup mutex**, which reinforces PR 1.12.
 
 ---
 
-## PR 1.1 — `--control-url`/`--control-secret` + `ControlChannelClient` skeleton
-- **Goal:** Parse the new flags in `RunCommand`; add `ControlChannelClient`
-  (Layer 0 `bridge/foundation/`, `web_socket_channel`) that connects/reconnects
-  to the GUI; no message semantics yet.
-- **Risk:** Low. **Size:** M.
-- **Acceptance:** standalone unchanged; with flags, client connects to a fake
-  server in tests; reconnect on drop.
+## PR 1.1 — `--control-url` + control-secret bootstrap + `ControlChannelClient` skeleton
+- **Goal:** Add supervised-mode detection via `--control-url`; receive the
+  per-spawn **secret off-argv** (inherited FD/pipe or stdin handshake — NOT a
+  `--control-secret` flag, per ADR A8). Add `ControlChannelClient` (Layer 0
+  target `foundation/` layer — NOT the legacy nested `bridge/foundation/` tree;
+  `web_socket_channel`) that connects/reconnects to the GUI; no message
+  semantics yet.
+- **Scope notes (implementation):**
+  - Do **not** enforce strict parse-time validation on the supervised-only
+    option; validate/trim only when supervised mode is active (avoids false
+    fails in standalone).
+  - **Completer hygiene:** don't leave temporary `Completer`s armed after a
+    handshake completes/parks; null them out so a later `completeError` can't
+    raise an uncaught zone error.
+  - **Parent-loss policy (ADR A9):** if the control channel is lost (GUI crash/
+    force-quit), the helper exits after a short grace period rather than
+    lingering with a live token.
+- **Risk:** Low-Med. **Size:** M.
+- **Acceptance:** standalone unchanged; with supervised bootstrap the client
+  connects to a fake server in tests; reconnect on drop; the secret never
+  appears in `ps`/argv; control-channel loss triggers grace-period exit.
 - **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
 
 ## PR 1.2 — Control-protocol Freezed DTOs (incl. provision-progress mirror)
@@ -35,8 +54,13 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   `restart`, `unregister_and_exit`, and **provision-progress** variants mirroring
   `RuntimeProvisionProgress` (resolving/downloading{received,total}/extracting/
   verifying/notice/ready/failed). Pure data + (de)serialization + tests.
+  Optional/new fields use Freezed `@Default` (not throw/catch) for forward/back
+  compatibility across protocol versions.
 - **Risk:** Low. **Size:** S-M.
-- **Acceptance:** round-trip serialization tests; no logic in shared.
+- **Acceptance (note — `sesori_shared` is consumed by mobile too, so this PR is
+  the exception to the "Phase 1 = bridge only" standing text):** round-trip
+  serialization tests; no logic in shared; **`sesori_shared` codegen + tests
+  pass AND `client/app` (mobile product) still builds** (no consumer break).
 - **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
 
 ## PR 1.3 — Supervised auth bootstrap
@@ -71,7 +95,9 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 ## PR 1.6 — Supervised registration + `bridgeId` out of `token.json`
 - **Goal:** Persist `bridgeId` via `BridgeIdentityFileApi` (L1) +
   `BridgeIdentityRepository` (L2), separate from `token.json`; supervised
-  registration uses the supplied token; preserve carry-over semantics.
+  registration uses the supplied token; preserve carry-over semantics. Use
+  **synchronous** filesystem checks (`existsSync`/`statSync`) for the
+  `avoid_slow_async_io` lint.
 - **Risk:** Med (touches `TokenData` persistence). **Size:** M.
 - **Acceptance:** supervised registers + persists bridgeId; standalone token.json
   path unchanged.

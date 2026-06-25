@@ -89,8 +89,18 @@ Aristotle verdicts · Findings log · Plan-deltas.
   desktop artifacts; a forced desktop-leg failure does **not** block the
   CLI/mobile release.
 
-## PR 3.11 — Uninstall + login-item/token cleanup
-- **Goal:** Per-OS uninstall removes the login item and cleans
-  `token.json`/bridge runtime dirs.
+## PR 3.11 — Uninstall + login-item cleanup (desktop-owned state only)
+- **Goal:** Per-OS uninstall removes the **login item** and **GUI-owned** state
+  (GUI secure storage, any explicitly desktop-namespaced helper state). It must
+  **NOT** delete `token.json` or the managed bridge runtime: those live under the
+  **shared** Sesori data root (`tokenPath()`, `ManagedRuntimePathService`) used by
+  the standalone CLI, and removing them would log out / break the terminal bridge
+  the master plan preserves (ADR A10). If shared helper state must be cleaned,
+  namespace/migrate it to a desktop-owned location first.
+- **Scope note:** wrap each cleanup step in its own `on Object catch` so one
+  failure (permissions/missing file) doesn't block the rest; capture the first
+  meaningful error and rethrow after all steps run.
 - **Risk:** Low-Med. **Size:** S-M.
-- **Acceptance:** uninstall leaves no login item or stale credentials.
+- **Acceptance:** uninstall removes the login item + GUI state; a co-installed
+  standalone CLI remains logged in and runnable; a forced mid-step failure still
+  runs remaining steps.

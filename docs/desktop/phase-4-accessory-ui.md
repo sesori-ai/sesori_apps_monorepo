@@ -1,11 +1,11 @@
 # Phase 4 — Accessory UI (v1.x)
 
-> Goal: extract the accessory screens out of `mobile/app` into a shared
-> `client/module_app_ui` Flutter library, then wire that full UI
-> (projects/sessions/chat) into the desktop window. Per-feature moves keep the
-> diffs reviewable and keep `mobile/app` green.
+> Goal: extract the accessory screens out of `client/app` (the renamed mobile
+> app) into a shared `client/module_app_ui` Flutter library, then wire that full
+> UI (projects/sessions/chat) into the desktop window. Per-feature moves keep the
+> diffs reviewable and keep `client/app` green.
 
-**Standing acceptance (all Phase 4 PRs):** `mobile/app` builds + tests pass + a
+**Standing acceptance (all Phase 4 PRs):** `client/app` (the mobile product) builds + tests pass + a
 mobile release dry-run passes after each PR (release-safety invariant #2). No UI
 behaviour change for mobile.
 
