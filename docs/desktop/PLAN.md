@@ -8,10 +8,21 @@
 
 ## Current pointer
 
-- **Active phase:** Phase 0 (not started)
+- **Last completed phase:** none — plan only; no implementation phase completed yet
 - **In-flight PR:** none
-- **Branch:** `design-discussion-session` (this plan PR) → feature branches per PR thereafter
-- **Next action:** land the plan PR, then start PR 0.1 (workspace rename)
+- **Branch:** one feature branch per PR, cut from `main`
+
+> **The pointer is backward-looking.** "Last completed phase" advances only once
+> a phase's PRs have all landed, so right after any merge it reflects what is
+> genuinely done. Use **In-flight PR** for work in progress; the next action is
+> intentionally not tracked here — read it off the first ☐ in the PR status
+> index (§9).
+>
+> **Keep the plan true.** If a PR reveals that an assumption here was wrong — a
+> locked decision (§3), release-safety invariant (§4), component boundary (§6),
+> or ADR (§7) no longer holds — fix it in the **same PR**: record it in the phase
+> doc's **Plan-deltas** and amend the affected section above. A stale plan is
+> worse than none.
 
 ---
 
