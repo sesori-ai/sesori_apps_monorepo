@@ -181,23 +181,71 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 active session} other{{count} active sessions}}'**
   String projectListActiveSessions(int count);
 
-  /// No description provided for @projectsOnboardingTitle.
+  /// Leading label for the phone-connection status line above the onboarding hero, e.g. 'Step1: Phone connected'.
   ///
   /// In en, this message translates to:
-  /// **'Set up Sesori Bridge'**
-  String get projectsOnboardingTitle;
+  /// **'Step1:'**
+  String get projectsOnboardingPhoneStatusStep;
 
-  /// No description provided for @projectsOnboardingStep1Action.
+  /// Success portion of the phone-connection status line, rendered in the success color with a check icon.
   ///
   /// In en, this message translates to:
-  /// **'Install & Run'**
-  String get projectsOnboardingStep1Action;
+  /// **'Phone connected'**
+  String get projectsOnboardingPhoneStatusConnected;
 
-  /// No description provided for @projectsOnboardingBridgeName.
+  /// Leading label for the PC status line below the onboarding hero, e.g. 'Step 2: Run Sesori on your PC'.
   ///
   /// In en, this message translates to:
-  /// **'Sesori Bridge'**
-  String get projectsOnboardingBridgeName;
+  /// **'Step 2:'**
+  String get projectsOnboardingPcStatusStep;
+
+  /// Secondary portion of the PC status line, rendered in the secondary text color.
+  ///
+  /// In en, this message translates to:
+  /// **'Run Sesori on your PC'**
+  String get projectsOnboardingPcStatusRun;
+
+  /// Label for the secondary info button below the PC status line that explains why running Sesori on the PC is required.
+  ///
+  /// In en, this message translates to:
+  /// **'Why is this needed?'**
+  String get projectsOnboardingPcStatusWhy;
+
+  /// Group label above the macOS/Linux/WSL install command box in the onboarding.
+  ///
+  /// In en, this message translates to:
+  /// **'macOS, Linux, WSL'**
+  String get projectsOnboardingInstallUnixLabel;
+
+  /// Install-method tab label for the macOS/Linux/WSL box. Literal command name 'curl'; do not translate.
+  ///
+  /// In en, this message translates to:
+  /// **'curl'**
+  String get projectsOnboardingInstallUnixMethod;
+
+  /// Group label above the Windows PowerShell install command box in the onboarding.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows PowerShell'**
+  String get projectsOnboardingInstallWindowsLabel;
+
+  /// Install-method tab label for the Windows PowerShell box (native installer).
+  ///
+  /// In en, this message translates to:
+  /// **'native'**
+  String get projectsOnboardingInstallWindowsMethod;
+
+  /// Install-method tab label shared by both boxes (npm runner). Literal tool name 'npm'; do not translate.
+  ///
+  /// In en, this message translates to:
+  /// **'npm'**
+  String get projectsOnboardingInstallMethodNpm;
+
+  /// Install-method tab label shared by both boxes (bun runner). Literal tool name 'bun'; do not translate.
+  ///
+  /// In en, this message translates to:
+  /// **'bun'**
+  String get projectsOnboardingInstallMethodBun;
 
   /// No description provided for @projectsOnboardingTabUnix.
   ///
@@ -223,83 +271,11 @@ abstract class AppLocalizations {
   /// **'Copy command'**
   String get projectsOnboardingCopyCommand;
 
-  /// No description provided for @projectsOnboardingStepCompleted.
+  /// Accessibility label for the button that opens the native share sheet with the selected install command.
   ///
   /// In en, this message translates to:
-  /// **'Completed'**
-  String get projectsOnboardingStepCompleted;
-
-  /// No description provided for @projectsOnboardingStep2Action.
-  ///
-  /// In en, this message translates to:
-  /// **'Sign in'**
-  String get projectsOnboardingStep2Action;
-
-  /// No description provided for @projectsOnboardingStep2Accent.
-  ///
-  /// In en, this message translates to:
-  /// **'on your computer'**
-  String get projectsOnboardingStep2Accent;
-
-  /// No description provided for @projectsOnboardingAccountPrefix.
-  ///
-  /// In en, this message translates to:
-  /// **'Use '**
-  String get projectsOnboardingAccountPrefix;
-
-  /// No description provided for @projectsOnboardingAccountSuffix.
-  ///
-  /// In en, this message translates to:
-  /// **' with {provider}'**
-  String projectsOnboardingAccountSuffix(String provider);
-
-  /// No description provided for @projectsOnboardingAccountFallback.
-  ///
-  /// In en, this message translates to:
-  /// **'Sign in with the same account you used here.'**
-  String get projectsOnboardingAccountFallback;
-
-  /// No description provided for @projectsOnboardingStep3Title.
-  ///
-  /// In en, this message translates to:
-  /// **'Create or open a folder'**
-  String get projectsOnboardingStep3Title;
-
-  /// No description provided for @projectsOnboardingStep3Detail.
-  ///
-  /// In en, this message translates to:
-  /// **'Once connected, your projects will appear here.'**
-  String get projectsOnboardingStep3Detail;
-
-  /// No description provided for @projectsConnectedTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Your bridge is connected'**
-  String get projectsConnectedTitle;
-
-  /// No description provided for @projectsConnectedStep2Action.
-  ///
-  /// In en, this message translates to:
-  /// **'Signed in'**
-  String get projectsConnectedStep2Action;
-
-  /// No description provided for @projectsConnectedStep3Detail.
-  ///
-  /// In en, this message translates to:
-  /// **'Choose a folder to start your first session.'**
-  String get projectsConnectedStep3Detail;
-
-  /// No description provided for @projectsConnectedAccountFallback.
-  ///
-  /// In en, this message translates to:
-  /// **'Signed in with the account you used here.'**
-  String get projectsConnectedAccountFallback;
-
-  /// No description provided for @projectsOnboardingOpenFolder.
-  ///
-  /// In en, this message translates to:
-  /// **'Open a folder'**
-  String get projectsOnboardingOpenFolder;
+  /// **'Share command'**
+  String get projectsOnboardingShareCommand;
 
   /// No description provided for @projectsBridgeOfflineTitle.
   ///

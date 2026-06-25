@@ -18,6 +18,14 @@ class BridgeInstall {
   /// Windows (PowerShell) one-line installer.
   static const String windowsCommand = "irm $_host/install.ps1 | iex";
 
+  /// npm runner that fetches and runs the published bridge package. Shared by
+  /// every platform — the `@sesori/bridge` package name is registry-hosted, not
+  /// served from [_host].
+  static const String npmCommand = "npx @sesori/bridge";
+
+  /// bun runner equivalent of [npmCommand].
+  static const String bunCommand = "bunx @sesori/bridge";
+
   /// Command that starts the bridge once it is installed.
   static const String runCommand = "sesori-bridge";
 }
