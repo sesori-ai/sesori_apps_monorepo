@@ -21,17 +21,27 @@ Aristotle verdicts · Findings log · Plan-deltas.
 - **Acceptance:** `flutter build macos/windows/linux` succeeds; app launches to a
   placeholder; mobile build unaffected.
 
-## PR 2.2 — Desktop platform adapters
-- **Goal:** Desktop `SecureStorage` + `UrlLauncher` adapters + DI registration.
+## PR 2.2 — Desktop platform adapters (ALL module_core prerequisites)
+- **Goal:** Register desktop implementations for **every** `module_core` platform
+  prerequisite the early login/relay slices need — not just `SecureStorage` +
+  `UrlLauncher`, but also `LifecycleSource` (login) and `RelayCryptoService` +
+  `FailureReporter` (relay). `LoginCubit`/`ConnectionService` constructors require
+  these, so deferring `FailureReporter` to PR 2.14 would let the package build but
+  fail at `get_it` resolution. Use no-op/desktop impls where a full one isn't
+  ready yet (PR 2.14 later replaces the `FailureReporter` no-op with the real one).
 - **Risk:** Low-Med. **Size:** S-M.
-- **Acceptance:** secure storage read/write works on each desktop OS.
+- **Acceptance:** secure storage read/write works per OS; `get_it` resolves
+  `LoginCubit` + `ConnectionService` with no missing-registration errors.
 
-## PR 2.3 — Login reuse (`AuthManager` browser-poll OAuth)
+## PR 2.3 — Login reuse (browser-poll OAuth)
 - **Goal:** Wire login via `configureAuthDependencies` + exported interfaces
-  (`OAuthFlowProvider`/`AuthSession`); browser-open + server poll (no deep link).
-  **No direct `AuthManager` import.**
+  (`OAuthFlowProvider`/`AuthSession`); server-poll OAuth (no deep link). The
+  browser is opened via the **desktop `UrlLauncher` adapter** (PR 2.2) — the
+  bridge's `openOAuthBrowser` is bridge-workspace-only and must NOT be imported
+  (ADR A11). **No direct `AuthManager` import.**
 - **Risk:** Med. **Size:** M.
-- **Acceptance:** can log in via browser; auth state observed via interfaces.
+- **Acceptance:** can log in via the system browser; auth state observed via
+  interfaces; no import of bridge internals.
 
 ## PR 2.4 — Relay connection + bridge online/offline
 - **Goal:** Connect to the relay as a client; show bridge online/offline.
@@ -40,12 +50,16 @@ Aristotle verdicts · Findings log · Plan-deltas.
   presence.
 
 ## PR 2.5 — `ControlChannelServer` + `ControlMessageDispatcher` + token responder
-- **Goal:** GUI-hosted loopback WS host + per-spawn secret; dispatcher routes
-  inbound (token req → `AuthTokenProvider`, status/progress → tracker, prompts →
-  cubit). Tested against a fake helper client.
+- **Goal:** GUI-hosted loopback WS host + off-argv per-spawn secret;
+  `ControlMessageDispatcher` (Layer 3) routes inbound: token req →
+  `AuthTokenProvider`, status/progress → `BridgeStatusTracker`, **prompts → a
+  Layer-3 prompt store/tracker** that the cubit consumes (the dispatcher must NOT
+  depend on `BridgeControlCubit`/UI — both are Layer 4; same-level deps are
+  forbidden, ADR A14). Tested against a fake helper client.
 - **Risk:** Med. **Size:** M.
 - **Acceptance:** a fake helper connects with the secret, requests + receives a
-  token; bad secret rejected.
+  token; bad secret rejected; prompts surface as state/stream with no
+  dispatcher→cubit dependency.
 
 ## PR 2.6 — `BridgeProcessService`: spawn/kill/path + control flags
 - **Goal:** Spawn the bridge binary (path resolution dev + packaged) passing
@@ -102,11 +116,19 @@ Aristotle verdicts · Findings log · Plan-deltas.
 - **Risk:** Low-Med. **Size:** S-M.
 - **Acceptance:** second launch focuses first; last-on respawns bridge on boot.
 
-## PR 2.13 — Logout coordination (GUI side)
-- **Goal:** On logout: send `unregister-and-exit` → wait for helper exit → kill if
-  needed → invalidate tokens. Pairs with PR 1.11.
-- **Risk:** Med. **Size:** S-M.
-- **Acceptance:** logout unregisters the bridge before token invalidation.
+## PR 2.13 — Logout coordination (GUI side) + offline unregister fallback
+- **Goal:** On logout with a **live** helper: send `unregister-and-exit` → wait
+  for exit → kill if needed → invalidate tokens (pairs with PR 1.11). But logout
+  can also happen with the **bridge off, crashed, or the control channel
+  unreachable** — and `bridgeId` is helper-owned, so the GUI would otherwise have
+  nothing to unregister and the registration would leak. So the GUI keeps a
+  **readable copy of `bridgeId`** (exposed/persisted on the GUI side) and a
+  **GUI-side unregister fallback** (call `DELETE /auth/bridges/{id}` with the
+  still-valid token) **before** invalidating tokens (ADR A13).
+- **Risk:** Med. **Size:** M.
+- **Acceptance:** logout unregisters the bridge before token invalidation in
+  **both** the live-helper and helper-absent/crashed paths; no leaked
+  registration.
 
 ## PR 2.14 — Desktop `FailureReporter` impl
 - **Goal:** Crash/error reporting for the tray app (decide Crashlytics vs other

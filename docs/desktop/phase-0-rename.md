@@ -17,7 +17,8 @@ DoD · Aristotle verdicts · Findings log · Plan-deltas.
 - **Scope (files/areas):**
   - Directory move `mobile/` → `client/` (use `git mv` so renames are visible).
   - Intra-workspace `pubspec.yaml` names/paths; root pub workspace name.
-  - Root `Makefile` (`cd mobile` → `cd client`).
+  - Root `Makefile` — both `cd mobile` paths **and** the bare workspace token
+    `DART_WORKSPACES := shared bridge mobile` (line 7) → `... bridge client`.
   - **All** `.github/workflows/*` referencing `mobile/` (`mobile-ci.yml`,
     `_reusable-next-build-number.yml`, `_reusable-ios-testflight.yml`,
     `_reusable-android-internal.yml`, `submit-release.yml`,
@@ -38,8 +39,11 @@ DoD · Aristotle verdicts · Findings log · Plan-deltas.
   - `flutter build` works for iOS + Android.
   - **Mobile release-pipeline dry-run succeeds** (release-safety invariant #2):
     the TestFlight/Play workflows resolve all paths under `client/`.
-  - Grep gate: `rg "mobile/" ` and `rg "'mobile'"` return only intentional
-    matches (none in build/CI/tooling paths).
+  - Grep gate (three searches, since path/quoted searches miss bare tokens like
+    `Makefile:7`'s `DART_WORKSPACES := shared bridge mobile`):
+    `rg "mobile/"`, `rg "'mobile'"`, and a **bare-token** `rg "\bmobile\b"` —
+    each returns only intentional matches (product prose on an allowlist; none in
+    build/CI/tooling).
 - **DoD:** pub get / analyze / test exit 0 · codegen unaffected ·
   release-safety invariant #2 verified · `aristotle-impl-review` clear.
 - **Aristotle verdicts:** plan ☐ · impl ☐.

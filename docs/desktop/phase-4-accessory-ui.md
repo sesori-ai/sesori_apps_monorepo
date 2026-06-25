@@ -15,11 +15,21 @@ Aristotle verdicts · Findings log · Plan-deltas.
 ---
 
 ## PR 4.1 — Create `client/module_app_ui` + move shared leaf UI
-- **Goal:** New Flutter library package; move shared widgets
-  (`core/widgets/`), `core/extensions/`, `l10n/`, `status_colors`/`constants`.
-  Depends only on `module_core` + `module_prego` + Flutter.
-- **Risk:** Med. **Size:** M.
-- **Acceptance:** mobile consumes the moved code via the new package; mobile green.
+- **Goal:** New Flutter library package; move genuinely-shared leaf UI
+  (`core/extensions/`, `l10n/`, `status_colors`/`constants`, and the truly
+  leaf widgets).
+- **Important — `core/widgets/` is NOT all leaf UI.** Verified: e.g.
+  `connection_overlay.dart` imports app DI (`../di/injection.dart`) and routing
+  (`../routing/app_router.dart`) + `go_router`; several widgets import
+  `flutter_markdown_plus`/`flutter_svg`/`vector_graphics`/`sesori_shared`. Moving
+  the directory wholesale would create a **package cycle back into `client/app`**
+  or fail to resolve imports. So this PR (or a precursor split PR) must first
+  **refactor app-coupled widgets** (push DI/routing dependencies out via
+  params/callbacks) and **declare the legitimate direct package deps**
+  (`go_router`, `flutter_svg`, etc.) in `module_app_ui`'s pubspec.
+- **Risk:** Med-High. **Size:** M (split the refactor out if it grows).
+- **Acceptance:** `client/app` consumes the moved code via the package, builds +
+  tests pass, **no dependency cycle** `module_app_ui` → `client/app`.
 
 ## PR 4.2 — Move voice capture UI
 - **Goal:** Move `capabilities/voice/` UI (plugin deps: `record`, `wakelock_plus`).

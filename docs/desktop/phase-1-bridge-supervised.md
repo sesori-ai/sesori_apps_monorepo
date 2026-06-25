@@ -84,12 +84,17 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   yield a typed failure (logged once at the surfacing point, not double-logged).
 - **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
 
-## PR 1.5 — Token-stream **push** → relay client
-- **Goal:** Bridge `tokenStream` so GUI-pushed `token_update`s emit on the
-  `ValueStream<String>` the `RelayClient` consumes; relay never uses a stale
-  token after a GUI refresh.
-- **Risk:** Med (silent-auth-failure if wrong). **Size:** S-M.
-- **Acceptance:** a pushed update propagates to the relay client in tests.
+## PR 1.5 — Token-stream **push** → relay re-auth
+- **Goal:** Make a GUI-pushed `token_update` actually re-authenticate the live
+  relay connection. Today `RelayClient` reads `accessToken` only once in
+  `connect()` and `tokenStream` is otherwise unused, so merely emitting on a
+  stream leaves an **open** WebSocket on the old JWT until reconnect. This PR
+  wires the `RelayClient` subscription → re-auth/reconnect path so a refresh
+  while connected takes effect (ADR A12).
+- **Risk:** Med (silent-auth-failure if wrong). **Size:** M.
+- **Acceptance:** with a **live** relay connection (not just stream
+  propagation), a pushed token update re-authenticates without losing the
+  session; covered by a connection-level test.
 - **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
 
 ## PR 1.6 — Supervised registration + `bridgeId` out of `token.json`

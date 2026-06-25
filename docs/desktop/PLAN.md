@@ -56,7 +56,9 @@ Sesori.app (.dmg) / Sesori installer (.exe) / Sesori.AppImage
 
 - **Login:** GUI owns login+refresh via `module_auth` (sole token authority).
   Poll-based OAuth (browser open + server-side session-token poll) — **no
-  localhost redirect / deep link**. `openOAuthBrowser` already covers all 3 OSes.
+  localhost redirect / deep link**. The browser is opened through a **desktop
+  `UrlLauncher` adapter** (the bridge's `openOAuthBrowser` lives in the bridge
+  workspace and must NOT be imported by `client/desktop`).
 - **Token:** helper never runs OAuth/refresh. It pulls access tokens from the GUI
   over the control channel (and receives pushed updates), implementing the
   bridge's existing `AccessTokenProvider`/`TokenRefresher` seams.
@@ -128,8 +130,9 @@ mobile release.**
   `SemanticVersion`, `BinaryDownloadClient`, `ChecksumValidator`,
   `ArchiveExtractor` for analogous desktop primitives (separate workspace → mirror
   the pattern, don't import bridge foundation).
-- Every PR runs through `aristotle-impl-review` before opening; the first
-  implementation plan per phase runs through `aristotle-plan-review`.
+- **Every implementation PR** runs through `aristotle-plan-review` before coding
+  **and** `aristotle-impl-review` before opening — the architecture gate is
+  per-PR, never per-phase (a later PR in a phase must not bypass it).
 
 ## 6. Component design (Aristotle-aligned)
 
@@ -141,7 +144,7 @@ mobile release.**
 | Control-protocol Freezed DTOs | `shared/sesori_shared` | pure wire types (incl. provision-progress mirror) |
 | `ControlChannelTokenService` | Layer 3 `auth/` | implements `AccessTokenProvider`/`TokenRefresher`; pull + push token stream |
 | `BridgeControlMessageDispatcher` | Layer 4 | routes inbound control msgs (token push → token service, restart → handoff, logout → unregister-and-exit) |
-| `BridgeIdentityFileApi` (L1) + `BridgeIdentityRepository` (L2) | `api/` + `repositories/` | persist `bridgeId` separately from `token.json` |
+| `BridgeIdentityStore` (file API + reader) | **inside the `auth/` subsystem** | persist `bridgeId` separately from `token.json`; kept within `auth/` (which is self-contained, outside the core layer hierarchy) so auth code doesn't depend back on top-level `repositories/`. Injected from the composition root. |
 | supervised auth bootstrap | composition root | short-circuit `BridgeRuntimeAuthService.ensureAuthenticated` (no stdin); keep an equivalent `logAuthenticatedUser` |
 | restart change | `orchestrator`/runner seam | `handleRestartHandoff()` → `exit(86)` instead of `spawnSuccessor()` |
 
@@ -156,12 +159,13 @@ internal `new`).
 | Component | Layer | Role |
 |---|---|---|
 | `ControlChannelServer` | Layer 0 | GUI-hosted loopback WS host + per-spawn secret; inbound-as-stream + `send` (precedent: `DebugServer`) |
-| `ControlMessageDispatcher` | Layer 4 | routes inbound: token req → `AuthTokenProvider`; status/progress → `BridgeStatusTracker`; prompts → cubit/UI |
+| `ControlMessageDispatcher` | Layer 3 | routes inbound: token req → `AuthTokenProvider`; status/progress → `BridgeStatusTracker`; **prompts → a lower-layer prompt store/tracker** (NOT the cubit directly — Layer 4↔4 same-level deps are forbidden) |
+| prompt state (e.g. on `BridgeStatusTracker` or a `BridgePromptTracker`) | Layer 3 | holds pending prompts as state/stream; the cubit consumes it |
 | process API (mirrors `HostProcessCommandExecutor`) | Layer 1 | spawn/kill/monitor a long-lived child |
 | `BridgeProcessRepository` | Layer 2 | wraps the process API |
 | `BridgeProcessService` | Layer 3 | bridge child lifecycle: spawn (control flags), exit-code state machine (86/0/other + backoff), single supervised-bridge guard |
 | `BridgeStatusTracker` | Layer 3 | status (relay/plugin health, provisioning, degraded, active sessions) from control events; stream/snapshot |
-| `BridgeControlCubit` | Layer 4 | toggle on/off (→ service), expose status (← tracker) for tray + window |
+| `BridgeControlCubit` | Layer 4 | toggle on/off (→ service), expose status + prompts (← trackers) for tray + window |
 | `DesktopInstanceService` | Layer 3 | GUI single-instance lock (separate from process supervision) |
 | `SystemTray` / `WindowHost` / `LaunchAtLogin` / `AppUpdater` | Layer 0 capability interfaces + desktop impls | wrap `tray_manager` / `window_manager` / `launch_at_startup` / `auto_updater` |
 | desktop `SecureStorage` / `UrlLauncher` / `FailureReporter` impls | Layer 0 adapters | platform adapters for the desktop shell |
@@ -178,20 +182,27 @@ and consumes only the exported interfaces (`AuthTokenProvider`/`OAuthFlowProvide
 | A3 | Single token authority (GUI), helper token-provided | eliminates cross-process refresh-rotation race |
 | A4 | Control-protocol DTOs in `sesori_shared` | only shared point between bridge + client workspaces; pure data |
 | A5 | `ControlChannelServer` name kept (vs Aristotle's `Listener`) | `Listener` implies one-way subscription; this is a duplex socket host; `DebugServer` precedent |
-| A6 | `bridgeId` persistence = file API + thin repo (no Dao) | one string; no DB/migration needed |
+| A6 | `bridgeId` persistence = a small file-backed store **inside `auth/`** (no Dao) | one string; no DB/migration; keeps it within the self-contained auth subsystem so auth code doesn't depend on top-level `repositories/` |
 | A7 | First-run provisioning UI is **v1** | first launch downloads OpenCode; user must see progress |
 | A8 | Control-channel secret delivered **off-argv** (inherited FD/pipe or stdin handshake), not `--control-secret` | argv is readable by other local processes/users; this channel issues bearer tokens, so an argv-leaked secret = token theft |
 | A9 | Helper exits on **control-channel loss** after a short grace period | if the GUI crashes/force-quits, the OS does not reliably kill the child; the helper must not linger invisibly with a live token |
 | A10 | Desktop uninstall touches **only desktop-owned state** | `token.json` + managed runtime live under the shared Sesori data root used by the standalone CLI; deleting them would break/log-out the terminal bridge |
+| A11 | GUI login opens the browser via a **desktop `UrlLauncher` adapter** | the bridge's `openOAuthBrowser` is bridge-workspace-only; `client/desktop` must not import bridge internals |
+| A12 | Token push must drive **RelayClient re-auth/reconnect**, not just emit on a stream | `RelayClient` reads the token once in `connect()`; an open socket stays on the old JWT until reconnect |
+| A13 | GUI keeps a **readable copy of `bridgeId`** + a GUI-side unregister fallback | logout can happen with the helper off/crashed/unreachable; otherwise the registration leaks |
+| A14 | Control prompts flow dispatcher → **Layer-3 prompt state** → cubit | dispatcher and cubit are both Layer 4; same-level deps are forbidden |
+| A15 | All module_core platform prerequisites registered in the **first DI slice** | `LoginCubit`/`ConnectionService` need `LifecycleSource`/`RelayCryptoService`/`FailureReporter`; deferring them breaks `get_it` resolution in early PRs |
 
 ## 8. Open risks & lead-time register
 
 | Item | Status | Owner | Notes |
 |---|---|---|---|
 | Windows code-signing cert | **OPEN — lead time** | TBD | blocks PR 3.4 (signed Windows); EV clears SmartScreen faster |
-| Control-channel secret bootstrap (off-argv) | OPEN | TBD | ADR A8; designed in PR 1.1 / PR 2.5 |
+| Control-channel secret bootstrap (off-argv) | OPEN | TBD | ADR A8; designed in PR 1.1 / PR 2.6 |
 | Orphaned helper on GUI crash | OPEN | TBD | ADR A9; parent-loss policy in PR 1.1 |
 | Uninstall vs shared CLI state | OPEN | TBD | ADR A10; scope cleanup in PR 3.11 |
+| RelayClient live re-auth on token push | OPEN | TBD | ADR A12; PR 1.5 must add the subscription/reconnect path + live-connection test |
+| `core/widgets` not pure leaf UI | OPEN | TBD | `connection_overlay.dart` imports app DI/routing/go_router; PR 4.1 must refactor + declare deps first |
 | CI secrets (Dev ID, notarization key, EdDSA appcast, GPG) | OPEN | TBD | PR 3.0b |
 | Flutter multi-window viability (v2 popover) | OPEN | TBD | de-risk with a spike before Phase 5 popover |
 | macOS login-item arg detection (`--hidden`) | OPEN | TBD | `SMAppService` may need a shim |
