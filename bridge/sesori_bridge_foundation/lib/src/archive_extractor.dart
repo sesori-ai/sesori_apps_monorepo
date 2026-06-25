@@ -12,6 +12,16 @@ import "command_executor.dart";
 /// `.tar.gz` on Linux).
 enum ArchiveFormat { tarGz, zip }
 
+extension ArchiveFormatX on ArchiveFormat {
+  /// The download filename suffix for this format, so the on-disk archive carries
+  /// the extension the platform extractor requires. PowerShell `Expand-Archive`
+  /// (the Windows zip path) rejects any source path that does not end in `.zip`.
+  String get fileExtension => switch (this) {
+    ArchiveFormat.zip => ".zip",
+    ArchiveFormat.tarGz => ".tar.gz",
+  };
+}
+
 /// The outcome of an [ArchiveExtractor.extract] attempt.
 ///
 /// On failure, [failureReason] carries the underlying cause (the failing tool's

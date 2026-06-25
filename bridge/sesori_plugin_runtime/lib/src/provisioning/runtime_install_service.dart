@@ -93,7 +93,7 @@ class RuntimeInstallService {
     // shells out to PowerShell `Expand-Archive`, which rejects any source path
     // that does not end in `.zip` (a bare extensionless file fails the install).
     // The format is the same source of truth the extractor switches on.
-    final String downloadPath = p.join(managedDir, "$_downloadFileName${_archiveExtension(asset.format)}");
+    final String downloadPath = p.join(managedDir, "$_downloadFileName${asset.format.fileExtension}");
     final String stagingPath = p.join(managedDir, _stagingDirName);
 
     try {
@@ -192,16 +192,6 @@ class RuntimeInstallService {
         "failed to mark $assetName executable (chmod exit ${result.exitCode}): ${result.stderr.trim()}",
       );
     }
-  }
-
-  /// The download filename suffix for [format], so the on-disk archive carries
-  /// the extension the platform extractor requires (PowerShell `Expand-Archive`
-  /// only accepts `.zip`).
-  String _archiveExtension(ArchiveFormat format) {
-    return switch (format) {
-      ArchiveFormat.zip => ".zip",
-      ArchiveFormat.tarGz => ".tar.gz",
-    };
   }
 
   void _throwIfAborted(StartAbortSignal startAborted) {
