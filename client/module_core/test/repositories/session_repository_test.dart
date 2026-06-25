@@ -166,4 +166,61 @@ void main() {
     expect((third as SuccessResponse<ProviderListResponse>).data.items, isNotEmpty);
     verifyNever(() => api.listProviders(projectId: "p1"));
   });
+
+  test("listProviders does not cache a partially populated multi-provider response", () async {
+    final api = MockSessionApi();
+    final repository = SessionRepository(api: api);
+
+    ProviderInfo provider({required String id, required bool withModels}) => ProviderInfo(
+          id: id,
+          name: id,
+          defaultModelID: withModels ? "$id-default" : null,
+          models: withModels
+              ? {
+                  "$id-default": ProviderModel(
+                    id: "$id-default",
+                    providerID: id,
+                    name: "$id default",
+                    variants: <String>[],
+                    family: null,
+                    releaseDate: null,
+                  ),
+                }
+              : const <String, ProviderModel>{},
+        );
+
+    // A fast provider is already populated while a slow one (e.g. Cursor/ACP) is
+    // still warming up with an empty models map; once warmed, both are populated.
+    const connectedOnly = true;
+    final partialProviders = ProviderListResponse(
+      connectedOnly: connectedOnly,
+      items: [provider(id: "openai", withModels: true), provider(id: "cursor", withModels: false)],
+    );
+    final fullProviders = ProviderListResponse(
+      connectedOnly: connectedOnly,
+      items: [provider(id: "openai", withModels: true), provider(id: "cursor", withModels: true)],
+    );
+
+    var calls = 0;
+    when(() => api.listProviders(projectId: "p1")).thenAnswer((_) async {
+      calls++;
+      return ApiResponse.success(calls == 1 ? partialProviders : fullProviders);
+    });
+
+    // The partial response must NOT be cached, even though one provider has
+    // models — otherwise the warming provider's picker would stay blank forever.
+    final first = await repository.listProviders(projectId: "p1");
+    final firstItems = (first as SuccessResponse<ProviderListResponse>).data.items;
+    expect(firstItems.firstWhere((p) => p.id == "cursor").models, isEmpty);
+
+    // Next fetch hits the API again and returns the now-fully-populated catalog.
+    final second = await repository.listProviders(projectId: "p1");
+    final secondItems = (second as SuccessResponse<ProviderListResponse>).data.items;
+    expect(secondItems.firstWhere((p) => p.id == "cursor").models, isNotEmpty);
+    verify(() => api.listProviders(projectId: "p1")).called(2);
+
+    // The fully-populated result IS cached: the third fetch is served from cache.
+    await repository.listProviders(projectId: "p1");
+    verifyNever(() => api.listProviders(projectId: "p1"));
+  });
 }

@@ -104,15 +104,20 @@ class SessionRepository {
 
     final response = await _api.listProviders(projectId: projectId);
 
-    // Only cache a response that actually carries models. Some backends build
-    // their model catalog asynchronously (e.g. the Cursor/ACP plugin warms it
-    // from an existing session after the agent connects), so an early fetch can
-    // succeed with an empty list. Caching that empty result — permanently, since
-    // this repository is a lazy singleton — would leave the model picker blank
-    // forever for that project. Skipping the cache lets the next open retry and
-    // pick up the catalog once it is ready.
+    // Only cache once every provider in the response actually carries models.
+    // Some backends build their model catalog asynchronously (e.g. the
+    // Cursor/ACP plugin warms it from an existing session after the agent
+    // connects), so an early fetch can succeed with an empty list — and in a
+    // multi-provider project one provider can still be warming up (empty
+    // `models`) while another is already populated. Caching such a partial
+    // result — permanently, since this repository is a lazy singleton — would
+    // leave the warming provider's picker blank forever. Requiring all providers
+    // to be populated (and the list to be non-empty, since `every` is vacuously
+    // true on an empty list) lets the next open retry until the full catalog is
+    // ready.
     if (response is SuccessResponse<ProviderListResponse> &&
-        response.data.items.any((provider) => provider.models.isNotEmpty)) {
+        response.data.items.isNotEmpty &&
+        response.data.items.every((provider) => provider.models.isNotEmpty)) {
       _providerCache[projectId] = response.data;
     }
 
