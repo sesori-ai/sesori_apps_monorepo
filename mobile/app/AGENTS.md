@@ -4,6 +4,10 @@ Thin UI shell for the Sesori mobile client. All business logic, state management
 
 See [`../AGENTS.md`](../AGENTS.md) for shared conventions (architecture layering, DI, testing, error handling).
 
+## Error Handling
+
+**Never silently swallow** (see the repo-root `AGENTS.md`): a `catch` that swallows and continues (no-op/best-effort) must log, and a catch-all especially. But don't double-log when the catch already surfaces the failure (rethrows, or returns/yields an explicit failure the caller renders). Pass the error as the logger argument (`Log.w("msg", error, st)`), don't string-interpolate it.
+
 ## Flutter-Specific Conventions
 
 - `flutter_bloc` for widget integration (`BlocProvider`, `context.watch`, `context.read`)

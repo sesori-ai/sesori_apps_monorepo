@@ -132,9 +132,11 @@ The selected plugin contributes its own options, parsed after `--plugin` resolve
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--port` | *(auto)* | Port for the OpenCode server. Required with `--no-auto-start`; otherwise a free port is chosen automatically. |
-| `--password` | *(auto-generated)* | Override the OpenCode server password |
-| `--no-auto-start` | `false` | Skip spawning OpenCode; attach to an existing server on `--port` |
+| `--opencode-port` | *(auto)* | Port for the OpenCode server. Required with `--opencode-no-auto-start`; otherwise a free port is chosen automatically. |
+| `--opencode-host` | `127.0.0.1` | Host the OpenCode server binds to (managed mode) or is reached at (`--opencode-no-auto-start`). Use `0.0.0.0` to expose it on all interfaces, e.g. inside a Docker container. **Warning:** a non-loopback host exposes the server to your network. |
+| `--opencode-no-auto-start` | `false` | Skip spawning OpenCode; attach to an existing server on `--opencode-port` |
+| `--opencode-password` | *(auto-generated)* | Override the OpenCode server password |
+| `--opencode-no-password` | `false` | Disable OpenCode server authentication. Rejected when combined with a non-loopback `--opencode-host` in managed mode (it would expose an unauthenticated server). |
 | `--opencode-bin` | `opencode` | Path to the OpenCode binary |
 
 ## Commands
@@ -168,7 +170,10 @@ Plugin-specific examples (OpenCode):
 
 ```bash
 # Connect to an already-running OpenCode server on port 4096
-./dist/bridge-macos-arm64 --no-auto-start --port 4096
+./dist/bridge-macos-arm64 --opencode-no-auto-start --opencode-port 4096
+
+# Expose the managed OpenCode server on all interfaces (e.g. inside Docker)
+./dist/bridge-macos-arm64 --opencode-host 0.0.0.0
 
 # Use a custom OpenCode binary path
 ./dist/bridge-macos-arm64 --opencode-bin /usr/local/bin/opencode

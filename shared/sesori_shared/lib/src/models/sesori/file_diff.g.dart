@@ -23,7 +23,7 @@ Map<String, dynamic> _$FileDiffContentToJson(FileDiffContent instance) =>
       'after': instance.after,
       'additions': instance.additions,
       'deletions': instance.deletions,
-      'status': _$FileDiffStatusEnumMap[instance.status],
+      'status': ?_$FileDiffStatusEnumMap[instance.status],
       'runtimeType': instance.$type,
     };
 
@@ -44,7 +44,7 @@ Map<String, dynamic> _$FileDiffSkippedToJson(FileDiffSkipped instance) =>
     <String, dynamic>{
       'file': instance.file,
       'reason': _$FileDiffSkipReasonEnumMap[instance.reason]!,
-      'status': _$FileDiffStatusEnumMap[instance.status],
+      'status': ?_$FileDiffStatusEnumMap[instance.status],
       'runtimeType': instance.$type,
     };
 

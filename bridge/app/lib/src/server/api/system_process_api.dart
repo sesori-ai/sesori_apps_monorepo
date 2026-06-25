@@ -25,14 +25,28 @@ class SystemProcessApi {
     return _isWindows ? _listWindowsProcesses() : _listPosixProcesses();
   }
 
+  /// Spawns [executable] detached (inheriting stdio), returning its pid without
+  /// waiting. Used to launch a successor bridge during a restart.
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
+    Map<String, String>? environment,
+  }) {
+    return _processRunner.startDetached(executable: executable, arguments: arguments, environment: environment);
+  }
+
   Future<ProcessIdentity?> inspectProcess({required int pid}) async {
-    final processes = await listProcesses();
-    for (final process in processes) {
-      if (process.pid == pid) {
-        return process;
-      }
+    // A non-positive PID never identifies a real process. Reject it up front so
+    // every platform returns null consistently — otherwise the Windows
+    // `tasklist /FI "PID eq <pid>"` path would exit non-zero and throw, while
+    // the POSIX list-and-filter path would simply find no match.
+    if (pid <= 0) {
+      return null;
     }
-    return null;
+    if (_isWindows) {
+      return _inspectWindowsProcess(pid: pid);
+    }
+    return _inspectPosixProcess(pid: pid);
   }
 
   Future<SignalResult> sendGracefulSignal({required int pid}) => _sendSignal(
@@ -78,9 +92,55 @@ class SystemProcessApi {
       );
     }
 
+    return _parsePosixProcesses(stdout: result.stdout.toString());
+  }
+
+  /// Inspects a single POSIX process by querying `ps -p <pid>` so the OS
+  /// returns only the matching row. This mirrors [_inspectWindowsProcess] and
+  /// avoids enumerating the whole process table just to look up one pid.
+  ///
+  /// `ps -p` exits non-zero both when the pid is simply gone AND when the
+  /// invocation genuinely fails (e.g. a usage/format error or `ps` itself
+  /// failing), and on BSD `ps` the exit code is `1` in every case — so the exit
+  /// code alone cannot distinguish them. We disambiguate via stderr: a vanished
+  /// pid produces empty stdout and empty stderr, so we treat non-zero + empty
+  /// stderr as "no such process" and return `null`. A non-zero exit with stderr
+  /// content is a real failure and is rethrown as a [ProcessException] — never
+  /// swallowed — because callers such as `BridgeRuntimeRunner` rely on POSIX
+  /// self-inspection errors staying fatal (a marker-less fallback would corrupt
+  /// the startup lock).
+  ///
+  /// The targeted form drops the `a`/`x` list selectors but keeps `-ww` so long
+  /// command lines are never truncated, and reuses the same `-o` column spec so
+  /// [_parsePosixProcesses]'s 24-char `lstart` regex matches.
+  Future<ProcessIdentity?> _inspectPosixProcess({required int pid}) async {
+    final (command, args) = ("ps", <String>["-p", "$pid", "-wwo", "pid=,user=,lstart=,command="]);
+    final result = await _processRunner.run(
+      command,
+      args,
+      environment: {"LC_ALL": "C"},
+    );
+    if (result.exitCode != 0) {
+      final stderr = result.stderr.toString().trim();
+      if (stderr.isEmpty) {
+        return null;
+      }
+      throw ProcessException(command, args, stderr, result.exitCode);
+    }
+
+    final processes = _parsePosixProcesses(stdout: result.stdout.toString());
+    for (final process in processes) {
+      if (process.pid == pid) {
+        return process;
+      }
+    }
+    return null;
+  }
+
+  List<ProcessIdentity> _parsePosixProcesses({required String stdout}) {
     final capturedAt = _clock.now();
     final processes = <ProcessIdentity>[];
-    for (final line in const LineSplitter().convert(result.stdout.toString())) {
+    for (final line in const LineSplitter().convert(stdout)) {
       final trimmed = line.trim();
       if (trimmed.isEmpty) {
         continue;
@@ -125,9 +185,42 @@ class SystemProcessApi {
       );
     }
 
+    return _parseWindowsProcesses(stdout: result.stdout.toString());
+  }
+
+  /// Inspects a single Windows process by querying `tasklist` with its
+  /// server-side `/FI "PID eq <pid>"` filter so the OS returns only the
+  /// matching row. This avoids enumerating the entire process table (the
+  /// `/V` full scan), which is slow enough right after login to exceed the
+  /// [ProcessRunner] timeout.
+  Future<ProcessIdentity?> _inspectWindowsProcess({required int pid}) async {
+    final (command, args) = (
+      "tasklist",
+      <String>["/V", "/FO", "CSV", "/NH", "/FI", "PID eq $pid"],
+    );
+    final result = await _processRunner.run(command, args);
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        command,
+        args,
+        result.stderr.toString(),
+        result.exitCode,
+      );
+    }
+
+    final processes = _parseWindowsProcesses(stdout: result.stdout.toString());
+    for (final process in processes) {
+      if (process.pid == pid) {
+        return process;
+      }
+    }
+    return null;
+  }
+
+  List<ProcessIdentity> _parseWindowsProcesses({required String stdout}) {
     final capturedAt = _clock.now();
     final processes = <ProcessIdentity>[];
-    for (final line in const LineSplitter().convert(result.stdout.toString())) {
+    for (final line in const LineSplitter().convert(stdout)) {
       final trimmed = line.trim();
       if (trimmed.isEmpty) {
         continue;

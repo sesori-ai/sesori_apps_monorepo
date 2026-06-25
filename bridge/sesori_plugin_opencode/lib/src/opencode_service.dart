@@ -112,7 +112,10 @@ class OpenCodeService {
     return _applyLimit(afterStart, limit);
   }
 
-  Future<List<QuestionRequest>> getPendingQuestionsForSession({
+  /// Returns the pending questions to surface on [sessionId]'s screen — its own
+  /// plus any descendant (sub-agent) session whose top-most root resolves to
+  /// [sessionId] — each paired with its resolved display (root) session.
+  Future<List<({QuestionRequest request, String displaySessionId})>> getPendingQuestionsForSession({
     required String sessionId,
   }) async {
     final directory = await _resolveSessionDirectory(sessionId: sessionId);
@@ -130,13 +133,47 @@ class OpenCodeService {
       );
     }
 
-    // Subagent (child) sessions are non-interactive and never ask questions, so
-    // only the session's own pending questions are relevant. `getPendingQuestions`
-    // is directory-scoped and may return questions for sibling sessions in the
-    // same worktree, so filter to this session.
+    // `getPendingQuestions` is directory-scoped and may return questions for
+    // sibling/child sessions in the same worktree. Keep the ones that belong on
+    // this session's screen: its own, plus any descendant whose top-most root is
+    // this session (so a sub-agent's prompt surfaces on the root).
     final all = await repository.getPendingQuestions(directory: directory);
-    return all.where((question) => question.sessionID == sessionId).toList();
+    return all
+        .map((q) => (request: q, displaySessionId: tracker.resolveDisplaySessionId(q.sessionID)))
+        .where((e) => e.request.sessionID == sessionId || e.displaySessionId == sessionId)
+        .toList();
   }
+
+  /// Returns the pending permissions to surface on [sessionId]'s screen — its
+  /// own plus any descendant (sub-agent) session whose top-most root resolves to
+  /// [sessionId] — each paired with its resolved display (root) session.
+  Future<List<({PermissionRequest request, String displaySessionId})>> getPendingPermissionsForSession({
+    required String sessionId,
+  }) async {
+    final directory = await _resolveSessionDirectory(sessionId: sessionId);
+    if (directory == null) {
+      throw PluginApiException(
+        "GET /session/$sessionId/permission",
+        502,
+        message: "could not resolve session directory",
+      );
+    }
+
+    // `getPendingPermissions` is directory-scoped (returns every pending
+    // permission in the worktree). Keep the ones that belong on this session's
+    // screen: its own, plus any descendant whose top-most root is this session
+    // (so a sub-agent's permission surfaces on the root).
+    final all = await repository.getPendingPermissions(directory: directory);
+    return all
+        .map((p) => (request: p, displaySessionId: tracker.resolveDisplaySessionId(p.sessionID)))
+        .where((e) => e.request.sessionID == sessionId || e.displaySessionId == sessionId)
+        .toList();
+  }
+
+  /// Resolves the top-most root "display" session for [sessionId] (see
+  /// [ActiveSessionTracker.resolveDisplaySessionId]). Used by the plugin to
+  /// stamp `displaySessionId` on outbound permission/question events.
+  String resolveDisplaySessionId(String sessionId) => tracker.resolveDisplaySessionId(sessionId);
 
   /// Resolves the directory for [sessionId], fetching and registering it from
   /// the repository if the tracker has not learned it yet.
@@ -476,20 +513,43 @@ class OpenCodeService {
   /// abort cold start — [ActiveSessionTracker.coldStart] succeeds
   /// independently.
   Future<void> _hydratePendingInput() async {
+    // Hydrate the OpenCode server's cwd instance AND every known project
+    // worktree: an unscoped query only covers the cwd, and the cwd may not
+    // itself be a listed worktree. Overlapping results are de-duplicated by the
+    // tracker when grouping by session.
+    final directories = <String?>{null, ...tracker.projectWorktrees};
     await (
-      repository
-          .getPendingQuestions(directory: null)
-          .then((questions) => tracker.populatePendingQuestions(questions: questions))
-          .catchError((Object e, StackTrace st) {
-            Log.w("coldStart: failed to hydrate pending questions", e, st);
-          }),
-      repository
-          .getPendingPermissions(directory: null)
-          .then((permissions) => tracker.populatePendingPermissions(permissions: permissions))
-          .catchError((Object e, StackTrace st) {
-            Log.w("coldStart: failed to hydrate pending permissions", e, st);
-          }),
+      _hydratePendingQuestions(directories),
+      _hydratePendingPermissions(directories),
     ).wait;
+  }
+
+  Future<void> _hydratePendingQuestions(Iterable<String?> directories) async {
+    final all = <QuestionRequest>[];
+    await Future.wait(
+      directories.map((directory) async {
+        try {
+          all.addAll(await repository.getPendingQuestions(directory: directory));
+        } catch (e, st) {
+          Log.w("coldStart: failed to hydrate pending questions for ${directory ?? "<cwd>"}", e, st);
+        }
+      }),
+    );
+    tracker.populatePendingQuestions(questions: all);
+  }
+
+  Future<void> _hydratePendingPermissions(Iterable<String?> directories) async {
+    final all = <PermissionRequest>[];
+    await Future.wait(
+      directories.map((directory) async {
+        try {
+          all.addAll(await repository.getPendingPermissions(directory: directory));
+        } catch (e, st) {
+          Log.w("coldStart: failed to hydrate pending permissions for ${directory ?? "<cwd>"}", e, st);
+        }
+      }),
+    );
+    tracker.populatePendingPermissions(permissions: all);
   }
 
   void reset() {

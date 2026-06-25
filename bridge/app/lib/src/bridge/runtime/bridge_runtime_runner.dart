@@ -5,6 +5,7 @@ import "package:clock/clock.dart";
 import "package:http/http.dart" as http;
 import "package:path/path.dart" as path;
 import "package:rxdart/rxdart.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show ArchiveExtractor, BinaryDownloadClient, ChecksumValidator;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         BridgePlugin,
@@ -17,6 +18,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginUnavailable,
         ProcessIdentity,
         ProcessUser,
+        ProvisionReady,
+        RuntimeProvisionProgress,
         ServerClock,
         StartAbortController,
         StartAbortSignal;
@@ -36,6 +39,8 @@ import "../../server/api/loopback_port_api.dart";
 import "../../server/api/runtime_file_api.dart";
 import "../../server/api/system_process_api.dart";
 import "../../server/api/terminal_prompt_api.dart";
+import "../../server/foundation/bridge_restart_command_builder.dart";
+import "../../server/foundation/bridge_restart_env.dart";
 import "../../server/host/bridge_host_info_impl.dart";
 import "../../server/host/bridge_host_json_store.dart";
 import "../../server/host/bridge_host_port_service.dart";
@@ -46,27 +51,35 @@ import "../../server/repositories/process_repository.dart";
 import "../../server/repositories/startup_mutex_repository.dart";
 import "../../server/repositories/terminal_prompt_repository.dart";
 import "../../server/services/bridge_instance_service.dart";
-import "../../updater/api/archive_extractor_api.dart";
+import "../../server/services/bridge_restart_service.dart";
 import "../../updater/api/checksum_manifest_api.dart";
-import "../../updater/api/checksum_verifier_api.dart";
-import "../../updater/api/file_replacement_api.dart";
 import "../../updater/api/github_releases_api.dart";
+import "../../updater/api/managed_runtime_manifest_api.dart";
+import "../../updater/api/platform_update_api.dart";
+import "../../updater/api/update_attempt_api.dart";
 import "../../updater/api/update_cache_api.dart";
-import "../../updater/api/update_download_api.dart";
+import "../../updater/api/update_log_api.dart";
+import "../../updater/foundation/filesystem_cleaner.dart";
 import "../../updater/foundation/release_track.dart";
 import "../../updater/foundation/update_lock.dart";
+import "../../updater/foundation/update_message_formatter.dart";
 import "../../updater/foundation/update_policy.dart";
-import "../../updater/foundation/update_relaunch_client.dart";
 import "../../updater/models/distribution_target.dart";
 import "../../updater/models/managed_runtime_paths.dart";
-import "../../updater/repositories/installed_file_repository.dart";
 import "../../updater/repositories/release_repository.dart";
 import "../../updater/repositories/update_artifact_repository.dart";
+import "../../updater/repositories/update_attempt_repository.dart";
+import "../../updater/repositories/update_installation_repository.dart";
+import "../../updater/repositories/update_log_repository.dart";
 import "../../updater/services/managed_runtime_path_service.dart";
+import "../../updater/services/update_apply_service.dart";
 import "../../updater/services/update_install_service.dart";
+import "../../updater/services/update_lifecycle_service.dart";
+import "../../updater/services/update_reconciliation_service.dart";
 import "../../updater/services/update_service.dart";
 import "../../version.dart";
 import "../foundation/process_runner.dart";
+import "../foundation/process_runner_command_executor.dart";
 import "../log_failure_reporter.dart";
 import "../models/bridge_config.dart";
 import "../persistence/bridge_diagnostics.dart";
@@ -80,6 +93,7 @@ import "bridge_shutdown_coordinator.dart";
 import "plugin_failure_latch.dart";
 import "plugin_manager.dart";
 import "plugin_registry.dart";
+import "runtime_provision_formatter.dart";
 
 Future<int> runBridgeApp({
   required BridgeCliOptions options,
@@ -207,13 +221,31 @@ class BridgeRuntimeRunner {
         Log.d("Release track: ${releaseTrack.wireValue}");
       }
 
-      final updateService = _createUpdateService(
+      final updateLifecycle = _buildUpdateLifecycleService(
         httpClient: httpClient,
         processRunner: processRunner,
         managedRuntimePaths: managedRuntimePaths,
         releaseTrack: releaseTrack,
       );
-      await updateService.checkAndApplyUpdate(cliArgs: options.cliArgs);
+      // Reconcile a prior in-place update first (fast, local): confirm a
+      // pending activation, surface a prior failure, sweep residue. Best-effort:
+      // reconciliation is maintenance and must never block startup.
+      //
+      // Gate it on the same skip check the periodic update path uses: a
+      // non-managed binary (npm payload, dev build, CI, or updates disabled)
+      // must not touch the managed install's attempt/residue state.
+      final bool updatesEnabledForThisInstall = !shouldSkipUpdates(
+        environment: environment,
+        executablePath: io.Platform.resolvedExecutable,
+        managedExecutablePath: managedRuntimePaths.binaryPath,
+      );
+      if (updatesEnabledForThisInstall) {
+        try {
+          await updateLifecycle.reconcile();
+        } on Object catch (error) {
+          Log.w("Update reconciliation failed (non-fatal): $error");
+        }
+      }
 
       final authTokens = await runtimeAuthService.ensureAuthenticated(options: options);
       await runtimeAuthService.logAuthenticatedUser(
@@ -221,13 +253,13 @@ class BridgeRuntimeRunner {
         accessToken: authTokens.accessToken,
       );
 
-      final currentBridgeIdentity =
-          await processRepository.inspectProcess(pid: io.pid) ??
-          _fallbackCurrentBridgeIdentity(
-            currentUser: currentUser,
-            serverClock: serverClock,
-            cliArgs: options.cliArgs,
-          );
+      final currentBridgeIdentity = await _resolveCurrentBridgeIdentity(
+        processRepository: processRepository,
+        currentUser: currentUser,
+        serverClock: serverClock,
+        cliArgs: options.cliArgs,
+        isWindows: io.Platform.isWindows,
+      );
       final ownerSessionId = _buildOwnerSessionId(currentBridgeIdentity: currentBridgeIdentity);
 
       final descriptor = knownPlugins.firstWhere((descriptor) => descriptor.id == pluginId);
@@ -275,6 +307,30 @@ class BridgeRuntimeRunner {
           startAborted: startAbortController.signal,
         ),
       );
+      // If this bridge was spawned by a restart, wait for the predecessor to
+      // exit before single-live-bridge enforcement so the handoff is clean.
+      final predecessorPidRaw = environment[sesoriRestartPredecessorPidEnvVar];
+      final predecessorPid = predecessorPidRaw == null ? null : int.tryParse(predecessorPidRaw);
+      if (predecessorPid != null) {
+        await bridgeInstanceService.awaitPredecessorBridgeExit(
+          predecessorPid: predecessorPid,
+          timeout: const Duration(seconds: 30),
+        );
+
+        // The reconcile() above may have skipped because the restart predecessor
+        // still held the update lock mid-apply. Now that it has exited and
+        // released the lock, reconcile again so a pending activation (or failure)
+        // from the predecessor's in-flight apply is confirmed/surfaced this
+        // launch instead of lingering until a future restart.
+        if (updatesEnabledForThisInstall) {
+          try {
+            await updateLifecycle.reconcile();
+          } on Object catch (error) {
+            Log.w("Update reconciliation after predecessor exit failed (non-fatal): $error");
+          }
+        }
+      }
+
       final plugin = await pluginManager.startPlugin(id: pluginId);
       shutdownCoordinator.addOrdered(
         action: () => pluginManager.stopPlugin(id: pluginId),
@@ -310,6 +366,14 @@ class BridgeRuntimeRunner {
         platform: BridgeRegistrationService.currentPlatformName(),
       );
 
+      final restartService = BridgeRestartService(
+        processRepository: processRepository,
+        commandBuilder: const BridgeRestartCommandBuilder(),
+        binaryPath: managedRuntimePaths.binaryPath,
+        cliArgs: options.cliArgs,
+        currentPid: io.pid,
+      );
+
       final runtime = BridgeRuntime.create(
         config: BridgeConfig(
           relayURL: options.relayUrl,
@@ -325,6 +389,7 @@ class BridgeRuntimeRunner {
         database: AppDatabase.create(),
         processRunner: processRunner,
         failureReporter: LogFailureReporter(),
+        restartService: restartService,
       );
       shutdownCoordinator.add(disposable: runtime.close);
       // Defined stop semantics: stopping the active plugin cancels the
@@ -340,11 +405,10 @@ class BridgeRuntimeRunner {
         shutdownCoordinator: shutdownCoordinator,
       );
       registerSignalHandlers(session: runtime.session, subscriptions: subscriptions);
-      updateService.updateAvailable
-          .listen((version) {
-            Console.message("A new bridge version ($version) is available. Restart to update.");
-          })
-          .addTo(subscriptions);
+      // Background: check + download + stage + apply-in-place on a 4h cadence.
+      // The swap takes effect on the next launch (or a phone-triggered restart).
+      shutdownCoordinator.add(disposable: updateLifecycle.dispose);
+      updateLifecycle.start();
 
       final startupFailure = failureLatch.failure;
       if (startupFailure != null) {
@@ -366,6 +430,32 @@ class BridgeRuntimeRunner {
       return 1;
     } finally {
       await shutdownCoordinator.shutdown();
+    }
+  }
+
+  /// Runs the plugin's runtime-provisioning phase, rendering progress and
+  /// recording the resolved launch path on [host] for `start()` to read.
+  ///
+  /// A [ProvisionFailed] terminal event is non-fatal: it is rendered, the path
+  /// stays unset, and `start()` proceeds in a degraded state. A cooperative
+  /// abort during provisioning surfaces as [PluginStartAbortedException], which
+  /// the caller already treats as "aborted as requested".
+  static Future<void> _ensurePluginRuntime({
+    required BridgePluginDescriptor descriptor,
+    required BridgePluginHostImpl host,
+  }) async {
+    final formatter = RuntimeProvisionFormatter(
+      interactive: io.stderr.hasTerminal,
+      runtimeName: descriptor.displayName,
+    );
+    await for (final RuntimeProvisionProgress event in descriptor.ensureRuntime(host: host)) {
+      final String? rendered = formatter.format(event);
+      if (rendered != null) {
+        io.stderr.write(rendered);
+      }
+      if (event is ProvisionReady) {
+        host.provisionedRuntimePath = event.binaryPath;
+      }
     }
   }
 
@@ -432,6 +522,11 @@ class BridgeRuntimeRunner {
                 ports: const BridgeHostPortService(loopbackPortApi: LoopbackPortApi()),
                 store: BridgeHostJsonStore(fileApi: runtimeFileApi),
               );
+              // Ensure the plugin's backend runtime exists (download it if
+              // needed), recording the resolved launch path on the host, before
+              // start(). Runs under the mutex so concurrent bridge instances
+              // can't install the same managed runtime at once.
+              await _ensurePluginRuntime(descriptor: descriptor, host: host);
               return descriptor.start(host);
             case BridgeInstanceResolutionStatus.declined:
               throw const BridgeRuntimeServerException(
@@ -481,15 +576,16 @@ class BridgeRuntimeRunner {
     return attemptStart(attempt: 1);
   }
 
-  static UpdateService _createUpdateService({
+  static UpdateLifecycleService _buildUpdateLifecycleService({
     required http.Client httpClient,
     required ProcessRunner processRunner,
     required ManagedRuntimePaths managedRuntimePaths,
     required ReleaseTrack releaseTrack,
   }) {
-    final installedFileRepository = InstalledFileRepository(
-      fileReplacementApi: FileReplacementApi(processRunner: processRunner),
-    );
+    const clock = Clock();
+    const messageFormatter = UpdateMessageFormatter();
+    const filesystemCleaner = FilesystemCleaner();
+    final installRoot = managedRuntimePaths.installRoot;
 
     // Opportunistically authenticate GitHub release checks when a token is
     // present in the environment. Unauthenticated requests share a 60/hour
@@ -505,39 +601,129 @@ class BridgeRuntimeRunner {
       orElse: () => null,
     );
 
-    return UpdateService(
+    final logRepository = UpdateLogRepository(
+      api: UpdateLogApi(installRoot: installRoot, clock: clock),
+    );
+    final attemptRepository = UpdateAttemptRepository(
+      api: UpdateAttemptApi(installRoot: installRoot),
+    );
+    final installationRepository = UpdateInstallationRepository(
+      platformUpdateApi: PlatformUpdateApi.forPlatform(processRunner: processRunner),
+      manifestApi: const ManagedRuntimeManifestApi(),
+    );
+    final updateLock = UpdateLock(currentPid: io.pid, processRunner: processRunner, clock: clock);
+    final updateApplyService = UpdateApplyService(
+      installationRepository: installationRepository,
+      attemptRepository: attemptRepository,
+      logRepository: logRepository,
+      updateLock: updateLock,
+      filesystemCleaner: filesystemCleaner,
+      clock: clock,
+      currentVersion: appVersion,
+      installRoot: installRoot,
+    );
+
+    final distributionTarget = currentDistributionTarget();
+    final commandExecutor = ProcessRunnerCommandExecutor(processRunner: processRunner);
+
+    final updateService = UpdateService(
       releaseRepository: ReleaseRepository(
         api: GitHubReleasesApi(httpClient: httpClient, authToken: githubToken),
         cache: UpdateCacheApi(
           cacheDirectory: managedRuntimePaths.cacheDirectory,
-          clock: const Clock(),
+          clock: clock,
         ),
         currentVersion: appVersion,
-        target: currentDistributionTarget(),
+        target: distributionTarget,
         track: releaseTrack,
       ),
-      updateInstallerService: UpdateInstallService(
+      updateInstallService: UpdateInstallService(
         updateArtifactRepository: UpdateArtifactRepository(
-          downloadApi: UpdateDownloadApi(httpClient: httpClient),
+          downloadClient: BinaryDownloadClient(httpClient: httpClient),
           checksumManifestApi: ChecksumManifestApi(httpClient: httpClient),
-          checksumVerifierApi: ChecksumVerifierApi(),
-          archiveExtractorApi: ArchiveExtractorApi(processRunner: processRunner),
+          checksumValidator: ChecksumValidator(),
+          archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
+          archiveFormat: distributionTarget.archiveFormat,
         ),
-        installedFileRepository: installedFileRepository,
+        filesystemCleaner: filesystemCleaner,
+        // The background updater uses the shared, fixed staging paths.
+        workspaceLabel: null,
       ),
-      installedFileRepository: installedFileRepository,
-      updateLock: UpdateLock(currentPid: io.pid, processRunner: processRunner),
-      updateRelaunchClient: UpdateRelaunchClient(processStarter: io.Process.start),
-      installRoot: managedRuntimePaths.installRoot,
+      updateApplyService: updateApplyService,
+      logRepository: logRepository,
+      messageFormatter: messageFormatter,
+      installRoot: installRoot,
       executablePath: io.Platform.resolvedExecutable,
       managedExecutablePath: managedRuntimePaths.binaryPath,
       environment: io.Platform.environment,
+    );
+
+    final reconciliationService = UpdateReconciliationService(
+      attemptRepository: attemptRepository,
+      logRepository: logRepository,
+      installationRepository: installationRepository,
+      messageFormatter: messageFormatter,
+      updateLock: updateLock,
+      currentVersion: appVersion,
+      installRoot: installRoot,
+    );
+
+    return UpdateLifecycleService(
+      updateService: updateService,
+      reconciliationService: reconciliationService,
     );
   }
 
   static ProcessUser? _resolveCurrentUser({required Map<String, String> environment}) => ProcessUser.fromRawUser(
     environment["USER"] ?? environment["USERNAME"],
   );
+
+  /// Resolves this bridge's own [ProcessIdentity], degrading to a locally
+  /// constructed fallback when the process-table inspection cannot identify it.
+  ///
+  /// Capturing the live identity is best-effort: it only enriches the owner
+  /// session id with the OS-reported start marker.
+  ///
+  /// Failure handling is platform-specific on purpose:
+  ///
+  /// - On Windows the inspection shells out to `tasklist`, which can time out
+  ///   right after login. Windows identities never carry a start marker, so a
+  ///   null-marker fallback is indistinguishable from a real Windows identity
+  ///   and is safe for the startup lock. We therefore tolerate inspection
+  ///   failures and degrade rather than abort startup.
+  /// - On POSIX, `ps` is fast and identities DO carry a start marker. A
+  ///   null-marker fallback would poison the startup lock: a later bridge
+  ///   inspecting the holder reads the real (non-null) marker, sees the
+  ///   mismatch as stale, steals the lock, and starts concurrently. So a POSIX
+  ///   inspection error must stay fatal — we never substitute a marker-less
+  ///   fallback for a process the OS can actually describe.
+  static Future<ProcessIdentity> _resolveCurrentBridgeIdentity({
+    required ProcessRepository processRepository,
+    required ProcessUser? currentUser,
+    required ServerClock serverClock,
+    required List<String> cliArgs,
+    required bool isWindows,
+  }) async {
+    try {
+      final inspected = await processRepository.inspectProcess(pid: io.pid);
+      if (inspected != null) {
+        return inspected;
+      }
+      Log.w("Could not find own process (pid ${io.pid}) in the process table; using fallback identity");
+    } on Object catch (error) {
+      if (!isWindows) {
+        // A marker-less fallback would corrupt the startup lock on POSIX (see
+        // method doc), so surface the failure instead of degrading.
+        rethrow;
+      }
+      Log.w("Failed to inspect own process (pid ${io.pid}); using fallback identity: $error");
+    }
+    return _fallbackCurrentBridgeIdentity(
+      currentUser: currentUser,
+      serverClock: serverClock,
+      cliArgs: cliArgs,
+    );
+  }
 
   static ProcessIdentity _fallbackCurrentBridgeIdentity({
     required ProcessUser? currentUser,

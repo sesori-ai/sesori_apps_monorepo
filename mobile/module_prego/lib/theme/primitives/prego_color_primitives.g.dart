@@ -24,211 +24,226 @@ abstract final class PregoColorPrimitives {
   /// Figma: Base/black
   static const Color baseBlack = Color(0xFF000000);
 
-  /// Figma: Base/transparent
-  static const Color baseTransparent = Color(0x00FFFFFF);
+  /// Figma: Base/transparent white
+  static const Color baseTransparentWhite = Color(0x00FFFFFF);
 
   /// Figma: Base/transparent black
   static const Color baseTransparentBlack = Color(0x00000000);
 
   // ===========================================================================
-  // Gray (light mode)
+  // Gray
   // ===========================================================================
 
-  /// Figma: Gray (light mode)/25
-  static const Color grayLight25 = Color(0xFFFDFDFD);
+  /// Figma: Gray/25
+  static const Color gray25 = Color(0xFFFDFDFD);
 
-  /// Figma: Gray (light mode)/50
-  static const Color grayLight50 = Color(0xFFFAFAFA);
+  /// Figma: Gray/50
+  static const Color gray50 = Color(0xFFFCFCFC);
 
-  /// Figma: Gray (light mode)/100
-  static const Color grayLight100 = Color(0xFFF5F5F5);
+  /// Figma: Gray/100
+  static const Color gray100 = Color(0xFFF5F5F5);
 
-  /// Figma: Gray (light mode)/200
-  static const Color grayLight200 = Color(0xFFE9EAEB);
+  /// Figma: Gray/200
+  static const Color gray200 = Color(0xFFF0F0F0);
 
-  /// Figma: Gray (light mode)/300
-  static const Color grayLight300 = Color(0xFFD5D7DA);
+  /// Figma: Gray/300
+  static const Color gray300 = Color(0xFFE6E6E6);
 
-  /// Figma: Gray (light mode)/400
-  static const Color grayLight400 = Color(0xFFA4A7AE);
+  /// Figma: Gray/350
+  static const Color gray350 = Color(0xFFDBDBDB);
 
-  /// Figma: Gray (light mode)/500
-  static const Color grayLight500 = Color(0xFF717680);
+  /// Figma: Gray/400
+  static const Color gray400 = Color(0xFFAEAEAE);
 
-  /// Figma: Gray (light mode)/600
-  static const Color grayLight600 = Color(0xFF535862);
+  /// Figma: Gray/425
+  static const Color gray425 = Color(0xFF999999);
 
-  /// Figma: Gray (light mode)/700
-  static const Color grayLight700 = Color(0xFF414651);
+  /// Figma: Gray/450
+  static const Color gray450 = Color(0xFF8C8C8C);
 
-  /// Figma: Gray (light mode)/800
-  static const Color grayLight800 = Color(0xFF272C35);
+  /// Figma: Gray/525
+  static const Color gray525 = Color(0xFF6E6E6E);
 
-  /// Figma: Gray (light mode)/900
-  static const Color grayLight900 = Color(0xFF191D26);
+  /// Figma: Gray/500
+  static const Color gray500 = Color(0xFF3D3D3D);
 
-  /// Figma: Gray (light mode)/950
-  static const Color grayLight950 = Color(0xFF0B0D11);
+  /// Figma: Gray/600
+  static const Color gray600 = Color(0xFF2D2D2D);
 
-  // ===========================================================================
-  // Gray (dark mode)
-  // ===========================================================================
+  /// Figma: Gray/700
+  static const Color gray700 = Color(0xFF242424);
 
-  /// Figma: Gray (dark mode)/25
-  static const Color grayDark25 = Color(0xFFF2F2F2);
+  /// Figma: Gray/800
+  static const Color gray800 = Color(0xFF242424);
 
-  /// Figma: Gray (dark mode)/50
-  static const Color grayDark50 = Color(0xFFE2E3E4);
+  /// Figma: Gray/900
+  static const Color gray900 = Color(0xFF181818);
 
-  /// Figma: Gray (dark mode)/100
-  static const Color grayDark100 = Color(0xFFCFD1D4);
-
-  /// Figma: Gray (dark mode)/200
-  static const Color grayDark200 = Color(0xFFBFC1C5);
-
-  /// Figma: Gray (dark mode)/300
-  static const Color grayDark300 = Color(0xFFAEB2B7);
-
-  /// Figma: Gray (dark mode)/400
-  static const Color grayDark400 = Color(0xFF999DA3);
-
-  /// Figma: Gray (dark mode)/500
-  static const Color grayDark500 = Color(0xFF7E838B);
-
-  /// Figma: Gray (dark mode)/600
-  static const Color grayDark600 = Color(0xFF656A71);
-
-  /// Figma: Gray (dark mode)/700
-  static const Color grayDark700 = Color(0xFF4D5156);
-
-  /// Figma: Gray (dark mode)/800
-  static const Color grayDark800 = Color(0xFF303236);
-
-  /// Figma: Gray (dark mode)/900
-  static const Color grayDark900 = Color(0xFF18191B);
-
-  /// Figma: Gray (dark mode)/950
-  static const Color grayDark950 = Color(0xFF030405);
+  /// Figma: Gray/950
+  static const Color gray950 = Color(0xFF0C0C0C);
 
   // ===========================================================================
-  // Gray (dark mode alpha)
+  // Alpha White
   // ===========================================================================
 
-  /// Figma: Gray (dark mode alpha)/25
-  static const Color grayDarkAlpha25 = Color(0xFAFFFFFF);
+  /// Figma: Alpha White/25
+  static const Color alphaWhite25 = Color(0xFAFFFFFF);
 
-  /// Figma: Gray (dark mode alpha)/50
-  static const Color grayDarkAlpha50 = Color(0xF5FFFFFF);
+  /// Figma: Alpha White/50
+  static const Color alphaWhite50 = Color(0xF5FFFFFF);
 
-  /// Figma: Gray (dark mode alpha)/100
-  static const Color grayDarkAlpha100 = Color(0xF0FFFFFF);
+  /// Figma: Alpha White/100
+  static const Color alphaWhite100 = Color(0xF0FFFFFF);
 
-  /// Figma: Gray (dark mode alpha)/200
-  static const Color grayDarkAlpha200 = Color(0xEBFFFFFF);
+  /// Figma: Alpha White/200
+  static const Color alphaWhite200 = Color(0xEBFFFFFF);
 
-  /// Figma: Gray (dark mode alpha)/300
-  static const Color grayDarkAlpha300 = Color(0xCCFFFFFF);
+  /// Figma: Alpha White/300
+  static const Color alphaWhite300 = Color(0xCCFFFFFF);
 
-  /// Figma: Gray (dark mode alpha)/400
-  static const Color grayDarkAlpha400 = Color(0x8FFFFFFF);
+  /// Figma: Alpha White/400
+  static const Color alphaWhite400 = Color(0x8FFFFFFF);
 
-  /// Figma: Gray (dark mode alpha)/500
-  static const Color grayDarkAlpha500 = Color(0x80FFFFFF);
+  /// Figma: Alpha White/500
+  static const Color alphaWhite500 = Color(0x80FFFFFF);
 
-  /// Figma: Gray (dark mode alpha)/600
-  static const Color grayDarkAlpha600 = Color(0x40FFFFFF);
+  /// Figma: Alpha White/600
+  static const Color alphaWhite600 = Color(0x40FFFFFF);
 
-  /// Figma: Gray (dark mode alpha)/700
-  static const Color grayDarkAlpha700 = Color(0x29FFFFFF);
+  /// Figma: Alpha White/700
+  static const Color alphaWhite700 = Color(0x29FFFFFF);
 
-  /// Figma: Gray (dark mode alpha)/800
-  static const Color grayDarkAlpha800 = Color(0x14FFFFFF);
+  /// Figma: Alpha White/800
+  static const Color alphaWhite800 = Color(0x14FFFFFF);
 
-  /// Figma: Gray (dark mode alpha)/900
-  static const Color grayDarkAlpha900 = Color(0x0AFFFFFF);
+  /// Figma: Alpha White/900
+  static const Color alphaWhite900 = Color(0x0AFFFFFF);
 
-  /// Figma: Gray (dark mode alpha)/950
-  static const Color grayDarkAlpha950 = Color(0x00FFFFFF);
-
-  // ===========================================================================
-  // Gray (light mode alpha)
-  // ===========================================================================
-
-  /// Figma: Gray (light mode alpha)/25
-  static const Color grayLightAlpha25 = Color(0x00000000);
-
-  /// Figma: Gray (light mode alpha)/50
-  static const Color grayLightAlpha50 = Color(0x0A000000);
-
-  /// Figma: Gray (light mode alpha)/100
-  static const Color grayLightAlpha100 = Color(0x14000000);
-
-  /// Figma: Gray (light mode alpha)/200
-  static const Color grayLightAlpha200 = Color(0x29000000);
-
-  /// Figma: Gray (light mode alpha)/300
-  static const Color grayLightAlpha300 = Color(0x59000000);
-
-  /// Figma: Gray (light mode alpha)/400
-  static const Color grayLightAlpha400 = Color(0x80000000);
-
-  /// Figma: Gray (light mode alpha)/500
-  static const Color grayLightAlpha500 = Color(0x8F000000);
-
-  /// Figma: Gray (light mode alpha)/600
-  static const Color grayLightAlpha600 = Color(0xCC000000);
-
-  /// Figma: Gray (light mode alpha)/700
-  static const Color grayLightAlpha700 = Color(0xEB000000);
-
-  /// Figma: Gray (light mode alpha)/800
-  static const Color grayLightAlpha800 = Color(0xF0000000);
-
-  /// Figma: Gray (light mode alpha)/900
-  static const Color grayLightAlpha900 = Color(0xF5000000);
-
-  /// Figma: Gray (light mode alpha)/950
-  static const Color grayLightAlpha950 = Color(0xFA000000);
+  /// Figma: Alpha White/950
+  static const Color alphaWhite950 = Color(0x00FFFFFF);
 
   // ===========================================================================
-  // Brand Blue
+  // Alpha Black
   // ===========================================================================
 
-  /// Figma: Brand Blue/25
-  static const Color brandBlue25 = Color(0xFFEBF3FF);
+  /// Figma: Alpha Black/25
+  static const Color alphaBlack25 = Color(0x00000000);
 
-  /// Figma: Brand Blue/50
-  static const Color brandBlue50 = Color(0xFFE0EDFF);
+  /// Figma: Alpha Black/50
+  static const Color alphaBlack50 = Color(0x0A000000);
 
-  /// Figma: Brand Blue/100
-  static const Color brandBlue100 = Color(0xFFD1E3FF);
+  /// Figma: Alpha Black/100
+  static const Color alphaBlack100 = Color(0x14000000);
 
-  /// Figma: Brand Blue/200
-  static const Color brandBlue200 = Color(0xFFB2D1FF);
+  /// Figma: Alpha Black/200
+  static const Color alphaBlack200 = Color(0x29000000);
 
-  /// Figma: Brand Blue/300
-  static const Color brandBlue300 = Color(0xFF80B2FF);
+  /// Figma: Alpha Black/300
+  static const Color alphaBlack300 = Color(0x59000000);
 
-  /// Figma: Brand Blue/400
-  static const Color brandBlue400 = Color(0xFF4D94FF);
+  /// Figma: Alpha Black/400
+  static const Color alphaBlack400 = Color(0x80000000);
 
-  /// Figma: Brand Blue/500
-  static const Color brandBlue500 = Color(0xFF1472FF);
+  /// Figma: Alpha Black/500
+  static const Color alphaBlack500 = Color(0x8F000000);
 
-  /// Figma: Brand Blue/600
-  static const Color brandBlue600 = Color(0xFF005CE5);
+  /// Figma: Alpha Black/600
+  static const Color alphaBlack600 = Color(0xCC000000);
 
-  /// Figma: Brand Blue/700
-  static const Color brandBlue700 = Color(0xFF0047B2);
+  /// Figma: Alpha Black/700
+  static const Color alphaBlack700 = Color(0xEB000000);
 
-  /// Figma: Brand Blue/800
-  static const Color brandBlue800 = Color(0xFF00317A);
+  /// Figma: Alpha Black/800
+  static const Color alphaBlack800 = Color(0xF0000000);
 
-  /// Figma: Brand Blue/900
-  static const Color brandBlue900 = Color(0xFF001F4D);
+  /// Figma: Alpha Black/900
+  static const Color alphaBlack900 = Color(0xF5000000);
 
-  /// Figma: Brand Blue/950
-  static const Color brandBlue950 = Color(0xFF000A1A);
+  /// Figma: Alpha Black/950
+  static const Color alphaBlack950 = Color(0xFA000000);
+
+  // ===========================================================================
+  // Alpha Gray
+  // ===========================================================================
+
+  /// Figma: Alpha Gray/25
+  static const Color alphaGray25 = Color(0x00FDFDFD);
+
+  /// Figma: Alpha Gray/50
+  static const Color alphaGray50 = Color(0x00FCFCFC);
+
+  /// Figma: Alpha Gray/100
+  static const Color alphaGray100 = Color(0x00F5F5F5);
+
+  /// Figma: Alpha Gray/200
+  static const Color alphaGray200 = Color(0x00F0F0F0);
+
+  /// Figma: Alpha Gray/300
+  static const Color alphaGray300 = Color(0x00E6E6E6);
+
+  /// Figma: Alpha Gray/350
+  static const Color alphaGray350 = Color(0x00DBDBDB);
+
+  /// Figma: Alpha Gray/400
+  static const Color alphaGray400 = Color(0x00AEAEAE);
+
+  /// Figma: Alpha Gray/500
+  static const Color alphaGray500 = Color(0x003D3D3D);
+
+  /// Figma: Alpha Gray/600
+  static const Color alphaGray600 = Color(0x002D2D2D);
+
+  /// Figma: Alpha Gray/700
+  static const Color alphaGray700 = Color(0x00242424);
+
+  /// Figma: Alpha Gray/800
+  static const Color alphaGray800 = Color(0x00242424);
+
+  /// Figma: Alpha Gray/900
+  static const Color alphaGray900 = Color(0x00181818);
+
+  /// Figma: Alpha Gray/950
+  static const Color alphaGray950 = Color(0x000C0C0C);
+
+  // ===========================================================================
+  // Blue
+  // ===========================================================================
+
+  /// Figma: Blue/25
+  static const Color blue25 = Color(0xFFEBF3FF);
+
+  /// Figma: Blue/50
+  static const Color blue50 = Color(0xFFE0EDFF);
+
+  /// Figma: Blue/100
+  static const Color blue100 = Color(0xFFD1E3FF);
+
+  /// Figma: Blue/200
+  static const Color blue200 = Color(0xFFB2D1FF);
+
+  /// Figma: Blue/300
+  static const Color blue300 = Color(0xFF80B2FF);
+
+  /// Figma: Blue/400
+  static const Color blue400 = Color(0xFF4D94FF);
+
+  /// Figma: Blue/500
+  static const Color blue500 = Color(0xFF1472FF);
+
+  /// Figma: Blue/600
+  static const Color blue600 = Color(0xFF005CE5);
+
+  /// Figma: Blue/700
+  static const Color blue700 = Color(0xFF0047B2);
+
+  /// Figma: Blue/800
+  static const Color blue800 = Color(0xFF00317A);
+
+  /// Figma: Blue/900
+  static const Color blue900 = Color(0xFF001F4D);
+
+  /// Figma: Blue/950
+  static const Color blue950 = Color(0xFF000A1A);
 
   // ===========================================================================
   // Error

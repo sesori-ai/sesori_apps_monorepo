@@ -55,80 +55,85 @@ class _SettingsBody extends StatelessWidget {
             break;
         }
       },
-      child: Scaffold(
-        appBar: AppBar(title: Text(loc.settingsTitle)),
-        body: ListView(
-          children: [
-            _AccountTile(account: settingsState.account),
-            ...switch (notificationState) {
-              NotificationPreferencesLoading() => const [
-                SizedBox(height: 32),
-                Center(child: CircularProgressIndicator()),
-              ],
-              NotificationPreferencesLoaded(:final preferences) => [
-                SwitchListTile(
-                  title: Text(loc.notificationCategoryAiInteraction),
-                  subtitle: Text(loc.notificationCategoryAiInteractionDescription),
-                  value: preferences[NotificationCategory.aiInteraction] ?? true,
-                  onChanged: (enabled) {
-                    context.read<NotificationPreferencesCubit>().toggle(
-                      NotificationCategory.aiInteraction,
-                      enabled: enabled,
-                    );
-                  },
-                ),
-                SwitchListTile(
-                  title: Text(loc.notificationCategorySessionMessage),
-                  subtitle: Text(loc.notificationCategorySessionMessageDescription),
-                  value: preferences[NotificationCategory.sessionMessage] ?? true,
-                  onChanged: (enabled) {
-                    context.read<NotificationPreferencesCubit>().toggle(
-                      NotificationCategory.sessionMessage,
-                      enabled: enabled,
-                    );
-                  },
-                ),
-                SwitchListTile(
-                  title: Text(loc.notificationCategoryConnectionStatus),
-                  subtitle: Text(loc.notificationCategoryConnectionStatusDescription),
-                  value: preferences[NotificationCategory.connectionStatus] ?? true,
-                  onChanged: (enabled) {
-                    context.read<NotificationPreferencesCubit>().toggle(
-                      NotificationCategory.connectionStatus,
-                      enabled: enabled,
-                    );
-                  },
-                ),
-                SwitchListTile(
-                  title: Text(loc.notificationCategorySystemUpdate),
-                  subtitle: Text(loc.notificationCategorySystemUpdateDescription),
-                  value: preferences[NotificationCategory.systemUpdate] ?? true,
-                  onChanged: (enabled) {
-                    context.read<NotificationPreferencesCubit>().toggle(
-                      NotificationCategory.systemUpdate,
-                      enabled: enabled,
-                    );
-                  },
-                ),
-              ],
-            },
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: Text(loc.settingsLogout),
-              textColor: prego.colors.fgErrorPrimary,
-              iconColor: prego.colors.fgErrorPrimary,
-              trailing: isLoggingOut
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : null,
-              onTap: isLoggingOut ? null : () => context.read<SettingsCubit>().logout(),
-            ),
-          ],
-        ),
+      child: PregoGlassScaffold(
+        title: loc.settingsTitle,
+        slivers: [
+          SliverList.list(
+            children: [
+              _AccountTile(account: settingsState.account),
+              ...switch (notificationState) {
+                NotificationPreferencesLoading() => const [
+                  SizedBox(height: 32),
+                  Center(child: CircularProgressIndicator()),
+                ],
+                NotificationPreferencesLoaded(:final preferences) => [
+                  SwitchListTile(
+                    title: Text(loc.notificationCategoryAiInteraction),
+                    subtitle: Text(loc.notificationCategoryAiInteractionDescription),
+                    value: preferences[NotificationCategory.aiInteraction] ?? true,
+                    onChanged: (enabled) {
+                      context.read<NotificationPreferencesCubit>().toggle(
+                        NotificationCategory.aiInteraction,
+                        enabled: enabled,
+                      );
+                    },
+                  ),
+                  SwitchListTile(
+                    title: Text(loc.notificationCategorySessionMessage),
+                    subtitle: Text(loc.notificationCategorySessionMessageDescription),
+                    value: preferences[NotificationCategory.sessionMessage] ?? true,
+                    onChanged: (enabled) {
+                      context.read<NotificationPreferencesCubit>().toggle(
+                        NotificationCategory.sessionMessage,
+                        enabled: enabled,
+                      );
+                    },
+                  ),
+                  SwitchListTile(
+                    title: Text(loc.notificationCategoryConnectionStatus),
+                    subtitle: Text(loc.notificationCategoryConnectionStatusDescription),
+                    value: preferences[NotificationCategory.connectionStatus] ?? true,
+                    onChanged: (enabled) {
+                      context.read<NotificationPreferencesCubit>().toggle(
+                        NotificationCategory.connectionStatus,
+                        enabled: enabled,
+                      );
+                    },
+                  ),
+                  SwitchListTile(
+                    title: Text(loc.notificationCategorySystemUpdate),
+                    subtitle: Text(loc.notificationCategorySystemUpdateDescription),
+                    value: preferences[NotificationCategory.systemUpdate] ?? true,
+                    onChanged: (enabled) {
+                      context.read<NotificationPreferencesCubit>().toggle(
+                        NotificationCategory.systemUpdate,
+                        enabled: enabled,
+                      );
+                    },
+                  ),
+                ],
+              },
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.logout),
+                title: Text(loc.settingsLogout),
+                textColor: prego.colors.fgErrorPrimary,
+                iconColor: prego.colors.fgErrorPrimary,
+                trailing: isLoggingOut
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : null,
+                onTap: isLoggingOut ? null : () => context.read<SettingsCubit>().logout(),
+              ),
+            ],
+          ),
+          SliverToBoxAdapter(
+            child: SizedBox(height: MediaQuery.paddingOf(context).bottom + PregoSpacing.xl),
+          ),
+        ],
       ),
     );
   }

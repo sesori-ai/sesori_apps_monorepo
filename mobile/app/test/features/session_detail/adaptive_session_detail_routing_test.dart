@@ -1,6 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../core/routing/adaptive_session_router_test_harness.dart";
 import "../../helpers/test_helpers.dart";
@@ -27,7 +28,7 @@ void main() {
     await tester.pumpWidget(harness.buildApp());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithIcon(IconButton, Icons.difference_outlined));
+    await tester.tap(find.byIcon(TablerRegular.git_compare));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
@@ -55,7 +56,7 @@ void main() {
     await tester.pumpWidget(harness.buildApp());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithIcon(IconButton, Icons.difference_outlined));
+    await tester.tap(find.byIcon(TablerRegular.git_compare));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
@@ -64,14 +65,20 @@ void main() {
     final rightPane = find.byKey(const Key("session-split-right-pane"));
     expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
     expect(rightPane, findsOneWidget);
-    expect(find.descendant(of: rightPane, matching: find.byKey(const ValueKey("session-diffs-session-1"))), findsOneWidget);
+    expect(
+      find.descendant(of: rightPane, matching: find.byKey(const ValueKey("session-diffs-session-1"))),
+      findsOneWidget,
+    );
     expect(find.text("Session One"), findsOneWidget);
 
     harness.router.pop();
     await tester.pumpAndSettle();
 
     expect(Uri.parse(harness.currentLocation).path, "/projects/p1/sessions/session-1");
-    expect(find.descendant(of: rightPane, matching: find.byKey(const ValueKey("session-detail-session-1"))), findsOneWidget);
+    expect(
+      find.descendant(of: rightPane, matching: find.byKey(const ValueKey("session-detail-session-1"))),
+      findsOneWidget,
+    );
     expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
   });
 
@@ -102,20 +109,29 @@ void main() {
     await tester.pumpAndSettle();
 
     final rightPane = find.byKey(const Key("session-split-right-pane"));
-    expect(find.descendant(of: rightPane, matching: find.byKey(const ValueKey("session-detail-child-1"))), findsOneWidget);
-    expect(find.descendant(of: rightPane, matching: find.byType(BackButton)), findsOneWidget);
+    expect(
+      find.descendant(of: rightPane, matching: find.byKey(const ValueKey("session-detail-child-1"))),
+      findsOneWidget,
+    );
+    expect(find.descendant(of: rightPane, matching: find.byIcon(TablerRegular.chevron_left)), findsOneWidget);
 
-    await tester.tap(find.widgetWithIcon(IconButton, Icons.difference_outlined));
+    await tester.tap(find.byIcon(TablerRegular.git_compare));
     await tester.pumpAndSettle();
 
-    expect(find.descendant(of: rightPane, matching: find.byKey(const ValueKey("session-diffs-child-1"))), findsOneWidget);
+    expect(
+      find.descendant(of: rightPane, matching: find.byKey(const ValueKey("session-diffs-child-1"))),
+      findsOneWidget,
+    );
 
     harness.router.pop();
     await tester.pumpAndSettle();
 
-    expect(find.descendant(of: rightPane, matching: find.byKey(const ValueKey("session-detail-child-1"))), findsOneWidget);
+    expect(
+      find.descendant(of: rightPane, matching: find.byKey(const ValueKey("session-detail-child-1"))),
+      findsOneWidget,
+    );
 
-    await tester.tap(find.descendant(of: rightPane, matching: find.byType(BackButton)));
+    await tester.tap(find.descendant(of: rightPane, matching: find.byIcon(TablerRegular.chevron_left)));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey("session-detail-parent-1")), findsOneWidget);

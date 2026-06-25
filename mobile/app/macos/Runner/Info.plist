@@ -30,6 +30,8 @@
 		<string>MainMenu</string>
 		<key>NSPrincipalClass</key>
 		<string>NSApplication</string>
+		<key>FLTEnableImpeller</key>
+  		<true />
 		<key>GOOGLE_ANALYTICS_DEFAULT_ALLOW_ANALYTICS_STORAGE</key>
 		<true />
 		<key>GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_STORAGE</key>

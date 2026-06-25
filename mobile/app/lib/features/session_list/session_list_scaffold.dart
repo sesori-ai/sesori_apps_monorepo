@@ -34,50 +34,48 @@ class SessionListScaffold extends StatelessWidget {
     final state = context.watch<SessionListCubit>().state;
     final showArchived = state is SessionListLoaded && state.showArchived;
     final baseBranch = state is SessionListLoaded ? state.baseBranch : null;
+    final isRefreshing = state is SessionListLoaded && state.isRefreshing;
 
-    return Scaffold(
-      appBar: AppBar(
-        // The sessions route sits at the base of the nested pane navigator,
-        // so AppBar cannot imply a back button — the poppable route lives on
-        // the root navigator. Render it explicitly from the injected callback.
-        leading: onBack != null ? BackButton(onPressed: onBack) : null,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(_title(loc: loc)),
-            if (baseBranch != null)
-              Text(
-                baseBranch,
-                style: context.prego.textTheme.textXs.regular.copyWith(
-                  color: context.prego.colors.textSecondary,
-                ),
-              ),
-          ],
+    return PregoGlassScaffold(
+      // The sessions route sits at the base of the nested pane navigator, so
+      // the bar cannot imply a back button — the poppable route lives on the
+      // root navigator. Render it explicitly from the injected callback.
+      onBack: onBack,
+      title: _title(loc: loc),
+      subtitle: baseBranch,
+      actions: [
+        PregoButtonsIconGlass(
+          icon: TablerRegular.archive,
+          // Tint when the archived filter is active (Tabler has no filled
+          // variant), replacing the old filled/outlined Material toggle.
+          iconColor: showArchived ? context.prego.colors.bgBrandSolid : null,
+          semanticLabel: loc.sessionListToggleArchived,
+          onPressed: () {
+            final cubit = context.read<SessionListCubit>();
+            if (cubit.state is SessionListLoaded) {
+              cubit.toggleArchived();
+            }
+          },
         ),
-        actions: [
-          IconButton(
-            icon: Icon(showArchived ? Icons.archive : Icons.archive_outlined),
-            tooltip: loc.sessionListToggleArchived,
-            onPressed: () {
-              final cubit = context.read<SessionListCubit>();
-              if (cubit.state is SessionListLoaded) {
-                cubit.toggleArchived();
-              }
-            },
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
+      ],
+      floatingActionButton: PregoButtonsIconGlass(
+        icon: TablerRegular.plus,
+        size: PregoButtonsIconGlassSize.xl,
+        iconSize: 22,
+        semanticLabel: loc.sessionListNewSession,
         onPressed: onNewSession,
-        tooltip: loc.sessionListNewSession,
-        child: const Icon(Icons.add),
       ),
-      body: SessionListContent(
-        selectedSessionId: selectedSessionId,
-        onSessionTap: onSessionTap,
-        onSessionLongPress: onSessionLongPress,
-        onSessionSwipe: onSessionSwipe,
-      ),
+      // Pull-to-refresh only makes sense once the list has loaded.
+      onRefresh: state is SessionListLoaded ? () => refreshSessionList(context) : null,
+      slivers: [
+        if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
+        SessionListContent(
+          selectedSessionId: selectedSessionId,
+          onSessionTap: onSessionTap,
+          onSessionLongPress: onSessionLongPress,
+          onSessionSwipe: onSessionSwipe,
+        ),
+      ],
     );
   }
 

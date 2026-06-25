@@ -15,7 +15,7 @@ Map<String, dynamic> _$PluginPromptPartFilePathToJson(
 ) => <String, dynamic>{
   'mime': instance.mime,
   'path': instance.path,
-  'filename': instance.filename,
+  'filename': ?instance.filename,
   'runtimeType': instance.$type,
 };
 
@@ -24,7 +24,7 @@ Map<String, dynamic> _$PluginPromptPartFileUrlToJson(
 ) => <String, dynamic>{
   'mime': instance.mime,
   'url': instance.url,
-  'filename': instance.filename,
+  'filename': ?instance.filename,
   'runtimeType': instance.$type,
 };
 
@@ -33,6 +33,6 @@ Map<String, dynamic> _$PluginPromptPartFileDataToJson(
 ) => <String, dynamic>{
   'mime': instance.mime,
   'base64': instance.base64,
-  'filename': instance.filename,
+  'filename': ?instance.filename,
   'runtimeType': instance.$type,
 };

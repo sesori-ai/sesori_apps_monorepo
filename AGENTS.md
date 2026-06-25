@@ -173,6 +173,9 @@ lib/src/
 ├── active_session_tracker.dart  # Layer 2 — tracks session state from SSE
 ├── opencode_service.dart    # Layer 3 — coordinates Repository + Tracker
 ├── opencode_plugin_impl.dart    # Layer 4 — BridgePlugin implementation (top-level composition)
+├── runtime/                 # OpenCode lifecycle: descriptor, managed runtime supervision, and
+│                            #   runtime provisioning (manifest, version validator, install/cleaner,
+│                            #   ProvisionService) for the descriptor's ensureRuntime phase
 └── sse/                     # SSE pipeline components (SseConnection, SseEventParser, SseEventMapper)
 ```
 
@@ -270,6 +273,7 @@ module_auth/lib/src/
 ## Key Architectural Patterns
 
 - **Bridge plugin system:** `BridgePluginApi` abstract class in `sesori_plugin_interface` defines the backend contract (projects, sessions, messages, events, health). THIS BELONGS TO Layer 1 (API layer). `sesori_plugin_opencode` implements it for OpenCode. New backends implement this interface.
+- **Plugin lifecycle:** `BridgePluginDescriptor` runs `validateConfig` → `checkAvailability` → `ensureRuntime` (download/install the backend runtime, emitting typed `RuntimeProvisionProgress`; non-fatal on failure) → `start`. Shared runtime-acquisition primitives (download/extract/checksum/version/platform/command) live in `sesori_bridge_foundation` (bridge-wide, used by the app AND plugins); plugin-only managed-process supervision lives in `sesori_plugin_runtime`. See `bridge/AGENTS.md` for the provisioning + degrade contract and the managed-runtime version-bump workflow.
 - **Relay protocol:** `RelayMessage` sealed class in `sesori_shared` defines all message types (auth, key_exchange, ready, request, response, sse_event, etc.). Binary wire format: `[version_byte][nonce (24B)][ciphertext + auth tag]`.
 - **Request routing (bridge):** Explicit handler chain. `RequestRouter` tries each registered handler in order; first match wins. Unmatched routes return 404 — there is no catch-all proxy.
 - **SSE pipeline (bridge):** `SseConnection` → `SseEventParser` → plugin event stream → `Orchestrator` → `SSEManager` → per-phone encrypted delivery with event buffering.
@@ -373,6 +377,7 @@ When waiting for PR CI/reviews, use `pr_monitor` notifications rather than long-
 
 - Always use **named arguments with the `required` keyword**, including for nullable parameters. Never use positional arguments.
   - In Freezed request models, marking a nullable field as `required String? field` does **not** require the key to exist in incoming JSON. Freezed deserializes a missing key to `null`, preserving backwards compatibility while keeping call sites explicit.
+  - **Exception — logging APIs.** The single-message logging entry points (`Console.message`/`warning`/`error` and `Log.v`/`d`/`i`/`w`/`e`) keep their `text`/`message` as a **positional** argument. A positional message is the standard, expected shape for logging calls, and forcing `text:` at every call site adds noise without clarity. Do not "fix" these to named arguments.
 - **Never replace a `switch` statement with a cascade of `if` statements** to satisfy the `prefer_exhaustive_switch` lint. Instead, keep the `switch` and add all missing cases explicitly (return `null` or handle appropriately for unrecognized values).
 
 ```dart
@@ -408,6 +413,25 @@ Do not skip either step. The reviewers exist because violations compound — one
 - Assume the user reviews **committed and pushed code**, not your uncommitted local workspace. If you are expecting PR feedback to reflect your latest work, proactively commit and push first.
 - Never rely on users reviewing uncommitted changes. Remote PR state is the review source of truth unless the user explicitly says otherwise.
 - Never use `git commit --amend` anywhere in this repo workflow. There are no exceptions; if follow-up changes are needed, create a new commit instead.
+
+## Error Handling
+
+**Never silently swallow.** The failure mode this rule targets is a `catch` that **discards an error and continues as if nothing happened, leaving no trace** — the classic:
+
+```dart
+} catch (err) {
+  // no-op / best-effort
+}
+```
+
+If something there fails for everyone, you'd never know. So:
+
+- **A catch that swallows and continues — log it.** Any handler that recovers/degrades and keeps going (including no-op and best-effort cleanup) must emit at least a `debug`/`warning`, with enough context to know what failed and why continuing is safe.
+- **A catch-all (`on Object catch (error)` / `catch (e)`) should generally log**, because reaching it means you don't actually know what went wrong.
+- **Do NOT add a redundant log when the catch already surfaces the failure.** If you take a real action that makes the failure observable — rethrow, throw a typed exception, or return/yield an explicit failure result the caller renders (e.g. `ExplicitUpdateFailed`, `ProvisionFailed`) — an extra upfront log just double-logs the same failure. Don't add it.
+- **Pass the error to the logger; don't inline it.** Use the logger's error (and stack-trace) argument: `Log.w("what failed", error, stackTrace)` — not `Log.w("what failed: $error")`. (Single-message levels like `Log.d`/`Log.i` take no error argument; use `Log.w`/`Log.e` when you want to attach the caught error.)
+
+This applies in every workspace (bridge, mobile, shared).
 
 ## Forbidden
 

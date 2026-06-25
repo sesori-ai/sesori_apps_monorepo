@@ -162,9 +162,14 @@ jobs:
       run:
         working-directory: mobile/app/ios
     steps:
+      # Deliberately NOT the resolved build commit: the submit lane needs only
+      # the fastlane config + the already-uploaded build number (passed via env),
+      # never the build's source tree. Checking out the workflow's own revision
+      # means submit always runs the LATEST Fastfile, so fixes to the submit
+      # logic apply even to builds cut from older commits (the build's binary is
+      # permanent on TestFlight). The version NAME that must match the binary is
+      # injected via VERSION_NAME below, not read from this tree's pubspec.
       - uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.resolve.outputs.commit_sha }}
 
       # Clone the private metadata repo so we can both read its listing and decide
       # whether it needs publishing. Only for production submits with
@@ -224,6 +229,10 @@ jobs:
           APPLE_TEAM_ID:                     ${{ secrets.APPLE_TEAM_ID }}
           ITC_TEAM_ID:                       ${{ secrets.ITC_TEAM_ID }}
           BUILD_NUMBER:                      ${{ needs.resolve.outputs.build_number }}
+          # Version NAME of the resolved build (matches the uploaded binary).
+          # Injected because the job no longer checks out the build's commit, so
+          # the local pubspec may belong to a newer version.
+          VERSION_NAME:                      ${{ needs.resolve.outputs.version }}
           TRACK:                             ${{ inputs.track }}
           # Absolute paths: fastlane runs from mobile/app/ios but the metadata
           # clone lives at the workspace root. Set ONLY when the gate decided to
@@ -271,9 +280,14 @@ jobs:
       run:
         working-directory: mobile/app/android
     steps:
+      # Deliberately NOT the resolved build commit: the submit lane needs only
+      # the fastlane config + the already-uploaded version code (passed via env),
+      # never the build's source tree. Checking out the workflow's own revision
+      # means submit always runs the LATEST Fastfile, so fixes to the submit
+      # logic apply even to builds cut from older commits (the build's binary is
+      # permanent on Play). The version NAME that must match the binary is
+      # injected via VERSION_NAME below, not read from this tree's pubspec.
       - uses: actions/checkout@v6
-        with:
-          ref: ${{ needs.resolve.outputs.commit_sha }}
 
       # Clone the private metadata repo (production + STORE_METADATA_REPO only) to
       # read the listing and run the same tag-driven gate as iOS. See the iOS job
@@ -322,6 +336,10 @@ jobs:
         env:
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           VERSION_CODE:                     ${{ needs.resolve.outputs.build_number }}
+          # Version NAME of the resolved build (matches the uploaded binary).
+          # Injected because the job no longer checks out the build's commit, so
+          # the local pubspec may belong to a newer version.
+          VERSION_NAME:                     ${{ needs.resolve.outputs.version }}
           TRACK:                            ${{ inputs.track }}
           # Absolute path to the cloned metadata repo's Android listing dir (locale
           # folders live directly under it). Set ONLY when the gate decided to

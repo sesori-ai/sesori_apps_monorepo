@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -190,6 +192,28 @@ void main() {
 
       test('HTTP 403 without an exhausted budget or retry-after → StateError, not a rate limit', () async {
         final client = MockClient((_) async => http.Response('', 403));
+
+        await expectLater(
+          GitHubReleasesApi(httpClient: client, authToken: null).fetchReleases(),
+          throwsA(isA<StateError>()),
+        );
+      });
+    });
+
+    group('transient outages', () {
+      for (final status in [500, 502, 503, 504, 408]) {
+        test('HTTP $status → HttpException (retryable), not a genuine StateError', () async {
+          final client = MockClient((_) async => http.Response('', status));
+
+          await expectLater(
+            GitHubReleasesApi(httpClient: client, authToken: null).fetchReleases(),
+            throwsA(isA<HttpException>()),
+          );
+        });
+      }
+
+      test('HTTP 404 stays a genuine StateError', () async {
+        final client = MockClient((_) async => http.Response('', 404));
 
         await expectLater(
           GitHubReleasesApi(httpClient: client, authToken: null).fetchReleases(),

@@ -1,6 +1,5 @@
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" as shared;
 
 /// Adds Cursor's question extensions on top of the standard ACP permission
 /// handling: `cursor/ask_question` (multiple-choice) and `cursor/create_plan`
@@ -41,7 +40,6 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
     final title = (params["title"] as String?) ?? "Question";
     final rawQuestions = (params["questions"] as List?) ?? const [];
 
-    final sharedQuestions = <Map<String, dynamic>>[];
     final pluginQuestions = <PluginQuestionInfo>[];
     final metas = <_QuestionMeta>[];
 
@@ -59,25 +57,14 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
           .toList(growable: false);
 
       final labelToId = <String, String>{};
-      final sharedOptions = <shared.QuestionOption>[];
       final pluginOptions = <PluginQuestionOption>[];
       for (final option in options) {
         final id = _str(option["id"]) ?? _str(option["value"]) ?? "";
         final label = _str(option["label"]) ?? id;
         labelToId[label] = id;
-        sharedOptions.add(shared.QuestionOption(label: label, description: ""));
         pluginOptions.add(PluginQuestionOption(label: label, description: ""));
       }
 
-      sharedQuestions.add(
-        shared.QuestionInfo(
-          question: prompt,
-          header: title,
-          options: sharedOptions,
-          multiple: multiple,
-          custom: false,
-        ).toJson(),
-      );
       pluginQuestions.add(
         PluginQuestionInfo(
           question: prompt,
@@ -111,7 +98,10 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
       BridgeSseQuestionAsked(
         id: bridgeId,
         sessionID: sessionId,
-        questions: sharedQuestions,
+        // Cursor sessions are flat (no sub-agent hierarchy), so a request's
+        // display root is its own session.
+        displaySessionId: sessionId,
+        questions: pluginQuestions,
       ),
     );
   }
@@ -140,23 +130,25 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
         (params["plan"] as String?) ??
         "Review the proposed plan.";
 
+    final questions = [
+      PluginQuestionInfo(
+        question: overview,
+        header: name,
+        options: const [
+          PluginQuestionOption(label: "Accept", description: ""),
+          PluginQuestionOption(label: "Reject", description: ""),
+        ],
+        multiple: false,
+        custom: false,
+      ),
+    ];
+
     final bridgeId = generateBridgeId();
     addPendingQuestion(
       bridgeRequestId: bridgeId,
       acpId: request.id,
       sessionId: sessionId,
-      questions: [
-        PluginQuestionInfo(
-          question: overview,
-          header: name,
-          options: const [
-            PluginQuestionOption(label: "Accept", description: ""),
-            PluginQuestionOption(label: "Reject", description: ""),
-          ],
-          multiple: false,
-          custom: false,
-        ),
-      ],
+      questions: questions,
       replyBuilder: (answers) {
         final accepted = answers.isNotEmpty &&
             answers.first.any((a) => a.toLowerCase() == "accept");
@@ -167,18 +159,8 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
       BridgeSseQuestionAsked(
         id: bridgeId,
         sessionID: sessionId,
-        questions: [
-          shared.QuestionInfo(
-            question: overview,
-            header: name,
-            options: const [
-              shared.QuestionOption(label: "Accept", description: ""),
-              shared.QuestionOption(label: "Reject", description: ""),
-            ],
-            multiple: false,
-            custom: false,
-          ).toJson(),
-        ],
+        displaySessionId: sessionId,
+        questions: questions,
       ),
     );
   }

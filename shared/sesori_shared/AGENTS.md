@@ -2,6 +2,10 @@
 
 Pure Dart library — crypto primitives + protocol types shared by `sesori_bridge_dart` and `sesori_mobile`. No Flutter dependency. Works in native binaries and Flutter apps.
 
+## Error Handling
+
+**Never silently swallow.** The target is a `catch` that discards an error and continues with no trace (`catch (e) { /* no-op */ }`). A handler that swallows and continues (no-op/best-effort cleanup included) must log, and a catch-all (`on Object catch`/`catch (e)`) especially, since the cause is unknown. But do NOT add a redundant log when the catch already surfaces the failure — rethrows, throws a typed exception, or returns/yields an explicit failure the caller renders — that just double-logs. When you log a caught error, pass it as the logger argument (`Log.w("msg", error, stackTrace)`), don't string-interpolate it.
+
 ## STRUCTURE
 
 ```
@@ -34,6 +38,7 @@ lib/
 
 - **Freezed sealed classes**: All model/protocol types use `sealed class` (NOT `abstract class`) for exhaustive switch
 - **build.yaml**: `format: false`, `map: false`, `when: false` — reduced generated code
+- **Null keys omitted from wire payloads**: `build.yaml` sets `json_serializable` `include_if_null: false`, so nullable fields are dropped from `toJson()` output by default. Do **NOT** add `@JsonKey(includeIfNull: false)` explicitly — it is already the default here. (Decoding is unaffected: a missing key deserializes to `null`.)
 - **Strict analysis**: `strict-casts`, `strict-inference`, `strict-raw-types` all ON
 - **Barrel export**: All public API re-exported from `lib/sesori_shared.dart`
 - **Line width**: 120 characters

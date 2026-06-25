@@ -413,6 +413,9 @@ class _FakeBridgePlugin implements BridgePluginApi {
   Future<List<PluginAgent>> getAgents({required String projectId}) async => [];
 
   @override
+  Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async => [];
+
+  @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async => [];
 
   @override
@@ -453,6 +456,15 @@ class _FakeBridgePlugin implements BridgePluginApi {
 }
 
 class _NoopProcessRunner implements ProcessRunner {
+  @override
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
+    Map<String, String>? environment,
+  }) async {
+    throw UnimplementedError();
+  }
+
   @override
   Future<ProcessResult> run(
     String executable,

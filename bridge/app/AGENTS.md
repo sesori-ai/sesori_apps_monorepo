@@ -42,7 +42,7 @@ bridge/ workspace modules (siblings of app/):
 
 | Task             | Location                           | Notes                                                   |
 | ---------------- | ---------------------------------- | ------------------------------------------------------- |
-| CLI flags        | `bin/bridge.dart`                  | Bridge core flags (`--relay`, `--plugin`, etc.); the selected plugin contributes its own (OpenCode adds `--port`, `--no-auto-start`) |
+| CLI flags        | `bin/bridge.dart`                  | Bridge core flags (`--relay`, `--plugin`, etc.); the selected plugin contributes its own, namespaced by plugin id (OpenCode adds `--opencode-port`, `--opencode-host`, `--opencode-no-auto-start`, …) |
 | Auth flow        | `lib/src/auth/`                    | OAuth PKCE with token persistence to disk               |
 | Relay connection | `lib/src/bridge/relay_client.dart` | WebSocket + auth handshake + reconnection               |
 | Key exchange     | `lib/src/bridge/key_exchange.dart` | X25519 → HKDF → room key delivery                       |
@@ -54,8 +54,9 @@ bridge/ workspace modules (siblings of app/):
 ## CONVENTIONS
 
 - **Plugin architecture** — all backend-specific code lives in sibling plugin packages under `bridge/` (e.g. `sesori_plugin_opencode`). The bridge `lib/src/` is plugin-agnostic — it only imports from `sesori_plugin_interface`, never from concrete plugins. `bin/bridge.dart`'s registry (`plugin_registry.dart`) imports `opencode_plugin` for the const descriptor — that is the supported descriptor registration point.
+- **Plugin CLI options are namespaced** — plugins declare **bare** option names in their descriptor (`port`, `host`, `bin`, …). `PluginCliOptionsMapper` namespaces each to `--<pluginId>-<name>` (e.g. `--opencode-host`) at registration so options can't collide once multiple plugins run in parallel. Never bake the plugin prefix into the declared name. When renaming/migrating a previously un-prefixed flag, keep the old spelling working via `PluginOption.deprecatedAliases` (registered hidden, emits a `Log.w` deprecation when used) rather than breaking existing invocations. Plugin code reads values by the **bare** name through `PluginConfig`, unaware of namespacing.
 - **Explicit routing** — every supported route has a dedicated handler; `RequestRouter` returns 404 for unmatched routes (no catch-all proxy).
-- **User-facing output vs logging** — use `Console` (from `sesori_plugin_interface`) for anything the user must see to operate the bridge: prompts, requests, the login URL/code, essential startup status. `Console.message` writes to stdout, `Console.error` to stderr, and neither is gated by `--log-level`. Use `Log` only for diagnostics that can be safely ignored; all `Log` levels write to stderr and are suppressible via `--log-level`. The bridge must stay fully operable with logging silenced (`--log-level error` or `2>/dev/null`), so never put an essential prompt or actionable status behind `Log`.
+- **User-facing output vs logging** — use `Console` (from `sesori_plugin_interface`) for anything the user must see to operate the bridge: prompts, requests, the login URL/code, essential startup status, and deprecation nudges. `Console.message` writes to stdout; `Console.warning` (yellow) and `Console.error` (red) write to stderr; none are gated by `--log-level`. Coloring is applied only when stderr is an interactive terminal, so redirected/piped output stays clean. Use `Log` only for diagnostics that can be safely ignored; all `Log` levels write to stderr and are suppressible via `--log-level`. `Log` warning/error lines are colorized (yellow/red) on a terminal, and the `[CallerClass]` tag is shown only at `debug`/`verbose` levels to keep normal output clean. The bridge must stay fully operable with logging silenced (`--log-level error` or `2>/dev/null`), so never put an essential prompt or actionable status behind `Log`.
 - **Crypto from `sesori_shared`** — all crypto primitives imported from shared package, not duplicated
 - **Linting**: `package:lints/recommended.yaml` (lighter than mobile's `all_lint_rules`)
 - **Binary distribution**: npm wrapper package with platform-specific optional deps (darwin/linux/windows × arm64/x64)
@@ -73,15 +74,17 @@ bridge/ workspace modules (siblings of app/):
     fooRequest = FooRequest.fromJson(
       jsonDecodeMap(request.body),
     );
-  } catch {
+  } catch (error) {
+    Log.d("Rejecting request with an invalid JSON body: $error");
     return buildErrorResponse(request, 400, "invalid JSON body");
   }
   ```
 
 ## ANTI-PATTERNS
 
+- **Never silently swallow** — a `catch` that swallows and continues (no-op/best-effort cleanup) must log; a catch-all (`on Object catch`/`catch (e)`) should generally log since the cause is unknown. But do NOT add a redundant log when the catch already surfaces the failure (rethrows, throws a typed exception, or returns/yields an explicit failure like `ExplicitUpdateFailed`/`ProvisionFailed`) — that double-logs. When you do log a caught error, pass it as the logger argument (`Log.w("msg", error, stackTrace)`), don't string-interpolate it.
 - **Never duplicate crypto** — use `sesori_shared` package for all encryption/protocol types
-- **Never hardcode URLs** — relay and auth backend are CLI-configurable. Server is always localhost (only port is configurable)
+- **Never hardcode URLs** — relay and auth backend are CLI-configurable. The OpenCode server defaults to loopback (`127.0.0.1`) but its host and port are CLI-configurable too (`--opencode-host`, `--opencode-port`)
 - **Never inline HTTP calls in business logic** — extract to a dedicated API class with typed return values
 - **Never pass raw JSON maps through layers** — always deserialize at the boundary (API class) and use Freezed objects downstream
 - **Never construct classes with server URLs/passwords directly** — inject an API client instance instead
@@ -90,6 +93,7 @@ bridge/ workspace modules (siblings of app/):
 - **Do not use top-level/global functions for non-trivial bridge logic** — extracting 20-100 lines of decision-making into free functions is not an acceptable file-splitting strategy. If logic is substantial enough to deserve its own file, make it a named collaborator class with explicit constructor-injected dependencies and test it directly.
 - **Never extract a class only for file-length pressure** — the extracted collaborator must own lifecycle, state or invariants, a stable domain responsibility, or a multi-caller decision boundary. If it owns none of those, keep the logic as private methods in the original class.
 - **Keep command primitives in standalone dependencies** — shell-facing git or worktree operations belong in a dedicated API/helper dependency that the service composes. `WorktreeService` should orchestrate those collaborators, not attach command execution as service-owned helper methods in another file.
+- **Don't couple the in-place updater with the npm bootstrap/install script** — they are intentionally independent. The npm bootstrap atomically replaces the managed install (full-dir rename under its own `.sesori-bootstrap.lock`) and the Dart updater swaps `bin/`/`lib/` under `.update.lock`. Do NOT add cross-process/cross-language lock coordination between them (e.g. having the updater observe the bootstrap lock or unifying the two locks). The bootstrap's job is simply to replace the binaries; a rare collision from running `npx @sesori/bridge` during the updater's apply window is an accepted edge, not a bug to "fix" by coupling the two locking schemes.
 
 For push code specifically, `PushDispatcher` owns only outbound push sends (immediate sends, completion sends, rate limiting, payload construction, and client disposal). `CompletionPushListener` owns SSE-driven tracker/notifier bookkeeping plus abort suppression, and `MaintenancePushListener` owns the timer lifecycle, maintenance-step sequencing, and maintenance telemetry/logging.
 

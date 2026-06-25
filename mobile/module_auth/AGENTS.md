@@ -4,6 +4,10 @@ Standalone pure Dart package encapsulating all authentication concerns: token li
 
 See [`../AGENTS.md`](../AGENTS.md) for shared conventions (architecture layering, DI, testing, error handling).
 
+## Error Handling
+
+**Never silently swallow** (see the repo-root `AGENTS.md`): a `catch` that swallows and continues (no-op/best-effort) must log, and a catch-all especially. But don't double-log when the catch already surfaces the failure (rethrows, or returns/yields an explicit failure the caller renders). Pass the error as the logger argument (`Log.w("msg", error, st)`), don't string-interpolate it.
+
 ## Public API (exported from barrel file)
 
 Only these types are exported. Everything else is internal (`lib/src/`).

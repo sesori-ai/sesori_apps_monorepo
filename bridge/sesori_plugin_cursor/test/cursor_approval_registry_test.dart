@@ -56,8 +56,13 @@ void main() {
 
       final asked = emitted.single as BridgeSseQuestionAsked;
       expect(asked.sessionID, "s1");
-      expect(asked.questions.single["question"], "Pick one");
-      expect(asked.questions.single["header"], "Choose");
+      expect(asked.displaySessionId, "s1");
+      expect(asked.questions.single.question, "Pick one");
+      expect(asked.questions.single.header, "Choose");
+      expect(
+        asked.questions.single.options.map((o) => o.label),
+        ["Yes", "No"],
+      );
 
       expect(registry.pendingForSession("s1"), hasLength(1));
 
@@ -78,7 +83,7 @@ void main() {
       await pump();
 
       final asked = emitted.single as BridgeSseQuestionAsked;
-      expect(asked.questions.single["header"], "Plan A");
+      expect(asked.questions.single.header, "Plan A");
 
       registry.replyQuestion(asked.id, [["Accept"]]);
       final reply = fake.written.last;
@@ -106,7 +111,7 @@ void main() {
       });
       await pump();
       final asked = emitted.single as BridgeSseQuestionAsked;
-      expect(asked.questions.single["multiple"], false);
+      expect(asked.questions.single.multiple, false);
       expect(registry.pendingForSession("s1"), hasLength(1));
     });
 

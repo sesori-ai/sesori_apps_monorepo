@@ -1,18 +1,20 @@
 import 'package:collection/collection.dart';
+import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 
 import '../api/github_releases_api.dart';
 import '../api/update_cache_api.dart';
 import '../foundation/release_track.dart';
-import '../models/bridge_version.dart';
 import '../models/cached_release.dart';
 import '../models/distribution_target.dart';
 import '../models/github_release_dto.dart';
 import '../models/release_info.dart';
+import '../models/update_resolution.dart';
 
 class ReleaseRepository {
   final GitHubReleasesApi _api;
   final UpdateCacheApi _cache;
-  final BridgeVersion _currentVersion;
+  final SemanticVersion _currentVersion;
   final DistributionTarget _target;
   final ReleaseTrack _track;
 
@@ -24,7 +26,7 @@ class ReleaseRepository {
     required ReleaseTrack track,
   }) : _api = api,
        _cache = cache,
-       _currentVersion = BridgeVersion.parse(value: currentVersion),
+       _currentVersion = SemanticVersion.parse(value: currentVersion),
        _target = target,
        _track = track;
 
@@ -33,7 +35,7 @@ class ReleaseRepository {
   /// - internal: stable releases plus `-internal.*` pre-releases. Other
   ///   pre-release kinds (e.g. `-rc`, `-beta`) are intentionally excluded so
   ///   "internal" means exactly the internal lane, not "any non-stable build".
-  bool _isEligible(BridgeVersion version) {
+  bool _isEligible(SemanticVersion version) {
     if (version.isStable) {
       return true;
     }
@@ -53,12 +55,43 @@ class ReleaseRepository {
     return _fetchAndEvaluate();
   }
 
+  /// Resolves the latest release eligible for the active track, regardless of
+  /// the current version, for an explicit `update`.
+  ///
+  /// Always fetches fresh: it bypasses the read cache so the result reflects
+  /// what is published right now (a just-cut release is never missed, and a
+  /// repair reinstall sees current truth). It still writes the cache as a side
+  /// effect, so the background updater benefits. The returned [UpdateResolution]
+  /// also reports the current version and whether it is eligible for the track,
+  /// so the caller can detect a track/version mismatch.
+  Future<UpdateResolution> resolveUpdate() async {
+    final releases = await _api.fetchReleases();
+    final selected = _selectLatestBridgeRelease(releases: releases);
+
+    ReleaseInfo? latestEligible;
+    SemanticVersion? latestVersion;
+    if (selected != null) {
+      final extracted = await _extractReleaseInfo(release: selected);
+      if (extracted != null) {
+        latestEligible = extracted.info;
+        latestVersion = extracted.version;
+      }
+    }
+
+    return UpdateResolution(
+      currentVersion: _currentVersion,
+      currentEligible: _isEligible(_currentVersion),
+      latestEligible: latestEligible,
+      latestVersion: latestVersion,
+    );
+  }
+
   ReleaseInfo? _evaluateCached({required CachedRelease cached}) {
     if (cached.assetName != _target.assetName || cached.track != _track.wireValue) {
       return null;
     }
 
-    final BridgeVersion? latestVersion = BridgeVersion.tryParse(value: cached.latestVersion);
+    final SemanticVersion? latestVersion = SemanticVersion.tryParse(value: cached.latestVersion);
     if (latestVersion == null || !_isEligible(latestVersion)) {
       return null;
     }
@@ -97,7 +130,7 @@ class ReleaseRepository {
           (release) {
             final tagName = release.tagName;
             final versionString = tagName.replaceFirst('v', '');
-            final version = BridgeVersion.tryParse(value: versionString);
+            final version = SemanticVersion.tryParse(value: versionString);
             return version != null && _isEligible(version)
                 ? (
                     release: release,
@@ -121,16 +154,34 @@ class ReleaseRepository {
   }
 
   Future<ReleaseInfo?> _evaluateRelease({required GitHubReleaseDto release}) async {
+    final extracted = await _extractReleaseInfo(release: release);
+    if (extracted == null) {
+      return null;
+    }
+    if (!_isEligible(extracted.version)) {
+      return null;
+    }
+    if (extracted.version.compareTo(_currentVersion) <= 0) {
+      return null;
+    }
+    return extracted.info;
+  }
+
+  /// Parses [release] into a typed [ReleaseInfo] (version + asset/checksums
+  /// URLs + published date) and writes the metadata cache as a side effect.
+  /// Returns `null` when the tag/version is unparseable or the required assets
+  /// are missing. Applies NO eligibility or "is newer" gating — callers decide.
+  Future<({ReleaseInfo info, SemanticVersion version})?> _extractReleaseInfo({
+    required GitHubReleaseDto release,
+  }) async {
     final tagName = release.tagName;
     if (!tagName.startsWith('v')) {
       return null;
     }
 
     final versionString = tagName.replaceFirst('v', '');
-    final BridgeVersion? latestVersion = BridgeVersion.tryParse(
-      value: versionString,
-    );
-    if (latestVersion == null) {
+    final SemanticVersion? version = SemanticVersion.tryParse(value: versionString);
+    if (version == null) {
       return null;
     }
 
@@ -161,34 +212,39 @@ class ReleaseRepository {
     }
 
     if (assetUrl != null && checksumsUrl != null) {
-      await _cache.write(
-        release: CachedRelease(
-          latestVersion: latestVersion.toString(),
-          downloadUrl: assetUrl,
-          checksumsUrl: checksumsUrl,
-          assetName: assetName,
-          track: _track.wireValue,
-          publishedAt: publishedAt,
-          checkedAt: DateTime.now(),
-        ),
-      );
+      // Best-effort: the cache is a 10-minute TTL optimization to avoid
+      // re-hitting GitHub every cycle. A write failure (e.g. a full/unwritable
+      // cache dir) must not turn an otherwise-successful check or resolution
+      // into a genuine update failure with reinstall guidance.
+      try {
+        await _cache.write(
+          release: CachedRelease(
+            latestVersion: version.toString(),
+            downloadUrl: assetUrl,
+            checksumsUrl: checksumsUrl,
+            assetName: assetName,
+            track: _track.wireValue,
+            publishedAt: publishedAt,
+            checkedAt: DateTime.now(),
+          ),
+        );
+      } on Object catch (error) {
+        Log.w('Failed to cache the latest release metadata: $error');
+      }
     }
 
-    if (!_isEligible(latestVersion)) {
-      return null;
-    }
-    if (latestVersion.compareTo(_currentVersion) <= 0) {
-      return null;
-    }
     if (assetUrl == null || checksumsUrl == null) {
       return null;
     }
 
-    return ReleaseInfo(
-      version: latestVersion.toString(),
-      assetUrl: assetUrl,
-      checksumsUrl: checksumsUrl,
-      publishedAt: publishedAt,
+    return (
+      info: ReleaseInfo(
+        version: version.toString(),
+        assetUrl: assetUrl,
+        checksumsUrl: checksumsUrl,
+        publishedAt: publishedAt,
+      ),
+      version: version,
     );
   }
 }

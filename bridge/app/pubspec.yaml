@@ -1,6 +1,6 @@
 name: sesori_bridge
 description: Dart implementation of the Sesori Bridge CLI for WebSocket communication.
-version: 1.1.0
+version: 1.1.2
 publish_to: none
 resolution: workspace
 
@@ -22,10 +22,12 @@ dependencies:
   rxdart: ^0.28.0
   sesori_plugin_interface:
     path: ../sesori_plugin_interface
-  sesori_plugin_runtime:
-    path: ../sesori_plugin_runtime
+  sesori_bridge_foundation:
+    path: ../sesori_bridge_foundation
   opencode_plugin:
     path: ../sesori_plugin_opencode
+  codex_plugin:
+    path: ../sesori_plugin_codex
   acp_plugin:
     path: ../sesori_plugin_acp
   cursor_plugin:

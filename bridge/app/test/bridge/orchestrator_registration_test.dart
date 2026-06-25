@@ -31,6 +31,7 @@ import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 import "package:test/test.dart";
 
+import "../helpers/restart_test_support.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
 import "api/git_remote_api_test.dart";
@@ -249,6 +250,7 @@ class _RegistrationHarness {
         sessionRepository: sessionRepository,
         failureReporter: FakeFailureReporter(),
       ),
+      restartService: buildTestRestartService(),
     );
 
     final session = orchestrator.create();

@@ -7,11 +7,11 @@ import 'package:http/testing.dart';
 import 'package:path/path.dart' as p;
 import 'package:sesori_bridge/src/updater/api/github_releases_api.dart';
 import 'package:sesori_bridge/src/updater/api/update_cache_api.dart';
-import 'package:sesori_bridge/src/updater/foundation/platform_info.dart';
 import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
 import 'package:sesori_bridge/src/updater/models/cached_release.dart';
 import 'package:sesori_bridge/src/updater/models/distribution_target.dart';
 import 'package:sesori_bridge/src/updater/repositories/release_repository.dart';
+import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:test/test.dart';
 
 class _NoCache extends UpdateCacheApi {
@@ -73,8 +73,8 @@ void main() {
 
     setUp(() {
       final target = DistributionTarget(
-        os: DistributionPlatformOs.macos,
-        arch: DistributionPlatformArch.arm64,
+        os: PlatformOs.macos,
+        arch: PlatformArch.arm64,
       );
       final client = MockClient((_) async {
         return http.Response(
@@ -146,30 +146,49 @@ void main() {
       );
     });
 
-    test('install.sh encodes the v-tagged asset and basename checksum contract', () async {
+    test('install.sh encodes the latest/download contract with a v-tagged scan fallback', () async {
       final script = await _readRepoFile(relativePath: 'install.sh');
 
-      expect(script, contains(r'GITHUB_RELEASES_API_URL="https://api.github.com/repos/${GITHUB_REPO}/releases"'));
-      expect(script, contains('GITHUB_RELEASES_PER_PAGE=100'));
-      expect(script, contains('GITHUB_RELEASES_MAX_PAGES=10'));
+      // Primary path: GitHub-native always-latest static download; the version is
+      // read from the versioned download redirect, and both the archive and
+      // checksums.txt are required before the latest release is accepted.
+      expect(script, contains(r'GITHUB="${GITHUB:-https://github.com}"'));
+      expect(script, contains('releases/latest/download'));
+      expect(script, contains(r'${latest_base}/${filename}'));
+      expect(script, contains(r'${latest_base}/checksums.txt'));
+      expect(script, contains('parse_version_from_headers'));
+      expect(script, contains('headers_indicate_success'));
+
+      // Fallback scan: still the REST API, but small and reading pages from
+      // files (paths-as-args only), never env vars.
+      expect(script, contains(r'GITHUB_API="${GITHUB_API:-https://api.github.com}"'));
+      expect(script, contains('GITHUB_RELEASES_PER_PAGE=30'));
+      expect(script, contains('GITHUB_RELEASES_MAX_PAGES=3'));
       expect(script, contains(r'?per_page=${GITHUB_RELEASES_PER_PAGE}&page=${page}'));
       expect(script, contains('if tag_name.startswith("v"):'));
       expect(script, contains('release.get("draft") or release.get("prerelease")'));
       expect(script, contains('eligible.sort('));
-      expect(script, contains('asset_url = assets.get(filename)'));
-      expect(script, contains('checksums_url = assets.get("checksums.txt")'));
+      expect(script, contains('if filename in asset_names and "checksums.txt" in asset_names:'));
       expect(
         script,
         contains(r'''awk -v name="${filename}" '$2 == name || $2 == "*" name { print $1; exit }' '''),
       );
     });
 
-    test('install.ps1 encodes the v-tagged asset and basename checksum contract', () async {
+    test('install.ps1 encodes the latest/download contract with a v-tagged scan fallback', () async {
       final script = await _readRepoFile(relativePath: 'install.ps1');
 
+      // Primary path: latest/download static asset + redirect-derived version,
+      // requiring the archive and checksums before accepting the latest release.
+      expect(script, contains(r'releases/latest/download/$ArchiveName'));
+      expect(script, contains('Get-RedirectLocation'));
+      expect(script, contains(r'releases/download/(v[0-9]+\.[0-9]+\.[0-9]+)/'));
+      expect(script, contains('Test-RemoteAssetExists'));
+
+      // Fallback scan retained, with the smaller paging contract.
       expect(script, contains(r'$ReleasesApiUrl = "https://api.github.com/repos/$RepoOwner/$RepoName/releases"'));
-      expect(script, contains(r'$ReleasesPerPage = 100'));
-      expect(script, contains(r'$ReleasesMaxPages = 10'));
+      expect(script, contains(r'$ReleasesPerPage = 30'));
+      expect(script, contains(r'$ReleasesMaxPages = 3'));
       expect(script, contains(r'"${ReleasesApiUrl}?per_page=$ReleasesPerPage&page=$page"'));
       expect(script, contains("StartsWith('v')"));
       expect(script, contains(r'''$release.draft -or $release.prerelease'''));

@@ -58,13 +58,23 @@ class PushDispatcher {
 
     final sessionId = _contentBuilder.extractSessionId(event);
 
+    // The notification targets the display (root) session, but its project is
+    // resolved from the display session first and then the owning session: a
+    // child request surfaced on its root may arrive before the root's project is
+    // known to the tracker, while the owner (which just triggered the event)
+    // shares the same project and is reliably tracked.
+    final ownerSessionId = _contentBuilder.extractRequestSessionId(event);
+    final projectId =
+        (sessionId != null ? _tracker.getSessionProjectId(sessionId: sessionId) : null) ??
+        (ownerSessionId != null ? _tracker.getSessionProjectId(sessionId: ownerSessionId) : null);
+
     _sendNotification(
       category: notificationData.category,
       eventType: notificationData.eventType,
       title: notificationData.title,
       body: notificationData.body,
       sessionId: sessionId,
-      projectId: sessionId != null ? _tracker.getSessionProjectId(sessionId: sessionId) : null,
+      projectId: projectId,
     );
   }
 

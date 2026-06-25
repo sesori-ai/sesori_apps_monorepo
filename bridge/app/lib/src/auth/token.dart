@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:sesori_shared/sesori_shared.dart';
 
 /// TokenData holds authentication tokens for the Sesori Bridge.
@@ -53,20 +54,7 @@ class TokenData {
   }
 }
 
-String tokenPath() {
-  if (Platform.isWindows) {
-    final localAppData = Platform.environment['LOCALAPPDATA'];
-    if (localAppData == null || localAppData.isEmpty) {
-      throw StateError('LOCALAPPDATA environment variable not set');
-    }
-    return '$localAppData/sesori/token.json';
-  }
-  final homeDir = Platform.environment['HOME'];
-  if (homeDir == null || homeDir.isEmpty) {
-    throw StateError('HOME environment variable not set');
-  }
-  return '$homeDir/.local/share/sesori/token.json';
-}
+String tokenPath() => '${sesoriDataDirectory()}/token.json';
 
 /// Saves the token data to the token file.
 /// Creates the directory structure if it doesn't exist.

@@ -66,6 +66,7 @@ SesoriQuestionAsked _questionAsked({required List<QuestionInfo> questions}) {
   return SesoriQuestionAsked(
     id: "question-1",
     sessionID: "session-1",
+    displaySessionId: null,
     questions: questions,
   );
 }

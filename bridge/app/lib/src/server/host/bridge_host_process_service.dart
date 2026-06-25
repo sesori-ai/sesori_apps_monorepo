@@ -123,7 +123,21 @@ class BridgeHostProcessService implements HostProcessService {
       return _samePath(inspectedIdentity.executablePath, spawnIdentity.executablePath ?? "");
     }
 
-    return inspectedIdentity.commandLine == spawnIdentity.commandLine;
+    final inspectedCommandLine = inspectedIdentity.commandLine;
+    final spawnCommandLine = spawnIdentity.commandLine;
+    if (inspectedCommandLine == spawnCommandLine) {
+      return true;
+    }
+
+    // Interpreter-shim spawn: when the spawned executable is a wrapper script
+    // (e.g. a `#!/usr/bin/env node` shim like Homebrew's `codex`), the OS
+    // reports the command line as `<interpreter> <our exact spawn command>`.
+    // Accept that so the adopted identity carries the real start marker — this
+    // is the same pid we just spawned, so the listen/args suffix is unique.
+    // Without it the ownership record keeps a null start marker that never
+    // re-matches on a later cleanup, leaking the still-running child + its port.
+    return spawnCommandLine.isNotEmpty &&
+        inspectedCommandLine.endsWith(" $spawnCommandLine");
   }
 
   bool _samePath(String? actual, String expected) {

@@ -38,6 +38,10 @@ jobs:
         run: dart analyze --fatal-infos
         working-directory: bridge/sesori_plugin_interface
 
+      - name: Analyze sesori_bridge_foundation
+        run: dart analyze --fatal-infos
+        working-directory: bridge/sesori_bridge_foundation
+
       - name: Analyze sesori_plugin_runtime
         run: dart analyze --fatal-infos
         working-directory: bridge/sesori_plugin_runtime
@@ -45,6 +49,10 @@ jobs:
       - name: Analyze sesori_plugin_opencode
         run: dart analyze --fatal-infos
         working-directory: bridge/sesori_plugin_opencode
+
+      - name: Analyze sesori_plugin_codex
+        run: dart analyze --fatal-infos
+        working-directory: bridge/sesori_plugin_codex
 
       - name: Run tests for bridge/app
         run: dart test
@@ -54,6 +62,10 @@ jobs:
         run: dart test
         working-directory: bridge/sesori_plugin_interface
 
+      - name: Run tests for sesori_bridge_foundation
+        run: dart test
+        working-directory: bridge/sesori_bridge_foundation
+
       - name: Run tests for sesori_plugin_runtime
         run: dart test
         working-directory: bridge/sesori_plugin_runtime
@@ -61,6 +73,10 @@ jobs:
       - name: Run tests for sesori_plugin_opencode
         run: dart test
         working-directory: bridge/sesori_plugin_opencode
+
+      - name: Run tests for sesori_plugin_codex
+        run: dart test
+        working-directory: bridge/sesori_plugin_codex
 
   build-smoke:
     runs-on: blacksmith-2vcpu-ubuntu-2404

@@ -73,66 +73,105 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
       SessionDetailLoading() => false,
       SessionDetailFailed() => false,
     };
+    final fallbackTitle = widget.sessionTitle ?? loc.sessionDetailTitle;
+    final title = switch (state) {
+      SessionDetailLoaded(:final sessionTitle) => sessionTitle ?? fallbackTitle,
+      SessionDetailLoading() || SessionDetailFailed() => fallbackTitle,
+    };
+    final subtitle = switch (state) {
+      // Both parts are null-aware: with a null agent/model the join must yield
+      // an empty string (no subtitle), never a literal "null" under the title.
+      SessionDetailLoaded(:final agent, :final assistantAgentModel) => [
+        ?agent,
+        ?assistantAgentModel?.modelID,
+      ].join(" · "),
+      SessionDetailLoading() || SessionDetailFailed() => "",
+    };
+    final isRootSession = state is SessionDetailLoaded && state.isRootSession == true;
 
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: showLeading,
-        title: SessionDetailTitle(
-          state: state,
-          fallbackTitle: widget.sessionTitle ?? loc.sessionDetailTitle,
+    final actions = <Widget>[
+      if (isRootSession)
+        PregoButtonsIconGlass(
+          icon: TablerRegular.git_compare,
+          semanticLabel: loc.sessionDetailFileChangesTooltip,
+          onPressed: () => context.pushRoute(
+            AppRoute.sessionDiffs(
+              projectId: widget.projectId,
+              projectName: widget.projectName,
+              sessionId: widget.sessionId,
+            ),
+          ),
         ),
-        actions: [
-          if (state case SessionDetailLoaded(:final isRootSession) when isRootSession == true)
-            IconButton(
-              icon: const Icon(Icons.difference_outlined),
-              tooltip: loc.sessionDetailFileChangesTooltip,
-              onPressed: () => context.pushRoute(
-                AppRoute.sessionDiffs(
-                  projectId: widget.projectId,
-                  projectName: widget.projectName,
-                  sessionId: widget.sessionId,
-                ),
+      if (isBusy)
+        // A status indicator, not a button — sized to the glass button's 40×40
+        // footprint so the bar height stays stable as work starts and stops.
+        SizedBox(
+          width: 40,
+          height: 40,
+          child: Center(
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: context.prego.colors.bgBrandSolid,
               ),
             ),
-          if (isBusy)
-            Padding(
-              padding: const EdgeInsetsDirectional.only(end: 16),
-              child: SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: context.prego.colors.bgBrandSolid,
-                ),
-              ),
-            ),
-        ],
-      ),
-      body: switch (state) {
-        SessionDetailLoading() => const Center(child: CircularProgressIndicator()),
-        final SessionDetailLoaded loaded =>
-          widget.readOnly
-              ? SessionDetailLoadedView.readOnly(
-                  projectId: widget.projectId,
-                  state: loaded,
-                  onShowPendingQuestions: _showPendingQuestions,
-                  onShowPendingPermissions: _showPendingPermissions,
-                )
-              : SessionDetailLoadedView.editable(
-                  projectId: widget.projectId,
-                  sessionId: widget.sessionId,
-                  state: loaded,
-                  onShowPendingQuestions: _showPendingQuestions,
-                  onShowPendingPermissions: _showPendingPermissions,
-                  onOpenAgentPicker: _openAgentPicker,
-                  onOpenModelPicker: _openModelPicker,
-                  onOpenVariantPicker: _openVariantPicker,
-                ),
-        SessionDetailFailed(:final reason) => SessionDetailErrorView(
-          reason: reason,
-          onRetry: () => context.read<SessionDetailCubit>().reload(),
+          ),
         ),
-      },
+    ];
+
+    return PregoGlassScaffold(
+      title: title,
+      subtitle: subtitle.isEmpty ? null : subtitle,
+      // A chat owns its own (reversed) scroll, so there is no top-anchored
+      // scroll for a large title to collapse against. Use the fixed, centred
+      // inline title (Figma "Middle Title") instead.
+      inlineTitle: true,
+      automaticallyImplyLeading: showLeading,
+      actions: actions.isEmpty ? null : actions,
+      slivers: [
+        switch (state) {
+          SessionDetailLoading() => const SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          // The loaded view is a Column with an Expanded chat and a pinned
+          // composer. hasScrollBody: true gives it the exact remaining height
+          // (chat flexes, composer stays anchored at the bottom and rides above
+          // the keyboard) — the same layout the previous Scaffold body had. The
+          // chat owns its own reversed scroll controller, so the large title
+          // can't collapse with it; it stays expanded, as on the new-session
+          // screen.
+          final SessionDetailLoaded loaded => SliverFillRemaining(
+            hasScrollBody: true,
+            child: widget.readOnly
+                ? SessionDetailLoadedView.readOnly(
+                    projectId: widget.projectId,
+                    state: loaded,
+                    onShowPendingQuestions: _showPendingQuestions,
+                    onShowPendingPermissions: _showPendingPermissions,
+                  )
+                : SessionDetailLoadedView.editable(
+                    projectId: widget.projectId,
+                    sessionId: widget.sessionId,
+                    state: loaded,
+                    onShowPendingQuestions: _showPendingQuestions,
+                    onShowPendingPermissions: _showPendingPermissions,
+                    onOpenAgentPicker: _openAgentPicker,
+                    onOpenModelPicker: _openModelPicker,
+                    onOpenVariantPicker: _openVariantPicker,
+                  ),
+          ),
+          SessionDetailFailed(:final reason) => SliverFillRemaining(
+            hasScrollBody: false,
+            child: SessionDetailErrorView(
+              reason: reason,
+              onRetry: () => context.read<SessionDetailCubit>().reload(),
+            ),
+          ),
+        },
+      ],
     );
   }
 

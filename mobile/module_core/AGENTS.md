@@ -2,6 +2,10 @@
 
 Business logic, state management, services, and models for the Sesori ecosystem. Zero Flutter SDK dependency — usable from both the Flutter app and a future CLI/TUI tool.
 
+## Error Handling
+
+**Never silently swallow** (see the repo-root `AGENTS.md`): a `catch` that swallows and continues (no-op/best-effort) must log, and a catch-all especially. But don't double-log when the catch already surfaces the failure (rethrows, or returns/yields an explicit failure the caller renders). Pass the error as the logger argument (`Log.w("msg", error, st)`), don't string-interpolate it.
+
 ## Package Structure
 
 ```

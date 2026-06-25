@@ -2,7 +2,15 @@ TOOL_VERSIONS := $(shell git rev-parse --show-toplevel)/.tool-versions
 FLUTTER_VERSION := $(shell grep '^flutter' $(TOOL_VERSIONS) | awk '{print $$2}')
 DART ?= $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)/bin/cache/dart-sdk/bin/dart
 
-.PHONY: bump-version bump-version-check
+.PHONY: pub-get bump-version bump-version-check
+
+DART_WORKSPACES := shared bridge mobile
+
+pub-get:
+	@for dir in $(DART_WORKSPACES); do \
+		printf '=== pub-get: %s ===\n' "$$dir"; \
+		$(MAKE) --no-print-directory -C "$$dir" pub-get || exit 1; \
+	done
 
 define run_sync_versions
 	@set -eu; \

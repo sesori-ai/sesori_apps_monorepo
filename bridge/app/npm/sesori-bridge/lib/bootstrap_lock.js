@@ -10,6 +10,10 @@ var LOCK_STALE_MS = Number(process.env.SESORI_BRIDGE_TEST_BOOTSTRAP_LOCK_STALE_M
 var HEARTBEAT_INTERVAL_MS = Math.max(100, Math.floor(LOCK_STALE_MS / 4));
 var HEARTBEAT_FILE_NAME = "heartbeat";
 var OWNER_FILE_NAME = "owner.json";
+// Bounded wait for the detached heartbeat to exit on SIGTERM before the lock
+// directory is removed, so it can't re-create files mid-teardown (ENOTEMPTY).
+var HEARTBEAT_STOP_TIMEOUT_MS = 2000;
+var HEARTBEAT_STOP_POLL_MS = 25;
 
 function sleep(milliseconds) {
   var buffer = new SharedArrayBuffer(4);
@@ -18,7 +22,31 @@ function sleep(milliseconds) {
 }
 
 function removeRecursive(filePath) {
-  fs.rmSync(filePath, { force: true, recursive: true });
+  // The detached heartbeat process keeps writing `heartbeat` inside the lock
+  // directory and only stops asynchronously on SIGTERM. If it writes once more
+  // while we are tearing the directory down, the internal rmdir observes a
+  // non-empty directory and fails with ENOTEMPTY (also EBUSY/EPERM on some
+  // platforms). Retry so the removal succeeds once the heartbeat has exited.
+  fs.rmSync(filePath, {
+    force: true,
+    recursive: true,
+    maxRetries: 25,
+    retryDelay: 50,
+  });
+}
+
+// Tear down the lock directory after the heartbeat has been signalled. We first
+// delete the heartbeat file so a last-gasp heartbeat write has nothing to
+// re-create the directory around, then remove the directory recursively with
+// retries. This closes the ENOTEMPTY race where the detached heartbeat process
+// re-populates the directory between rmSync retries.
+function removeLockDirectory(lockPath) {
+  try {
+    fs.rmSync(heartbeatPath(lockPath), { force: true, maxRetries: 25, retryDelay: 50 });
+  } catch (_) {
+    // Best effort; the recursive removal below still retries.
+  }
+  removeRecursive(lockPath);
 }
 
 function heartbeatPath(lockPath) {
@@ -52,13 +80,35 @@ function startHeartbeat(lockPath) {
   return heartbeatProcess;
 }
 
+function processIsAlive(pid) {
+  try {
+    // Signal 0 performs existence/permission checks without delivering a signal.
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    // ESRCH = no such process (it exited). EPERM = exists but not ours to signal.
+    return !!(error && error.code === "EPERM");
+  }
+}
+
 function stopHeartbeat(heartbeatProcess) {
   if (!heartbeatProcess || typeof heartbeatProcess.pid !== "number") {
     return;
   }
+  var pid = heartbeatProcess.pid;
   try {
-    process.kill(heartbeatProcess.pid, "SIGTERM");
-  } catch (_) {}
+    process.kill(pid, "SIGTERM");
+  } catch (_) {
+    return;
+  }
+  // Wait (briefly, synchronously) for the detached heartbeat to actually exit
+  // before the caller tears down the lock directory. Otherwise a last-gasp
+  // heartbeat write can re-create the directory between rmSync retries and
+  // surface as ENOTEMPTY. Bounded so a wedged heartbeat can't hang the bootstrap.
+  var deadline = Date.now() + HEARTBEAT_STOP_TIMEOUT_MS;
+  while (Date.now() < deadline && processIsAlive(pid)) {
+    sleep(HEARTBEAT_STOP_POLL_MS);
+  }
 }
 
 function lockIsStale(lockPath) {
@@ -118,13 +168,13 @@ function withBootstrapLock(options, callback) {
   } finally {
     if (!callbackResult || typeof callbackResult.then !== "function") {
       stopHeartbeat(heartbeatProcess);
-      removeRecursive(lockPath);
+      removeLockDirectory(lockPath);
     }
   }
   if (callbackResult && typeof callbackResult.then === "function") {
     return Promise.resolve(callbackResult).finally(function() {
       stopHeartbeat(heartbeatProcess);
-      removeRecursive(lockPath);
+      removeLockDirectory(lockPath);
     });
   }
   return callbackResult;

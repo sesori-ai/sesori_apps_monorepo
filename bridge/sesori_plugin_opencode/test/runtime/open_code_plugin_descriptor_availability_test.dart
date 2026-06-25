@@ -9,7 +9,7 @@ import "package:test/test.dart";
 void main() {
   group("OpenCodePluginDescriptor.checkAvailability", () {
     const managedConfig = PluginConfig(
-      values: {"no-auto-start": false, "port": null, "password": "", "opencode-bin": "opencode"},
+      values: {"no-auto-start": false, "port": null, "password": "", "bin": "opencode", "no-password": false},
     );
 
     test("attach mode (--no-auto-start) reports available without spawning a probe", () async {
@@ -19,7 +19,7 @@ void main() {
 
       final result = await const OpenCodePluginDescriptor().checkAvailability(
         config: const PluginConfig(
-          values: {"no-auto-start": true, "port": "4096", "password": "", "opencode-bin": "opencode"},
+          values: {"no-auto-start": true, "port": "4096", "password": "", "bin": "opencode", "no-password": false},
         ),
         processes: processes,
         environment: const <String, String>{},
@@ -100,22 +100,23 @@ void main() {
       expect(processes.forceSignals, equals(<int>[99]));
     });
 
-    test("falls back to 'opencode' when --opencode-bin is null", () async {
+    test("defers to ensureRuntime (available, no probe) when --opencode-bin is unset", () async {
       final processes = _ProbeProcessService(
-        spawnError: const ProcessException("opencode", ["--version"], "No such file or directory", 2),
+        spawnError: StateError("checkAvailability must not probe when no binary is configured"),
       );
 
       final result = await const OpenCodePluginDescriptor().checkAvailability(
         config: const PluginConfig(
-          values: {"no-auto-start": false, "port": null, "password": "", "opencode-bin": null},
+          values: {"no-auto-start": false, "port": null, "password": "", "bin": null, "no-password": false},
         ),
         processes: processes,
         environment: const <String, String>{},
       );
 
-      expect(result, isA<PluginUnavailable>());
-      expect((result as PluginUnavailable).message, contains("opencode --version"));
-      expect(processes.spawnedExecutables, equals(<String>["opencode"]));
+      // Resolution (PATH-or-managed) is deferred to ensureRuntime, so no
+      // version probe runs and startup proceeds.
+      expect(result, isA<PluginAvailable>());
+      expect(processes.spawnedExecutables, isEmpty);
     });
 
     test("reports unavailable when exitCode completes with an error", () async {
@@ -148,7 +149,7 @@ void main() {
 
       final result = await const OpenCodePluginDescriptor().checkAvailability(
         config: const PluginConfig(
-          values: {"no-auto-start": false, "port": null, "password": "", "opencode-bin": "/custom/opencode"},
+          values: {"no-auto-start": false, "port": null, "password": "", "bin": "/custom/opencode", "no-password": false},
         ),
         processes: processes,
         environment: const <String, String>{},

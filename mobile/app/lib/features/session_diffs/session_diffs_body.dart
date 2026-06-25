@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../../core/extensions/build_context_x.dart";
 import "models/diff_file_view_model.dart";
@@ -45,34 +46,74 @@ class _SessionDiffsBodyState extends State<SessionDiffsBody> {
       buildWhen: (prev, curr) =>
           prev.runtimeType != curr.runtimeType ||
           (prev is DiffStateLoaded && curr is DiffStateLoaded && !identical(prev.files, curr.files)),
-      builder: (context, state) => switch (state) {
-        DiffStateLoading() => const Center(child: CircularProgressIndicator()),
-        DiffStateFailed(:final error) => DiffErrorView(
-          error: error,
-          onRetry: () => context.read<DiffCubit>().refresh(),
-        ),
-        DiffStateLoaded(:final files) when files.isEmpty => Center(
-          child: Text(context.loc.diffNoFileChanges),
-        ),
-        DiffStateLoaded(:final files) => _buildLoadedState(context: context, files: files),
+      builder: (context, state) {
+        final (fileCount, additions, deletions) = _statsOf(state);
+        return PregoGlassScaffold(
+          title: context.loc.diffFileChangesTitle,
+          subtitle: fileCount > 0 ? context.loc.diffFilesChangedCount(fileCount, additions, deletions) : null,
+          // The diff viewer's pinned per-file headers must pin directly below
+          // the bar, so the body cannot scroll behind a transparent bar.
+          extendBodyBehindBar: false,
+          slivers: _buildContentSlivers(context: context, state: state),
+        );
       },
     );
   }
 
-  Widget _buildLoadedState({required BuildContext context, required List<FileDiff> files}) {
+  List<Widget> _buildContentSlivers({required BuildContext context, required DiffState state}) {
+    return switch (state) {
+      DiffStateLoading() => const [
+        SliverFillRemaining(hasScrollBody: false, child: Center(child: CircularProgressIndicator())),
+      ],
+      DiffStateFailed(:final error) => [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: DiffErrorView(error: error, onRetry: () => context.read<DiffCubit>().refresh()),
+        ),
+      ],
+      DiffStateLoaded(:final files) when files.isEmpty => [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(child: Text(context.loc.diffNoFileChanges)),
+        ),
+      ],
+      DiffStateLoaded(:final files) => _buildLoadedSlivers(context: context, files: files),
+    };
+  }
+
+  List<Widget> _buildLoadedSlivers({required BuildContext context, required List<FileDiff> files}) {
     _maybeComputeViewModels(files: files);
     if (_computeError case final computeError?) {
-      return DiffErrorView(
-        error: computeError,
-        onRetry: () => context.read<DiffCubit>().refresh(),
-      );
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: DiffErrorView(error: computeError, onRetry: () => context.read<DiffCubit>().refresh()),
+        ),
+      ];
     }
 
     final viewModels = _viewModels;
     if (_isComputing || viewModels == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const [
+        SliverFillRemaining(hasScrollBody: false, child: Center(child: CircularProgressIndicator())),
+      ];
     }
-    return CustomScrollView(slivers: _buildSlivers(viewModels: viewModels));
+    return _buildSlivers(viewModels: viewModels);
+  }
+
+  /// Aggregates the changed-file count and total additions/deletions for the
+  /// bar subtitle. Returns zeros for any non-loaded state.
+  static (int fileCount, int additions, int deletions) _statsOf(DiffState state) {
+    if (state is! DiffStateLoaded) return (0, 0, 0);
+    var adds = 0;
+    var dels = 0;
+    for (final f in state.files) {
+      if (f is FileDiffContent) {
+        adds += f.additions;
+        dels += f.deletions;
+      }
+    }
+    return (state.files.length, adds, dels);
   }
 
   List<Widget> _buildSlivers({required List<DiffFileViewModel> viewModels}) {

@@ -171,6 +171,13 @@ class AcpApprovalRegistry {
         .toList(growable: false);
   }
 
+  List<PluginPendingPermission> pendingPermissionsForSession(String sessionId) {
+    return _pending.values
+        .where((e) => e.kind == _PendingKind.permission && e.sessionId == sessionId)
+        .map(_toPluginPendingPermission)
+        .toList(growable: false);
+  }
+
   List<PluginPendingQuestion> pendingForProject(Iterable<String> sessionIds) {
     final set = Set<String>.from(sessionIds);
     return _pending.values
@@ -210,6 +217,9 @@ class AcpApprovalRegistry {
       BridgeSsePermissionReplied(
         requestID: bridgeRequestId,
         sessionID: entry.sessionId,
+        // ACP agents have no sub-agent hierarchy, so a request's display root
+        // is its own session.
+        displaySessionId: entry.sessionId,
         reply: reply.name,
       ),
     );
@@ -226,6 +236,7 @@ class AcpApprovalRegistry {
       BridgeSseQuestionReplied(
         requestID: bridgeRequestId,
         sessionID: entry.sessionId,
+        displaySessionId: entry.sessionId,
       ),
     );
     return true;
@@ -239,6 +250,7 @@ class AcpApprovalRegistry {
       BridgeSseQuestionRejected(
         requestID: bridgeRequestId,
         sessionID: entry.sessionId,
+        displaySessionId: entry.sessionId,
       ),
     );
     return true;
@@ -260,7 +272,6 @@ class AcpApprovalRegistry {
   }
 
   void _handlePermission(AcpServerRequest request) {
-    final toolCall = _asMap(request.params["toolCall"]) ?? const {};
     final sessionId = (request.params["sessionId"] as String?) ?? "";
     final bridgeRequestId = generateBridgeId();
     _pending[bridgeRequestId] = _PendingApproval(
@@ -270,15 +281,32 @@ class AcpApprovalRegistry {
       kind: _PendingKind.permission,
       params: request.params,
     );
+    final summary = _permissionSummary(request.params);
     _emit(
       BridgeSsePermissionAsked(
         requestID: bridgeRequestId,
         sessionID: sessionId,
-        tool: (toolCall["kind"] as String?) ?? "tool",
-        description: (toolCall["title"] as String?) ??
-            (toolCall["toolCallId"] as String?) ??
-            "permission requested",
+        // ACP agents have no sub-agent hierarchy, so a request's display root
+        // is its own session.
+        displaySessionId: sessionId,
+        tool: summary.tool,
+        description: summary.description,
       ),
+    );
+  }
+
+  /// Derives the tool hint and human description from a permission request's
+  /// `toolCall` params. Shared by the asked event and the pending-list
+  /// snapshot so both stay in sync.
+  ({String tool, String description}) _permissionSummary(
+    Map<String, dynamic> params,
+  ) {
+    final toolCall = _asMap(params["toolCall"]) ?? const {};
+    return (
+      tool: (toolCall["kind"] as String?) ?? "tool",
+      description: (toolCall["title"] as String?) ??
+          (toolCall["toolCallId"] as String?) ??
+          "permission requested",
     );
   }
 
@@ -286,7 +314,19 @@ class AcpApprovalRegistry {
     return PluginPendingQuestion(
       id: entry.bridgeRequestId,
       sessionID: entry.sessionId,
+      displaySessionId: entry.sessionId,
       questions: entry.questions,
+    );
+  }
+
+  PluginPendingPermission _toPluginPendingPermission(_PendingApproval entry) {
+    final summary = _permissionSummary(entry.params);
+    return PluginPendingPermission(
+      id: entry.bridgeRequestId,
+      sessionID: entry.sessionId,
+      displaySessionId: entry.sessionId,
+      tool: summary.tool,
+      description: summary.description,
     );
   }
 

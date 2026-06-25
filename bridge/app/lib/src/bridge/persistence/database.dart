@@ -2,6 +2,7 @@ import "dart:io";
 
 import "package:drift/drift.dart";
 import "package:drift/native.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/database/daos/pull_request_dao.dart";
@@ -119,21 +120,7 @@ class AppDatabase extends _$AppDatabase {
   );
 
   static AppDatabase create() {
-    final String dbDirPath;
-    if (Platform.isWindows) {
-      final localAppData = Platform.environment["LOCALAPPDATA"];
-      if (localAppData == null || localAppData.isEmpty) {
-        throw StateError("LOCALAPPDATA environment variable not set");
-      }
-      dbDirPath = "$localAppData/sesori";
-    } else {
-      final homeDir = Platform.environment["HOME"];
-      if (homeDir == null || homeDir.isEmpty) {
-        throw StateError("HOME environment variable not set");
-      }
-      dbDirPath = "$homeDir/.local/share/sesori";
-    }
-    final dbDir = Directory(dbDirPath);
+    final dbDir = Directory(sesoriDataDirectory());
     if (!dbDir.existsSync()) {
       dbDir.createSync(recursive: true);
     }

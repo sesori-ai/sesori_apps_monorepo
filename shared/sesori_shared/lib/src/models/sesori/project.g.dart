@@ -26,8 +26,8 @@ _Project _$ProjectFromJson(Map json) => _Project(
 
 Map<String, dynamic> _$ProjectToJson(_Project instance) => <String, dynamic>{
   'id': instance.id,
-  'name': instance.name,
-  'time': instance.time?.toJson(),
+  'name': ?instance.name,
+  'time': ?instance.time?.toJson(),
 };
 
 _ProjectTime _$ProjectTimeFromJson(Map json) => _ProjectTime(
@@ -40,7 +40,7 @@ Map<String, dynamic> _$ProjectTimeToJson(_ProjectTime instance) =>
     <String, dynamic>{
       'created': instance.created,
       'updated': instance.updated,
-      'initialized': instance.initialized,
+      'initialized': ?instance.initialized,
     };
 
 _ProjectIdRequest _$ProjectIdRequestFromJson(Map json) =>

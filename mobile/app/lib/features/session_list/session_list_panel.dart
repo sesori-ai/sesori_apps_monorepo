@@ -28,6 +28,19 @@ class SessionListPanel extends StatelessWidget {
     this.onBack,
   });
 
+  /// Header width below which the labelled "New session" button collapses to an
+  /// icon-only button so the title keeps a usable width.
+  ///
+  /// This panel only ever renders in the wide split layout's list pane, whose
+  /// width is floored at 320pt (`minListPanelWidth`). Desktop has no
+  /// display-cutout safe area, so its pane never drops below that floor — the
+  /// header stays ≥ 288pt, above this threshold — and the label is preserved
+  /// exactly as before at every desktop window size. Only a notched phone in
+  /// landscape, where the safe-area inset shrinks the pane to ~226pt, falls
+  /// below it; there back + archive + a labelled button would otherwise overrun
+  /// the row and crush the title to zero width.
+  static const double _compactHeaderWidth = 280;
+
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -43,36 +56,58 @@ class SessionListPanel extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  if (onBack != null)
-                    BackButton(
-                      onPressed: onBack,
-                    ),
-                  Expanded(
-                    child: Text(
-                      _title(loc: loc),
-                      style: context.prego.textTheme.textMd.bold,
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(showArchived ? Icons.archive : Icons.archive_outlined),
-                    tooltip: loc.sessionListToggleArchived,
-                    onPressed: state is SessionListLoaded
-                        ? () => context.read<SessionListCubit>().toggleArchived()
-                        : null,
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                    ),
-                    onPressed: onNewSession,
-                    icon: const Icon(Icons.add),
-                    label: Text(loc.sessionListNewSession),
-                  ),
-                ],
+              // Lay the header out against its own width so the action button
+              // can collapse to an icon when the pane is narrow. Without this,
+              // the labelled button + back + archive overrun a landscape split
+              // pane, starving the title to zero width — it then wraps one glyph
+              // per line and overflows the row both across and down.
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final compact = constraints.maxWidth < _compactHeaderWidth;
+                  return Row(
+                    children: [
+                      if (onBack != null)
+                        BackButton(
+                          onPressed: onBack,
+                        ),
+                      Expanded(
+                        child: Text(
+                          _title(loc: loc),
+                          style: context.prego.textTheme.textMd.bold,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(showArchived ? Icons.archive : Icons.archive_outlined),
+                        tooltip: loc.sessionListToggleArchived,
+                        onPressed: state is SessionListLoaded
+                            ? () => context.read<SessionListCubit>().toggleArchived()
+                            : null,
+                      ),
+                      const SizedBox(width: 8),
+                      // Same action and icon in both layouts (tests and muscle
+                      // memory target the add icon); only the label drops when
+                      // compact, with the tooltip carrying its meaning instead.
+                      if (compact)
+                        IconButton.filled(
+                          icon: const Icon(Icons.add),
+                          tooltip: loc.sessionListNewSession,
+                          onPressed: onNewSession,
+                        )
+                      else
+                        FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                          ),
+                          onPressed: onNewSession,
+                          icon: const Icon(Icons.add),
+                          label: Text(loc.sessionListNewSession),
+                        ),
+                    ],
+                  );
+                },
               ),
               if (baseBranch != null)
                 Padding(
@@ -88,16 +123,35 @@ class SessionListPanel extends StatelessWidget {
           ),
         ),
         const Divider(height: 1),
-        Expanded(
-          child: SessionListContent(
-            selectedSessionId: selectedSessionId,
-            onSessionTap: onSessionTap,
-            onSessionLongPress: onSessionLongPress,
-            onSessionSwipe: onSessionSwipe,
-          ),
+        Expanded(child: _buildScrollableContent(context, state: state)),
+      ],
+    );
+  }
+
+  /// Hosts the sliver-based [SessionListContent] in the pane's own scroll view.
+  /// Mirrors the original content behaviour: an `isRefreshing` progress bar and
+  /// pull-to-refresh (only once the list has loaded).
+  Widget _buildScrollableContent(BuildContext context, {required SessionListState state}) {
+    final isRefreshing = state is SessionListLoaded && state.isRefreshing;
+    Widget scrollView = CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
+        SessionListContent(
+          selectedSessionId: selectedSessionId,
+          onSessionTap: onSessionTap,
+          onSessionLongPress: onSessionLongPress,
+          onSessionSwipe: onSessionSwipe,
         ),
       ],
     );
+    if (state is SessionListLoaded) {
+      scrollView = RefreshIndicator(
+        onRefresh: () => refreshSessionList(context),
+        child: scrollView,
+      );
+    }
+    return scrollView;
   }
 
   String _title({required AppLocalizations loc}) => switch (projectName) {

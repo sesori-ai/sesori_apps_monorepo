@@ -178,6 +178,10 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   const factory SesoriSseEvent.permissionAsked({
     required String requestID,
     required String sessionID,
+    /// Top-most root session this request should be surfaced under (for a
+    /// child/sub-agent session's request). Null when unknown; consumers fall
+    /// back to [sessionID].
+    required String? displaySessionId,
     required String tool,
     required String description,
   }) = SesoriPermissionAsked;
@@ -187,6 +191,9 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   const factory SesoriSseEvent.permissionReplied({
     required String requestID,
     required String sessionID,
+    /// Root session this request is surfaced under; null ⇒ fall back to
+    /// [sessionID].
+    required String? displaySessionId,
     required String reply,
   }) = SesoriPermissionReplied;
 
@@ -202,6 +209,10 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   const factory SesoriSseEvent.questionAsked({
     required String id,
     required String sessionID,
+    /// Top-most root session this request should be surfaced under (for a
+    /// child/sub-agent session's request). Null when unknown; consumers fall
+    /// back to [sessionID].
+    required String? displaySessionId,
     required List<QuestionInfo> questions,
   }) = SesoriQuestionAsked;
 
@@ -210,6 +221,9 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   const factory SesoriSseEvent.questionReplied({
     required String requestID,
     required String sessionID,
+    /// Root session this request is surfaced under; null ⇒ fall back to
+    /// [sessionID].
+    required String? displaySessionId,
   }) = SesoriQuestionReplied;
 
   @FreezedUnionValue("question.rejected")
@@ -217,6 +231,9 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   const factory SesoriSseEvent.questionRejected({
     required String requestID,
     required String sessionID,
+    /// Root session this request is surfaced under; null ⇒ fall back to
+    /// [sessionID].
+    required String? displaySessionId,
   }) = SesoriQuestionRejected;
 
   // ---------------------------------------------------------------------------

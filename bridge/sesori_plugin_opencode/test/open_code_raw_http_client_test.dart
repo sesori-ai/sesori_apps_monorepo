@@ -54,6 +54,24 @@ void main() {
       expect(captured.headers.containsKey("authorization"), isFalse);
     });
 
+    test("omits the auth header when password is empty", () async {
+      late http.BaseRequest captured;
+      final mockClient = MockClient((request) async {
+        captured = request;
+        return http.Response("{}", 200);
+      });
+
+      final client = OpenCodeRawHttpClient(
+        serverURL: "http://localhost:1234",
+        password: "",
+        client: mockClient,
+      );
+
+      await client.get(path: "/project");
+
+      expect(captured.headers.containsKey("authorization"), isFalse);
+    });
+
     test("forwards the body on POST", () async {
       late String capturedBody;
       final mockClient = MockClient((request) async {

@@ -1,3 +1,4 @@
+import "package:codex_plugin/codex_plugin.dart" show CodexPluginDescriptor;
 import "package:cursor_plugin/cursor_plugin.dart" show CursorPluginDescriptor;
 import "package:opencode_plugin/opencode_plugin.dart" show OpenCodePluginDescriptor;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginDescriptor;
@@ -12,6 +13,7 @@ import "../../server/host/plugin_state_directory.dart" show openCodePluginId;
 /// later calls its `start(host)` under the startup mutex.
 const List<BridgePluginDescriptor> knownPlugins = [
   OpenCodePluginDescriptor(),
+  CodexPluginDescriptor(),
   CursorPluginDescriptor(),
 ];
 

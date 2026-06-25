@@ -115,6 +115,15 @@ void main() {
 }
 
 class _FakeSystemProcessApi implements SystemProcessApi {
+  @override
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
+    Map<String, String>? environment,
+  }) async {
+    throw UnimplementedError();
+  }
+
   ProcessIdentity? inspectFact;
   List<ProcessIdentity> listFacts = <ProcessIdentity>[];
   SignalResult? gracefulResult;

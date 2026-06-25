@@ -44,6 +44,7 @@ void main() {
           const SesoriSseEvent.questionAsked(
             id: "q-1",
             sessionID: "session-a",
+            displaySessionId: null,
             questions: [QuestionInfo(header: "Prompt", question: "Continue?")],
           ),
         );
@@ -71,6 +72,7 @@ void main() {
           const SesoriSseEvent.permissionAsked(
             requestID: "perm-1",
             sessionID: "session-a",
+            displaySessionId: null,
             tool: "bash",
             description: "Run command",
           ),
@@ -122,6 +124,7 @@ void main() {
           const SesoriSseEvent.questionAsked(
             id: "q-1",
             sessionID: "child",
+            displaySessionId: null,
             questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
           ),
         );
@@ -135,7 +138,11 @@ void main() {
         async.flushMicrotasks();
         expect(harness.completedRoots, isEmpty);
 
-        harness.dispatch(SesoriSseEvent.sessionDeleted(info: _session(id: "child", parentID: "parent")));
+        harness.dispatch(
+          SesoriSseEvent.sessionDeleted(
+            info: _session(id: "child", parentID: "parent"),
+          ),
+        );
 
         async.elapse(const Duration(milliseconds: 500));
         async.flushMicrotasks();
@@ -152,10 +159,14 @@ void main() {
         // root ("root"), not the grandchild's immediate parent ("child").
         harness.dispatch(SesoriSseEvent.sessionCreated(info: _session(id: "root")));
         harness.dispatch(
-          SesoriSseEvent.sessionCreated(info: _session(id: "child", parentID: "root")),
+          SesoriSseEvent.sessionCreated(
+            info: _session(id: "child", parentID: "root"),
+          ),
         );
         harness.dispatch(
-          SesoriSseEvent.sessionCreated(info: _session(id: "grandchild", parentID: "child")),
+          SesoriSseEvent.sessionCreated(
+            info: _session(id: "grandchild", parentID: "child"),
+          ),
         );
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
@@ -164,6 +175,7 @@ void main() {
           const SesoriSseEvent.questionAsked(
             id: "q-1",
             sessionID: "grandchild",
+            displaySessionId: null,
             questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
           ),
         );
@@ -185,7 +197,9 @@ void main() {
         // only works if the deletion handler resolves parentID to its root
         // rather than using it verbatim.
         harness.dispatch(
-          SesoriSseEvent.sessionDeleted(info: _session(id: "grandchild", parentID: "child")),
+          SesoriSseEvent.sessionDeleted(
+            info: _session(id: "grandchild", parentID: "child"),
+          ),
         );
 
         async.elapse(const Duration(milliseconds: 500));
@@ -208,6 +222,7 @@ void main() {
           const SesoriSseEvent.questionAsked(
             id: "q-1",
             sessionID: "child",
+            displaySessionId: null,
             questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
           ),
         );
@@ -236,7 +251,7 @@ void main() {
         // still "child"; the originalSessionId fallback must find it and fire
         // completion for the real root.
         harness.dispatch(
-          const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "child"),
+          const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "child", displaySessionId: null),
         );
         async.elapse(const Duration(milliseconds: 500));
         async.flushMicrotasks();
@@ -261,6 +276,7 @@ void main() {
           const SesoriSseEvent.questionAsked(
             id: "q-1",
             sessionID: "child",
+            displaySessionId: null,
             questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
           ),
         );
@@ -286,7 +302,11 @@ void main() {
         // Deleting the last pending child must resume the reparented root via
         // the originalSessionId fallback, even though resolving the now-removed
         // child no longer reaches the parent.
-        harness.dispatch(SesoriSseEvent.sessionDeleted(info: _session(id: "child", parentID: "root")));
+        harness.dispatch(
+          SesoriSseEvent.sessionDeleted(
+            info: _session(id: "child", parentID: "root"),
+          ),
+        );
 
         async.elapse(const Duration(milliseconds: 500));
         async.flushMicrotasks();
@@ -305,6 +325,7 @@ void main() {
           const SesoriSseEvent.questionAsked(
             id: "q-1",
             sessionID: "session-a",
+            displaySessionId: null,
             questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
           ),
         );
@@ -316,7 +337,7 @@ void main() {
         expect(harness.completedRoots, isEmpty);
 
         harness.dispatch(
-          const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "session-a"),
+          const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "session-a", displaySessionId: null),
         );
         async.elapse(const Duration(milliseconds: 200));
         async.flushMicrotasks();
@@ -324,7 +345,7 @@ void main() {
 
         // Duplicate reply arrives before debounce fires.
         harness.dispatch(
-          const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "session-a"),
+          const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "session-a", displaySessionId: null),
         );
         async.elapse(const Duration(milliseconds: 500));
         async.flushMicrotasks();
@@ -370,11 +391,12 @@ void main() {
           const SesoriSseEvent.questionAsked(
             id: "q-1",
             sessionID: "session-a",
+            displaySessionId: null,
             questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
           ),
         );
         harness.dispatch(
-          const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "session-a"),
+          const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "session-a", displaySessionId: null),
         );
 
         async.elapse(const Duration(milliseconds: 500));
@@ -399,11 +421,12 @@ void main() {
           const SesoriSseEvent.questionAsked(
             id: "q-1",
             sessionID: "session-a",
+            displaySessionId: null,
             questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
           ),
         );
         harness.dispatch(
-          const SesoriSseEvent.questionRejected(requestID: "q-1", sessionID: "session-a"),
+          const SesoriSseEvent.questionRejected(requestID: "q-1", sessionID: "session-a", displaySessionId: null),
         );
 
         async.elapse(const Duration(milliseconds: 500));
@@ -428,12 +451,18 @@ void main() {
           const SesoriSseEvent.permissionAsked(
             requestID: "perm-1",
             sessionID: "session-a",
+            displaySessionId: null,
             tool: "bash",
             description: "Run command",
           ),
         );
         harness.dispatch(
-          const SesoriSseEvent.permissionReplied(requestID: "perm-1", sessionID: "s1", reply: "allow"),
+          const SesoriSseEvent.permissionReplied(
+            requestID: "perm-1",
+            sessionID: "s1",
+            displaySessionId: null,
+            reply: "allow",
+          ),
         );
 
         async.elapse(const Duration(milliseconds: 500));
@@ -453,6 +482,7 @@ void main() {
           const SesoriSseEvent.questionAsked(
             id: "q-1",
             sessionID: "session-a",
+            displaySessionId: null,
             questions: [QuestionInfo(header: "Prompt", question: "Proceed?")],
           ),
         );
@@ -460,6 +490,7 @@ void main() {
           const SesoriSseEvent.questionAsked(
             id: "q-2",
             sessionID: "session-a",
+            displaySessionId: null,
             questions: [QuestionInfo(header: "Prompt", question: "Also?")],
           ),
         );
@@ -470,7 +501,7 @@ void main() {
         async.flushMicrotasks();
 
         harness.dispatch(
-          const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "session-a"),
+          const SesoriSseEvent.questionReplied(requestID: "q-1", sessionID: "session-a", displaySessionId: null),
         );
 
         async.elapse(const Duration(milliseconds: 500));
@@ -478,7 +509,7 @@ void main() {
         expect(harness.completedRoots, isEmpty);
 
         harness.dispatch(
-          const SesoriSseEvent.questionReplied(requestID: "q-2", sessionID: "session-a"),
+          const SesoriSseEvent.questionReplied(requestID: "q-2", sessionID: "session-a", displaySessionId: null),
         );
         async.elapse(const Duration(milliseconds: 500));
         async.flushMicrotasks();
@@ -497,6 +528,7 @@ void main() {
           const SesoriSseEvent.permissionAsked(
             requestID: "perm-1",
             sessionID: "session-a",
+            displaySessionId: null,
             tool: "bash",
             description: "Run command",
           ),
@@ -505,6 +537,7 @@ void main() {
           const SesoriSseEvent.permissionAsked(
             requestID: "perm-2",
             sessionID: "session-a",
+            displaySessionId: null,
             tool: "bash",
             description: "Run another command",
           ),
@@ -516,7 +549,12 @@ void main() {
         async.flushMicrotasks();
 
         harness.dispatch(
-          const SesoriSseEvent.permissionReplied(requestID: "perm-1", sessionID: "session-a", reply: "allow"),
+          const SesoriSseEvent.permissionReplied(
+            requestID: "perm-1",
+            sessionID: "session-a",
+            displaySessionId: null,
+            reply: "allow",
+          ),
         );
 
         async.elapse(const Duration(milliseconds: 500));
@@ -524,7 +562,12 @@ void main() {
         expect(harness.completedRoots, isEmpty);
 
         harness.dispatch(
-          const SesoriSseEvent.permissionReplied(requestID: "perm-2", sessionID: "session-a", reply: "allow"),
+          const SesoriSseEvent.permissionReplied(
+            requestID: "perm-2",
+            sessionID: "session-a",
+            displaySessionId: null,
+            reply: "allow",
+          ),
         );
         async.elapse(const Duration(milliseconds: 500));
         async.flushMicrotasks();
@@ -680,6 +723,7 @@ void main() {
           const SesoriSseEvent.permissionAsked(
             requestID: "perm-old",
             sessionID: "child",
+            displaySessionId: null,
             tool: "bash",
             description: "Run command",
           ),
@@ -705,6 +749,7 @@ void main() {
           const SesoriSseEvent.permissionReplied(
             requestID: "perm-old",
             sessionID: "root",
+            displaySessionId: null,
             reply: "allow",
           ),
         );

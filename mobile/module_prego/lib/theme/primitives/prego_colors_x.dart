@@ -35,7 +35,7 @@ extension PregoColorsX on PregoColors {
     onError: brightness == .light ? fgWhite : bgErrorPrimary,
     onErrorContainer: brightness == .light ? fgWhite : textErrorPrimaryHover,
     surface: bgPrimary,
-    surfaceContainer: brightness == .light ? bgSecondary : bgPrimaryAlt,
+    surfaceContainer: bgSecondary,
     surfaceContainerHighest: brightness == .light ? bgQuaternary : bgTertiary,
     onSurface: textPrimary,
     onSurfaceVariant: brightness == .light ? textTertiary : textSecondary,

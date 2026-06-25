@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:ui" as ui;
 
 import "package:firebase_analytics/firebase_analytics.dart";
 import "package:firebase_core/firebase_core.dart";
@@ -7,6 +8,7 @@ import "package:firebase_messaging/firebase_messaging.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
+import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -26,6 +28,9 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Pre-warm the liquid-glass shaders so the frosted top nav / glass buttons
+  // render without a first-frame compile hitch. No-ops on Skia/web.
+  await LiquidGlassWidgets.initialize();
   // The native splash runs in fullscreen, which leaves the status/nav bars
   // hidden on iOS until the engine is told otherwise. Restore them and let
   // content draw behind them so the background image still reaches the edges.
@@ -117,7 +122,32 @@ Future<void> bootstrapSesoriApp({
       }),
     );
   }
-  runAppFn(const SesoriApp());
+
+  final isImpeller = ui.ImageFilter.isShaderFilterSupported;
+
+  if (isImpeller) {
+    logd("🚀 Running on Impeller Rendering Engine");
+  } else {
+    logd("🎨 Running on Skia Rendering Engine (or fallback)");
+  }
+
+  runAppFn(
+    LiquidGlassWidgets.wrap(
+      child: const SesoriApp(),
+      adaptiveQuality: true,
+      // ignore: experimental_member_use
+      adaptiveConfig: GlassAdaptiveScopeConfig(
+        targetFrameMs: 8,
+        minQuality: .minimal,
+        initialQuality: .standard,
+        maxQuality: .standard,
+        allowStepUp: false,
+        onQualityChanged: (oldQuality, newQuality) {
+          logd("Quality changed for liquid glass: ${oldQuality.name} -> ${newQuality.name}");
+        },
+      ),
+    ),
+  );
 }
 
 Future<void> startNotificationStartup({
@@ -191,6 +221,10 @@ class SesoriApp extends StatelessWidget {
         fontFamily: PregoTextTheme.fontFamily,
         fontFamilyFallback: PregoTextTheme.fontFamilyFallback,
         extensions: [PregoDesignSystem.light],
+        // Dark status-bar icons for the light theme's light backgrounds.
+        // Without this, transparent AppBars (e.g. ProjectListScreen) default
+        // to light/white icons that vanish against a light background.
+        appBarTheme: const AppBarTheme(systemOverlayStyle: SystemUiOverlayStyle.dark),
       ),
       darkTheme: ThemeData(
         colorScheme: PregoColors.dark.toFlutterColorScheme(),
@@ -198,6 +232,8 @@ class SesoriApp extends StatelessWidget {
         fontFamily: PregoTextTheme.fontFamily,
         fontFamilyFallback: PregoTextTheme.fontFamilyFallback,
         extensions: [PregoDesignSystem.dark],
+        // Light status-bar icons for the dark theme's dark backgrounds.
+        appBarTheme: const AppBarTheme(systemOverlayStyle: SystemUiOverlayStyle.light),
       ),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,

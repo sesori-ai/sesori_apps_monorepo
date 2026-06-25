@@ -981,6 +981,15 @@ class _Invocation {
 }
 
 class _FakeProcessRunner implements ProcessRunner {
+  @override
+  Future<int> startDetached({
+    required String executable,
+    required List<String> arguments,
+    Map<String, String>? environment,
+  }) async {
+    throw UnimplementedError();
+  }
+
   final List<_Invocation> invocations = <_Invocation>[];
   final List<ProcessResult> _queue = <ProcessResult>[];
 
@@ -1095,6 +1104,11 @@ class _FakeBridgePluginApi implements BridgePluginApi {
 
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async => [];
+
+  @override
+  Future<List<PluginPendingPermission>> getPendingPermissions({
+    required String sessionId,
+  }) async => [];
 
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({

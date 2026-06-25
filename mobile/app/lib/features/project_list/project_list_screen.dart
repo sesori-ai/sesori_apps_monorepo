@@ -25,7 +25,6 @@ part "onboarding/onboarding_hero.dart";
 part "onboarding/onboarding_view.dart";
 part "widgets/bridge_offline_view.dart";
 part "widgets/command_block.dart";
-part "widgets/connected_empty_view.dart";
 part "widgets/error_view.dart";
 part "widgets/project_tile.dart";
 
@@ -123,34 +122,17 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
   Widget build(BuildContext context) {
     final loc = context.loc;
     final state = context.watch<ProjectListCubit>().state;
-    final prego = context.prego;
+    final isRefreshing = state is ProjectListLoaded && state.isRefreshing;
 
-    return Scaffold(
-      backgroundColor: prego.colors.bgPrimaryAlt,
-      // TODO: we need to have app wide navigation bar component
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
-        scrolledUnderElevation: 0,
-        elevation: 0,
-        centerTitle: false,
-        titleSpacing: PregoSpacing.xl,
-        title: Text(
-          loc.projectListTitle,
-          style: prego.textTheme.textXl.medium.copyWith(color: prego.colors.textPrimary),
+    return PregoGlassScaffold(
+      title: loc.projectListTitle,
+      actions: [
+        PregoButtonsIconGlass(
+          icon: VESPRSolid.gear,
+          semanticLabel: loc.settingsTitle,
+          onPressed: () => context.pushRoute(const AppRoute.settings()),
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsetsDirectional.only(end: PregoSpacing.xl),
-            child: PregoButtonsIconGlass(
-              icon: VESPRSolid.gear,
-              semanticLabel: loc.settingsTitle,
-              onPressed: () => context.pushRoute(const AppRoute.settings()),
-            ),
-          ),
-        ],
-      ),
-
+      ],
       // The FAB only makes sense once the bridge is connected with a non-empty
       // project list. It is absent from the not-connected onboarding and from
       // the connected-but-empty state, where the inline Step 3 folder button is
@@ -158,60 +140,92 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
       floatingActionButton: state is ProjectListLoaded && state.projects.isNotEmpty
           ? PregoButtonsIconGlass(
               icon: TablerRegular.folder_plus,
-              size: PregoButtonsIconGlassSize.lg,
+              size: PregoButtonsIconGlassSize.xl,
               iconSize: 22,
               onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
             )
           : null,
-      body: switch (state) {
-        ProjectListLoading() => const Center(
-          child: CircularProgressIndicator(),
+      // Pull-to-refresh re-fetches the project list once connected; the
+      // disconnected states keep their own inner reconnect-on-pull.
+      onRefresh: state is ProjectListLoaded ? () => _refreshProjects(context) : null,
+      slivers: _buildContentSlivers(context: context, state: state, isRefreshing: isRefreshing),
+    );
+  }
+
+  List<Widget> _buildContentSlivers({
+    required BuildContext context,
+    required ProjectListState state,
+    required bool isRefreshing,
+  }) {
+    return switch (state) {
+      ProjectListLoading() => const [
+        SliverFillRemaining(hasScrollBody: false, child: Center(child: CircularProgressIndicator())),
+      ],
+      // No bridge has ever been registered → setup onboarding; a bridge exists
+      // but isn't running → ask to turn it on. Both are full-screen views that
+      // own their scroll and reconnect-on-pull, so they fill the body below the
+      // bar rather than joining the outer scroll.
+      ProjectListBridgeDisconnected(:final hasRegisteredBridges) => [
+        SliverFillRemaining(
+          hasScrollBody: true,
+          child: hasRegisteredBridges ? const _BridgeOfflineView() : const _BridgeOnboardingView(),
         ),
-        // No bridge has ever been registered → walk through the setup
-        // onboarding; a bridge exists but isn't running → ask to turn it on.
-        ProjectListBridgeDisconnected(:final hasRegisteredBridges) =>
-          hasRegisteredBridges ? const _BridgeOfflineView() : const _BridgeOnboardingView(),
-        ProjectListLoaded(:final projects, :final activityById, :final isRefreshing) => Column(
-          children: [
-            if (isRefreshing) const LinearProgressIndicator(),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () async {
-                  final success = await context.read<ProjectListCubit>().refreshProjects();
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(success ? loc.projectListRefreshSuccess : loc.projectListRefreshFailed),
-                      duration: kSnackBarDuration,
-                    ),
-                  );
-                },
-                child: projects.isEmpty
-                    ? _ConnectedEmptyView(
-                        onAddProject: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
-                      )
-                    : ListView.builder(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        itemCount: projects.length,
-                        itemBuilder: (context, index) {
-                          final project = projects[index];
-                          return _ProjectTile(
-                            project: project,
-                            activeSessions: activityById[project.id] ?? 0,
-                            onLongPress: () => _showProjectMenu(context: context, project: project),
-                          );
-                        },
-                      ),
+      ],
+      ProjectListLoaded(:final projects, :final activityById) => [
+        if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
+        if (projects.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            // Render the shared checklist directly (not _ConnectedEmptyView's
+            // own scroll view) so the scaffold's pull-to-refresh drives it.
+            child: SafeArea(
+              top: false,
+              child: _OnboardingChecklist(
+                connected: true,
+                onOpenFolder: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
               ),
             ),
-          ],
+          )
+        else ...[
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            sliver: SliverList.builder(
+              itemCount: projects.length,
+              itemBuilder: (context, index) {
+                final project = projects[index];
+                return _ProjectTile(
+                  project: project,
+                  activeSessions: activityById[project.id] ?? 0,
+                  onLongPress: () => _showProjectMenu(context: context, project: project),
+                );
+              },
+            ),
+          ),
+          // Clear the floating folder FAB and the home indicator.
+          SliverToBoxAdapter(child: SizedBox(height: MediaQuery.paddingOf(context).bottom + 96)),
+        ],
+      ],
+      ProjectListFailed(:final reason) => [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: _ErrorView(
+            reason: reason,
+            onRetry: () => context.read<ProjectListCubit>().retryLoadProjects(),
+          ),
         ),
-        ProjectListFailed(:final reason) => _ErrorView(
-          reason: reason,
-          onRetry: () => context.read<ProjectListCubit>().retryLoadProjects(),
-        ),
-      },
+      ],
+    };
+  }
+
+  Future<void> _refreshProjects(BuildContext context) async {
+    final loc = context.loc;
+    final success = await context.read<ProjectListCubit>().refreshProjects();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success ? loc.projectListRefreshSuccess : loc.projectListRefreshFailed),
+        duration: kSnackBarDuration,
+      ),
     );
   }
 }

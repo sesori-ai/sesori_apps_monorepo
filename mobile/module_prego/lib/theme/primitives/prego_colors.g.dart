@@ -5,7 +5,7 @@
 
 import "package:flutter/material.dart";
 
-import "../../../../utils/lerp_utils.dart";
+import "../../utils/lerp_utils.dart";
 import "prego_color_primitives.g.dart";
 
 /// Dark mode color tokens matching Figma specifications.
@@ -18,23 +18,23 @@ abstract final class PregoColorsDark {
   // Text Colors - Figma: Colors/Text/*
   // ===========================================================================
 
-  /// Figma: Colors/Text/text-brand-primary (900) → Gray (dark mode)/50
-  static const Color textBrandPrimary = PregoColorPrimitives.grayDark50;
+  /// Figma: Colors/Text/text-brand-primary (900) → Blue/200
+  static const Color textBrandPrimary = PregoColorPrimitives.blue200;
 
-  /// Figma: Colors/Text/text-brand-secondary (700) → Gray (dark mode)/300
-  static const Color textBrandSecondary = PregoColorPrimitives.grayDark300;
+  /// Figma: Colors/Text/text-brand-secondary (700) → Blue/300
+  static const Color textBrandSecondary = PregoColorPrimitives.blue300;
 
-  /// Figma: Colors/Text/text-brand-secondary_hover → Gray (dark mode)/200
-  static const Color textBrandSecondaryHover = PregoColorPrimitives.grayDark200;
+  /// Figma: Colors/Text/text-brand-secondary_hover → Blue/600
+  static const Color textBrandSecondaryHover = PregoColorPrimitives.blue600;
 
-  /// Figma: Colors/Text/text-brand-tertiary (600) → Gray (dark mode)/400
-  static const Color textBrandTertiary = PregoColorPrimitives.grayDark400;
+  /// Figma: Colors/Text/text-brand-tertiary (600) → Blue/800
+  static const Color textBrandTertiary = PregoColorPrimitives.blue800;
 
-  /// Figma: Colors/Text/text-brand-tertiary_alt → Brand Blue/200
-  static const Color textBrandTertiaryAlt = PregoColorPrimitives.brandBlue200;
+  /// Figma: Colors/Text/text-brand-tertiary_alt → Blue/200
+  static const Color textBrandTertiaryAlt = PregoColorPrimitives.blue200;
 
-  /// Figma: Colors/Text/text-disabled → Gray (dark mode)/500
-  static const Color textDisabled = PregoColorPrimitives.grayDark500;
+  /// Figma: Colors/Text/text-disabled → Gray/500
+  static const Color textDisabled = PregoColorPrimitives.gray500;
 
   /// Figma: Colors/Text/text-error-primary (600) → Error/400
   static const Color textErrorPrimary = PregoColorPrimitives.error400;
@@ -42,32 +42,29 @@ abstract final class PregoColorsDark {
   /// Figma: Colors/Text/text-error-primary_hover → Error/300
   static const Color textErrorPrimaryHover = PregoColorPrimitives.error300;
 
-  /// Figma: Colors/Text/text-placeholder → Gray (dark mode)/600
-  static const Color textPlaceholder = PregoColorPrimitives.grayDark600;
+  /// Figma: Colors/Text/text-placeholder → Gray/600
+  static const Color textPlaceholder = PregoColorPrimitives.gray600;
 
-  /// Figma: Colors/Text/text-placeholder_subtle → Gray (dark mode)/700
-  static const Color textPlaceholderSubtle = PregoColorPrimitives.grayDark700;
+  /// Figma: Colors/Text/text-placeholder_subtle → Gray/700
+  static const Color textPlaceholderSubtle = PregoColorPrimitives.gray700;
 
-  /// Figma: Colors/Text/text-primary (900) → Gray (dark mode)/25
-  static const Color textPrimary = PregoColorPrimitives.grayDark25;
+  /// Figma: Colors/Text/text-primary (950) → Gray/25
+  static const Color textPrimary = PregoColorPrimitives.gray25;
 
-  /// Figma: Colors/Text/text-primary_on-brand → Gray (dark mode)/50
-  static const Color textPrimaryOnBrand = PregoColorPrimitives.grayDark50;
+  /// Figma: Colors/Text/text-primary_on-brand → Blue/300
+  static const Color textPrimaryOnBrand = PregoColorPrimitives.blue300;
 
   /// Figma: Colors/Text/text-primary_on-white → Base/black
   static const Color textPrimaryOnWhite = PregoColorPrimitives.baseBlack;
 
-  /// Figma: Colors/Text/text-quaternary (500) → Gray (dark mode)/400
-  static const Color textQuaternary = PregoColorPrimitives.grayDark400;
+  /// Figma: Colors/Text/text-quaternary (500) → Gray/500
+  static const Color textQuaternary = PregoColorPrimitives.gray500;
 
-  /// Figma: Colors/Text/text-quaternary_on-brand → Gray (dark mode)/400
-  static const Color textQuaternaryOnBrand = PregoColorPrimitives.grayDark400;
+  /// Figma: Colors/Text/text-secondary (600) → Gray/400
+  static const Color textSecondary = PregoColorPrimitives.gray400;
 
-  /// Figma: Colors/Text/text-secondary (600) → Gray (dark mode)/400
-  static const Color textSecondary = PregoColorPrimitives.grayDark400;
-
-  /// Figma: Colors/Text/text-secondary_hover → Gray (dark mode)/200
-  static const Color textSecondaryHover = PregoColorPrimitives.grayDark200;
+  /// Figma: Colors/Text/text-secondary_hover → Gray/450
+  static const Color textSecondaryHover = PregoColorPrimitives.gray450;
 
   /// Figma: Colors/Text/text-secondary_on-brand → Base/white
   static const Color textSecondaryOnBrand = PregoColorPrimitives.baseWhite;
@@ -75,14 +72,14 @@ abstract final class PregoColorsDark {
   /// Figma: Colors/Text/text-success-primary (600) → Success/400
   static const Color textSuccessPrimary = PregoColorPrimitives.success400;
 
-  /// Figma: Colors/Text/text-tertiary (600) → Gray (light mode)/400
-  static const Color textTertiary = PregoColorPrimitives.grayLight400;
+  /// Figma: Colors/Text/text-tertiary (450) → Gray/450
+  static const Color textTertiary = PregoColorPrimitives.gray450;
 
-  /// Figma: Colors/Text/text-tertiary_hover → Gray (dark mode)/300
-  static const Color textTertiaryHover = PregoColorPrimitives.grayDark300;
+  /// Figma: Colors/Text/text-tertiary_hover → Gray/425
+  static const Color textTertiaryHover = PregoColorPrimitives.gray425;
 
-  /// Figma: Colors/Text/text-tertiary_on-brand → Gray (dark mode)/400
-  static const Color textTertiaryOnBrand = PregoColorPrimitives.grayDark400;
+  /// Figma: Colors/Text/text-tertiary_on-brand → Blue/400
+  static const Color textTertiaryOnBrand = PregoColorPrimitives.blue400;
 
   /// Figma: Colors/Text/text-warning-primary (600) → Warning/400
   static const Color textWarningPrimary = PregoColorPrimitives.warning400;
@@ -94,17 +91,14 @@ abstract final class PregoColorsDark {
   // Border Colors - Figma: Colors/Border/*
   // ===========================================================================
 
-  /// Figma: Colors/Border/border-brand → Brand Blue/400
-  static const Color borderBrand = PregoColorPrimitives.brandBlue400;
+  /// Figma: Colors/Border/border-brand → Blue/400
+  static const Color borderBrand = PregoColorPrimitives.blue400;
 
-  /// Figma: Colors/Border/border-brand_alt → Gray (dark mode)/700
-  static const Color borderBrandAlt = PregoColorPrimitives.grayDark700;
+  /// Figma: Colors/Border/border-disabled → Gray/500
+  static const Color borderDisabled = PregoColorPrimitives.gray500;
 
-  /// Figma: Colors/Border/border-disabled → Gray (dark mode)/700
-  static const Color borderDisabled = PregoColorPrimitives.grayDark700;
-
-  /// Figma: Colors/Border/border-disabled_subtle → Gray (dark mode)/800
-  static const Color borderDisabledSubtle = PregoColorPrimitives.grayDark800;
+  /// Figma: Colors/Border/border-disabled_subtle → Gray/800
+  static const Color borderDisabledSubtle = PregoColorPrimitives.gray800;
 
   /// Figma: Colors/Border/border-error → Error/400
   static const Color borderError = PregoColorPrimitives.error400;
@@ -118,45 +112,48 @@ abstract final class PregoColorsDark {
   /// Figma: Colors/Border/border-inside-reversed-top
   static const Color borderInsideReversedTop = Color(0xFF303236);
 
-  /// Figma: Colors/Border/border-primary → Gray (dark mode)/700
-  static const Color borderPrimary = PregoColorPrimitives.grayDark700;
+  /// Figma: Colors/Border/border-primary → Gray/500
+  static const Color borderPrimary = PregoColorPrimitives.gray500;
 
-  /// Figma: Colors/Border/border-reversed → Gray (dark mode)/800
-  static const Color borderReversed = PregoColorPrimitives.grayDark800;
+  /// Figma: Colors/Border/border-reversed → Base/black
+  static const Color borderReversed = PregoColorPrimitives.baseBlack;
 
-  /// Figma: Colors/Border/border-secondary → Gray (dark mode)/800
-  static const Color borderSecondary = PregoColorPrimitives.grayDark800;
+  /// Figma: Colors/Border/border-secondary → Gray/600
+  static const Color borderSecondary = PregoColorPrimitives.gray600;
 
-  /// Figma: Colors/Border/border-secondary_alt → Base/black
-  static const Color borderSecondaryAlt = PregoColorPrimitives.baseBlack;
+  /// Figma: Colors/Border/border-secondary_alt → Alpha Gray/25
+  static const Color borderSecondaryAlt = PregoColorPrimitives.alphaGray25;
 
-  /// Figma: Colors/Border/border-tertiary → Gray (dark mode)/800
-  static const Color borderTertiary = PregoColorPrimitives.grayDark800;
+  /// Figma: Colors/Border/border-selected → Base/white
+  static const Color borderSelected = PregoColorPrimitives.baseWhite;
+
+  /// Figma: Colors/Border/border-tertiary → Alpha White/900
+  static const Color borderTertiary = PregoColorPrimitives.alphaWhite900;
 
   // ===========================================================================
   // Foreground Colors - Figma: Colors/Foreground/*
   // ===========================================================================
 
-  /// Figma: Colors/Foreground/fg-brand-primary (600) → Brand Blue/500
-  static const Color fgBrandPrimary = PregoColorPrimitives.brandBlue500;
+  /// Figma: Colors/Foreground/fg-brand-primary (600) → Blue/500
+  static const Color fgBrandPrimary = PregoColorPrimitives.blue500;
 
   /// Figma: Colors/Foreground/fg-brand-primary_alt → Gray (dark mode)/300
-  static const Color fgBrandPrimaryAlt = PregoColorPrimitives.grayDark300;
+  static const Color fgBrandPrimaryAlt = Color(0xFFAEB2B7);
 
   /// Figma: Colors/Foreground/fg-brand-secondary (500) → Gray (dark mode)/500
-  static const Color fgBrandSecondary = PregoColorPrimitives.grayDark500;
+  static const Color fgBrandSecondary = Color(0xFF7E838B);
 
   /// Figma: Colors/Foreground/fg-brand-secondary_alt → Gray (dark mode)/600
-  static const Color fgBrandSecondaryAlt = PregoColorPrimitives.grayDark600;
+  static const Color fgBrandSecondaryAlt = Color(0xFF656A71);
 
   /// Figma: Colors/Foreground/fg-brand-secondary_hover → Gray (dark mode)/500
-  static const Color fgBrandSecondaryHover = PregoColorPrimitives.grayDark500;
+  static const Color fgBrandSecondaryHover = Color(0xFF7E838B);
 
   /// Figma: Colors/Foreground/fg-disabled → Gray (dark mode)/500
-  static const Color fgDisabled = PregoColorPrimitives.grayDark500;
+  static const Color fgDisabled = Color(0xFF7E838B);
 
   /// Figma: Colors/Foreground/fg-disabled_subtle → Gray (dark mode)/600
-  static const Color fgDisabledSubtle = PregoColorPrimitives.grayDark600;
+  static const Color fgDisabledSubtle = Color(0xFF656A71);
 
   /// Figma: Colors/Foreground/fg-error-primary → Error/500
   static const Color fgErrorPrimary = PregoColorPrimitives.error500;
@@ -168,16 +165,16 @@ abstract final class PregoColorsDark {
   static const Color fgPrimary = PregoColorPrimitives.baseWhite;
 
   /// Figma: Colors/Foreground/fg-quaternary (400) → Gray (dark mode)/600
-  static const Color fgQuaternary = PregoColorPrimitives.grayDark600;
+  static const Color fgQuaternary = Color(0xFF656A71);
 
   /// Figma: Colors/Foreground/fg-quaternary_hover → Gray (dark mode)/500
-  static const Color fgQuaternaryHover = PregoColorPrimitives.grayDark500;
+  static const Color fgQuaternaryHover = Color(0xFF7E838B);
 
   /// Figma: Colors/Foreground/fg-secondary (700) → Gray (dark mode)/300
-  static const Color fgSecondary = PregoColorPrimitives.grayDark300;
+  static const Color fgSecondary = Color(0xFFAEB2B7);
 
   /// Figma: Colors/Foreground/fg-secondary_hover → Gray (dark mode)/200
-  static const Color fgSecondaryHover = PregoColorPrimitives.grayDark200;
+  static const Color fgSecondaryHover = Color(0xFFBFC1C5);
 
   /// Figma: Colors/Foreground/fg-success-primary → Success/500
   static const Color fgSuccessPrimary = PregoColorPrimitives.success500;
@@ -186,10 +183,10 @@ abstract final class PregoColorsDark {
   static const Color fgSuccessSecondary = PregoColorPrimitives.success400;
 
   /// Figma: Colors/Foreground/fg-tertiary (600) → Gray (dark mode)/400
-  static const Color fgTertiary = PregoColorPrimitives.grayDark400;
+  static const Color fgTertiary = Color(0xFF999DA3);
 
   /// Figma: Colors/Foreground/fg-tertiary_hover → Gray (dark mode)/300
-  static const Color fgTertiaryHover = PregoColorPrimitives.grayDark300;
+  static const Color fgTertiaryHover = Color(0xFFAEB2B7);
 
   /// Figma: Colors/Foreground/fg-warning-primary → Warning/500
   static const Color fgWarningPrimary = PregoColorPrimitives.warning500;
@@ -204,50 +201,50 @@ abstract final class PregoColorsDark {
   // Background Colors - Figma: Colors/Background/*
   // ===========================================================================
 
-  /// Figma: Colors/Background/Black-white-inversed (alpha) → Base/transparent black
-  static const Color blackWhiteInversed = PregoColorPrimitives.baseTransparentBlack;
+  /// Figma: Colors/Background/Black-white-inversed (alpha) → Alpha Gray/950
+  static const Color blackWhiteInversed = PregoColorPrimitives.alphaGray950;
 
   /// Figma: Colors/Background/bg-active → Gray (dark mode)/800
-  static const Color bgActive = PregoColorPrimitives.grayDark800;
+  static const Color bgActive = Color(0xFF303236);
 
-  /// Figma: Colors/Background/bg-brand-primary → Brand Blue/500
-  static const Color bgBrandPrimary = PregoColorPrimitives.brandBlue500;
+  /// Figma: Colors/Background/bg-brand-primary → Blue/500
+  static const Color bgBrandPrimary = PregoColorPrimitives.blue500;
 
   /// Figma: Colors/Background/bg-brand-primary_alt → Background/bg-secondary
   static const Color bgBrandPrimaryAlt = PregoColorsDark.bgSecondary;
 
-  /// Figma: Colors/Background/bg-brand-secondary → Brand Blue/600
-  static const Color bgBrandSecondary = PregoColorPrimitives.brandBlue600;
+  /// Figma: Colors/Background/bg-brand-secondary → Blue/600
+  static const Color bgBrandSecondary = PregoColorPrimitives.blue600;
 
   /// Figma: Colors/Background/bg-brand-section → Background/bg-secondary
   static const Color bgBrandSection = PregoColorsDark.bgSecondary;
 
   /// Figma: Colors/Background/bg-brand-section_subtle → Gray (dark mode)/950
-  static const Color bgBrandSectionSubtle = PregoColorPrimitives.grayDark950;
+  static const Color bgBrandSectionSubtle = Color(0xFF030405);
 
-  /// Figma: Colors/Background/bg-brand-solid → Brand Blue/600
-  static const Color bgBrandSolid = PregoColorPrimitives.brandBlue600;
+  /// Figma: Colors/Background/bg-brand-solid → Blue/600
+  static const Color bgBrandSolid = PregoColorPrimitives.blue600;
 
-  /// Figma: Colors/Background/bg-brand-solid_hover → Brand Blue/500
-  static const Color bgBrandSolidHover = PregoColorPrimitives.brandBlue500;
+  /// Figma: Colors/Background/bg-brand-solid_hover → Blue/500
+  static const Color bgBrandSolidHover = PregoColorPrimitives.blue500;
 
-  /// Figma: Colors/Background/bg-brand_hover → Gray (dark mode alpha)/700
-  static const Color bgBrandHover = PregoColorPrimitives.grayDarkAlpha700;
+  /// Figma: Colors/Background/bg-brand_hover → Alpha White/700
+  static const Color bgBrandHover = PregoColorPrimitives.alphaWhite700;
 
-  /// Figma: Colors/Background/bg-brand_pressed → Gray (dark mode alpha)/500
-  static const Color bgBrandPressed = PregoColorPrimitives.grayDarkAlpha500;
+  /// Figma: Colors/Background/bg-brand_pressed → Alpha White/500
+  static const Color bgBrandPressed = PregoColorPrimitives.alphaWhite500;
 
-  /// Figma: Colors/Background/bg-destructive_hover → Gray (dark mode alpha)/900
-  static const Color bgDestructiveHover = PregoColorPrimitives.grayDarkAlpha900;
+  /// Figma: Colors/Background/bg-destructive_hover → Alpha White/900
+  static const Color bgDestructiveHover = PregoColorPrimitives.alphaWhite900;
 
-  /// Figma: Colors/Background/bg-destructive_pressed → Gray (dark mode alpha)/700
-  static const Color bgDestructivePressed = PregoColorPrimitives.grayDarkAlpha700;
+  /// Figma: Colors/Background/bg-destructive_pressed → Alpha White/700
+  static const Color bgDestructivePressed = PregoColorPrimitives.alphaWhite700;
 
-  /// Figma: Colors/Background/bg-disabled → Gray (dark mode)/800
-  static const Color bgDisabled = PregoColorPrimitives.grayDark800;
+  /// Figma: Colors/Background/bg-disabled → Gray/800
+  static const Color bgDisabled = PregoColorPrimitives.gray800;
 
   /// Figma: Colors/Background/bg-disabled_subtle → Gray (dark mode)/900
-  static const Color bgDisabledSubtle = PregoColorPrimitives.grayDark900;
+  static const Color bgDisabledSubtle = Color(0xFF18191B);
 
   /// Figma: Colors/Background/bg-error-primary → Error/950
   static const Color bgErrorPrimary = PregoColorPrimitives.error950;
@@ -261,41 +258,38 @@ abstract final class PregoColorsDark {
   /// Figma: Colors/Background/bg-error-solid_hover → Error/500
   static const Color bgErrorSolidHover = PregoColorPrimitives.error500;
 
-  /// Figma: Colors/Background/bg-gray_hover → Gray (dark mode alpha)/800
-  static const Color bgGrayHover = PregoColorPrimitives.grayDarkAlpha800;
+  /// Figma: Colors/Background/bg-gray_hover → Alpha White/800
+  static const Color bgGrayHover = PregoColorPrimitives.alphaWhite800;
 
-  /// Figma: Colors/Background/bg-gray_pressed → Gray (dark mode alpha)/600
-  static const Color bgGrayPressed = PregoColorPrimitives.grayDarkAlpha600;
+  /// Figma: Colors/Background/bg-gray_pressed → Alpha White/600
+  static const Color bgGrayPressed = PregoColorPrimitives.alphaWhite600;
 
-  /// Figma: Colors/Background/bg-overlay → Gray (dark mode)/800
-  static const Color bgOverlay = PregoColorPrimitives.grayDark800;
+  /// Figma: Colors/Background/bg-overlay → Gray/500
+  static const Color bgOverlay = PregoColorPrimitives.gray500;
 
-  /// Figma: Colors/Background/bg-primary → Gray (dark mode)/950
-  static const Color bgPrimary = PregoColorPrimitives.grayDark950;
+  /// Figma: Colors/Background/bg-primary → Gray/950
+  static const Color bgPrimary = PregoColorPrimitives.gray950;
 
   /// Figma: Colors/Background/bg-primary-solid → Background/bg-secondary
   static const Color bgPrimarySolid = PregoColorsDark.bgSecondary;
 
-  /// Figma: Colors/Background/bg-primary_alt → Background/bg-secondary
-  static const Color bgPrimaryAlt = PregoColorsDark.bgSecondary;
-
   /// Figma: Colors/Background/bg-quaternary → Gray (dark mode)/700
-  static const Color bgQuaternary = PregoColorPrimitives.grayDark700;
+  static const Color bgQuaternary = Color(0xFF4D5156);
 
   /// Figma: Colors/Background/bg-secondary → Gray (dark mode)/900
-  static const Color bgSecondary = PregoColorPrimitives.grayDark900;
+  static const Color bgSecondary = Color(0xFF18191B);
 
   /// Figma: Colors/Background/bg-secondary-solid → Gray (dark mode)/600
-  static const Color bgSecondarySolid = PregoColorPrimitives.grayDark600;
+  static const Color bgSecondarySolid = Color(0xFF656A71);
 
   /// Figma: Colors/Background/bg-secondary_alt → Background/bg-primary
   static const Color bgSecondaryAlt = PregoColorsDark.bgPrimary;
 
   /// Figma: Colors/Background/bg-secondary_hover → Gray (dark mode)/800
-  static const Color bgSecondaryHover = PregoColorPrimitives.grayDark800;
+  static const Color bgSecondaryHover = Color(0xFF303236);
 
   /// Figma: Colors/Background/bg-secondary_subtle → Gray (dark mode)/900
-  static const Color bgSecondarySubtle = PregoColorPrimitives.grayDark900;
+  static const Color bgSecondarySubtle = Color(0xFF18191B);
 
   /// Figma: Colors/Background/bg-success-primary → Success/950
   static const Color bgSuccessPrimary = PregoColorPrimitives.success950;
@@ -306,8 +300,17 @@ abstract final class PregoColorsDark {
   /// Figma: Colors/Background/bg-success-solid → Success/600
   static const Color bgSuccessSolid = PregoColorPrimitives.success600;
 
+  /// Figma: Colors/Background/bg-surface_1 → Gray/900
+  static const Color bgSurface1 = PregoColorPrimitives.gray900;
+
+  /// Figma: Colors/Background/bg-surface_2 → Gray/700
+  static const Color bgSurface2 = PregoColorPrimitives.gray700;
+
+  /// Figma: Colors/Background/bg-surface_3 → Gray/600
+  static const Color bgSurface3 = PregoColorPrimitives.gray600;
+
   /// Figma: Colors/Background/bg-tertiary → Gray (dark mode)/800
-  static const Color bgTertiary = PregoColorPrimitives.grayDark800;
+  static const Color bgTertiary = Color(0xFF303236);
 
   /// Figma: Colors/Background/bg-warning-primary → Warning/950
   static const Color bgWarningPrimary = PregoColorPrimitives.warning950;
@@ -328,8 +331,8 @@ abstract final class PregoColorsDark {
   // Effects - Figma: Colors/Effects/*
   // ===========================================================================
 
-  /// Figma: Colors/Effects/Focus rings/focus-ring → Brand Blue/500
-  static const Color focusRing = PregoColorPrimitives.brandBlue500;
+  /// Figma: Colors/Effects/Focus rings/focus-ring → Blue/500
+  static const Color focusRing = PregoColorPrimitives.blue500;
 
   /// Figma: Colors/Effects/Focus rings/focus-ring-error → Error/500
   static const Color focusRingError = PregoColorPrimitives.error500;
@@ -338,35 +341,35 @@ abstract final class PregoColorsDark {
   // Effects - Figma: Colors/Effects/Shadows/*
   // ===========================================================================
 
-  /// Figma: Colors/Effects/Shadows/shadow-2xl_01 → Base/transparent
-  static const Color shadow2xl01 = PregoColorPrimitives.baseTransparent;
+  /// Figma: Colors/Effects/Shadows/shadow-2xl_01 → Base/transparent white
+  static const Color shadow2xl01 = PregoColorPrimitives.baseTransparentWhite;
 
-  /// Figma: Colors/Effects/Shadows/shadow-2xl_02 → Base/transparent
-  static const Color shadow2xl02 = PregoColorPrimitives.baseTransparent;
+  /// Figma: Colors/Effects/Shadows/shadow-2xl_02 → Base/transparent white
+  static const Color shadow2xl02 = PregoColorPrimitives.baseTransparentWhite;
 
-  /// Figma: Colors/Effects/Shadows/shadow-3xl_01 → Base/transparent
-  static const Color shadow3xl01 = PregoColorPrimitives.baseTransparent;
+  /// Figma: Colors/Effects/Shadows/shadow-3xl_01 → Base/transparent white
+  static const Color shadow3xl01 = PregoColorPrimitives.baseTransparentWhite;
 
-  /// Figma: Colors/Effects/Shadows/shadow-3xl_02 → Base/transparent
-  static const Color shadow3xl02 = PregoColorPrimitives.baseTransparent;
+  /// Figma: Colors/Effects/Shadows/shadow-3xl_02 → Base/transparent white
+  static const Color shadow3xl02 = PregoColorPrimitives.baseTransparentWhite;
 
-  /// Figma: Colors/Effects/Shadows/shadow-inversed → Gray (light mode alpha)/200
-  static const Color shadowInversed = PregoColorPrimitives.grayLightAlpha200;
+  /// Figma: Colors/Effects/Shadows/shadow-inversed → Alpha Black/200
+  static const Color shadowInversed = PregoColorPrimitives.alphaBlack200;
 
-  /// Figma: Colors/Effects/Shadows/shadow-lg_01 → Base/transparent
-  static const Color shadowLg01 = PregoColorPrimitives.baseTransparent;
+  /// Figma: Colors/Effects/Shadows/shadow-lg_01 → Base/transparent white
+  static const Color shadowLg01 = PregoColorPrimitives.baseTransparentWhite;
 
-  /// Figma: Colors/Effects/Shadows/shadow-lg_02 → Base/transparent
-  static const Color shadowLg02 = PregoColorPrimitives.baseTransparent;
+  /// Figma: Colors/Effects/Shadows/shadow-lg_02 → Base/transparent white
+  static const Color shadowLg02 = PregoColorPrimitives.baseTransparentWhite;
 
-  /// Figma: Colors/Effects/Shadows/shadow-lg_03 → Base/transparent
-  static const Color shadowLg03 = PregoColorPrimitives.baseTransparent;
+  /// Figma: Colors/Effects/Shadows/shadow-lg_03 → Base/transparent white
+  static const Color shadowLg03 = PregoColorPrimitives.baseTransparentWhite;
 
-  /// Figma: Colors/Effects/Shadows/shadow-md_01 → Base/transparent
-  static const Color shadowMd01 = PregoColorPrimitives.baseTransparent;
+  /// Figma: Colors/Effects/Shadows/shadow-md_01 → Base/transparent white
+  static const Color shadowMd01 = PregoColorPrimitives.baseTransparentWhite;
 
-  /// Figma: Colors/Effects/Shadows/shadow-md_02 → Base/transparent
-  static const Color shadowMd02 = PregoColorPrimitives.baseTransparent;
+  /// Figma: Colors/Effects/Shadows/shadow-md_02 → Base/transparent white
+  static const Color shadowMd02 = PregoColorPrimitives.baseTransparentWhite;
 
   /// Figma: Colors/Effects/Shadows/shadow-skeumorphic
   static const Color skeuomorphicShadow = Color(0x0D0C0E12);
@@ -374,23 +377,23 @@ abstract final class PregoColorsDark {
   /// Figma: Colors/Effects/Shadows/shadow-skeumorphic-inner-border
   static const Color skeuomorphicInnerBorder = Color(0x2E0C0E12);
 
-  /// Figma: Colors/Effects/Shadows/shadow-sm_01 → Base/transparent
-  static const Color shadowSm01 = PregoColorPrimitives.baseTransparent;
+  /// Figma: Colors/Effects/Shadows/shadow-sm_01 → Base/transparent white
+  static const Color shadowSm01 = PregoColorPrimitives.baseTransparentWhite;
 
-  /// Figma: Colors/Effects/Shadows/shadow-sm_02 → Base/transparent
-  static const Color shadowSm02 = PregoColorPrimitives.baseTransparent;
+  /// Figma: Colors/Effects/Shadows/shadow-sm_02 → Base/transparent white
+  static const Color shadowSm02 = PregoColorPrimitives.baseTransparentWhite;
 
-  /// Figma: Colors/Effects/Shadows/shadow-xl_01 → Base/transparent
-  static const Color shadowXl01 = PregoColorPrimitives.baseTransparent;
+  /// Figma: Colors/Effects/Shadows/shadow-xl_01 → Base/transparent white
+  static const Color shadowXl01 = PregoColorPrimitives.baseTransparentWhite;
 
-  /// Figma: Colors/Effects/Shadows/shadow-xl_02 → Base/transparent
-  static const Color shadowXl02 = PregoColorPrimitives.baseTransparent;
+  /// Figma: Colors/Effects/Shadows/shadow-xl_02 → Base/transparent white
+  static const Color shadowXl02 = PregoColorPrimitives.baseTransparentWhite;
 
-  /// Figma: Colors/Effects/Shadows/shadow-xl_03 → Base/transparent
-  static const Color shadowXl03 = PregoColorPrimitives.baseTransparent;
+  /// Figma: Colors/Effects/Shadows/shadow-xl_03 → Base/transparent white
+  static const Color shadowXl03 = PregoColorPrimitives.baseTransparentWhite;
 
-  /// Figma: Colors/Effects/Shadows/shadow-xs → Base/transparent
-  static const Color shadowXs = PregoColorPrimitives.baseTransparent;
+  /// Figma: Colors/Effects/Shadows/shadow-xs → Base/transparent white
+  static const Color shadowXs = PregoColorPrimitives.baseTransparentWhite;
 
   // ===========================================================================
   // Component Colors - Buttons
@@ -402,27 +405,27 @@ abstract final class PregoColorsDark {
   /// Figma: Component colors/Components/Buttons/button-destructive-primary-icon_hover → Error/200
   static const Color buttonDestructivePrimaryIconHover = PregoColorPrimitives.error200;
 
-  /// Figma: Component colors/Components/Buttons/button-glass- primary-background → Gray (dark mode alpha)/900
-  static const Color buttonGlassPrimaryBackground = PregoColorPrimitives.grayDarkAlpha900;
+  /// Figma: Component colors/Components/Buttons/button-glass- primary-background → Alpha White/900
+  static const Color buttonGlassPrimaryBackground = PregoColorPrimitives.alphaWhite900;
 
-  /// Figma: Component colors/Components/Buttons/button-glass- primary-hover → Gray (dark mode alpha)/800
-  static const Color buttonGlassPrimaryHover = PregoColorPrimitives.grayDarkAlpha800;
+  /// Figma: Component colors/Components/Buttons/button-glass- primary-hover → Alpha White/800
+  static const Color buttonGlassPrimaryHover = PregoColorPrimitives.alphaWhite800;
 
-  /// Figma: Component colors/Components/Buttons/button-primary-icon → Brand Blue/300
-  static const Color buttonPrimaryIcon = PregoColorPrimitives.brandBlue300;
+  /// Figma: Component colors/Components/Buttons/button-primary-icon → Blue/300
+  static const Color buttonPrimaryIcon = PregoColorPrimitives.blue300;
 
-  /// Figma: Component colors/Components/Buttons/button-primary-icon_hover → Brand Blue/200
-  static const Color buttonPrimaryIconHover = PregoColorPrimitives.brandBlue200;
+  /// Figma: Component colors/Components/Buttons/button-primary-icon_hover → Blue/200
+  static const Color buttonPrimaryIconHover = PregoColorPrimitives.blue200;
 
   // ===========================================================================
   // Component Colors - Icons
   // ===========================================================================
 
   /// Figma: Component colors/Components/Icons/Icons/icon-fg-brand → Gray (dark mode)/400
-  static const Color iconFgBrand = PregoColorPrimitives.grayDark400;
+  static const Color iconFgBrand = Color(0xFF999DA3);
 
   /// Figma: Component colors/Components/Icons/Icons/icon-fg-brand_on-brand → Gray (dark mode)/400
-  static const Color iconFgBrandOnBrand = PregoColorPrimitives.grayDark400;
+  static const Color iconFgBrandOnBrand = Color(0xFF999DA3);
 
   // ===========================================================================
   // Component Colors - Alpha (mode-invariant)
@@ -486,35 +489,35 @@ abstract final class PregoColorsDark {
   static const Color alphaWhite90 = Color(0xE50C0E12);
 
   /// Figma: Component colors/Alpha/alpha-white-100 → Gray (dark mode)/950
-  static const Color alphaWhite100 = PregoColorPrimitives.grayDark950;
+  static const Color alphaWhite100 = Color(0xFF030405);
 
   // ===========================================================================
   // Utility Colors
   // ===========================================================================
 
-  /// Figma: Component colors/Utility/Blue/utility-blue-50 → Brand Blue/900
-  static const Color utilityBlue50 = PregoColorPrimitives.brandBlue900;
+  /// Figma: Component colors/Utility/Blue/utility-blue-50 → Blue/900
+  static const Color utilityBlue50 = PregoColorPrimitives.blue900;
 
-  /// Figma: Component colors/Utility/Blue/utility-blue-100 → Brand Blue/800
-  static const Color utilityBlue100 = PregoColorPrimitives.brandBlue800;
+  /// Figma: Component colors/Utility/Blue/utility-blue-100 → Blue/800
+  static const Color utilityBlue100 = PregoColorPrimitives.blue800;
 
-  /// Figma: Component colors/Utility/Blue/utility-blue-200 → Brand Blue/700
-  static const Color utilityBlue200 = PregoColorPrimitives.brandBlue700;
+  /// Figma: Component colors/Utility/Blue/utility-blue-200 → Blue/700
+  static const Color utilityBlue200 = PregoColorPrimitives.blue700;
 
-  /// Figma: Component colors/Utility/Blue/utility-blue-300 → Brand Blue/600
-  static const Color utilityBlue300 = PregoColorPrimitives.brandBlue600;
+  /// Figma: Component colors/Utility/Blue/utility-blue-300 → Blue/600
+  static const Color utilityBlue300 = PregoColorPrimitives.blue600;
 
-  /// Figma: Component colors/Utility/Blue/utility-blue-400 → Brand Blue/500
-  static const Color utilityBlue400 = PregoColorPrimitives.brandBlue500;
+  /// Figma: Component colors/Utility/Blue/utility-blue-400 → Blue/500
+  static const Color utilityBlue400 = PregoColorPrimitives.blue500;
 
-  /// Figma: Component colors/Utility/Blue/utility-blue-500 → Brand Blue/400
-  static const Color utilityBlue500 = PregoColorPrimitives.brandBlue400;
+  /// Figma: Component colors/Utility/Blue/utility-blue-500 → Blue/400
+  static const Color utilityBlue500 = PregoColorPrimitives.blue400;
 
-  /// Figma: Component colors/Utility/Blue/utility-blue-600 → Brand Blue/300
-  static const Color utilityBlue600 = PregoColorPrimitives.brandBlue300;
+  /// Figma: Component colors/Utility/Blue/utility-blue-600 → Blue/300
+  static const Color utilityBlue600 = PregoColorPrimitives.blue300;
 
-  /// Figma: Component colors/Utility/Blue/utility-blue-700 → Brand Blue/200
-  static const Color utilityBlue700 = PregoColorPrimitives.brandBlue200;
+  /// Figma: Component colors/Utility/Blue/utility-blue-700 → Blue/200
+  static const Color utilityBlue700 = PregoColorPrimitives.blue200;
 
   /// Figma: Component colors/Utility/Error/utility-error-50 → Error/950
   static const Color utilityError50 = PregoColorPrimitives.error950;
@@ -595,20 +598,20 @@ abstract final class PregoColorsDark {
   /// Figma: Component colors/Components/Avatars/avatar-styles-bg-neutral
   static const Color avatarStylesBgNeutral = Color(0xFFE0E0E0);
 
-  /// Figma: Component colors/Components/Icons/Hero Avatar/brand-gradient-bottom → Brand Blue/300
-  static const Color brandGradientBottom = PregoColorPrimitives.brandBlue300;
+  /// Figma: Component colors/Components/Icons/Hero Avatar/brand-gradient-bottom → Blue/300
+  static const Color brandGradientBottom = PregoColorPrimitives.blue300;
 
   /// Figma: Component colors/Components/Icons/Hero Avatar/brand-gradient-top → Base/white
   static const Color brandGradientTop = PregoColorPrimitives.baseWhite;
 
-  /// Figma: Component colors/Components/Icons/Featured icons/featured-icon-light-fg-brand → Brand Blue/200
-  static const Color featuredIconLightFgBrand = PregoColorPrimitives.brandBlue200;
+  /// Figma: Component colors/Components/Icons/Featured icons/featured-icon-light-fg-brand → Blue/200
+  static const Color featuredIconLightFgBrand = PregoColorPrimitives.blue200;
 
   /// Figma: Component colors/Components/Icons/Featured icons/featured-icon-light-fg-error → Error/200
   static const Color featuredIconLightFgError = PregoColorPrimitives.error200;
 
-  /// Figma: Component colors/Components/Icons/Featured icons/featured-icon-light-fg-gray → Gray (dark mode alpha)/200
-  static const Color featuredIconLightFgGray = PregoColorPrimitives.grayDarkAlpha200;
+  /// Figma: Component colors/Components/Icons/Featured icons/featured-icon-light-fg-gray → Alpha White/200
+  static const Color featuredIconLightFgGray = PregoColorPrimitives.alphaWhite200;
 
   /// Figma: Component colors/Components/Icons/Featured icons/featured-icon-light-fg-success → Success/200
   static const Color featuredIconLightFgSuccess = PregoColorPrimitives.success200;
@@ -634,17 +637,17 @@ abstract final class PregoColorsDark {
   /// Figma: Component colors/Components/Icons/Hero Avatar/purple-gradient-top → Base/white
   static const Color purpleGradientTop = PregoColorPrimitives.baseWhite;
 
-  /// Figma: Component colors/Components/Toggles/toggle-border → Base/transparent
-  static const Color toggleBorder = PregoColorPrimitives.baseTransparent;
+  /// Figma: Component colors/Components/Toggles/toggle-border → Base/transparent white
+  static const Color toggleBorder = PregoColorPrimitives.baseTransparentWhite;
 
   /// Figma: Component colors/Components/Toggles/toggle-button-fg_disabled → Gray (dark mode)/600
-  static const Color toggleButtonFgDisabled = PregoColorPrimitives.grayDark600;
+  static const Color toggleButtonFgDisabled = Color(0xFF656A71);
 
-  /// Figma: Component colors/Components/Toggles/toggle-slim-border_pressed → Base/transparent
-  static const Color toggleSlimBorderPressed = PregoColorPrimitives.baseTransparent;
+  /// Figma: Component colors/Components/Toggles/toggle-slim-border_pressed → Base/transparent white
+  static const Color toggleSlimBorderPressed = PregoColorPrimitives.baseTransparentWhite;
 
-  /// Figma: Component colors/Components/Toggles/toggle-slim-border_pressed-hover → Base/transparent
-  static const Color toggleSlimBorderPressedHover = PregoColorPrimitives.baseTransparent;
+  /// Figma: Component colors/Components/Toggles/toggle-slim-border_pressed-hover → Base/transparent white
+  static const Color toggleSlimBorderPressedHover = PregoColorPrimitives.baseTransparentWhite;
 }
 
 /// Light mode color tokens matching Figma specifications.
@@ -657,23 +660,23 @@ abstract final class PregoColorsLight {
   // Text Colors - Figma: Colors/Text/*
   // ===========================================================================
 
-  /// Figma: Colors/Text/text-brand-primary (900) → Brand Blue/900
-  static const Color textBrandPrimary = PregoColorPrimitives.brandBlue900;
+  /// Figma: Colors/Text/text-brand-primary (900) → Blue/900
+  static const Color textBrandPrimary = PregoColorPrimitives.blue900;
 
-  /// Figma: Colors/Text/text-brand-secondary (700) → Brand Blue/700
-  static const Color textBrandSecondary = PregoColorPrimitives.brandBlue700;
+  /// Figma: Colors/Text/text-brand-secondary (700) → Blue/700
+  static const Color textBrandSecondary = PregoColorPrimitives.blue700;
 
-  /// Figma: Colors/Text/text-brand-secondary_hover → Brand Blue/800
-  static const Color textBrandSecondaryHover = PregoColorPrimitives.brandBlue800;
+  /// Figma: Colors/Text/text-brand-secondary_hover → Blue/800
+  static const Color textBrandSecondaryHover = PregoColorPrimitives.blue800;
 
-  /// Figma: Colors/Text/text-brand-tertiary (600) → Brand Blue/600
-  static const Color textBrandTertiary = PregoColorPrimitives.brandBlue600;
+  /// Figma: Colors/Text/text-brand-tertiary (600) → Blue/600
+  static const Color textBrandTertiary = PregoColorPrimitives.blue600;
 
-  /// Figma: Colors/Text/text-brand-tertiary_alt → Brand Blue/600
-  static const Color textBrandTertiaryAlt = PregoColorPrimitives.brandBlue600;
+  /// Figma: Colors/Text/text-brand-tertiary_alt → Blue/600
+  static const Color textBrandTertiaryAlt = PregoColorPrimitives.blue600;
 
-  /// Figma: Colors/Text/text-disabled → Gray (light mode)/500
-  static const Color textDisabled = PregoColorPrimitives.grayLight500;
+  /// Figma: Colors/Text/text-disabled → Gray/400
+  static const Color textDisabled = PregoColorPrimitives.gray400;
 
   /// Figma: Colors/Text/text-error-primary (600) → Error/600
   static const Color textErrorPrimary = PregoColorPrimitives.error600;
@@ -681,47 +684,44 @@ abstract final class PregoColorsLight {
   /// Figma: Colors/Text/text-error-primary_hover → Error/700
   static const Color textErrorPrimaryHover = PregoColorPrimitives.error700;
 
-  /// Figma: Colors/Text/text-placeholder → Gray (light mode)/400
-  static const Color textPlaceholder = PregoColorPrimitives.grayLight400;
+  /// Figma: Colors/Text/text-placeholder → Gray/400
+  static const Color textPlaceholder = PregoColorPrimitives.gray400;
 
-  /// Figma: Colors/Text/text-placeholder_subtle → Gray (light mode)/300
-  static const Color textPlaceholderSubtle = PregoColorPrimitives.grayLight300;
+  /// Figma: Colors/Text/text-placeholder_subtle → Gray/300
+  static const Color textPlaceholderSubtle = PregoColorPrimitives.gray300;
 
-  /// Figma: Colors/Text/text-primary (900) → Gray (light mode)/950
-  static const Color textPrimary = PregoColorPrimitives.grayLight950;
+  /// Figma: Colors/Text/text-primary (950) → Gray/950
+  static const Color textPrimary = PregoColorPrimitives.gray950;
 
-  /// Figma: Colors/Text/text-primary_on-brand → Base/white
-  static const Color textPrimaryOnBrand = PregoColorPrimitives.baseWhite;
+  /// Figma: Colors/Text/text-primary_on-brand → Blue/500
+  static const Color textPrimaryOnBrand = PregoColorPrimitives.blue500;
 
   /// Figma: Colors/Text/text-primary_on-white → Base/white
   static const Color textPrimaryOnWhite = PregoColorPrimitives.baseWhite;
 
   /// Figma: Colors/Text/text-quaternary (500) → Gray (light mode)/400
-  static const Color textQuaternary = PregoColorPrimitives.grayLight400;
+  static const Color textQuaternary = Color(0xFFA4A7AE);
 
-  /// Figma: Colors/Text/text-quaternary_on-brand → Brand Blue/300
-  static const Color textQuaternaryOnBrand = PregoColorPrimitives.brandBlue300;
-
-  /// Figma: Colors/Text/text-secondary (600) → Gray (light mode)/700
-  static const Color textSecondary = PregoColorPrimitives.grayLight700;
+  /// Figma: Colors/Text/text-secondary (600) → Gray/500
+  static const Color textSecondary = PregoColorPrimitives.gray500;
 
   /// Figma: Colors/Text/text-secondary_hover → Gray (light mode)/800
-  static const Color textSecondaryHover = PregoColorPrimitives.grayLight800;
+  static const Color textSecondaryHover = Color(0xFF252B37);
 
-  /// Figma: Colors/Text/text-secondary_on-brand → Brand Blue/400
-  static const Color textSecondaryOnBrand = PregoColorPrimitives.brandBlue400;
+  /// Figma: Colors/Text/text-secondary_on-brand → Blue/400
+  static const Color textSecondaryOnBrand = PregoColorPrimitives.blue400;
 
   /// Figma: Colors/Text/text-success-primary (600) → Success/600
   static const Color textSuccessPrimary = PregoColorPrimitives.success600;
 
-  /// Figma: Colors/Text/text-tertiary (600) → Gray (light mode)/600
-  static const Color textTertiary = PregoColorPrimitives.grayLight600;
+  /// Figma: Colors/Text/text-tertiary (450) → Gray/525
+  static const Color textTertiary = PregoColorPrimitives.gray525;
 
-  /// Figma: Colors/Text/text-tertiary_hover → Gray (light mode)/700
-  static const Color textTertiaryHover = PregoColorPrimitives.grayLight700;
+  /// Figma: Colors/Text/text-tertiary_hover → Gray/700
+  static const Color textTertiaryHover = PregoColorPrimitives.gray700;
 
-  /// Figma: Colors/Text/text-tertiary_on-brand → Brand Blue/200
-  static const Color textTertiaryOnBrand = PregoColorPrimitives.brandBlue200;
+  /// Figma: Colors/Text/text-tertiary_on-brand → Blue/200
+  static const Color textTertiaryOnBrand = PregoColorPrimitives.blue200;
 
   /// Figma: Colors/Text/text-warning-primary (600) → Warning/600
   static const Color textWarningPrimary = PregoColorPrimitives.warning600;
@@ -733,17 +733,14 @@ abstract final class PregoColorsLight {
   // Border Colors - Figma: Colors/Border/*
   // ===========================================================================
 
-  /// Figma: Colors/Border/border-brand → Brand Blue/500
-  static const Color borderBrand = PregoColorPrimitives.brandBlue500;
+  /// Figma: Colors/Border/border-brand → Blue/500
+  static const Color borderBrand = PregoColorPrimitives.blue500;
 
-  /// Figma: Colors/Border/border-brand_alt → Brand Blue/600
-  static const Color borderBrandAlt = PregoColorPrimitives.brandBlue600;
+  /// Figma: Colors/Border/border-disabled → Gray/350
+  static const Color borderDisabled = PregoColorPrimitives.gray350;
 
-  /// Figma: Colors/Border/border-disabled → Gray (light mode)/300
-  static const Color borderDisabled = PregoColorPrimitives.grayLight300;
-
-  /// Figma: Colors/Border/border-disabled_subtle → Gray (light mode)/200
-  static const Color borderDisabledSubtle = PregoColorPrimitives.grayLight200;
+  /// Figma: Colors/Border/border-disabled_subtle → Gray/200
+  static const Color borderDisabledSubtle = PregoColorPrimitives.gray200;
 
   /// Figma: Colors/Border/border-error → Error/500
   static const Color borderError = PregoColorPrimitives.error500;
@@ -757,45 +754,48 @@ abstract final class PregoColorsLight {
   /// Figma: Colors/Border/border-inside-reversed-top
   static const Color borderInsideReversedTop = Color(0x00FFFFFF);
 
-  /// Figma: Colors/Border/border-primary → Gray (light mode)/300
-  static const Color borderPrimary = PregoColorPrimitives.grayLight300;
+  /// Figma: Colors/Border/border-primary → Alpha Black/200
+  static const Color borderPrimary = PregoColorPrimitives.alphaBlack200;
 
   /// Figma: Colors/Border/border-reversed → Base/white
   static const Color borderReversed = PregoColorPrimitives.baseWhite;
 
-  /// Figma: Colors/Border/border-secondary → Gray (light mode)/200
-  static const Color borderSecondary = PregoColorPrimitives.grayLight200;
+  /// Figma: Colors/Border/border-secondary → Alpha Black/100
+  static const Color borderSecondary = PregoColorPrimitives.alphaBlack100;
 
   /// Figma: Colors/Border/border-secondary_alt
   static const Color borderSecondaryAlt = Color(0x0D000000);
 
-  /// Figma: Colors/Border/border-tertiary → Gray (light mode)/100
-  static const Color borderTertiary = PregoColorPrimitives.grayLight100;
+  /// Figma: Colors/Border/border-selected → Gray/900
+  static const Color borderSelected = PregoColorPrimitives.gray900;
+
+  /// Figma: Colors/Border/border-tertiary → Alpha Black/50
+  static const Color borderTertiary = PregoColorPrimitives.alphaBlack50;
 
   // ===========================================================================
   // Foreground Colors - Figma: Colors/Foreground/*
   // ===========================================================================
 
-  /// Figma: Colors/Foreground/fg-brand-primary (600) → Brand Blue/600
-  static const Color fgBrandPrimary = PregoColorPrimitives.brandBlue600;
+  /// Figma: Colors/Foreground/fg-brand-primary (600) → Blue/600
+  static const Color fgBrandPrimary = PregoColorPrimitives.blue600;
 
-  /// Figma: Colors/Foreground/fg-brand-primary_alt → Brand Blue/600
-  static const Color fgBrandPrimaryAlt = PregoColorPrimitives.brandBlue600;
+  /// Figma: Colors/Foreground/fg-brand-primary_alt → Blue/600
+  static const Color fgBrandPrimaryAlt = PregoColorPrimitives.blue600;
 
-  /// Figma: Colors/Foreground/fg-brand-secondary (500) → Brand Blue/500
-  static const Color fgBrandSecondary = PregoColorPrimitives.brandBlue500;
+  /// Figma: Colors/Foreground/fg-brand-secondary (500) → Blue/500
+  static const Color fgBrandSecondary = PregoColorPrimitives.blue500;
 
-  /// Figma: Colors/Foreground/fg-brand-secondary_alt → Brand Blue/500
-  static const Color fgBrandSecondaryAlt = PregoColorPrimitives.brandBlue500;
+  /// Figma: Colors/Foreground/fg-brand-secondary_alt → Blue/500
+  static const Color fgBrandSecondaryAlt = PregoColorPrimitives.blue500;
 
-  /// Figma: Colors/Foreground/fg-brand-secondary_hover → Brand Blue/500
-  static const Color fgBrandSecondaryHover = PregoColorPrimitives.brandBlue500;
+  /// Figma: Colors/Foreground/fg-brand-secondary_hover → Blue/500
+  static const Color fgBrandSecondaryHover = PregoColorPrimitives.blue500;
 
-  /// Figma: Colors/Foreground/fg-disabled → Gray (light mode)/400
-  static const Color fgDisabled = PregoColorPrimitives.grayLight400;
+  /// Figma: Colors/Foreground/fg-disabled → Gray/400
+  static const Color fgDisabled = PregoColorPrimitives.gray400;
 
-  /// Figma: Colors/Foreground/fg-disabled_subtle → Gray (light mode)/300
-  static const Color fgDisabledSubtle = PregoColorPrimitives.grayLight300;
+  /// Figma: Colors/Foreground/fg-disabled_subtle → Gray/300
+  static const Color fgDisabledSubtle = PregoColorPrimitives.gray300;
 
   /// Figma: Colors/Foreground/fg-error-primary → Error/600
   static const Color fgErrorPrimary = PregoColorPrimitives.error600;
@@ -804,19 +804,19 @@ abstract final class PregoColorsLight {
   static const Color fgErrorSecondary = PregoColorPrimitives.error500;
 
   /// Figma: Colors/Foreground/fg-primary (900) → Gray (dark mode)/900
-  static const Color fgPrimary = PregoColorPrimitives.grayDark900;
+  static const Color fgPrimary = Color(0xFF18191B);
 
-  /// Figma: Colors/Foreground/fg-quaternary (400) → Gray (light mode)/400
-  static const Color fgQuaternary = PregoColorPrimitives.grayLight400;
+  /// Figma: Colors/Foreground/fg-quaternary (400) → Gray/400
+  static const Color fgQuaternary = PregoColorPrimitives.gray400;
 
-  /// Figma: Colors/Foreground/fg-quaternary_hover → Gray (light mode)/500
-  static const Color fgQuaternaryHover = PregoColorPrimitives.grayLight500;
+  /// Figma: Colors/Foreground/fg-quaternary_hover → Gray/500
+  static const Color fgQuaternaryHover = PregoColorPrimitives.gray500;
 
-  /// Figma: Colors/Foreground/fg-secondary (700) → Gray (light mode)/700
-  static const Color fgSecondary = PregoColorPrimitives.grayLight700;
+  /// Figma: Colors/Foreground/fg-secondary (700) → Gray/700
+  static const Color fgSecondary = PregoColorPrimitives.gray700;
 
-  /// Figma: Colors/Foreground/fg-secondary_hover → Gray (light mode)/800
-  static const Color fgSecondaryHover = PregoColorPrimitives.grayLight800;
+  /// Figma: Colors/Foreground/fg-secondary_hover → Gray/800
+  static const Color fgSecondaryHover = PregoColorPrimitives.gray800;
 
   /// Figma: Colors/Foreground/fg-success-primary → Success/600
   static const Color fgSuccessPrimary = PregoColorPrimitives.success600;
@@ -824,11 +824,11 @@ abstract final class PregoColorsLight {
   /// Figma: Colors/Foreground/fg-success-secondary → Success/500
   static const Color fgSuccessSecondary = PregoColorPrimitives.success500;
 
-  /// Figma: Colors/Foreground/fg-tertiary (600) → Gray (light mode)/600
-  static const Color fgTertiary = PregoColorPrimitives.grayLight600;
+  /// Figma: Colors/Foreground/fg-tertiary (600) → Gray/600
+  static const Color fgTertiary = PregoColorPrimitives.gray600;
 
-  /// Figma: Colors/Foreground/fg-tertiary_hover → Gray (light mode)/700
-  static const Color fgTertiaryHover = PregoColorPrimitives.grayLight700;
+  /// Figma: Colors/Foreground/fg-tertiary_hover → Gray/700
+  static const Color fgTertiaryHover = PregoColorPrimitives.gray700;
 
   /// Figma: Colors/Foreground/fg-warning-primary → Warning/600
   static const Color fgWarningPrimary = PregoColorPrimitives.warning600;
@@ -843,50 +843,50 @@ abstract final class PregoColorsLight {
   // Background Colors - Figma: Colors/Background/*
   // ===========================================================================
 
-  /// Figma: Colors/Background/Black-white-inversed (alpha) → Base/transparent
-  static const Color blackWhiteInversed = PregoColorPrimitives.baseTransparent;
+  /// Figma: Colors/Background/Black-white-inversed (alpha) → Alpha Gray/300
+  static const Color blackWhiteInversed = PregoColorPrimitives.alphaGray300;
 
-  /// Figma: Colors/Background/bg-active → Gray (light mode)/50
-  static const Color bgActive = PregoColorPrimitives.grayLight50;
+  /// Figma: Colors/Background/bg-active → Gray/50
+  static const Color bgActive = PregoColorPrimitives.gray50;
 
-  /// Figma: Colors/Background/bg-brand-primary → Brand Blue/50
-  static const Color bgBrandPrimary = PregoColorPrimitives.brandBlue50;
+  /// Figma: Colors/Background/bg-brand-primary → Blue/50
+  static const Color bgBrandPrimary = PregoColorPrimitives.blue50;
 
-  /// Figma: Colors/Background/bg-brand-primary_alt → Brand Blue/50
-  static const Color bgBrandPrimaryAlt = PregoColorPrimitives.brandBlue50;
+  /// Figma: Colors/Background/bg-brand-primary_alt → Blue/50
+  static const Color bgBrandPrimaryAlt = PregoColorPrimitives.blue50;
 
-  /// Figma: Colors/Background/bg-brand-secondary → Brand Blue/100
-  static const Color bgBrandSecondary = PregoColorPrimitives.brandBlue100;
+  /// Figma: Colors/Background/bg-brand-secondary → Blue/100
+  static const Color bgBrandSecondary = PregoColorPrimitives.blue100;
 
-  /// Figma: Colors/Background/bg-brand-section → Brand Blue/800
-  static const Color bgBrandSection = PregoColorPrimitives.brandBlue800;
+  /// Figma: Colors/Background/bg-brand-section → Blue/800
+  static const Color bgBrandSection = PregoColorPrimitives.blue800;
 
-  /// Figma: Colors/Background/bg-brand-section_subtle → Gray (light mode)/100
-  static const Color bgBrandSectionSubtle = PregoColorPrimitives.grayLight100;
+  /// Figma: Colors/Background/bg-brand-section_subtle → Gray/100
+  static const Color bgBrandSectionSubtle = PregoColorPrimitives.gray100;
 
-  /// Figma: Colors/Background/bg-brand-solid → Brand Blue/600
-  static const Color bgBrandSolid = PregoColorPrimitives.brandBlue600;
+  /// Figma: Colors/Background/bg-brand-solid → Blue/600
+  static const Color bgBrandSolid = PregoColorPrimitives.blue600;
 
-  /// Figma: Colors/Background/bg-brand-solid_hover → Brand Blue/700
-  static const Color bgBrandSolidHover = PregoColorPrimitives.brandBlue700;
+  /// Figma: Colors/Background/bg-brand-solid_hover → Blue/700
+  static const Color bgBrandSolidHover = PregoColorPrimitives.blue700;
 
-  /// Figma: Colors/Background/bg-brand_hover → Gray (light mode alpha)/200
-  static const Color bgBrandHover = PregoColorPrimitives.grayLightAlpha200;
+  /// Figma: Colors/Background/bg-brand_hover → Alpha Black/200
+  static const Color bgBrandHover = PregoColorPrimitives.alphaBlack200;
 
-  /// Figma: Colors/Background/bg-brand_pressed → Gray (light mode alpha)/300
-  static const Color bgBrandPressed = PregoColorPrimitives.grayLightAlpha300;
+  /// Figma: Colors/Background/bg-brand_pressed → Alpha Black/300
+  static const Color bgBrandPressed = PregoColorPrimitives.alphaBlack300;
 
-  /// Figma: Colors/Background/bg-destructive_hover → Gray (light mode alpha)/200
-  static const Color bgDestructiveHover = PregoColorPrimitives.grayLightAlpha200;
+  /// Figma: Colors/Background/bg-destructive_hover → Alpha Black/200
+  static const Color bgDestructiveHover = PregoColorPrimitives.alphaBlack200;
 
-  /// Figma: Colors/Background/bg-destructive_pressed → Gray (light mode alpha)/400
-  static const Color bgDestructivePressed = PregoColorPrimitives.grayLightAlpha400;
+  /// Figma: Colors/Background/bg-destructive_pressed → Alpha Black/300
+  static const Color bgDestructivePressed = PregoColorPrimitives.alphaBlack300;
 
-  /// Figma: Colors/Background/bg-disabled → Gray (light mode)/100
-  static const Color bgDisabled = PregoColorPrimitives.grayLight100;
+  /// Figma: Colors/Background/bg-disabled → Gray/200
+  static const Color bgDisabled = PregoColorPrimitives.gray200;
 
-  /// Figma: Colors/Background/bg-disabled_subtle → Gray (light mode)/50
-  static const Color bgDisabledSubtle = PregoColorPrimitives.grayLight50;
+  /// Figma: Colors/Background/bg-disabled_subtle → Gray/50
+  static const Color bgDisabledSubtle = PregoColorPrimitives.gray50;
 
   /// Figma: Colors/Background/bg-error-primary → Error/50
   static const Color bgErrorPrimary = PregoColorPrimitives.error50;
@@ -900,41 +900,38 @@ abstract final class PregoColorsLight {
   /// Figma: Colors/Background/bg-error-solid_hover → Error/700
   static const Color bgErrorSolidHover = PregoColorPrimitives.error700;
 
-  /// Figma: Colors/Background/bg-gray_hover → Gray (light mode alpha)/50
-  static const Color bgGrayHover = PregoColorPrimitives.grayLightAlpha50;
+  /// Figma: Colors/Background/bg-gray_hover → Alpha Black/50
+  static const Color bgGrayHover = PregoColorPrimitives.alphaBlack50;
 
-  /// Figma: Colors/Background/bg-gray_pressed → Gray (light mode alpha)/200
-  static const Color bgGrayPressed = PregoColorPrimitives.grayLightAlpha200;
+  /// Figma: Colors/Background/bg-gray_pressed → Alpha Black/200
+  static const Color bgGrayPressed = PregoColorPrimitives.alphaBlack200;
 
-  /// Figma: Colors/Background/bg-overlay → Gray (light mode)/950
-  static const Color bgOverlay = PregoColorPrimitives.grayLight950;
+  /// Figma: Colors/Background/bg-overlay → Base/white
+  static const Color bgOverlay = PregoColorPrimitives.baseWhite;
 
-  /// Figma: Colors/Background/bg-primary → Base/white
-  static const Color bgPrimary = PregoColorPrimitives.baseWhite;
+  /// Figma: Colors/Background/bg-primary → Gray/300
+  static const Color bgPrimary = PregoColorPrimitives.gray300;
 
-  /// Figma: Colors/Background/bg-primary-solid → Gray (light mode)/950
-  static const Color bgPrimarySolid = PregoColorPrimitives.grayLight950;
+  /// Figma: Colors/Background/bg-primary-solid → Gray/950
+  static const Color bgPrimarySolid = PregoColorPrimitives.gray950;
 
-  /// Figma: Colors/Background/bg-primary_alt → Gray (light mode)/25
-  static const Color bgPrimaryAlt = PregoColorPrimitives.grayLight25;
+  /// Figma: Colors/Background/bg-quaternary → Gray/200
+  static const Color bgQuaternary = PregoColorPrimitives.gray200;
 
-  /// Figma: Colors/Background/bg-quaternary → Gray (light mode)/200
-  static const Color bgQuaternary = PregoColorPrimitives.grayLight200;
+  /// Figma: Colors/Background/bg-secondary → Gray/50
+  static const Color bgSecondary = PregoColorPrimitives.gray50;
 
-  /// Figma: Colors/Background/bg-secondary → Gray (light mode)/50
-  static const Color bgSecondary = PregoColorPrimitives.grayLight50;
+  /// Figma: Colors/Background/bg-secondary-solid → Gray/600
+  static const Color bgSecondarySolid = PregoColorPrimitives.gray600;
 
-  /// Figma: Colors/Background/bg-secondary-solid → Gray (light mode)/600
-  static const Color bgSecondarySolid = PregoColorPrimitives.grayLight600;
+  /// Figma: Colors/Background/bg-secondary_alt → Gray/50
+  static const Color bgSecondaryAlt = PregoColorPrimitives.gray50;
 
-  /// Figma: Colors/Background/bg-secondary_alt → Gray (light mode)/50
-  static const Color bgSecondaryAlt = PregoColorPrimitives.grayLight50;
+  /// Figma: Colors/Background/bg-secondary_hover → Gray/100
+  static const Color bgSecondaryHover = PregoColorPrimitives.gray100;
 
-  /// Figma: Colors/Background/bg-secondary_hover → Gray (light mode)/100
-  static const Color bgSecondaryHover = PregoColorPrimitives.grayLight100;
-
-  /// Figma: Colors/Background/bg-secondary_subtle → Gray (light mode)/25
-  static const Color bgSecondarySubtle = PregoColorPrimitives.grayLight25;
+  /// Figma: Colors/Background/bg-secondary_subtle → Gray (light mode)/5
+  static const Color bgSecondarySubtle = Color(0xFFFDFDFD);
 
   /// Figma: Colors/Background/bg-success-primary → Success/50
   static const Color bgSuccessPrimary = PregoColorPrimitives.success50;
@@ -945,8 +942,17 @@ abstract final class PregoColorsLight {
   /// Figma: Colors/Background/bg-success-solid → Success/600
   static const Color bgSuccessSolid = PregoColorPrimitives.success600;
 
-  /// Figma: Colors/Background/bg-tertiary → Gray (light mode)/100
-  static const Color bgTertiary = PregoColorPrimitives.grayLight100;
+  /// Figma: Colors/Background/bg-surface_1 → Gray/200
+  static const Color bgSurface1 = PregoColorPrimitives.gray200;
+
+  /// Figma: Colors/Background/bg-surface_2 → Gray/100
+  static const Color bgSurface2 = PregoColorPrimitives.gray100;
+
+  /// Figma: Colors/Background/bg-surface_3 → Gray/50
+  static const Color bgSurface3 = PregoColorPrimitives.gray50;
+
+  /// Figma: Colors/Background/bg-tertiary → Gray/100
+  static const Color bgTertiary = PregoColorPrimitives.gray100;
 
   /// Figma: Colors/Background/bg-warning-primary → Warning/50
   static const Color bgWarningPrimary = PregoColorPrimitives.warning50;
@@ -967,8 +973,8 @@ abstract final class PregoColorsLight {
   // Effects - Figma: Colors/Effects/*
   // ===========================================================================
 
-  /// Figma: Colors/Effects/Focus rings/focus-ring → Brand Blue/500
-  static const Color focusRing = PregoColorPrimitives.brandBlue500;
+  /// Figma: Colors/Effects/Focus rings/focus-ring → Blue/500
+  static const Color focusRing = PregoColorPrimitives.blue500;
 
   /// Figma: Colors/Effects/Focus rings/focus-ring-error → Error/500
   static const Color focusRingError = PregoColorPrimitives.error500;
@@ -1041,27 +1047,27 @@ abstract final class PregoColorsLight {
   /// Figma: Component colors/Components/Buttons/button-destructive-primary-icon_hover → Error/200
   static const Color buttonDestructivePrimaryIconHover = PregoColorPrimitives.error200;
 
-  /// Figma: Component colors/Components/Buttons/button-glass- primary-background → Gray (light mode alpha)/50
-  static const Color buttonGlassPrimaryBackground = PregoColorPrimitives.grayLightAlpha50;
+  /// Figma: Component colors/Components/Buttons/button-glass- primary-background → Alpha White/400
+  static const Color buttonGlassPrimaryBackground = PregoColorPrimitives.alphaWhite400;
 
-  /// Figma: Component colors/Components/Buttons/button-glass- primary-hover → Gray (light mode alpha)/100
-  static const Color buttonGlassPrimaryHover = PregoColorPrimitives.grayLightAlpha100;
+  /// Figma: Component colors/Components/Buttons/button-glass- primary-hover → Alpha Black/25
+  static const Color buttonGlassPrimaryHover = PregoColorPrimitives.alphaBlack25;
 
-  /// Figma: Component colors/Components/Buttons/button-primary-icon → Brand Blue/300
-  static const Color buttonPrimaryIcon = PregoColorPrimitives.brandBlue300;
+  /// Figma: Component colors/Components/Buttons/button-primary-icon → Blue/300
+  static const Color buttonPrimaryIcon = PregoColorPrimitives.blue300;
 
-  /// Figma: Component colors/Components/Buttons/button-primary-icon_hover → Brand Blue/200
-  static const Color buttonPrimaryIconHover = PregoColorPrimitives.brandBlue200;
+  /// Figma: Component colors/Components/Buttons/button-primary-icon_hover → Blue/200
+  static const Color buttonPrimaryIconHover = PregoColorPrimitives.blue200;
 
   // ===========================================================================
   // Component Colors - Icons
   // ===========================================================================
 
-  /// Figma: Component colors/Components/Icons/Icons/icon-fg-brand → Brand Blue/600
-  static const Color iconFgBrand = PregoColorPrimitives.brandBlue600;
+  /// Figma: Component colors/Components/Icons/Icons/icon-fg-brand → Blue/600
+  static const Color iconFgBrand = PregoColorPrimitives.blue600;
 
-  /// Figma: Component colors/Components/Icons/Icons/icon-fg-brand_on-brand → Brand Blue/200
-  static const Color iconFgBrandOnBrand = PregoColorPrimitives.brandBlue200;
+  /// Figma: Component colors/Components/Icons/Icons/icon-fg-brand_on-brand → Blue/200
+  static const Color iconFgBrandOnBrand = PregoColorPrimitives.blue200;
 
   // ===========================================================================
   // Component Colors - Alpha (mode-invariant)
@@ -1131,29 +1137,29 @@ abstract final class PregoColorsLight {
   // Utility Colors
   // ===========================================================================
 
-  /// Figma: Component colors/Utility/Blue/utility-blue-50 → Brand Blue/50
-  static const Color utilityBlue50 = PregoColorPrimitives.brandBlue50;
+  /// Figma: Component colors/Utility/Blue/utility-blue-50 → Blue/50
+  static const Color utilityBlue50 = PregoColorPrimitives.blue50;
 
-  /// Figma: Component colors/Utility/Blue/utility-blue-100 → Brand Blue/100
-  static const Color utilityBlue100 = PregoColorPrimitives.brandBlue100;
+  /// Figma: Component colors/Utility/Blue/utility-blue-100 → Blue/100
+  static const Color utilityBlue100 = PregoColorPrimitives.blue100;
 
-  /// Figma: Component colors/Utility/Blue/utility-blue-200 → Brand Blue/200
-  static const Color utilityBlue200 = PregoColorPrimitives.brandBlue200;
+  /// Figma: Component colors/Utility/Blue/utility-blue-200 → Blue/200
+  static const Color utilityBlue200 = PregoColorPrimitives.blue200;
 
-  /// Figma: Component colors/Utility/Blue/utility-blue-300 → Brand Blue/300
-  static const Color utilityBlue300 = PregoColorPrimitives.brandBlue300;
+  /// Figma: Component colors/Utility/Blue/utility-blue-300 → Blue/300
+  static const Color utilityBlue300 = PregoColorPrimitives.blue300;
 
-  /// Figma: Component colors/Utility/Blue/utility-blue-400 → Brand Blue/400
-  static const Color utilityBlue400 = PregoColorPrimitives.brandBlue400;
+  /// Figma: Component colors/Utility/Blue/utility-blue-400 → Blue/400
+  static const Color utilityBlue400 = PregoColorPrimitives.blue400;
 
-  /// Figma: Component colors/Utility/Blue/utility-blue-500 → Brand Blue/500
-  static const Color utilityBlue500 = PregoColorPrimitives.brandBlue500;
+  /// Figma: Component colors/Utility/Blue/utility-blue-500 → Blue/500
+  static const Color utilityBlue500 = PregoColorPrimitives.blue500;
 
-  /// Figma: Component colors/Utility/Blue/utility-blue-600 → Brand Blue/600
-  static const Color utilityBlue600 = PregoColorPrimitives.brandBlue600;
+  /// Figma: Component colors/Utility/Blue/utility-blue-600 → Blue/600
+  static const Color utilityBlue600 = PregoColorPrimitives.blue600;
 
-  /// Figma: Component colors/Utility/Blue/utility-blue-700 → Brand Blue/700
-  static const Color utilityBlue700 = PregoColorPrimitives.brandBlue700;
+  /// Figma: Component colors/Utility/Blue/utility-blue-700 → Blue/700
+  static const Color utilityBlue700 = PregoColorPrimitives.blue700;
 
   /// Figma: Component colors/Utility/Error/utility-error-50 → Error/50
   static const Color utilityError50 = PregoColorPrimitives.error50;
@@ -1234,20 +1240,20 @@ abstract final class PregoColorsLight {
   /// Figma: Component colors/Components/Avatars/avatar-styles-bg-neutral
   static const Color avatarStylesBgNeutral = Color(0xFFE0E0E0);
 
-  /// Figma: Component colors/Components/Icons/Hero Avatar/brand-gradient-bottom → Brand Blue/700
-  static const Color brandGradientBottom = PregoColorPrimitives.brandBlue700;
+  /// Figma: Component colors/Components/Icons/Hero Avatar/brand-gradient-bottom → Blue/700
+  static const Color brandGradientBottom = PregoColorPrimitives.blue700;
 
-  /// Figma: Component colors/Components/Icons/Hero Avatar/brand-gradient-top → Brand Blue/400
-  static const Color brandGradientTop = PregoColorPrimitives.brandBlue400;
+  /// Figma: Component colors/Components/Icons/Hero Avatar/brand-gradient-top → Blue/400
+  static const Color brandGradientTop = PregoColorPrimitives.blue400;
 
-  /// Figma: Component colors/Components/Icons/Featured icons/featured-icon-light-fg-brand → Brand Blue/600
-  static const Color featuredIconLightFgBrand = PregoColorPrimitives.brandBlue600;
+  /// Figma: Component colors/Components/Icons/Featured icons/featured-icon-light-fg-brand → Blue/600
+  static const Color featuredIconLightFgBrand = PregoColorPrimitives.blue600;
 
   /// Figma: Component colors/Components/Icons/Featured icons/featured-icon-light-fg-error → Error/600
   static const Color featuredIconLightFgError = PregoColorPrimitives.error600;
 
-  /// Figma: Component colors/Components/Icons/Featured icons/featured-icon-light-fg-gray → Gray (light mode)/500
-  static const Color featuredIconLightFgGray = PregoColorPrimitives.grayLight500;
+  /// Figma: Component colors/Components/Icons/Featured icons/featured-icon-light-fg-gray → Gray/500
+  static const Color featuredIconLightFgGray = PregoColorPrimitives.gray500;
 
   /// Figma: Component colors/Components/Icons/Featured icons/featured-icon-light-fg-success → Success/600
   static const Color featuredIconLightFgSuccess = PregoColorPrimitives.success600;
@@ -1273,11 +1279,11 @@ abstract final class PregoColorsLight {
   /// Figma: Component colors/Components/Icons/Hero Avatar/purple-gradient-top → Purple/300
   static const Color purpleGradientTop = PregoColorPrimitives.purple300;
 
-  /// Figma: Component colors/Components/Toggles/toggle-border → Gray (light mode)/300
-  static const Color toggleBorder = PregoColorPrimitives.grayLight300;
+  /// Figma: Component colors/Components/Toggles/toggle-border → Gray/950
+  static const Color toggleBorder = PregoColorPrimitives.gray950;
 
-  /// Figma: Component colors/Components/Toggles/toggle-button-fg_disabled → Gray (light mode)/50
-  static const Color toggleButtonFgDisabled = PregoColorPrimitives.grayLight50;
+  /// Figma: Component colors/Components/Toggles/toggle-button-fg_disabled → Gray/50
+  static const Color toggleButtonFgDisabled = PregoColorPrimitives.gray50;
 
   /// Figma: Component colors/Components/Toggles/toggle-slim-border_pressed → Background/bg-brand-solid
   static const Color toggleSlimBorderPressed = PregoColorsLight.bgBrandSolid;
@@ -1302,7 +1308,7 @@ abstract final class PregoColorsLight {
 /// )
 /// ```
 @immutable
-// ignore: use_enums
+// ignore: use_enums, theme token containers need class semantics and static dark/light singletons
 final class PregoColors {
   // ===========================================================================
   // Dark Mode - Figma: Color mode = Dark
@@ -1325,7 +1331,6 @@ final class PregoColors {
     textPrimaryOnBrand: PregoColorsDark.textPrimaryOnBrand,
     textPrimaryOnWhite: PregoColorsDark.textPrimaryOnWhite,
     textQuaternary: PregoColorsDark.textQuaternary,
-    textQuaternaryOnBrand: PregoColorsDark.textQuaternaryOnBrand,
     textSecondary: PregoColorsDark.textSecondary,
     textSecondaryHover: PregoColorsDark.textSecondaryHover,
     textSecondaryOnBrand: PregoColorsDark.textSecondaryOnBrand,
@@ -1337,7 +1342,6 @@ final class PregoColors {
     textWhite: PregoColorsDark.textWhite,
     // Border
     borderBrand: PregoColorsDark.borderBrand,
-    borderBrandAlt: PregoColorsDark.borderBrandAlt,
     borderDisabled: PregoColorsDark.borderDisabled,
     borderDisabledSubtle: PregoColorsDark.borderDisabledSubtle,
     borderError: PregoColorsDark.borderError,
@@ -1348,6 +1352,7 @@ final class PregoColors {
     borderReversed: PregoColorsDark.borderReversed,
     borderSecondary: PregoColorsDark.borderSecondary,
     borderSecondaryAlt: PregoColorsDark.borderSecondaryAlt,
+    borderSelected: PregoColorsDark.borderSelected,
     borderTertiary: PregoColorsDark.borderTertiary,
     // Foreground
     fgBrandPrimary: PregoColorsDark.fgBrandPrimary,
@@ -1396,7 +1401,6 @@ final class PregoColors {
     bgOverlay: PregoColorsDark.bgOverlay,
     bgPrimary: PregoColorsDark.bgPrimary,
     bgPrimarySolid: PregoColorsDark.bgPrimarySolid,
-    bgPrimaryAlt: PregoColorsDark.bgPrimaryAlt,
     bgQuaternary: PregoColorsDark.bgQuaternary,
     bgSecondary: PregoColorsDark.bgSecondary,
     bgSecondarySolid: PregoColorsDark.bgSecondarySolid,
@@ -1406,6 +1410,9 @@ final class PregoColors {
     bgSuccessPrimary: PregoColorsDark.bgSuccessPrimary,
     bgSuccessSecondary: PregoColorsDark.bgSuccessSecondary,
     bgSuccessSolid: PregoColorsDark.bgSuccessSolid,
+    bgSurface1: PregoColorsDark.bgSurface1,
+    bgSurface2: PregoColorsDark.bgSurface2,
+    bgSurface3: PregoColorsDark.bgSurface3,
     bgTertiary: PregoColorsDark.bgTertiary,
     bgWarningPrimary: PregoColorsDark.bgWarningPrimary,
     bgWarningSecondary: PregoColorsDark.bgWarningSecondary,
@@ -1536,7 +1543,6 @@ final class PregoColors {
     required this.textPrimaryOnBrand,
     required this.textPrimaryOnWhite,
     required this.textQuaternary,
-    required this.textQuaternaryOnBrand,
     required this.textSecondary,
     required this.textSecondaryHover,
     required this.textSecondaryOnBrand,
@@ -1548,7 +1554,6 @@ final class PregoColors {
     required this.textWhite,
     // Border
     required this.borderBrand,
-    required this.borderBrandAlt,
     required this.borderDisabled,
     required this.borderDisabledSubtle,
     required this.borderError,
@@ -1559,6 +1564,7 @@ final class PregoColors {
     required this.borderReversed,
     required this.borderSecondary,
     required this.borderSecondaryAlt,
+    required this.borderSelected,
     required this.borderTertiary,
     // Foreground
     required this.fgBrandPrimary,
@@ -1607,7 +1613,6 @@ final class PregoColors {
     required this.bgOverlay,
     required this.bgPrimary,
     required this.bgPrimarySolid,
-    required this.bgPrimaryAlt,
     required this.bgQuaternary,
     required this.bgSecondary,
     required this.bgSecondarySolid,
@@ -1617,6 +1622,9 @@ final class PregoColors {
     required this.bgSuccessPrimary,
     required this.bgSuccessSecondary,
     required this.bgSuccessSolid,
+    required this.bgSurface1,
+    required this.bgSurface2,
+    required this.bgSurface3,
     required this.bgTertiary,
     required this.bgWarningPrimary,
     required this.bgWarningSecondary,
@@ -1767,7 +1775,7 @@ final class PregoColors {
   /// Figma: Colors/Text/text-placeholder_subtle
   final Color textPlaceholderSubtle;
 
-  /// Figma: Colors/Text/text-primary (900)
+  /// Figma: Colors/Text/text-primary (950)
   final Color textPrimary;
 
   /// Figma: Colors/Text/text-primary_on-brand
@@ -1778,9 +1786,6 @@ final class PregoColors {
 
   /// Figma: Colors/Text/text-quaternary (500)
   final Color textQuaternary;
-
-  /// Figma: Colors/Text/text-quaternary_on-brand
-  final Color textQuaternaryOnBrand;
 
   /// Figma: Colors/Text/text-secondary (600)
   final Color textSecondary;
@@ -1794,7 +1799,7 @@ final class PregoColors {
   /// Figma: Colors/Text/text-success-primary (600)
   final Color textSuccessPrimary;
 
-  /// Figma: Colors/Text/text-tertiary (600)
+  /// Figma: Colors/Text/text-tertiary (450)
   final Color textTertiary;
 
   /// Figma: Colors/Text/text-tertiary_hover
@@ -1815,9 +1820,6 @@ final class PregoColors {
 
   /// Figma: Colors/Border/border-brand
   final Color borderBrand;
-
-  /// Figma: Colors/Border/border-brand_alt
-  final Color borderBrandAlt;
 
   /// Figma: Colors/Border/border-disabled
   final Color borderDisabled;
@@ -1848,6 +1850,9 @@ final class PregoColors {
 
   /// Figma: Colors/Border/border-secondary_alt
   final Color borderSecondaryAlt;
+
+  /// Figma: Colors/Border/border-selected
+  final Color borderSelected;
 
   /// Figma: Colors/Border/border-tertiary
   final Color borderTertiary;
@@ -1995,9 +2000,6 @@ final class PregoColors {
   /// Figma: Colors/Background/bg-primary-solid
   final Color bgPrimarySolid;
 
-  /// Figma: Colors/Background/bg-primary_alt
-  final Color bgPrimaryAlt;
-
   /// Figma: Colors/Background/bg-quaternary
   final Color bgQuaternary;
 
@@ -2024,6 +2026,15 @@ final class PregoColors {
 
   /// Figma: Colors/Background/bg-success-solid
   final Color bgSuccessSolid;
+
+  /// Figma: Colors/Background/bg-surface_1
+  final Color bgSurface1;
+
+  /// Figma: Colors/Background/bg-surface_2
+  final Color bgSurface2;
+
+  /// Figma: Colors/Background/bg-surface_3
+  final Color bgSurface3;
 
   /// Figma: Colors/Background/bg-tertiary
   final Color bgTertiary;
@@ -2386,7 +2397,6 @@ final class PregoColors {
     textPrimaryOnBrand: PregoColorsLight.textPrimaryOnBrand,
     textPrimaryOnWhite: PregoColorsLight.textPrimaryOnWhite,
     textQuaternary: PregoColorsLight.textQuaternary,
-    textQuaternaryOnBrand: PregoColorsLight.textQuaternaryOnBrand,
     textSecondary: PregoColorsLight.textSecondary,
     textSecondaryHover: PregoColorsLight.textSecondaryHover,
     textSecondaryOnBrand: PregoColorsLight.textSecondaryOnBrand,
@@ -2398,7 +2408,6 @@ final class PregoColors {
     textWhite: PregoColorsLight.textWhite,
     // Border
     borderBrand: PregoColorsLight.borderBrand,
-    borderBrandAlt: PregoColorsLight.borderBrandAlt,
     borderDisabled: PregoColorsLight.borderDisabled,
     borderDisabledSubtle: PregoColorsLight.borderDisabledSubtle,
     borderError: PregoColorsLight.borderError,
@@ -2409,6 +2418,7 @@ final class PregoColors {
     borderReversed: PregoColorsLight.borderReversed,
     borderSecondary: PregoColorsLight.borderSecondary,
     borderSecondaryAlt: PregoColorsLight.borderSecondaryAlt,
+    borderSelected: PregoColorsLight.borderSelected,
     borderTertiary: PregoColorsLight.borderTertiary,
     // Foreground
     fgBrandPrimary: PregoColorsLight.fgBrandPrimary,
@@ -2457,7 +2467,6 @@ final class PregoColors {
     bgOverlay: PregoColorsLight.bgOverlay,
     bgPrimary: PregoColorsLight.bgPrimary,
     bgPrimarySolid: PregoColorsLight.bgPrimarySolid,
-    bgPrimaryAlt: PregoColorsLight.bgPrimaryAlt,
     bgQuaternary: PregoColorsLight.bgQuaternary,
     bgSecondary: PregoColorsLight.bgSecondary,
     bgSecondarySolid: PregoColorsLight.bgSecondarySolid,
@@ -2467,6 +2476,9 @@ final class PregoColors {
     bgSuccessPrimary: PregoColorsLight.bgSuccessPrimary,
     bgSuccessSecondary: PregoColorsLight.bgSuccessSecondary,
     bgSuccessSolid: PregoColorsLight.bgSuccessSolid,
+    bgSurface1: PregoColorsLight.bgSurface1,
+    bgSurface2: PregoColorsLight.bgSurface2,
+    bgSurface3: PregoColorsLight.bgSurface3,
     bgTertiary: PregoColorsLight.bgTertiary,
     bgWarningPrimary: PregoColorsLight.bgWarningPrimary,
     bgWarningSecondary: PregoColorsLight.bgWarningSecondary,
@@ -2597,7 +2609,6 @@ final class PregoColors {
     textPrimaryOnBrand: lerpColorNonNull(a.textPrimaryOnBrand, b.textPrimaryOnBrand, t),
     textPrimaryOnWhite: lerpColorNonNull(a.textPrimaryOnWhite, b.textPrimaryOnWhite, t),
     textQuaternary: lerpColorNonNull(a.textQuaternary, b.textQuaternary, t),
-    textQuaternaryOnBrand: lerpColorNonNull(a.textQuaternaryOnBrand, b.textQuaternaryOnBrand, t),
     textSecondary: lerpColorNonNull(a.textSecondary, b.textSecondary, t),
     textSecondaryHover: lerpColorNonNull(a.textSecondaryHover, b.textSecondaryHover, t),
     textSecondaryOnBrand: lerpColorNonNull(a.textSecondaryOnBrand, b.textSecondaryOnBrand, t),
@@ -2609,7 +2620,6 @@ final class PregoColors {
     textWhite: lerpColorNonNull(a.textWhite, b.textWhite, t),
     // Border
     borderBrand: lerpColorNonNull(a.borderBrand, b.borderBrand, t),
-    borderBrandAlt: lerpColorNonNull(a.borderBrandAlt, b.borderBrandAlt, t),
     borderDisabled: lerpColorNonNull(a.borderDisabled, b.borderDisabled, t),
     borderDisabledSubtle: lerpColorNonNull(a.borderDisabledSubtle, b.borderDisabledSubtle, t),
     borderError: lerpColorNonNull(a.borderError, b.borderError, t),
@@ -2620,6 +2630,7 @@ final class PregoColors {
     borderReversed: lerpColorNonNull(a.borderReversed, b.borderReversed, t),
     borderSecondary: lerpColorNonNull(a.borderSecondary, b.borderSecondary, t),
     borderSecondaryAlt: lerpColorNonNull(a.borderSecondaryAlt, b.borderSecondaryAlt, t),
+    borderSelected: lerpColorNonNull(a.borderSelected, b.borderSelected, t),
     borderTertiary: lerpColorNonNull(a.borderTertiary, b.borderTertiary, t),
     // Foreground
     fgBrandPrimary: lerpColorNonNull(a.fgBrandPrimary, b.fgBrandPrimary, t),
@@ -2668,7 +2679,6 @@ final class PregoColors {
     bgOverlay: lerpColorNonNull(a.bgOverlay, b.bgOverlay, t),
     bgPrimary: lerpColorNonNull(a.bgPrimary, b.bgPrimary, t),
     bgPrimarySolid: lerpColorNonNull(a.bgPrimarySolid, b.bgPrimarySolid, t),
-    bgPrimaryAlt: lerpColorNonNull(a.bgPrimaryAlt, b.bgPrimaryAlt, t),
     bgQuaternary: lerpColorNonNull(a.bgQuaternary, b.bgQuaternary, t),
     bgSecondary: lerpColorNonNull(a.bgSecondary, b.bgSecondary, t),
     bgSecondarySolid: lerpColorNonNull(a.bgSecondarySolid, b.bgSecondarySolid, t),
@@ -2678,6 +2688,9 @@ final class PregoColors {
     bgSuccessPrimary: lerpColorNonNull(a.bgSuccessPrimary, b.bgSuccessPrimary, t),
     bgSuccessSecondary: lerpColorNonNull(a.bgSuccessSecondary, b.bgSuccessSecondary, t),
     bgSuccessSolid: lerpColorNonNull(a.bgSuccessSolid, b.bgSuccessSolid, t),
+    bgSurface1: lerpColorNonNull(a.bgSurface1, b.bgSurface1, t),
+    bgSurface2: lerpColorNonNull(a.bgSurface2, b.bgSurface2, t),
+    bgSurface3: lerpColorNonNull(a.bgSurface3, b.bgSurface3, t),
     bgTertiary: lerpColorNonNull(a.bgTertiary, b.bgTertiary, t),
     bgWarningPrimary: lerpColorNonNull(a.bgWarningPrimary, b.bgWarningPrimary, t),
     bgWarningSecondary: lerpColorNonNull(a.bgWarningSecondary, b.bgWarningSecondary, t),
@@ -2708,7 +2721,11 @@ final class PregoColors {
     shadowXs: lerpColorNonNull(a.shadowXs, b.shadowXs, t),
     // Buttons
     buttonDestructivePrimaryIcon: lerpColorNonNull(a.buttonDestructivePrimaryIcon, b.buttonDestructivePrimaryIcon, t),
-    buttonDestructivePrimaryIconHover: lerpColorNonNull(a.buttonDestructivePrimaryIconHover, b.buttonDestructivePrimaryIconHover, t),
+    buttonDestructivePrimaryIconHover: lerpColorNonNull(
+      a.buttonDestructivePrimaryIconHover,
+      b.buttonDestructivePrimaryIconHover,
+      t,
+    ),
     buttonGlassPrimaryBackground: lerpColorNonNull(a.buttonGlassPrimaryBackground, b.buttonGlassPrimaryBackground, t),
     buttonGlassPrimaryHover: lerpColorNonNull(a.buttonGlassPrimaryHover, b.buttonGlassPrimaryHover, t),
     buttonPrimaryIcon: lerpColorNonNull(a.buttonPrimaryIcon, b.buttonPrimaryIcon, t),

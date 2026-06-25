@@ -180,6 +180,12 @@ class _FakeBridgeInstanceRepository implements BridgeInstanceRepository {
 }
 
 class _FakeBridgeInstanceService implements BridgeInstanceService {
+  @override
+  Future<void> awaitPredecessorBridgeExit({
+    required int predecessorPid,
+    required Duration timeout,
+  }) async {}
+
   List<ProcessIdentity> terminatedBridges = <ProcessIdentity>[];
   final List<List<ProcessIdentity>> terminateRequests = <List<ProcessIdentity>>[];
 

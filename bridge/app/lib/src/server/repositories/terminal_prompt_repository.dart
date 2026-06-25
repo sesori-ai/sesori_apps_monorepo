@@ -38,6 +38,15 @@ class TerminalPromptRepository {
   }
 
   ({String email, String password}) promptForEmailCredentials() {
+    if (!_api.isInteractive) {
+      // No usable terminal (e.g. a legacy post-update relaunch): fail with clear
+      // guidance instead of blocking on stdin for credentials no one can enter.
+      throw Exception(
+        'Email login required, but no interactive terminal is available. '
+        'Run sesori-bridge again from a terminal to log in.',
+      );
+    }
+
     final email = _api.readLine(message: "Email: ");
     if (email == null) {
       throw Exception('EOF reached while reading email');

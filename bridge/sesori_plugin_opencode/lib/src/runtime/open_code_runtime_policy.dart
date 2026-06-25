@@ -4,7 +4,8 @@ import "dart:io" as io;
 import "dart:math";
 
 import "package:http/http.dart" as http;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginHost, ProcessIdentity, SpawnedProcess;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
+    show HostPortService, PluginHost, ProcessIdentity, SpawnedProcess;
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
 import "open_code_ownership_record.dart";
@@ -56,8 +57,68 @@ const Duration openCodeColdStartBudget = Duration(seconds: 15);
 /// bridge startup, so the probe is treated as unavailable once this elapses.
 const Duration openCodeVersionProbeTimeout = Duration(seconds: 10);
 
-/// The loopback host OpenCode binds to and is probed on.
+/// The default host OpenCode binds to (and the loopback fallback used when the
+/// bind host is a wildcard the bridge cannot connect to).
 const String openCodeLoopbackHost = "127.0.0.1";
+
+/// Resolves the host the bridge connects to (HTTP/SSE/health) from the host
+/// OpenCode binds to.
+///
+/// A wildcard bind address is not a connectable client target, so the bridge
+/// reaches the server over loopback in the **same address family** to avoid
+/// failing on IPv6-only sockets: `0.0.0.0` -> `127.0.0.1`, `::` -> `::1`. Any
+/// other value (loopback or a concrete interface address) is reachable directly
+/// and is used verbatim.
+String resolveOpenCodeConnectHost({required String bindHost}) {
+  if (bindHost == "0.0.0.0") {
+    return openCodeLoopbackHost;
+  }
+  if (bindHost == "::") {
+    return "::1";
+  }
+  return bindHost;
+}
+
+/// Whether [port] is free for a managed OpenCode start, probed across both the
+/// host OpenCode will bind and the host the bridge will dial.
+///
+/// A single-address bind probe is not enough when the two differ. With a
+/// wildcard bind (`0.0.0.0`/`::`) the connect host is a specific loopback
+/// (`127.0.0.1`/`::1`), and the OS lets a wildcard bind and a specific-address
+/// listener on the same port coexist: a `ServerSocket.bind("0.0.0.0", port)`
+/// probe succeeds even though something already holds `127.0.0.1:port`, and the
+/// reverse is also true. Probing only one host therefore lets a foreign server
+/// already listening on the *other* address slip through pre-start, after which
+/// the spawned child co-binds the wildcard, never exits, and the health probe —
+/// dialing the connect host — is answered by that foreign listener.
+///
+/// Requiring **every** distinct host to be bindable closes both gaps: the
+/// connect-host probe catches a specific-address squatter and the bind-host
+/// probe catches a wildcard squatter. When the two hosts are equal (loopback or
+/// a concrete interface address) this collapses to a single probe.
+///
+/// The distinct hosts are probed **sequentially**, not concurrently. Each probe
+/// opens a real `ServerSocket` for the duration of the bind check, and on
+/// platforms where a wildcard bind and a same-port specific-address bind are
+/// mutually exclusive (notably Linux, a bridge build target) a concurrent probe
+/// would have one host's open socket make the other host's probe report `false`
+/// — falsely rejecting a genuinely free port. Probing one host at a time means
+/// no probe is ever live while another runs, so only a real foreign listener
+/// (never our own probe) can fail a bind.
+Future<bool> probeOpenCodePortBindable({
+  required HostPortService ports,
+  required int port,
+  required String bindHost,
+  required String connectHost,
+}) async {
+  final hosts = <String>{bindHost, connectHost};
+  for (final host in hosts) {
+    if (!await ports.isBindable(host: host, port: port)) {
+      return false;
+    }
+  }
+  return true;
+}
 
 /// Maximum crash-restarts attempted within one failure episode before the
 /// monitor reports `PluginFailed`.
@@ -161,15 +222,22 @@ Future<SpawnedProcess> spawnOpenCodeProcess({
   required PluginHost host,
   required String executablePath,
   required int port,
-  required String password,
+  required String? password,
+  required String bindHost,
 }) async {
   final environment = <String, String>{
     ...host.environment,
-    "OPENCODE_SERVER_PASSWORD": password,
   };
+  if (password == null || password.isEmpty) {
+    environment.removeWhere(
+      (key, _) => key.toUpperCase() == "OPENCODE_SERVER_PASSWORD",
+    );
+  } else {
+    environment["OPENCODE_SERVER_PASSWORD"] = password;
+  }
   final process = await host.processes.spawn(
     executable: executablePath,
-    arguments: <String>["serve", "--port", "$port", "--hostname", openCodeLoopbackHost],
+    arguments: <String>["serve", "--port", "$port", "--hostname", bindHost],
     environment: environment,
     workingDirectory: null,
     runInShell: io.Platform.isWindows,
@@ -231,19 +299,25 @@ class _DrainingOpenCodeProcess implements SpawnedProcess {
 }
 
 /// Probes OpenCode health on [port]: `GET /global/health` with Basic auth
-/// `opencode:<password>`, healthy iff the response is HTTP 200 (matching the
-/// legacy probe). Reports unhealthy rather than throwing on any error.
+/// `opencode:<password>` when a password is supplied, or with no auth when
+/// [password] is null or empty. Healthy iff the response is HTTP 200 (matching
+/// the legacy probe). Reports unhealthy rather than throwing on any error.
 Future<RuntimeHealthProbe> probeOpenCodeHealth({
   required int port,
-  required String password,
+  required String? password,
   required http.Client Function() clientFactory,
+  required String host,
   Duration timeout = const Duration(seconds: 5),
 }) async {
   final client = clientFactory();
   try {
-    final uri = Uri.parse("http://$openCodeLoopbackHost:$port/global/health");
+    // Structured fields (not string interpolation) so an IPv6 literal host is
+    // correctly bracketed (e.g. `http://[::1]:port`).
+    final uri = Uri(scheme: "http", host: host, port: port, path: "/global/health");
     final request = http.Request("GET", uri);
-    request.headers["Authorization"] = "Basic ${base64Encode(utf8.encode("opencode:$password"))}";
+    if (password != null && password.isNotEmpty) {
+      request.headers["Authorization"] = "Basic ${base64Encode(utf8.encode("opencode:$password"))}";
+    }
     // One timeout bounds the send AND the body drain together (mirroring the
     // legacy probe): a service that returns headers but never closes the body
     // must fail the attempt, not hang the supervisor under the startup mutex.
@@ -267,14 +341,14 @@ Future<RuntimeHealthProbe> probeOpenCodeHealth({
 /// Builds the "starting" ownership record from the post-spawn facts, mirroring
 /// the legacy `_buildRecord` field-for-field so the persisted bytes are
 /// identical.
-OpenCodeOwnershipRecord buildOpenCodeOwnershipRecord(RuntimeRecordDraft draft) {
+OpenCodeOwnershipRecord buildOpenCodeOwnershipRecord({required RuntimeRecordDraft draft, required String bindHost}) {
   return OpenCodeOwnershipRecord(
     ownerSessionId: draft.ownerSessionId,
     openCodePid: draft.runtimeIdentity.pid,
     openCodeStartMarker: draft.runtimeIdentity.startMarker,
     openCodeExecutablePath: draft.runtimeIdentity.executablePath ?? "",
     openCodeCommand: draft.runtimeIdentity.executablePath ?? "opencode",
-    openCodeArgs: <String>["serve", "--port", "${draft.port}", "--hostname", openCodeLoopbackHost],
+    openCodeArgs: <String>["serve", "--port", "${draft.port}", "--hostname", bindHost],
     port: draft.port,
     bridgePid: draft.bridgeIdentity.pid,
     bridgeStartMarker: draft.bridgeIdentity.startMarker,
@@ -293,17 +367,25 @@ OpenCodeOwnershipRecord buildOpenCodeOwnershipRecord(RuntimeRecordDraft draft) {
 ManagedRuntimeSpec<OpenCodeOwnershipRecord> buildOpenCodeManagedRuntimeSpec({
   required PluginHost host,
   required String executablePath,
-  required String password,
+  required String? password,
   required RuntimePortPolicy portPolicy,
   required http.Client Function() probeClientFactory,
+  required String bindHost,
+  required String connectHost,
 }) {
   return ManagedRuntimeSpec<OpenCodeOwnershipRecord>(
-    spawn: ({required int port}) =>
-        spawnOpenCodeProcess(host: host, executablePath: executablePath, port: port, password: password),
+    spawn: ({required int port}) => spawnOpenCodeProcess(
+      host: host,
+      executablePath: executablePath,
+      port: port,
+      password: password,
+      bindHost: bindHost,
+    ),
     probeHealth: ({required int port}) =>
-        probeOpenCodeHealth(port: port, password: password, clientFactory: probeClientFactory),
-    probePortBindable: ({required int port}) => host.ports.isBindable(host: openCodeLoopbackHost, port: port),
-    buildRecord: buildOpenCodeOwnershipRecord,
+        probeOpenCodeHealth(port: port, password: password, clientFactory: probeClientFactory, host: connectHost),
+    probePortBindable: ({required int port}) =>
+        probeOpenCodePortBindable(ports: host.ports, port: port, bindHost: bindHost, connectHost: connectHost),
+    buildRecord: (draft) => buildOpenCodeOwnershipRecord(draft: draft, bindHost: bindHost),
     portPolicy: portPolicy,
     healthPolicy: RuntimeHealthPolicy.deadline(
       deadline: openCodeHealthDeadline,

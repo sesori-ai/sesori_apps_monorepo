@@ -114,6 +114,10 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
+    // Regression guard: the loaded state here has a null agent and model, so
+    // the bar subtitle must collapse to empty — never a literal "null".
+    expect(find.text("null"), findsNothing);
+
     await tester.tap(find.widgetWithText(OutlinedButton, "xhigh"));
     await tester.pumpAndSettle();
 
@@ -190,7 +194,7 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.difference_outlined));
+    await tester.tap(find.byIcon(TablerRegular.git_compare));
     await tester.pumpAndSettle();
 
     expect(find.text("Diffs"), findsOneWidget);
