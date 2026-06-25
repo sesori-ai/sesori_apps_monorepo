@@ -1,3 +1,4 @@
+import "package:codex_plugin/codex_plugin.dart" show CodexPluginDescriptor;
 import "package:opencode_plugin/opencode_plugin.dart" show OpenCodePluginDescriptor;
 import "package:sesori_bridge/src/bridge/runtime/plugin_registry.dart";
 import "package:sesori_bridge/src/server/host/plugin_state_directory.dart";
@@ -7,11 +8,18 @@ import "package:test/test.dart";
 
 void main() {
   group("knownPlugins", () {
-    test("registers the real OpenCode descriptor", () {
-      expect(knownPlugins, hasLength(1));
-      expect(knownPlugins.single, isA<OpenCodePluginDescriptor>());
-      expect(knownPlugins.single.id, openCodePluginId);
-      expect(identical(knownPlugins.single.options, OpenCodePluginDescriptor.cliOptions), isTrue);
+    test("registers the real OpenCode and Codex descriptors", () {
+      expect(knownPlugins, hasLength(2));
+
+      final openCode = knownPlugins.firstWhere((plugin) => plugin.id == openCodePluginId);
+      expect(openCode, isA<OpenCodePluginDescriptor>());
+      expect(identical(openCode.options, OpenCodePluginDescriptor.cliOptions), isTrue);
+
+      final codex = knownPlugins.firstWhere((plugin) => plugin.id == "codex");
+      expect(codex, isA<CodexPluginDescriptor>());
+      expect(identical(codex.options, CodexPluginDescriptor.cliOptions), isTrue);
+
+      // OpenCode stays the default so existing installs see zero change.
       expect(defaultPluginId, openCodePluginId);
     });
   });

@@ -1,3 +1,4 @@
+import "package:codex_plugin/codex_plugin.dart" show CodexPluginDescriptor;
 import "package:opencode_plugin/opencode_plugin.dart" show OpenCodePluginDescriptor;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginDescriptor;
 
@@ -9,7 +10,10 @@ import "../../server/host/plugin_state_directory.dart" show openCodePluginId;
 /// `bin/bridge.dart` reads the parse-time surface (`id`, `options`,
 /// `validateConfig`) straight off the selected descriptor, and the runner
 /// later calls its `start(host)` under the startup mutex.
-const List<BridgePluginDescriptor> knownPlugins = [OpenCodePluginDescriptor()];
+const List<BridgePluginDescriptor> knownPlugins = [
+  OpenCodePluginDescriptor(),
+  CodexPluginDescriptor(),
+];
 
 /// The plugin used when neither `--plugin` nor `enabledPlugins` selects one,
 /// so existing installs see zero change.

@@ -3,13 +3,17 @@ import "dart:io";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
-/// Removes superseded managed OpenCode runtime version directories.
+/// Removes superseded managed runtime version directories.
 ///
-/// The managed runtime is laid out as `<managedDir>/<version>/opencode`. After
-/// the pinned version is healthy, older version directories are dead weight from
-/// a previous bridge release's bundled runtime; this sweeps them, keeping only
-/// the version currently in use so a running runtime is never deleted.
-class OpenCodeRuntimeCleaner {
+/// A managed runtime is laid out as `<managedDir>/<version>/<binary>`. After the
+/// pinned version is healthy, older version directories are dead weight from a
+/// previous bridge release's bundled runtime; this sweeps them, keeping only the
+/// version currently in use so a running runtime is never deleted.
+class ManagedRuntimeCleaner {
+  ManagedRuntimeCleaner({required String runtimeId}) : _runtimeId = runtimeId;
+
+  final String _runtimeId;
+
   /// Deletes every immediate subdirectory of [managedDir] except [keepVersion].
   /// Best-effort: a directory that cannot be removed is logged and skipped.
   Future<void> sweep({
@@ -27,7 +31,7 @@ class OpenCodeRuntimeCleaner {
     } on Object catch (error, stackTrace) {
       // Best-effort cleanup: a permission/IO error listing the managed dir must
       // not propagate (this runs after the runtime is already healthy).
-      Log.w("[opencode] failed to list managed runtime dir '$managedDir'", error, stackTrace);
+      Log.w("[$_runtimeId] failed to list managed runtime dir '$managedDir'", error, stackTrace);
       return;
     }
 
@@ -41,9 +45,9 @@ class OpenCodeRuntimeCleaner {
       }
       try {
         entity.deleteSync(recursive: true);
-        Log.d("[opencode] removed superseded managed runtime '$name'");
+        Log.d("[$_runtimeId] removed superseded managed runtime '$name'");
       } on Object catch (error, stackTrace) {
-        Log.w("[opencode] failed to remove superseded managed runtime '$name'", error, stackTrace);
+        Log.w("[$_runtimeId] failed to remove superseded managed runtime '$name'", error, stackTrace);
       }
     }
   }
