@@ -6,7 +6,6 @@ export 'components/alerts/prego_popup_alerts_notifications.dart';
 export 'components/buttons/prego_buttons_icon_glass.dart';
 export 'components/navigation/prego_glass_scaffold.dart';
 export 'components/navigation/prego_nav_title.dart';
-export 'components/navigation/prego_scroll_edge_blur.dart';
 export 'components/navigation/prego_top_navigation.dart';
 export 'icons/tabler_icons.g.dart';
 export 'icons/vespr_icons.g.dart';

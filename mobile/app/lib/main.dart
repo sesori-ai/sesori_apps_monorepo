@@ -121,7 +121,16 @@ Future<void> bootstrapSesoriApp({
       }),
     );
   }
-  runAppFn(const SesoriApp());
+  runAppFn(
+    LiquidGlassWidgets.wrap(
+      child: const SesoriApp(),
+      adaptiveQuality: true,
+      // ignore: experimental_member_use
+      adaptiveConfig: const GlassAdaptiveScopeConfig(
+        initialQuality: GlassQuality.standard,
+      ),
+    ),
+  );
 }
 
 Future<void> startNotificationStartup({

@@ -4,7 +4,6 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
     // START: FlutterFire Configuration (disabled for debug and profile builds -- end of file)
     id("com.google.gms.google-services")
@@ -50,7 +49,7 @@ fun SigningConfig.applyFromPropertiesFile(propsPath: String) {
 
 kotlin {
     compilerOptions {
-        jvmTarget = JvmTarget.JVM_21
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21
     }
 }
 
