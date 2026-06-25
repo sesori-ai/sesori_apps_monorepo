@@ -159,7 +159,7 @@ internal `new`).
 | Component | Layer | Role |
 |---|---|---|
 | `ControlChannelServer` | Layer 0 | GUI-hosted loopback WS host + per-spawn secret; inbound-as-stream + `send` (precedent: `DebugServer`) |
-| `ControlMessageDispatcher` | Layer 3 | routes inbound: token req → `AuthTokenProvider`; status/progress → `BridgeStatusTracker`; **prompts → a lower-layer prompt store/tracker** (NOT the cubit directly — Layer 4↔4 same-level deps are forbidden) |
+| `ControlMessageDispatcher` | Layer 3 | routes inbound: token req → `AuthTokenProvider`; status/progress → `BridgeStatusTracker`; **prompts → a Layer-3 prompt store/tracker** (NOT upward into the Layer-4 cubit/UI — deps must point downward) |
 | prompt state (e.g. on `BridgeStatusTracker` or a `BridgePromptTracker`) | Layer 3 | holds pending prompts as state/stream; the cubit consumes it |
 | process API (mirrors `HostProcessCommandExecutor`) | Layer 1 | spawn/kill/monitor a long-lived child |
 | `BridgeProcessRepository` | Layer 2 | wraps the process API |
@@ -190,7 +190,7 @@ and consumes only the exported interfaces (`AuthTokenProvider`/`OAuthFlowProvide
 | A11 | GUI login opens the browser via a **desktop `UrlLauncher` adapter** | the bridge's `openOAuthBrowser` is bridge-workspace-only; `client/desktop` must not import bridge internals |
 | A12 | Token push must drive **RelayClient re-auth/reconnect**, not just emit on a stream | `RelayClient` reads the token once in `connect()`; an open socket stays on the old JWT until reconnect |
 | A13 | GUI keeps a **readable copy of `bridgeId`** + a GUI-side unregister fallback | logout can happen with the helper off/crashed/unreachable; otherwise the registration leaks |
-| A14 | Control prompts flow dispatcher → **Layer-3 prompt state** → cubit | dispatcher and cubit are both Layer 4; same-level deps are forbidden |
+| A14 | Control prompts flow dispatcher → **Layer-3 prompt state** → cubit | the `ControlMessageDispatcher` (Layer 3) must not depend upward on `BridgeControlCubit` (Layer 4); it writes prompts to a Layer-3 store/tracker that the cubit reads, keeping dependencies pointing downward |
 | A15 | All module_core platform prerequisites registered in the **first DI slice** | `LoginCubit`/`ConnectionService` need `LifecycleSource`/`RelayCryptoService`/`FailureReporter`; deferring them breaks `get_it` resolution in early PRs |
 
 ## 8. Open risks & lead-time register

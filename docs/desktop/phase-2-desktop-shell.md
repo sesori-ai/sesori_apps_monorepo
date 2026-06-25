@@ -53,9 +53,9 @@ Aristotle verdicts · Findings log · Plan-deltas.
 - **Goal:** GUI-hosted loopback WS host + off-argv per-spawn secret;
   `ControlMessageDispatcher` (Layer 3) routes inbound: token req →
   `AuthTokenProvider`, status/progress → `BridgeStatusTracker`, **prompts → a
-  Layer-3 prompt store/tracker** that the cubit consumes (the dispatcher must NOT
-  depend on `BridgeControlCubit`/UI — both are Layer 4; same-level deps are
-  forbidden, ADR A14). Tested against a fake helper client.
+  Layer-3 prompt store/tracker** that the cubit consumes (the Layer-3 dispatcher
+  must NOT depend upward on the Layer-4 `BridgeControlCubit`/UI — deps point
+  downward, ADR A14). Tested against a fake helper client.
 - **Risk:** Med. **Size:** M.
 - **Acceptance:** a fake helper connects with the secret, requests + receives a
   token; bad secret rejected; prompts surface as state/stream with no
