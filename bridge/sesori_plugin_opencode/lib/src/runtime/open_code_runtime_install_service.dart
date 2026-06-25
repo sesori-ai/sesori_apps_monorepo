@@ -82,7 +82,11 @@ class OpenCodeRuntimeInstallService {
     required StartAbortSignal startAborted,
   }) async* {
     Directory(managedDir).createSync(recursive: true);
-    final String downloadPath = p.join(managedDir, ".opencode-runtime-download");
+    // The on-disk extension must match the archive format: Windows extraction
+    // shells out to PowerShell `Expand-Archive`, which rejects any source path
+    // that does not end in `.zip` (a bare `.opencode-runtime-download` fails the
+    // install). The format is the same source of truth the extractor switches on.
+    final String downloadPath = p.join(managedDir, ".opencode-runtime-download${_archiveExtension(asset.format)}");
     final String stagingPath = p.join(managedDir, ".opencode-runtime-staging");
 
     try {
@@ -179,6 +183,16 @@ class OpenCodeRuntimeInstallService {
         "failed to mark $assetName executable (chmod exit ${result.exitCode}): ${result.stderr.trim()}",
       );
     }
+  }
+
+  /// The download filename suffix for [format], so the on-disk archive carries
+  /// the extension the platform extractor requires (PowerShell `Expand-Archive`
+  /// only accepts `.zip`).
+  String _archiveExtension(ArchiveFormat format) {
+    return switch (format) {
+      ArchiveFormat.zip => ".zip",
+      ArchiveFormat.tarGz => ".tar.gz",
+    };
   }
 
   void _throwIfAborted(StartAbortSignal startAborted) {

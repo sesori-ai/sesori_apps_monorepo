@@ -136,8 +136,9 @@ void main() {
     if (!Platform.isWindows) {
       expect(cmd.chmodCalls, equals(1));
     }
-    // The download + staging scratch are cleaned up.
-    expect(File(p.join(managedDir.path, ".opencode-runtime-download")).existsSync(), isFalse);
+    // The download + staging scratch are cleaned up. The download carries the
+    // archive's extension so PowerShell Expand-Archive accepts it on Windows.
+    expect(File(p.join(managedDir.path, ".opencode-runtime-download.zip")).existsSync(), isFalse);
     expect(Directory(p.join(managedDir.path, ".opencode-runtime-staging")).existsSync(), isFalse);
   });
 
