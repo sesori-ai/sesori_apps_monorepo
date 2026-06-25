@@ -47,7 +47,8 @@ class PregoScrollEdgeBlur extends StatelessWidget {
   final double sigma;
 
   /// Number of bands the release ramp is split into. More bands → smoother
-  /// ramp at a small per-band cost; six hides the steps under the fade.
+  /// ramp at a small per-band cost; the default five hides the steps under the
+  /// fade.
   final int bands;
 
   /// Bands weaker than this contribute no visible blur and are skipped, so the
@@ -69,7 +70,11 @@ class PregoScrollEdgeBlur extends StatelessWidget {
     // a hard frosted edge.
     for (var i = 0; i < bands; i++) {
       // p: 0 at the top of the ramp (flush with the plateau) → 1 at the bottom.
-      final p = bands > 1 ? i / (bands - 1) : 1.0;
+      // With a single band there is no ramp to walk, so anchor it at the top
+      // (p = 0) — a full-strength band that extends the plateau frost across the
+      // ramp — rather than at p = 1, which would zero its blur and drop it
+      // entirely, leaving an abrupt cutoff below the plateau.
+      final p = bands > 1 ? i / (bands - 1) : 0.0;
       // Quadratic ease-out: holds the frost briefly, then releases with a long
       // gentle tail — mirroring the soft fade curve it sits over.
       final bandSigma = sigma * (1 - p) * (1 - p);

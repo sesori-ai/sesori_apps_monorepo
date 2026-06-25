@@ -62,6 +62,7 @@ class SessionListScaffold extends StatelessWidget {
         icon: TablerRegular.plus,
         size: PregoButtonsIconGlassSize.xl,
         iconSize: 22,
+        semanticLabel: loc.sessionListNewSession,
         onPressed: onNewSession,
       ),
       // Pull-to-refresh only makes sense once the list has loaded.
