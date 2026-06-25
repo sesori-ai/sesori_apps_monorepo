@@ -66,7 +66,7 @@ BLoC/Cubit throughout. Cubits live in `module_core` (pure Dart, testable without
 
 ```bash
 # Install dependencies for all modules
-dart pub get   # run from mobile/
+dart pub get   # run from client/
 
 # Run the app
 cd app && flutter run

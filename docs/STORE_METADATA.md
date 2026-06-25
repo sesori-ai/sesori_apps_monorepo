@@ -75,7 +75,7 @@ present.
    any `v*` tag the listing was already published, so the metadata env vars
    (`IOS_METADATA_PATH`, `IOS_SCREENSHOTS_PATH`, `ANDROID_METADATA_PATH`) are left
    **empty**; otherwise they point at the cloned tree. (Absolute paths, because
-   fastlane runs from `mobile/app/<platform>` while the clone lives at the
+   fastlane runs from `client/app/<platform>` while the clone lives at the
    workspace root.)
 4. The lanes (`submit_ios`, `submit_android`) upload each part of the metadata
    **only when its directory exists and is non-empty** (`metadata_dir_from_env`

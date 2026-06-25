@@ -66,8 +66,37 @@ DoD · Aristotle verdicts · Findings log · Plan-deltas.
     build/CI/tooling).
 - **DoD:** pub get / analyze / test exit 0 · codegen unaffected ·
   release-safety invariant #2 verified · `aristotle-impl-review` clear.
-- **Aristotle verdicts:** plan ☐ · impl ☐.
-- **Findings log:** _(fill in as the PR lands)_
-- **Plan-deltas:** _(record any discovered references not listed above)_
+- **Aristotle verdicts:** plan ☑ · impl ☑.
+- **Findings log:**
+  - `git mv mobile client` moved 646 files with rename detection; pub workspace
+    `name:` → `sesori_client_workspace`. The **app package name `sesori_mobile`
+    is intentionally NOT renamed** (out of scope) — every `package:sesori_mobile/…`
+    import is unchanged, so no source logic moved.
+  - Verified green locally: `client` `flutter pub get` resolves (lockfile
+    unchanged), `dart analyze` (client workspace) = "No issues found",
+    `bridge/app/test/tool/sync_versions_test.dart` 6/6 pass.
+  - Grep gate (all three searches) clean: zero stale `mobile/` paths in
+    build/CI/tooling. Remaining `mobile` tokens are intentional product prose
+    ("mobile app", "Mobile CI", `MOBILE_VERSION`), the `sesori_mobile` package
+    name, and `docs/desktop` + `docs/plans` (rename-describing / historical).
+  - CI narrowing implemented as planned: `mobile-ci.yml` +
+    `release-all-platforms.yml` trigger only on explicit mobile-product paths
+    (excludes `client/desktop/**`); `lint-suppressions.yml` kept broad
+    (`client/**`). Release-notes classifier re-scoped to
+    `client/ && !client/desktop/`.
+- **Plan-deltas:** references found during impl that the original scope list did
+  not enumerate (all updated; flagged by `aristotle-plan-review` or the grep gate):
+  - `.opencode/agents/aristotle-plan-review.md`, `.opencode/agents/aristotle-impl-review.md`,
+    `.opencode/skills/release/SKILL.md` (the last one's `git diff -- mobile/` would
+    have silently dropped app changes from release-note diffing).
+  - `.ai/skills/update-dependencies/SKILL.md` + `.claude/skills/update-dependencies/SKILL.md`
+    (canonical ops skill — `cd mobile`/path commands).
+  - `.vscode/launch.json` (program/cwd), `bridge/RELEASING.md`, `docs/STORE_METADATA.md`,
+    `client/app/{android,ios}/fastlane/Fastfile` (stale path comments).
+  - **`bridge/app/test/tool/sync_versions_test.dart`** — a bridge-workspace test that
+    exercises the root `tool/sync_versions.dart`; it asserts the dry-run paths/output,
+    so it had to move with the tool or `make test` (bridge) would fail.
+  - Decision: `mobile-ci.yml` filename + "Mobile CI" name kept (names the mobile
+    *product*, not the directory).
 
 > Must stay atomic — splitting the rename across PRs breaks `main` between them.

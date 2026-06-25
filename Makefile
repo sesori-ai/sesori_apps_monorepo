@@ -4,7 +4,7 @@ DART ?= $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)/bin/cache/dart-sdk/bin
 
 .PHONY: pub-get bump-version bump-version-check
 
-DART_WORKSPACES := shared bridge mobile
+DART_WORKSPACES := shared bridge client
 
 pub-get:
 	@for dir in $(DART_WORKSPACES); do \
@@ -35,7 +35,7 @@ endef
 bump-version-check:
 	$(call run_sync_versions,--dry-run)
 
-# Bump the version of the bridge and mobile apps
+# Bump the version of the bridge and client (mobile) apps
 #
 # Two options to use it 
 # a) make bump-version TYPE=patch|minor|major 

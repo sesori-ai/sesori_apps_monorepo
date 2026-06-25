@@ -11,7 +11,7 @@
 build/
 pubspec.lock
 !bridge/pubspec.lock
-!mobile/pubspec.lock
+!client/pubspec.lock
 !shared/sesori_shared/pubspec.lock
 
 ### macOS

@@ -1,8 +1,9 @@
 // Generates release notes with an App/Bridge split for GitHub releases.
 //
 // Lists the PRs merged between a previous stable release tag and a target
-// ref, classifies each PR by the paths it touched (mobile/** -> App,
-// bridge/** -> Bridge, shared/** -> both), buckets entries into
+// ref, classifies each PR by the paths it touched (mobile product = client/
+// minus client/desktop/** -> App, bridge/** -> Bridge, shared/** -> both),
+// buckets entries into
 // Added/Fixed/Changed from the conventional-commit PR title prefix, and
 // appends the flat "All PRs merged" list plus a Full Changelog compare link.
 //
@@ -361,7 +362,15 @@ Future<_PrEntry?> _loadPr({required _GitHubApi api, required int number}) async 
     listedFiles += files.length;
     for (final file in files.cast<Map<String, dynamic>>()) {
       final path = file['filename'] as String;
-      touchesApp = touchesApp || path.startsWith('mobile/');
+      // Mobile product = everything under client/ EXCEPT client/desktop/**.
+      // Excluding desktop keeps future client/desktop PRs from being misfiled
+      // as App changes in the release notes (release-safety invariant #3).
+      // `mobile/` is kept as a historical alias so PRs merged before the
+      // mobile/->client/ rename are still classified as App in release notes
+      // whose comparison range spans the rename.
+      touchesApp = touchesApp ||
+          path.startsWith('mobile/') ||
+          (path.startsWith('client/') && !path.startsWith('client/desktop/'));
       touchesBridge = touchesBridge || path.startsWith('bridge/');
       touchesShared = touchesShared || path.startsWith('shared/');
     }

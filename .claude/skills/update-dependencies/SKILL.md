@@ -1,6 +1,6 @@
 ---
 name: update-dependencies
-description: Weekly dependency update workflow for Sesori Apps Monorepo. Updates every pubspec.yaml across the bridge and mobile workspaces plus standalone packages, regenerates all lockfiles, re-resolves iOS/macOS SwiftPM native dependencies (Package.resolved), updates Fastlane/Gemfile versions, handles conflicts, and verifies via analyze/test/codegen.
+description: Weekly dependency update workflow for Sesori Apps Monorepo. Updates every pubspec.yaml across the bridge and client workspaces plus standalone packages, regenerates all lockfiles, re-resolves iOS/macOS SwiftPM native dependencies (Package.resolved), updates Fastlane/Gemfile versions, handles conflicts, and verifies via analyze/test/codegen.
 ---
 
 # update-dependencies (Claude Code shim)
@@ -11,4 +11,4 @@ This is the Claude Code entry point for the shared `update-dependencies` skill. 
 
 ## Path resolution
 
-No remapping is needed. Every command in the canonical file already uses paths relative to the repository root (e.g. `find . -name pubspec.yaml`, `cd shared && make pub-get`, `cd mobile/app/ios`), which is exactly where Claude Code runs `bash`. Run them as written. There are no skill-local scripts to resolve.
+No remapping is needed. Every command in the canonical file already uses paths relative to the repository root (e.g. `find . -name pubspec.yaml`, `cd shared && make pub-get`, `cd client/app/ios`), which is exactly where Claude Code runs `bash`. Run them as written. There are no skill-local scripts to resolve.

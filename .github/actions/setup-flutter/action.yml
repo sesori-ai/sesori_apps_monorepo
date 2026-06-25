@@ -5,7 +5,7 @@ inputs:
   workspace:
     description: 'Workspace directory to run `dart pub get` in ("none" skips it — toolchain install only)'
     required: false
-    default: 'mobile'
+    default: 'client'
 
 runs:
   using: 'composite'

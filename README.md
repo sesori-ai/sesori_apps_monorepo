@@ -26,7 +26,7 @@ bridge/                     # Dart workspace — Bridge CLI + plugin system
   app/                      # CLI relay server
   sesori_plugin_interface/  # Abstract plugin contract
   sesori_plugin_opencode/   # OpenCode backend plugin
-mobile/                     # Flutter workspace — mobile client
+client/                     # Flutter workspace — mobile client
   app/                      # Flutter UI shell
   module_core/              # Pure Dart business logic
   module_auth/              # Auth & token lifecycle
@@ -36,7 +36,7 @@ shared/
   no_slop_linter/           # Custom Dart lint rules (dev tooling)
 ```
 
-`bridge/` and `mobile/` are independent Dart pub workspaces with separate dependency resolution. The packages under `shared/` are referenced via path by both: `sesori_shared` carries the crypto and protocol types, while `no_slop_linter` is a custom analyzer plugin pulled in as a dev dependency to enforce the repo's lint rules.
+`bridge/` and `client/` are independent Dart pub workspaces with separate dependency resolution. The packages under `shared/` are referenced via path by both: `sesori_shared` carries the crypto and protocol types, while `no_slop_linter` is a custom analyzer plugin pulled in as a dev dependency to enforce the repo's lint rules.
 
 ## Dependency Graph
 
@@ -47,9 +47,9 @@ graph TD
   bridge_app --> sesori_shared[shared/sesori_shared]
   sesori_plugin_opencode --> sesori_plugin_interface
   sesori_plugin_opencode --> sesori_shared
-  mobile_app[mobile/app] --> module_core[mobile/module_core]
-  mobile_app --> module_auth[mobile/module_auth]
-  mobile_app --> module_prego[mobile/module_prego]
+  mobile_app[client/app] --> module_core[client/module_core]
+  mobile_app --> module_auth[client/module_auth]
+  mobile_app --> module_prego[client/module_prego]
   mobile_app --> sesori_shared
   module_core --> module_auth
   module_core --> sesori_shared
@@ -118,12 +118,12 @@ cd sesori_apps_monorepo
 cd bridge && dart pub get
 
 # Install mobile dependencies
-cd ../mobile && flutter pub get
+cd ../client && flutter pub get
 ```
 
 ## Common Tasks
 
-Each directory (bridge/, mobile/, or shared/) ships a Makefile with the same core targets — run them from that directory. They resolve the Flutter-bundled Dart SDK via the version pinned in .tool-versions and the default asdf install path (`~/.asdf/installs/flutter/<version>`), so they bypass whatever is on your PATH — provided you've run `asdf install`.
+Each directory (bridge/, client/, or shared/) ships a Makefile with the same core targets — run them from that directory. They resolve the Flutter-bundled Dart SDK via the version pinned in .tool-versions and the default asdf install path (`~/.asdf/installs/flutter/<version>`), so they bypass whatever is on your PATH — provided you've run `asdf install`.
 
 | Target | What it does |
 |---|---|
@@ -132,7 +132,7 @@ Each directory (bridge/, mobile/, or shared/) ships a Makefile with the same cor
 | `make analyze` | Static analysis across modules |
 | `make test` | Run unit tests across modules |
 
-`mobile/` adds design-system helpers for the Prego module:
+`client/` adds design-system helpers for the Prego module:
 
 | Target | What it does |
 |---|---|
@@ -189,7 +189,7 @@ If you used the npm bootstrap path, `npm uninstall @sesori/bridge` only removes 
 
 - [bridge/README.md](bridge/README.md) — bridge CLI, plugin system, codegen, and testing
 - [bridge/ARCHITECTURE.md](bridge/ARCHITECTURE.md) — bridge layered architecture (Foundation → API → Repository → Service)
-- [mobile/README.md](mobile/README.md) — Flutter client, module structure, and testing
+- [client/README.md](client/README.md) — Flutter client, module structure, and testing
 - [shared/no_slop_linter/README.md](shared/no_slop_linter/README.md) — custom lint rules and how they're wired in
 
 ## License

@@ -6,7 +6,10 @@ on:
       - main
     paths:
       - "bridge/**"
-      - "mobile/**"
+      # Broad on purpose: the lint-suppression gate must cover ALL client
+      # packages (including client/desktop) — unlike the release/CI workflows,
+      # which are narrowed to the mobile product. Do not scope this down.
+      - "client/**"
       - "shared/**"
 
 # Cancel in-progress runs when a new commit is pushed to the same PR
