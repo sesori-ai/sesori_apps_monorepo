@@ -137,8 +137,9 @@ void main() {
     if (!Platform.isWindows) {
       expect(cmd.chmodCalls, equals(1));
     }
-    // The download + staging scratch are cleaned up.
-    expect(File(p.join(managedDir.path, ".sesori-runtime-download")).existsSync(), isFalse);
+    // The download + staging scratch are cleaned up. The download carries the
+    // archive's extension so PowerShell Expand-Archive accepts it on Windows.
+    expect(File(p.join(managedDir.path, ".sesori-runtime-download${_asset.format.fileExtension}")).existsSync(), isFalse);
     expect(Directory(p.join(managedDir.path, ".sesori-runtime-staging")).existsSync(), isFalse);
   });
 

@@ -89,7 +89,11 @@ class RuntimeInstallService {
     required StartAbortSignal startAborted,
   }) async* {
     Directory(managedDir).createSync(recursive: true);
-    final String downloadPath = p.join(managedDir, _downloadFileName);
+    // The on-disk extension must match the archive format: Windows extraction
+    // shells out to PowerShell `Expand-Archive`, which rejects any source path
+    // that does not end in `.zip` (a bare extensionless file fails the install).
+    // The format is the same source of truth the extractor switches on.
+    final String downloadPath = p.join(managedDir, "$_downloadFileName${asset.format.fileExtension}");
     final String stagingPath = p.join(managedDir, _stagingDirName);
 
     try {
