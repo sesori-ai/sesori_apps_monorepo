@@ -2,13 +2,14 @@ import "package:flutter/material.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 
 import "../../module_prego.dart";
+import "../../utils/color_extensions.dart";
 
 /// The app's glass top navigation bar — a [PreferredSizeWidget] wrapping the
 /// `liquid_glass_widgets` [GlassAppBar].
 ///
 /// The bar surface is transparent and glass is reserved for the buttons
-/// ([PregoButtonsIconGlass]); the iOS-style scroll-edge fade and blur are owned
-/// by the enclosing [GlassScaffold] (via [PregoScrollEdgeBlur]), not painted
+/// ([PregoButtonsIconGlass]); the iOS-style scroll-edge fade is owned
+/// by the enclosing [GlassScaffold], not painted
 /// here. This follows the package's navigation showcase, which fades content
 /// with the scaffold edge effect and reserves the glass (frost) effect for
 /// buttons rather than frosting the bar surface itself.
@@ -168,14 +169,12 @@ class PregoTopNavigation extends StatelessWidget implements PreferredSizeWidget 
         final progress = collapseProgressOf(controller);
         if (progress == 0) return const SizedBox.shrink();
         final prego = context.prego;
-        return Opacity(
-          opacity: progress,
-          child: Text(
-            title,
-            style: prego.textTheme.textXl.bold.copyWith(color: prego.colors.textPrimary),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+        // Fade via text alpha instead of an Opacity layer — no saveLayer per frame.
+        return Text(
+          title,
+          style: prego.textTheme.textXl.bold.copyWith(color: prego.colors.textPrimary.withMultipliedOpacity(progress)),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         );
       },
     );

@@ -4,6 +4,7 @@ import "package:flutter/material.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 
 import "../../module_prego.dart";
+import "../../utils/color_extensions.dart";
 
 /// A page scaffold with a glass top navigation bar and the iOS-style
 /// large-title collapse from the `liquid_glass_widgets` navigation showcase
@@ -12,10 +13,9 @@ import "../../module_prego.dart";
 /// Built on the package's [GlassScaffold] with its bar provided by
 /// [PregoTopNavigation]: the bar surface is transparent and glass is reserved
 /// for the buttons ([PregoButtonsIconGlass]), and the body scrolls behind the
-/// bar. As content approaches the bar it both dissolves into the [GlassScaffold]
-/// colour fade and softens under a graduated [PregoScrollEdgeBlur], frosting the
-/// content behind the transparent bar and releasing it smoothly just below —
-/// the iOS-26 scroll-edge look. A large [title] sits below the bar; as the body
+/// bar. As content approaches the bar it dissolves into the [GlassScaffold]
+/// colour fade, releasing it smoothly just below — the iOS-26 scroll-edge look.
+/// A large [title] sits below the bar; as the body
 /// scrolls it fades out while the same title fades in, centred, inside the bar.
 ///
 /// This scaffold owns the whole page around the bar. The collapse couples the
@@ -123,9 +123,9 @@ class PregoGlassScaffold extends StatefulWidget {
 class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
   final ScrollController _scrollController = ScrollController();
 
-  /// How far past the bar the scroll-edge effects (the package colour fade and
-  /// the [PregoScrollEdgeBlur]) ramp out. A little longer than the package
-  /// default (20) for a softer, smoother release of content below the bar.
+  /// How far past the bar the scroll-edge colour fade ramps out. A little longer
+  /// than the package default (20) for a softer, smoother release of content
+  /// below the bar.
   static const double _scrollEdgeFadeExtent = 80;
 
   /// Page glass-layer settings replicated from the showcase's
@@ -149,12 +149,6 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
     _scrollController.dispose();
     super.dispose();
   }
-
-  /// 0 while the large title is fully shown, 1 once it has collapsed into the
-  /// bar. Delegates to [PregoTopNavigation.collapseProgressOf] — the single
-  /// source of truth for the collapse — so the large-title sliver fades out in
-  /// lockstep with the bar title fading in.
-  double get _collapseProgress => PregoTopNavigation.collapseProgressOf(_scrollController);
 
   @override
   Widget build(BuildContext context) {
@@ -185,7 +179,8 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
         if (extendBehind) SliverToBoxAdapter(child: SizedBox(height: topPad + topNav.preferredSize.height)),
         // Inline mode shows a fixed title in the bar, so there is no large
         // title sliver to scroll away.
-        if (!inline) _buildLargeTitleSliver(),
+        if (!inline)
+          _LargeTitleSliver(title: widget.title, subtitle: widget.subtitle, scrollController: _scrollController),
         ...widget.slivers,
       ],
     );
@@ -227,10 +222,7 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
                   end: Alignment.bottomCenter,
                 ),
               ),
-              // Extend past the bar by the scroll-edge fade extent so the
-              // gradient releases in lockstep with the package colour fade
-              // ([topEdgeFadeExtent]) instead of stopping at the bar edge.
-              height: topPad + topNav.preferredSize.height + _scrollEdgeFadeExtent,
+              height: topPad + topNav.preferredSize.height,
             ),
           ),
         ),
@@ -254,36 +246,59 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
 
   /// The large title below the bar — scrolls away with the body and fades out
   /// as it collapses into the bar.
-  Widget _buildLargeTitleSliver() {
-    final subtitle = widget.subtitle;
+}
+
+class _LargeTitleSliver extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final ScrollController scrollController;
+  const _LargeTitleSliver({
+    required this.title,
+    required this.subtitle,
+    required this.scrollController,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final subtitle = this.subtitle;
+
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.x3l, 0, PregoSpacing.x3l, PregoSpacing.xl),
         child: ListenableBuilder(
-          listenable: _scrollController,
+          listenable: scrollController,
           builder: (context, _) {
-            final prego = context.prego;
-            return Opacity(
-              opacity: (1 - _collapseProgress).clamp(0.0, 1.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
+            /// 0 while the large title is fully shown, 1 once it has collapsed into the
+            /// bar. Delegates to [PregoTopNavigation.collapseProgressOf] — the single
+            /// source of truth for the collapse — so the large-title sliver fades out in
+            /// lockstep with the bar title fading in.
+            final collapseProgress = PregoTopNavigation.collapseProgressOf(scrollController);
+            // Fade via text alpha instead of an Opacity layer — no saveLayer per frame.
+            final opacity = (1 - collapseProgress).clamp(0.0, 1.0);
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: prego.textTheme.displayMd.medium.copyWith(
+                    color: prego.colors.textPrimary.withMultipliedOpacity(opacity),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (subtitle != null && subtitle.isNotEmpty)
                   Text(
-                    widget.title,
-                    style: prego.textTheme.displayMd.medium.copyWith(color: prego.colors.textPrimary),
+                    subtitle,
+                    style: prego.textTheme.textMd.regular.copyWith(
+                      color: prego.colors.textSecondary.withMultipliedOpacity(opacity),
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  if (subtitle != null && subtitle.isNotEmpty)
-                    Text(
-                      subtitle,
-                      style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                ],
-              ),
+              ],
             );
           },
         ),
