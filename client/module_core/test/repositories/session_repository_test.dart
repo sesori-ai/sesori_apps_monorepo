@@ -117,4 +117,53 @@ void main() {
     ).called(1);
     verify(() => api.rejectQuestion(requestId: "question-1", sessionId: "session-1")).called(1);
   });
+
+  test("listProviders does not cache an empty response but caches one with models", () async {
+    final api = MockSessionApi();
+    final repository = SessionRepository(api: api);
+
+    const emptyProviders = ProviderListResponse(connectedOnly: false, items: <ProviderInfo>[]);
+    const populatedProviders = ProviderListResponse(
+      connectedOnly: false,
+      items: [
+        ProviderInfo(
+          id: "cursor",
+          name: "Cursor",
+          defaultModelID: "auto",
+          models: {
+            "auto": ProviderModel(
+              id: "auto",
+              providerID: "cursor",
+              name: "Auto",
+              variants: <String>[],
+              family: null,
+              releaseDate: null,
+            ),
+          },
+        ),
+      ],
+    );
+
+    // First fetch returns an empty catalog (e.g. the ACP backend has not warmed
+    // its model list yet); later fetches return the populated catalog.
+    var calls = 0;
+    when(() => api.listProviders(projectId: "p1")).thenAnswer((_) async {
+      calls++;
+      return ApiResponse.success(calls == 1 ? emptyProviders : populatedProviders);
+    });
+
+    final first = await repository.listProviders(projectId: "p1");
+    expect((first as SuccessResponse<ProviderListResponse>).data.items, isEmpty);
+
+    // The empty result must NOT be cached: the second fetch hits the API again
+    // and returns the now-populated catalog (the regression being guarded).
+    final second = await repository.listProviders(projectId: "p1");
+    expect((second as SuccessResponse<ProviderListResponse>).data.items, isNotEmpty);
+    verify(() => api.listProviders(projectId: "p1")).called(2);
+
+    // The populated result IS cached: the third fetch is served without the API.
+    final third = await repository.listProviders(projectId: "p1");
+    expect((third as SuccessResponse<ProviderListResponse>).data.items, isNotEmpty);
+    verifyNever(() => api.listProviders(projectId: "p1"));
+  });
 }
