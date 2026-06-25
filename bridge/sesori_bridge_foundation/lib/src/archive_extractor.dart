@@ -22,7 +22,7 @@ enum ArchiveFormat { tarGz, zip }
 /// permission denied, PowerShell constrained-language mode, …).
 class ArchiveExtractionResult {
   const ArchiveExtractionResult.success() : succeeded = true, failureReason = null;
-  const ArchiveExtractionResult.failure(String reason) : succeeded = false, failureReason = reason;
+  const ArchiveExtractionResult.failure({required String reason}) : succeeded = false, failureReason = reason;
 
   final bool succeeded;
   final String? failureReason;
@@ -55,12 +55,25 @@ class ArchiveExtractor {
     }
     stagingDir.createSync(recursive: true);
 
-    final ArchiveExtractionResult extracted = switch (format) {
-      ArchiveFormat.tarGz => await _extractTarGz(archivePath: archivePath, stagingPath: stagingPath),
-      ArchiveFormat.zip => Platform.isWindows
-          ? await _extractZipWindows(archivePath: archivePath, stagingPath: stagingPath)
-          : await _extractZipPosix(archivePath: archivePath, stagingPath: stagingPath),
-    };
+    // The helpers shell out via the command executor, which can throw rather
+    // than return a non-zero result (e.g. the tool is missing/not executable —
+    // ProcessException — or a hung command is force-killed past its timeout —
+    // TimeoutException). Convert those into a structured failure so callers
+    // always observe the cause instead of an unhandled async error.
+    final ArchiveExtractionResult extracted;
+    try {
+      extracted = await switch (format) {
+        ArchiveFormat.tarGz => _extractTarGz(archivePath: archivePath, stagingPath: stagingPath),
+        ArchiveFormat.zip => Platform.isWindows
+            ? _extractZipWindows(archivePath: archivePath, stagingPath: stagingPath)
+            : _extractZipPosix(archivePath: archivePath, stagingPath: stagingPath),
+      };
+    } on Object catch (error, stackTrace) {
+      final String reason = "extraction command failed to run: $error";
+      Log.w("Archive extraction command threw", error, stackTrace);
+      _deleteQuietly(stagingDir);
+      return ArchiveExtractionResult.failure(reason: reason);
+    }
     if (!extracted.succeeded) {
       return extracted;
     }
@@ -73,7 +86,7 @@ class ArchiveExtractor {
       const String reason = "the archive contains symlink entries";
       Log.w("Rejecting archive payload: $reason.");
       _deleteQuietly(stagingDir);
-      return const ArchiveExtractionResult.failure(reason);
+      return const ArchiveExtractionResult.failure(reason: reason);
     }
     return const ArchiveExtractionResult.success();
   }
@@ -87,11 +100,11 @@ class ArchiveExtractor {
     // before writing anything.
     final CommandResult listing = await _commandExecutor.run("tar", ["-tzf", archivePath], timeout: _listTimeout);
     if (listing.exitCode != 0) {
-      return ArchiveExtractionResult.failure(_toolFailure(tool: "tar -tzf", result: listing));
+      return ArchiveExtractionResult.failure(reason: _toolFailure(tool: "tar -tzf", result: listing));
     }
     final String? escapeReason = _firstEscapingMember(stagingPath: stagingPath, listing: listing.stdout);
     if (escapeReason != null) {
-      return ArchiveExtractionResult.failure(escapeReason);
+      return ArchiveExtractionResult.failure(reason: escapeReason);
     }
 
     final CommandResult result = await _commandExecutor.run(
@@ -100,7 +113,7 @@ class ArchiveExtractor {
       timeout: _extractTimeout,
     );
     if (result.exitCode != 0) {
-      return ArchiveExtractionResult.failure(_toolFailure(tool: "tar -xzf", result: result));
+      return ArchiveExtractionResult.failure(reason: _toolFailure(tool: "tar -xzf", result: result));
     }
     return const ArchiveExtractionResult.success();
   }
@@ -113,11 +126,11 @@ class ArchiveExtractor {
     // would escape before extracting.
     final CommandResult listing = await _commandExecutor.run("unzip", ["-Z1", archivePath], timeout: _listTimeout);
     if (listing.exitCode != 0) {
-      return ArchiveExtractionResult.failure(_toolFailure(tool: "unzip -Z1", result: listing));
+      return ArchiveExtractionResult.failure(reason: _toolFailure(tool: "unzip -Z1", result: listing));
     }
     final String? escapeReason = _firstEscapingMember(stagingPath: stagingPath, listing: listing.stdout);
     if (escapeReason != null) {
-      return ArchiveExtractionResult.failure(escapeReason);
+      return ArchiveExtractionResult.failure(reason: escapeReason);
     }
 
     final CommandResult result = await _commandExecutor.run(
@@ -126,7 +139,7 @@ class ArchiveExtractor {
       timeout: _extractTimeout,
     );
     if (result.exitCode != 0) {
-      return ArchiveExtractionResult.failure(_toolFailure(tool: "unzip", result: result));
+      return ArchiveExtractionResult.failure(reason: _toolFailure(tool: "unzip", result: result));
     }
     return const ArchiveExtractionResult.success();
   }
@@ -148,7 +161,7 @@ class ArchiveExtractor {
       timeout: _extractTimeout,
     );
     if (result.exitCode != 0) {
-      return ArchiveExtractionResult.failure(_toolFailure(tool: "powershell Expand-Archive", result: result));
+      return ArchiveExtractionResult.failure(reason: _toolFailure(tool: "powershell Expand-Archive", result: result));
     }
     return const ArchiveExtractionResult.success();
   }

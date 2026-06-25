@@ -29,6 +29,25 @@ class _RealCommandExecutor implements CommandExecutor {
   }
 }
 
+/// A [CommandExecutor] that always throws, modelling a missing/unexecutable tool
+/// (`ProcessException`) or a force-killed timeout (`TimeoutException`).
+class _ThrowingCommandExecutor implements CommandExecutor {
+  _ThrowingCommandExecutor({required this.error});
+
+  final Object error;
+
+  @override
+  Future<CommandResult> run(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    Duration? timeout,
+  }) async {
+    throw error;
+  }
+}
+
 void main() {
   late Directory tempDir;
   late String payloadDir;
@@ -125,6 +144,27 @@ void main() {
       expect(result.succeeded, isTrue);
       expect(File(p.join(stagingPath, "bin", "opencode")).readAsStringSync(), "BIN");
       expect(File(p.join(stagingPath, "lib", "a.txt")).readAsStringSync(), "A");
+    });
+  });
+
+  group("command failures", () {
+    test("converts a thrown command-execution error into a structured failure", () async {
+      final extractor = ArchiveExtractor(
+        commandExecutor: _ThrowingCommandExecutor(
+          error: const ProcessException("tar", [], "tar: command not found", 127),
+        ),
+      );
+
+      final result = await extractor.extract(
+        archivePath: p.join(tempDir.path, "missing.tar.gz"),
+        stagingPath: stagingPath,
+        format: ArchiveFormat.tarGz,
+      );
+
+      expect(result.succeeded, isFalse);
+      expect(result.failureReason, contains("extraction command failed to run"));
+      // Fail-closed: a thrown command leaves no partial staging behind.
+      expect(Directory(stagingPath).existsSync(), isFalse);
     });
   });
 }

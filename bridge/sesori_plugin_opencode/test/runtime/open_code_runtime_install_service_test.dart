@@ -49,7 +49,7 @@ class _FakeArchiveExtractor implements ArchiveExtractor {
     required ArchiveFormat format,
   }) async {
     if (!success) {
-      return const ArchiveExtractionResult.failure("powershell Expand-Archive exited with code 1: boom");
+      return const ArchiveExtractionResult.failure(reason: "powershell Expand-Archive exited with code 1: boom");
     }
     Directory(stagingPath).createSync(recursive: true);
     File(p.join(stagingPath, "opencode")).writeAsStringSync("BINARY");
