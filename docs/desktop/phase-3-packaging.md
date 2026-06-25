@@ -98,10 +98,16 @@ Aristotle verdicts · Findings log · Plan-deltas.
   `submit-release.yml` as **non-blocking** legs; extend `make bump-version` to
   bump the desktop package; add a **Desktop** section to `CHANGELOG.md`; publish
   appcast/zsync to releases keyed to the shared version.
+- **Trigger paths:** PR 0.1 excluded `client/desktop/**` from the (mobile-product)
+  release triggers, so this PR must **add `client/desktop/**` (and any
+  desktop-owned UI package paths) to the desktop release jobs' triggers** —
+  otherwise a desktop-only fix never starts the internal release / appcast-zsync
+  publish and the self-update channel silently misses releases. The desktop jobs
+  stay **non-blocking** for the CLI/mobile legs (invariant #3).
 - **Risk:** Med. **Size:** M.
 - **Acceptance:** an internal release dry-run produces signed, self-update-ready
-  desktop artifacts; a forced desktop-leg failure does **not** block the
-  CLI/mobile release.
+  desktop artifacts; a **desktop-only** change triggers the desktop release/appcast
+  publish; a forced desktop-leg failure does **not** block the CLI/mobile release.
 
 ## PR 3.11 — Uninstall + login-item cleanup (desktop-owned state only)
 - **Goal:** Per-OS uninstall removes the **login item** and **GUI-owned** state
@@ -111,6 +117,13 @@ Aristotle verdicts · Findings log · Plan-deltas.
   the standalone CLI, and removing them would log out / break the terminal bridge
   the master plan preserves (ADR A10). If shared helper state must be cleaned,
   namespace/migrate it to a desktop-owned location first.
+- **Best-effort server unregister first:** for users who uninstall **without**
+  going through logout, do a best-effort `BridgeRepository.deleteBridge` (the
+  module_core seam from PR 2.13) using the still-available token + GUI-persisted
+  `bridgeId` **before** clearing GUI-owned credentials/state — otherwise a stale
+  offline bridge is orphaned on the account and deleting the local copy first
+  makes later cleanup impossible. Failure is non-fatal (logged), since the server
+  record can also be removed from the account UI.
 - **Scope note:** wrap each cleanup step in its own `on Object catch` so one
   failure (permissions/missing file) doesn't block the rest; capture the first
   meaningful error and rethrow after all steps run.

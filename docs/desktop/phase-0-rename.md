@@ -35,6 +35,11 @@ DoD · Aristotle verdicts · Findings log · Plan-deltas.
       `client/analysis_options.yaml`, `client/Makefile`) — **excluding**
       `client/desktop/**`. (Omitting the workspace-root files would let a
       dependency/lockfile change merge without the mobile CI/release gates.)
+    - **This mobile-product narrowing applies ONLY to the release / TestFlight /
+      Play / bridge-release workflows.** Quality-gate workflows that protect *all*
+      Dart workspaces — notably `lint-suppressions.yml` (newly-added `// ignore`
+      detection) — must **keep covering `client/desktop/**`** (and every package),
+      so desktop PRs can't add unjustified suppressions unchecked.
   - `.github/actions/setup-flutter/action.yml` (`default: 'mobile'`).
   - `tool/sync_versions.dart` (path joins **and** hardcoded `'mobile'` error
     strings) and `tool/generate_release_notes.dart:364`

@@ -29,9 +29,14 @@ Aristotle verdicts · Findings log · Plan-deltas.
   these, so deferring `FailureReporter` to PR 2.14 would let the package build but
   fail at `get_it` resolution. Use no-op/desktop impls where a full one isn't
   ready yet (PR 2.14 later replaces the `FailureReporter` no-op with the real one).
+  Also register a desktop **`http.Client`** here — `module_auth` DI resolves
+  `package:http`'s `Client` when `AuthManager`/`HttpApiClient` are first used, so
+  it must exist before `configureAuthDependencies` runs (else PR 2.3 login builds
+  but fails at `get_it` resolution).
 - **Risk:** Low-Med. **Size:** S-M.
 - **Acceptance:** secure storage read/write works per OS; `get_it` resolves
-  `LoginCubit` + `ConnectionService` with no missing-registration errors.
+  `LoginCubit` + `ConnectionService` (and the auth `http.Client`) with no
+  missing-registration errors.
 
 ## PR 2.3 — Login reuse (browser-poll OAuth)
 - **Goal:** Wire login via `configureAuthDependencies` + exported interfaces
