@@ -43,13 +43,17 @@ class _FakeArchiveExtractor implements ArchiveExtractor {
   final bool success;
 
   @override
-  Future<bool> extract({required String archivePath, required String stagingPath, required ArchiveFormat format}) async {
+  Future<ArchiveExtractionResult> extract({
+    required String archivePath,
+    required String stagingPath,
+    required ArchiveFormat format,
+  }) async {
     if (!success) {
-      return false;
+      return const ArchiveExtractionResult.failure(reason: "powershell Expand-Archive exited with code 1: boom");
     }
     Directory(stagingPath).createSync(recursive: true);
     File(p.join(stagingPath, "opencode")).writeAsStringSync("BINARY");
-    return true;
+    return const ArchiveExtractionResult.success();
   }
 }
 
@@ -155,10 +159,16 @@ void main() {
     expect(File(p.join(versionDir(), "opencode")).existsSync(), isFalse);
   });
 
-  test("throws when extraction fails", () async {
+  test("throws when extraction fails, surfacing the underlying reason", () async {
     await expectLater(
       install(build(extractSuccess: false)).drain<void>(),
-      throwsA(isA<OpenCodeRuntimeInstallException>()),
+      throwsA(
+        isA<OpenCodeRuntimeInstallException>().having(
+          (e) => e.message,
+          "message",
+          allOf(contains("failed to extract"), contains("Expand-Archive exited with code 1: boom")),
+        ),
+      ),
     );
   });
 
