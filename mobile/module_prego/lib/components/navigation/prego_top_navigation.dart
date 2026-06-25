@@ -7,8 +7,8 @@ import "../../module_prego.dart";
 /// `liquid_glass_widgets` [GlassAppBar].
 ///
 /// The bar surface is transparent and glass is reserved for the buttons
-/// ([PregoButtonsIconGlass]); the iOS-style scroll-edge fade and blur are owned
-/// by the enclosing [GlassScaffold] (via [PregoScrollEdgeBlur]), not painted
+/// ([PregoButtonsIconGlass]); the iOS-style scroll-edge fade is owned
+/// by the enclosing [GlassScaffold], not painted
 /// here. This follows the package's navigation showcase, which fades content
 /// with the scaffold edge effect and reserves the glass (frost) effect for
 /// buttons rather than frosting the bar surface itself.

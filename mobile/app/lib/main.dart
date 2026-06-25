@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:ui" as ui;
 
 import "package:firebase_analytics/firebase_analytics.dart";
 import "package:firebase_core/firebase_core.dart";
@@ -121,13 +122,29 @@ Future<void> bootstrapSesoriApp({
       }),
     );
   }
+
+  final isImpeller = ui.ImageFilter.isShaderFilterSupported;
+
+  if (isImpeller) {
+    logd("🚀 Running on Impeller Rendering Engine");
+  } else {
+    logd("🎨 Running on Skia Rendering Engine (or fallback)");
+  }
+
   runAppFn(
     LiquidGlassWidgets.wrap(
       child: const SesoriApp(),
       adaptiveQuality: true,
       // ignore: experimental_member_use
-      adaptiveConfig: const GlassAdaptiveScopeConfig(
-        initialQuality: GlassQuality.standard,
+      adaptiveConfig: GlassAdaptiveScopeConfig(
+        targetFrameMs: 8,
+        minQuality: .minimal,
+        initialQuality: .standard,
+        maxQuality: .standard,
+        allowStepUp: false,
+        onQualityChanged: (oldQuality, newQuality) {
+          logd("Quality changed for liquid glass: ${oldQuality.name} -> ${newQuality.name}");
+        },
       ),
     ),
   );
