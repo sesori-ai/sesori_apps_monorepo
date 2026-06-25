@@ -81,7 +81,7 @@ jobs:
       # Local `uses: ./...` actions resolve from the CHECKED-OUT tree, which
       # for submit-release rebuilds can be an older commit whose copy of the
       # action predates the `workspace` input (it would silently run pub get
-      # in mobile/). Pull the action from the workflow's own revision into a
+      # in client/). Pull the action from the workflow's own revision into a
       # side directory and run it from there.
       - name: Checkout CI actions at workflow revision
         if: matrix.use_asdf

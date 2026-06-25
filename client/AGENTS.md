@@ -5,7 +5,7 @@ This file covers mobile-specific guidance. For general architecture, layering, c
 ## Commands
 
 ```bash
-dart pub get                                              # from mobile/ — installs all modules
+dart pub get                                              # from client/ — installs all modules
 dart analyze                                              # run per module (app/, module_core/, module_auth/)
 cd app && flutter test                                    # Flutter tests
 cd module_core && dart test                               # pure Dart tests
@@ -110,7 +110,7 @@ There is ONE production implementation per interface. Do not add factories, alte
 
 ## Definition of Done
 
-- `dart pub get` exits 0 from `mobile/`
+- `dart pub get` exits 0 from `client/`
 - `dart analyze` exits 0 in all three modules
 - All tests pass (`flutter test` for `app/`, `dart test` for `module_core/` and `module_auth/`)
 

@@ -54,15 +54,15 @@ jobs:
         with:
           ruby-version: '3.3'
           bundler-cache: true
-          working-directory: mobile/app/ios
+          working-directory: client/app/ios
 
       - name: Install Android Fastlane gems
-        working-directory: mobile/app/android
+        working-directory: client/app/android
         run: bundle install --jobs 4 --retry 3
 
       - name: Compute next iOS build number
         id: ios
-        working-directory: mobile/app/ios
+        working-directory: client/app/ios
         run: |
           set -uo pipefail
           output=$(bundle exec fastlane next_build_number 2>&1)
@@ -81,13 +81,13 @@ jobs:
           echo "iOS next build number: ${n}"
 
       - name: Setup Google Play credentials
-        working-directory: mobile/app/android
+        working-directory: client/app/android
         run: |
           echo '${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}' > fastlane/service-account.json
 
       - name: Compute next Android version code
         id: android
-        working-directory: mobile/app/android
+        working-directory: client/app/android
         run: |
           set -uo pipefail
           output=$(bundle exec fastlane next_version_code 2>&1)
@@ -107,7 +107,7 @@ jobs:
 
       - name: Cleanup credentials
         if: always()
-        run: rm -f mobile/app/android/fastlane/service-account.json
+        run: rm -f client/app/android/fastlane/service-account.json
 
       - name: Pick the maximum
         id: combine

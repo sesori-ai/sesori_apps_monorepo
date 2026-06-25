@@ -40,9 +40,9 @@ When in doubt whether something is legacy: use `git blame` or `git log` to check
 
 2. Read every changed file. Do not rely on diffs alone. Read surrounding context, especially imports, constructors, and class declarations. A diff alone often hides the full class shape.
 
-3. Determine which workspaces are touched. Map changed files to `mobile/`, `bridge/`, or `shared/sesori_shared/`. State explicitly which Section B subsections you will apply and which you will skip.
+3. Determine which workspaces are touched. Map changed files to `client/`, `bridge/`, or `shared/sesori_shared/`. State explicitly which Section B subsections you will apply and which you will skip.
 
-4. Apply the matching Section B subsection for each touched workspace. Do not skip a subsection because a workspace is lightly touched. Even a single changed line in `mobile/` requires full B-Mobile review.
+4. Apply the matching Section B subsection for each touched workspace. Do not skip a subsection because a workspace is lightly touched. Even a single changed line in `client/` requires full B-Mobile review.
 
 5. Walk every rule in order. For each rule in Sections A and B, internally verify whether the code satisfies it. Only emit violations in the final output, but do not shortcut this check.
 
@@ -267,7 +267,7 @@ Core rules that apply universally:
 - Within a layer: NO cross-dependency between same-level classes unless they are base classes/abstractions designed to be reused within that layer
 - Directory structure MUST mirror layers so violations are visible in import paths
 
-#### B-Mobile: Mobile Workspace (`mobile/`)
+#### B-Mobile: Mobile Workspace (`client/`)
 
 **B-M1. Layer Dependency Diagram**
 
@@ -852,7 +852,7 @@ class SessionDiffHandler extends GetHandler {
 Correct review: REJECTED. B-B5 violation at `session_diff_handler.dart:3`. Handlers are Layer 4 and MUST NOT call Layer 1 APIs. Required change: add `diff()` to `WorktreeRepository`; `SessionDiffHandler` calls the repository.
 
 ### Example 2: Naming
-Code excerpt in `mobile/module_core/lib/src/services/notification_manager.dart:1`:
+Code excerpt in `client/module_core/lib/src/services/notification_manager.dart:1`:
 ```dart
 class NotificationManager { ... }
 ```
@@ -860,7 +860,7 @@ class NotificationManager { ... }
 Correct review: REJECTED. Naming convention violation at `notification_manager.dart:1`. "Manager" is forbidden. Rename to `NotificationService` (and verify it meets A10).
 
 ### Example 3: State in services
-Code excerpt in `mobile/module_core/lib/src/services/sse_event_service.dart:14-22`:
+Code excerpt in `client/module_core/lib/src/services/sse_event_service.dart:14-22`:
 ```dart
 class SseEventService {
   final Map<String, SessionState> _active = {};

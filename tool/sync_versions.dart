@@ -12,7 +12,7 @@ const List<String> _bridgePackageManifests = <String>[
 ];
 
 final RegExp _semverPattern = RegExp(r'^(\d+)\.(\d+)\.(\d+)$');
-final RegExp _mobileVersionPattern = RegExp(r'^(\d+\.\d+\.\d+)(?:\+(\d+))?$');
+final RegExp _clientVersionPattern = RegExp(r'^(\d+\.\d+\.\d+)(?:\+(\d+))?$');
 final RegExp _pubspecVersionPattern = RegExp(
   r'^version:\s*([^#\s]+)\s*$',
   multiLine: true,
@@ -43,8 +43,8 @@ class _ParsedArgs {
   final String? version;
 }
 
-class _MobileVersion {
-  const _MobileVersion({required this.semver, required this.build});
+class _ClientVersion {
+  const _ClientVersion({required this.semver, required this.build});
 
   final String semver;
   final String? build;
@@ -56,8 +56,8 @@ Future<void> main(final List<String> args) async {
     final repoRoot = Directory(
       File(Platform.script.toFilePath()).parent.parent.path,
     ).path;
-    final mobilePubspecPath = _join(repoRoot, <String>[
-      'mobile',
+    final clientPubspecPath = _join(repoRoot, <String>[
+      'client',
       'app',
       'pubspec.yaml',
     ]);
@@ -74,40 +74,40 @@ Future<void> main(final List<String> args) async {
       'version.dart',
     ]);
 
-    final mobileVersion = _readMobileVersion(
-      await _readFile(path: mobilePubspecPath),
+    final clientVersion = _readClientVersion(
+      await _readFile(path: clientPubspecPath),
     );
     final bridgeCurrentVersion = _readBridgeVersion(
       await _readFile(path: bridgePubspecPath),
     );
 
     // Only enforce sync guard for automatic bumps; explicit --version can realign.
-    if (parsed.version == null && mobileVersion.semver != bridgeCurrentVersion) {
+    if (parsed.version == null && clientVersion.semver != bridgeCurrentVersion) {
       throw _CliError(
-        'Error: Bridge ($bridgeCurrentVersion) and mobile (${mobileVersion.semver}) versions are out of sync. '
-        'Run `make bump-version VERSION=${mobileVersion.semver}` to align them before bumping.',
+        'Error: Bridge ($bridgeCurrentVersion) and client (${clientVersion.semver}) versions are out of sync. '
+        'Run `make bump-version VERSION=${clientVersion.semver}` to align them before bumping.',
       );
     }
 
     final targetBridgeVersion =
         parsed.version ??
-        _bumpVersion(baseVersion: mobileVersion.semver, type: parsed.type!);
+        _bumpVersion(baseVersion: clientVersion.semver, type: parsed.type!);
     _validateSemver(version: targetBridgeVersion);
 
-    final targetMobileVersion = mobileVersion.build != null
-        ? '$targetBridgeVersion+${mobileVersion.build}'
+    final targetClientVersion = clientVersion.build != null
+        ? '$targetBridgeVersion+${clientVersion.build}'
         : targetBridgeVersion;
 
     final plannedPaths = <String>[
       'bridge/app/pubspec.yaml',
       'bridge/app/lib/src/version.dart',
       ..._bridgePackageManifests,
-      'mobile/app/pubspec.yaml',
+      'client/app/pubspec.yaml',
     ];
 
     if (parsed.dryRun) {
     stdout.writeln('Target bridge version: $targetBridgeVersion');
-    stdout.writeln('Target mobile version: $targetMobileVersion');
+    stdout.writeln('Target client version: $targetClientVersion');
     stdout.writeln('Planned releaseTag: v$targetBridgeVersion');
       stdout.writeln('Files that would change:');
       for (final relativePath in plannedPaths) {
@@ -133,15 +133,15 @@ Future<void> main(final List<String> args) async {
       );
     }
     await _writePubspecVersion(
-      path: mobilePubspecPath,
-      newVersion: targetMobileVersion,
+      path: clientPubspecPath,
+      newVersion: targetClientVersion,
     );
 
     stdout.writeln(
       'Synced bridge version: $bridgeCurrentVersion -> $targetBridgeVersion',
     );
     stdout.writeln(
-      'Synced mobile version: ${mobileVersion.semver}${mobileVersion.build != null ? "+${mobileVersion.build}" : ""} -> $targetMobileVersion',
+      'Synced client version: ${clientVersion.semver}${clientVersion.build != null ? "+${clientVersion.build}" : ""} -> $targetClientVersion',
     );
   } on _CliError catch (error) {
     stderr.writeln(error.message);
@@ -258,19 +258,19 @@ Future<String> _readFile({required String path}) => File(path).readAsString();
 Future<void> _writeFile({required String path, required String content}) =>
     File(path).writeAsString(content);
 
-_MobileVersion _readMobileVersion(final String content) {
+_ClientVersion _readClientVersion(final String content) {
   final match = _pubspecVersionPattern.firstMatch(content);
   if (match == null) {
-    throw const _CliError('Error: Could not find version in mobile pubspec');
+    throw const _CliError('Error: Could not find version in client pubspec');
   }
 
   final rawVersion = match.group(1)!;
-  final parsed = _mobileVersionPattern.firstMatch(rawVersion);
+  final parsed = _clientVersionPattern.firstMatch(rawVersion);
   if (parsed == null) {
-    throw _CliError('Error: Invalid mobile version "$rawVersion"');
+    throw _CliError('Error: Invalid client version "$rawVersion"');
   }
 
-  return _MobileVersion(semver: parsed.group(1)!, build: parsed.group(2));
+  return _ClientVersion(semver: parsed.group(1)!, build: parsed.group(2));
 }
 
 String _readBridgeVersion(final String content) {
@@ -293,7 +293,7 @@ void _validateSemver({required String? version}) {
 String _bumpVersion({required String baseVersion, required String type}) {
   final match = _semverPattern.firstMatch(baseVersion);
   if (match == null) {
-    throw _CliError('Error: Invalid mobile semver "$baseVersion"');
+    throw _CliError('Error: Invalid client semver "$baseVersion"');
   }
 
   final major = int.parse(match.group(1)!);

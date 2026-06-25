@@ -1,6 +1,6 @@
 ---
 name: update-dependencies
-description: Weekly dependency update workflow for Sesori Apps Monorepo. Updates every pubspec.yaml across the bridge and mobile workspaces plus standalone packages, regenerates all lockfiles, re-resolves iOS/macOS SwiftPM native dependencies (Package.resolved), updates Fastlane/Gemfile versions, handles conflicts, and verifies via analyze/test/codegen.
+description: Weekly dependency update workflow for Sesori Apps Monorepo. Updates every pubspec.yaml across the bridge and client workspaces plus standalone packages, regenerates all lockfiles, re-resolves iOS/macOS SwiftPM native dependencies (Package.resolved), updates Fastlane/Gemfile versions, handles conflicts, and verifies via analyze/test/codegen.
 ---
 
 <objective>
@@ -11,13 +11,13 @@ Systematically update all project dependencies across both Dart workspaces and s
 <workspaces>
 The repo has two Dart workspaces and two standalone packages. Workspace members share a single resolution; standalone packages resolve independently.
 
-**Mobile workspace** (`mobile/pubspec.yaml` is the workspace root, has `flutter` env constraint):
+**Client workspace** (`client/pubspec.yaml` is the workspace root, has `flutter` env constraint):
 
-- `mobile/pubspec.yaml` — workspace root, env only
-- `mobile/module_auth/pubspec.yaml`
-- `mobile/module_core/pubspec.yaml`
-- `mobile/module_prego/pubspec.yaml` (Flutter package — theme/assets)
-- `mobile/app/pubspec.yaml` (Flutter app — Firebase, flutter_bloc, etc.)
+- `client/pubspec.yaml` — workspace root, env only
+- `client/module_auth/pubspec.yaml`
+- `client/module_core/pubspec.yaml`
+- `client/module_prego/pubspec.yaml` (Flutter package — theme/assets)
+- `client/app/pubspec.yaml` (Flutter app — Firebase, flutter_bloc, etc.)
 
 **Bridge workspace** (`bridge/pubspec.yaml` is the workspace root, pure Dart):
 
@@ -41,21 +41,21 @@ The repo has two Dart workspaces and two standalone packages. Workspace members 
 <ios_files>
 Sesori iOS is **Swift Package Manager only** — there is no Podfile, and CocoaPods is not part of the iOS dependency graph. Do not run `pod install` or attempt to add Podfile handling here.
 
-- `mobile/app/ios/Gemfile` (fastlane gem only)
-- `mobile/app/ios/Gemfile.lock`
+- `client/app/ios/Gemfile` (fastlane gem only)
+- `client/app/ios/Gemfile.lock`
 </ios_files>
 
 <android_files>
 
-- `mobile/app/android/Gemfile` (fastlane gem)
-- `mobile/app/android/Gemfile.lock`
+- `client/app/android/Gemfile` (fastlane gem)
+- `client/app/android/Gemfile.lock`
 </android_files>
 
 <swiftpm_files>
 iOS and macOS pull native dependencies (Firebase, Google SDKs, leveldb, gRPC, etc.) via Swift Package Manager. The resolved native versions are pinned in `Package.resolved` lockfiles. With the Flutter + Xcode SPM integration, the plugin packages are registered at the **project** level, so the **build-authoritative** copies — the ones `flutter build` regenerates and the shipped build actually uses — are the project-workspace copies:
 
-- `mobile/app/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`
-- `mobile/app/macos/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`
+- `client/app/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`
+- `client/app/macos/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`
 
 These are the two files Phase 5 refreshes and commits. The sibling `Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved` copies are NOT touched by `flutter build` (they sit stale/divergent from the project copies) — leave them alone; do not hand-edit or force-sync them.
 
@@ -80,14 +80,14 @@ Cross-check the output against the package inventory in `<project_structure>`. I
 
 ```bash
 sed -n '/^workspace:/,$p' bridge/pubspec.yaml
-sed -n '/^workspace:/,$p' mobile/pubspec.yaml
+sed -n '/^workspace:/,$p' client/pubspec.yaml
 ```
 </step>
 
 <step name="0.3">List the iOS/macOS SwiftPM lockfiles that Phase 5 will refresh (expect exactly two — the project-workspace copies that `flutter build` maintains; these are native deps and are in scope):
 
 ```bash
-find mobile/app -path '*Runner.xcodeproj/project.xcworkspace*Package.resolved' -not -path '*/build/*' | sort
+find client/app -path '*Runner.xcodeproj/project.xcworkspace*Package.resolved' -not -path '*/build/*' | sort
 ```
 </step>
 </phase>
@@ -123,11 +123,11 @@ For each pubspec.yaml below, read its `environment` section and update only the 
 
 | File | Has `sdk` | Has `flutter` | Constraint style |
 |------|-----------|---------------|------------------|
-| `mobile/pubspec.yaml` | ✅ | ✅ | caret (`^3.12.2`) + range (`">=3.44.2 <3.45.0"`) |
-| `mobile/app/pubspec.yaml` | ✅ | — | caret |
-| `mobile/module_auth/pubspec.yaml` | ✅ | — | caret |
-| `mobile/module_core/pubspec.yaml` | ✅ | — | caret |
-| `mobile/module_prego/pubspec.yaml` | ✅ | — | caret |
+| `client/pubspec.yaml` | ✅ | ✅ | caret (`^3.12.2`) + range (`">=3.44.2 <3.45.0"`) |
+| `client/app/pubspec.yaml` | ✅ | — | caret |
+| `client/module_auth/pubspec.yaml` | ✅ | — | caret |
+| `client/module_core/pubspec.yaml` | ✅ | — | caret |
+| `client/module_prego/pubspec.yaml` | ✅ | — | caret |
 | `bridge/pubspec.yaml` | ✅ | — | caret |
 | `bridge/app/pubspec.yaml` | ✅ | — | caret |
 | `bridge/sesori_plugin_interface/pubspec.yaml` | ✅ | — | caret |
@@ -141,7 +141,7 @@ Example:
 ```yaml
 environment:
   sdk: ^DART_VERSION
-  flutter: ">=FLUTTER_VERSION <NEXT_MINOR"   # mobile/pubspec.yaml only
+  flutter: ">=FLUTTER_VERSION <NEXT_MINOR"   # client/pubspec.yaml only
 ```
 
 </step>
@@ -184,15 +184,15 @@ find . -name "pubspec.lock" \
 (cd shared/sesori_shared && dart pub outdated)
 ```
 
-**Mobile workspace** (one resolution covers all members; run `outdated` per-member to see direct deps per package — `flutter pub outdated` for Flutter packages, `dart pub outdated` for pure-Dart members):
+**Client workspace** (one resolution covers all members; run `outdated` per-member to see direct deps per package — `flutter pub outdated` for Flutter packages, `dart pub outdated` for pure-Dart members):
 
 ```bash
 set -e
-(cd mobile && flutter pub get)
-(cd mobile/module_auth && dart pub outdated)       # pure Dart
-(cd mobile/module_core && dart pub outdated)       # pure Dart
-(cd mobile/module_prego && flutter pub outdated)    # Flutter (flutter: sdk: flutter)
-(cd mobile/app && flutter pub outdated)            # Flutter app
+(cd client && flutter pub get)
+(cd client/module_auth && dart pub outdated)       # pure Dart
+(cd client/module_core && dart pub outdated)       # pure Dart
+(cd client/module_prego && flutter pub outdated)    # Flutter (flutter: sdk: flutter)
+(cd client/app && flutter pub outdated)            # Flutter app
 ```
 
 **Bridge workspace** (pure Dart):
@@ -232,7 +232,7 @@ set -e
 
 1. `shared/sesori_shared/pubspec.yaml` (consumed by both workspaces)
 2. Bridge workspace members (dependency order): `bridge/sesori_plugin_interface`, `bridge/sesori_bridge_foundation`, `bridge/sesori_plugin_runtime`, `bridge/sesori_plugin_opencode`, `bridge/app`
-3. Mobile workspace members: `mobile/module_auth`, `mobile/module_core`, `mobile/module_prego`, `mobile/app`
+3. Client workspace members: `client/module_auth`, `client/module_core`, `client/module_prego`, `client/app`
 
 **SKIP** `shared/no_slop_linter/pubspec.yaml` — analyzer-plugin constraints are bumped manually (see the project structure note). Do not edit it here even if `pub outdated` reports newer versions.
 
@@ -249,13 +249,13 @@ For each direct dependency listed in the `pub outdated` output from Phase 2:
 **b) Apply the same for dev_dependencies** in each file.
 </step>
 
-<step name="3.2">Run pub get for each resolution unit. Each top-level (`shared/`, `bridge/`, `mobile/`) has a `Makefile` with a `pub-get` target:
+<step name="3.2">Run pub get for each resolution unit. Each top-level (`shared/`, `bridge/`, `client/`) has a `Makefile` with a `pub-get` target:
 
 ```bash
 set -e
 (cd shared && make pub-get)   # iterates sesori_shared + no_slop_linter (independent lockfiles)
 (cd bridge && make pub-get)   # single workspace resolution
-(cd mobile && make pub-get)   # single workspace resolution (uses dart from Flutter SDK)
+(cd client && make pub-get)   # single workspace resolution (uses dart from Flutter SDK)
 ```
 
 </step>
@@ -268,7 +268,7 @@ set -e
 - Re-run pub get
 </step>
 
-<step name="3.4">Verify that constraints were actually bumped — **per workspace, not globally**. The most common silent failure is updating one workspace (usually mobile) and skipping the others.
+<step name="3.4">Verify that constraints were actually bumped — **per workspace, not globally**. The most common silent failure is updating one workspace (usually client) and skipping the others.
 
 ```bash
 git diff --name-only -- '*.yaml' | sort
@@ -278,7 +278,7 @@ Account for EACH of the three resolution units independently:
 
 - **shared** — `shared/sesori_shared/pubspec.yaml`
 - **bridge** — `bridge/**/pubspec.yaml` (all members, including `sesori_bridge_foundation` and `sesori_plugin_runtime`)
-- **mobile** — `mobile/**/pubspec.yaml`
+- **client** — `client/**/pubspec.yaml`
 
 For each, confirm one of two outcomes: either (a) its pubspec(s) appear in the diff because you bumped constraints, OR (b) you can point to the Phase 2 `outdated` output showing it genuinely had no upgradable direct/dev deps.
 
@@ -295,7 +295,7 @@ For each, confirm one of two outcomes: either (a) its pubspec(s) appear in the d
 set -e
 (cd shared && make analyze)   # sesori_shared + no_slop_linter
 (cd bridge && make analyze)   # sesori_plugin_interface, sesori_bridge_foundation, sesori_plugin_runtime, sesori_plugin_opencode, app
-(cd mobile && make analyze)   # module_auth, module_core, module_prego, app (with --fatal-infos)
+(cd client && make analyze)   # module_auth, module_core, module_prego, app (with --fatal-infos)
 ```
 
 </step>
@@ -306,7 +306,7 @@ set -e
 set -e
 (cd shared && make test)
 (cd bridge && make test)
-(cd mobile && make test)
+(cd client && make test)
 ```
 
 </step>
@@ -325,7 +325,7 @@ set -e
 set -e
 (cd shared && make codegen)   # sesori_shared
 (cd bridge && make codegen)   # sesori_plugin_interface, sesori_plugin_runtime, sesori_plugin_opencode, app
-(cd mobile && make codegen)   # module_auth, module_core, module_prego, app
+(cd client && make codegen)   # module_auth, module_core, module_prego, app
 ```
 
 If a generator dependency is later added to a currently-skipped package, update `CODEGEN_MODULES` in the matching Makefile rather than re-introducing per-package commands here.
@@ -344,8 +344,8 @@ These lockfiles pin the native Firebase / Google / gRPC / leveldb versions pulle
 ```bash
 set -e
 if command -v xcodebuild >/dev/null 2>&1; then
-  (cd mobile/app && flutter build ios --config-only --release --no-codesign)
-  (cd mobile/app && flutter build macos --config-only --release)
+  (cd client/app && flutter build ios --config-only --release --no-codesign)
+  (cd client/app && flutter build macos --config-only --release)
 else
   echo "xcodebuild unavailable (non-macOS host) — record SwiftPM resolution as deferred in the conflict list"
 fi
@@ -353,7 +353,7 @@ fi
 
 This updates the two build-authoritative `Runner.xcodeproj/project.xcworkspace/.../Package.resolved` files (see `<swiftpm_files>`). Notes:
 
-- Run `flutter build` from `mobile/app`, not the `mobile` workspace root — `mobile/app` is the package that owns the `ios/`/`macos/` dirs. `flutter build` runs `flutter pub get` and regenerates the SwiftPM package itself, so there is no separate pub-get step and no stale-generated-package window to guard against.
+- Run `flutter build` from `client/app`, not the `client` workspace root — `client/app` is the package that owns the `ios/`/`macos/` dirs. `flutter build` runs `flutter pub get` and regenerates the SwiftPM package itself, so there is no separate pub-get step and no stale-generated-package window to guard against.
 - These commands are macOS + Xcode only, and under `set -e` they would abort the whole run on a non-macOS host; the `command -v xcodebuild` guard lets the workflow continue and record SwiftPM as deferred instead of silently skipping.
 - Leave the sibling `Runner.xcworkspace/.../Package.resolved` copies alone — `flutter build` does not maintain them (see `<swiftpm_files>`).
 </step>
@@ -375,16 +375,16 @@ gem search fastlane --remote --versions | head -3
 
 Update the `fastlane` gem constraint in both Gemfiles if a newer minor version is available:
 
-- `mobile/app/ios/Gemfile`
-- `mobile/app/android/Gemfile`
+- `client/app/ios/Gemfile`
+- `client/app/android/Gemfile`
 
-Do NOT touch any `cocoapods` gem entry — Sesori does not use CocoaPods. If a `cocoapods` line is still present in `mobile/app/ios/Gemfile`, leave it alone (it's an inert holdover); do not bump it.
+Do NOT touch any `cocoapods` gem entry — Sesori does not use CocoaPods. If a `cocoapods` line is still present in `client/app/ios/Gemfile`, leave it alone (it's an inert holdover); do not bump it.
 </step>
 
 <step name="5.4">Update Gemfile.lock for iOS:
 
 ```bash
-cd mobile/app/ios && bundle update && cd ../../..
+cd client/app/ios && bundle update && cd ../../..
 ```
 
 </step>
@@ -392,7 +392,7 @@ cd mobile/app/ios && bundle update && cd ../../..
 <step name="5.5">Update Gemfile.lock for Android:
 
 ```bash
-cd mobile/app/android && bundle update && cd ../../..
+cd client/app/android && bundle update && cd ../../..
 ```
 
 </step>
@@ -400,8 +400,8 @@ cd mobile/app/android && bundle update && cd ../../..
 <step name="5.6">Verify fastlane still works:
 
 ```bash
-cd mobile/app/ios && bundle exec fastlane --version && cd ../../..
-cd mobile/app/android && bundle exec fastlane --version && cd ../../..
+cd client/app/ios && bundle exec fastlane --version && cd ../../..
+cd client/app/android && bundle exec fastlane --version && cd ../../..
 ```
 
 </step>
@@ -413,7 +413,7 @@ cd mobile/app/android && bundle exec fastlane --version && cd ../../..
 <step name="6.1">If Fastlane/Gemfile changed, commit those specific files first:
 
 ```bash
-git add mobile/app/ios/Gemfile mobile/app/ios/Gemfile.lock mobile/app/android/Gemfile mobile/app/android/Gemfile.lock
+git add client/app/ios/Gemfile client/app/ios/Gemfile.lock client/app/android/Gemfile client/app/android/Gemfile.lock
 git commit -m "chore: update Fastlane gem dependencies
 
 - Update fastlane to X.Y.Z
@@ -456,12 +456,12 @@ Report this list at the end of the update process for visibility.
 - Preflight discovery (Phase 0) ran; every discovered source pubspec and workspace member is accounted for, with none silently skipped
 - Environment constraints (sdk, flutter) updated in 12 pubspec.yaml files (every pubspec EXCEPT `shared/no_slop_linter/pubspec.yaml`, which is excluded entirely — the count INCLUDES `bridge/sesori_bridge_foundation` and `bridge/sesori_plugin_runtime`)
 - Version constraints bumped to latest resolvable versions in every pubspec EXCEPT `shared/no_slop_linter/pubspec.yaml`
-- All three workspaces (shared, bridge, mobile) are individually accounted for: each either has bumped constraints or provably had no upgradable deps (Phase 3.4)
+- All three workspaces (shared, bridge, client) are individually accounted for: each either has bumped constraints or provably had no upgradable deps (Phase 3.4)
 - All pubspec.lock files regenerated (workspace roots + 2 standalone packages = 4 lockfiles)
 - iOS + macOS SwiftPM `Package.resolved` re-resolved via `flutter build --config-only` (the 2 authoritative `Runner.xcodeproj/project.xcworkspace` lockfiles), or recorded as deferred if no Xcode toolchain
-- `(cd shared && make analyze)`, `(cd bridge && make analyze)`, `(cd mobile && make analyze)` all pass
-- `(cd shared && make test)`, `(cd bridge && make test)`, `(cd mobile && make test)` all pass
-- `(cd shared && make codegen)`, `(cd bridge && make codegen)`, `(cd mobile && make codegen)` all complete cleanly
+- `(cd shared && make analyze)`, `(cd bridge && make analyze)`, `(cd client && make analyze)` all pass
+- `(cd shared && make test)`, `(cd bridge && make test)`, `(cd client && make test)` all pass
+- `(cd shared && make codegen)`, `(cd bridge && make codegen)`, `(cd client && make codegen)` all complete cleanly
 - Fastlane and Gemfile.lock updated for both iOS and Android (no `cocoapods` bumps — SPM only)
 - Conflict list documented in commit message
 - No uncommitted changes remain

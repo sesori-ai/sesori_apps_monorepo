@@ -64,7 +64,7 @@ To get diffs for each side:
 
 ```bash
 git diff <previous-tag>..HEAD -- bridge/
-git diff <previous-tag>..HEAD -- mobile/
+git diff <previous-tag>..HEAD -- client/
 git log --oneline --name-only <previous-tag>..HEAD
 ```
 

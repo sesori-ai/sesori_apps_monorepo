@@ -48,7 +48,7 @@ end
 # ABSOLUTE path only when the directory exists and is non-empty; otherwise nil,
 # so the submit lanes cleanly fall back to "no metadata" and behave exactly as
 # they did before this feature existed. Absolute because fastlane runs from
-# mobile/app/ios while the clone lives at the workspace root.
+# client/app/ios while the clone lives at the workspace root.
 def metadata_dir_from_env(var)
   raw = ENV[var].to_s.strip
   return nil if raw.empty?

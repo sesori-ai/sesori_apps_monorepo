@@ -117,17 +117,21 @@ jobs:
 
           # 3) Read marketing version from pubspec.yaml on the resolved commit
           # (NOT current main) so the submit tag matches the binary's version,
-          # and assert mobile/bridge are in sync at that commit.
-          VERSION=$(git show "${SHA}:mobile/app/pubspec.yaml" \
+          # and assert client and bridge are in sync at that commit. Try the
+          # client/app path first and fall back to the legacy mobile/app path so
+          # build tags created before the mobile/->client/ rename still promote.
+          CLIENT_PUBSPEC=$(git show "${SHA}:client/app/pubspec.yaml" 2>/dev/null \
+            || git show "${SHA}:mobile/app/pubspec.yaml" 2>/dev/null || true)
+          VERSION=$(printf '%s\n' "$CLIENT_PUBSPEC" \
             | awk '/^version:/{split($2,a,"+"); print a[1]; exit}')
           if [[ -z "$VERSION" ]]; then
-            echo "::error::Could not parse version from mobile pubspec.yaml at ${SHA}"
+            echo "::error::Could not parse version from client/app (or legacy mobile/app) pubspec.yaml at ${SHA}"
             exit 1
           fi
           BRIDGE_VERSION=$(git show "${SHA}:bridge/app/pubspec.yaml" \
             | awk '/^version:/{print $2; exit}')
           if [[ "$VERSION" != "$BRIDGE_VERSION" ]]; then
-            echo "::error::Mobile ($VERSION) and bridge ($BRIDGE_VERSION) versions differ at ${SHA}. This commit predates a version sync — pick a newer build."
+            echo "::error::Client ($VERSION) and bridge ($BRIDGE_VERSION) versions differ at ${SHA}. This commit predates a version sync — pick a newer build."
             exit 1
           fi
 
@@ -160,7 +164,7 @@ jobs:
     environment: ${{ inputs.track == 'production' && 'store-production' || 'store-beta' }}
     defaults:
       run:
-        working-directory: mobile/app/ios
+        working-directory: client/app/ios
     steps:
       # Deliberately NOT the resolved build commit: the submit lane needs only
       # the fastlane config + the already-uploaded build number (passed via env),
@@ -176,7 +180,7 @@ jobs:
       # STORE_METADATA_REPO configured. fetch-depth:0 so HEAD's tags are present
       # for the gate below. Lands at $GITHUB_WORKSPACE/store-metadata — the `path`
       # is workspace-relative, independent of the job's working-directory
-      # (mobile/app/ios). persist-credentials:false so the token is not left in
+      # (client/app/ios). persist-credentials:false so the token is not left in
       # git config for the fastlane steps (fastlane reads files, not git).
       - name: Checkout store metadata
         id: cometa
@@ -219,7 +223,7 @@ jobs:
         with:
           ruby-version: '3.3'
           bundler-cache: true
-          working-directory: mobile/app/ios
+          working-directory: client/app/ios
 
       - name: Submit iOS to ${{ inputs.track }}
         env:
@@ -234,7 +238,7 @@ jobs:
           # the local pubspec may belong to a newer version.
           VERSION_NAME:                      ${{ needs.resolve.outputs.version }}
           TRACK:                             ${{ inputs.track }}
-          # Absolute paths: fastlane runs from mobile/app/ios but the metadata
+          # Absolute paths: fastlane runs from client/app/ios but the metadata
           # clone lives at the workspace root. Set ONLY when the gate decided to
           # publish; otherwise empty, so the lane sees no metadata dir and uploads
           # nothing (binary submit only). Empty also when the checkout was skipped.
@@ -278,7 +282,7 @@ jobs:
     environment: ${{ inputs.track == 'production' && 'store-production' || 'store-beta' }}
     defaults:
       run:
-        working-directory: mobile/app/android
+        working-directory: client/app/android
     steps:
       # Deliberately NOT the resolved build commit: the submit lane needs only
       # the fastlane config + the already-uploaded version code (passed via env),
@@ -330,7 +334,7 @@ jobs:
         with:
           ruby-version: '3.3'
           bundler-cache: true
-          working-directory: mobile/app/android
+          working-directory: client/app/android
 
       - name: Submit Android to ${{ inputs.track }}
         env:
@@ -350,7 +354,7 @@ jobs:
 
       - name: Cleanup credentials
         if: always()
-        # Path is relative to the job's working-directory (mobile/app/android).
+        # Path is relative to the job's working-directory (client/app/android).
         run: rm -f fastlane/service-account.json
 
       - name: Summary
@@ -451,7 +455,7 @@ jobs:
               echo "- **Tag**: \`${TAG}\` → \`${SHA}\` (already present)" >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
-            echo "::error::Tag ${TAG} already exists on a different commit (${existing}). Bump the version in mobile/app/pubspec.yaml before submitting a different build."
+            echo "::error::Tag ${TAG} already exists on a different commit (${existing}). Bump the version in client/app/pubspec.yaml before submitting a different build."
             exit 1
           fi
           git config user.name  "github-actions[bot]"
