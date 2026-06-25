@@ -1,6 +1,6 @@
 ---
 name: release
-description: Automates the synchronized Sesori App + Bridge release workflow — bumps versions together, generates changelog entries, and creates a PR
+description: Automates the synchronized Sesori App + Bridge release workflow — bumps versions together and creates a PR
 compatibility: opencode
 metadata:
   audience: maintainers
@@ -68,43 +68,24 @@ git diff <previous-tag>..HEAD -- client/
 git log --oneline --name-only <previous-tag>..HEAD
 ```
 
-Categorize commits based on their prefixes:
+Categorize commits based on their prefixes (used to summarize the PR body):
 - `feat:` or `feat(` → Added
 - `fix:` or `fix(` → Fixed
 - `chore:` → Changed (or skip unless significant)
 - `docs:` → Changed
 - `refactor:` → Changed
 
-### Step 5: Update Root CHANGELOG.md
+This repo does NOT use changelog files. Do not create or update any `CHANGELOG.md`. The categorized commits above are only used to write the PR body in the next step.
 
-Read the existing `CHANGELOG.md` and add a new section below `## [Unreleased]`:
+### Step 5: Commit the version bump
 
-```markdown
-## [<version>] - <YYYY-MM-DD>
-
-### App
-- <list of app changes, or "No changes">
-
-### Bridge
-- <list of bridge changes, or "No changes">
-```
-
-Use the actual categorized commits. Be specific about what each commit does, not just the commit message subject. When one side has no changes for this release, write exactly `- No changes`.
-
-### Step 6: Stage CHANGELOG.md
+Stage the version-bumped files and commit on the current release branch:
 
 ```bash
-git add CHANGELOG.md
-```
-
-### Step 7: Create Release Branch and Commit
-
-```bash
-git checkout -b release/v<version>
 git commit -m "chore(release): v<version>"
 ```
 
-### Step 8: Create GitHub Pull Request
+### Step 6: Create GitHub Pull Request
 
 Use `gh` to create the PR:
 
@@ -114,10 +95,9 @@ gh pr create \
   --body "$(cat <<'EOF'
 ## Summary
 - Bump shared version to v<version>
-- Update CHANGELOG.md with App and Bridge changes since v<previous>
 
 ## Changes
-<list the key changes>
+<list the key changes since v<previous>, or "No changes">
 EOF
 )" \
   --base main
