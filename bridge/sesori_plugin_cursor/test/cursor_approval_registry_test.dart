@@ -10,6 +10,9 @@ void main() {
     late AcpStdioClient client;
     late List<BridgeSseEvent> emitted;
     late CursorApprovalRegistry registry;
+    // The session whose turn is "in flight"; the registry falls back to it for
+    // requests that carry no sessionId of their own (e.g. cursor/create_plan).
+    String? activeSession;
 
     setUp(() async {
       fake = FakeAcpProcess();
@@ -19,7 +22,12 @@ void main() {
       );
       await client.connect();
       emitted = [];
-      registry = CursorApprovalRegistry(client: client, emit: emitted.add);
+      activeSession = "active-s";
+      registry = CursorApprovalRegistry(
+        client: client,
+        emit: emitted.add,
+        activeSessionResolver: () => activeSession,
+      );
       registry.attach(client.serverRequests);
     });
 
@@ -88,6 +96,30 @@ void main() {
       registry.replyQuestion(asked.id, [["Accept"]]);
       final reply = fake.written.last;
       expect((reply["result"] as Map)["accepted"], true);
+    });
+
+    test("cursor/create_plan with no sessionId is attributed to the active turn", () async {
+      // Live cursor-agent sends create_plan with a toolCallId but NO sessionId,
+      // so the question must inherit the active turn's session — otherwise it
+      // ships with an empty sessionId and the mobile client drops it.
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 8,
+        "method": "cursor/create_plan",
+        "params": {
+          "toolCallId": "tc-1",
+          "name": "Plan Z",
+          "overview": "Do z",
+          "todos": <Object?>[],
+        },
+      });
+      await pump();
+
+      final asked = emitted.single as BridgeSseQuestionAsked;
+      expect(asked.sessionID, "active-s", reason: "create_plan has no sessionId; falls back to the active turn");
+      expect(asked.displaySessionId, "active-s");
+      expect(asked.questions.single.header, "Plan Z");
+      expect(registry.pendingForSession("active-s"), hasLength(1));
     });
 
     test("a non-bool allowMultiple does not crash the handler", () async {

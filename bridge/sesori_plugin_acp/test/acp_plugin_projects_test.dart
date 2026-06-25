@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -154,6 +156,47 @@ void main() {
       // prompt; await it so the prompt frame exists before we resolve the turn.
       await sending;
       await respond("session/prompt", {"stopReason": "end_turn"});
+    });
+
+    test("catalog probe scans every known project cwd, not just the launch CWD", () async {
+      await connect(sessionCapabilities: true);
+      const opened = "/Users/x/kustos";
+      await plugin.getProject(opened); // register a second project
+
+      // Answer every session/list with an empty result so the probe scans all
+      // known cwds and then returns (nothing to load), keeping the test free of
+      // a probe sub-client. The catalog is account-global, so the probe must not
+      // restrict itself to the launch cwd — otherwise a bridge launched from a
+      // session-less directory leaves the model picker empty.
+      final answered = <Object?>{};
+      var probing = true;
+      unawaited(() async {
+        while (probing) {
+          for (final frame in fake.written.where((f) => f["method"] == "session/list")) {
+            if (answered.add(frame["id"])) {
+              fake.emit({
+                "jsonrpc": "2.0",
+                "id": frame["id"],
+                "result": {"sessions": <Object?>[]},
+              });
+            }
+          }
+          await pump();
+        }
+      }());
+
+      await plugin.probeCatalogFromExistingSession();
+      probing = false;
+
+      final listedCwds = fake.written
+          .where((f) => f["method"] == "session/list")
+          .map((f) => (f["params"] as Map)["cwd"])
+          .toSet();
+      expect(
+        listedCwds,
+        containsAll(<String>[cwd, opened]),
+        reason: "the catalog probe must scan the launch CWD AND every opened project",
+      );
     });
   });
 }

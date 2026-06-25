@@ -56,16 +56,19 @@ class AcpApprovalRegistry {
     required AcpResponder respond,
     required AcpErrorResponder respondError,
     String Function()? idGenerator,
+    String? Function()? activeSessionResolver,
   }) : _emit = emit,
        _respond = respond,
        _respondError = respondError,
-       _injectedIdGenerator = idGenerator;
+       _injectedIdGenerator = idGenerator,
+       _activeSessionResolver = activeSessionResolver;
 
   /// Convenience constructor wiring the responders to an [AcpStdioClient].
   factory AcpApprovalRegistry.forClient({
     required AcpStdioClient client,
     required void Function(BridgeSseEvent event) emit,
     String Function()? idGenerator,
+    String? Function()? activeSessionResolver,
   }) {
     return AcpApprovalRegistry(
       emit: emit,
@@ -73,6 +76,7 @@ class AcpApprovalRegistry {
       respondError: (id, code, message) =>
           client.respondToServerRequestWithError(id: id, code: code, message: message),
       idGenerator: idGenerator,
+      activeSessionResolver: activeSessionResolver,
     );
   }
 
@@ -80,6 +84,12 @@ class AcpApprovalRegistry {
   final AcpResponder _respond;
   final AcpErrorResponder _respondError;
   final String Function()? _injectedIdGenerator;
+
+  /// Resolves the session a server request belongs to when the request itself
+  /// omits one. Some agents (Cursor's `cursor/create_plan`) send blocking
+  /// requests with no `sessionId`; falling back to the active turn's session is
+  /// the only signal tying the request to the conversation that triggered it.
+  final String? Function()? _activeSessionResolver;
 
   StreamSubscription<AcpServerRequest>? _subscription;
   int _seq = 0;
@@ -103,6 +113,16 @@ class AcpApprovalRegistry {
     if (injected != null) return injected();
     _seq++;
     return "br-$_seq";
+  }
+
+  /// The session a server request belongs to: its explicit `sessionId` when
+  /// present, otherwise the active turn's session (see [_activeSessionResolver]).
+  /// Returns "" only when neither is available — the caller must treat that as
+  /// unresolved (a request stamped with "" is dropped by the mobile client).
+  String resolveSessionId(Map<String, dynamic> params) {
+    final explicit = (params["sessionId"] as String?)?.trim();
+    if (explicit != null && explicit.isNotEmpty) return explicit;
+    return _activeSessionResolver?.call() ?? "";
   }
 
   /// Registers a pending question (used by extension handlers). Caller is
@@ -272,7 +292,7 @@ class AcpApprovalRegistry {
   }
 
   void _handlePermission(AcpServerRequest request) {
-    final sessionId = (request.params["sessionId"] as String?) ?? "";
+    final sessionId = resolveSessionId(request.params);
     final bridgeRequestId = generateBridgeId();
     _pending[bridgeRequestId] = _PendingApproval(
       bridgeRequestId: bridgeRequestId,

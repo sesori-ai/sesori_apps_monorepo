@@ -14,6 +14,7 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
     required AcpStdioClient client,
     required super.emit,
     super.idGenerator,
+    super.activeSessionResolver,
   }) : super(
          respond: (id, result) =>
              client.respondToServerRequest(id: id, result: result),
@@ -36,7 +37,9 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
 
   void _handleAskQuestion(AcpServerRequest request) {
     final params = request.params;
-    final sessionId = (params["sessionId"] as String?) ?? "";
+    // Cursor's question requests may omit `sessionId`; fall back to the active
+    // turn's session so the request still surfaces in the conversation.
+    final sessionId = resolveSessionId(params);
     final title = (params["title"] as String?) ?? "Question";
     final rawQuestions = (params["questions"] as List?) ?? const [];
 
@@ -124,7 +127,10 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
 
   void _handleCreatePlan(AcpServerRequest request) {
     final params = request.params;
-    final sessionId = (params["sessionId"] as String?) ?? "";
+    // `cursor/create_plan` carries no `sessionId` (only a `toolCallId`), so
+    // resolve it from the active turn — otherwise the plan-approval question is
+    // stamped with an empty session and dropped by the mobile client.
+    final sessionId = resolveSessionId(params);
     final name = (params["name"] as String?) ?? "Plan";
     final overview = (params["overview"] as String?) ??
         (params["plan"] as String?) ??

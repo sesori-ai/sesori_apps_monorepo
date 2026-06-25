@@ -84,6 +84,18 @@ class AcpPlugin implements BridgePluginApi {
   final Map<String, PluginSessionStatus> _sessionStatuses = {};
   final Set<String> _activeSessions = {};
 
+  /// The session whose turn was most recently dispatched. Used to attribute a
+  /// mid-turn server request that carries no `sessionId` of its own (see
+  /// [AcpApprovalRegistry.resolveSessionId]). Kept as last-known rather than
+  /// cleared at turn end so a request landing on the turn boundary still
+  /// resolves to the right conversation.
+  String? _activeTurnSessionId;
+
+  /// The session whose turn was most recently dispatched, or null before the
+  /// first turn. Exposed so an approval registry can resolve a sessionId-less
+  /// server request to the active conversation.
+  String? get activeTurnSessionId => _activeTurnSessionId;
+
   /// Sessions resident in the live agent process (created via `session/new` or
   /// resumed via `session/load` this run). ACP agents hold sessions in memory
   /// per process, so a session from a prior bridge run must be re-loaded before
@@ -491,6 +503,10 @@ class AcpPlugin implements BridgePluginApi {
         .toList(growable: false);
     if (blocks.isEmpty) return;
 
+    // Remember the session whose turn is now in flight. Server requests that
+    // arrive mid-turn without their own sessionId (e.g. Cursor's
+    // `cursor/create_plan`) are attributed to it via [activeTurnSessionId].
+    _activeTurnSessionId = sessionId;
     eventMapper.beginTurn(sessionId);
     _sessionStatuses[sessionId] = const PluginSessionStatus.busy();
     _eventBuffer.add(
@@ -716,16 +732,34 @@ class AcpPlugin implements BridgePluginApi {
   /// (a brand-new account's first `session/new` populates the catalog instead).
   Future<void> probeCatalogFromExistingSession() async {
     if (_client == null) return;
-    final List<PluginSession> sessions;
-    try {
-      sessions = await getSessions(projectCwd);
-    } catch (_) {
-      return;
+    // The catalog (models/modes) is account-global, so ANY existing session is a
+    // valid source. `session/list` is cwd-scoped, and the launch cwd is often a
+    // fresh directory with no history while other opened projects do have
+    // sessions — so scan every known project's cwd and load the newest session
+    // found (using its own cwd). Scanning the launch cwd alone would leave the
+    // catalog empty, and the model picker blank, whenever the bridge starts in a
+    // directory that has never hosted a session.
+    await _projects.ensureLoaded();
+    final cwds = <String>{
+      projectCwd,
+      for (final project in _projects.list()) project.id,
+    };
+    PluginSession? newest;
+    for (final cwd in cwds) {
+      final List<PluginSession> sessions;
+      try {
+        sessions = await getSessions(cwd);
+      } catch (_) {
+        continue;
+      }
+      for (final session in sessions) {
+        if (session.id.isEmpty) continue;
+        if (newest == null || _sessionRecency(session) > _sessionRecency(newest)) {
+          newest = session;
+        }
+      }
     }
-    if (sessions.isEmpty) return;
-    // `session/list` returns newest-first; the first entry is the freshest
-    // source for the (account-stable) catalog.
-    final newestId = sessions.first.id;
+    if (newest == null) return;
     final probe = AcpStdioClient(
       launchSpec: launchSpec,
       processFactory: _processFactory,
@@ -738,8 +772,8 @@ class AcpPlugin implements BridgePluginApi {
       final raw = await probe.request(
         method: AcpMethods.sessionLoad,
         params: {
-          "sessionId": newestId,
-          "cwd": projectCwd,
+          "sessionId": newest.id,
+          "cwd": newest.directory,
           "mcpServers": const <Object?>[],
         },
         timeout: const Duration(minutes: 1),
@@ -751,6 +785,12 @@ class AcpPlugin implements BridgePluginApi {
       await probe.dispose();
     }
   }
+
+  /// Recency key for picking the freshest session as the catalog source. A
+  /// missing timestamp sorts oldest — any session is a valid catalog source, so
+  /// falling back to 0 just means "no better candidate than first-seen".
+  static int _sessionRecency(PluginSession session) =>
+      session.time?.updated ?? session.time?.created ?? 0;
 
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async {

@@ -85,7 +85,13 @@ class CursorPlugin extends AcpPlugin {
 
   @override
   AcpApprovalRegistry buildApprovalRegistry(AcpStdioClient client) {
-    return CursorApprovalRegistry(client: client, emit: emitEvent);
+    return CursorApprovalRegistry(
+      client: client,
+      emit: emitEvent,
+      // cursor/create_plan (and some ask_question) requests carry no sessionId;
+      // resolve them to the session whose turn is currently in flight.
+      activeSessionResolver: () => activeTurnSessionId,
+    );
   }
 
   @override
