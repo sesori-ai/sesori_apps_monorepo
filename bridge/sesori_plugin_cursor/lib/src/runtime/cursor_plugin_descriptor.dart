@@ -1,8 +1,9 @@
 import "dart:async";
-import "dart:convert";
 import "dart:io" as io;
 
 import "package:acp_plugin/acp_plugin.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
+    show CommandResult, HostProcessCommandExecutor;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../cursor_binary.dart";
@@ -124,67 +125,52 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
     required HostProcessService processes,
     required Map<String, String> environment,
   }) async {
-    final SpawnedProcess process;
+    // Run the `--version` probe through the shared host-process executor, which
+    // owns the spawn/drain/timeout/force-kill mechanics (the same primitive the
+    // codex and opencode probes use). Cursor layers its calendar-version gate
+    // and CLI-specific guidance on top of the raw result.
+    final executor = HostProcessCommandExecutor(
+      processes: processes,
+      runInShell: io.Platform.isWindows,
+    );
+    final CommandResult result;
     try {
-      process = await processes.spawn(
-        executable: executablePath,
-        arguments: const ["--version"],
+      result = await executor.run(
+        executablePath,
+        const ["--version"],
         environment: environment,
-        workingDirectory: null,
-        runInShell: io.Platform.isWindows,
+        timeout: _versionProbeTimeout,
       );
-    } on Object catch (error) {
-      Log.d("[cursor] availability probe could not launch '$executablePath --version': $error");
-      return PluginUnavailable(message: _notInstalledMessage(executablePath: executablePath));
-    }
-
-    final stdoutBuffer = StringBuffer();
-    final stdoutSubscription =
-        process.stdout.transform(utf8.decoder).listen(stdoutBuffer.write, onError: (Object _) {});
-    final stderrSubscription = process.stderr.listen((_) {}, onError: (Object _) {});
-    try {
-      final exitCode = await process.exitCode.timeout(_versionProbeTimeout);
-      if (exitCode == 0) {
-        final version = stdoutBuffer.toString().trim();
-        final parsed = _CalVer.tryParse(version);
-        final minimum = _CalVer.tryParse(minVersion);
-        if (parsed != null && minimum != null && parsed.compareTo(minimum) < 0) {
-          Log.w("[cursor] cursor-agent $version is below the supported minimum $minVersion");
-          return PluginUnavailable(
-            message: _outdatedMessage(executablePath: executablePath, version: version),
-          );
-        }
-        Log.d("[cursor] available: '$executablePath --version' -> ${version.isEmpty ? "exit 0 (no output)" : version}");
-        return const PluginAvailable();
-      }
-      Log.d("[cursor] availability probe '$executablePath --version' exited with code $exitCode");
-      return PluginUnavailable(message: _notWorkingMessage(executablePath: executablePath));
     } on TimeoutException {
+      // The probe launched but never exited (executor force-killed it):
+      // installed but not answering.
       Log.d(
         "[cursor] availability probe '$executablePath --version' did not exit within "
         "${_versionProbeTimeout.inSeconds}s",
       );
-      try {
-        await processes.signalForce(pid: process.pid);
-      } on Object {
-        // Best-effort: reap the hung probe.
-      }
       return PluginUnavailable(message: _notWorkingMessage(executablePath: executablePath));
     } on Object catch (error) {
-      Log.d("[cursor] availability probe '$executablePath --version' failed with error: $error");
-      return PluginUnavailable(message: _notWorkingMessage(executablePath: executablePath));
-    } finally {
-      try {
-        await stdoutSubscription.cancel();
-      } on Object catch (e, st) {
-        Log.w("[cursor] failed to cancel stdout subscription", e, st);
-      }
-      try {
-        await stderrSubscription.cancel();
-      } on Object catch (e, st) {
-        Log.w("[cursor] failed to cancel stderr subscription", e, st);
-      }
+      // Spawn could not launch — almost always ENOENT: not installed / not on PATH.
+      Log.d("[cursor] availability probe could not launch '$executablePath --version': $error");
+      return PluginUnavailable(message: _notInstalledMessage(executablePath: executablePath));
     }
+
+    if (result.exitCode != 0) {
+      Log.d("[cursor] availability probe '$executablePath --version' exited with code ${result.exitCode}");
+      return PluginUnavailable(message: _notWorkingMessage(executablePath: executablePath));
+    }
+
+    final version = result.stdout.trim();
+    final parsed = _CalVer.tryParse(version);
+    final minimum = _CalVer.tryParse(minVersion);
+    if (parsed != null && minimum != null && parsed.compareTo(minimum) < 0) {
+      Log.w("[cursor] cursor-agent $version is below the supported minimum $minVersion");
+      return PluginUnavailable(
+        message: _outdatedMessage(executablePath: executablePath, version: version),
+      );
+    }
+    Log.d("[cursor] available: '$executablePath --version' -> ${version.isEmpty ? "exit 0 (no output)" : version}");
+    return const PluginAvailable();
   }
 
   String _notInstalledMessage({required String executablePath}) {
