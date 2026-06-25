@@ -126,7 +126,7 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
   /// How far past the bar the scroll-edge effects (the package colour fade and
   /// the [PregoScrollEdgeBlur]) ramp out. A little longer than the package
   /// default (20) for a softer, smoother release of content below the bar.
-  static const double _scrollEdgeFadeExtent = 20;
+  static const double _scrollEdgeFadeExtent = 80;
 
   /// Page glass-layer settings replicated from the showcase's
   /// `RecommendedGlassSettings.standard` (an example-only constant, not a
@@ -203,21 +203,26 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
     //  2. the optional modal scrim (dims everything, including the blur).
     // Both sit below the bar so its glass buttons stay interactive.
     final bodyOverlays = <Widget>[
-      // Only frost when the body actually scrolls behind the bar; with
-      // [extendBehind] off, GlassScaffold insets the body below the bar so
-      // there is nothing behind it to blur.
-      if (extendBehind)
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: PregoScrollEdgeBlur(
-            // Match the package's fade zone exactly (safe area + bar + extent)
-            // so the blur releases in lockstep with the colour fade.
-            height: topPad + topNav.preferredSize.height + _scrollEdgeFadeExtent,
-            plateauHeight: topPad + topNav.preferredSize.height,
+      Positioned(
+        top: 0,
+        left: 0,
+        right: 0,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                context.prego.colors.bgPrimary.withValues(alpha: 0.9),
+                context.prego.colors.bgPrimary.withValues(alpha: 0.7),
+                context.prego.colors.bgPrimary.withValues(alpha: 0),
+              ],
+              stops: const [0, 0.8, 1.0],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
           ),
+          height: topPad + topNav.preferredSize.height,
         ),
+      ),
       if (overlay != null) Positioned.fill(child: overlay),
     ];
 
