@@ -1,5 +1,6 @@
 import "package:opencode_plugin/src/runtime/open_code_runtime_manifest.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
+import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -18,7 +19,7 @@ void main() {
     });
 
     test("darwin/windows ship .zip, linux ships .tar.gz", () {
-      OpenCodeRuntimeAsset asset(PlatformOs os, PlatformArch arch) =>
+      RuntimeAsset asset(PlatformOs os, PlatformArch arch) =>
           manifest.assetFor(target: PlatformTarget(os: os, arch: arch))!;
 
       expect(asset(PlatformOs.macos, PlatformArch.arm64).format, ArchiveFormat.zip);
@@ -41,7 +42,7 @@ void main() {
 
     test("bundled version is at least the minimum supported version", () {
       expect(
-        OpenCodeRuntimeManifest.bundledVersion.compareTo(OpenCodeRuntimeManifest.minSupportedVersion),
+        manifest.bundledVersion.compareTo(manifest.minPathVersion),
         greaterThanOrEqualTo(0),
       );
     });

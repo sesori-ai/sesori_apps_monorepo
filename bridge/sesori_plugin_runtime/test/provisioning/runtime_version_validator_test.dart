@@ -1,5 +1,5 @@
-import "package:opencode_plugin/src/runtime/open_code_version_validator.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
+import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
 class _FakeCommandExecutor implements CommandExecutor {
@@ -28,9 +28,9 @@ class _FakeCommandExecutor implements CommandExecutor {
 }
 
 void main() {
-  group("OpenCodeVersionValidator.detectVersion", () {
+  group("RuntimeVersionValidator.detectVersion", () {
     Future<SemanticVersion?> detect(_FakeCommandExecutor executor) {
-      return OpenCodeVersionValidator(commandExecutor: executor).detectVersion(
+      return RuntimeVersionValidator(commandExecutor: executor, runtimeId: "opencode").detectVersion(
         executable: "opencode",
         environment: const {"PATH": "/usr/bin"},
       );

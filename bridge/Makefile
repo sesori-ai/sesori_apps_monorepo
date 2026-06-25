@@ -2,7 +2,7 @@ TOOL_VERSIONS := $(shell git rev-parse --show-toplevel)/.tool-versions
 FLUTTER_VERSION := $(shell grep '^flutter' $(TOOL_VERSIONS) | awk '{print $$2}')
 DART := $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)/bin/cache/dart-sdk/bin/dart
 
-MODULES := sesori_plugin_interface sesori_bridge_foundation sesori_plugin_runtime sesori_plugin_opencode app
+MODULES := sesori_plugin_interface sesori_bridge_foundation sesori_plugin_runtime sesori_plugin_opencode sesori_plugin_codex app
 
 .PHONY: codegen opencode-codegen pub-get test analyze
 

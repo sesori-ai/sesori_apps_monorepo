@@ -99,6 +99,26 @@ void main() {
       expect(spawned.identity.commandLine, '/usr/local/bin/agent --stdio');
     });
 
+    test('spawn upgrades the identity for an interpreter-shim spawn (ps prefixes the interpreter)', () async {
+      starter.process = _FakeProcess(pidValue: 7001);
+      // A `#!/usr/bin/env node` wrapper (e.g. Homebrew's `codex`) is reported by
+      // ps with `node` prepended to our exact spawn command line. The adopted
+      // identity must still carry the real start marker so ownership matching
+      // works across restarts (otherwise the child + its port leak).
+      final inspected = _identity(
+        pid: 7001,
+        startMarker: 'Mon Jun  1 09:00:00 2026',
+        executablePath: '/opt/homebrew/bin/node',
+        commandLine: 'node /usr/local/bin/agent --stdio',
+      );
+      processRepository.inspectResults[7001] = <ProcessIdentity?>[inspected];
+
+      final spawned = await spawnAgent();
+
+      expect(spawned.identity, same(inspected));
+      expect(spawned.identity.startMarker, 'Mon Jun  1 09:00:00 2026');
+    });
+
     test('spawn falls back when inspection throws instead of failing the spawn', () async {
       starter.process = _FakeProcess(pidValue: 7001);
       processRepository.inspectError = const ProcessException('ps', <String>['-axwwo']);

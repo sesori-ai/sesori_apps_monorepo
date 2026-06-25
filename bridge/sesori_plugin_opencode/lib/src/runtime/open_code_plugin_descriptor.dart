@@ -1,5 +1,4 @@
 import "dart:async";
-import "dart:convert";
 import "dart:io" as io;
 import "dart:math";
 
@@ -17,12 +16,8 @@ import "open_code_bridge_plugin.dart";
 import "open_code_managed_api.dart";
 import "open_code_ownership_record.dart";
 import "open_code_record_mapper.dart";
-import "open_code_runtime_cleaner.dart";
-import "open_code_runtime_install_service.dart";
 import "open_code_runtime_manifest.dart";
 import "open_code_runtime_policy.dart";
-import "open_code_runtime_provision_service.dart";
-import "open_code_version_validator.dart";
 
 /// Builds the [OpenCodeManagedApi] for a resolved server. The production default
 /// constructs an [OpenCodePlugin] with auto-initialization disabled (the
@@ -96,7 +91,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     Duration coldStartBudget = openCodeColdStartBudget,
     Duration versionProbeTimeout = openCodeVersionProbeTimeout,
     OpenCodeDbOptimizer? optimizeDb,
-    OpenCodeRuntimeProvisionService? provisionService,
+    ManagedRuntimeProvisionService? provisionService,
   }) : _buildApi = buildApi,
        _probeClientFactory = probeClientFactory,
        _candidatePorts = candidatePorts,
@@ -118,7 +113,7 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
 
   /// Test seam for the runtime provisioner. Production builds a default in
   /// [ensureRuntime] from the host's process service and an HTTP client.
-  final OpenCodeRuntimeProvisionService? _provisionService;
+  final ManagedRuntimeProvisionService? _provisionService;
 
   /// The OpenCode CLI options the bridge declares for this plugin.
   ///
@@ -281,10 +276,20 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     }
     final explicitBin = config.value("bin")?.trim();
     if (explicitBin != null && explicitBin.isNotEmpty) {
-      return _probeOpenCodeBinary(
+      const manifest = OpenCodeRuntimeManifest();
+      return RuntimeAvailabilityProber(
+        displayName: manifest.displayName,
+        installDocsUrl: manifest.installDocsUrl,
+        runtimeId: manifest.runtimeId,
+      ).probe(
         executablePath: explicitBin,
         processes: processes,
         environment: environment,
+        versionProbeTimeout: _versionProbeTimeout,
+        // On Windows the binary is typically an `opencode.cmd`/`.ps1` shim that
+        // only resolves through a shell — matching how the managed runtime
+        // spawns `opencode serve`.
+        runInShell: io.Platform.isWindows,
       );
     }
     return const PluginAvailable();
@@ -322,120 +327,31 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
 
   /// Assembles the production provisioner from the host's process service (so
   /// helper commands go through the host, never a raw spawn) and [httpClient].
-  OpenCodeRuntimeProvisionService _buildDefaultProvisionService({
+  ManagedRuntimeProvisionService _buildDefaultProvisionService({
     required PluginHost host,
     required http.Client httpClient,
   }) {
+    const manifest = OpenCodeRuntimeManifest();
     final commandExecutor = HostProcessCommandExecutor(
       processes: host.processes,
       runInShell: io.Platform.isWindows,
     );
-    return OpenCodeRuntimeProvisionService(
-      manifest: const OpenCodeRuntimeManifest(),
-      versionValidator: OpenCodeVersionValidator(
+    return ManagedRuntimeProvisionService(
+      manifest: manifest,
+      versionValidator: RuntimeVersionValidator(
         commandExecutor: commandExecutor,
+        runtimeId: manifest.runtimeId,
         probeTimeout: _versionProbeTimeout,
       ),
-      installService: OpenCodeRuntimeInstallService(
+      installService: RuntimeInstallService(
         downloadClient: BinaryDownloadClient(httpClient: httpClient),
         checksumValidator: ChecksumValidator(),
         archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
         commandExecutor: commandExecutor,
+        runtimeId: manifest.runtimeId,
       ),
-      cleaner: OpenCodeRuntimeCleaner(),
+      cleaner: ManagedRuntimeCleaner(runtimeId: manifest.runtimeId),
     );
-  }
-
-  /// Runs `<executablePath> --version` and classifies the outcome. Never
-  /// throws: every failure mode maps to a [PluginUnavailable] with user-facing
-  /// guidance.
-  Future<PluginAvailability> _probeOpenCodeBinary({
-    required String executablePath,
-    required HostProcessService processes,
-    required Map<String, String> environment,
-  }) async {
-    final SpawnedProcess process;
-    try {
-      process = await processes.spawn(
-        executable: executablePath,
-        arguments: const ["--version"],
-        environment: environment,
-        workingDirectory: null,
-        // On Windows the binary is typically an `opencode.cmd`/`.ps1` shim that
-        // only resolves through a shell — matching how the managed runtime
-        // spawns `opencode serve`.
-        runInShell: io.Platform.isWindows,
-      );
-    } on Object catch (error) {
-      // Spawn could not launch at all — almost always ENOENT: the binary is not
-      // installed or not on PATH.
-      Log.d("[opencode] availability probe could not launch '$executablePath --version': $error");
-      return PluginUnavailable(message: _notInstalledMessage(executablePath: executablePath));
-    }
-
-    // Accumulate stdout (the version string, for diagnostics) and drain stderr
-    // so the child can never block on a full pipe. Subscriptions, not joined
-    // futures, so a hung binary that never closes its streams cannot keep us
-    // waiting past the timeout below.
-    final stdoutBuffer = StringBuffer();
-    final stdoutSubscription = process.stdout.transform(utf8.decoder).listen(
-      stdoutBuffer.write,
-      onError: (Object error, StackTrace stackTrace) =>
-          Log.w("[opencode] version-probe stdout stream error", error, stackTrace),
-    );
-    final stderrSubscription = process.stderr.listen(
-      (_) {},
-      onError: (Object error, StackTrace stackTrace) =>
-          Log.w("[opencode] version-probe stderr stream error", error, stackTrace),
-    );
-    try {
-      final exitCode = await process.exitCode.timeout(_versionProbeTimeout);
-      if (exitCode == 0) {
-        final version = stdoutBuffer.toString().trim();
-        Log.d("[opencode] available: '$executablePath --version' -> ${version.isEmpty ? "exit 0 (no output)" : version}");
-        return const PluginAvailable();
-      }
-      Log.d("[opencode] availability probe '$executablePath --version' exited with code $exitCode");
-      return PluginUnavailable(message: _notWorkingMessage(executablePath: executablePath));
-    } on TimeoutException {
-      Log.d(
-        "[opencode] availability probe '$executablePath --version' did not exit within "
-        "${_versionProbeTimeout.inSeconds}s",
-      );
-      try {
-        await processes.signalForce(pid: process.pid);
-      } on Object catch (error, stackTrace) {
-        // Best-effort: reap the hung probe so it does not linger.
-        Log.w("[opencode] failed to reap a hung version probe (pid ${process.pid})", error, stackTrace);
-      }
-      return PluginUnavailable(message: _notWorkingMessage(executablePath: executablePath));
-    } on Object catch (error) {
-      Log.d("[opencode] availability probe '$executablePath --version' failed with error: $error");
-      return PluginUnavailable(message: _notWorkingMessage(executablePath: executablePath));
-    } finally {
-      await stdoutSubscription.cancel();
-      await stderrSubscription.cancel();
-    }
-  }
-
-  /// Message for "the OpenCode binary could not be found / launched".
-  String _notInstalledMessage({required String executablePath}) {
-    return [
-      "OpenCode was not found — the Sesori bridge needs the OpenCode CLI to run.",
-      "",
-      "Verify it is installed:  $executablePath --version",
-      "Install OpenCode:        https://opencode.ai/docs#install",
-    ].join("\n");
-  }
-
-  /// Message for "the OpenCode binary was found but `--version` failed/hung".
-  String _notWorkingMessage({required String executablePath}) {
-    return [
-      'OpenCode is installed but did not respond to "$executablePath --version".',
-      "",
-      "Re-check your install:  $executablePath --version",
-      "Reinstall OpenCode:     https://opencode.ai/docs#install",
-    ].join("\n");
   }
 
   @override

@@ -1,10 +1,9 @@
 import "dart:io";
 
-import "package:opencode_plugin/src/runtime/open_code_runtime_install_service.dart";
-import "package:opencode_plugin/src/runtime/open_code_runtime_manifest.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
 class _FakeDownloadClient implements BinaryDownloadClient {
@@ -75,17 +74,18 @@ class _FakeCommandExecutor implements CommandExecutor {
   }
 }
 
-const _asset = OpenCodeRuntimeAsset(
+const _asset = RuntimeAsset(
   assetName: "opencode-test.zip",
   format: ArchiveFormat.zip,
   sha256: "abc123",
+  archiveBinaryName: "opencode",
 );
 
 void main() {
   late Directory managedDir;
 
   setUp(() async {
-    managedDir = await Directory.systemTemp.createTemp("opencode-install");
+    managedDir = await Directory.systemTemp.createTemp("runtime-install");
   });
 
   tearDown(() async {
@@ -94,23 +94,24 @@ void main() {
     }
   });
 
-  OpenCodeRuntimeInstallService build({
+  RuntimeInstallService build({
     DownloadException? downloadError,
     bool checksumValid = true,
     bool extractSuccess = true,
     _FakeCommandExecutor? cmd,
   }) {
-    return OpenCodeRuntimeInstallService(
+    return RuntimeInstallService(
       downloadClient: _FakeDownloadClient(exception: downloadError),
       checksumValidator: _FakeChecksumValidator(valid: checksumValid),
       archiveExtractor: _FakeArchiveExtractor(success: extractSuccess),
       commandExecutor: cmd ?? _FakeCommandExecutor(),
+      runtimeId: "opencode",
     );
   }
 
   String versionDir() => p.join(managedDir.path, "1.17.9");
 
-  Stream<RuntimeProvisionProgress> install(OpenCodeRuntimeInstallService service, {StartAbortSignal? abort}) {
+  Stream<RuntimeProvisionProgress> install(RuntimeInstallService service, {StartAbortSignal? abort}) {
     return service.install(
       managedDir: managedDir.path,
       versionDir: versionDir(),
@@ -127,7 +128,7 @@ void main() {
 
     expect(File(p.join(versionDir(), "opencode")).existsSync(), isTrue);
     expect(
-      File(p.join(versionDir(), OpenCodeRuntimeInstallService.sentinelFileName)).readAsStringSync(),
+      File(p.join(versionDir(), RuntimeInstallService.sentinelFileName)).readAsStringSync(),
       equals("abc123"),
     );
     expect(events.whereType<ProvisionDownloading>(), isNotEmpty);
@@ -138,8 +139,8 @@ void main() {
     }
     // The download + staging scratch are cleaned up. The download carries the
     // archive's extension so PowerShell Expand-Archive accepts it on Windows.
-    expect(File(p.join(managedDir.path, ".opencode-runtime-download.zip")).existsSync(), isFalse);
-    expect(Directory(p.join(managedDir.path, ".opencode-runtime-staging")).existsSync(), isFalse);
+    expect(File(p.join(managedDir.path, ".sesori-runtime-download.zip")).existsSync(), isFalse);
+    expect(Directory(p.join(managedDir.path, ".sesori-runtime-staging")).existsSync(), isFalse);
   });
 
   test("isInstalled is false before, true after, and rejects a hash mismatch", () async {
@@ -155,7 +156,7 @@ void main() {
   test("throws when checksum verification fails", () async {
     await expectLater(
       install(build(checksumValid: false)).drain<void>(),
-      throwsA(isA<OpenCodeRuntimeInstallException>()),
+      throwsA(isA<RuntimeInstallException>()),
     );
     expect(File(p.join(versionDir(), "opencode")).existsSync(), isFalse);
   });
@@ -164,7 +165,7 @@ void main() {
     await expectLater(
       install(build(extractSuccess: false)).drain<void>(),
       throwsA(
-        isA<OpenCodeRuntimeInstallException>().having(
+        isA<RuntimeInstallException>().having(
           (e) => e.message,
           "message",
           allOf(contains("failed to extract"), contains("Expand-Archive exited with code 1: boom")),
@@ -175,7 +176,7 @@ void main() {
 
   test("maps a download failure to an install exception", () async {
     final service = build(downloadError: const DownloadException(kind: DownloadFailureKind.network, message: "offline"));
-    await expectLater(install(service).drain<void>(), throwsA(isA<OpenCodeRuntimeInstallException>()));
+    await expectLater(install(service).drain<void>(), throwsA(isA<RuntimeInstallException>()));
   });
 
   test("aborts when the start-abort signal fires", () async {

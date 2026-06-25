@@ -1,14 +1,52 @@
-import "package:opencode_plugin/src/runtime/open_code_runtime_cleaner.dart";
-import "package:opencode_plugin/src/runtime/open_code_runtime_install_service.dart";
-import "package:opencode_plugin/src/runtime/open_code_runtime_manifest.dart";
-import "package:opencode_plugin/src/runtime/open_code_runtime_provision_service.dart";
-import "package:opencode_plugin/src/runtime/open_code_version_validator.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
 
-class _FakeValidator implements OpenCodeVersionValidator {
+/// A fixed, harness-agnostic manifest stub for exercising the shared provision
+/// service without depending on any plugin package. Mirrors the OpenCode pins
+/// the test asserts against (id `opencode`, bundled 1.17.9, min 1.0.0, binary
+/// `opencode`), and returns a single asset for every platform target.
+class _StubManifest implements RuntimeManifest {
+  const _StubManifest();
+
+  static const RuntimeAsset _asset = RuntimeAsset(
+    assetName: "opencode-test.zip",
+    format: ArchiveFormat.zip,
+    sha256: "abc123",
+    archiveBinaryName: "opencode",
+  );
+
+  @override
+  String get runtimeId => "opencode";
+
+  @override
+  String get displayName => "OpenCode";
+
+  @override
+  String get installDocsUrl => "https://opencode.ai/docs#install";
+
+  @override
+  String get pathExecutableName => "opencode";
+
+  @override
+  String get binaryFileName => "opencode";
+
+  @override
+  SemanticVersion get minPathVersion => SemanticVersion.parse(value: "1.0.0");
+
+  @override
+  SemanticVersion get bundledVersion => SemanticVersion.parse(value: "1.17.9");
+
+  @override
+  RuntimeAsset? assetFor({required PlatformTarget target}) => _asset;
+
+  @override
+  String downloadUrlFor({required RuntimeAsset asset}) => "https://example.test/${asset.assetName}";
+}
+
+class _FakeValidator implements RuntimeVersionValidator {
   _FakeValidator({this.osVersion, List<SemanticVersion?>? managedVersions})
     : _managedVersions = managedVersions ?? const [];
 
@@ -31,7 +69,7 @@ class _FakeValidator implements OpenCodeVersionValidator {
   }
 }
 
-class _FakeInstallService implements OpenCodeRuntimeInstallService {
+class _FakeInstallService implements RuntimeInstallService {
   _FakeInstallService({this.installed = false, this.installError, this.installEvents = const []});
 
   final bool installed;
@@ -48,7 +86,7 @@ class _FakeInstallService implements OpenCodeRuntimeInstallService {
     required String versionDir,
     required String binaryFileName,
     required String downloadUrl,
-    required OpenCodeRuntimeAsset asset,
+    required RuntimeAsset asset,
     required StartAbortSignal startAborted,
   }) async* {
     installCalled = true;
@@ -62,7 +100,7 @@ class _FakeInstallService implements OpenCodeRuntimeInstallService {
   }
 }
 
-class _FakeCleaner implements OpenCodeRuntimeCleaner {
+class _FakeCleaner implements ManagedRuntimeCleaner {
   String? sweptManagedDir;
   String? sweptKeepVersion;
 
@@ -92,21 +130,21 @@ void main() {
   const stateDir = "/state";
   final String managedBinaryPath = p.join(stateDir, "opencode", "1.17.9", "opencode");
 
-  OpenCodeRuntimeProvisionService build({
+  ManagedRuntimeProvisionService build({
     SemanticVersion? osVersion,
     List<SemanticVersion?>? managedVersions,
     _FakeInstallService? install,
     _FakeCleaner? cleaner,
   }) {
-    return OpenCodeRuntimeProvisionService(
-      manifest: const OpenCodeRuntimeManifest(),
+    return ManagedRuntimeProvisionService(
+      manifest: const _StubManifest(),
       versionValidator: _FakeValidator(osVersion: osVersion, managedVersions: managedVersions),
       installService: install ?? _FakeInstallService(),
       cleaner: cleaner ?? _FakeCleaner(),
     );
   }
 
-  Future<List<RuntimeProvisionProgress>> run(OpenCodeRuntimeProvisionService service) {
+  Future<List<RuntimeProvisionProgress>> run(ManagedRuntimeProvisionService service) {
     return service.provision(host: _FakeHost(stateDirectory: stateDir)).toList();
   }
 
@@ -196,7 +234,7 @@ void main() {
   });
 
   test("reports a non-fatal failure when the managed install fails", () async {
-    final install = _FakeInstallService(installError: const OpenCodeRuntimeInstallException("network down"));
+    final install = _FakeInstallService(installError: const RuntimeInstallException("network down"));
     final events = await run(build(install: install));
 
     expect(events.last, isA<ProvisionFailed>());
