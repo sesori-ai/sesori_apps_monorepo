@@ -203,26 +203,37 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
     //  2. the optional modal scrim (dims everything, including the blur).
     // Both sit below the bar so its glass buttons stay interactive.
     final bodyOverlays = <Widget>[
-      Positioned(
-        top: 0,
-        left: 0,
-        right: 0,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                context.prego.colors.bgPrimary.withValues(alpha: 0.9),
-                context.prego.colors.bgPrimary.withValues(alpha: 0.7),
-                context.prego.colors.bgPrimary.withValues(alpha: 0),
-              ],
-              stops: const [0, 0.8, 1.0],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
+      // Only fade when the body actually scrolls behind the bar; with
+      // [extendBehind] off, GlassScaffold insets the body below the bar so
+      // there is nothing behind it to fade. Wrapped in [IgnorePointer] so the
+      // decorative gradient never swallows taps or scroll drags starting in the
+      // top region — content beneath it stays fully interactive.
+      if (extendBehind)
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: IgnorePointer(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    context.prego.colors.bgPrimary.withValues(alpha: 0.9),
+                    context.prego.colors.bgPrimary.withValues(alpha: 0.7),
+                    context.prego.colors.bgPrimary.withValues(alpha: 0),
+                  ],
+                  stops: const [0, 0.8, 1.0],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+              // Extend past the bar by the scroll-edge fade extent so the
+              // gradient releases in lockstep with the package colour fade
+              // ([topEdgeFadeExtent]) instead of stopping at the bar edge.
+              height: topPad + topNav.preferredSize.height + _scrollEdgeFadeExtent,
             ),
           ),
-          height: topPad + topNav.preferredSize.height,
         ),
-      ),
       if (overlay != null) Positioned.fill(child: overlay),
     ];
 
