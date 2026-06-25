@@ -77,11 +77,21 @@ Aristotle verdicts · Findings log · Plan-deltas.
 - **Risk:** Med-High. **Size:** M.
 - **Acceptance:** vN→vN+1 update succeeds on Linux.
 
-## PR 3.9 — Failed-update / rollback handling + update UX
-- **Goal:** Surface update-available/failed in the window; handle a failed
-  staging/apply gracefully (no bricking).
+## PR 3.9 — Update-apply policy (stop helper first) + failed-update/rollback + UX
+- **Goal:** Two parts.
+  1. **Stop the helper before staging/apply.** The bundled bridge is a running
+     child of the app install; on Windows a running executable can't be replaced,
+     and on any OS applying a bundle update while the supervisor respawns the old
+     child risks a failed or mixed-version update. The updater must mark the stop
+     as **expected** (suppress respawn — reuse the PR 2.7 "expected exit" flag),
+     stop the helper, stage/apply, relaunch, then **restore last-on**.
+  2. Surface update-available/failed in the window; handle a failed staging/apply
+     gracefully (no bricking).
 - **Risk:** Med. **Size:** M.
-- **Acceptance:** an injected failed update leaves the app runnable + reports it.
+- **Acceptance:** with the bridge **on**, an update stops the helper (no respawn
+  thrash), applies, relaunches, and restores last-on; a Windows
+  running-executable replace doesn't fail; an injected failed update leaves the
+  app runnable + reports it.
 
 ## PR 3.10 — Release-pipeline integration (non-blocking) + versioning
 - **Goal:** Hook the desktop build into `release-all-platforms.yml` +

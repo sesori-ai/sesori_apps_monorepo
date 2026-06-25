@@ -60,17 +60,20 @@ Aristotle verdicts · Findings log · Plan-deltas.
   green.
 
 ## PR 2.5 — `ControlChannelServer` + `ControlMessageDispatcher` + token responder
-- **Goal:** GUI-hosted loopback WS host + off-argv per-spawn secret;
-  `ControlMessageDispatcher` (Layer 3) routes inbound: token req →
+- **Goal:** GUI-hosted loopback WS host + off-argv per-spawn secret.
+  `ControlChannelServer` (Layer 0) exposes an inbound message stream + `send`.
+  `ControlMessageDispatcher` (**Layer 4** consumer/orchestrator) subscribes to
+  that stream and writes **down** into Layer-3 sinks: token req →
   `AuthTokenProvider` (via the `module_core` re-export from PR 2.5a — **not** a
   direct `module_auth` import in source), status/progress → `BridgeStatusTracker`,
-  **prompts → a Layer-3 prompt store/tracker** that the cubit consumes (the
-  Layer-3 dispatcher must NOT depend upward on the Layer-4 `BridgeControlCubit`/UI
-  — deps point downward, ADR A14). Tested against a fake helper client.
+  prompts → `BridgePromptTracker`. The cubit reads those trackers. All deps point
+  downward — the dispatcher touches neither the cubit (no L4↔L4) nor a peer
+  Layer-3 service as a same-level dep (ADR A14). Tested against a fake helper.
 - **Risk:** Med. **Size:** M.
 - **Acceptance:** a fake helper connects with the secret, requests + receives a
-  token; bad secret rejected; prompts surface as state/stream with no
-  dispatcher→cubit dependency; no direct `module_auth` import in non-DI source.
+  token; bad secret rejected; prompts/status surface via trackers; no
+  dispatcher→cubit dependency and no same-level dispatcher↔service edge; no direct
+  `module_auth` import in non-DI source.
 
 ## PR 2.6 — `BridgeProcessService`: spawn/kill/path + control flags
 - **Goal:** Spawn the bridge binary (path resolution dev + packaged) passing
@@ -102,12 +105,17 @@ Aristotle verdicts · Findings log · Plan-deltas.
   abort.
 
 ## PR 2.9 — Tray menu + reusable control cubit
-- **Goal:** `SystemTray` (`tray_manager`) menu: On/Off toggle (→
-  `BridgeProcessService`), status line (← `BridgeStatusTracker`), Open/Quit.
-  `BridgeControlCubit` holds the toggle/status logic (reused later by the popover).
+- **Goal:** Keep `SystemTray` (`tray_manager`) a **dumb Layer-0 adapter**: it
+  renders menu items + exposes click events through its interface; it knows
+  **nothing** about `BridgeProcessService`/`BridgeStatusTracker` (a Layer-0
+  adapter must not depend on Layer-3 — that reverses dependency direction). The
+  **Layer-4 `BridgeControlCubit`** owns the wiring: it consumes the service +
+  tracker, builds the menu model, pushes it to `SystemTray`, and handles tray
+  click events (On/Off → `BridgeProcessService`, Open/Quit). Reused later by the
+  popover.
 - **Risk:** Med. **Size:** M.
 - **Acceptance:** tray works on 3 OSes; toggle starts/stops the bridge; status
-  updates live.
+  updates live; `SystemTray` has no dependency on Layer-3 classes.
 
 ## PR 2.10 — `WindowHost` single window + v1 window contents
 - **Goal:** `window_manager` single window (show/hide/focus). v1 window contents:
@@ -133,7 +141,9 @@ Aristotle verdicts · Findings log · Plan-deltas.
   can also happen with the **bridge off, crashed, or the control channel
   unreachable** — and `bridgeId` is helper-owned, so the GUI would otherwise have
   nothing to unregister and the registration would leak. So the GUI keeps a
-  **readable copy of `bridgeId`** (exposed/persisted on the GUI side) and a
+  **readable copy of `bridgeId`** — persisted on the GUI side from the
+  `registered` control event (PR 1.2/1.10) as soon as the helper registers, so a
+  later crash/stop can't leave the GUI with nothing to delete — and a
   **GUI-side unregister fallback** **before** invalidating tokens (ADR A13).
   The DELETE must go **through a `module_core` seam, not a direct auth-API call**:
   `module_core`'s `BridgeApi`/`BridgeRepository` currently cover only

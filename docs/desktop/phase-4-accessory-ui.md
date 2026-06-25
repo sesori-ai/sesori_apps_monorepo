@@ -41,11 +41,20 @@ Aristotle verdicts · Findings log · Plan-deltas.
 > `client/app` or leaves unresolved relative imports. Every move PR's acceptance
 > includes **"no `module_app_ui` → `client/app` cycle."**
 
-## PR 4.2 — Move voice capture UI
-- **Goal:** Refactor app-coupling out, then move `capabilities/voice/` UI (plugin
-  deps: `record`, `wakelock_plus`).
+## PR 4.2 — Voice: move only real UI; keep services behind module_core seams
+- **Goal:** Note that `mobile/app/lib/capabilities/voice/` is **not UI** — it's
+  injectable services/config (`VoiceTranscriptionService` (which calls the
+  Layer-1 `VoiceApi` directly), `WakeLockService`, `RecordingFileProvider`,
+  `audio_format_config`). So this PR must **not** move that directory into the
+  shared UI package (it would drag app/service/platform logic + direct API access
+  across the boundary). Instead: identify the actual **voice widgets** (if any)
+  to move into `module_app_ui`, and first relocate the voice **lifecycle** behind
+  proper `module_core` service/repository + platform seams (recording stays a
+  Flutter platform adapter). If there are no shared voice widgets, this PR is just
+  the seam relocation.
 - **Risk:** Med. **Size:** M.
-- **Acceptance:** voice capture works on mobile via the package; no cycle.
+- **Acceptance:** voice capture works on mobile via the seams; no service/API
+  logic lands in `module_app_ui`; no cycle.
 
 ## PR 4.3 — Move login/splash
 - **Goal:** Push DI/routing out of `splash_screen.dart`/login screens, then move.
@@ -71,5 +80,16 @@ Aristotle verdicts · Findings log · Plan-deltas.
 ## PR 4.7 — Desktop router composition + wire accessory UI into window
 - **Goal:** Compose the desktop GoRouter from the shared screens; render the full
   accessory UI in the desktop window via the relay.
+- **Desktop offline/onboarding seam:** the shared screens' bridge-offline flow
+  calls `ProjectListCubit.reconnectBridge()` (relay reconnect only) and shows
+  `BridgeInstall` CLI commands (install `sesori-bridge` in a terminal) — both
+  **wrong for desktop**, where the app *is* the bridge and should start the
+  supervised helper. Introduce a desktop-specific seam/callback for
+  offline/onboarding states so the desktop UI drives `BridgeProcessService` /
+  control status (turn the bridge on) instead of showing mobile install/reconnect
+  actions. (The shared screens accept this behaviour via injected
+  callback/strategy so mobile keeps its current actions.)
 - **Risk:** Med. **Size:** M.
-- **Acceptance:** desktop shows projects/sessions/chat through the relay.
+- **Acceptance:** desktop shows projects/sessions/chat through the relay; the
+  bridge-offline state offers "start the bridge" (drives `BridgeProcessService`),
+  not a CLI-install/reconnect prompt; mobile offline UX unchanged.

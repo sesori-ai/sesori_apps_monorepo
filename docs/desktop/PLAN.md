@@ -159,8 +159,8 @@ internal `new`).
 | Component | Layer | Role |
 |---|---|---|
 | `ControlChannelServer` | Layer 0 | GUI-hosted loopback WS host + per-spawn secret; inbound-as-stream + `send` (precedent: `DebugServer`) |
-| `ControlMessageDispatcher` | Layer 3 | routes inbound: token req → `AuthTokenProvider`; status/progress → `BridgeStatusTracker`; **prompts → a Layer-3 prompt store/tracker** (NOT upward into the Layer-4 cubit/UI — deps must point downward) |
-| prompt state (e.g. on `BridgeStatusTracker` or a `BridgePromptTracker`) | Layer 3 | holds pending prompts as state/stream; the cubit consumes it |
+| `ControlMessageDispatcher` | Layer 4 (consumer/orchestrator) | subscribes to `ControlChannelServer`'s inbound stream and writes **down** into Layer-3 sinks: token req → `AuthTokenProvider`; status/progress → `BridgeStatusTracker`; prompts → `BridgePromptTracker`. It depends only downward; it does NOT touch the cubit/UI. |
+| `BridgeStatusTracker` / `BridgePromptTracker` | Layer 3 | hold status/pending-prompt state as stream/snapshot; written by the dispatcher, read by the cubit |
 | process API (mirrors `HostProcessCommandExecutor`) | Layer 1 | spawn/kill/monitor a long-lived child |
 | `BridgeProcessRepository` | Layer 2 | wraps the process API |
 | `BridgeProcessService` | Layer 3 | bridge child lifecycle: spawn (control flags), exit-code state machine (86/0/other + backoff), single supervised-bridge guard |
@@ -190,8 +190,12 @@ and consumes only the exported interfaces (`AuthTokenProvider`/`OAuthFlowProvide
 | A11 | GUI login opens the browser via a **desktop `UrlLauncher` adapter** | the bridge's `openOAuthBrowser` is bridge-workspace-only; `client/desktop` must not import bridge internals |
 | A12 | Token push must drive **RelayClient re-auth/reconnect**, not just emit on a stream | `RelayClient` reads the token once in `connect()`; an open socket stays on the old JWT until reconnect |
 | A13 | GUI keeps a **readable copy of `bridgeId`** + a GUI-side unregister fallback | logout can happen with the helper off/crashed/unreachable; otherwise the registration leaks |
-| A14 | Control prompts flow dispatcher → **Layer-3 prompt state** → cubit | the `ControlMessageDispatcher` (Layer 3) must not depend upward on `BridgeControlCubit` (Layer 4); it writes prompts to a Layer-3 store/tracker that the cubit reads, keeping dependencies pointing downward |
+| A14 | `ControlMessageDispatcher` is **Layer 4** and depends only **downward** on Layer-3 sinks (`BridgeStatusTracker`, `BridgePromptTracker`, `AuthTokenProvider`); the cubit reads those same trackers | avoids both a same-level (L3↔L3 dispatcher↔tracker, or L4↔L4 dispatcher↔cubit) dependency and an upward dependency — the dispatcher writes trackers, the cubit reads trackers, so all edges point downward |
 | A15 | All module_core platform prerequisites registered in the **first DI slice** | `LoginCubit`/`ConnectionService` need `LifecycleSource`/`RelayCryptoService`/`FailureReporter`; deferring them breaks `get_it` resolution in early PRs |
+| A16 | `SystemTray` stays a **dumb Layer-0 adapter**; the Layer-4 cubit drives it and consumes the service/tracker | a platform adapter must not depend on Layer-3 lifecycle/status — that reverses dependency direction |
+| A17 | The helper emits a **`registered` control event with `bridgeId`**; the GUI persists it on receipt | gives the GUI a readable id for the offline-unregister fallback (A13) before any crash/stop |
+| A18 | Updater **stops the helper (expected-exit, suppress respawn) before staging/apply**, restores last-on after relaunch | a running child can't be replaced (Windows) and respawn-during-apply risks mixed-version/failed updates |
+| A19 | Desktop offline/onboarding uses a **desktop seam** that starts the supervised helper, not mobile `reconnectBridge()`/`BridgeInstall` CLI prompts | on desktop the app *is* the bridge; the shared mobile actions don't start the helper |
 
 ## 8. Open risks & lead-time register
 
@@ -261,13 +265,13 @@ Legend: ☐ pending · ◐ in-progress · ☑ done. Sizes: **S** ≤150 LOC · *
 - ☐ 3.6 macOS self-update (Sparkle) + EdDSA + appcast — High / M
 - ☐ 3.7 Windows self-update (WinSparkle) + appcast — High / M
 - ☐ 3.8 Linux self-update (zsync/AppImageUpdate) — Med-High / M
-- ☐ 3.9 Failed-update/rollback handling + update UX — Med / M
+- ☐ 3.9 Update-apply policy (stop helper first) + rollback + update UX — Med / M
 - ☐ 3.10 Release-pipeline integration (non-blocking) + `make bump-version` + changelog — Med / M
 - ☐ 3.11 Uninstall + login-item/token cleanup — Low-Med / S-M
 
 ### Phase 4 — Accessory UI (v1.x) → `phase-4-accessory-ui.md`
 - ☐ 4.1 Create `client/module_app_ui` + move shared widgets/extensions/l10n — Med / M
-- ☐ 4.2 Move voice capture UI — Med / M
+- ☐ 4.2 Voice: move only real UI; keep services behind module_core seams — Med / M
 - ☐ 4.3 Move login/splash — Med / M
 - ☐ 4.4 Move project_list + session_list — Med / M
 - ☐ 4.5 Move session_detail + session_diffs + new_session (split if needed) — Med / M

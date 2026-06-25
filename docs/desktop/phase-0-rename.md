@@ -30,7 +30,11 @@ DoD · Aristotle verdicts · Findings log · Plan-deltas.
       before Phase 3). Use explicit mobile-product paths instead:
       `client/app/**` + shared mobile modules (`client/module_core/**`,
       `client/module_auth/**`, `client/module_prego/**`) and later
-      `client/module_app_ui/**` — **excluding** `client/desktop/**`.
+      `client/module_app_ui/**`, **plus the workspace-root files** that drive
+      mobile dependency resolution (`client/pubspec.yaml`, `client/pubspec.lock`,
+      `client/analysis_options.yaml`, `client/Makefile`) — **excluding**
+      `client/desktop/**`. (Omitting the workspace-root files would let a
+      dependency/lockfile change merge without the mobile CI/release gates.)
   - `.github/actions/setup-flutter/action.yml` (`default: 'mobile'`).
   - `tool/sync_versions.dart` (path joins **and** hardcoded `'mobile'` error
     strings) and `tool/generate_release_notes.dart:364`

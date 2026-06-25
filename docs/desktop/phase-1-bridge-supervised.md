@@ -51,7 +51,9 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 ## PR 1.2 — Control-protocol Freezed DTOs (incl. provision-progress mirror)
 - **Goal:** Define wire DTOs in `shared/sesori_shared`: `token_request`,
   `token_response`, `token_update`, `status`, `prompt_request`/`prompt_response`,
-  `restart`, `unregister_and_exit`, and **provision-progress** variants mirroring
+  `restart`, `unregister_and_exit`, a **`registered` event carrying the
+  `bridgeId`** (so the GUI can persist a readable copy for the offline-unregister
+  fallback, ADR A13), and **provision-progress** variants mirroring
   `RuntimeProvisionProgress` (resolving/downloading{received,total}/extracting/
   verifying/notice/ready/failed). Pure data + (de)serialization + tests.
   Optional/new fields use Freezed `@Default` (not throw/catch) for forward/back
@@ -136,12 +138,16 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   structured events.
 - **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
 
-## PR 1.10 — Status push
+## PR 1.10 — Status push (incl. registered `bridgeId`)
 - **Goal:** Bridge pushes `status` (relay connection state, plugin health,
-  active-session summary) over the channel.
+  active-session summary) over the channel, **and emits the `registered` event
+  with its `bridgeId` as soon as registration succeeds** — so the GUI persists a
+  readable copy *before* any crash/stop and can run the offline-unregister
+  fallback (ADR A13, pairs with PR 2.13).
 - **Risk:** Low. **Size:** S-M.
-- **Acceptance:** status events received by a fake server; reflects live changes
-  (reactive, no polling).
+- **Acceptance:** status events received by a fake server; the `registered`
+  event carries `bridgeId` and is emitted right after registration; reflects
+  live changes (reactive, no polling).
 - **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
 
 ## PR 1.11 — `unregister-and-exit` control command
