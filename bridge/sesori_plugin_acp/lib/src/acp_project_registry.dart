@@ -55,9 +55,11 @@ class AcpProjectRegistry {
 
   Future<void> _load() async {
     // Seed the implicit default first so it is present even when the persisted
-    // file is missing or corrupt. createdAt = load time so freshly opened
-    // projects (registered later) sort above it, newest-first.
-    _entries[_cwd] = _ProjectEntry(id: _cwd, createdAt: _now(), persisted: false);
+    // file is missing or corrupt. A fixed sentinel createdAt (0) keeps it sorted
+    // oldest (bottom) and STABLE across restarts — using load time would re-stamp
+    // it on every launch, leapfrogging projects opened in a prior session.
+    // Explicitly opening the cwd ([register]) promotes it to a real timestamp.
+    _entries[_cwd] = _ProjectEntry(id: _cwd, createdAt: 0, persisted: false);
 
     final store = _store;
     if (store == null) return;
@@ -117,9 +119,12 @@ class AcpProjectRegistry {
     if (id.isEmpty) return _cwd;
     final existing = _entries[id];
     if (existing != null && existing.persisted) return id;
+    // Only the non-persisted cwd seed (createdAt 0) or an unknown path reaches
+    // here; both are being opened now, so stamp the open time — this also
+    // promotes an explicitly-opened cwd above the implicit-default sentinel.
     _entries[id] = _ProjectEntry(
       id: id,
-      createdAt: existing?.createdAt ?? _now(),
+      createdAt: _now(),
       name: existing?.name,
       persisted: true,
     );
@@ -196,8 +201,11 @@ class AcpProjectRegistry {
     });
     try {
       await store.write(name: _fileName, contents: payload);
-    } catch (_) {
-      // Best-effort: the in-memory list still serves this run.
+    } catch (error, stack) {
+      // Best-effort: the in-memory list still serves this run. Log so a
+      // persistent write failure (a discovered project that vanishes on the
+      // next restart) is diagnosable instead of silently lost.
+      Log.w("[acp] project registry write failed; serving in-memory list only", error, stack);
     }
   }
 
@@ -217,7 +225,11 @@ class AcpProjectRegistry {
   static String _normalize(String path) {
     final trimmed = path.trim();
     if (trimmed.isEmpty) return "";
-    return p.normalize(trimmed);
+    // Canonicalize to an absolute, normalized path so the same directory reached
+    // via a relative path or a `.`/`..` segment maps to one id — otherwise it
+    // would register twice and split session-to-project attribution. An already
+    // absolute path is returned unchanged (no filesystem access).
+    return p.normalize(p.absolute(trimmed));
   }
 }
 

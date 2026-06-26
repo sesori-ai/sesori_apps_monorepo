@@ -91,13 +91,18 @@ class AcpEventMapper {
   /// sessionId -> current turn number, advanced by [beginTurn].
   final Map<String, int> _turnSeq = {};
 
-  /// Part ids whose envelope/part has already been emitted this run.
-  final Set<String> _startedParts = {};
+  /// Per-session part ids whose envelope/part has already been emitted in the
+  /// current turn. Scoped per session and pruned on [beginTurn] so it cannot
+  /// grow without bound across a long-running session.
+  final Map<String, Set<String>> _startedParts = {};
 
   /// Advance the turn counter for [sessionId]. Call before `session/prompt`
   /// so the next batch of streamed chunks groups under a fresh message id.
   void beginTurn(String sessionId) {
     _turnSeq[sessionId] = (_turnSeq[sessionId] ?? 0) + 1;
+    // The new turn uses fresh (turn-numbered) part ids, so the prior turn's are
+    // dead weight — drop them to bound memory in long sessions.
+    _startedParts.remove(sessionId);
   }
 
   int _turn(String sessionId) => _turnSeq[sessionId] ?? 1;
@@ -181,7 +186,8 @@ class AcpEventMapper {
     final partId = "$messageId-$partSuffix";
 
     final events = <BridgeSseEvent>[];
-    if (_startedParts.add(partId)) {
+    final started = _startedParts.putIfAbsent(sessionId, () => <String>{});
+    if (started.add(partId)) {
       events.add(
         BridgeSseMessageUpdated(info: _messageFor(role, messageId, sessionId).toJson()),
       );
@@ -267,7 +273,7 @@ class AcpEventMapper {
           partId: partId,
           messageId: messageId,
           sessionId: sessionId,
-          tool: (update["kind"] ?? update["title"] ?? "tool") as String,
+          tool: acpToolName(update),
           state: PluginToolState(
             status: status,
             title: update["title"] as String?,

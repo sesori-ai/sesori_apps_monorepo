@@ -254,6 +254,92 @@ void main() {
       await client.dispose();
     });
 
+    test("a session's null-model turn re-applies its own model, not the global default", () async {
+      // Interleaved sessions: sA selected sonnet-4.6, sB selected gpt-5.4. A
+      // later null-model turn on sA must re-apply sonnet-4.6 (sA's own model),
+      // not fall back to the process-global default and run on gpt-5.4.
+      plugin.captureSessionConfig(catalogResult()); // default gpt-5.4
+      final client = AcpStdioClient(
+        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        processFactory: (_) async => fake,
+      );
+      await client.connect();
+
+      // sA -> sonnet-4.6 (model + default mode).
+      final a = plugin.applyTurnSelection(
+        client: client,
+        sessionId: "sA",
+        model: (providerID: "cursor", modelID: "sonnet-4.6"),
+        variant: null,
+      );
+      await respond("session/set_config_option", const {}); // model sonnet-4.6
+      await respond("session/set_config_option", const {}); // mode agent
+      await a;
+
+      // sB -> gpt-5.4, leaving the process-global selection on gpt-5.4.
+      final b = plugin.applyTurnSelection(
+        client: client,
+        sessionId: "sB",
+        model: (providerID: "cursor", modelID: "gpt-5.4"),
+        variant: null,
+      );
+      await respond("session/set_config_option", const {}); // model gpt-5.4
+      await b;
+
+      // sA again with a null model -> must push sonnet-4.6 back.
+      final aAgain = plugin.applyTurnSelection(
+        client: client,
+        sessionId: "sA",
+        model: null,
+        variant: null,
+      );
+      await respond("session/set_config_option", const {}); // model sonnet-4.6 (reapplied)
+      await aAgain;
+
+      final modelSets = fake.written
+          .where((f) => f["method"] == "session/set_config_option")
+          .map((f) => (f["params"] as Map).cast<String, dynamic>())
+          .where((p) => p["configId"] == "model")
+          .map((p) => p["value"])
+          .toList();
+      expect(modelSets, ["sonnet-4.6", "gpt-5.4", "sonnet-4.6"],
+          reason: "sA's null-model turn re-applies its own model, not the global default");
+
+      await client.dispose();
+    });
+
+    test("a rejected model switch stamps the model actually in effect", () async {
+      plugin.captureSessionConfig(catalogResult()); // default gpt-5.4
+      final client = AcpStdioClient(
+        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        processFactory: (_) async => fake,
+      );
+      await client.connect();
+
+      final applying = plugin.applyTurnSelection(
+        client: client,
+        sessionId: "s1",
+        model: (providerID: "cursor", modelID: "sonnet-4.6"),
+        variant: null,
+      );
+      // The agent rejects the model switch and keeps its current model.
+      final modelFrame = await waitForFrame("session/set_config_option");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": modelFrame["id"],
+        "error": {"code": -32000, "message": "rejected"},
+      });
+      await pump();
+      await respond("session/set_config_option", const {}); // mode agent still applies
+      await applying;
+
+      // The session is stamped with the model actually in effect (the default),
+      // not the rejected sonnet-4.6.
+      expect(plugin.eventMapper.modelForSession("s1"), "gpt-5.4");
+
+      await client.dispose();
+    });
+
     test("onConnectionReset re-applies model+mode after an agent respawn", () async {
       // Cursor's set_config_option is process-global; a respawned agent has
       // applied nothing. The applied-cache must be cleared on reset or the

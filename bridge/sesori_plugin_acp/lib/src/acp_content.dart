@@ -6,6 +6,18 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 /// the same ACP shapes; these are the single implementation so the live and
 /// history renderings cannot drift apart.
 
+/// The display name for a tool from a `tool_call`/`tool_call_update`: its
+/// `kind`, else `title`, else "tool". Fail-soft — a non-string field (schema
+/// drift / malformed agent data) falls through rather than throwing during live
+/// mapping or history replay.
+String acpToolName(Map<String, dynamic> update) {
+  final kind = update["kind"];
+  if (kind is String && kind.isNotEmpty) return kind;
+  final title = update["title"];
+  if (title is String && title.isNotEmpty) return title;
+  return "tool";
+}
+
 /// Maps an ACP tool-call status string onto the [PluginToolStatus] the mobile
 /// tool renderer consumes. Tuned during end-to-end verification.
 PluginToolStatus acpToolStatus(Object? raw) {

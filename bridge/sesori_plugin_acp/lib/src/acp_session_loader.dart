@@ -45,7 +45,7 @@ class AcpReplayCollector {
         final id = update["toolCallId"] as String?;
         if (id == null) return;
         _assistant().tools[id] = _ToolDraft(
-          tool: (update["kind"] ?? update["title"] ?? "tool") as String,
+          tool: acpToolName(update),
           title: update["title"] as String?,
           status: acpToolStatus(update["status"]),
           output: acpToolOutputText(update),
@@ -60,7 +60,7 @@ class AcpReplayCollector {
           // the card still renders, mirroring the live mapper which emits a tool
           // part unconditionally.
           _assistant().tools[id] = _ToolDraft(
-            tool: (update["kind"] ?? update["title"] ?? "tool") as String,
+            tool: acpToolName(update),
             title: update["title"] as String?,
             status: acpToolStatus(update["status"]),
             output: acpToolOutputText(update),

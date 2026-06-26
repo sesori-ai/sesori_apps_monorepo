@@ -148,6 +148,20 @@ void main() {
       expect(ids, {"/repo", "/Users/x/alpha"});
     });
 
+    test("the cwd seed stays oldest across a restart, even with a later clock", () async {
+      final store = _FakeStore();
+      final first = AcpProjectRegistry(cwd: "/repo", store: store, nowMs: monotonic());
+      await first.register("/Users/x/alpha");
+
+      // Restart much later: a fresh registry whose clock is well ahead of when
+      // alpha was opened. The implicit cwd default must not leapfrog alpha to
+      // the top just because it is re-seeded at the (later) load time.
+      var late = 9000;
+      final second = AcpProjectRegistry(cwd: "/repo", store: store, nowMs: () => ++late);
+      await second.ensureLoaded();
+      expect(second.list().map((p) => p.id).toList(), ["/Users/x/alpha", "/repo"]);
+    });
+
     test("rename sets a custom display name and persists it across reloads", () async {
       final store = _FakeStore();
       final first = AcpProjectRegistry(cwd: "/repo", store: store, nowMs: monotonic());

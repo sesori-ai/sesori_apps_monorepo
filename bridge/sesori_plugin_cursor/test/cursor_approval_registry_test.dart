@@ -211,6 +211,32 @@ void main() {
       expect(reply.containsKey("error"), isTrue);
     });
 
+    test("duplicate option labels are disambiguated so the reply maps 1:1", () async {
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 10,
+        "method": "cursor/ask_question",
+        "params": {
+          "sessionId": "s1",
+          "questions": [
+            {
+              "id": "q1",
+              "prompt": "Pick one",
+              "options": [
+                {"id": "o1", "label": "Option"},
+                {"id": "o2", "label": "Option"},
+              ],
+            },
+          ],
+        },
+      });
+      await pump();
+      final pending = registry.pendingForSession("s1").single;
+      final labels = pending.questions.single.options.map((o) => o.label).toList();
+      expect(labels, ["Option", "Option (2)"],
+          reason: "duplicate labels are made unique so label->id stays 1:1");
+    });
+
     test("questions with no usable text are dropped", () async {
       fake.emit({
         "jsonrpc": "2.0",

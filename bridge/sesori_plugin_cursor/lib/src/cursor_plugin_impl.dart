@@ -136,17 +136,27 @@ class CursorPlugin extends AcpPlugin {
     // stays fail-soft (the agent keeps its current value, see [_setConfig]).
     final requestedModel = model?.modelID;
     final useDefault = requestedModel == null || requestedModel.isEmpty;
-    final targetModel = useDefault ? _currentModelId : requestedModel;
+    // A null/empty model falls back to the session's OWN last-known model, not
+    // the process-global default, so interleaved sessions don't inherit each
+    // other's implicit model. modelForSession() chains to the global default
+    // when this session has none yet.
+    final targetModel =
+        useDefault ? eventMapper.modelForSession(sessionId) : requestedModel;
     if (targetModel != null &&
         targetModel.isNotEmpty &&
         _modelConfigId != null &&
         CursorModelProbe.hasOption(_models, targetModel)) {
+      String? effectiveModel = targetModel;
       if (targetModel != _appliedModelId) {
         if (await _setConfig(client, sessionId, _modelConfigId!, targetModel)) {
           _appliedModelId = targetModel;
+        } else {
+          // The agent rejected the switch and kept its current model — stamp the
+          // model actually in effect, not the one we failed to apply.
+          effectiveModel = _appliedModelId ?? _currentModelId;
         }
       }
-      eventMapper.setSessionModel(sessionId, targetModel, providerId: _providerId);
+      eventMapper.setSessionModel(sessionId, effectiveModel, providerId: _providerId);
     } else {
       // Unknown explicit model (fail-soft) or no default resolved yet — stamp
       // messages with the session's default.

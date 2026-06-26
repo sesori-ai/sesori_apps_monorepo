@@ -48,7 +48,7 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
       respondError(request.id, -32602, "cursor/ask_question: no resolvable session");
       return;
     }
-    final title = (params["title"] as String?) ?? "Question";
+    final title = _str(params["title"]) ?? "Question";
     final rawQ = params["questions"];
     final rawQuestions = rawQ is List ? rawQ : const <Object?>[];
 
@@ -73,7 +73,17 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
       final pluginOptions = <PluginQuestionOption>[];
       for (final option in options) {
         final id = _str(option["id"]) ?? _str(option["value"]) ?? "";
-        final label = _str(option["label"]) ?? id;
+        var label = _str(option["label"]) ?? id;
+        // The bridge round-trips the *label* the user picked, so duplicate
+        // labels would collapse to one id and reply with the wrong option.
+        // Disambiguate so each displayed label maps to exactly one id.
+        if (labelToId.containsKey(label)) {
+          var n = 2;
+          while (labelToId.containsKey("$label ($n)")) {
+            n++;
+          }
+          label = "$label ($n)";
+        }
         labelToId[label] = id;
         pluginOptions.add(PluginQuestionOption(label: label, description: ""));
       }
@@ -149,9 +159,9 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
       respondError(request.id, -32602, "cursor/create_plan: no resolvable session");
       return;
     }
-    final name = (params["name"] as String?) ?? "Plan";
-    final overview = (params["overview"] as String?) ??
-        (params["plan"] as String?) ??
+    final name = _str(params["name"]) ?? "Plan";
+    final overview = _str(params["overview"]) ??
+        _str(params["plan"]) ??
         "Review the proposed plan.";
 
     final questions = [
