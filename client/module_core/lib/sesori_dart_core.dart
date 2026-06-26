@@ -94,6 +94,7 @@ export "src/repositories/notification_preferences_repository.dart";
 export "src/repositories/notification_repository.dart";
 export "src/repositories/permission_repository.dart";
 export "src/repositories/project_repository.dart";
+export "src/repositories/registered_bridges_store.dart";
 export "src/repositories/session_repository.dart";
 // Routing
 export "src/routing/app_routes.dart";
@@ -104,7 +105,6 @@ export "src/services/foreground_notification_dispatcher.dart";
 export "src/services/new_session_selection_tracker.dart";
 export "src/services/notification_registration_service.dart";
 export "src/services/registered_bridges_service.dart";
-export "src/services/registered_bridges_store.dart";
 export "src/services/session_detail_load_service.dart";
 // Utils
 export "src/utils/command_filter/command_picker_entry_builder.dart";

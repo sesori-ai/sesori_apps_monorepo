@@ -8,7 +8,7 @@ import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/models/connection_status.dart";
 import "../logging/logging.dart";
 import "../repositories/bridge_repository.dart";
-import "registered_bridges_store.dart";
+import "../repositories/registered_bridges_store.dart";
 
 /// Reactive owner of the "this account has at least one registered bridge"
 /// signal, shared by the connection overlay (to decide whether a bridge-offline
@@ -34,8 +34,8 @@ import "registered_bridges_store.dart";
 ///    is (re)resolved so a consumer that only listens to [isRegistered] — the
 ///    overlay — gets the right answer without driving the lookup itself.
 ///
-/// [RegisteredBridgesStore] is the persistence/cache collaborator (a data-access
-/// role); this service is the Layer-3 orchestrator that adds the network tier,
+/// [RegisteredBridgesStore] is the Layer-2 persistence/cache repository (a
+/// data-access role); this service is the Layer-3 orchestrator that adds the network tier,
 /// the connection-driven latching, and the reactive stream on top of it. The
 /// store clears its own persisted latch on logout; this service resets its
 /// reactive latch on logout so a different account never inherits the answer.
@@ -52,6 +52,14 @@ class RegisteredBridgesService {
   /// callers onto a single lookup.
   Future<bool>? _activeLookup;
 
+  /// Auth generation, bumped on every logout. A lookup or connection-driven
+  /// latch captures this when it starts; if a logout bumps it while the
+  /// operation is in flight, the operation must not write the old account's
+  /// answer to the store or the stream — otherwise the next account signing in
+  /// on this device would inherit the latch and see a spurious bridge-offline
+  /// flow.
+  int _authGeneration = 0;
+
   StreamSubscription<ConnectionStatus>? _statusSubscription;
   StreamSubscription<AuthState>? _authSubscription;
 
@@ -67,10 +75,15 @@ class RegisteredBridgesService {
     unawaited(_seedFromStore());
     _statusSubscription = connectionService.status.listen(_onConnectionStatusChanged);
     _authSubscription = authSession.authStateStream.listen((state) {
-      // Logout: drop the reactive latch so a different account signing in on the
-      // same device never inherits this one's answer. The store clears its own
-      // persisted latch via its own auth listener.
-      if (state is AuthUnauthenticated) _reset();
+      // Logout: bump the generation so any in-flight lookup/latch retires
+      // instead of writing the old account's answer, then drop the reactive
+      // latch so a different account signing in on the same device never
+      // inherits this one's answer. The store clears its own persisted latch via
+      // its own auth listener.
+      if (state is AuthUnauthenticated) {
+        _authGeneration++;
+        _reset();
+      }
     });
   }
 
@@ -107,13 +120,18 @@ class RegisteredBridgesService {
     // throw (network timeout, deserialization) — rather than an ErrorResponse —
     // would otherwise surface as an uncaught async error. Fail soft to `false`,
     // the safe default for an account we can't classify yet.
+    final generation = _authGeneration;
     try {
       final response = await _bridgeRepository.getRegisteredBridges();
+      // A logout during the in-flight request retires this result: the account
+      // that asked is gone, so latching its answer would leak onto the device
+      // and the next account would inherit it.
+      if (generation != _authGeneration) return false;
       switch (response) {
         case SuccessResponse(:final data):
           if (data.isEmpty) return false;
           // Latch the positive answer so future transitions skip the network.
-          await _latch();
+          await _latch(generation);
           return true;
         case ErrorResponse(:final error):
           logw("Failed to fetch registered bridges: ${error.toString()}");
@@ -145,9 +163,24 @@ class RegisteredBridgesService {
   /// Latches the positive answer in the store and emits it on the stream. A
   /// no-op once already latched, so repeat calls (e.g. each [ConnectionConnected]
   /// transition) cost nothing.
-  Future<void> _latch() async {
+  ///
+  /// [generation] is the auth generation captured when the latch was initiated
+  /// (defaults to the current one for connection-driven latches). If a logout
+  /// bumps it before or during the persist, the latch is abandoned — and any
+  /// write that already landed is undone — so the signed-out, or next, account
+  /// never inherits this answer.
+  Future<void> _latch([int? generation]) async {
     if (_isRegistered.value) return;
+    final gen = generation ?? _authGeneration;
+    if (gen != _authGeneration) return;
     await _store.markRegistered();
+    if (gen != _authGeneration) {
+      // A logout raced the persist; the store's own logout-clear may have run
+      // before markRegistered landed, so undo it rather than leave the old
+      // account's latch resurrected for the next account.
+      await _store.clear();
+      return;
+    }
     _latchEmit();
   }
 

@@ -46,6 +46,7 @@ void main() {
     // Defaults: nothing latched, the auth server reports no registered bridges.
     when(() => store.hasRegisteredBridges()).thenAnswer((_) async => false);
     when(() => store.markRegistered()).thenAnswer((_) async {});
+    when(() => store.clear()).thenAnswer((_) async {});
     when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
       (_) async => ApiResponse.success(const <BridgeSummary>[]),
     );
@@ -206,6 +207,52 @@ void main() {
       await _settle();
 
       expect(service.isRegistered.value, isTrue);
+    });
+  });
+
+  group("logout invalidates in-flight writes", () {
+    test("a logout while a network lookup is in flight discards the result", () async {
+      final gate = Completer<ApiResponse<List<BridgeSummary>>>();
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer((_) => gate.future);
+      final service = build();
+      await _settle();
+
+      // Park offline to drive a network lookup, then log out before the auth
+      // server answers.
+      statusSubject.add(_bridgeOffline);
+      await _settle();
+      authSubject.add(const AuthState.unauthenticated());
+      await _settle();
+
+      // The lookup now resolves — too late. A non-empty result for the
+      // signed-out account must not latch onto the device.
+      gate.complete(ApiResponse.success([testBridgeSummary()]));
+      await _settle();
+
+      expect(service.isRegistered.value, isFalse);
+      verifyNever(() => store.markRegistered());
+    });
+
+    test("a logout while a connection-driven latch is persisting undoes it", () async {
+      final gate = Completer<void>();
+      when(() => store.markRegistered()).thenAnswer((_) => gate.future);
+      final service = build();
+      await _settle();
+
+      // A live connection drives a latch; log out while markRegistered is still
+      // in flight.
+      statusSubject.add(_connected);
+      await _settle();
+      authSubject.add(const AuthState.unauthenticated());
+      await _settle();
+
+      // The persist lands after the logout — the service undoes it and never
+      // emits true.
+      gate.complete();
+      await _settle();
+
+      expect(service.isRegistered.value, isFalse);
+      verify(() => store.clear()).called(1);
     });
   });
 }
