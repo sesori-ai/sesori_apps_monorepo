@@ -60,6 +60,8 @@ import 'package:sesori_dart_core/src/services/new_session_selection_tracker.dart
     as _i913;
 import 'package:sesori_dart_core/src/services/notification_registration_service.dart'
     as _i659;
+import 'package:sesori_dart_core/src/services/registered_bridges_service.dart'
+    as _i699;
 import 'package:sesori_dart_core/src/services/registered_bridges_store.dart'
     as _i90;
 import 'package:sesori_dart_core/src/services/session_detail_load_service.dart'
@@ -176,6 +178,15 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i369.ConnectionService>(),
         failureReporter: gh<_i553.FailureReporter>(),
       ),
+    );
+    gh.lazySingleton<_i699.RegisteredBridgesService>(
+      () => _i699.RegisteredBridgesService(
+        bridgeRepository: gh<_i205.BridgeRepository>(),
+        registeredBridgesStore: gh<_i90.RegisteredBridgesStore>(),
+        connectionService: gh<_i369.ConnectionService>(),
+        authSession: gh<_i442.AuthSession>(),
+      ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i80.ProjectRepository>(
       () => _i80.ProjectRepository(api: gh<_i733.ProjectApi>()),

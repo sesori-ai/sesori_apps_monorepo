@@ -1,0 +1,211 @@
+import "dart:async";
+
+import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
+import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
+import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/services/registered_bridges_service.dart";
+import "package:sesori_shared/sesori_shared.dart";
+import "package:test/test.dart";
+
+import "../helpers/test_helpers.dart";
+
+class _MockAuthSession extends Mock implements AuthSession {}
+
+const _config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token");
+const _health = HealthResponse(healthy: true, version: "0.1.200");
+const _connected = ConnectionStatus.connected(config: _config, health: _health);
+const _bridgeOffline = ConnectionStatus.bridgeOffline(config: _config, health: _health);
+
+/// Lets the service's async constructor work (seed + stream listeners) settle.
+Future<void> _settle() async {
+  await Future<void>.delayed(Duration.zero);
+  await Future<void>.delayed(Duration.zero);
+}
+
+void main() {
+  late MockBridgeRepository bridgeRepository;
+  late MockRegisteredBridgesStore store;
+  late MockConnectionService connectionService;
+  late _MockAuthSession authSession;
+  late BehaviorSubject<ConnectionStatus> statusSubject;
+  late BehaviorSubject<AuthState> authSubject;
+
+  setUp(() {
+    bridgeRepository = MockBridgeRepository();
+    store = MockRegisteredBridgesStore();
+    connectionService = MockConnectionService();
+    authSession = _MockAuthSession();
+    statusSubject = BehaviorSubject<ConnectionStatus>.seeded(const ConnectionStatus.disconnected());
+    authSubject = BehaviorSubject<AuthState>.seeded(const AuthState.initial());
+
+    // Stubs must be set before building — the constructor subscribes immediately.
+    when(() => connectionService.status).thenAnswer((_) => statusSubject.stream);
+    when(() => authSession.authStateStream).thenAnswer((_) => authSubject.stream);
+    // Defaults: nothing latched, the auth server reports no registered bridges.
+    when(() => store.hasRegisteredBridges()).thenAnswer((_) async => false);
+    when(() => store.markRegistered()).thenAnswer((_) async {});
+    when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+      (_) async => ApiResponse.success(const <BridgeSummary>[]),
+    );
+  });
+
+  tearDown(() async {
+    await statusSubject.close();
+    await authSubject.close();
+  });
+
+  RegisteredBridgesService build() {
+    final service = RegisteredBridgesService(
+      bridgeRepository: bridgeRepository,
+      registeredBridgesStore: store,
+      connectionService: connectionService,
+      authSession: authSession,
+    );
+    addTearDown(service.dispose);
+    return service;
+  }
+
+  group("hasRegisteredBridges resolution", () {
+    test("a fresh account (store empty, auth server empty) resolves false and does not latch", () async {
+      final service = build();
+
+      expect(await service.hasRegisteredBridges(), isFalse);
+      expect(service.isRegistered.value, isFalse);
+      verifyNever(() => store.markRegistered());
+    });
+
+    test("a non-empty auth-server result resolves true, latches the store, and emits true", () async {
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([testBridgeSummary()]),
+      );
+      final service = build();
+
+      expect(await service.hasRegisteredBridges(), isTrue);
+      expect(service.isRegistered.value, isTrue);
+      verify(() => store.markRegistered()).called(1);
+    });
+
+    test("a store-latched account resolves true without touching the network", () async {
+      when(() => store.hasRegisteredBridges()).thenAnswer((_) async => true);
+      final service = build();
+
+      expect(await service.hasRegisteredBridges(), isTrue);
+      verifyNever(() => bridgeRepository.getRegisteredBridges());
+      verifyNever(() => store.markRegistered());
+    });
+
+    test("an auth-server error fails soft to false and does not latch", () async {
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.error(ApiError.generic()),
+      );
+      final service = build();
+
+      expect(await service.hasRegisteredBridges(), isFalse);
+      verifyNever(() => store.markRegistered());
+    });
+
+    test("an unexpected throw from the repository is caught and resolves false", () async {
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => throw Exception("network blew up"),
+      );
+      final service = build();
+
+      expect(await service.hasRegisteredBridges(), isFalse);
+    });
+
+    test("concurrent callers are coalesced into a single network lookup", () async {
+      final gate = Completer<ApiResponse<List<BridgeSummary>>>();
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer((_) => gate.future);
+      final service = build();
+
+      final a = service.hasRegisteredBridges();
+      final b = service.hasRegisteredBridges();
+      gate.complete(ApiResponse.success([testBridgeSummary()]));
+
+      expect(await Future.wait([a, b]), [isTrue, isTrue]);
+      verify(() => bridgeRepository.getRegisteredBridges()).called(1);
+    });
+  });
+
+  group("reactive latch", () {
+    test("seeds the stream from a persisted store latch at construction (no network)", () async {
+      when(() => store.hasRegisteredBridges()).thenAnswer((_) async => true);
+      final service = build();
+
+      await _settle();
+
+      expect(service.isRegistered.value, isTrue);
+      verifyNever(() => bridgeRepository.getRegisteredBridges());
+    });
+
+    test("a successful E2E connection latches the signal without a lookup", () async {
+      final service = build();
+      await _settle();
+      expect(service.isRegistered.value, isFalse);
+
+      statusSubject.add(_connected);
+      await _settle();
+
+      expect(service.isRegistered.value, isTrue);
+      verify(() => store.markRegistered()).called(1);
+      verifyNever(() => bridgeRepository.getRegisteredBridges());
+    });
+
+    test("a bridge-offline park resolves the signal so stream-only consumers see it", () async {
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([testBridgeSummary()]),
+      );
+      final service = build();
+      await _settle();
+      expect(service.isRegistered.value, isFalse);
+
+      statusSubject.add(_bridgeOffline);
+      await _settle();
+
+      expect(service.isRegistered.value, isTrue);
+      verify(() => bridgeRepository.getRegisteredBridges()).called(1);
+    });
+
+    test("a no-bridge account parking offline keeps the signal false (the onboarding case)", () async {
+      final service = build();
+      await _settle();
+
+      statusSubject.add(_bridgeOffline);
+      await _settle();
+
+      expect(service.isRegistered.value, isFalse);
+    });
+
+    test("logout resets the latch so a different account does not inherit it", () async {
+      final service = build();
+      statusSubject.add(_connected);
+      await _settle();
+      expect(service.isRegistered.value, isTrue);
+
+      final emissions = <bool>[];
+      final sub = service.isRegistered.listen(emissions.add);
+      authSubject.add(const AuthState.unauthenticated());
+      await _settle();
+
+      expect(service.isRegistered.value, isFalse);
+      expect(emissions, [isTrue, isFalse], reason: "current value replayed, then reset to false");
+      await sub.cancel();
+    });
+
+    test("non-logout auth states leave the latch untouched", () async {
+      final service = build();
+      statusSubject.add(_connected);
+      await _settle();
+      expect(service.isRegistered.value, isTrue);
+
+      authSubject
+        ..add(const AuthState.authenticating())
+        ..add(const AuthState.failed(error: "boom"));
+      await _settle();
+
+      expect(service.isRegistered.value, isTrue);
+    });
+  });
+}
