@@ -157,7 +157,7 @@ class RequestRouter {
       ReplyToQuestionHandler(questionRepository: questionRepository),
       RejectQuestionHandler(questionRepository: questionRepository),
       ReplyToPermissionHandler(permissionRepository: permissionRepository),
-      RenameProjectHandler(plugin),
+      RenameProjectHandler(plugin, projectRepository: projectRepository),
       CreateProjectHandler(plugin),
       OpenProjectHandler(projectRepository: projectRepository),
       HideProjectHandler(projectRepository: projectRepository),

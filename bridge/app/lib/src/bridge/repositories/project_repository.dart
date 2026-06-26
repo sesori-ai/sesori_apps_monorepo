@@ -85,7 +85,9 @@ class ProjectRepository {
   Future<Project> openProject({required String path}) async {
     final pluginProject = await _plugin.getProject(path);
     await _projectsDao.unhideProject(projectId: pluginProject.id);
-    return pluginProject.toSharedProject(hasUnseenChanges: false);
+    return pluginProject.toSharedProject(
+      hasUnseenChanges: await projectHasUnseenChanges(projectId: pluginProject.id),
+    );
   }
 
   Future<void> hideProject({required String projectId}) {
