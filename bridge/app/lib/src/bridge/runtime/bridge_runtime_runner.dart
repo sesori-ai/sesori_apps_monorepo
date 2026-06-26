@@ -485,12 +485,32 @@ class BridgeRuntimeRunner {
     // the ADR A9 grace timer un-armed and the helper running with no parent.
     final lossListener = ControlChannelLossListener(
       connectionState: controlChannelClient.connectionState,
-      exitProcess: io.exit,
+      // Don't hard-exit straight from the loss timer: that bypasses the ordered
+      // plugin stop in the shutdown coordinator and could orphan an owned
+      // backend runtime (e.g. OpenCode). Shut down gracefully first, then exit.
+      exitProcess: (code) => unawaited(_shutdownThenExit(shutdownCoordinator: shutdownCoordinator, code: code)),
     );
     lossListener.start();
     shutdownCoordinator.add(disposable: lossListener.dispose);
 
     await controlChannelClient.connect();
+  }
+
+  /// Graceful termination for the control-channel parent-loss policy (ADR A9):
+  /// run the ordered shutdown (which stops the plugin and any owned runtime)
+  /// before exiting, so a hard exit from the loss timer cannot orphan the
+  /// backend process. The coordinator's own backstop bounds a hung stop. The
+  /// precise exit code the GUI observes is finalized in Phase 2 (PR 2.7).
+  static Future<void> _shutdownThenExit({
+    required BridgeShutdownCoordinator shutdownCoordinator,
+    required int code,
+  }) async {
+    try {
+      await shutdownCoordinator.shutdown();
+    } catch (error, stackTrace) {
+      Log.w("[control] graceful shutdown after control-channel loss failed", error, stackTrace);
+    }
+    io.exit(code);
   }
 
   /// Runs the plugin's runtime-provisioning phase, rendering progress and

@@ -61,6 +61,14 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   the state stream `done` (no grace) so shutdown never self-exits. Standalone is
   byte-identical (everything behind `isSupervised`). `make analyze` clean;
   `make test` 1504 pass.
+- **Review round 2:** addressed reviewer feedback — enforce loopback ws/wss on
+  `--control-url` before dialing (fail closed, don't leak the bearer secret);
+  subscribe the loss listener *before* `connect()` (don't miss the first
+  `disconnected`); post-handshake liveness guard in `_openChannel`; isolate
+  teardown steps + handle `cancel()` errors. **Control-loss exit is graceful:**
+  it routes through `shutdownCoordinator.shutdown()` (ordered plugin stop) before
+  `io.exit`, so a hard exit from the loss timer can't orphan an owned runtime.
+  The supervised `spawnSuccessor()` flag-replay gap is tracked to **PR 1.7**.
 - **Deltas:** §6 placed only `ControlChannelClient` (foundation, kept). Two
   components plan-review pinned to specific layers were NOT pre-specified in §6
   and are now added there: the off-argv secret reader is a **Layer-1
@@ -141,6 +149,11 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 - **Goal:** In supervised mode `handleRestartHandoff()` flushes the
   `{restarting:true}` response then `exit(86)` instead of
   `BridgeRestartService.spawnSuccessor()`. Name the exact bypass call site.
+  **Closes the PR-1.1 interim gap:** until this lands, a supervised
+  `spawnSuccessor()` replays `--control-url` into the detached successor with no
+  off-argv secret on stdin, so the successor fails in `ControlSecretApi` instead
+  of reconnecting. Not reachable by any shipping path pre-GUI (Phase 2), but
+  this PR must ensure supervised restart never calls `spawnSuccessor()`.
 - **Risk:** Med. **Size:** S-M.
 - **Acceptance:** phone-triggered restart → exit 86 in supervised mode; standalone
   successor handoff unchanged.
