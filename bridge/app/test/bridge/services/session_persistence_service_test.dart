@@ -243,6 +243,53 @@ void main() {
 
       expect((await sessionDao.getSession(sessionId: "sess-unarchive"))?.archivedAt, isNull);
     });
+
+    Session sharedSession(String id, {int? archived}) => Session(
+      id: id,
+      projectID: "p1",
+      directory: "/tmp/$id",
+      parentID: null,
+      title: id,
+      time: SessionTime(created: 1, updated: 1, archived: archived),
+      summary: null,
+      pullRequest: null,
+      promptDefaults: null,
+    );
+
+    test("persistSessionsForProject reconciles archive state on existing rows", () async {
+      await projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await service.persistSessionsForProject(projectId: "p1", sessions: [sharedSession("s1")]);
+      expect((await sessionDao.getSession(sessionId: "s1"))?.archivedAt, isNull);
+
+      // The session was archived outside the bridge endpoint; a refresh now
+      // reports it archived.
+      await service.persistSessionsForProject(projectId: "p1", sessions: [sharedSession("s1", archived: 999)]);
+      expect((await sessionDao.getSession(sessionId: "s1"))?.archivedAt, equals(999));
+    });
+
+    test("persistSessionsForProject deletes vanished rows only on a complete list", () async {
+      await projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await service.persistSessionsForProject(
+        projectId: "p1",
+        sessions: [sharedSession("s1"), sharedSession("s2")],
+        isCompleteList: true,
+      );
+      expect(await sessionDao.getSessionsByProject(projectId: "p1"), hasLength(2));
+
+      // s2 vanished (deleted backend-side). A paged refresh must NOT delete it.
+      await service.persistSessionsForProject(projectId: "p1", sessions: [sharedSession("s1")]);
+      expect(await sessionDao.getSessionsByProject(projectId: "p1"), hasLength(2));
+
+      // A complete refresh reconciles it away.
+      await service.persistSessionsForProject(
+        projectId: "p1",
+        sessions: [sharedSession("s1")],
+        isCompleteList: true,
+      );
+      final remaining = await sessionDao.getSessionsByProject(projectId: "p1");
+      expect(remaining, hasLength(1));
+      expect(remaining.single.sessionId, equals("s1"));
+    });
   });
 }
 

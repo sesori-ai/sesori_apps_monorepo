@@ -625,6 +625,7 @@ class FakeSessionPersistenceService extends SessionPersistenceService {
   Future<void> persistSessionsForProject({
     required String projectId,
     required List<Session> sessions,
+    bool isCompleteList = false,
   }) async {
     persistedCalls.add((projectId: projectId, sessions: sessions));
   }

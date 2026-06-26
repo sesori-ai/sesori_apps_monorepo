@@ -174,12 +174,21 @@ class SessionUnseenService {
     required String? parentId,
   }) {
     if (parentId != null) return Future<void>.value();
-    // A root session.created proves this session is resolvable now, so drop any
-    // stale "unresolved" marker (it may have been cached as unresolved if an
-    // activity event arrived before the bridge learned of it).
-    _unresolvedSessions.remove(sessionId);
     final viewedAtSubmit = _viewTracker.isViewed(sessionId: sessionId);
     return _serialize(sessionId, () async {
+      // A root session.created proves this session is resolvable now, so drop
+      // any stale "unresolved" marker. Done inside the serialized body (after
+      // prior writes) so an earlier queued miss can't re-add it afterwards.
+      _unresolvedSessions.remove(sessionId);
+      // If an earlier activity event already created and stamped this row (e.g.
+      // a user message arrived before session.created), don't overwrite its
+      // activity/markers — that would advance activity past the user's own
+      // message and wrongly bold it. Just emit the current state.
+      final existing = await _unseenRepository.getUnseenRow(sessionId: sessionId);
+      if (existing != null) {
+        await _emit(sessionId: sessionId, projectId: existing.projectId);
+        return;
+      }
       await _unseenRepository.ensureRootSessionActivity(
         sessionId: sessionId,
         projectId: projectId,
@@ -196,8 +205,8 @@ class SessionUnseenService {
   /// stale unseen row can't keep its project's aggregate bold after the session
   /// is gone, and emits the cleared state. No-op for unknown sessions.
   Future<void> recordSessionDeleted({required String sessionId}) {
-    _unresolvedSessions.remove(sessionId);
     return _serialize(sessionId, () async {
+      _unresolvedSessions.remove(sessionId);
       final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
       if (row == null) return;
       await _unseenRepository.deleteSession(sessionId: sessionId);

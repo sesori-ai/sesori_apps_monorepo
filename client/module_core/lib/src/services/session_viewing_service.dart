@@ -44,6 +44,11 @@ class SessionViewingService with Disposable {
   /// Declares that the user is now viewing [sessionId].
   void setViewingSession(String sessionId) {
     _currentSessionId = sessionId;
+    // While backgrounded/hidden, remember the intended session but don't tell
+    // the bridge — otherwise a load that finishes after the app is no longer
+    // visible would mark the session read before the user sees it. Resume
+    // re-asserts `_currentSessionId`.
+    if (_isPaused) return;
     _enqueueSend(sessionId);
   }
 

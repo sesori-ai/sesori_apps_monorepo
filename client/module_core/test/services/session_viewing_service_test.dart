@@ -106,6 +106,28 @@ void main() {
       await service.sendTail;
     });
 
+    test("setViewingSession while backgrounded does not send; resume re-asserts", () async {
+      final service = build();
+      lifecycle.emit(LifecycleState.paused);
+      await service.sendTail;
+      await Future<void>.delayed(Duration.zero);
+      clearInteractions(viewRepository);
+
+      // A deferred load finishing while backgrounded must not declare viewing.
+      service.setViewingSession("s1");
+      await service.sendTail;
+      await Future<void>.delayed(Duration.zero);
+      verifyNever(() => viewRepository.sendSessionView(any()));
+
+      // Resume re-asserts the stored intended session.
+      lifecycle.emit(LifecycleState.resumed);
+      await service.sendTail;
+      await Future<void>.delayed(Duration.zero);
+      verify(() => viewRepository.sendSessionView("s1")).called(1);
+      service.clearViewingSession("s1");
+      await service.sendTail;
+    });
+
     test("hidden + paused fired back-to-back only sends one clear", () async {
       final service = build()..setViewingSession("s1");
       await service.sendTail;

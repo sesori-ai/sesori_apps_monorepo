@@ -242,4 +242,26 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   Future<void> deleteSession({required String sessionId}) async {
     await (delete(sessionTable)..where((t) => t.sessionId.equals(sessionId))).go();
   }
+
+  /// Sets [archivedAt] for [sessionId] (including null to un-archive). Used to
+  /// reconcile stored archive state with an authoritative session list.
+  Future<void> setArchivedAt({required String sessionId, required int? archivedAt}) async {
+    await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
+      SessionTableCompanion(archivedAt: Value(archivedAt)),
+    );
+  }
+
+  /// Deletes every persisted row for [projectId] whose session id is NOT in
+  /// [keepSessionIds]. Used to reconcile rows for sessions that vanished from
+  /// the authoritative list (deleted while offline / backend-side). Only safe
+  /// when [keepSessionIds] is the COMPLETE list for the project.
+  Future<int> deleteSessionsForProjectNotIn({
+    required String projectId,
+    required List<String> keepSessionIds,
+  }) {
+    return (delete(sessionTable)..where(
+          (t) => t.projectId.equals(projectId) & t.sessionId.isNotIn(keepSessionIds),
+        ))
+        .go();
+  }
 }

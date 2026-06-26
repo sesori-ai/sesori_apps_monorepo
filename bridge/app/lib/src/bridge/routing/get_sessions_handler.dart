@@ -64,6 +64,9 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
       await _sessionPersistenceService.persistSessionsForProject(
         projectId: projectId,
         sessions: sessions,
+        // When unpaginated, `sessions` is the complete authoritative list, so
+        // it's safe to delete stored rows for sessions that no longer exist.
+        isCompleteList: start == null && limit == null,
       );
     } on Object catch (e, st) {
       Log.w("GetSessionsHandler: persistSessionsForProject failed for projectId=$projectId: $e\n$st");

@@ -580,6 +580,20 @@ class OrchestratorSession {
     }
   }
 
+  /// Remembers the author role of recently-seen messages so streamed part
+  /// events (which only carry `messageID`, not the role) can be attributed to
+  /// the right author — a user's own message + its parts must not bold the
+  /// session. Bounded to avoid unbounded growth (oldest evicted first).
+  static const int _maxTrackedMessageRoles = 2048;
+  final Map<String, bool> _userMessageIds = <String, bool>{};
+
+  void _rememberMessageRole(String messageId, {required bool isUser}) {
+    if (_userMessageIds.length >= _maxTrackedMessageRoles) {
+      _userMessageIds.remove(_userMessageIds.keys.first);
+    }
+    _userMessageIds[messageId] = isUser;
+  }
+
   /// Feeds an already-mapped [SesoriSseEvent] into the unseen-changes tracker.
   /// Only message activity and pending input requests advance unseen state;
   /// everything else is ignored. A user-authored message (or reply) advances the
@@ -595,16 +609,25 @@ class OrchestratorSession {
       case SesoriSessionDeleted(:final info):
         await _sessionUnseenService.recordSessionDeleted(sessionId: info.id);
       case SesoriMessageUpdated(:final info):
+        final isUser = info is MessageUser;
+        _rememberMessageRole(info.id, isUser: isUser);
         await _sessionUnseenService.recordActivity(
           sessionId: info.sessionID,
-          isUserMessage: info is MessageUser,
+          isUserMessage: isUser,
         );
-      // Streamed assistant/tool output after the user leaves changes the visible
-      // transcript, so it counts as (non-user) activity.
+      // Streamed output changes the visible transcript, so it's activity. Parts
+      // carry only messageID, so use the remembered parent role: a user's own
+      // message parts must not bold the session.
       case SesoriMessagePartUpdated(:final part):
-        await _sessionUnseenService.recordActivity(sessionId: part.sessionID, isUserMessage: false);
-      case SesoriMessagePartDelta(:final sessionID):
-        await _sessionUnseenService.recordActivity(sessionId: sessionID, isUserMessage: false);
+        await _sessionUnseenService.recordActivity(
+          sessionId: part.sessionID,
+          isUserMessage: _userMessageIds[part.messageID] ?? false,
+        );
+      case SesoriMessagePartDelta(:final sessionID, :final messageID):
+        await _sessionUnseenService.recordActivity(
+          sessionId: sessionID,
+          isUserMessage: _userMessageIds[messageID] ?? false,
+        );
       // For child/subagent requests, `displaySessionId` is the root session the
       // UI surfaces the request under; the child has no persisted row, so route
       // to the displayed root so it becomes unseen for pending input.

@@ -53,9 +53,19 @@ class SessionPersistenceService {
     await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
   }
 
+  /// Persists [sessions] for [projectId]. New rows are inserted (placeholders);
+  /// existing rows are left intact except their archive state, which is
+  /// reconciled to the authoritative list so a session archived outside the
+  /// bridge endpoint stops contributing to the unseen aggregate.
+  ///
+  /// When [isCompleteList] is true (the caller fetched the whole project, not a
+  /// page), rows for sessions that are no longer in [sessions] are deleted —
+  /// reconciling sessions that vanished while the bridge was offline or were
+  /// deleted directly in the backend without a `session.deleted` event.
   Future<void> persistSessionsForProject({
     required String projectId,
     required List<Session> sessions,
+    bool isCompleteList = false,
   }) async {
     await _db.transaction(() async {
       await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
@@ -70,6 +80,17 @@ class SessionPersistenceService {
             ),
         ],
       );
+      // Reconcile archive state for sessions that were archived/unarchived
+      // outside the bridge endpoint (insertOrIgnore above can't update them).
+      for (final s in sessions) {
+        await _sessionDao.setArchivedAt(sessionId: s.id, archivedAt: s.time?.archived);
+      }
+      if (isCompleteList) {
+        await _sessionDao.deleteSessionsForProjectNotIn(
+          projectId: projectId,
+          keepSessionIds: [for (final s in sessions) s.id],
+        );
+      }
     });
   }
 
