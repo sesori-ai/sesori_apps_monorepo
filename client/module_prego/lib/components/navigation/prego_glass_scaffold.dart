@@ -34,6 +34,15 @@ import "../../utils/color_extensions.dart";
 /// incompatible with a body scrolling behind a transparent bar. With it off,
 /// [GlassScaffold] insets the body below the bar instead.
 ///
+/// Set [reserveBarSpace] to `false` when the body owns its own scroll behind the
+/// bar (e.g. a reversed chat list) and manages the bar inset itself. The
+/// auto-injected top spacer is then skipped, so the body's first sliver fills
+/// the full height behind the bar; the body must pad its scrollable content down
+/// by `MediaQuery.paddingOf(context).top + PregoTopNavigation.barHeight` so it
+/// clears the bar at rest. Only meaningful with [extendBodyBehindBar] and, in
+/// practice, [inlineTitle] (a collapsing large title has nothing to reserve
+/// against here).
+///
 /// Set [inlineTitle] to `true` for a fixed, centred title (and [subtitle]) in
 /// the bar — the showcase's inline-title pattern (`_InlineTitleDemo`) — instead
 /// of the large title that collapses on scroll. Use it for screens whose body
@@ -65,6 +74,7 @@ class PregoGlassScaffold extends StatefulWidget {
     this.onRefresh,
     this.backgroundColor,
     this.extendBodyBehindBar = true,
+    this.reserveBarSpace = true,
   });
 
   /// Primary title — shown large below the bar and, once collapsed, inline.
@@ -115,6 +125,11 @@ class PregoGlassScaffold extends StatefulWidget {
   /// Whether the body scrolls behind the bar. Defaults to `true`. Set `false`
   /// for bodies with pinned slivers that must pin below the bar.
   final bool extendBodyBehindBar;
+
+  /// Whether to inject the top spacer that pushes the first content below the
+  /// bar. Defaults to `true`. Set `false` when the body owns its own scroll and
+  /// insets itself (see the class doc).
+  final bool reserveBarSpace;
 
   @override
   State<PregoGlassScaffold> createState() => _PregoGlassScaffoldState();
@@ -175,8 +190,10 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
       slivers: [
         // When the body scrolls behind the bar, reserve space so the title
         // clears it. When it doesn't, GlassScaffold already insets the body
-        // below the bar, so a spacer would double the gap.
-        if (extendBehind) SliverToBoxAdapter(child: SizedBox(height: topPad + topNav.preferredSize.height)),
+        // below the bar, so a spacer would double the gap. Skipped entirely when
+        // the body owns its own scroll and insets itself ([reserveBarSpace]).
+        if (extendBehind && widget.reserveBarSpace)
+          SliverToBoxAdapter(child: SizedBox(height: topPad + topNav.preferredSize.height)),
         // Inline mode shows a fixed title in the bar, so there is no large
         // title sliver to scroll away.
         if (!inline)

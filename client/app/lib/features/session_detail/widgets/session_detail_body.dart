@@ -10,10 +10,7 @@ import "../../../core/constants.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/routing/app_router.dart";
 import "../../../core/routing/imperative_pane_route.dart";
-import "../../../core/widgets/agent_picker_sheet.dart";
-import "../../../core/widgets/model_picker_sheet.dart";
 import "../../../core/widgets/session_split/session_split_scope.dart";
-import "../../../core/widgets/variant_picker_sheet.dart";
 import "permission_modal.dart";
 import "question_modal.dart";
 import "session_detail_loaded_view.dart";
@@ -128,6 +125,10 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
       // scroll for a large title to collapse against. Use the fixed, centred
       // inline title (Figma "Middle Title") instead.
       inlineTitle: true,
+      // The chat owns its own scroll and insets itself, so the messages scroll
+      // behind the transparent bar like every other screen. Skip the auto top
+      // spacer that would otherwise confine the loaded view below the bar.
+      reserveBarSpace: false,
       automaticallyImplyLeading: showLeading,
       actions: actions.isEmpty ? null : actions,
       slivers: [
@@ -137,12 +138,13 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
             child: Center(child: CircularProgressIndicator()),
           ),
           // The loaded view is a Column with an Expanded chat and a pinned
-          // composer. hasScrollBody: true gives it the exact remaining height
-          // (chat flexes, composer stays anchored at the bottom and rides above
-          // the keyboard) — the same layout the previous Scaffold body had. The
-          // chat owns its own reversed scroll controller, so the large title
-          // can't collapse with it; it stays expanded, as on the new-session
-          // screen.
+          // composer. With reserveBarSpace: false there is no top spacer, so
+          // hasScrollBody: true gives it the full viewport height behind the
+          // bar — the chat scrolls behind the transparent bar and insets its
+          // own content below it (chat flexes, composer stays anchored at the
+          // bottom and rides above the keyboard). The chat owns its own
+          // reversed scroll controller, so the large title can't collapse with
+          // it; the inline title is used instead, as on the new-session screen.
           final SessionDetailLoaded loaded => SliverFillRemaining(
             hasScrollBody: true,
             child: widget.readOnly
@@ -158,9 +160,6 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
                     state: loaded,
                     onShowPendingQuestions: _showPendingQuestions,
                     onShowPendingPermissions: _showPendingPermissions,
-                    onOpenAgentPicker: _openAgentPicker,
-                    onOpenModelPicker: _openModelPicker,
-                    onOpenVariantPicker: _openVariantPicker,
                   ),
           ),
           SessionDetailFailed(:final reason) => SliverFillRemaining(
@@ -187,44 +186,6 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
     if (state case SessionDetailLoaded(:final pendingPermissions) when pendingPermissions.isNotEmpty) {
       _showPermissionModal(pendingPermissions.first);
     }
-  }
-
-  void _openAgentPicker() {
-    final cubit = context.read<SessionDetailCubit>();
-    final state = cubit.state;
-    if (state is! SessionDetailLoaded) return;
-    AgentPickerSheet.show(
-      context,
-      agents: state.availableAgents,
-      selectedAgent: state.selectedAgent,
-      onAgentChanged: cubit.selectAgent,
-    );
-  }
-
-  void _openModelPicker() {
-    final cubit = context.read<SessionDetailCubit>();
-    final state = cubit.state;
-    if (state is! SessionDetailLoaded) return;
-    final agentModel = state.selectedAgentModel;
-    ModelPickerSheet.show(
-      context,
-      providers: state.availableProviders,
-      selectedProviderID: agentModel?.providerID ?? "",
-      selectedModelID: agentModel?.modelID ?? "",
-      onModelChanged: cubit.selectModel,
-    );
-  }
-
-  void _openVariantPicker() {
-    final cubit = context.read<SessionDetailCubit>();
-    final state = cubit.state;
-    if (state is! SessionDetailLoaded) return;
-    VariantPickerSheet.show(
-      context,
-      selectedVariantId: state.selectedAgentModel?.variant,
-      availableVariants: state.availableVariants,
-      onVariantChanged: cubit.selectVariant,
-    );
   }
 
   void _showQuestionModal(SesoriQuestionAsked question) {

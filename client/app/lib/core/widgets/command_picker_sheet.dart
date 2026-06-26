@@ -27,6 +27,7 @@ class CommandPickerSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      handleBottomSafeArea: false,
       builder: (sheetContext) {
         final height = MediaQuery.sizeOf(sheetContext).height * 0.7;
         final prego = sheetContext.prego;
@@ -168,7 +169,11 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
               ),
             ),
             final filtered => ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              // Extend the scrollable underneath the home indicator: with
+              // handleBottomSafeArea: false the sheet no longer pads for it, so
+              // the bottom inset is added as scroll padding here (mirroring the
+              // model picker) instead of clipping the last command above it.
+              padding: EdgeInsetsDirectional.fromSTEB(8, 4, 8, 4 + MediaQuery.paddingOf(context).bottom),
               itemCount: filtered.length,
               separatorBuilder: (_, _) => Divider(
                 height: 1,

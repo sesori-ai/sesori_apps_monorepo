@@ -201,7 +201,7 @@ void main() {
       // Start sending; creation is now in flight. Scope to the composer — the
       // session-detail route behind the pushed overlay also has a prompt field.
       final newSession = find.byType(NewSessionScreen);
-      await tester.enterText(find.descendant(of: newSession, matching: find.byType(TextField)), "do the thing");
+      await tester.enterText(find.descendant(of: newSession, matching: find.byType(EditableText)), "do the thing");
       await tester.tap(find.descendant(of: newSession, matching: find.byIcon(Icons.send)), warnIfMissed: false);
       await tester.pump();
       expect(find.byKey(const Key("new_session_loading_overlay")), findsOneWidget);
