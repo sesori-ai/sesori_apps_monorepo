@@ -68,11 +68,14 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
   /// build where both work end-to-end.
   static const String minVersion = "2026.06.15";
 
-  /// CLI option naming the `cursor-agent` binary (path or PATH name).
-  static const String binOption = "cursor-bin";
+  /// CLI option naming the `cursor-agent` binary (path or PATH name). Declared
+  /// as the bare local name — the bridge's [PluginCliOptionsMapper] namespaces
+  /// it to the public `--cursor-bin` flag.
+  static const String binOption = "bin";
 
   /// CLI option overriding the Cursor API endpoint (passed as `-e <endpoint>`).
-  static const String apiEndpointOption = "cursor-api-endpoint";
+  /// Bare local name; surfaces publicly as `--cursor-api-endpoint`.
+  static const String apiEndpointOption = "api-endpoint";
 
   static const List<PluginOption> cliOptions = [
     PluginValueOption(

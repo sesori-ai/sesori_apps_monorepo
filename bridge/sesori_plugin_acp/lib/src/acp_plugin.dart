@@ -146,6 +146,14 @@ class AcpPlugin implements BridgePluginApi {
     required PluginSessionVariant? variant,
   }) async {}
 
+  /// Invoked when the agent subprocess is torn down for a respawn (see
+  /// [resetConnectionAfterExit]). The replacement process starts with none of
+  /// the prior process's applied state, so a subclass that caches process-global
+  /// selections (e.g. Cursor's last-applied model/mode) MUST clear that cache
+  /// here — otherwise it will skip re-applying them on the fresh agent and run a
+  /// turn on the wrong model/mode. Base does nothing.
+  void onConnectionReset() {}
+
   // --- Protected accessors for subclasses ---
 
   AcpStdioClient? get client => _client;
@@ -213,7 +221,7 @@ class AcpPlugin implements BridgePluginApi {
       ),
     );
     final init = AcpInitializeResult.fromJson(
-      (raw as Map?)?.cast<String, dynamic>() ?? const {},
+      raw is Map ? raw.cast<String, dynamic>() : const {},
     );
     if (init.requiresAuth) {
       final methodId = authMethodId ??
@@ -252,6 +260,9 @@ class AcpPlugin implements BridgePluginApi {
     _connectFuture = null;
     _initResult = null;
     _residentSessions.clear();
+    // Let subclasses drop any process-global state cached against the dead agent
+    // (e.g. Cursor's applied model/mode) so it is re-applied on the next turn.
+    onConnectionReset();
     final sub = _notificationSubscription;
     _notificationSubscription = null;
     final registry = _approvalRegistry;
@@ -314,8 +325,9 @@ class AcpPlugin implements BridgePluginApi {
         method: "session/list",
         params: {"cwd": projectId},
       );
-      final map = (raw as Map?)?.cast<String, dynamic>() ?? const {};
-      final sessions = (map["sessions"] as List?) ?? const [];
+      final map = raw is Map ? raw.cast<String, dynamic>() : const <String, dynamic>{};
+      final rawSessions = map["sessions"];
+      final sessions = rawSessions is List ? rawSessions : const <Object?>[];
       final mapped = sessions
           .whereType<Map<dynamic, dynamic>>()
           .map((s) => _toPluginSession(s.cast<String, dynamic>(), projectId))
@@ -376,7 +388,7 @@ class AcpPlugin implements BridgePluginApi {
       params: {"cwd": directory, "mcpServers": const <Object?>[]},
     );
     final session = AcpNewSessionResult.fromJson(
-      (raw as Map?)?.cast<String, dynamic>() ?? const {},
+      raw is Map ? raw.cast<String, dynamic>() : const {},
     );
     if (session.sessionId.isEmpty) {
       throw StateError("session/new response missing sessionId");
@@ -476,7 +488,7 @@ class AcpPlugin implements BridgePluginApi {
         timeout: const Duration(minutes: 2),
       );
       captureSessionConfig(
-        (raw as Map?)?.cast<String, dynamic>() ?? const {},
+        raw is Map ? raw.cast<String, dynamic>() : const {},
         sessionId: sessionId,
       );
       // Keep suppressing until the (post-response) replay stream goes quiet.
@@ -677,7 +689,7 @@ class AcpPlugin implements BridgePluginApi {
       // session's current model) — capture it so the picker is populated and
       // replayed messages are stamped with the session's real model.
       captureSessionConfig(
-        (raw as Map?)?.cast<String, dynamic>() ?? const {},
+        raw is Map ? raw.cast<String, dynamic>() : const {},
         sessionId: sessionId,
       );
       // The ACP spec replays the whole thread via `session/update` BEFORE the
@@ -778,7 +790,7 @@ class AcpPlugin implements BridgePluginApi {
         },
         timeout: const Duration(minutes: 1),
       );
-      captureSessionConfig((raw as Map?)?.cast<String, dynamic>() ?? const {});
+      captureSessionConfig(raw is Map ? raw.cast<String, dynamic>() : const {});
     } catch (error, stack) {
       Log.d("[$id] catalog probe failed: $error\n$stack");
     } finally {

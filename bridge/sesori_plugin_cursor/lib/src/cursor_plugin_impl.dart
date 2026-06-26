@@ -168,6 +168,17 @@ class CursorPlugin extends AcpPlugin {
     }
   }
 
+  @override
+  void onConnectionReset() {
+    // Cursor's set_config_option is process-global; a freshly respawned agent
+    // has applied neither model nor mode. Drop the applied-cache so the next
+    // turn re-pushes the selection — otherwise the redundant-call guard in
+    // [applyTurnSelection] sees an unchanged value and skips it, running the
+    // turn on the new process's defaults instead of the user's selection.
+    _appliedModelId = null;
+    _appliedModeId = null;
+  }
+
   /// Issues a `session/set_config_option`, returning whether it succeeded.
   /// Fail-soft: a rejected selection keeps the agent's current value rather
   /// than failing the turn.
@@ -276,9 +287,10 @@ class CursorPlugin extends AcpPlugin {
               if (model["value"] case final String value when value.isNotEmpty)
                 PluginModel(
                   id: value,
-                  name: model["name"] is String && (model["name"] as String).isNotEmpty
-                      ? model["name"] as String
-                      : value,
+                  name: switch (model["name"]) {
+                    final String name when name.isNotEmpty => name,
+                    _ => value,
+                  },
                   variants: variants,
                   family: null,
                   isAvailable: true,

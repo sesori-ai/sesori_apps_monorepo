@@ -217,7 +217,6 @@ class AcpEventMapper {
     if (toolCallId == null || toolCallId.isEmpty) return const [];
     final messageId = "$sessionId-tool-$toolCallId";
     final partId = "$messageId-call";
-    _startedParts.add(partId);
     final title = update["title"] as String?;
     final kind = update["kind"] as String?;
     final status = acpToolStatus(update["status"]);

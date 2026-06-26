@@ -56,6 +56,33 @@ void main() {
       expect(asked.requestID, isNotEmpty);
     });
 
+    test("permission with no resolvable session is auto-cancelled, not enqueued", () async {
+      // No sessionId in params and no activeSessionResolver → resolves to "". A
+      // request stamped with "" is dropped by the mobile client, so it must be
+      // auto-cancelled here instead of enqueued (which would deadlock the turn
+      // on a reply that can never arrive).
+      requests.add(const AcpServerRequest(
+        id: 9,
+        method: "session/request_permission",
+        params: {
+          "toolCall": {"toolCallId": "tc-9", "title": "Run rm", "kind": "execute"},
+          "options": [
+            {"optionId": "opt-allow-once", "name": "Allow", "kind": "allow_once"},
+          ],
+        },
+      ));
+      await pump();
+      // Responded immediately with a cancelled outcome…
+      final (id, result) = responds.single;
+      expect(id, 9);
+      expect(result, const {
+        "outcome": {"outcome": "cancelled"},
+      });
+      // …and nothing was surfaced to the user or left pending.
+      expect(emitted, isEmpty);
+      expect(registry.pendingPermissionsForSession(""), isEmpty);
+    });
+
     test("reply 'once' echoes the allow_once optionId", () async {
       requests.add(permission());
       await pump();

@@ -40,8 +40,17 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
     // Cursor's question requests may omit `sessionId`; fall back to the active
     // turn's session so the request still surfaces in the conversation.
     final sessionId = resolveSessionId(params);
+    if (sessionId.isEmpty) {
+      // A question stamped with "" is dropped by the mobile client, so it would
+      // register an invisible pending question that blocks the turn forever.
+      // Reject so the agent can proceed instead of hanging.
+      Log.w("[cursor] cursor/ask_question with no resolvable session; rejecting");
+      respondError(request.id, -32602, "cursor/ask_question: no resolvable session");
+      return;
+    }
     final title = (params["title"] as String?) ?? "Question";
-    final rawQuestions = (params["questions"] as List?) ?? const [];
+    final rawQ = params["questions"];
+    final rawQuestions = rawQ is List ? rawQ : const <Object?>[];
 
     final pluginQuestions = <PluginQuestionInfo>[];
     final metas = <_QuestionMeta>[];
@@ -54,7 +63,8 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
       final prompt = _str(q["prompt"]) ?? _str(q["question"]);
       if (prompt == null || prompt.isEmpty) continue; // skip a question with no text
       final multiple = q["allowMultiple"] == true;
-      final options = ((q["options"] as List?) ?? const [])
+      final rawOptions = q["options"];
+      final options = (rawOptions is List ? rawOptions : const <Object?>[])
           .whereType<Map<dynamic, dynamic>>()
           .map((o) => o.cast<String, dynamic>())
           .toList(growable: false);
@@ -131,6 +141,14 @@ class CursorApprovalRegistry extends AcpApprovalRegistry {
     // resolve it from the active turn — otherwise the plan-approval question is
     // stamped with an empty session and dropped by the mobile client.
     final sessionId = resolveSessionId(params);
+    if (sessionId.isEmpty) {
+      // No active turn to attribute the plan to: a "" session is dropped by the
+      // mobile client, so the plan-approval question would block forever. Reject
+      // so the agent proceeds instead of hanging.
+      Log.w("[cursor] cursor/create_plan with no resolvable session; rejecting");
+      respondError(request.id, -32602, "cursor/create_plan: no resolvable session");
+      return;
+    }
     final name = (params["name"] as String?) ?? "Plan";
     final overview = (params["overview"] as String?) ??
         (params["plan"] as String?) ??

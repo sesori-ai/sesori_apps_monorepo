@@ -95,7 +95,9 @@ class AcpStdioClient {
   /// Completes with the agent process's exit code when it terminates.
   Future<int> get processExit => _exited.future;
 
-  bool get isConnected => _process != null && !_disposed;
+  // The exit handler deliberately does not clear _process (see [request]), so
+  // _exited must be consulted too — otherwise a dead client still reports live.
+  bool get isConnected => _process != null && !_disposed && !_exited.isCompleted;
 
   /// Spawns the agent process and wires the stdio framing.
   ///
@@ -112,6 +114,12 @@ class AcpStdioClient {
 
     final process = await _processFactory(_launchSpec);
     _process = process;
+
+    // Writes to stdin surface broken-pipe errors asynchronously on `stdin.done`
+    // (not synchronously from `add`), so an unexpected agent exit would
+    // otherwise raise an unhandled async error. Observe and drop it here — the
+    // process exit is already logged via [exitCode] below.
+    unawaited(process.stdin.done.catchError((Object _) {}));
 
     _stdoutSubscription = process.stdout
         .transform(utf8.decoder)
@@ -180,7 +188,12 @@ class AcpStdioClient {
       "method": method,
     };
     if (params != null) envelope["params"] = params;
-    _writeFrame(process, envelope);
+    if (!_writeFrame(process, envelope)) {
+      // The frame never left the bridge, so no reply will ever come — fail the
+      // request now instead of letting it orphan in _pending until the timeout.
+      _pending.remove(id);
+      throw StateError("AcpStdioClient failed to write request frame for $method");
+    }
 
     try {
       return await completer.future.timeout(timeout);
@@ -222,11 +235,16 @@ class AcpStdioClient {
     });
   }
 
-  void _writeFrame(AcpProcessHandle process, Map<String, dynamic> envelope) {
+  /// Writes one ndjson frame. Returns whether the write was accepted; callers
+  /// awaiting a reply (see [request]) use this to fail fast instead of orphaning
+  /// a pending request when the frame could not be sent.
+  bool _writeFrame(AcpProcessHandle process, Map<String, dynamic> envelope) {
     try {
       process.stdin.add(utf8.encode("${jsonEncode(envelope)}\n"));
+      return true;
     } catch (error, stack) {
-      Log.w("[$_logTag] failed to write frame: $error\n$stack");
+      Log.w("[$_logTag] failed to write frame", error, stack);
+      return false;
     }
   }
 
@@ -269,8 +287,10 @@ class AcpStdioClient {
       }
 
       if (id != null && method != null) {
-        // Server-originated request.
-        final params = (map["params"] as Map?)?.cast<String, dynamic>() ?? {};
+        // Server-originated request. Guard the cast: a malformed payload or
+        // positional (List) params must not throw and drop the whole frame.
+        final rawParams = map["params"];
+        final params = rawParams is Map ? rawParams.cast<String, dynamic>() : <String, dynamic>{};
         _serverRequests.add(
           AcpServerRequest(id: id as Object, method: method, params: params),
         );
@@ -278,8 +298,9 @@ class AcpStdioClient {
       }
 
       if (method != null) {
-        // Notification.
-        final params = (map["params"] as Map?)?.cast<String, dynamic>() ?? {};
+        // Notification. Same defensive params handling as the request branch.
+        final rawParams = map["params"];
+        final params = rawParams is Map ? rawParams.cast<String, dynamic>() : <String, dynamic>{};
         _notifications.add(AcpNotification(method: method, params: params));
         return;
       }

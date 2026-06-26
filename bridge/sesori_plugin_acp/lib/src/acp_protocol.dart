@@ -52,8 +52,8 @@ class AcpAgentCapabilities {
   final Map<String, dynamic> raw;
 
   factory AcpAgentCapabilities.fromJson(Map<String, dynamic> json) {
-    final session =
-        (json["sessionCapabilities"] as Map<dynamic, dynamic>?)?.cast<String, dynamic>();
+    final rawSession = json["sessionCapabilities"];
+    final session = rawSession is Map ? rawSession.cast<String, dynamic>() : null;
     // ACP advertises an optional capability as either a bool or a nested
     // object (Cursor sends `"list": {}` to mean "supported"); presence of a
     // non-false value signals support.
@@ -84,8 +84,10 @@ class AcpInitializeResult {
   bool get requiresAuth => authMethods.isNotEmpty;
 
   factory AcpInitializeResult.fromJson(Map<String, dynamic> json) {
-    final caps = (json["agentCapabilities"] as Map?)?.cast<String, dynamic>() ?? {};
-    final methods = (json["authMethods"] as List?) ?? const [];
+    final rawCaps = json["agentCapabilities"];
+    final caps = rawCaps is Map ? rawCaps.cast<String, dynamic>() : const <String, dynamic>{};
+    final rawMethods = json["authMethods"];
+    final methods = rawMethods is List ? rawMethods : const <Object?>[];
     return AcpInitializeResult(
       protocolVersion: (json["protocolVersion"] ?? acpProtocolVersion) as int,
       agentCapabilities: AcpAgentCapabilities.fromJson(caps),

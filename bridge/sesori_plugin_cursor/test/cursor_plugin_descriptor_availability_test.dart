@@ -8,8 +8,13 @@ import "package:test/test.dart";
 
 void main() {
   group("CursorPluginDescriptor.checkAvailability", () {
+    // Keyed by the bare local option names (the mapper stores values unprefixed;
+    // only the public CLI flag is namespaced to `--cursor-bin`).
     const config = PluginConfig(
-      values: {"cursor-bin": "cursor-agent", "cursor-api-endpoint": null},
+      values: {
+        CursorPluginDescriptor.binOption: "cursor-agent",
+        CursorPluginDescriptor.apiEndpointOption: null,
+      },
     );
 
     test("reports available when '<bin> --version' exits 0 with a recent build", () async {

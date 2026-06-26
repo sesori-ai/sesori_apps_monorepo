@@ -164,6 +164,53 @@ void main() {
       expect(reply.containsKey("error"), isTrue);
     });
 
+    test("ask_question with no resolvable session is rejected, not registered", () async {
+      // No sessionId in params and no active turn → resolves to "". A question
+      // stamped with "" is dropped by the mobile client, so it must be rejected
+      // here rather than left as an invisible pending question that blocks the
+      // turn forever.
+      activeSession = null;
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 8,
+        "method": "cursor/ask_question",
+        "params": {
+          "title": "Choose",
+          "questions": [
+            {
+              "id": "q1",
+              "prompt": "Pick one",
+              "options": [
+                {"id": "o1", "label": "Yes"},
+              ],
+            },
+          ],
+        },
+      });
+      await pump();
+      expect(emitted, isEmpty);
+      expect(registry.pendingForSession(""), isEmpty);
+      final reply = fake.written.last;
+      expect(reply["id"], 8);
+      expect(reply.containsKey("error"), isTrue);
+    });
+
+    test("create_plan with no resolvable session is rejected, not registered", () async {
+      activeSession = null;
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 9,
+        "method": "cursor/create_plan",
+        "params": {"name": "Plan", "overview": "Do the thing"},
+      });
+      await pump();
+      expect(emitted, isEmpty);
+      expect(registry.pendingForSession(""), isEmpty);
+      final reply = fake.written.last;
+      expect(reply["id"], 9);
+      expect(reply.containsKey("error"), isTrue);
+    });
+
     test("questions with no usable text are dropped", () async {
       fake.emit({
         "jsonrpc": "2.0",

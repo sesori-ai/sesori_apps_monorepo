@@ -65,16 +65,20 @@ class AcpProjectRegistry {
     String? raw;
     try {
       raw = await store.read(name: _fileName);
-    } catch (_) {
-      return; // Unreadable store: serve the cwd seed only.
+    } catch (error, stack) {
+      // Unreadable store: serve the cwd seed only. Log so a persistent hydration
+      // failure (e.g. a permissions problem) is diagnosable rather than silent.
+      Log.w("[acp] project registry read failed; serving cwd seed only", error, stack);
+      return;
     }
     if (raw == null || raw.trim().isEmpty) return;
 
     final Object? decoded;
     try {
       decoded = jsonDecode(raw);
-    } catch (_) {
+    } catch (error, stack) {
       // Corrupt JSON: move it aside so a clean file can be written, keep seed.
+      Log.w("[acp] project registry JSON is corrupt; quarantining", error, stack);
       // Awaited (not fire-and-forget) so the quarantine completes before any
       // later _persist() write — otherwise the rename can race ahead and move
       // aside the freshly written clean file.

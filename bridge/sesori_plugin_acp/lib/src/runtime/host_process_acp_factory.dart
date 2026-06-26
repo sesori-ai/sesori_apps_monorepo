@@ -65,11 +65,19 @@ class HostProcessAcpHandle implements AcpProcessHandle {
   @override
   bool kill([io.ProcessSignal signal = io.ProcessSignal.sigterm]) {
     final pid = _process.pid;
-    if (signal == io.ProcessSignal.sigkill) {
-      unawaited(_processes.signalForce(pid: pid));
-    } else {
-      unawaited(_processes.signalGraceful(pid: pid));
-    }
+    // Signal delivery is fire-and-forget; the transport observes the actual
+    // termination via [exitCode]. Run it inside a guarded async closure so a
+    // failure (sync or async — e.g. an already-dead process) is logged and
+    // fail-soft rather than escaping as an unobserved async error.
+    unawaited(_deliverSignal(pid: pid, force: signal == io.ProcessSignal.sigkill));
     return true;
+  }
+
+  Future<void> _deliverSignal({required int pid, required bool force}) async {
+    try {
+      await (force ? _processes.signalForce(pid: pid) : _processes.signalGraceful(pid: pid));
+    } on Object catch (e, st) {
+      Log.w("[acp] failed to ${force ? "force" : "gracefully"}-signal process $pid", e, st);
+    }
   }
 }

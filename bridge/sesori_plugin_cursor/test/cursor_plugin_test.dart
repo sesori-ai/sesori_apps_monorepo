@@ -254,6 +254,50 @@ void main() {
       await client.dispose();
     });
 
+    test("onConnectionReset re-applies model+mode after an agent respawn", () async {
+      // Cursor's set_config_option is process-global; a respawned agent has
+      // applied nothing. The applied-cache must be cleared on reset or the
+      // redundant-call guard skips re-pushing and the turn runs on the fresh
+      // process's defaults instead of the user's selection.
+      plugin.captureSessionConfig(catalogResult());
+      final client = AcpStdioClient(
+        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        processFactory: (_) async => fake,
+      );
+      await client.connect();
+
+      Future<void> applyOnce() async {
+        final applying = plugin.applyTurnSelection(
+          client: client,
+          sessionId: "s1",
+          model: (providerID: "cursor", modelID: "sonnet-4.6"),
+          variant: const PluginSessionVariant(id: "plan"),
+        );
+        await respond("session/set_config_option", const {}); // model
+        await respond("session/set_config_option", const {}); // mode
+        await applying;
+      }
+
+      await applyOnce();
+      expect(
+        fake.written.where((f) => f["method"] == "session/set_config_option"),
+        hasLength(2),
+      );
+
+      // Simulate the agent process exiting and being torn down for a respawn.
+      plugin.onConnectionReset();
+
+      // The same model+mode must be pushed again to the fresh agent.
+      await applyOnce();
+      expect(
+        fake.written.where((f) => f["method"] == "session/set_config_option"),
+        hasLength(4),
+        reason: "the applied-cache is cleared on reset, so the selection is re-pushed",
+      );
+
+      await client.dispose();
+    });
+
     test("getProviders tolerates a malformed model option and derives a safe default", () async {
       // No currentValue, and the first option has a non-string value: the old
       // `_models.first["value"] as String?` default would have thrown.

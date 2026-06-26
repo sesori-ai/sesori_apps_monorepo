@@ -293,6 +293,17 @@ class AcpApprovalRegistry {
 
   void _handlePermission(AcpServerRequest request) {
     final sessionId = resolveSessionId(request.params);
+    if (sessionId.isEmpty) {
+      // No session to attribute this permission to: a request stamped with ""
+      // is dropped by the mobile client, so it would never be answered and the
+      // turn would block forever. Auto-cancel so the agent proceeds instead of
+      // deadlocking on a reply that can never arrive.
+      Log.w("[acp] permission request with no resolvable session; auto-cancelling");
+      _respond(request.id, const {
+        "outcome": {"outcome": "cancelled"},
+      });
+      return;
+    }
     final bridgeRequestId = generateBridgeId();
     _pending[bridgeRequestId] = _PendingApproval(
       bridgeRequestId: bridgeRequestId,

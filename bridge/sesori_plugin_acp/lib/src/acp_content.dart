@@ -49,7 +49,13 @@ String? acpRawOutputText(Object? raw) {
     return buffer.toString();
   }
   final content = acpContentText(map["content"])?.trimRight();
-  return (content == null || content.isEmpty) ? null : content;
+  if (content != null && content.isNotEmpty) return content;
+  // A command that exited non-zero with no stdout/stderr/content would otherwise
+  // render as a failed tool card with no diagnostic text — surface the exit code
+  // so the failure is at least legible.
+  final exitCode = map["exitCode"];
+  if (exitCode is int && exitCode != 0) return "exited with code $exitCode";
+  return null;
 }
 
 /// Extracts text from an ACP `ContentBlock` (`{type:text,text}`) or a list of

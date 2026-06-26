@@ -54,7 +54,19 @@ class AcpReplayCollector {
         final id = update["toolCallId"] as String?;
         if (id == null) return;
         final draft = _findTool(id);
-        if (draft == null) return;
+        if (draft == null) {
+          // No prior `tool_call` was replayed for this id (loaded history can
+          // carry only the update). Seed a tool draft from the update payload so
+          // the card still renders, mirroring the live mapper which emits a tool
+          // part unconditionally.
+          _assistant().tools[id] = _ToolDraft(
+            tool: (update["kind"] ?? update["title"] ?? "tool") as String,
+            title: update["title"] as String?,
+            status: acpToolStatus(update["status"]),
+            output: acpToolOutputText(update),
+          );
+          return;
+        }
         draft.status = acpToolStatus(update["status"]);
         final out = acpToolOutputText(update);
         if (out != null) draft.output = out;

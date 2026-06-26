@@ -112,7 +112,11 @@ class AcpBridgePlugin with SteadyPluginLifecycle implements BridgePlugin {
     }
     // Drop any prior watch (e.g. from the previous, now-exited client) before
     // arming on the current client, so reconnects do not leak subscriptions.
-    unawaited(_exitSubscription?.cancel());
+    unawaited(
+      _exitSubscription?.cancel().catchError((Object e, StackTrace st) {
+        Log.w("[${_plugin.id}] failed to cancel prior exit subscription", e, st);
+      }),
+    );
     _exitSubscription = exit.asStream().listen((code) {
       if (_stopping) {
         return;
