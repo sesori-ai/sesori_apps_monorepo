@@ -109,134 +109,34 @@ String toString() {
 /// @nodoc
 
 
-class LoginAwaitingConfirmation implements LoginState {
-  const LoginAwaitingConfirmation({required this.userCode});
-  
-
- final  String userCode;
-
-/// Create a copy of LoginState
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$LoginAwaitingConfirmationCopyWith<LoginAwaitingConfirmation> get copyWith => _$LoginAwaitingConfirmationCopyWithImpl<LoginAwaitingConfirmation>(this, _$identity);
-
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginAwaitingConfirmation&&(identical(other.userCode, userCode) || other.userCode == userCode));
-}
-
-
-@override
-int get hashCode => Object.hash(runtimeType,userCode);
-
-@override
-String toString() {
-  return 'LoginState.awaitingConfirmation(userCode: $userCode)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class $LoginAwaitingConfirmationCopyWith<$Res> implements $LoginStateCopyWith<$Res> {
-  factory $LoginAwaitingConfirmationCopyWith(LoginAwaitingConfirmation value, $Res Function(LoginAwaitingConfirmation) _then) = _$LoginAwaitingConfirmationCopyWithImpl;
-@useResult
-$Res call({
- String userCode
-});
-
-
-
-
-}
-/// @nodoc
-class _$LoginAwaitingConfirmationCopyWithImpl<$Res>
-    implements $LoginAwaitingConfirmationCopyWith<$Res> {
-  _$LoginAwaitingConfirmationCopyWithImpl(this._self, this._then);
-
-  final LoginAwaitingConfirmation _self;
-  final $Res Function(LoginAwaitingConfirmation) _then;
-
-/// Create a copy of LoginState
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? userCode = null,}) {
-  return _then(LoginAwaitingConfirmation(
-userCode: null == userCode ? _self.userCode : userCode // ignore: cast_nullable_to_non_nullable
-as String,
-  ));
-}
-
-
-}
-
-/// @nodoc
-
-
 class LoginPolling implements LoginState {
-  const LoginPolling({this.userCode});
+  const LoginPolling();
   
 
- final  String? userCode;
 
-/// Create a copy of LoginState
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$LoginPollingCopyWith<LoginPolling> get copyWith => _$LoginPollingCopyWithImpl<LoginPolling>(this, _$identity);
+
 
 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginPolling&&(identical(other.userCode, userCode) || other.userCode == userCode));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginPolling);
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,userCode);
+int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'LoginState.polling(userCode: $userCode)';
+  return 'LoginState.polling()';
 }
 
 
 }
 
-/// @nodoc
-abstract mixin class $LoginPollingCopyWith<$Res> implements $LoginStateCopyWith<$Res> {
-  factory $LoginPollingCopyWith(LoginPolling value, $Res Function(LoginPolling) _then) = _$LoginPollingCopyWithImpl;
-@useResult
-$Res call({
- String? userCode
-});
 
 
-
-
-}
-/// @nodoc
-class _$LoginPollingCopyWithImpl<$Res>
-    implements $LoginPollingCopyWith<$Res> {
-  _$LoginPollingCopyWithImpl(this._self, this._then);
-
-  final LoginPolling _self;
-  final $Res Function(LoginPolling) _then;
-
-/// Create a copy of LoginState
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? userCode = freezed,}) {
-  return _then(LoginPolling(
-userCode: freezed == userCode ? _self.userCode : userCode // ignore: cast_nullable_to_non_nullable
-as String?,
-  ));
-}
-
-
-}
 
 /// @nodoc
 

@@ -168,8 +168,6 @@ class LoginOAuthService {
       sessionToken: sessionToken,
     );
 
-    _printUserCode(initResp.userCode);
-
     // The URL is ALWAYS printed, on its own line, so login works even when no
     // browser can be opened: the bridge frequently runs headless (servers, SSH
     // sessions, containers), and a launcher exit code of 0 only means the OS
@@ -254,43 +252,6 @@ class LoginOAuthService {
     } finally {
       stopwatch.stop();
     }
-  }
-
-  void _printUserCode(String userCode) {
-    const line = "┌──────────────────────────────────────────┐";
-    const empty = "│                                          │";
-    const contentWidth = 42; // width inside the box borders
-
-    final codeText = "CODE:  $userCode";
-    final codePadding = " " * ((contentWidth - codeText.length) ~/ 2);
-    final codeLine = "│$codePadding$codeText${" " * (contentWidth - codePadding.length - codeText.length)}│";
-
-    const confirmText = "Confirm this code on the web page";
-    final confirmPadding = " " * ((contentWidth - confirmText.length) ~/ 2);
-    final confirmLine =
-        "│$confirmPadding$confirmText${" " * (contentWidth - confirmPadding.length - confirmText.length)}│";
-
-    const beforeText = "before approving the login request.";
-    final beforePadding = " " * ((contentWidth - beforeText.length) ~/ 2);
-    final beforeLine = "│$beforePadding$beforeText${" " * (contentWidth - beforePadding.length - beforeText.length)}│";
-
-    const bottomLine = "└──────────────────────────────────────────┘";
-
-    // Printed as a single write so the box renders atomically as one block.
-    Console.message(
-      [
-        "",
-        line,
-        empty,
-        codeLine,
-        empty,
-        confirmLine,
-        beforeLine,
-        empty,
-        bottomLine,
-        "",
-      ].join("\n"),
-    );
   }
 
   String _generateSessionToken() {

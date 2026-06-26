@@ -6,7 +6,8 @@ import "package:http/http.dart" as http;
 import "package:meta/meta.dart";
 import "package:path/path.dart" as path;
 import "package:rxdart/rxdart.dart";
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show ArchiveExtractor, BinaryDownloadClient, ChecksumValidator;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
+    show ArchiveExtractor, BinaryDownloadClient, ChecksumValidator, OsVersionFormatter, PlatformOs;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         BridgePlugin,
@@ -24,6 +25,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         ServerClock,
         StartAbortController,
         StartAbortSignal;
+import "package:sesori_shared/sesori_shared.dart" show DeviceInfo;
 
 import "../../api/bridge_settings_api.dart";
 import "../../api/control_secret_api.dart";
@@ -194,6 +196,8 @@ class BridgeRuntimeRunner {
         api: LoginOAuthApi(
           authBackendUrl: options.authBackendUrl,
           client: httpClient,
+          clientType: "bridge_${PlatformOs.fromOperatingSystem(operatingSystem: io.Platform.operatingSystem).value}",
+          device: _bridgeDeviceInfo(),
         ),
         browserLauncher: openOAuthBrowser,
         browserOpenability: detectBrowserOpenability,
@@ -840,5 +844,49 @@ class BridgeRuntimeRunner {
 
   static String _buildOwnerSessionId({required ProcessIdentity currentBridgeIdentity}) {
     return '${currentBridgeIdentity.pid}:${currentBridgeIdentity.startMarker ?? currentBridgeIdentity.capturedAt.toIso8601String()}';
+  }
+
+  /// Describes this bridge machine for the auth-server confirmation page.
+  ///
+  /// Best-effort: [io.Platform.localHostname] is virtually always present, but
+  /// we fall back to a constant so the server's required, non-empty `name` is
+  /// always satisfied, and clamp to the 120-char server limit. The cosmetic OS
+  /// version is omitted when it can't be derived.
+  static DeviceInfo _bridgeDeviceInfo() {
+    final hostname = _localHostname().trim();
+    final name = hostname.isEmpty ? "Sesori Bridge" : hostname;
+    return DeviceInfo(
+      name: name.length > 120 ? name.substring(0, 120).trim() : name,
+      osVersion: const OsVersionFormatter().format(
+        operatingSystem: io.Platform.operatingSystem,
+        operatingSystemVersion: io.Platform.operatingSystemVersion,
+        osReleaseContents: _readLinuxOsRelease(),
+      ),
+      appVersion: appVersion,
+    );
+  }
+
+  /// `Platform.localHostname` can throw (e.g. `SocketException` when hostname
+  /// resolution fails in restricted/containerized environments). The descriptor
+  /// is best-effort, so degrade to an empty name and let the caller fall back.
+  static String _localHostname() {
+    try {
+      return io.Platform.localHostname;
+    } on Object catch (error) {
+      Log.w("Failed to read localHostname for the device descriptor", error);
+      return "";
+    }
+  }
+
+  /// Reads `/etc/os-release` (Linux only) so [OsVersionFormatter] can derive the
+  /// distro label; null on other platforms or when the file can't be read.
+  static String? _readLinuxOsRelease() {
+    if (!io.Platform.isLinux) return null;
+    try {
+      return io.File("/etc/os-release").readAsStringSync();
+    } on io.IOException catch (error) {
+      Log.w("Failed to read /etc/os-release for the device descriptor", error);
+      return null;
+    }
   }
 }

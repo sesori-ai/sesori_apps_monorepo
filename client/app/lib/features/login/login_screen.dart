@@ -111,7 +111,7 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
     final prego = context.prego;
     final loc = context.loc;
     final state = context.watch<LoginCubit>().state;
-    final isLoading = state is LoginAuthenticating || state is LoginAwaitingConfirmation || state is LoginPolling;
+    final isLoading = state is LoginAuthenticating || state is LoginPolling;
 
     return Scaffold(
       body: BlocListener<LoginCubit, LoginState>(
@@ -186,70 +186,14 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                                       textAlign: TextAlign.center,
                                     ),
                                   ),
-                                  LoginAwaitingConfirmation(:final userCode) => Padding(
+                                  LoginPolling() => Padding(
                                     padding: const EdgeInsetsDirectional.only(top: 16),
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          loc.loginAwaitingConfirmation(userCode),
-                                          style: prego.textTheme.textSm.regular.copyWith(
-                                            color: prego.colors.textSecondary,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                          decoration: BoxDecoration(
-                                            color: prego.colors.bgBrandSolid.withAlpha(26),
-                                            borderRadius: BorderRadius.circular(8),
-                                            border: Border.all(
-                                              color: prego.colors.bgBrandSolid.withAlpha(77),
-                                            ),
-                                          ),
-                                          child: Text(
-                                            userCode,
-                                            style: prego.textTheme.textXl.bold.copyWith(
-                                              color: prego.colors.bgBrandSolid,
-                                              letterSpacing: 4,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  LoginPolling(:final userCode) => Padding(
-                                    padding: const EdgeInsetsDirectional.only(top: 16),
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          loc.loginPolling,
-                                          style: prego.textTheme.textSm.regular.copyWith(
-                                            color: prego.colors.textSecondary,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                        if (userCode != null) ...[
-                                          const SizedBox(height: 8),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                            decoration: BoxDecoration(
-                                              color: prego.colors.bgBrandSolid.withAlpha(26),
-                                              borderRadius: BorderRadius.circular(8),
-                                              border: Border.all(
-                                                color: prego.colors.bgBrandSolid.withAlpha(77),
-                                              ),
-                                            ),
-                                            child: Text(
-                                              userCode,
-                                              style: prego.textTheme.textXl.bold.copyWith(
-                                                color: prego.colors.bgBrandSolid,
-                                                letterSpacing: 4,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ],
+                                    child: Text(
+                                      loc.loginPolling,
+                                      style: prego.textTheme.textSm.regular.copyWith(
+                                        color: prego.colors.textSecondary,
+                                      ),
+                                      textAlign: TextAlign.center,
                                     ),
                                   ),
                                   LoginTimeout() => Padding(
@@ -296,7 +240,6 @@ class _LoginScreenBodyState extends State<_LoginScreenBody> {
                                   ),
                                   LoginIdle() => const SizedBox.shrink(),
                                   LoginAuthenticating() => const SizedBox.shrink(),
-                                  LoginAwaitingConfirmation() => const SizedBox.shrink(),
                                   LoginPolling() => const SizedBox.shrink(),
                                   LoginSuccess() => const SizedBox.shrink(),
                                 },

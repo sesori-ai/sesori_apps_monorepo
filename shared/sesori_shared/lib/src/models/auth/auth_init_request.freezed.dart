@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AuthInitRequest {
 
- String get clientType;
+ String get clientType; DeviceInfo get device;
 /// Create a copy of AuthInitRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $AuthInitRequestCopyWith<AuthInitRequest> get copyWith => _$AuthInitRequestCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthInitRequest&&(identical(other.clientType, clientType) || other.clientType == clientType));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthInitRequest&&(identical(other.clientType, clientType) || other.clientType == clientType)&&(identical(other.device, device) || other.device == device));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,clientType);
+int get hashCode => Object.hash(runtimeType,clientType,device);
 
 @override
 String toString() {
-  return 'AuthInitRequest(clientType: $clientType)';
+  return 'AuthInitRequest(clientType: $clientType, device: $device)';
 }
 
 
@@ -48,11 +48,11 @@ abstract mixin class $AuthInitRequestCopyWith<$Res>  {
   factory $AuthInitRequestCopyWith(AuthInitRequest value, $Res Function(AuthInitRequest) _then) = _$AuthInitRequestCopyWithImpl;
 @useResult
 $Res call({
- String clientType
+ String clientType, DeviceInfo device
 });
 
 
-
+$DeviceInfoCopyWith<$Res> get device;
 
 }
 /// @nodoc
@@ -65,13 +65,23 @@ class _$AuthInitRequestCopyWithImpl<$Res>
 
 /// Create a copy of AuthInitRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? clientType = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? clientType = null,Object? device = null,}) {
   return _then(_self.copyWith(
 clientType: null == clientType ? _self.clientType : clientType // ignore: cast_nullable_to_non_nullable
-as String,
+as String,device: null == device ? _self.device : device // ignore: cast_nullable_to_non_nullable
+as DeviceInfo,
   ));
 }
-
+/// Create a copy of AuthInitRequest
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$DeviceInfoCopyWith<$Res> get device {
+  
+  return $DeviceInfoCopyWith<$Res>(_self.device, (value) {
+    return _then(_self.copyWith(device: value));
+  });
+}
 }
 
 
@@ -80,10 +90,11 @@ as String,
 @JsonSerializable()
 
 class _AuthInitRequest implements AuthInitRequest {
-  const _AuthInitRequest({required this.clientType});
+  const _AuthInitRequest({required this.clientType, required this.device});
   factory _AuthInitRequest.fromJson(Map<String, dynamic> json) => _$AuthInitRequestFromJson(json);
 
 @override final  String clientType;
+@override final  DeviceInfo device;
 
 /// Create a copy of AuthInitRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -98,16 +109,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AuthInitRequest&&(identical(other.clientType, clientType) || other.clientType == clientType));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AuthInitRequest&&(identical(other.clientType, clientType) || other.clientType == clientType)&&(identical(other.device, device) || other.device == device));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,clientType);
+int get hashCode => Object.hash(runtimeType,clientType,device);
 
 @override
 String toString() {
-  return 'AuthInitRequest(clientType: $clientType)';
+  return 'AuthInitRequest(clientType: $clientType, device: $device)';
 }
 
 
@@ -118,11 +129,11 @@ abstract mixin class _$AuthInitRequestCopyWith<$Res> implements $AuthInitRequest
   factory _$AuthInitRequestCopyWith(_AuthInitRequest value, $Res Function(_AuthInitRequest) _then) = __$AuthInitRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String clientType
+ String clientType, DeviceInfo device
 });
 
 
-
+@override $DeviceInfoCopyWith<$Res> get device;
 
 }
 /// @nodoc
@@ -135,14 +146,24 @@ class __$AuthInitRequestCopyWithImpl<$Res>
 
 /// Create a copy of AuthInitRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? clientType = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? clientType = null,Object? device = null,}) {
   return _then(_AuthInitRequest(
 clientType: null == clientType ? _self.clientType : clientType // ignore: cast_nullable_to_non_nullable
-as String,
+as String,device: null == device ? _self.device : device // ignore: cast_nullable_to_non_nullable
+as DeviceInfo,
   ));
 }
 
-
+/// Create a copy of AuthInitRequest
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$DeviceInfoCopyWith<$Res> get device {
+  
+  return $DeviceInfoCopyWith<$Res>(_self.device, (value) {
+    return _then(_self.copyWith(device: value));
+  });
+}
 }
 
 // dart format on
