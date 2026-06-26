@@ -95,7 +95,33 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   the exception to the "Phase 1 = bridge only" standing text):** round-trip
   serialization tests; no logic in shared; **`sesori_shared` codegen + tests
   pass AND `client/app` (mobile product) still builds** (no consumer break).
-- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+- **Aristotle:** plan ☑ · impl ☑.
+- **Findings:** Shipped as two pure-data Freezed sealed unions in
+  `shared/sesori_shared/lib/src/protocol/` (alongside `messages.dart`/`RelayMessage`,
+  the precedent), not under `models/` — these are protocol wire types.
+  `ControlMessage` is a single bidirectional union keyed by `type`
+  (`unionValueCase: snake`) with 10 variants: `token_request`/`token_response`
+  (id-correlated; null `accessToken` ⇒ GUI couldn't supply), `token_update`
+  (push), `status`, `prompt_request`/`prompt_response` (id-correlated),
+  `restart` (intentional-restart heads-up), `unregister_and_exit`, `registered`
+  (carries `bridgeId`, ADR A13), and `provision_progress` (wraps the nested
+  union). `ControlProvisionProgress` is a separate union mirroring
+  `RuntimeProvisionProgress` 1:1 (resolving/downloading/extracting/verifying/
+  notice/ready/failed) — the source lives in `sesori_plugin_interface` and MUST
+  NOT be imported (dependency direction), so it is mirrored; the derived
+  `fraction` getter is intentionally dropped (pure data). Forward-compat: three
+  enums (`ControlRelayConnectionState`/`ControlPluginHealthState`/
+  `ControlPromptKind`) each carry an `unknown` `@JsonValue` fallback +
+  `@JsonKey(unknownEnumValue:)`; optional fields use `@Default`; null keys auto-
+  drop (build.yaml `include_if_null:false`). No catch-all message-type variant
+  (matches `RelayMessage`; GUI+helper are same-commit, ADR/§2). 25 round-trip/
+  discriminator/fallback tests; `sesori_shared` 265 tests + analyze clean;
+  `client/app` (mobile) `flutter analyze` clean (additive, no consumer break).
+- **Deltas:** §6 listed only "Control-protocol Freezed DTOs | `shared/sesori_shared`".
+  Concretely realized as two unions in `lib/src/protocol/` (not `models/`),
+  matching `RelayMessage`'s home. Status/prompt field shapes (the three enums +
+  `activeSessionCount`) are introduced here; their senders (PRs 1.9/1.10/1.12)
+  may extend them **additively** via `@Default` fields / new enum values.
 
 ## PR 1.3 — Supervised auth bootstrap
 - **Goal:** In supervised mode, short-circuit

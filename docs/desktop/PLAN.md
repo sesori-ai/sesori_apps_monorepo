@@ -8,7 +8,7 @@
 
 ## Current pointer
 
-- **Last completed phase:** Phase 1 — PR 1.1 `--control-url` + off-argv secret bootstrap + `ControlChannelClient` skeleton
+- **Last completed phase:** Phase 1 — PR 1.2 Control-protocol Freezed DTOs in `sesori_shared` (`ControlMessage` + `ControlProvisionProgress` mirror)
 - **Branch:** one feature branch per PR, cut from `main`
 
 > **Advance this pointer to the PR you just raised.** There is no separate
@@ -257,7 +257,7 @@ Legend: ☐ pending · ◐ in-progress · ☑ done. Sizes: **S** ≤150 LOC · *
 
 ### Phase 1 — Bridge supervised mode → `phase-1-bridge-supervised.md`
 - ☑ 1.1 `--control-url` + off-argv secret bootstrap + `ControlChannelClient` skeleton — Low-Med / M
-- ☐ 1.2 Control-protocol Freezed DTOs (incl. provision-progress mirror) — Low / S-M
+- ☑ 1.2 Control-protocol Freezed DTOs (incl. provision-progress mirror) — Low / S-M
 - ☐ 1.3 Supervised auth bootstrap (short-circuit `ensureAuthenticated`) — Med / M
 - ☐ 1.4 Token provider **pull** over channel (+ timeout/GUI-down) — Med / M
 - ☐ 1.5 Token-stream **push** → relay client — Med / S-M
