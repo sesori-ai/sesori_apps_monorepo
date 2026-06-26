@@ -90,9 +90,6 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     _globalEventSubscription = _connectionService.events.listen(_handleGlobalEvent);
     _connectionStatusSubscription = _connectionService.status.listen(_onConnectionStatusChanged);
     _staleSubscription = _connectionService.dataMayBeStale.listen((_) => _onDataMayBeStale());
-    // Declare that the user is now viewing this session (marks it seen, and
-    // suppresses bolding while the screen is open).
-    _sessionViewingService.setViewingSession(_sessionId);
     _loadMessages(isReload: false);
   }
 
@@ -111,6 +108,11 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       case SessionDetailLoadResultLoaded(:final snapshot):
         _waitingForConnection = false;
         emit(_buildLoadedState(snapshot: snapshot));
+        // Declare that the user is now viewing this session only after the
+        // transcript has actually loaded — otherwise a load that fails or stays
+        // in the waiting-for-connection path would mark the session read (and
+        // clear its bold globally) while the user only saw a loading/error state.
+        _sessionViewingService.setViewingSession(_sessionId);
         _drainPendingEvents();
         _tryDrainQueue();
       case SessionDetailLoadResultWaitingForConnection():

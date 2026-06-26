@@ -20,6 +20,13 @@ typedef SessionUnseenRow = ({
 class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   SessionDao(super.attachedDatabase);
 
+  /// Inserts a session row with full worktree state. If a placeholder row
+  /// already exists for this id (e.g. a `session.created` SSE event raced ahead
+  /// of the `/session/create` flow and inserted an unseen-tracking placeholder
+  /// via [insertSessionsIfMissing]), this UPSERTs the worktree-bearing columns
+  /// onto that row instead of throwing a duplicate-key error. The unseen-tracking
+  /// timestamps and the original `created_at` set by the placeholder are left
+  /// untouched.
   Future<void> insertSession({
     required String sessionId,
     required String projectId,
@@ -45,6 +52,20 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
         lastAgent: Value(lastAgent),
         lastAgentModel: Value(lastAgentModel),
         createdAt: Value(createdAt),
+      ),
+      onConflict: DoUpdate(
+        (_) => SessionTableCompanion(
+          // Only the worktree/agent state the create flow owns — never clobber
+          // created_at or the unseen timestamps that a placeholder may have set.
+          worktreePath: Value(worktreePath),
+          branchName: Value(branchName),
+          isDedicated: Value(isDedicated),
+          baseBranch: Value(baseBranch),
+          baseCommit: Value(baseCommit),
+          lastAgent: Value(lastAgent),
+          lastAgentModel: Value(lastAgentModel),
+        ),
+        target: [sessionTable.sessionId],
       ),
     );
   }
