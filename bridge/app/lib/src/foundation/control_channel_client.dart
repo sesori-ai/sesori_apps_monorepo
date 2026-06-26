@@ -73,7 +73,7 @@ class ControlChannelClient {
     _active = true;
     _generation++;
     try {
-      await _openChannel();
+      await _openChannel(_generation);
     } catch (_) {
       _active = false;
       rethrow;
@@ -94,7 +94,12 @@ class ControlChannelClient {
     _generation++;
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
-    await _socketSubscription?.cancel();
+    // Isolate every teardown step: a failure in one must not skip the rest.
+    try {
+      await _socketSubscription?.cancel();
+    } on Object catch (error, stackTrace) {
+      Log.w("[control][ws] failed to cancel subscription during dispose", error, stackTrace);
+    }
     _socketSubscription = null;
     final channel = _channel;
     _channel = null;
@@ -103,15 +108,23 @@ class ControlChannelClient {
         await channel.sink.close().timeout(const Duration(seconds: 3));
       } on TimeoutException {
         Log.w("[control][ws] close handshake timed out — connection abandoned");
-      } catch (error, stackTrace) {
+      } on Object catch (error, stackTrace) {
         Log.w("[control][ws] close failed — connection abandoned", error, stackTrace);
       }
     }
-    await _inbound.close();
-    await _connectionState.close();
+    try {
+      await _inbound.close();
+    } on Object catch (error, stackTrace) {
+      Log.w("[control][ws] failed to close inbound stream", error, stackTrace);
+    }
+    try {
+      await _connectionState.close();
+    } on Object catch (error, stackTrace) {
+      Log.w("[control][ws] failed to close connectionState stream", error, stackTrace);
+    }
   }
 
-  Future<void> _openChannel() async {
+  Future<void> _openChannel(int generation) async {
     final channel = IOWebSocketChannel.connect(
       _url,
       headers: <String, dynamic>{"Authorization": "Bearer $_secret"},
@@ -121,12 +134,16 @@ class ControlChannelClient {
     } catch (_) {
       // Clean up the half-open channel so a failed/timed-out attempt never
       // leaves a zombie connection lingering.
-      try {
-        await channel.sink.close().timeout(const Duration(seconds: 1));
-      } catch (closeError, closeStackTrace) {
-        Log.w("[control][ws] failed to clean up channel after a failed connect", closeError, closeStackTrace);
-      }
+      await _closeChannelQuietly(channel, "after a failed connect");
       rethrow;
+    }
+
+    // Liveness guard: dispose() or a newer connect generation may have run while
+    // we awaited the handshake. Never install a socket on a disposed/superseded
+    // client — that would leak a live WebSocket past dispose.
+    if (!_active || generation != _generation) {
+      await _closeChannelQuietly(channel, "on a superseded connect");
+      return;
     }
 
     _channel = channel;
@@ -140,6 +157,14 @@ class ControlChannelClient {
       onDone: () => _handleDisconnect(channel),
       cancelOnError: false,
     );
+  }
+
+  Future<void> _closeChannelQuietly(IOWebSocketChannel channel, String context) async {
+    try {
+      await channel.sink.close().timeout(const Duration(seconds: 1));
+    } catch (error, stackTrace) {
+      Log.w("[control][ws] failed to close channel $context", error, stackTrace);
+    }
   }
 
   void _handleFrame(dynamic frame) {
@@ -159,9 +184,19 @@ class ControlChannelClient {
     // already been replaced by a reconnect (onError can be followed by onDone
     // for the same socket — only the current channel may drive a reconnect).
     if (!_active || !identical(_channel, channel)) return;
-    unawaited(_socketSubscription?.cancel());
+    final subscription = _socketSubscription;
     _socketSubscription = null;
     _channel = null;
+    if (subscription != null) {
+      // unawaited alone does not consume errors; a throwing cancel would
+      // surface as an uncaught async error. Future.sync also catches a
+      // synchronous throw from cancel().
+      unawaited(
+        Future.sync(subscription.cancel).catchError((Object error, StackTrace stackTrace) {
+          Log.w("[control][ws] failed to cancel subscription on disconnect", error, stackTrace);
+        }),
+      );
+    }
     _emitConnectionState(ControlChannelConnectionState.disconnected);
     _scheduleReconnect(_initialReconnectDelay, _generation);
   }
@@ -171,7 +206,7 @@ class ControlChannelClient {
     _reconnectTimer = Timer(delay, () async {
       if (!_active || generation != _generation) return;
       try {
-        await _openChannel();
+        await _openChannel(generation);
       } catch (error, stackTrace) {
         if (!_active || generation != _generation) return;
         Log.w("[control][ws] reconnect attempt failed; backing off", error, stackTrace);

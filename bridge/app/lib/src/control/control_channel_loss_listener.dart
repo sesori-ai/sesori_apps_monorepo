@@ -48,7 +48,12 @@ class ControlChannelLossListener {
     _disposed = true;
     _graceTimer?.cancel();
     _graceTimer = null;
-    await _subscription?.cancel();
+    // Isolate the cancel so a failure still lets teardown finish.
+    try {
+      await _subscription?.cancel();
+    } on Object catch (error, stackTrace) {
+      Log.w("[control] failed to cancel connection-state subscription", error, stackTrace);
+    }
     _subscription = null;
   }
 

@@ -3,6 +3,7 @@ import "dart:io" as io;
 
 import "package:clock/clock.dart";
 import "package:http/http.dart" as http;
+import "package:meta/meta.dart";
 import "package:path/path.dart" as path;
 import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show ArchiveExtractor, BinaryDownloadClient, ChecksumValidator;
@@ -446,28 +447,50 @@ class BridgeRuntimeRunner {
     }
   }
 
-  /// Supervised-mode bootstrap: read the per-spawn secret off-argv (stdin),
-  /// open the GUI's loopback control channel, and arm the parent-loss exit
-  /// policy (ADR A9). Both the client and the loss listener are torn down via
-  /// the shutdown coordinator. Only ever called when `--control-url` is set.
+  /// Whether [url] is an acceptable supervised control-channel endpoint: a
+  /// loopback host over ws/wss. The GUI hosts the control channel on loopback,
+  /// so anything else is rejected — the bridge fails closed rather than sending
+  /// the per-spawn bearer secret to a non-loopback endpoint (defense in depth,
+  /// since `--control-url` is GUI-supplied and could be misconfigured/tampered).
+  @visibleForTesting
+  static bool isLoopbackControlUrl(Uri url) {
+    if (url.scheme != "ws" && url.scheme != "wss") return false;
+    final host = url.host.toLowerCase();
+    return host == "127.0.0.1" || host == "localhost" || host == "::1";
+  }
+
+  /// Supervised-mode bootstrap: validate the loopback control URL, read the
+  /// per-spawn secret off-argv (stdin), arm the parent-loss exit policy (ADR
+  /// A9), then connect the GUI's loopback control channel. Both the client and
+  /// the loss listener are torn down via the shutdown coordinator. Only ever
+  /// called when `--control-url` is set.
   static Future<void> _startSupervisedControlChannel({
     required BridgeCliOptions options,
     required BridgeShutdownCoordinator shutdownCoordinator,
   }) async {
+    final url = Uri.parse(options.controlUrl!);
+    if (!isLoopbackControlUrl(url)) {
+      throw StateError(
+        "Refusing supervised control URL '${options.controlUrl}': must be a loopback ws/wss endpoint",
+      );
+    }
+
     final secret = await ControlSecretApi(input: io.stdin).readSecret();
-    final controlChannelClient = ControlChannelClient(
-      url: Uri.parse(options.controlUrl!),
-      secret: secret,
-    );
-    await controlChannelClient.connect();
+    final controlChannelClient = ControlChannelClient(url: url, secret: secret);
     shutdownCoordinator.add(disposable: controlChannelClient.dispose);
 
+    // Subscribe the parent-loss policy BEFORE connecting: the first
+    // `disconnected` transition must never be missed (reconnect failures don't
+    // re-emit it), otherwise a GUI crash during this startup window would leave
+    // the ADR A9 grace timer un-armed and the helper running with no parent.
     final lossListener = ControlChannelLossListener(
       connectionState: controlChannelClient.connectionState,
       exitProcess: io.exit,
     );
     lossListener.start();
     shutdownCoordinator.add(disposable: lossListener.dispose);
+
+    await controlChannelClient.connect();
   }
 
   /// Runs the plugin's runtime-provisioning phase, rendering progress and

@@ -8,22 +8,23 @@
 
 ## Current pointer
 
-- **Last completed phase:** Phase 0 — `mobile/`→`client/` rename (PR 0.1)
-- **In-flight PR:** PR 1.1 — `--control-url` + off-argv secret bootstrap + `ControlChannelClient` skeleton (open, not merged)
+- **Last completed phase:** Phase 1 — PR 1.1 `--control-url` + off-argv secret bootstrap + `ControlChannelClient` skeleton
 - **Branch:** one feature branch per PR, cut from `main`
 
-> **The pointer is backward-looking.** "Last completed phase" advances only once
-> a phase's PRs have all landed, so right after any merge it reflects what is
-> genuinely done. Use **In-flight PR** for work in progress; the next action is
-> intentionally not tracked here — read it off the first ☐ in the PR status
-> index (§9).
+> **Advance this pointer to the PR you just raised.** There is no separate
+> "in-flight" field: when you open a PR, set **Last completed phase** above to
+> that PR and mark its §9 row ☑. PRs squash-merge one at a time, so the pointer
+> (and the §9 index) read true the moment that PR merges. Do this for every PR
+> as you progress.
 >
 > **How to resume (derive the next action — do NOT ask first).** When told to
 > "continue with the next phase/PR", resolve it deterministically:
-> 1. If **In-flight PR** above is not "none", continue that PR.
-> 2. Otherwise the next action is the **first ☐ in the PR status index (§9)**,
->    read top-to-bottom. Phases and the PRs within them are strictly ordered and
->    are completed in order (a later phase depends on earlier phases existing).
+> 1. The next action is the **first ☐ in the PR status index (§9)**, read
+>    top-to-bottom. Phases and the PRs within them are strictly ordered and are
+>    completed in order (a later phase depends on earlier phases existing).
+> 2. **Read the prior Findings logs / Plan-deltas first** — this file plus the
+>    relevant `phase-N-*.md` — an earlier PR may have recorded a decision, delta,
+>    naming choice, or gotcha that affects the next PR.
 > 3. **The session worktree/branch name is NOT authoritative** and may not match
 >    the plan — e.g. a branch named `…-phase-2` while the first ☐ is still in
 >    Phase 1. The plan always wins; never infer the phase/PR from the branch name.
@@ -247,7 +248,7 @@ Legend: ☐ pending · ◐ in-progress · ☑ done. Sizes: **S** ≤150 LOC · *
 - ☑ 0.1 `mobile/`→`client/` everywhere (atomic) — **Med-High / L**
 
 ### Phase 1 — Bridge supervised mode → `phase-1-bridge-supervised.md`
-- ◐ 1.1 `--control-url` + off-argv secret bootstrap + `ControlChannelClient` skeleton — Low-Med / M
+- ☑ 1.1 `--control-url` + off-argv secret bootstrap + `ControlChannelClient` skeleton — Low-Med / M
 - ☐ 1.2 Control-protocol Freezed DTOs (incl. provision-progress mirror) — Low / S-M
 - ☐ 1.3 Supervised auth bootstrap (short-circuit `ensureAuthenticated`) — Med / M
 - ☐ 1.4 Token provider **pull** over channel (+ timeout/GUI-down) — Med / M
