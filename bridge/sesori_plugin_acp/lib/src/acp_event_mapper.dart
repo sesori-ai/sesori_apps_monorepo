@@ -224,7 +224,6 @@ class AcpEventMapper {
     final messageId = "$sessionId-tool-$toolCallId";
     final partId = "$messageId-call";
     final title = update["title"] as String?;
-    final kind = update["kind"] as String?;
     final status = acpToolStatus(update["status"]);
     final output = acpToolOutputText(update);
     return [
@@ -245,7 +244,10 @@ class AcpEventMapper {
           partId: partId,
           messageId: messageId,
           sessionId: sessionId,
-          tool: kind ?? title ?? "tool",
+          // Same fail-soft name resolution as tool_call_update: `kind`, else
+          // `title`, else "tool" — never an empty `kind`, never a throw on a
+          // non-string field.
+          tool: acpToolName(update),
           state: PluginToolState(
             status: status,
             title: title,

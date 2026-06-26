@@ -79,6 +79,34 @@ void main() {
       expect(part.state?.status, PluginToolStatus.pending);
     });
 
+    test("tool_call falls through an empty kind to title and never throws", () {
+      // Same fail-soft name resolution as tool_call_update: an empty-string
+      // `kind` must fall through to `title`, and a non-string `kind` must not
+      // throw during live mapping.
+      final emptyKind = mapper.map(update({
+        "sessionUpdate": "tool_call",
+        "toolCallId": "tc-empty",
+        "kind": "",
+        "title": "Search files",
+        "status": "pending",
+      }));
+      expect(
+        emptyKind.whereType<BridgeSseMessagePartUpdated>().single.part.tool,
+        "Search files",
+      );
+
+      final nonStringKind = mapper.map(update({
+        "sessionUpdate": "tool_call",
+        "toolCallId": "tc-bad",
+        "kind": 123,
+        "status": "pending",
+      }));
+      expect(
+        nonStringKind.whereType<BridgeSseMessagePartUpdated>().single.part.tool,
+        "tool",
+      );
+    });
+
     test("tool_call_update on an edit emits a session diff", () {
       final events = mapper.map(update({
         "sessionUpdate": "tool_call_update",

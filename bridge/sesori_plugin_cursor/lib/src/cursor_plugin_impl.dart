@@ -146,17 +146,22 @@ class CursorPlugin extends AcpPlugin {
         targetModel.isNotEmpty &&
         _modelConfigId != null &&
         CursorModelProbe.hasOption(_models, targetModel)) {
-      String? effectiveModel = targetModel;
+      var applied = true;
       if (targetModel != _appliedModelId) {
-        if (await _setConfig(client, sessionId, _modelConfigId!, targetModel)) {
-          _appliedModelId = targetModel;
-        } else {
-          // The agent rejected the switch and kept its current model — stamp the
-          // model actually in effect, not the one we failed to apply.
-          effectiveModel = _appliedModelId ?? _currentModelId;
-        }
+        applied = await _setConfig(client, sessionId, _modelConfigId!, targetModel);
+        if (applied) _appliedModelId = targetModel;
       }
-      eventMapper.setSessionModel(sessionId, effectiveModel, providerId: _providerId);
+      if (applied) {
+        // The switch took (or was already in effect): record it as this
+        // session's model so its messages are stamped with it and its later
+        // default turns re-target it.
+        eventMapper.setSessionModel(sessionId, targetModel, providerId: _providerId);
+      }
+      // On rejection the agent kept its current model. Leave this session's model
+      // untouched: don't stamp the model we failed to apply, and don't overwrite
+      // it with another session's selection (_appliedModelId), which would make
+      // this session's later default turns inherit that model instead of
+      // re-targeting its own intended default.
     } else {
       // Unknown explicit model (fail-soft) or no default resolved yet — stamp
       // messages with the session's default.

@@ -340,6 +340,53 @@ void main() {
       await client.dispose();
     });
 
+    test("a rejected switch does not inherit another session's model", () async {
+      // sA successfully selects sonnet-4.6, leaving it process-globally applied.
+      // sB then tries gpt-5.4 and is rejected. sB must NOT be stamped with sA's
+      // sonnet-4.6 — that would make sB's later default turns re-target sonnet-4.6
+      // instead of sB's own intended default (gpt-5.4).
+      plugin.captureSessionConfig(catalogResult()); // default gpt-5.4
+      final client = AcpStdioClient(
+        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        processFactory: (_) async => fake,
+      );
+      await client.connect();
+
+      // sA -> sonnet-4.6 (applied successfully).
+      final a = plugin.applyTurnSelection(
+        client: client,
+        sessionId: "sA",
+        model: (providerID: "cursor", modelID: "sonnet-4.6"),
+        variant: null,
+      );
+      await respond("session/set_config_option", const {}); // model sonnet-4.6
+      await respond("session/set_config_option", const {}); // mode agent
+      await a;
+
+      // sB -> gpt-5.4, rejected by the agent.
+      final b = plugin.applyTurnSelection(
+        client: client,
+        sessionId: "sB",
+        model: (providerID: "cursor", modelID: "gpt-5.4"),
+        variant: null,
+      );
+      final modelFrame = await waitForFrame("session/set_config_option");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": modelFrame["id"],
+        "error": {"code": -32000, "message": "rejected"},
+      });
+      await pump();
+      // No mode frame follows: sA already applied the default "agent" mode
+      // process-globally, so sB's default-mode turn is a no-op.
+      await b;
+
+      expect(plugin.eventMapper.modelForSession("sB"), "gpt-5.4",
+          reason: "a rejected switch leaves sB on its own default, not sA's model");
+
+      await client.dispose();
+    });
+
     test("onConnectionReset re-applies model+mode after an agent respawn", () async {
       // Cursor's set_config_option is process-global; a respawned agent has
       // applied nothing. The applied-cache must be cleared on reset or the
