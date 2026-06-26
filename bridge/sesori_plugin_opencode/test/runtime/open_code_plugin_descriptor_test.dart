@@ -155,7 +155,6 @@ void main() {
   group("OpenCodePluginDescriptor.start (managed)", () {
     late _FakeHost host;
     late _FakeApiRecorder apiRecorder;
-    late List<Map<String, String>> optimizeCalls;
 
     setUp(() {
       host = _FakeHost(
@@ -171,7 +170,6 @@ void main() {
         ),
       );
       apiRecorder = _FakeApiRecorder();
-      optimizeCalls = <Map<String, String>>[];
     });
 
     OpenCodePluginDescriptor descriptor({Object? initializeError}) {
@@ -181,9 +179,6 @@ void main() {
         probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
         candidatePorts: const <int>[51000],
         random: Random(1),
-        optimizeDb: ({required Map<String, String> environment}) async {
-          optimizeCalls.add(environment);
-        },
       );
     }
 
@@ -404,36 +399,6 @@ void main() {
       expect(host.processes.spawnedProcesses, hasLength(1), reason: "no child can spawn while the port is held");
     });
 
-    test("runs the DB maintenance seam with the host environment before starting", () async {
-      host.ports.defaultBindable = true;
-
-      final plugin = await descriptor().start(host);
-
-      expect(optimizeCalls, hasLength(1));
-      expect(optimizeCalls.single, same(host.environment));
-
-      await plugin.shutdown(budget: null);
-    });
-
-    test("a throwing DB maintenance seam never fails the start", () async {
-      host.ports.defaultBindable = true;
-      final throwingDescriptor = OpenCodePluginDescriptor(
-        buildApi: apiRecorder.build,
-        probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
-        candidatePorts: const <int>[51000],
-        random: Random(1),
-        optimizeDb: ({required Map<String, String> environment}) async {
-          throw StateError("maintenance exploded");
-        },
-      );
-
-      final plugin = await throwingDescriptor.start(host);
-
-      expect(plugin.currentStatus, isA<PluginReady>());
-
-      await plugin.shutdown(budget: null);
-    });
-
     test("records the start intent before spawn and clears it once the record exists", () async {
       host.ports.defaultBindable = true;
       String? intentDuringSpawn;
@@ -565,7 +530,6 @@ void main() {
       final host = attachHost();
       final descriptor = OpenCodePluginDescriptor(
         buildApi: apiRecorder.build,
-        optimizeDb: _noopOptimizeDb,
         probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
       );
 
@@ -595,7 +559,6 @@ void main() {
       );
       final descriptor = OpenCodePluginDescriptor(
         buildApi: apiRecorder.build,
-        optimizeDb: _noopOptimizeDb,
         probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
       );
 
@@ -622,7 +585,6 @@ void main() {
       );
       final descriptor = OpenCodePluginDescriptor(
         buildApi: apiRecorder.build,
-        optimizeDb: _noopOptimizeDb,
         probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
       );
 
@@ -639,7 +601,6 @@ void main() {
       apiRecorder.initializeError = const SocketException("connection refused");
       final descriptor = OpenCodePluginDescriptor(
         buildApi: apiRecorder.build,
-        optimizeDb: _noopOptimizeDb,
         probeClientFactory: () => MockClient((_) async => http.Response("nope", 503)),
       );
 
@@ -655,7 +616,6 @@ void main() {
     test("normalizes the password option like the legacy flow (trim, blank to null)", () async {
       final descriptor = OpenCodePluginDescriptor(
         buildApi: apiRecorder.build,
-        optimizeDb: _noopOptimizeDb,
         probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
       );
 
@@ -700,7 +660,6 @@ void main() {
       apiRecorder.neverCompleteInitialize = true;
       final descriptor = OpenCodePluginDescriptor(
         buildApi: apiRecorder.build,
-        optimizeDb: _noopOptimizeDb,
         probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
         coldStartBudget: const Duration(milliseconds: 200),
       );
@@ -721,7 +680,6 @@ void main() {
       apiRecorder.neverCompleteInitialize = true;
       final descriptor = OpenCodePluginDescriptor(
         buildApi: apiRecorder.build,
-        optimizeDb: _noopOptimizeDb,
         probeClientFactory: () => MockClient((_) async => http.Response("nope", 503)),
       );
 
@@ -734,8 +692,6 @@ void main() {
     });
   });
 }
-
-Future<void> _noopOptimizeDb({required Map<String, String> environment}) async {}
 
 /// Seeds the ownership file with a ready record owned by a *previous* bridge
 /// (pid 200) whose `opencode serve` child (pid 7777) is still running and
