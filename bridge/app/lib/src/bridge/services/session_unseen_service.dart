@@ -132,7 +132,10 @@ class SessionUnseenService {
       // Force activity strictly past both the user-message and seen markers so
       // the session reliably bolds even when the user's own message is latest.
       final floor = (row.userMessageAt ?? 0) > (row.seenAt ?? 0) ? (row.userMessageAt ?? 0) : (row.seenAt ?? 0);
-      final at = _nextTimestamp() > floor ? _nextTimestamp() : floor + 1;
+      final ts = _nextTimestamp();
+      final at = ts > floor ? ts : floor + 1;
+      // Keep the monotonic clock above this stamp so later writes can't go below it.
+      if (at > _lastIssued) _lastIssued = at;
       await _unseenRepository.markSessionUnseen(sessionId: sessionId, at: at);
       await _emit(sessionId: sessionId, projectId: row.projectId);
     });
