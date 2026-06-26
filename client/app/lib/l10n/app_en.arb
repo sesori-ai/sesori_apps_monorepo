@@ -29,33 +29,56 @@
       }
     }
   },
-  "projectsOnboardingTitle": "Set up Sesori Bridge",
-  "projectsOnboardingStep1Action": "Install & Run",
-  "projectsOnboardingBridgeName": "Sesori Bridge",
-  "projectsOnboardingTabUnix": "Linux/Mac",
-  "projectsOnboardingTabWindows": "Windows",
+  "projectsOnboardingPhoneStatusStep": "Step 1:",
+  "@projectsOnboardingPhoneStatusStep": {
+    "description": "Leading label for the phone-connection status line above the onboarding hero, e.g. 'Step 1: Phone connected'."
+  },
+  "projectsOnboardingPhoneStatusConnected": "Phone connected",
+  "@projectsOnboardingPhoneStatusConnected": {
+    "description": "Success portion of the phone-connection status line, rendered in the success color with a check icon."
+  },
+  "projectsOnboardingPcStatusStep": "Step 2:",
+  "@projectsOnboardingPcStatusStep": {
+    "description": "Leading label for the PC status line below the onboarding hero, e.g. 'Step 2: Run Sesori on your PC'."
+  },
+  "projectsOnboardingPcStatusRun": "Run Sesori on your PC",
+  "@projectsOnboardingPcStatusRun": {
+    "description": "Secondary portion of the PC status line, rendered in the secondary text color."
+  },
+  "projectsOnboardingPcStatusWhy": "Why is this needed?",
+  "@projectsOnboardingPcStatusWhy": {
+    "description": "Label for the secondary info button below the PC status line that explains why running Sesori on the PC is required."
+  },
+  "projectsOnboardingInstallUnixLabel": "macOS, Linux, WSL",
+  "@projectsOnboardingInstallUnixLabel": {
+    "description": "Group label above the macOS/Linux/WSL install command box in the onboarding."
+  },
+  "projectsOnboardingInstallUnixMethod": "curl",
+  "@projectsOnboardingInstallUnixMethod": {
+    "description": "Install-method tab label for the macOS/Linux/WSL box. Literal command name 'curl'; do not translate."
+  },
+  "projectsOnboardingInstallWindowsLabel": "Windows PowerShell",
+  "@projectsOnboardingInstallWindowsLabel": {
+    "description": "Group label above the Windows PowerShell install command box in the onboarding."
+  },
+  "projectsOnboardingInstallWindowsMethod": "native",
+  "@projectsOnboardingInstallWindowsMethod": {
+    "description": "Install-method tab label for the Windows PowerShell box (native installer)."
+  },
+  "projectsOnboardingInstallMethodNpm": "npm",
+  "@projectsOnboardingInstallMethodNpm": {
+    "description": "Install-method tab label shared by both boxes (npm runner). Literal tool name 'npm'; do not translate."
+  },
+  "projectsOnboardingInstallMethodBun": "bun",
+  "@projectsOnboardingInstallMethodBun": {
+    "description": "Install-method tab label shared by both boxes (bun runner). Literal tool name 'bun'; do not translate."
+  },
   "projectsOnboardingCommandCopied": "Command copied to clipboard",
   "projectsOnboardingCopyCommand": "Copy command",
-  "projectsOnboardingStepCompleted": "Completed",
-  "projectsOnboardingStep2Action": "Sign in",
-  "projectsOnboardingStep2Accent": "on your computer",
-  "projectsOnboardingAccountPrefix": "Use ",
-  "projectsOnboardingAccountSuffix": " with {provider}",
-  "@projectsOnboardingAccountSuffix": {
-    "placeholders": {
-      "provider": {
-        "type": "String"
-      }
-    }
+  "projectsOnboardingShareCommand": "Share command",
+  "@projectsOnboardingShareCommand": {
+    "description": "Accessibility label for the button that opens the native share sheet with the selected install command."
   },
-  "projectsOnboardingAccountFallback": "Sign in with the same account you used here.",
-  "projectsOnboardingStep3Title": "Create or open a folder",
-  "projectsOnboardingStep3Detail": "Once connected, your projects will appear here.",
-  "projectsConnectedTitle": "Your bridge is connected",
-  "projectsConnectedStep2Action": "Signed in",
-  "projectsConnectedStep3Detail": "Choose a folder to start your first session.",
-  "projectsConnectedAccountFallback": "Signed in with the account you used here.",
-  "projectsOnboardingOpenFolder": "Open a folder",
   "projectsBridgeOfflineTitle": "Bridge disconnected",
   "projectsBridgeOfflineReconnect": "Reconnect",
   "projectsBridgeOfflineInstallCommands": "Install commands",
