@@ -97,12 +97,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsOnboardingInstallMethodBun => 'bun';
 
   @override
-  String get projectsOnboardingTabUnix => 'Linux/Mac';
-
-  @override
-  String get projectsOnboardingTabWindows => 'Windows';
-
-  @override
   String get projectsOnboardingCommandCopied => 'Command copied to clipboard';
 
   @override

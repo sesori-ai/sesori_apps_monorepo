@@ -22,7 +22,6 @@ import "rename_project_dialog.dart";
 
 part "onboarding/onboarding_view.dart";
 part "widgets/bridge_offline_view.dart";
-part "widgets/command_block.dart";
 part "widgets/error_view.dart";
 part "widgets/project_tile.dart";
 

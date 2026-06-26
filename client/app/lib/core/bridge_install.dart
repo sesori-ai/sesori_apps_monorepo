@@ -25,7 +25,4 @@ class BridgeInstall {
 
   /// bun runner equivalent of [npmCommand].
   static const String bunCommand = "bunx @sesori/bridge";
-
-  /// Command that starts the bridge once it is installed.
-  static const String runCommand = "sesori-bridge";
 }

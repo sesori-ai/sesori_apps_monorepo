@@ -119,48 +119,63 @@ class _OnboardingChecklist extends StatelessWidget {
         ),*/
         // 40px gap from the header group to the install boxes (Figma gap-5xl).
         const SizedBox(height: PregoSpacing.x5l),
-        Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.xl, 0, PregoSpacing.xl, PregoSpacing.x3l),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _InstallCommandBox(
-                osLabel: loc.projectsOnboardingInstallUnixLabel,
-                methods: [
-                  _InstallMethod(
-                    label: loc.projectsOnboardingInstallUnixMethod,
-                    command: BridgeInstall.macLinuxCommand,
-                  ),
-                  _InstallMethod(
-                    label: loc.projectsOnboardingInstallMethodNpm,
-                    command: BridgeInstall.npmCommand,
-                  ),
-                  _InstallMethod(
-                    label: loc.projectsOnboardingInstallMethodBun,
-                    command: BridgeInstall.bunCommand,
-                  ),
-                ],
-              ),
-              const SizedBox(height: PregoSpacing.xl),
-              _InstallCommandBox(
-                osLabel: loc.projectsOnboardingInstallWindowsLabel,
-                methods: [
-                  _InstallMethod(
-                    label: loc.projectsOnboardingInstallWindowsMethod,
-                    command: BridgeInstall.windowsCommand,
-                  ),
-                  _InstallMethod(
-                    label: loc.projectsOnboardingInstallMethodNpm,
-                    command: BridgeInstall.npmCommand,
-                  ),
-                  _InstallMethod(
-                    label: loc.projectsOnboardingInstallMethodBun,
-                    command: BridgeInstall.bunCommand,
-                  ),
-                ],
-              ),
-            ],
-          ),
+        const Padding(
+          padding: EdgeInsetsDirectional.fromSTEB(PregoSpacing.xl, 0, PregoSpacing.xl, PregoSpacing.x3l),
+          child: _InstallCommandBoxes(),
+        ),
+      ],
+    );
+  }
+}
+
+/// The per-platform install command boxes — Unix (curl/npm/bun) and Windows
+/// (irm/npm/bun). Shared by the [_OnboardingChecklist] and the bridge-offline
+/// reconnect disclosure ([_BridgeOfflineView]) so both stay in sync; callers
+/// supply their own surrounding padding.
+class _InstallCommandBoxes extends StatelessWidget {
+  const _InstallCommandBoxes();
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _InstallCommandBox(
+          osLabel: loc.projectsOnboardingInstallUnixLabel,
+          methods: [
+            _InstallMethod(
+              label: loc.projectsOnboardingInstallUnixMethod,
+              command: BridgeInstall.macLinuxCommand,
+            ),
+            _InstallMethod(
+              label: loc.projectsOnboardingInstallMethodNpm,
+              command: BridgeInstall.npmCommand,
+            ),
+            _InstallMethod(
+              label: loc.projectsOnboardingInstallMethodBun,
+              command: BridgeInstall.bunCommand,
+            ),
+          ],
+        ),
+        const SizedBox(height: PregoSpacing.xl),
+        _InstallCommandBox(
+          osLabel: loc.projectsOnboardingInstallWindowsLabel,
+          methods: [
+            _InstallMethod(
+              label: loc.projectsOnboardingInstallWindowsMethod,
+              command: BridgeInstall.windowsCommand,
+            ),
+            _InstallMethod(
+              label: loc.projectsOnboardingInstallMethodNpm,
+              command: BridgeInstall.npmCommand,
+            ),
+            _InstallMethod(
+              label: loc.projectsOnboardingInstallMethodBun,
+              command: BridgeInstall.bunCommand,
+            ),
+          ],
         ),
       ],
     );

@@ -89,9 +89,9 @@ class _BridgeOfflineViewState extends State<_BridgeOfflineView> {
                     duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220),
                     curve: Curves.easeInOut,
                     alignment: Alignment.topCenter,
-                    // maintainState keeps _CommandBlock mounted while collapsed so
-                    // the selected install platform survives closing and reopening
-                    // the disclosure.
+                    // maintainState keeps the install boxes mounted while
+                    // collapsed so the selected install method survives closing
+                    // and reopening the disclosure.
                     child: Visibility(
                       visible: _showInstallCommands,
                       maintainState: true,
@@ -99,7 +99,7 @@ class _BridgeOfflineViewState extends State<_BridgeOfflineView> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           SizedBox(height: PregoSpacing.lg),
-                          _CommandBlock(),
+                          _InstallCommandBoxes(),
                         ],
                       ),
                     ),

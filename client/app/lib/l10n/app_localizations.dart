@@ -247,18 +247,6 @@ abstract class AppLocalizations {
   /// **'bun'**
   String get projectsOnboardingInstallMethodBun;
 
-  /// No description provided for @projectsOnboardingTabUnix.
-  ///
-  /// In en, this message translates to:
-  /// **'Linux/Mac'**
-  String get projectsOnboardingTabUnix;
-
-  /// No description provided for @projectsOnboardingTabWindows.
-  ///
-  /// In en, this message translates to:
-  /// **'Windows'**
-  String get projectsOnboardingTabWindows;
-
   /// No description provided for @projectsOnboardingCommandCopied.
   ///
   /// In en, this message translates to:

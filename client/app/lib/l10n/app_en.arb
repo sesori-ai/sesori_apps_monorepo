@@ -73,8 +73,6 @@
   "@projectsOnboardingInstallMethodBun": {
     "description": "Install-method tab label shared by both boxes (bun runner). Literal tool name 'bun'; do not translate."
   },
-  "projectsOnboardingTabUnix": "Linux/Mac",
-  "projectsOnboardingTabWindows": "Windows",
   "projectsOnboardingCommandCopied": "Command copied to clipboard",
   "projectsOnboardingCopyCommand": "Copy command",
   "projectsOnboardingShareCommand": "Share command",
