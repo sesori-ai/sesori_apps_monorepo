@@ -83,12 +83,15 @@ class SessionUnseenRepository {
   /// at [activityAt] so a brand-new session is immediately unseen even before
   /// any list fetch. When [advanceSeen] is true (a phone is already viewing it),
   /// the seen timestamp is advanced too so it does not bold under the watcher.
+  /// When [isUserMessage] is true, the user-message marker is stamped so the
+  /// user's own first message doesn't bold the session.
   /// Wrapped in a transaction so the project FK cannot fire.
   Future<void> ensureRootSessionActivity({
     required String sessionId,
     required String projectId,
     required int activityAt,
     required bool advanceSeen,
+    required bool isUserMessage,
   }) async {
     await _db.transaction(() async {
       await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
@@ -98,10 +101,17 @@ class SessionUnseenRepository {
       await _sessionDao.setActivityTimestamps(
         sessionId: sessionId,
         activityAt: activityAt,
-        userMessageAt: null,
+        userMessageAt: isUserMessage ? activityAt : null,
         seenAt: advanceSeen ? activityAt : null,
       );
     });
+  }
+
+  /// Removes the persisted session row (used when a session is deleted live so
+  /// a stale unseen row can't keep its project's aggregate bold). No-op if the
+  /// row doesn't exist.
+  Future<void> deleteSession({required String sessionId}) {
+    return _sessionDao.deleteSession(sessionId: sessionId);
   }
 
   /// Whether [sessionId] currently has unseen changes.

@@ -46,21 +46,36 @@ class SessionUnseenService {
   /// clearing the unseen flag).
   final Map<String, Future<void>> _sessionWriteTails = {};
 
-  /// Session ids that have no persisted row and didn't resolve to a project
-  /// (i.e. child/subagent sessions). Cached so an active subagent doesn't turn
-  /// every `message.part`/`message.updated` event into a full project scan via
-  /// `findProjectIdForSession`. Invalidated when a session later proves
-  /// resolvable (`recordSessionCreated`), and bounded to avoid unbounded growth
-  /// over a long-lived bridge (LinkedHashSet preserves insertion order, so the
-  /// oldest entry is evicted first).
+  /// Session ids that had no persisted row and didn't resolve to a project
+  /// (i.e. child/subagent sessions), mapped to the time the negative result was
+  /// cached. Cached so an active subagent doesn't turn every `message.part`/
+  /// `message.updated` event into a full project scan via
+  /// `findProjectIdForSession`.
+  ///
+  /// The cache is TTL-bounded (not permanent): a transiently-unresolved ROOT —
+  /// e.g. one whose first activity arrives before the plugin can resolve it, and
+  /// is later learned via `/sessions` or `session.created` — re-resolves after
+  /// the TTL instead of being skipped forever. It is also invalidated eagerly on
+  /// `recordSessionCreated`, and bounded in size (oldest evicted first).
   static const int _maxUnresolvedCached = 1024;
-  final Set<String> _unresolvedSessions = <String>{};
+  static const Duration _unresolvedTtl = Duration(seconds: 30);
+  final Map<String, int> _unresolvedSessions = <String, int>{};
+
+  bool _isCachedUnresolved(String sessionId) {
+    final cachedAt = _unresolvedSessions[sessionId];
+    if (cachedAt == null) return false;
+    if (_wallClock() - cachedAt >= _unresolvedTtl.inMilliseconds) {
+      _unresolvedSessions.remove(sessionId);
+      return false;
+    }
+    return true;
+  }
 
   void _markUnresolved(String sessionId) {
     if (_unresolvedSessions.length >= _maxUnresolvedCached) {
-      _unresolvedSessions.remove(_unresolvedSessions.first);
+      _unresolvedSessions.remove(_unresolvedSessions.keys.first);
     }
-    _unresolvedSessions.add(sessionId);
+    _unresolvedSessions[sessionId] = _wallClock();
   }
 
   SessionUnseenService({
@@ -113,7 +128,7 @@ class SessionUnseenService {
   }) {
     // Known child/subagent session — skip without re-resolving (avoids a full
     // project scan on every streamed part for an active subagent).
-    if (_unresolvedSessions.contains(sessionId)) return Future<void>.value();
+    if (_isCachedUnresolved(sessionId)) return Future<void>.value();
     // Capture the viewed state at submission time, not when the (possibly
     // delayed) serialized write executes — otherwise navigating away while
     // events are queued could persist already-viewed activity as unseen.
@@ -134,6 +149,7 @@ class SessionUnseenService {
           projectId: projectId,
           activityAt: _activityTimestamp(userMessageAt: null, seenAt: null),
           advanceSeen: viewedAtSubmit,
+          isUserMessage: isUserMessage,
         );
         await _emit(sessionId: sessionId, projectId: projectId);
         return;
@@ -169,8 +185,29 @@ class SessionUnseenService {
         projectId: projectId,
         activityAt: _nextTimestamp(),
         advanceSeen: viewedAtSubmit,
+        isUserMessage: false,
       );
       await _emit(sessionId: sessionId, projectId: projectId);
+    });
+  }
+
+  /// Records that a session was deleted (observed live via `session.deleted`,
+  /// e.g. from another client or the laptop TUI). Removes the persisted row so a
+  /// stale unseen row can't keep its project's aggregate bold after the session
+  /// is gone, and emits the cleared state. No-op for unknown sessions.
+  Future<void> recordSessionDeleted({required String sessionId}) {
+    _unresolvedSessions.remove(sessionId);
+    return _serialize(sessionId, () async {
+      final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
+      if (row == null) return;
+      await _unseenRepository.deleteSession(sessionId: sessionId);
+      // Emit once so any client showing this session/project recomputes; the
+      // session itself is gone, so its unseen flag is reported false.
+      final projectHasUnseen = await _projectRepository.projectHasUnseenChanges(projectId: row.projectId);
+      if (_changes.isClosed) return;
+      _changes.add(
+        (projectId: row.projectId, sessionId: sessionId, unseen: false, projectHasUnseenChanges: projectHasUnseen),
+      );
     });
   }
 

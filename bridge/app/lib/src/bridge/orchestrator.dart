@@ -592,6 +592,8 @@ class OrchestratorSession {
           projectId: info.projectID,
           parentId: info.parentID,
         );
+      case SesoriSessionDeleted(:final info):
+        await _sessionUnseenService.recordSessionDeleted(sessionId: info.id);
       case SesoriMessageUpdated(:final info):
         await _sessionUnseenService.recordActivity(
           sessionId: info.sessionID,

@@ -177,6 +177,21 @@ void main() {
       expect(await unseen("s1"), isTrue);
     });
 
+    test("recordSessionDeleted removes the row so it stops contributing to the project", () async {
+      await service.recordSessionCreated(sessionId: "s1", projectId: "p1", parentId: null);
+      expect(await unseen("s1"), isTrue);
+
+      await service.recordSessionDeleted(sessionId: "s1");
+      // Row is gone -> session is no longer unseen and can't keep the project bold.
+      final repo = ProjectRepository(
+        plugin: _FakePlugin(),
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      expect(await repo.projectHasUnseenChanges(projectId: "p1"), isFalse);
+    });
+
     test("emits unseenChanges with project aggregate", () async {
       final events = <UnseenChange>[];
       final sub = service.unseenChanges.listen(events.add);
