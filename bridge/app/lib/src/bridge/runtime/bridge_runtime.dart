@@ -114,6 +114,7 @@ class BridgeRuntime {
     final sessionUnseenService = SessionUnseenService(
       unseenRepository: sessionUnseenRepository,
       projectRepository: projectRepository,
+      sessionRepository: sessionRepository,
       viewTracker: sessionViewTracker,
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(

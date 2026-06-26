@@ -83,7 +83,7 @@ class CreateProjectHandler extends BodyRequestHandler<ProjectPathRequest, Projec
     }
 
     final pluginProject = await _plugin.getProject(path);
-    final project = pluginProject.toSharedProject();
+    final project = pluginProject.toSharedProject(hasUnseenChanges: false);
 
     return project;
   }

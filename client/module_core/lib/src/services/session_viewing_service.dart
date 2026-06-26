@@ -23,6 +23,7 @@ class SessionViewingService with Disposable {
 
   String? _currentSessionId;
   bool _wasConnected = false;
+  bool _isPaused = false;
 
   /// Serializes outgoing view declarations so they are sent in submission
   /// order. Each relay send awaits encryption before hitting the socket, so
@@ -70,7 +71,7 @@ class SessionViewingService with Disposable {
   void _onStatusChanged(ConnectionStatus status) {
     final isConnected = status is ConnectionConnected;
     // Re-assert the current view each time we (re)enter the connected state.
-    if (isConnected && !_wasConnected && _currentSessionId != null) {
+    if (isConnected && !_wasConnected && _currentSessionId != null && !_isPaused) {
       _enqueueSend(_currentSessionId);
     }
     _wasConnected = isConnected;
@@ -79,12 +80,14 @@ class SessionViewingService with Disposable {
   void _onLifecycleChanged(LifecycleState state) {
     switch (state) {
       case LifecycleState.paused:
+        _isPaused = true;
         // Backgrounded: stop viewing on the bridge but keep the intended
         // session so resume can re-assert it.
         if (_currentSessionId != null) {
           _enqueueSend(null);
         }
       case LifecycleState.resumed:
+        _isPaused = false;
         if (_currentSessionId != null) {
           _enqueueSend(_currentSessionId);
         }

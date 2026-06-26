@@ -28,6 +28,6 @@ class RenameProjectHandler extends BodyRequestHandler<RenameProjectRequest, Proj
       name: body.name,
     );
 
-    return updated.toSharedProject();
+    return updated.toSharedProject(hasUnseenChanges: false);
   }
 }

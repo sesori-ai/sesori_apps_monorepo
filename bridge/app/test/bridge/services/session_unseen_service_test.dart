@@ -1,5 +1,7 @@
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
@@ -41,6 +43,15 @@ void main() {
           plugin: _FakePlugin(),
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
+          unseenCalculator: const SessionUnseenCalculator(),
+        ),
+        sessionRepository: SessionRepository(
+          plugin: _FakePlugin(),
+          sessionDao: db.sessionDao,
+          pullRequestRepository: PullRequestRepository(
+            pullRequestDao: db.pullRequestDao,
+            projectsDao: db.projectsDao,
+          ),
           unseenCalculator: const SessionUnseenCalculator(),
         ),
         viewTracker: viewTracker,

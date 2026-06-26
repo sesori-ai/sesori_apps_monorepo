@@ -3,6 +3,7 @@ import "dart:async";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../repositories/project_repository.dart";
+import "../repositories/session_repository.dart";
 import "../repositories/session_unseen_repository.dart";
 import "session_view_tracker.dart";
 
@@ -24,6 +25,7 @@ typedef UnseenChange = ({
 class SessionUnseenService {
   final SessionUnseenRepository _unseenRepository;
   final ProjectRepository _projectRepository;
+  final SessionRepository _sessionRepository;
   final SessionViewTracker _viewTracker;
   final int Function() _wallClock;
 
@@ -47,10 +49,12 @@ class SessionUnseenService {
   SessionUnseenService({
     required SessionUnseenRepository unseenRepository,
     required ProjectRepository projectRepository,
+    required SessionRepository sessionRepository,
     required SessionViewTracker viewTracker,
     int Function()? now,
   }) : _unseenRepository = unseenRepository,
        _projectRepository = projectRepository,
+       _sessionRepository = sessionRepository,
        _viewTracker = viewTracker,
        _wallClock = now ?? (() => DateTime.now().millisecondsSinceEpoch) {
     _viewStartsSubscription = _viewTracker.viewStarts.listen(_onViewStarted);
@@ -77,7 +81,21 @@ class SessionUnseenService {
   }) {
     return _serialize(sessionId, () async {
       final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
-      if (row == null) return;
+      if (row == null) {
+        // Not yet persisted — try to resolve the project id and create a row
+        // so activity isn't silently dropped (e.g. a root session created on
+        // the laptop while the bridge was offline).
+        final projectId = await _sessionRepository.findProjectIdForSession(sessionId: sessionId);
+        if (projectId == null) return;
+        await _unseenRepository.ensureRootSessionActivity(
+          sessionId: sessionId,
+          projectId: projectId,
+          activityAt: _nextTimestamp(),
+          advanceSeen: _viewTracker.isViewed(sessionId: sessionId),
+        );
+        await _emit(sessionId: sessionId, projectId: projectId);
+        return;
+      }
       final advanceSeen = _viewTracker.isViewed(sessionId: sessionId);
       await _unseenRepository.recordActivity(
         sessionId: sessionId,
@@ -145,7 +163,11 @@ class SessionUnseenService {
     return _serialize(sessionId, () async {
       final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
       if (row == null) return;
-      await _unseenRepository.markSessionSeen(sessionId: sessionId, at: _nextTimestamp());
+      // Write at least the persisted activity timestamp so a clock skew or
+      // restart can't leave seen below activity (which would keep it bold).
+      final now = _nextTimestamp();
+      final seenAt = (row.activityAt ?? 0) > now ? row.activityAt! : now;
+      await _unseenRepository.markSessionSeen(sessionId: sessionId, at: seenAt);
       await _emit(sessionId: sessionId, projectId: row.projectId);
     });
   }

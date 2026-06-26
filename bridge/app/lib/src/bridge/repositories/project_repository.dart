@@ -44,7 +44,7 @@ class ProjectRepository {
       projectIds: [for (final p in visible) p.id],
     );
     final projects = visible
-        .map((p) => p.toSharedProject().copyWith(hasUnseenChanges: unseenById[p.id] ?? false))
+        .map((p) => p.toSharedProject(hasUnseenChanges: unseenById[p.id] ?? false))
         .toList();
     projects.sort(
       (a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0),
@@ -85,7 +85,7 @@ class ProjectRepository {
   Future<Project> openProject({required String path}) async {
     final pluginProject = await _plugin.getProject(path);
     await _projectsDao.unhideProject(projectId: pluginProject.id);
-    return pluginProject.toSharedProject();
+    return pluginProject.toSharedProject(hasUnseenChanges: false);
   }
 
   Future<void> hideProject({required String projectId}) {
