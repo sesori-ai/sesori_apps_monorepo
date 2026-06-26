@@ -154,26 +154,27 @@ class LoginCubit extends Cubit<LoginState> {
       final initResponse = await _oAuthFlowProvider.startOAuthFlow(provider: provider);
       if (isClosed) return false;
 
-      // Enter the resumable polling state BEFORE launching the browser. Opening
-      // the browser can suspend the app before launch() returns; the OAuth
-      // session already exists, so _onAppResumed must observe a LoginPolling
-      // state (not LoginAuthenticating) to recover and resume polling.
+      // Show the resumable polling UI and ARM the poll guard BEFORE launching
+      // the browser. Opening the browser can suspend the app before launch()
+      // returns; with _isPolling already set, a resume during that window is a
+      // no-op (it won't start a second concurrent poll) — the pollForResult()
+      // below owns the session. The finally resets the guard on every exit path
+      // (launch failure, success, or a thrown poll error), so the outer catch's
+      // _handlePollInterruption still sees _isPolling == false.
       emit(const LoginState.polling());
-
-      logd("Opening ${provider.label} auth URL in browser");
-
-      final launched = await _urlLauncher.launch(Uri.parse(initResponse.authUrl));
-
-      if (isClosed) return false;
-
-      if (!launched) {
-        emit(const LoginState.failed(reason: LoginFailedReason.browserOpenFailed));
-        return false;
-      }
-
       _didActivePollEnterBackground = _isInBackground;
       _isPolling = true;
       try {
+        logd("Opening ${provider.label} auth URL in browser");
+
+        final launched = await _urlLauncher.launch(Uri.parse(initResponse.authUrl));
+        if (isClosed) return false;
+
+        if (!launched) {
+          emit(const LoginState.failed(reason: LoginFailedReason.browserOpenFailed));
+          return false;
+        }
+
         await _oAuthFlowProvider.pollForResult();
       } finally {
         _isPolling = false;
