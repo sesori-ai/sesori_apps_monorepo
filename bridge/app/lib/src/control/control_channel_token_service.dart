@@ -37,6 +37,7 @@ class ControlChannelTokenService {
   late final StreamSubscription<String> _subscription;
   int _nextRequestId = 0;
   bool _disposed = false;
+  Future<void>? _disposeFuture;
 
   ControlChannelTokenService({required ControlChannelClient client}) : _client = client {
     _subscription = _client.inbound.listen(_handleFrame);
@@ -79,8 +80,14 @@ class ControlChannelTokenService {
     }
   }
 
-  Future<void> dispose() async {
-    if (_disposed) return;
+  /// Memoized so concurrent callers await the same teardown — a second caller
+  /// must not observe completion before the first dispose's cancel/sweep has
+  /// finished.
+  Future<void> dispose() => _disposeFuture ??= _dispose();
+
+  Future<void> _dispose() async {
+    // Set synchronously (before the first await) so a requestToken racing
+    // dispose sees the disposed guard immediately.
     _disposed = true;
     // Isolate the cancel so a failure still lets teardown finish.
     try {

@@ -136,6 +136,19 @@ void main() {
       await service.dispose();
       await service.dispose();
     });
+
+    test("concurrent dispose callers await the same teardown", () async {
+      final client = _FakeControlChannelClient();
+      final service = ControlChannelTokenService(client: client);
+
+      final first = service.dispose();
+      final second = service.dispose();
+
+      // Memoized: both callers observe the same in-progress teardown, so a
+      // second caller can't complete before the first finishes.
+      expect(identical(first, second), isTrue);
+      await Future.wait<void>([first, second]);
+    });
   });
 }
 
