@@ -7,13 +7,24 @@ class BridgeCliOptions {
   final int? debugPort;
   final String logLevelName;
 
+  /// Loopback control-channel URL supplied by a GUI supervisor via
+  /// `--control-url`. `null` in standalone mode. See [isSupervised].
+  final String? controlUrl;
+
   const BridgeCliOptions({
     required this.cliArgs,
     required this.relayUrl,
     required this.authBackendUrl,
     required this.debugPort,
     required this.logLevelName,
+    required this.controlUrl,
   });
+
+  /// Whether the bridge runs under a GUI supervisor (the desktop app). True
+  /// exactly when `--control-url` was supplied; in that mode the bridge
+  /// connects the loopback control channel and the GUI is its token authority
+  /// and lifecycle owner. Absent ⇒ unchanged standalone CLI behaviour.
+  bool get isSupervised => controlUrl != null;
 
   factory BridgeCliOptions.fromArgResults({
     required List<String> cliArgs,
@@ -29,12 +40,19 @@ class BridgeCliOptions {
     );
     final debugPortRaw = results["debug-port"] as String;
 
+    // Supervised-only option: trim and treat blank as absent. Do NOT validate
+    // it here (no URI parse) — strict parse-time validation would risk failing
+    // a standalone invocation; it is parsed only when supervised mode is active.
+    final controlUrlRaw = (results["control-url"] as String?)?.trim();
+    final controlUrl = (controlUrlRaw != null && controlUrlRaw.isNotEmpty) ? controlUrlRaw : null;
+
     return BridgeCliOptions(
       cliArgs: cliArgs,
       relayUrl: results["relay"] as String,
       authBackendUrl: authBackendUrl,
       debugPort: debugPortRaw.isNotEmpty ? int.tryParse(debugPortRaw) : null,
       logLevelName: results["log-level"] as String,
+      controlUrl: controlUrl,
     );
   }
 
