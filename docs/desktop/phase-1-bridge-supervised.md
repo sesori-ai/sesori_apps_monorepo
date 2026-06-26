@@ -72,11 +72,12 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 - **Deltas:** §6 placed only `ControlChannelClient` (foundation, kept). Two
   components plan-review pinned to specific layers were NOT pre-specified in §6
   and are now added there: the off-argv secret reader is a **Layer-1
-  `ControlSecretApi`** in `api/` (mirrors `TerminalPromptApi`; a stdin reader is
-  data access, not a foundation primitive — `Reader` is not a sanctioned
-  suffix), and the ADR-A9 grace-exit is a **`ControlChannelLossListener` in a
-  new `control/` subsystem dir** (a decision-making `Listener` cannot live in
-  Layer-0 `foundation/`). Parent-loss exit code is provisionally `1`
+   `ControlSecretApi`** in `api/` (mirrors `TerminalPromptApi`; a stdin reader is
+   data access, not a foundation primitive — `Reader` is not a sanctioned
+   suffix), and the ADR-A9 grace-exit is a **`ControlChannelLossListener` in a
+   new Layer-4 `control/` dir** (a decision-making `Listener` cannot live in
+   Layer-0 `foundation/`, and `control/` is part of the core layered bridge app,
+   not a self-contained subsystem). Parent-loss exit code is provisionally `1`
   (`controlChannelLostExitCode`); the GUI-side exit-code state machine (PR
   2.7 / 1.7) may refine it.
 
@@ -136,11 +137,13 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 - **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
 
 ## PR 1.4 — Token provider **pull** over channel
-- **Goal:** `ControlChannelTokenService` (Layer 3 `auth/`) implements
+- **Goal:** `ControlChannelTokenService` (Layer 3 `services/`) implements
   `AccessTokenProvider`/`TokenRefresher`; `getAccessToken({forceRefresh})`
   requests a token over the channel and blocks with a timeout; define behaviour
   when the GUI is mid-login/down. Client injected from composition root (no
-  internal `new`).
+  internal `new`). It implements interfaces from `auth/` but does not live inside
+  the self-contained `auth/` subsystem, so `auth/` does not import core
+  `foundation/` transport.
 - **Risk:** Med. **Size:** M.
 - **Acceptance:** force-refresh requests a fresh token; timeout + GUI-down paths
   yield a typed failure (logged once at the surfacing point, not double-logged).
@@ -161,7 +164,7 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 
 ## PR 1.6 — Supervised registration + `bridgeId` out of `token.json`
 - **Goal:** Persist `bridgeId` separately from `token.json` in a small
-  file-backed store that lives **inside the `auth/` subsystem** (NOT new
+  file-backed storage that lives **inside the `auth/` subsystem** (NOT new
   top-level `api/`+`repositories/` classes — that would make `auth/` depend back
   on the core repository layer; see ADR A6). Supervised registration uses the
   supplied token; preserve carry-over semantics. Use **synchronous** filesystem

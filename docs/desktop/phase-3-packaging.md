@@ -61,37 +61,41 @@ Aristotle verdicts · Findings log · Plan-deltas.
 - **Acceptance:** AppImage runs on a clean distro; bridge spawns; the AppImage +
   zsync update path is GPG-signed and verified.
 
-## PR 3.6 — macOS self-update (Sparkle)
-- **Goal:** `auto_updater`/Sparkle + EdDSA keys + appcast generation from GitHub
-  releases.
-- **Risk:** High. **Size:** M.
-- **Acceptance:** vN→vN+1 update succeeds on macOS.
+## PR 3.6 — Update-apply policy (stop helper first) + failed-update/rollback + UX
+- **Goal:** Add `DesktopUpdateService` in `module_desktop_core/lib/src/services/`
+  as the Layer-3 owner of update-apply policy. It marks the helper stop as
+  **expected** (suppress respawn — reuse the PR 2.7 "expected exit" flag), stops
+  the helper via `BridgeProcessService`, stages/applies through the dumb Layer-0
+  `AppUpdater` adapter, relaunches, then **restores last-on** via
+  `DesktopInstanceService`. Also surface update-available/failed in the window
+  and handle failed staging/apply gracefully (no bricking).
 
-## PR 3.7 — Windows self-update (WinSparkle)
-- **Goal:** WinSparkle + appcast.
-- **Risk:** High. **Size:** M.
-- **Acceptance:** vN→vN+1 update succeeds on Windows.
-
-## PR 3.8 — Linux self-update (zsync/AppImageUpdate)
-- **Goal:** zsync feed + AppImageUpdate integration.
-- **Risk:** Med-High. **Size:** M.
-- **Acceptance:** vN→vN+1 update succeeds on Linux.
-
-## PR 3.9 — Update-apply policy (stop helper first) + failed-update/rollback + UX
-- **Goal:** Two parts.
-  1. **Stop the helper before staging/apply.** The bundled bridge is a running
-     child of the app install; on Windows a running executable can't be replaced,
-     and on any OS applying a bundle update while the supervisor respawns the old
-     child risks a failed or mixed-version update. The updater must mark the stop
-     as **expected** (suppress respawn — reuse the PR 2.7 "expected exit" flag),
-     stop the helper, stage/apply, relaunch, then **restore last-on**.
-  2. Surface update-available/failed in the window; handle a failed staging/apply
-     gracefully (no bricking).
+  The bundled bridge is a running child of the app install; on Windows a running
+  executable can't be replaced, and on any OS applying a bundle update while the
+  supervisor respawns the old child risks a failed or mixed-version update.
 - **Risk:** Med. **Size:** M.
 - **Acceptance:** with the bridge **on**, an update stops the helper (no respawn
   thrash), applies, relaunches, and restores last-on; a Windows
   running-executable replace doesn't fail; an injected failed update leaves the
-  app runnable + reports it.
+  app runnable + reports it; `AppUpdater` remains a dumb adapter with no helper
+  stop/restore policy.
+
+## PR 3.7 — macOS self-update (Sparkle)
+- **Goal:** `auto_updater`/Sparkle + EdDSA keys + appcast generation from GitHub
+  releases, using the PR 3.6 helper-stop/apply policy.
+- **Risk:** High. **Size:** M.
+- **Acceptance:** vN→vN+1 update succeeds on macOS with the bridge on and off.
+
+## PR 3.8 — Windows self-update (WinSparkle)
+- **Goal:** WinSparkle + appcast, using the PR 3.6 helper-stop/apply policy.
+- **Risk:** High. **Size:** M.
+- **Acceptance:** vN→vN+1 update succeeds on Windows with the bridge on and off.
+
+## PR 3.9 — Linux self-update (zsync/AppImageUpdate)
+- **Goal:** zsync feed + AppImageUpdate integration, using the PR 3.6
+  helper-stop/apply policy.
+- **Risk:** Med-High. **Size:** M.
+- **Acceptance:** vN→vN+1 update succeeds on Linux with the bridge on and off.
 
 ## PR 3.10 — Release-pipeline integration (non-blocking) + versioning
 - **Goal:** Hook the desktop build into `release-all-platforms.yml` +

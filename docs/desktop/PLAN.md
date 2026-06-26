@@ -72,17 +72,44 @@ Sesori.app (.dmg) / Sesori installer (.exe) / Sesori.AppImage
 - **GUI ↔ helper** talk over a **GUI-hosted loopback WebSocket control channel**.
   The channel carries ONLY: fresh-token requests, token-stream pushes, status
   pushes, runtime-provisioning progress, and prompts (replace-bridge,
-  unregister-and-exit). **No project data.**
+  unregister-and-exit). **No project data.** Status summaries are health/counts
+  only; session/project names and message content stay off this channel.
 - **Control-channel secret is NOT passed in argv.** Command-line arguments are
   inspectable by any other local process/user, and this channel issues bearer
   tokens — so a leaked secret = token theft. The per-spawn secret is delivered
   off-argv (inherited pipe/FD or a stdin handshake at spawn); only the
   loopback URL may be a flag. See ADR A8.
 - **Project data** flows phone-style over the relay (`relay.sesori.com`). The
-  desktop UI (v1.x) is a relay client like the phone, reusing `module_core`
-  transport unchanged.
+  desktop accessory UI (v1.x) is a relay client like the phone, reusing
+  `module_core` transport unchanged. Lean v1 control/status uses the control
+  channel only and does not resolve `ConnectionService`.
 - This mirrors Tailscale (`Tailscale.app` supervises `tailscaled`; the same
   daemon also runs headless on a server).
+
+### Client workspace shape
+
+Desktop-specific process supervision does **not** live in the Flutter shell and
+does **not** live in shared `module_core`. The client workspace graph is:
+
+```
+client/app ───────────────┐
+                           ├─→ module_app_ui → module_core → module_auth → sesori_shared
+client/desktop ───────────┘
+     │
+     └─→ module_desktop_core → module_core → module_auth → sesori_shared
+```
+
+- `client/desktop` is a Flutter product shell: DI, presentation, routing/window
+  composition, and concrete platform adapters only.
+- `client/module_desktop_core` is a pure Dart desktop business module: bridge
+  process supervision, control-channel orchestration, desktop repositories,
+  trackers, services, and cubits.
+- `module_core` owns shared relay/auth seams and stays unaware of desktop-only
+  tray/process/bundled-helper concerns.
+- `module_app_ui` is introduced in Phase 4. It may depend on `module_core` and
+  `module_prego`, but it must never import `client/app`, `client/desktop`, or
+  `module_desktop_core`. Product-specific behavior enters through injected
+  callbacks/strategies composed by the product shell.
 
 ### Data flow
 
@@ -93,9 +120,11 @@ Sesori.app (.dmg) / Sesori installer (.exe) / Sesori.AppImage
   workspace and must NOT be imported by `client/desktop`).
 - **Token:** helper never runs OAuth/refresh. It pulls access tokens from the GUI
   over the control channel (and receives pushed updates), implementing the
-  bridge's existing `AccessTokenProvider`/`TokenRefresher` seams.
+  bridge's existing `AccessTokenProvider`/`TokenRefresher` seams. If the GUI is
+  logged out or cannot supply a token, the supervised path surfaces an
+  auth-required state/prompt and avoids crash-loop respawn.
 - **Registration:** helper self-registers its `bridgeId` (using the GUI-supplied
-  token) and persists it in a helper-owned store (not `token.json`).
+  token) and persists it in a helper-owned storage file (not `token.json`).
 - **Runtime provisioning:** on first run the bridge's `ensureRuntime` phase
   downloads/installs OpenCode, emitting `RuntimeProvisionProgress`. In supervised
   mode these events are teed onto the control channel → GUI shows first-run
@@ -111,7 +140,7 @@ Sesori.app (.dmg) / Sesori installer (.exe) / Sesori.AppImage
 | # | Decision |
 |---|----------|
 | 1 | **Hybrid library**: one bridge library → one binary, two run modes (standalone / supervised). |
-| 2 | Desktop UI **reuses the relay** like the phone (v1); loopback data path is a later optimization. |
+| 2 | Desktop accessory UI **reuses the relay** like the phone (v1.x); lean v1 control/status uses the control channel only; loopback project-data path is a later optimization. |
 | 3 | GUI **supervises the bridge binary** as a child process. |
 | 4 | **GUI is the sole token authority**; helper is token-provided (no helper OAuth/refresh → no rotation race). |
 | 5 | Control channel = **GUI-hosted loopback WebSocket** + per-spawn secret. |
@@ -119,11 +148,12 @@ Sesori.app (.dmg) / Sesori installer (.exe) / Sesori.AppImage
 | 7 | GUI **autostarts tray-only** (`--hidden`) and **respawns the bridge if last-on**. |
 | 8 | Restart via **exit-code sentinel `86`**; crash→backoff respawn; **self-update off** when bundled; **GUI single-instance**. |
 | 9 | **Dev ID/notarized .dmg + signed Windows installer + Linux AppImage**, self-update via **Sparkle/WinSparkle/zsync**, GitHub-fed. |
-| 10 | **Separate desktop package + extract a shared UI library.** |
-| 11 | Both new packages live in the (renamed) **`client/`** workspace. |
+| 10 | **Separate desktop shell, desktop core module, and shared UI library.** |
+| 11 | New client packages live in the (renamed) **`client/`** workspace. |
 | 12 | **Unified shared version**; desktop bundles the same-commit bridge. |
 | 13 | **Fully signed** on all three OSes (procure a Windows code-signing cert). |
 | 14 | **Lean v1**: install + control + login + signed + self-update + first-run provisioning UI. Baked-in accessory UI deferred to v1.x. |
+| 15 | Desktop business logic lives in **`client/module_desktop_core`**; `client/desktop` is a Flutter shell only and `module_core` remains desktop-process-free. |
 
 ## 4. Release-safety invariants (MUST hold at every merged PR)
 
@@ -144,7 +174,7 @@ mobile release.**
    desktop legs (a desktop build failure can never abort a CLI/mobile release).
    Folding desktop into the release gate is a later, deliberate decision.
 4. **Workspace integrity** — after each desktop PR, `dart pub get` +
-   `client/app` (the mobile product) build/test stay green (desktop-only deps are platform-scoped).
+   `client/app` (the mobile product) build/test stay green (desktop-only deps are platform-scoped). Once `client/desktop` / `module_desktop_core` exist, each desktop PR also runs the relevant desktop analyze/test/build gates for the packages it touches.
 5. **`make bump-version` stays backward-compatible** — bumps CLI+mobile even
    while desktop is mid-development; before Phase 3, releases ship no desktop
    artifact.
@@ -174,11 +204,11 @@ mobile release.**
 |---|---|---|
 | `ControlChannelClient` | Layer 0 `bridge/app/lib/src/.../foundation/` (target layer, not the legacy nested tree) | loopback WS client; connect/reconnect; send/receive |
 | `ControlSecretApi` | Layer 1 `api/` | reads the per-spawn secret off-argv (first stdin line); sent as the control-channel WS `Authorization: Bearer` upgrade header (PR 1.1) |
-| `ControlChannelLossListener` | `control/` subsystem | ADR A9 grace-period process exit on sustained control-channel loss; injected `exitProcess` (PR 1.1) |
+| `ControlChannelLossListener` | Layer 4 `control/` | ADR A9 grace-period process exit on sustained control-channel loss; injected `exitProcess` (PR 1.1). `control/` is part of the core layered bridge app, not a self-contained subsystem. |
 | Control-protocol Freezed DTOs | `shared/sesori_shared` | pure wire types (incl. provision-progress mirror) |
-| `ControlChannelTokenService` | Layer 3 `auth/` | implements `AccessTokenProvider`/`TokenRefresher`; pull + push token stream |
+| `ControlChannelTokenService` | Layer 3 `services/` | implements `auth/` `AccessTokenProvider`/`TokenRefresher`; pull + push token stream over injected `ControlChannelClient`. Kept out of the self-contained `auth/` subsystem so `auth/` does not import core `foundation/`. |
 | `BridgeControlMessageDispatcher` | Layer 4 | routes inbound control msgs (token push → token service, restart → handoff, logout → unregister-and-exit) |
-| `BridgeIdentityStore` (file API + reader) | **inside the `auth/` subsystem** | persist `bridgeId` separately from `token.json`; kept within `auth/` (which is self-contained, outside the core layer hierarchy) so auth code doesn't depend back on top-level `repositories/`. Injected from the composition root. |
+| `BridgeIdentityStorage` (file API + reader) | **inside the `auth/` subsystem** | persist `bridgeId` separately from `token.json`; kept within `auth/` (which is self-contained, outside the core layer hierarchy) so auth code doesn't depend back on top-level `repositories/`. Injected from the composition root. |
 | supervised auth bootstrap | composition root | short-circuit `BridgeRuntimeAuthService.ensureAuthenticated` (no stdin); keep an equivalent `logAuthenticatedUser` |
 | restart change | `orchestrator`/runner seam | `handleRestartHandoff()` → `exit(86)` instead of `spawnSuccessor()` |
 
@@ -188,24 +218,27 @@ auth) or the control-channel service (+ bootstrap). `ControlChannelClient` is
 constructed at the root and **injected** into `ControlChannelTokenService` (no
 internal `new`).
 
-### Desktop GUI side (`client/desktop`, reusing `module_core`/`module_auth`/`module_prego`/`module_app_ui`)
+### Desktop GUI side (`client/desktop` shell + `module_desktop_core` business module)
 
 | Component | Layer | Role |
 |---|---|---|
-| `ControlChannelServer` | Layer 0 | GUI-hosted loopback WS host + per-spawn secret; inbound-as-stream + `send` (precedent: `DebugServer`) |
-| `ControlMessageDispatcher` | Layer 4 (consumer/orchestrator) | subscribes to `ControlChannelServer`'s inbound stream and writes **down** into Layer-3 sinks: token req → `AuthTokenProvider`; status/progress → `BridgeStatusTracker`; prompts → `BridgePromptTracker`. It depends only downward; it does NOT touch the cubit/UI. |
-| `BridgeStatusTracker` / `BridgePromptTracker` | Layer 3 | hold status/pending-prompt state as stream/snapshot; written by the dispatcher, read by the cubit |
-| process API (mirrors `HostProcessCommandExecutor`) | Layer 1 | spawn/kill/monitor a long-lived child |
-| `BridgeProcessRepository` | Layer 2 | wraps the process API |
-| `BridgeProcessService` | Layer 3 | bridge child lifecycle: spawn (control flags), exit-code state machine (86/0/other + backoff), single supervised-bridge guard |
-| `BridgeStatusTracker` | Layer 3 | status (relay/plugin health, provisioning, degraded, active sessions) from control events; stream/snapshot |
-| `BridgeControlCubit` | Layer 4 | toggle on/off (→ service), expose status + prompts (← trackers) for tray + window |
-| `DesktopInstanceService` | Layer 3 | GUI single-instance lock (separate from process supervision) |
-| `SystemTray` / `WindowHost` / `LaunchAtLogin` / `AppUpdater` | Layer 0 capability interfaces + desktop impls | wrap `tray_manager` / `window_manager` / `launch_at_startup` / `auto_updater` |
-| desktop `SecureStorage` / `UrlLauncher` / `FailureReporter` impls | Layer 0 adapters | platform adapters for the desktop shell |
+| `ControlChannelServer` | `module_desktop_core` Layer 0 | GUI-hosted loopback WS host + per-spawn secret; inbound-as-stream + `send`; loopback-only, bad secrets rejected, one authenticated helper per spawn |
+| process API (mirrors `HostProcessCommandExecutor`) | `module_desktop_core` Layer 1 | spawn/kill/monitor a long-lived child |
+| `BridgeProcessRepository` | `module_desktop_core` Layer 2 | wraps the process API |
+| `BridgeStatusTracker` / `BridgePromptTracker` | `module_desktop_core` Layer 2 | hold status/pending-prompt state as stream/snapshot; written by the dispatcher, read by the cubit/service |
+| `BridgeExitTracker` | `module_desktop_core` Layer 2 | owns exit-code/backoff/give-up state derived from process exits so `BridgeProcessService` does not become the state-machine owner |
+| `BridgeProcessService` | `module_desktop_core` Layer 3 | bridge child lifecycle: authenticated spawn gating, control flags, repository calls, and actioning `BridgeExitTracker` decisions |
+| `DesktopInstanceRepository` | `module_desktop_core` Layer 2 | wraps the single-instance lock API/storage boundary |
+| `DesktopInstanceService` | `module_desktop_core` Layer 3 | GUI single-instance lock orchestration, last-on restore, focus-first behavior |
+| `DesktopUpdateService` | `module_desktop_core` Layer 3 | update-apply policy: mark helper stop as expected, stop via `BridgeProcessService`, stage/apply via dumb `AppUpdater`, relaunch, and restore last-on via `DesktopInstanceService` |
+| `ControlMessageDispatcher` | `module_desktop_core` Layer 4 | subscribes to `ControlChannelServer`'s inbound stream and writes **down** into Layer-2 trackers / token seam: token req → `AuthTokenProvider`; status/progress → `BridgeStatusTracker`; prompts → `BridgePromptTracker`. It depends only downward; it does NOT touch the cubit/UI. |
+| `BridgeControlCubit` | `module_desktop_core` Layer 4 | toggle on/off (→ service), expose status + prompts (← trackers) for tray + window |
+| `SystemTray` / `WindowHost` / `LaunchAtLogin` / `AppUpdater` | `module_desktop_core` Layer 0 capability interfaces; `client/desktop` impls | wrap `tray_manager` / `window_manager` / `launch_at_startup` / `auto_updater`; adapters stay dumb |
+| desktop `SecureStorage` / `UrlLauncher` / `FailureReporter` impls | `client/desktop` Layer 0 adapters | platform adapters for `module_core` seams |
 
 Auth: `client/desktop` registers `module_auth` via `configureAuthDependencies(getIt)`
-and consumes only the exported interfaces (`AuthTokenProvider`/`OAuthFlowProvider`/`AuthSession`) — **no direct `AuthManager` import**.
+and consumes only the exported interfaces (`AuthTokenProvider`/`OAuthFlowProvider`/`AuthSession`) — **no direct `AuthManager` import**. `client/desktop`
+also wires `configureCoreDependencies(getIt)` before `configureDesktopCoreDependencies(getIt)` so `module_desktop_core` can depend on shared `module_core` seams.
 
 ## 7. Architecture decision records (ADR)
 
@@ -215,8 +248,8 @@ and consumes only the exported interfaces (`AuthTokenProvider`/`OAuthFlowProvide
 | A2 | macOS **not** sandboxed (Developer ID, not MAS) | the bridge spawns `git`/`opencode`/`ps` |
 | A3 | Single token authority (GUI), helper token-provided | eliminates cross-process refresh-rotation race |
 | A4 | Control-protocol DTOs in `sesori_shared` | only shared point between bridge + client workspaces; pure data |
-| A5 | `ControlChannelServer` name kept (vs Aristotle's `Listener`) | `Listener` implies one-way subscription; this is a duplex socket host; `DebugServer` precedent |
-| A6 | `bridgeId` persistence = a small file-backed store **inside `auth/`** (no Dao) | one string; no DB/migration; keeps it within the self-contained auth subsystem so auth code doesn't depend on top-level `repositories/` |
+| A5 | `ControlChannelServer` name kept (vs Aristotle's `Listener`) | `Listener` implies one-way subscription; this is a duplex socket host; `Server` is now an explicit transport-host suffix and `DebugServer` is the precedent |
+| A6 | `bridgeId` persistence = a small file-backed storage **inside `auth/`** (no Dao) | one string; no DB/migration; keeps it within the self-contained auth subsystem so auth code doesn't depend on top-level `repositories/` |
 | A7 | First-run provisioning UI is **v1** | first launch downloads OpenCode; user must see progress |
 | A8 | Control-channel secret delivered **off-argv** (inherited FD/pipe or stdin handshake), not `--control-secret` | argv is readable by other local processes/users; this channel issues bearer tokens, so an argv-leaked secret = token theft |
 | A9 | Helper exits on **control-channel loss** after a short grace period | if the GUI crashes/force-quits, the OS does not reliably kill the child; the helper must not linger invisibly with a live token |
@@ -224,12 +257,14 @@ and consumes only the exported interfaces (`AuthTokenProvider`/`OAuthFlowProvide
 | A11 | GUI login opens the browser via a **desktop `UrlLauncher` adapter** | the bridge's `openOAuthBrowser` is bridge-workspace-only; `client/desktop` must not import bridge internals |
 | A12 | Token push must drive **RelayClient re-auth/reconnect**, not just emit on a stream | `RelayClient` reads the token once in `connect()`; an open socket stays on the old JWT until reconnect |
 | A13 | GUI keeps a **readable copy of `bridgeId`** + a GUI-side unregister fallback | logout can happen with the helper off/crashed/unreachable; otherwise the registration leaks |
-| A14 | `ControlMessageDispatcher` is **Layer 4** and depends only **downward** on Layer-3 sinks (`BridgeStatusTracker`, `BridgePromptTracker`, `AuthTokenProvider`); the cubit reads those same trackers | avoids both a same-level (L3↔L3 dispatcher↔tracker, or L4↔L4 dispatcher↔cubit) dependency and an upward dependency — the dispatcher writes trackers, the cubit reads trackers, so all edges point downward |
-| A15 | All module_core platform prerequisites registered in the **first DI slice** | `LoginCubit`/`ConnectionService` need `LifecycleSource`/`RelayCryptoService`/`FailureReporter`; deferring them breaks `get_it` resolution in early PRs |
-| A16 | `SystemTray` stays a **dumb Layer-0 adapter**; the Layer-4 cubit drives it and consumes the service/tracker | a platform adapter must not depend on Layer-3 lifecycle/status — that reverses dependency direction |
+| A14 | `ControlMessageDispatcher` is **Layer 4** and depends only **downward** on Layer-2 trackers / token seams (`BridgeStatusTracker`, `BridgePromptTracker`, `AuthTokenProvider`); the cubit reads those same trackers | avoids both a same-level dispatcher↔tracker or dispatcher↔cubit dependency and an upward dependency — the dispatcher writes trackers, the cubit reads trackers, so all edges point downward |
+| A15 | Module-core platform prerequisites are registered **before resolving the module_core services that need them** | `LoginCubit` needs `LifecycleSource`; `ConnectionService` later needs `RelayCryptoService`/`FailureReporter`. Lean v1 does not resolve `ConnectionService`; Phase 4 must register relay prerequisites before accessory UI uses it. |
+| A16 | `SystemTray` stays a **dumb Layer-0 adapter**; the Layer-4 cubit drives it and consumes the service/tracker | a platform adapter must not depend on process lifecycle or status state from higher layers — that reverses dependency direction |
 | A17 | The helper emits a **`registered` control event with `bridgeId`**; the GUI persists it on receipt | gives the GUI a readable id for the offline-unregister fallback (A13) before any crash/stop |
-| A18 | Updater **stops the helper (expected-exit, suppress respawn) before staging/apply**, restores last-on after relaunch | a running child can't be replaced (Windows) and respawn-during-apply risks mixed-version/failed updates |
+| A18 | `DesktopUpdateService` **stops the helper (expected-exit, suppress respawn) before staging/apply**, restores last-on after relaunch | a running child can't be replaced (Windows) and respawn-during-apply risks mixed-version/failed updates; `AppUpdater` stays a dumb Layer-0 adapter |
 | A19 | Desktop offline/onboarding uses a **desktop seam** that starts the supervised helper, not mobile `reconnectBridge()`/`BridgeInstall` CLI prompts | on desktop the app *is* the bridge; the shared mobile actions don't start the helper |
+| A20 | Desktop business logic lives in **`module_desktop_core`** | keeps `client/desktop` a Flutter shell and prevents `module_core` from inheriting tray/process/bundled-helper concerns |
+| A21 | Desktop relay-client connection is deferred until accessory UI | lean v1 needs login/control/status only; resolving relay transport early adds platform prerequisites and test surface without user-visible v1 value |
 
 ## 8. Open risks & lead-time register
 
@@ -271,10 +306,10 @@ Legend: ☐ pending · ◐ in-progress · ☑ done. Sizes: **S** ≤150 LOC · *
 - ☐ 1.13 Tee `RuntimeProvisionProgress` → control channel — Low / S-M
 
 ### Phase 2 — Desktop shell + supervisor → `phase-2-desktop-shell.md`
-- ☐ 2.1 `client/desktop` package + builds on 3 OSes — Med / M
-- ☐ 2.2 Desktop platform adapters (SecureStorage, UrlLauncher) — Low-Med / S-M
+- ☐ 2.1 `client/module_desktop_core` + `client/desktop` packages + builds on 3 OSes — Med / M
+- ☐ 2.2 Desktop platform adapters (module_core + module_desktop_core prerequisites) — Low-Med / S-M
 - ☐ 2.3 Login reuse (`AuthManager` browser-poll OAuth) — Med / M
-- ☐ 2.4 Relay connection + bridge online/offline — Low-Med / S-M
+- ☐ 2.4 Control status/prompt trackers baseline (no relay client yet) — Low-Med / S-M
 - ☐ 2.5a Re-export `AuthTokenProvider` from `module_core` (seam) — Low / S
 - ☐ 2.5 `ControlChannelServer` + `ControlMessageDispatcher` + token responder — Med / M
 - ☐ 2.6 `BridgeProcessService`: spawn/kill/path + control flags — High / M
@@ -286,7 +321,7 @@ Legend: ☐ pending · ◐ in-progress · ☑ done. Sizes: **S** ≤150 LOC · *
 - ☐ 2.12 GUI single-instance + persist on/off & last-state — Low-Med / S-M
 - ☐ 2.13 Logout coordination (GUI: unregister→kill→invalidate) — Med / S-M
 - ☐ 2.14 Desktop `FailureReporter` impl — Low-Med / S-M
-- ☐ 2.15 E2E integration (spawn→handshake→token→relay→restart→logout) — Med / M
+- ☐ 2.15 E2E integration (spawn→handshake→token→restart→logout; local fakes) — Med / M
 - ☐ 2.16 First-run provisioning progress UI + degraded state — Med / M
 
 ### Phase 3 — Packaging / signing / self-update (= v1) → `phase-3-packaging.md`
@@ -297,10 +332,10 @@ Legend: ☐ pending · ◐ in-progress · ☑ done. Sizes: **S** ≤150 LOC · *
 - ☐ 3.3 Windows leg: build + bundle + installer (unsigned) — High / M
 - ☐ 3.4 Windows code signing (needs cert) — Med / S-M
 - ☐ 3.5 Linux AppImage + bundle + **mandatory** GPG signing — Med-High / M
-- ☐ 3.6 macOS self-update (Sparkle) + EdDSA + appcast — High / M
-- ☐ 3.7 Windows self-update (WinSparkle) + appcast — High / M
-- ☐ 3.8 Linux self-update (zsync/AppImageUpdate) — Med-High / M
-- ☐ 3.9 Update-apply policy (stop helper first) + rollback + update UX — Med / M
+- ☐ 3.6 Update-apply policy (stop helper first) + rollback + update UX — Med / M
+- ☐ 3.7 macOS self-update (Sparkle) + EdDSA + appcast — High / M
+- ☐ 3.8 Windows self-update (WinSparkle) + appcast — High / M
+- ☐ 3.9 Linux self-update (zsync/AppImageUpdate) — Med-High / M
 - ☐ 3.10 Release-pipeline integration (non-blocking) + `make bump-version` + changelog — Med / M
 - ☐ 3.11 Uninstall + login-item/token cleanup — Low-Med / S-M
 
