@@ -44,6 +44,18 @@ class SessionUnseenTracker with Disposable {
 
   Map<String, Map<String, bool>> get currentSessionUnseen => _sessionUnseen.value;
 
+  /// Reconciles the per-project unseen aggregate from an authoritative source
+  /// (a REST `/projects` refresh). This keeps the tracker as the single source
+  /// of truth so a stale live `true` (e.g. after the last unseen session was
+  /// archived without a follow-up SSE event) cannot indefinitely override a
+  /// fresh aggregate. Per-session state is left untouched.
+  void reconcileProjectUnseen(Map<String, bool> unseenByProjectId) {
+    if (_projectUnseen.isClosed) return;
+    final projects = Map<String, bool>.from(_projectUnseen.value);
+    projects.addAll(unseenByProjectId);
+    _projectUnseen.add(projects);
+  }
+
   void _handleEvent(SseEvent event) {
     try {
       if (event.data
@@ -57,10 +69,12 @@ class SessionUnseenTracker with Disposable {
         projects[projectID] = projectHasUnseenChanges;
         _projectUnseen.add(projects);
 
-        final sessions = {
-          for (final entry in _sessionUnseen.value.entries) entry.key: Map<String, bool>.from(entry.value),
-        };
-        (sessions[projectID] ??= <String, bool>{})[sessionId] = unseen;
+        // Copy only the outer map and the affected project's inner map
+        // (O(sessions in this project)), not every project's sessions.
+        final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
+        final projectSessions = Map<String, bool>.from(sessions[projectID] ?? const {});
+        projectSessions[sessionId] = unseen;
+        sessions[projectID] = projectSessions;
         _sessionUnseen.add(sessions);
       }
     } catch (e, st) {

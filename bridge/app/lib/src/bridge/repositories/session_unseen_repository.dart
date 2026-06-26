@@ -72,19 +72,23 @@ class SessionUnseenRepository {
     return _sessionDao.setSeenAt(sessionId: sessionId, seenAt: at);
   }
 
-  /// Marks [sessionId] unread by clearing `last_seen_at`. It then bolds iff
-  /// activity is newer than the user's last message.
-  Future<void> markSessionUnseen({required String sessionId}) {
-    return _sessionDao.clearSeenAt(sessionId: sessionId);
+  /// Forces [sessionId] unread for an explicit "Mark as Unread" at [at]. Unlike
+  /// clearing `last_seen_at` alone, this reliably bolds even baseline sessions
+  /// and sessions whose latest activity was the user's own message.
+  Future<void> markSessionUnseen({required String sessionId, required int at}) {
+    return _sessionDao.forceUnseen(sessionId: sessionId, activityAt: at);
   }
 
   /// Ensures a ROOT session row exists for [sessionId] and stamps its activity
   /// at [createdAt] so a brand-new session is immediately unseen even before any
-  /// list fetch. Wrapped in a transaction so the project FK cannot fire.
+  /// list fetch. When [advanceSeen] is true (a phone is already viewing it), the
+  /// seen timestamp is advanced too so it does not bold under the watcher.
+  /// Wrapped in a transaction so the project FK cannot fire.
   Future<void> ensureRootSessionActivity({
     required String sessionId,
     required String projectId,
     required int createdAt,
+    required bool advanceSeen,
   }) async {
     await _db.transaction(() async {
       await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
@@ -95,7 +99,7 @@ class SessionUnseenRepository {
         sessionId: sessionId,
         activityAt: createdAt,
         userMessageAt: null,
-        seenAt: null,
+        seenAt: advanceSeen ? createdAt : null,
       );
     });
   }

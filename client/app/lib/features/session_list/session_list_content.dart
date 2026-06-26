@@ -76,7 +76,7 @@ class SessionListContent extends StatelessWidget {
                       session: session,
                       isArchived: isArchived,
                       isActive: activityInfo != null,
-                      unseen: unseenBySessionId[session.id] ?? false,
+                      unseen: unseenBySessionId[session.id] ?? session.unseen,
                       selected: selectedSessionId == session.id,
                       awaitingInput: activityInfo?.awaitingInput ?? false,
                       isRetrying: activityInfo?.isRetrying ?? false,

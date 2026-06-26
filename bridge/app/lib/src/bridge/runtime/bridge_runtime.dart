@@ -52,6 +52,10 @@ class BridgeRuntime {
   final FailureReporter _failureReporter;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final BridgeRestartService _restartService;
+  // Owned here (composition root) because they are global/singleton and must
+  // outlive any single OrchestratorSession (e.g. across a restart/reconnect).
+  final SessionUnseenService _sessionUnseenService;
+  final SessionViewTracker _sessionViewTracker;
   final OrchestratorSession session;
 
   BridgeRuntime({
@@ -60,12 +64,16 @@ class BridgeRuntime {
     required FailureReporter failureReporter,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
     required BridgeRestartService restartService,
+    required SessionUnseenService sessionUnseenService,
+    required SessionViewTracker sessionViewTracker,
     required this.session,
   }) : _database = database,
        _plugin = plugin,
        _failureReporter = failureReporter,
        _sessionEventEnrichmentService = sessionEventEnrichmentService,
-       _restartService = restartService;
+       _restartService = restartService,
+       _sessionUnseenService = sessionUnseenService,
+       _sessionViewTracker = sessionViewTracker;
 
   static BridgeRuntime create({
     required BridgeConfig config,
@@ -141,6 +149,8 @@ class BridgeRuntime {
       failureReporter: failureReporter,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
       restartService: restartService,
+      sessionUnseenService: sessionUnseenService,
+      sessionViewTracker: sessionViewTracker,
       session: Orchestrator(
         config: config,
         client: RelayClient(
@@ -219,8 +229,12 @@ class BridgeRuntime {
     );
   }
 
-  Future<void> close() {
-    return _database.close();
+  Future<void> close() async {
+    // Dispose the global unseen collaborators here (their owner), not in
+    // OrchestratorSession (a consumer that may be recreated across restarts).
+    await _sessionUnseenService.dispose();
+    await _sessionViewTracker.dispose();
+    await _database.close();
   }
 }
 

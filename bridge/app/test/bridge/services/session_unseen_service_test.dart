@@ -105,6 +105,30 @@ void main() {
       expect(await unseen("s1"), isFalse);
     });
 
+    test("mark unread forces bold even when the user's own message is latest", () async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSessionsIfMissing(
+        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+      );
+      // Latest activity is the user's own message -> normally NOT bold.
+      await service.recordActivity(sessionId: "s1", at: 600, isUserMessage: true);
+      expect(await unseen("s1"), isFalse);
+
+      clock = 700;
+      await service.markUnread(sessionId: "s1");
+      expect(await unseen("s1"), isTrue);
+    });
+
+    test("serializes ordered activity for one session (no out-of-order clear)", () async {
+      await service.recordSessionCreated(sessionId: "s1", projectId: "p1", parentId: null, createdAt: 1000);
+      // Fire a user message then an AI message without awaiting between them;
+      // the AI activity (later) must win so the session stays unseen.
+      final f1 = service.recordActivity(sessionId: "s1", at: 2000, isUserMessage: true);
+      final f2 = service.recordActivity(sessionId: "s1", at: 2001, isUserMessage: false);
+      await Future.wait([f1, f2]);
+      expect(await unseen("s1"), isTrue);
+    });
+
     test("emits unseenChanges with project aggregate", () async {
       final events = <UnseenChange>[];
       final sub = service.unseenChanges.listen(events.add);

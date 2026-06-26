@@ -197,7 +197,7 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
                 return _ProjectTile(
                   project: project,
                   activeSessions: activityById[project.id] ?? 0,
-                  unseen: unseenByProjectId[project.id] ?? false,
+                  unseen: unseenByProjectId[project.id] ?? project.hasUnseenChanges,
                   onLongPress: () => _showProjectMenu(context: context, project: project),
                 );
               },

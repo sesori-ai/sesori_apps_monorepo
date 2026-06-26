@@ -428,9 +428,8 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     if (state case final ProjectListLoaded loaded) {
       final remaining = loaded.projects.where((p) => p.id != projectId).toList();
       emit(
-        ProjectListState.loaded(
+        loaded.copyWith(
           projects: remaining,
-          activityById: loaded.activityById,
           unseenByProjectId: _unseenByProjectId(remaining),
         ),
       );
@@ -485,6 +484,12 @@ class ProjectListCubit extends Cubit<ProjectListState> {
 
     switch (projectResponse) {
       case SuccessResponse(data: Projects(data: final projects)):
+        // The REST aggregate is authoritative at fetch time — push it into the
+        // tracker so a stale live `true` cannot keep a project bold after its
+        // last unseen session was archived/deleted without a follow-up event.
+        _sessionUnseenTracker.reconcileProjectUnseen({
+          for (final p in projects) p.id: p.hasUnseenChanges,
+        });
         emit(
           ProjectListState.loaded(
             projects: projects,

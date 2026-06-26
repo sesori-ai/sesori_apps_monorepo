@@ -364,7 +364,14 @@ class RelayClient {
     if (!isConnected || _sessionEncryptor == null) {
       return;
     }
-    await _sendEncryptedMessage(RelayMessage.sessionView(sessionId: sessionId));
+    try {
+      await _sendEncryptedMessage(RelayMessage.sessionView(sessionId: sessionId));
+    } catch (error, stackTrace) {
+      // Best-effort control message: a disconnect can race the connected check
+      // above. Swallow so callers' fire-and-forget `unawaited` paths never see
+      // an unhandled async error; the phone re-asserts its view on reconnect.
+      logw("sendSessionView failed (likely a disconnect race)", error, stackTrace);
+    }
   }
 
   Future<void> disconnect() async {

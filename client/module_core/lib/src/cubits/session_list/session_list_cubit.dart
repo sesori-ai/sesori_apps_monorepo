@@ -456,11 +456,27 @@ class SessionListCubit extends Cubit<SessionListState> {
       optimistic[sessionId] = !read;
       emit(current.copyWith(unseenBySessionId: optimistic));
     }
-    final response = await _sessionService.markSessionSeen(sessionId: sessionId, read: read);
-    if (isClosed) return;
-    if (response is ErrorResponse) {
-      // Revert the optimistic update on failure.
-      _onUnseenUpdated();
+    try {
+      final response = await _sessionService.markSessionSeen(sessionId: sessionId, read: read);
+      if (isClosed) return;
+      if (response is ErrorResponse) {
+        // Revert the optimistic update on failure.
+        _onUnseenUpdated();
+      }
+    } catch (e, st) {
+      unawaited(
+        _failureReporter
+            .recordFailure(
+              error: e,
+              stackTrace: st,
+              uniqueIdentifier: "session_list_mark_seen",
+              fatal: false,
+              reason: "Failed to mark session seen",
+              information: [sessionId, "read=$read"],
+            )
+            .catchError((_) {}),
+      );
+      if (!isClosed) _onUnseenUpdated();
     }
   }
 

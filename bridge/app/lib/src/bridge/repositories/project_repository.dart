@@ -56,6 +56,19 @@ class ProjectRepository {
   /// changes. Child sessions never have a row, so they cannot contribute.
   Future<bool> projectHasUnseenChanges({required String projectId}) async {
     final rows = await _sessionDao.getUnseenRowsForProject(projectId: projectId);
+    return _anyUnseen(rows);
+  }
+
+  /// Batch variant of [projectHasUnseenChanges] for the `/projects` list. Reads
+  /// every project's sessions in a single query to avoid N+1.
+  Future<Map<String, bool>> unseenByProjectId({required List<String> projectIds}) async {
+    final rowsByProject = await _sessionDao.getUnseenRowsForProjects(projectIds: projectIds);
+    return {
+      for (final id in projectIds) id: _anyUnseen(rowsByProject[id] ?? const []),
+    };
+  }
+
+  bool _anyUnseen(List<SessionUnseenRow> rows) {
     for (final row in rows) {
       if (row.archivedAt != null) continue;
       if (_unseenCalculator.isUnseen(
@@ -67,15 +80,6 @@ class ProjectRepository {
       }
     }
     return false;
-  }
-
-  /// Batch variant of [projectHasUnseenChanges] for the `/projects` list.
-  Future<Map<String, bool>> unseenByProjectId({required List<String> projectIds}) async {
-    final result = <String, bool>{};
-    for (final id in projectIds) {
-      result[id] = await projectHasUnseenChanges(projectId: id);
-    }
-    return result;
   }
 
   Future<Project> openProject({required String path}) async {

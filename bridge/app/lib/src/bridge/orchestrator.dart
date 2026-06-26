@@ -454,9 +454,11 @@ class OrchestratorSession {
       Log.v("[shutdown] completion listener disposed (+${teardownSw.elapsedMilliseconds}ms)");
       _maintenanceListener.dispose();
       _prSyncService.dispose();
-      await _sessionUnseenService.dispose();
-      await _sessionViewTracker.dispose();
-      Log.v("[shutdown] maintenance + pr-sync + unseen listeners disposed (+${teardownSw.elapsedMilliseconds}ms)");
+      // SessionUnseenService and SessionViewTracker are global singletons owned
+      // by BridgeRuntime (the composition root); it disposes them on close().
+      // They intentionally outlive this session so a restart/reconnect can reuse
+      // them without hitting closed stream controllers.
+      Log.v("[shutdown] maintenance + pr-sync listeners disposed (+${teardownSw.elapsedMilliseconds}ms)");
       // Plugin teardown is owned by BridgePlugin.shutdown(), run as the
       // shutdown coordinator's ordered step — the deprecated direct
       // api.dispose() call is gone since the descriptor flip.
@@ -553,7 +555,11 @@ class OrchestratorSession {
         );
         _completionListener.handleSseEvent(sesoriEvent);
         _sseManager.enqueueEvent(sesoriEvent);
-        unawaited(_routeUnseenActivity(sesoriEvent));
+        unawaited(
+          Future.sync(() => _routeUnseenActivity(sesoriEvent)).catchError((Object e, StackTrace st) {
+            Log.w("failed to route unseen activity for ${sesoriEvent.runtimeType}", e, st);
+          }),
+        );
       } else {
         Log.v("[sse] mapping returned null — event dropped");
       }
@@ -594,14 +600,33 @@ class OrchestratorSession {
           at: now,
           isUserMessage: info is MessageUser,
         );
-      case SesoriQuestionAsked(:final sessionID):
-        await _sessionUnseenService.recordActivity(sessionId: sessionID, at: now, isUserMessage: false);
-      case SesoriPermissionAsked(:final sessionID):
-        await _sessionUnseenService.recordActivity(sessionId: sessionID, at: now, isUserMessage: false);
-      case SesoriQuestionReplied(:final sessionID):
-        await _sessionUnseenService.recordActivity(sessionId: sessionID, at: now, isUserMessage: true);
-      case SesoriPermissionReplied(:final sessionID):
-        await _sessionUnseenService.recordActivity(sessionId: sessionID, at: now, isUserMessage: true);
+      // For child/subagent requests, `displaySessionId` is the root session the
+      // UI surfaces the request under; the child has no persisted row, so route
+      // to the displayed root so it becomes unseen for pending input.
+      case SesoriQuestionAsked(:final sessionID, :final displaySessionId):
+        await _sessionUnseenService.recordActivity(
+          sessionId: displaySessionId ?? sessionID,
+          at: now,
+          isUserMessage: false,
+        );
+      case SesoriPermissionAsked(:final sessionID, :final displaySessionId):
+        await _sessionUnseenService.recordActivity(
+          sessionId: displaySessionId ?? sessionID,
+          at: now,
+          isUserMessage: false,
+        );
+      case SesoriQuestionReplied(:final sessionID, :final displaySessionId):
+        await _sessionUnseenService.recordActivity(
+          sessionId: displaySessionId ?? sessionID,
+          at: now,
+          isUserMessage: true,
+        );
+      case SesoriPermissionReplied(:final sessionID, :final displaySessionId):
+        await _sessionUnseenService.recordActivity(
+          sessionId: displaySessionId ?? sessionID,
+          at: now,
+          isUserMessage: true,
+        );
       default:
         // Not an unseen-relevant event.
         break;

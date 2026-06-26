@@ -110,10 +110,16 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     );
   }
 
-  /// Clears [lastSeenAt] for [sessionId] (used by "Mark as Unread").
-  Future<void> clearSeenAt({required String sessionId}) async {
+  /// Forces [sessionId] into an unseen state for an explicit "Mark as Unread":
+  /// stamps activity at [activityAt] and seen just before it, so
+  /// `activity > max(userMessage, seen)` holds regardless of prior state.
+  /// `last_user_message_at` is intentionally left untouched (kept pure).
+  Future<void> forceUnseen({required String sessionId, required int activityAt}) async {
     await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
-      const SessionTableCompanion(lastSeenAt: Value(null)),
+      SessionTableCompanion(
+        lastActivityAt: Value(activityAt),
+        lastSeenAt: Value(activityAt - 1),
+      ),
     );
   }
 
@@ -121,17 +127,31 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   /// The repository applies the unseen formula; the DAO stays query-only.
   Future<List<SessionUnseenRow>> getUnseenRowsForProject({required String projectId}) async {
     final rows = await (select(sessionTable)..where((t) => t.projectId.equals(projectId))).get();
-    return [
-      for (final r in rows)
-        (
-          sessionId: r.sessionId,
-          archivedAt: r.archivedAt,
-          activityAt: r.lastActivityAt,
-          seenAt: r.lastSeenAt,
-          userMessageAt: r.lastUserMessageAt,
-        ),
-    ];
+    return [for (final r in rows) _toUnseenRow(r)];
   }
+
+  /// Batched variant of [getUnseenRowsForProject]: returns the unseen-relevant
+  /// columns for every session across all of [projectIds], grouped by project,
+  /// in a single query (avoids N+1 for the `/projects` aggregate).
+  Future<Map<String, List<SessionUnseenRow>>> getUnseenRowsForProjects({
+    required List<String> projectIds,
+  }) async {
+    if (projectIds.isEmpty) return const {};
+    final rows = await (select(sessionTable)..where((t) => t.projectId.isIn(projectIds))).get();
+    final grouped = <String, List<SessionUnseenRow>>{};
+    for (final r in rows) {
+      (grouped[r.projectId] ??= <SessionUnseenRow>[]).add(_toUnseenRow(r));
+    }
+    return grouped;
+  }
+
+  static SessionUnseenRow _toUnseenRow(SessionDto r) => (
+    sessionId: r.sessionId,
+    archivedAt: r.archivedAt,
+    activityAt: r.lastActivityAt,
+    seenAt: r.lastSeenAt,
+    userMessageAt: r.lastUserMessageAt,
+  );
 
   Future<Map<String, SessionDto>> getSessionsByIds({required List<String> sessionIds}) async {
     if (sessionIds.isEmpty) {
