@@ -85,7 +85,11 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
                       // queued messages and composer); content in between scrolls
                       // up behind the bar's fade and the composer's fade.
                       topInset: topInset,
-                      bottomInset: _bottomControlsHeight,
+                      // The read-only variant renders no floating controls, so
+                      // force the inset to 0 there — guarding against a stale
+                      // measured height lingering if a state object is reused
+                      // across an editable -> read-only transition.
+                      bottomInset: widget.readOnly ? 0 : _bottomControlsHeight,
                     ),
             ),
           ],

@@ -274,6 +274,7 @@ class _PromptInputState extends State<PromptInput> {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    final loc = context.loc;
 
     return DecoratedBox(
       // Floating composer: no bar surface, no separator line. The scaffold
@@ -357,18 +358,25 @@ class _PromptInputState extends State<PromptInput> {
                   onTap: _handleMicTap,
                 ),
                 if (_voiceState == _VoiceState.idle) ...[
-                  GlassIconButton(
-                    onPressed: _handleSend,
-                    icon: const Icon(Icons.send),
-                    glowColor: prego.colors.bgBrandSolid,
-                    // tooltip: loc.sessionDetailSend,
+                  // GlassIconButton has no tooltip/semanticLabel, so wrap it in
+                  // a Tooltip to restore the long-press/hover label and the
+                  // screen-reader name the old IconButton carried.
+                  Tooltip(
+                    message: loc.sessionDetailSend,
+                    child: GlassIconButton(
+                      onPressed: _handleSend,
+                      icon: const Icon(Icons.send),
+                      glowColor: prego.colors.bgBrandSolid,
+                    ),
                   ),
                   if (widget.isBusy)
-                    GlassIconButton(
-                      onPressed: widget.onAbort,
-                      icon: const Icon(Icons.stop_circle),
-                      glowColor: prego.colors.fgErrorPrimary,
-                      // tooltip: loc.sessionDetailAbort,
+                    Tooltip(
+                      message: loc.sessionDetailAbort,
+                      child: GlassIconButton(
+                        onPressed: widget.onAbort,
+                        icon: const Icon(Icons.stop_circle),
+                        glowColor: prego.colors.fgErrorPrimary,
+                      ),
                     ),
                 ],
               ],
@@ -434,25 +442,35 @@ class _MicButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    final loc = context.loc;
 
+    // GlassIconButton exposes no tooltip/semanticLabel, so wrap each state's
+    // button in a Tooltip to keep the long-press/hover label and screen-reader
+    // name the old IconButton provided.
     return switch (voiceState) {
-      _VoiceState.idle => GlassIconButton(
-        onPressed: onTap,
-        icon: const Icon(Icons.mic_none),
-        glowColor: prego.colors.textSecondary,
-        // tooltip: loc.voiceRecord,
+      _VoiceState.idle => Tooltip(
+        message: loc.voiceRecord,
+        child: GlassIconButton(
+          onPressed: onTap,
+          icon: const Icon(Icons.mic_none),
+          glowColor: prego.colors.textSecondary,
+        ),
       ),
-      _VoiceState.recording => GlassIconButton(
-        onPressed: onTap,
-        icon: const Icon(Icons.stop_circle_outlined),
-        glowColor: prego.colors.fgErrorPrimary,
-        // tooltip: loc.voiceStopRecording,
+      _VoiceState.recording => Tooltip(
+        message: loc.voiceStopRecording,
+        child: GlassIconButton(
+          onPressed: onTap,
+          icon: const Icon(Icons.stop_circle_outlined),
+          glowColor: prego.colors.fgErrorPrimary,
+        ),
       ),
-      _VoiceState.transcribing => GlassIconButton(
-        onPressed: onTap,
-        icon: const Icon(Icons.close),
-        glowColor: prego.colors.fgErrorPrimary,
-        // tooltip: loc.voiceCancelTranscription,
+      _VoiceState.transcribing => Tooltip(
+        message: loc.voiceCancelTranscription,
+        child: GlassIconButton(
+          onPressed: onTap,
+          icon: const Icon(Icons.close),
+          glowColor: prego.colors.fgErrorPrimary,
+        ),
       ),
     };
   }

@@ -62,14 +62,19 @@ class ModelPickerSheet extends StatefulWidget {
       // than having the whole sheet lifted above the indicator.
       handleBottomSafeArea: false,
       builder: (sheetContext) {
-        final media = MediaQuery.of(sheetContext);
+        // Granular getters (not MediaQuery.of) so this builder only depends on
+        // the size/insets it actually reads, rather than rebuilding on every
+        // unrelated MediaQueryData change (text scale, brightness, …).
+        final size = MediaQuery.sizeOf(sheetContext);
+        final viewPadding = MediaQuery.viewPaddingOf(sheetContext);
+        final viewInsets = MediaQuery.viewInsetsOf(sheetContext);
         // Full screen: fill from just below the notch to the bottom edge. The
         // keyboard inset is subtracted here (and re-added as bottom padding by
         // showAppModalBottomSheet) so the content never overflows above the
         // top safe area when the keyboard is up.
         final height = fullScreen
-            ? media.size.height - media.viewPadding.top - media.viewInsets.bottom
-            : media.size.height * 0.7;
+            ? size.height - viewPadding.top - viewInsets.bottom
+            : size.height * 0.7;
         final prego = sheetContext.prego;
         // Material (not a decorated Container) so the ListTiles inside can
         // paint their ink and selection effects on the sheet surface.

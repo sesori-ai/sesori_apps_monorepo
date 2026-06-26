@@ -26,7 +26,7 @@ class JumpToEdgePill extends StatelessWidget {
     required this.tapTargetKey,
     required this.label,
     required this.onTap,
-    this.bottomInset = 0,
+    required this.bottomInset,
   });
 
   @override
