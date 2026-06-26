@@ -115,7 +115,12 @@ class RunCommand extends cli.Command<void> {
         defaultsTo: 'info',
         allowed: ['verbose', 'debug', 'info', 'warning', 'error'],
         help: 'Minimum log level',
-      );
+      )
+      // Supervised mode: the desktop GUI passes the loopback control-channel
+      // URL here. Hidden because it is an internal GUI↔helper contract, not a
+      // user-facing flag. The per-spawn secret is delivered off-argv (stdin),
+      // never as a flag (ADR A8). Absent ⇒ standalone behaviour is unchanged.
+      ..addOption('control-url', hide: true, help: 'Internal: supervised-mode control channel URL');
   }
 
   @override

@@ -46,7 +46,31 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 - **Acceptance:** standalone unchanged; with supervised bootstrap the client
   connects to a fake server in tests; reconnect on drop; the secret never
   appears in `ps`/argv; control-channel loss triggers grace-period exit.
-- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+- **Aristotle:** plan ☑ · impl ☑.
+- **Findings:** Shipped as three gated units + the `--control-url` option.
+  `ControlChannelClient` (Layer 0 `foundation/`) owns connect + its own
+  exp-backoff auto-reconnect (the GUI may come/go while the bridge stays up, so
+  unlike `RelayClient` the reconnect loop lives in the client, not a consumer),
+  a raw `inbound` text stream, `send`, and a `connectionState` stream. The
+  per-spawn secret is read as the first stdin line (`ControlSecretApi`) and
+  presented to the GUI as an `Authorization: Bearer` header on the WS **upgrade
+  request** — transport-level auth, off-argv, and independent of the PR-1.2 wire
+  DTOs. Parent-loss exit (ADR A9) is a separate `ControlChannelLossListener`
+  with an injected `exitProcess` (root passes `io.exit`), grace 5s, exit code
+  `1`. A real drop emits `disconnected` (arms grace); a clean `dispose` closes
+  the state stream `done` (no grace) so shutdown never self-exits. Standalone is
+  byte-identical (everything behind `isSupervised`). `make analyze` clean;
+  `make test` 1504 pass.
+- **Deltas:** §6 placed only `ControlChannelClient` (foundation, kept). Two
+  components plan-review pinned to specific layers were NOT pre-specified in §6
+  and are now added there: the off-argv secret reader is a **Layer-1
+  `ControlSecretApi`** in `api/` (mirrors `TerminalPromptApi`; a stdin reader is
+  data access, not a foundation primitive — `Reader` is not a sanctioned
+  suffix), and the ADR-A9 grace-exit is a **`ControlChannelLossListener` in a
+  new `control/` subsystem dir** (a decision-making `Listener` cannot live in
+  Layer-0 `foundation/`). Parent-loss exit code is provisionally `1`
+  (`controlChannelLostExitCode`); the GUI-side exit-code state machine (PR
+  2.7 / 1.7) may refine it.
 
 ## PR 1.2 — Control-protocol Freezed DTOs (incl. provision-progress mirror)
 - **Goal:** Define wire DTOs in `shared/sesori_shared`: `token_request`,

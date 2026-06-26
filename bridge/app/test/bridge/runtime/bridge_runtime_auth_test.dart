@@ -151,6 +151,7 @@ BridgeCliOptions _options({required String authBackendUrl}) {
     authBackendUrl: authBackendUrl,
     debugPort: null,
     logLevelName: 'info',
+    controlUrl: null,
   );
 }
 

@@ -25,6 +25,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         StartAbortSignal;
 
 import "../../api/bridge_settings_api.dart";
+import "../../api/control_secret_api.dart";
 import "../../auth/bridge_registration_api.dart";
 import "../../auth/bridge_registration_repository.dart";
 import "../../auth/bridge_registration_service.dart";
@@ -34,6 +35,8 @@ import "../../auth/login_oauth_api.dart";
 import "../../auth/login_oauth_service.dart";
 import "../../auth/token.dart";
 import "../../auth/token_manager.dart";
+import "../../control/control_channel_loss_listener.dart";
+import "../../foundation/control_channel_client.dart";
 import "../../repositories/bridge_settings_repository.dart";
 import "../../server/api/loopback_port_api.dart";
 import "../../server/api/runtime_file_api.dart";
@@ -194,6 +197,16 @@ class BridgeRuntimeRunner {
     );
 
     try {
+      // Supervised mode (desktop GUI): bring up the loopback control channel
+      // before anything else so the GUI sees the helper connect promptly. Every
+      // step here is gated by `--control-url`; standalone startup is unchanged.
+      if (options.isSupervised) {
+        await _startSupervisedControlChannel(
+          options: options,
+          shutdownCoordinator: shutdownCoordinator,
+        );
+      }
+
       final runtimeOwnershipError = unsupportedPackageRuntimeMessage(
         executablePath: io.Platform.resolvedExecutable,
         managedExecutablePath: managedRuntimePaths.binaryPath,
@@ -431,6 +444,30 @@ class BridgeRuntimeRunner {
     } finally {
       await shutdownCoordinator.shutdown();
     }
+  }
+
+  /// Supervised-mode bootstrap: read the per-spawn secret off-argv (stdin),
+  /// open the GUI's loopback control channel, and arm the parent-loss exit
+  /// policy (ADR A9). Both the client and the loss listener are torn down via
+  /// the shutdown coordinator. Only ever called when `--control-url` is set.
+  static Future<void> _startSupervisedControlChannel({
+    required BridgeCliOptions options,
+    required BridgeShutdownCoordinator shutdownCoordinator,
+  }) async {
+    final secret = await ControlSecretApi(input: io.stdin).readSecret();
+    final controlChannelClient = ControlChannelClient(
+      url: Uri.parse(options.controlUrl!),
+      secret: secret,
+    );
+    await controlChannelClient.connect();
+    shutdownCoordinator.add(disposable: controlChannelClient.dispose);
+
+    final lossListener = ControlChannelLossListener(
+      connectionState: controlChannelClient.connectionState,
+      exitProcess: io.exit,
+    );
+    lossListener.start();
+    shutdownCoordinator.add(disposable: lossListener.dispose);
   }
 
   /// Runs the plugin's runtime-provisioning phase, rendering progress and

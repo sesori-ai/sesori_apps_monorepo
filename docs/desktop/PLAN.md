@@ -9,7 +9,7 @@
 ## Current pointer
 
 - **Last completed phase:** Phase 0 — `mobile/`→`client/` rename (PR 0.1)
-- **In-flight PR:** none
+- **In-flight PR:** PR 1.1 — `--control-url` + off-argv secret bootstrap + `ControlChannelClient` skeleton (open, not merged)
 - **Branch:** one feature branch per PR, cut from `main`
 
 > **The pointer is backward-looking.** "Last completed phase" advances only once
@@ -17,6 +17,19 @@
 > genuinely done. Use **In-flight PR** for work in progress; the next action is
 > intentionally not tracked here — read it off the first ☐ in the PR status
 > index (§9).
+>
+> **How to resume (derive the next action — do NOT ask first).** When told to
+> "continue with the next phase/PR", resolve it deterministically:
+> 1. If **In-flight PR** above is not "none", continue that PR.
+> 2. Otherwise the next action is the **first ☐ in the PR status index (§9)**,
+>    read top-to-bottom. Phases and the PRs within them are strictly ordered and
+>    are completed in order (a later phase depends on earlier phases existing).
+> 3. **The session worktree/branch name is NOT authoritative** and may not match
+>    the plan — e.g. a branch named `…-phase-2` while the first ☐ is still in
+>    Phase 1. The plan always wins; never infer the phase/PR from the branch name.
+> 4. **Default scope = one PR per session** (matches "one feature branch per
+>    PR"). Implement the single next PR, run both Aristotle gates (§5), open it,
+>    then stop unless the user says otherwise.
 >
 > **Keep the plan true.** If a PR reveals that an assumption here was wrong — a
 > locked decision (§3), release-safety invariant (§4), component design (§6),
@@ -152,6 +165,8 @@ mobile release.**
 | Component | Layer / dir | Role |
 |---|---|---|
 | `ControlChannelClient` | Layer 0 `bridge/app/lib/src/.../foundation/` (target layer, not the legacy nested tree) | loopback WS client; connect/reconnect; send/receive |
+| `ControlSecretApi` | Layer 1 `api/` | reads the per-spawn secret off-argv (first stdin line); sent as the control-channel WS `Authorization: Bearer` upgrade header (PR 1.1) |
+| `ControlChannelLossListener` | `control/` subsystem | ADR A9 grace-period process exit on sustained control-channel loss; injected `exitProcess` (PR 1.1) |
 | Control-protocol Freezed DTOs | `shared/sesori_shared` | pure wire types (incl. provision-progress mirror) |
 | `ControlChannelTokenService` | Layer 3 `auth/` | implements `AccessTokenProvider`/`TokenRefresher`; pull + push token stream |
 | `BridgeControlMessageDispatcher` | Layer 4 | routes inbound control msgs (token push → token service, restart → handoff, logout → unregister-and-exit) |
@@ -232,7 +247,7 @@ Legend: ☐ pending · ◐ in-progress · ☑ done. Sizes: **S** ≤150 LOC · *
 - ☑ 0.1 `mobile/`→`client/` everywhere (atomic) — **Med-High / L**
 
 ### Phase 1 — Bridge supervised mode → `phase-1-bridge-supervised.md`
-- ☐ 1.1 `--control-url` + off-argv secret bootstrap + `ControlChannelClient` skeleton — Low-Med / M
+- ◐ 1.1 `--control-url` + off-argv secret bootstrap + `ControlChannelClient` skeleton — Low-Med / M
 - ☐ 1.2 Control-protocol Freezed DTOs (incl. provision-progress mirror) — Low / S-M
 - ☐ 1.3 Supervised auth bootstrap (short-circuit `ensureAuthenticated`) — Med / M
 - ☐ 1.4 Token provider **pull** over channel (+ timeout/GUI-down) — Med / M
