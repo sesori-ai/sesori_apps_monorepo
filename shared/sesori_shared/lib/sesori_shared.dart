@@ -66,6 +66,8 @@ export "src/models/sesori/update_session_archive_request.dart";
 export "src/notifications/session_notification_id.dart";
 export "src/protocol/close_codes.dart";
 export "src/protocol/constants.dart";
+export "src/protocol/control_message.dart";
+export "src/protocol/control_provision_progress.dart";
 export "src/protocol/framing.dart";
 export "src/protocol/messages.dart";
 export "src/reporting/failure_reporter.dart";
