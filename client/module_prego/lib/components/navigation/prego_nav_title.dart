@@ -35,8 +35,8 @@ class PregoNavTitle extends StatelessWidget {
   ///
   /// Those tokens are tuned for paragraph spacing; in this fixed-height bar they
   /// are pure dead space. With them, a title + subtitle stack measures
-  /// 28 + 24 = 52pt — only 2pt under the 54pt bar (`PregoTopNavigation`'s
-  /// `_appBarHeight`), so Android's slightly taller text metrics tip the
+  /// 28 + 24 = 52pt — only 2pt under the 54pt bar (`PregoTopNavigation.barHeight`),
+  /// so Android's slightly taller text metrics tip the
   /// [Column] into a bottom overflow. These are centred single lines, so a
   /// normal single-line leading (≈ the font's natural height) looks identical
   /// glyph-wise while bringing the stack to ~18 + 16 ×1.25 = 42.5pt, clearing

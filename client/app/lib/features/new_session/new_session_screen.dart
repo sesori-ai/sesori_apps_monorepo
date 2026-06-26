@@ -9,9 +9,6 @@ import "../../core/extensions/build_context_x.dart";
 import "../../core/extensions/remote_failure_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/agent_model_buttons.dart";
-import "../../core/widgets/agent_picker_sheet.dart";
-import "../../core/widgets/model_picker_sheet.dart";
-import "../../core/widgets/variant_picker_sheet.dart";
 import "../session_detail/widgets/prompt_input.dart";
 import "new_session_loading_overlay.dart";
 
@@ -56,37 +53,6 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     context.pop();
   }
 
-  void _openAgentPicker(AgentModelData data) {
-    final cubit = context.read<NewSessionCubit>();
-    AgentPickerSheet.show(
-      context,
-      agents: data.agents,
-      selectedAgent: data.agent ?? "",
-      onAgentChanged: cubit.selectAgent,
-    );
-  }
-
-  void _openModelPicker(AgentModelData data) {
-    final cubit = context.read<NewSessionCubit>();
-    final agentModel = data.agentModel;
-    ModelPickerSheet.show(
-      context,
-      providers: data.providers,
-      selectedProviderID: agentModel?.providerID ?? "",
-      selectedModelID: agentModel?.modelID ?? "",
-      onModelChanged: cubit.selectModel,
-    );
-  }
-
-  void _openVariantPicker(AgentModelData data) {
-    VariantPickerSheet.show(
-      context,
-      selectedVariantId: data.agentModel?.variant,
-      availableVariants: data.availableVariants,
-      onVariantChanged: context.read<NewSessionCubit>().selectVariant,
-    );
-  }
-
   Widget? _buildErrorBanner(NewSessionState state) {
     final prego = context.prego;
     final loc = context.loc;
@@ -115,31 +81,17 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
     final selectedAgent = data?.agent;
     if (data == null || data.agents.isEmpty || selectedAgent == null) return null;
 
-    final modelName = _resolveModelName(data);
+    final cubit = context.read<NewSessionCubit>();
     return AgentModelButtons(
-      availableVariants: data.availableVariants,
-      modelName: modelName,
+      agents: data.agents,
       selectedAgent: selectedAgent,
+      onAgentSelected: cubit.selectAgent,
+      providers: data.providers,
       selectedAgentModel: data.agentModel,
-      onAgentTap: () => _openAgentPicker(data),
-      onModelTap: () => _openModelPicker(data),
-      onVariantTap: () => _openVariantPicker(data),
+      onModelSelected: cubit.selectModel,
+      availableVariants: data.availableVariants,
+      onVariantSelected: cubit.selectVariant,
     );
-  }
-
-  String _resolveModelName(AgentModelData data) {
-    final providerID = data.agentModel?.providerID;
-    final modelID = data.agentModel?.modelID;
-    final loc = context.loc;
-    if (providerID == null || modelID == null) return loc.sessionDetailPickerModel;
-    for (final provider in data.providers) {
-      if (provider.id == providerID) {
-        final model = provider.models[modelID];
-        if (model != null) return model.name;
-      }
-    }
-    if (modelID.isNotEmpty) return modelID;
-    return loc.sessionDetailPickerModel;
   }
 
   @override
@@ -247,26 +199,29 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                         ),
                       ),
                     ),
-                    PromptInput(
-                      // Persist the unsent prompt per project so it survives
-                      // leaving and returning to the new-session screen before
-                      // a session exists; cleared once the session is created.
-                      draftKey: "new-session:${widget.projectId}",
-                      isBusy: state is NewSessionSending,
-                      onSend: (String text, String? command) {
-                        context.read<NewSessionCubit>().createSession(
-                          text: text,
-                          command: command,
-                          dedicatedWorktree: _dedicatedWorktree,
-                        );
-                      },
-                      onAbort: _dismissScreen,
-                      header: _buildErrorBanner(state),
-                      composerHeader: _buildComposerHeader(state),
-                      availableCommands: state.agentModelData?.commands ?? const [],
-                      stagedCommand: state.agentModelData?.stagedCommand,
-                      onCommandSelected: context.read<NewSessionCubit>().stageCommand,
-                      onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: PromptInput(
+                        // Persist the unsent prompt per project so it survives
+                        // leaving and returning to the new-session screen before
+                        // a session exists; cleared once the session is created.
+                        draftKey: "new-session:${widget.projectId}",
+                        isBusy: state is NewSessionSending,
+                        onSend: (String text, String? command) {
+                          context.read<NewSessionCubit>().createSession(
+                            text: text,
+                            command: command,
+                            dedicatedWorktree: _dedicatedWorktree,
+                          );
+                        },
+                        onAbort: _dismissScreen,
+                        header: _buildErrorBanner(state),
+                        composerHeader: _buildComposerHeader(state),
+                        availableCommands: state.agentModelData?.commands ?? const [],
+                        stagedCommand: state.agentModelData?.stagedCommand,
+                        onCommandSelected: context.read<NewSessionCubit>().stageCommand,
+                        onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
+                      ),
                     ),
                   ],
                 ),

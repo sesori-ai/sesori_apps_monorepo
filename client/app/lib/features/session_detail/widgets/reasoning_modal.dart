@@ -101,6 +101,8 @@ class _ReasoningModalState extends State<ReasoningModal> {
                         tapTargetKey: _kFollowOutputKey,
                         label: loc.sessionDetailFollowOutput,
                         onTap: () => _follow.animateToEdge(),
+                        // No floating composer in the reasoning sheet.
+                        bottomInset: 0,
                       )
                   : null,
               child: ListView(

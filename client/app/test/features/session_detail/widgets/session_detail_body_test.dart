@@ -6,6 +6,7 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
+import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
@@ -118,12 +119,12 @@ void main() {
     // the bar subtitle must collapse to empty — never a literal "null".
     expect(find.text("null"), findsNothing);
 
-    await tester.tap(find.widgetWithText(OutlinedButton, "xhigh"));
+    await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
     await tester.pumpAndSettle();
 
-    expect(find.text("Variant"), findsOneWidget);
+    expect(find.widgetWithText(GlassMenuItem, "xhigh"), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(ListTile, "xhigh"));
+    await tester.tap(find.widgetWithText(GlassMenuItem, "xhigh"));
     await tester.pumpAndSettle();
 
     verify(() => cubit.selectVariant(const SessionVariant(id: "xhigh"))).called(1);
@@ -168,14 +169,14 @@ void main() {
     await tester.pumpAndSettle();
 
     // Initially shows the selected variant.
-    expect(find.widgetWithText(OutlinedButton, "xhigh"), findsOneWidget);
+    expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
 
     // Open variant picker.
-    await tester.tap(find.widgetWithText(OutlinedButton, "xhigh"));
+    await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
     await tester.pumpAndSettle();
 
     // Select Default (null variant).
-    await tester.tap(find.widgetWithText(ListTile, "Default"));
+    await tester.tap(find.widgetWithText(GlassMenuItem, "Default"));
     await tester.pumpAndSettle();
 
     verify(() => cubit.selectVariant(null)).called(1);
@@ -186,8 +187,8 @@ void main() {
     await tester.pumpAndSettle();
 
     // The UI should now show "Default".
-    expect(find.widgetWithText(OutlinedButton, "Default"), findsOneWidget);
-    expect(find.widgetWithText(OutlinedButton, "xhigh"), findsNothing);
+    expect(find.widgetWithText(GlassButton, "Default"), findsOneWidget);
+    expect(find.widgetWithText(GlassButton, "xhigh"), findsNothing);
   });
 
   testWidgets("diff button navigates to diffs with the typed route", (tester) async {
