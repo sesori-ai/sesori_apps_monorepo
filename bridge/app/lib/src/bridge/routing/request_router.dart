@@ -139,6 +139,7 @@ class RequestRouter {
         sessionRepository: sessionRepository,
         prSyncService: prSyncService,
         sessionPersistenceService: sessionPersistenceService,
+        sessionUnseenService: sessionUnseenService,
       ),
       CreateSessionHandler(sessionCreationService: sessionCreationService),
       RenameSessionHandler(sessionRepository: sessionRepository),

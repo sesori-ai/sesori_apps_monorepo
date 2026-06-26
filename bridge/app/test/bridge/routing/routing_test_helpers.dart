@@ -655,12 +655,13 @@ class FakeSessionPersistenceService extends SessionPersistenceService {
   }
 
   @override
-  Future<void> persistSessionsForProject({
+  Future<List<String>> persistSessionsForProject({
     required String projectId,
     required List<Session> sessions,
     bool isCompleteList = false,
   }) async {
     persistedCalls.add((projectId: projectId, sessions: sessions));
+    return const [];
   }
 }
 

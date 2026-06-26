@@ -25,13 +25,20 @@ class SessionUnseenTracker with Disposable {
   // project ID -> (session ID -> unseen).
   final BehaviorSubject<Map<String, Map<String, bool>>> _sessionUnseen = BehaviorSubject.seeded(const {});
 
-  // Monotonic counter bumped on every live SSE update, with the generation at
-  // which each project last received one. A REST reconcile captures the current
-  // generation before its fetch and is skipped for any project that received a
+  // Monotonic counter bumped on every live SSE update. A REST reconcile captures
+  // the current generation before its fetch and skips any entry that received a
   // newer live update meanwhile — so a slow REST response can't clobber fresher
   // live state (a race the cubit's combined session+base-branch await opens).
+  //
+  // Guarding is per-entity, not per-project: a project's aggregate uses
+  // [_projectLiveGeneration] (the `/projects` REST snapshot has no per-session
+  // detail), while a `/sessions` reconcile guards each session independently via
+  // [_sessionLiveGeneration] so an unrelated live update for one session does
+  // not discard the REST clear for its siblings.
   int _generation = 0;
   final Map<String, int> _projectLiveGeneration = {};
+  // project ID -> (session ID -> generation of its last live update).
+  final Map<String, Map<String, int>> _sessionLiveGeneration = {};
 
   SessionUnseenTracker(
     ConnectionService connectionService, {
@@ -83,23 +90,36 @@ class SessionUnseenTracker with Disposable {
   /// while this client was reconnecting). Also refreshes the project-level
   /// aggregate so the two stay consistent.
   ///
-  /// Skipped when a newer live update for [projectId] arrived since
-  /// [sinceGeneration] (captured before the fetch), so a slow REST response
-  /// can't overwrite fresher live state.
+  /// Each session is guarded independently: a session that received a newer live
+  /// update since [sinceGeneration] (captured before the fetch) keeps its live
+  /// value, while its siblings are still reconciled from the REST snapshot. This
+  /// prevents an unrelated live update from discarding the whole snapshot (so a
+  /// missed clear for one session isn't stranded by activity on another).
   void reconcileSessionUnseen({
     required String projectId,
     required Map<String, bool> unseenBySessionId,
     required int sinceGeneration,
   }) {
     if (_sessionUnseen.isClosed) return;
-    if ((_projectLiveGeneration[projectId] ?? 0) > sinceGeneration) return;
 
     final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
-    sessions[projectId] = Map<String, bool>.from(unseenBySessionId);
+    final liveGenerations = _sessionLiveGeneration[projectId] ?? const {};
+    final existing = sessions[projectId] ?? const {};
+    final merged = <String, bool>{};
+    for (final entry in unseenBySessionId.entries) {
+      // Keep the live value for a session that changed after the fetch began;
+      // otherwise take the authoritative REST value.
+      if ((liveGenerations[entry.key] ?? 0) > sinceGeneration) {
+        merged[entry.key] = existing[entry.key] ?? entry.value;
+      } else {
+        merged[entry.key] = entry.value;
+      }
+    }
+    sessions[projectId] = merged;
     _sessionUnseen.add(sessions);
 
     final projects = Map<String, bool>.from(_projectUnseen.value);
-    projects[projectId] = unseenBySessionId.values.any((unseen) => unseen);
+    projects[projectId] = merged.values.any((unseen) => unseen);
     _projectUnseen.add(projects);
   }
 
@@ -112,7 +132,9 @@ class SessionUnseenTracker with Disposable {
             :final unseen,
             :final projectHasUnseenChanges,
           )) {
-        _projectLiveGeneration[projectID] = ++_generation;
+        final generation = ++_generation;
+        _projectLiveGeneration[projectID] = generation;
+        (_sessionLiveGeneration[projectID] ??= {})[sessionId] = generation;
 
         final projects = Map<String, bool>.from(_projectUnseen.value);
         projects[projectID] = projectHasUnseenChanges;

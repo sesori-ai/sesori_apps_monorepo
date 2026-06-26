@@ -229,6 +229,13 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               availableVariants: availableVariants,
             ),
           );
+          // Re-assert that the user is viewing this session now that the
+          // refreshed transcript has rendered. After a resume/reconnect the
+          // viewing service intentionally does not auto-re-assert (that would
+          // mark the session seen on the bridge before fresh content is shown,
+          // clearing its bold while the user still sees the stale snapshot), so
+          // the cubit drives it here once the refresh has landed.
+          _sessionViewingService.setViewingSession(_sessionId);
           _drainPendingEvents();
         case SessionDetailLoadResultWaitingForConnection():
           _waitingForConnection = true;

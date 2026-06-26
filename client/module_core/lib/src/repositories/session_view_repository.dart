@@ -11,7 +11,7 @@ class SessionViewRepository {
 
   SessionViewRepository({required SessionViewApi api}) : _api = api;
 
-  Future<void> sendSessionView(String? sessionId) {
-    return _api.sendSessionView(sessionId);
+  Future<void> sendSessionView({required String? sessionId}) {
+    return _api.sendSessionView(sessionId: sessionId);
   }
 }

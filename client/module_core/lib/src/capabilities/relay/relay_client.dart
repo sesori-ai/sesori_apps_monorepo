@@ -360,7 +360,7 @@ class RelayClient {
   /// Declares to the bridge which session this phone is currently viewing
   /// ([sessionId] == null when viewing nothing). Fire-and-forget control
   /// message; no-op when not connected.
-  Future<void> sendSessionView(String? sessionId) async {
+  Future<void> sendSessionView({required String? sessionId}) async {
     if (!isConnected || _sessionEncryptor == null) {
       return;
     }

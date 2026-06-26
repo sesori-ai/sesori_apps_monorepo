@@ -202,6 +202,38 @@ void main() {
       );
     });
 
+    test("silent refresh re-asserts the viewing session once fresh content renders", () async {
+      final viewingService = stubbedSessionViewingService();
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: viewingService,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      // Initial load declares the view exactly once.
+      verify(() => viewingService.setViewingSession(sessionId)).called(1);
+
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer(
+        (_) async =>
+            ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-refreshed")])),
+      );
+
+      // A resume/reconnect-driven stale refresh while connected.
+      mockConnectionService.emitDataMayBeStale();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      // The refresh rendered fresh content, so the view is re-asserted.
+      verify(() => viewingService.setViewingSession(sessionId)).called(1);
+    });
+
     test("silent refresh preserves selectedAgent and selectedAgentModel", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,

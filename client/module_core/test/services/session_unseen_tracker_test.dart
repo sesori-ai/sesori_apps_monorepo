@@ -61,17 +61,17 @@ void main() {
       tracker.onDispose();
     });
 
-    test("reconcile is skipped for a project with a newer live update (generation guard)", () async {
+    test("reconcile keeps the live value for a session updated during the fetch", () async {
       final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
 
       // A REST fetch starts here.
       final gen = tracker.generation;
 
-      // A live event for p1 arrives while the fetch is in flight.
+      // A live event for s1 arrives while the fetch is in flight.
       events.add(unseenEvent(projectID: "p1", sessionId: "s1", unseen: true, projectHasUnseenChanges: true));
       await Future<void>.delayed(Duration.zero);
 
-      // The (older) REST snapshot now tries to clear p1 — it must be ignored.
+      // The (older) REST snapshot now tries to clear s1 — it must be ignored.
       tracker.reconcileSessionUnseen(
         projectId: "p1",
         unseenBySessionId: {"s1": false},
@@ -87,6 +87,38 @@ void main() {
         sinceGeneration: tracker.generation,
       );
       expect(tracker.currentProjectUnseen["p1"], isFalse);
+      tracker.onDispose();
+    });
+
+    test("reconcile still clears a sibling session when an unrelated session got a live update", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // The tracker carries a stale unseen=true for s1 (e.g. a clear missed
+      // while reconnecting).
+      final gen0 = tracker.generation;
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": true, "s2": false},
+        sinceGeneration: gen0,
+      );
+
+      // A REST /sessions fetch begins (would clear s1).
+      final gen = tracker.generation;
+
+      // While in flight, an UNRELATED live update arrives for s2.
+      events.add(unseenEvent(projectID: "p1", sessionId: "s2", unseen: true, projectHasUnseenChanges: true));
+      await Future<void>.delayed(Duration.zero);
+
+      // The REST snapshot lands: s1 cleared, s2 cleared. s1 must clear (it had
+      // no live update); s2 keeps its newer live value.
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": false, "s2": false},
+        sinceGeneration: gen,
+      );
+      expect(tracker.currentSessionUnseen["p1"]?["s1"], isFalse);
+      expect(tracker.currentSessionUnseen["p1"]?["s2"], isTrue);
+      expect(tracker.currentProjectUnseen["p1"], isTrue);
       tracker.onDispose();
     });
 

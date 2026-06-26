@@ -67,12 +67,17 @@ class SessionPersistenceService {
   /// page), rows for sessions that are no longer in [sessions] are deleted —
   /// reconciling sessions that vanished while the bridge was offline or were
   /// deleted directly in the backend without a `session.deleted` event.
-  Future<void> persistSessionsForProject({
+  ///
+  /// Returns the ids of any sessions whose rows were deleted by that
+  /// reconciliation (empty otherwise). The caller is responsible for emitting an
+  /// unseen change for them, since removing a row can flip the project aggregate
+  /// for other connected clients.
+  Future<List<String>> persistSessionsForProject({
     required String projectId,
     required List<Session> sessions,
     bool isCompleteList = false,
   }) async {
-    await _db.transaction(() async {
+    return _db.transaction(() async {
       await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
       await _sessionDao.insertSessionsIfMissing(
         sessions: [
@@ -85,12 +90,11 @@ class SessionPersistenceService {
             ),
         ],
       );
-      if (isCompleteList) {
-        await _sessionDao.deleteSessionsForProjectNotIn(
-          projectId: projectId,
-          keepSessionIds: [for (final s in sessions) s.id],
-        );
-      }
+      if (!isCompleteList) return const <String>[];
+      return _sessionDao.deleteSessionsForProjectNotIn(
+        projectId: projectId,
+        keepSessionIds: [for (final s in sessions) s.id],
+      );
     });
   }
 

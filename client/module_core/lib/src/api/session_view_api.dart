@@ -12,7 +12,7 @@ class SessionViewApi {
   SessionViewApi({required ConnectionService connectionService}) : _connectionService = connectionService;
 
   /// Sends "I am now viewing [sessionId]" (or nothing when null).
-  Future<void> sendSessionView(String? sessionId) {
-    return _connectionService.sendSessionView(sessionId);
+  Future<void> sendSessionView({required String? sessionId}) {
+    return _connectionService.sendSessionView(sessionId: sessionId);
   }
 }

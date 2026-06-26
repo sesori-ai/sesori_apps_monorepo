@@ -265,16 +265,22 @@ void main() {
       );
       expect(await sessionDao.getSessionsByProject(projectId: "p1"), hasLength(2));
 
-      // s2 vanished (deleted backend-side). A paged refresh must NOT delete it.
-      await service.persistSessionsForProject(projectId: "p1", sessions: [sharedSession("s1")]);
+      // s2 vanished (deleted backend-side). A paged refresh must NOT delete it,
+      // and reports no deletions.
+      final pagedDeleted = await service.persistSessionsForProject(
+        projectId: "p1",
+        sessions: [sharedSession("s1")],
+      );
+      expect(pagedDeleted, isEmpty);
       expect(await sessionDao.getSessionsByProject(projectId: "p1"), hasLength(2));
 
-      // A complete refresh reconciles it away.
-      await service.persistSessionsForProject(
+      // A complete refresh reconciles it away and returns the deleted id.
+      final deleted = await service.persistSessionsForProject(
         projectId: "p1",
         sessions: [sharedSession("s1")],
         isCompleteList: true,
       );
+      expect(deleted, equals(["s2"]));
       final remaining = await sessionDao.getSessionsByProject(projectId: "p1");
       expect(remaining, hasLength(1));
       expect(remaining.single.sessionId, equals("s1"));

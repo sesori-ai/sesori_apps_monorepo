@@ -207,18 +207,17 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i150.SessionViewRepository>(
       () => _i150.SessionViewRepository(api: gh<_i157.SessionViewApi>()),
     );
-    gh.lazySingleton<_i18.SessionViewingService>(
-      () => _i18.SessionViewingService(
-        viewRepository: gh<_i150.SessionViewRepository>(),
-        connectionService: gh<_i369.ConnectionService>(),
-        lifecycleSource: gh<_i903.LifecycleSource>(),
-      ),
-    );
     gh.lazySingleton<_i709.SessionDetailLoadService>(
       () => _i709.SessionDetailLoadService(
         repository: gh<_i7.SessionRepository>(),
         projectRepository: gh<_i80.ProjectRepository>(),
         connectionService: gh<_i369.ConnectionService>(),
+      ),
+    );
+    gh.lazySingleton<_i18.SessionViewingService>(
+      () => _i18.SessionViewingService(
+        viewRepository: gh<_i150.SessionViewRepository>(),
+        lifecycleSource: gh<_i903.LifecycleSource>(),
       ),
     );
     return this;

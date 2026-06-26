@@ -6,6 +6,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/session_repository.dart";
 import "../services/pr_sync_service.dart";
 import "../services/session_persistence_service.dart";
+import "../services/session_unseen_service.dart";
 import "request_handler.dart";
 
 /// Handles `GET /sessions` — returns sessions for a given project.
@@ -15,16 +16,19 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
   final SessionRepository _sessionRepository;
   final PrSyncService _prSyncService;
   final SessionPersistenceService _sessionPersistenceService;
+  final SessionUnseenService _sessionUnseenService;
   final Duration _prRefreshTimeout;
 
   GetSessionsHandler({
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
     required SessionPersistenceService sessionPersistenceService,
+    required SessionUnseenService sessionUnseenService,
     Duration prRefreshTimeout = const Duration(seconds: 5),
   }) : _sessionRepository = sessionRepository,
        _prSyncService = prSyncService,
        _sessionPersistenceService = sessionPersistenceService,
+       _sessionUnseenService = sessionUnseenService,
        _prRefreshTimeout = prRefreshTimeout,
        super(
          HttpMethod.post,
@@ -61,13 +65,21 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
     );
 
     try {
-      await _sessionPersistenceService.persistSessionsForProject(
+      final deletedSessionIds = await _sessionPersistenceService.persistSessionsForProject(
         projectId: projectId,
         sessions: sessions,
         // When unpaginated, `sessions` is the complete authoritative list, so
         // it's safe to delete stored rows for sessions that no longer exist.
         isCompleteList: start == null && limit == null,
       );
+      // Deleting a row can flip the project's unseen aggregate; broadcast the
+      // change so other connected clients clear the bold state without a manual
+      // refresh. The requesting client reconciles from its own REST response.
+      for (final deletedId in deletedSessionIds) {
+        unawaited(
+          _sessionUnseenService.notifyExternalChange(sessionId: deletedId, projectId: projectId),
+        );
+      }
     } on Object catch (e, st) {
       Log.w("GetSessionsHandler: persistSessionsForProject failed for projectId=$projectId: $e\n$st");
     }

@@ -237,8 +237,8 @@ class ConnectionService {
   /// Fire-and-forget; silently no-ops when not connected. The viewing-state
   /// machine (current session, reconnect/lifecycle re-assert) is owned by
   /// `SessionViewingService` (Layer 3), not here.
-  Future<void> sendSessionView(String? sessionId) async {
-    await _relayClient?.sendSessionView(sessionId);
+  Future<void> sendSessionView({required String? sessionId}) async {
+    await _relayClient?.sendSessionView(sessionId: sessionId);
   }
 
   /// Connects to the server. Health-checks first, then opens SSE stream

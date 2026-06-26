@@ -244,16 +244,19 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   }
 
   /// Deletes every persisted row for [projectId] whose session id is NOT in
-  /// [keepSessionIds]. Used to reconcile rows for sessions that vanished from
-  /// the authoritative list (deleted while offline / backend-side). Only safe
-  /// when [keepSessionIds] is the COMPLETE list for the project.
-  Future<int> deleteSessionsForProjectNotIn({
+  /// [keepSessionIds] and returns the ids of the rows that were deleted. Used to
+  /// reconcile rows for sessions that vanished from the authoritative list
+  /// (deleted while offline / backend-side). Only safe when [keepSessionIds] is
+  /// the COMPLETE list for the project.
+  Future<List<String>> deleteSessionsForProjectNotIn({
     required String projectId,
     required List<String> keepSessionIds,
-  }) {
-    return (delete(sessionTable)..where(
-          (t) => t.projectId.equals(projectId) & t.sessionId.isNotIn(keepSessionIds),
-        ))
-        .go();
+  }) async {
+    final rows =
+        await (delete(sessionTable)..where(
+              (t) => t.projectId.equals(projectId) & t.sessionId.isNotIn(keepSessionIds),
+            ))
+            .goAndReturn();
+    return [for (final row in rows) row.sessionId];
   }
 }
