@@ -54,9 +54,14 @@ class SessionPersistenceService {
   }
 
   /// Persists [sessions] for [projectId]. New rows are inserted (placeholders);
-  /// existing rows are left intact except their archive state, which is
-  /// reconciled to the authoritative list so a session archived outside the
-  /// bridge endpoint stops contributing to the unseen aggregate.
+  /// existing rows are left intact.
+  ///
+  /// Note: archive state is NOT reconciled from [sessions] here. The list comes
+  /// from `SessionRepository.getSessionsForProject`, which enriches each session
+  /// by overwriting `time.archived` with the stored DB value — so it carries no
+  /// new archive information. Archive is a bridge-local, DB-authoritative
+  /// operation (`UpdateSessionArchiveStatusHandler`), so there is nothing to
+  /// reconcile from the plugin list.
   ///
   /// When [isCompleteList] is true (the caller fetched the whole project, not a
   /// page), rows for sessions that are no longer in [sessions] are deleted —
@@ -80,11 +85,6 @@ class SessionPersistenceService {
             ),
         ],
       );
-      // Reconcile archive state for sessions that were archived/unarchived
-      // outside the bridge endpoint (insertOrIgnore above can't update them).
-      for (final s in sessions) {
-        await _sessionDao.setArchivedAt(sessionId: s.id, archivedAt: s.time?.archived);
-      }
       if (isCompleteList) {
         await _sessionDao.deleteSessionsForProjectNotIn(
           projectId: projectId,

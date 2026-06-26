@@ -192,6 +192,19 @@ void main() {
       expect(await repo.projectHasUnseenChanges(projectId: "p1"), isFalse);
     });
 
+    test("recordSessionCreated stamps a bare placeholder row so it bolds", () async {
+      // A /sessions refresh inserted a placeholder (no unseen markers) before
+      // the live session.created event is processed.
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSessionsIfMissing(
+        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+      );
+      expect(await unseen("s1"), isFalse);
+
+      await service.recordSessionCreated(sessionId: "s1", projectId: "p1", parentId: null);
+      expect(await unseen("s1"), isTrue);
+    });
+
     test("emits unseenChanges with project aggregate", () async {
       final events = <UnseenChange>[];
       final sub = service.unseenChanges.listen(events.add);

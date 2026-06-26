@@ -126,9 +126,6 @@ class SessionUnseenService {
     required String sessionId,
     required bool isUserMessage,
   }) {
-    // Known child/subagent session — skip without re-resolving (avoids a full
-    // project scan on every streamed part for an active subagent).
-    if (_isCachedUnresolved(sessionId)) return Future<void>.value();
     // Capture the viewed state at submission time, not when the (possibly
     // delayed) serialized write executes — otherwise navigating away while
     // events are queued could persist already-viewed activity as unseen.
@@ -136,6 +133,11 @@ class SessionUnseenService {
     return _serialize(sessionId, () async {
       final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
       if (row == null) {
+        // No persisted row. Honor the negative cache here (after the cheap PK
+        // lookup, before the expensive resolution) — a row created since (e.g.
+        // a `/sessions` refresh learned this root) clears the cache above and
+        // takes the normal path, so a transiently-unresolved root self-heals.
+        if (_isCachedUnresolved(sessionId)) return;
         // Not yet persisted — try to resolve the project id and create a row
         // so activity isn't silently dropped (e.g. a root session created on
         // the laptop while the bridge was offline).
@@ -154,6 +156,9 @@ class SessionUnseenService {
         await _emit(sessionId: sessionId, projectId: projectId);
         return;
       }
+      // The row exists, so this is a known (resolvable) session — drop any stale
+      // unresolved marker so future events take the fast path normally.
+      _unresolvedSessions.remove(sessionId);
       await _unseenRepository.recordActivity(
         sessionId: sessionId,
         at: _activityTimestamp(userMessageAt: row.userMessageAt, seenAt: row.seenAt),
@@ -180,12 +185,17 @@ class SessionUnseenService {
       // any stale "unresolved" marker. Done inside the serialized body (after
       // prior writes) so an earlier queued miss can't re-add it afterwards.
       _unresolvedSessions.remove(sessionId);
-      // If an earlier activity event already created and stamped this row (e.g.
-      // a user message arrived before session.created), don't overwrite its
-      // activity/markers — that would advance activity past the user's own
-      // message and wrongly bold it. Just emit the current state.
       final existing = await _unseenRepository.getUnseenRow(sessionId: sessionId);
-      if (existing != null) {
+      // If an earlier activity event already stamped this row (it has any
+      // unseen marker), don't overwrite it — that would advance activity past
+      // the user's own message and wrongly bold it. But a bare placeholder
+      // inserted by a `/sessions` refresh (no markers at all) must still be
+      // stamped with creation activity so a new laptop-created session bolds
+      // instead of staying seen forever.
+      final hasMarkers =
+          existing != null &&
+          (existing.activityAt != null || existing.userMessageAt != null || existing.seenAt != null);
+      if (hasMarkers) {
         await _emit(sessionId: sessionId, projectId: existing.projectId);
         return;
       }

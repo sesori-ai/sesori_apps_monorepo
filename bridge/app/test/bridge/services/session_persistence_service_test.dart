@@ -256,17 +256,6 @@ void main() {
       promptDefaults: null,
     );
 
-    test("persistSessionsForProject reconciles archive state on existing rows", () async {
-      await projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
-      await service.persistSessionsForProject(projectId: "p1", sessions: [sharedSession("s1")]);
-      expect((await sessionDao.getSession(sessionId: "s1"))?.archivedAt, isNull);
-
-      // The session was archived outside the bridge endpoint; a refresh now
-      // reports it archived.
-      await service.persistSessionsForProject(projectId: "p1", sessions: [sharedSession("s1", archived: 999)]);
-      expect((await sessionDao.getSession(sessionId: "s1"))?.archivedAt, equals(999));
-    });
-
     test("persistSessionsForProject deletes vanished rows only on a complete list", () async {
       await projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await service.persistSessionsForProject(
