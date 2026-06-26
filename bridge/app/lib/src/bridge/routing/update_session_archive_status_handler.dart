@@ -36,19 +36,24 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
       throw buildErrorResponse(request, 400, "empty session id");
     }
     try {
-      final session = await _sessionArchiveService.updateArchiveStatus(
+      final update = await _sessionArchiveService.updateArchiveStatus(
         sessionId: sessionId,
         archived: body.archived,
         deleteWorktree: body.deleteWorktree,
         deleteBranch: body.deleteBranch,
         force: body.force,
       );
+      final session = update.session;
       // Archive/unarchive flips whether this session contributes to the project
       // aggregate (archived rows are excluded), so emit an unseen change for
-      // other connected clients. Fire-and-forget; the service serializes/logs.
-      unawaited(
-        _sessionUnseenService.notifyExternalChange(sessionId: session.id, projectId: session.projectID),
-      );
+      // other connected clients — but only when the archive state actually
+      // changed, to avoid churn on no-op transitions. Fire-and-forget; the
+      // service serializes/logs.
+      if (update.changed) {
+        unawaited(
+          _sessionUnseenService.notifyExternalChange(sessionId: session.id, projectId: session.projectID),
+        );
+      }
       return session;
     } on SessionArchiveConflictException catch (e) {
       throw RelayResponse(
