@@ -173,10 +173,15 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
         if (projects.isEmpty)
           // Render the shared onboarding body directly (not its own scroll
-          // view) so the scaffold's pull-to-refresh drives it.
+          // view) so the scaffold's pull-to-refresh drives it. SafeArea(top:
+          // false) keeps the bottom install box clear of the home indicator,
+          // matching the disconnected onboarding view.
           const SliverFillRemaining(
             hasScrollBody: false,
-            child: _OnboardingChecklist(connected: true),
+            child: SafeArea(
+              top: false,
+              child: _OnboardingChecklist(connected: true),
+            ),
           )
         else ...[
           SliverPadding(

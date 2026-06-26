@@ -208,10 +208,12 @@ class _InstallCommandBoxState extends State<_InstallCommandBox> {
     final messenger = ScaffoldMessenger.of(context);
     final loc = context.loc;
     // Clipboard can throw on restricted platforms/states; fail soft and skip
-    // the success snackbar, matching _CommandBlock.
+    // the success snackbar. Log so a broken copy button leaves a diagnostic
+    // trail instead of failing silently.
     try {
       await Clipboard.setData(ClipboardData(text: _selected.command));
-    } on Object catch (_) {
+    } on Object catch (error, stackTrace) {
+      logw("Failed to copy install command", error, stackTrace);
       return;
     }
     messenger.showSnackBar(

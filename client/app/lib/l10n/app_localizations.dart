@@ -181,10 +181,10 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 active session} other{{count} active sessions}}'**
   String projectListActiveSessions(int count);
 
-  /// Leading label for the phone-connection status line above the onboarding hero, e.g. 'Step1: Phone connected'.
+  /// Leading label for the phone-connection status line above the onboarding hero, e.g. 'Step 1: Phone connected'.
   ///
   /// In en, this message translates to:
-  /// **'Step1:'**
+  /// **'Step 1:'**
   String get projectsOnboardingPhoneStatusStep;
 
   /// Success portion of the phone-connection status line, rendered in the success color with a check icon.

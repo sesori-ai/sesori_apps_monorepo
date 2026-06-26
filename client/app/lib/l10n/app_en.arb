@@ -29,9 +29,9 @@
       }
     }
   },
-  "projectsOnboardingPhoneStatusStep": "Step1:",
+  "projectsOnboardingPhoneStatusStep": "Step 1:",
   "@projectsOnboardingPhoneStatusStep": {
-    "description": "Leading label for the phone-connection status line above the onboarding hero, e.g. 'Step1: Phone connected'."
+    "description": "Leading label for the phone-connection status line above the onboarding hero, e.g. 'Step 1: Phone connected'."
   },
   "projectsOnboardingPhoneStatusConnected": "Phone connected",
   "@projectsOnboardingPhoneStatusConnected": {

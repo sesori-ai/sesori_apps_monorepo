@@ -64,7 +64,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get projectsOnboardingPhoneStatusStep => 'Step1:';
+  String get projectsOnboardingPhoneStatusStep => 'Step 1:';
 
   @override
   String get projectsOnboardingPhoneStatusConnected => 'Phone connected';
