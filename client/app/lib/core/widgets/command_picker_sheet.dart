@@ -173,7 +173,7 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
               // handleBottomSafeArea: false the sheet no longer pads for it, so
               // the bottom inset is added as scroll padding here (mirroring the
               // model picker) instead of clipping the last command above it.
-              padding: EdgeInsets.fromLTRB(8, 4, 8, 4 + MediaQuery.paddingOf(context).bottom),
+              padding: EdgeInsetsDirectional.fromSTEB(8, 4, 8, 4 + MediaQuery.paddingOf(context).bottom),
               itemCount: filtered.length,
               separatorBuilder: (_, _) => Divider(
                 height: 1,
