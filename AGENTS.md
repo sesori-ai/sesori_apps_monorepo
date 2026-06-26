@@ -391,6 +391,24 @@ int computeNotificationId(String sessionId, NotificationCategory category) { ...
 MyClass([FlutterLocalNotificationsPlugin? plugin]) : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
 ```
 
+## Code Comments
+
+Comments live in the codebase forever; the implementation plan you happen to be
+executing does not. Keep them timeless.
+
+- **Never reference the implementation plan from source comments.** No PR numbers
+  (`PR 1.7`), phase IDs (`Phase 2`), ADR codes (`ADR A13`), or plan-section refs
+  (`§8`). They are tracking artifacts that rot the moment the work merges and mean
+  nothing to a future reader. This includes doc comments, inline comments, and
+  TODOs.
+- **Keep the rationale, drop the pointer.** The *reason* a thing exists is often
+  worth a comment — just state it directly. Write "carries `bridgeId` so the GUI
+  can persist a readable copy for an offline-unregister fallback", not "… fallback
+  (ADR A13)"; write "intentional restart, so the supervisor respawns instead of
+  treating it as a crash", not "… as a crash (PR 1.7)".
+- Plan/phase status, deferrals, and cross-PR sequencing belong in the plan and
+  phase docs (e.g. `docs/desktop/*.md`), never in code.
+
 ## Analysis
 
 Strict analysis is enabled across all packages. Don't add `// ignore:` comments without a written justification in the same line.

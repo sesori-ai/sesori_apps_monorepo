@@ -7,7 +7,7 @@ part "control_provision_progress.g.dart";
 /// `sesori_plugin_interface` and cannot be imported here — `sesori_shared` is
 /// the shared leaf both workspaces depend on). In supervised mode the bridge
 /// tees its provisioning stream onto the control channel as these DTOs so the
-/// GUI can render first-run download/install progress (PR 1.13).
+/// GUI can render first-run download/install progress.
 ///
 /// Pure data only: the source type's derived `fraction` getter is intentionally
 /// omitted — consumers compute it from [ControlProvisionDownloading.totalBytes].

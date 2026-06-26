@@ -5,14 +5,14 @@ import "control_provision_progress.dart";
 part "control_message.freezed.dart";
 part "control_message.g.dart";
 
-/// The GUI-hosted loopback control-channel wire protocol (ADR A5): a single
-/// sealed union carrying every message exchanged between the desktop GUI and
-/// the supervised bridge helper, in both directions. The relay-bound
-/// `RelayMessage` is the precedent for this shape.
+/// The GUI-hosted loopback control-channel wire protocol: a single sealed union
+/// carrying every message exchanged between the desktop GUI and the supervised
+/// bridge helper, in both directions. (`RelayMessage` is the analogous union for
+/// the relay protocol.)
 ///
-/// PR 1.2 defines only the wire types; senders/handlers land in later Phase-1
-/// PRs (1.3-1.13) and Phase-2 GUI PRs. New optional fields added by those PRs
-/// use `@Default` so older/newer peers stay wire-compatible.
+/// Pure wire types only — senders and handlers live in the bridge and the
+/// desktop GUI. New optional fields use `@Default` so older and newer peers stay
+/// wire-compatible.
 @Freezed(unionKey: "type", unionValueCase: FreezedUnionCase.snake, fromJson: true, toJson: true)
 sealed class ControlMessage with _$ControlMessage {
   /// helper → GUI: request a fresh access token. [id] correlates the
@@ -65,24 +65,25 @@ sealed class ControlMessage with _$ControlMessage {
   }) = ControlPromptResponse;
 
   /// helper → GUI: heads-up that this exit is an intentional restart (exit 86),
-  /// so the GUI respawns instead of treating it as a crash (PR 1.7).
+  /// so the GUI respawns it instead of treating the exit as a crash.
   @FreezedUnionValue("restart")
   const factory ControlMessage.restart() = ControlRestart;
 
   /// GUI → helper: unregister this bridge with the current token, then exit 0
-  /// (logout ordering, PR 1.11).
+  /// (logout ordering).
   @FreezedUnionValue("unregister_and_exit")
   const factory ControlMessage.unregisterAndExit() = ControlUnregisterAndExit;
 
   /// helper → GUI: registration succeeded; carries [bridgeId] so the GUI can
-  /// persist a readable copy for the offline-unregister fallback (ADR A13).
+  /// persist a readable copy for an offline-unregister fallback (logout when the
+  /// helper is unreachable).
   @FreezedUnionValue("registered")
   const factory ControlMessage.registered({
     required String bridgeId,
   }) = ControlRegistered;
 
   /// helper → GUI: a runtime-provisioning progress event (first-run download /
-  /// install), teed from the bridge's provisioning stream (PR 1.13).
+  /// install), teed from the bridge's provisioning stream.
   @FreezedUnionValue("provision_progress")
   const factory ControlMessage.provisionProgress({
     required ControlProvisionProgress progress,
