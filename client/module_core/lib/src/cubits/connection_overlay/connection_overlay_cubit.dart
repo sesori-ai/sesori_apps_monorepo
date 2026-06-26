@@ -46,6 +46,7 @@ class ConnectionOverlayCubit extends Cubit<ConnectionOverlayState> {
         });
   }
 
+  // ignore: no_slop_linter/prefer_required_named_parameters, combineLatest2 combiner requires positional parameters
   static ConnectionOverlayState _derive(ConnectionStatus status, bool isRegistered) {
     return switch (status) {
       ConnectionLost() => const ConnectionOverlayState.connectionLost(),
