@@ -597,6 +597,12 @@ class OrchestratorSession {
           sessionId: info.sessionID,
           isUserMessage: info is MessageUser,
         );
+      // Streamed assistant/tool output after the user leaves changes the visible
+      // transcript, so it counts as (non-user) activity.
+      case SesoriMessagePartUpdated(:final part):
+        await _sessionUnseenService.recordActivity(sessionId: part.sessionID, isUserMessage: false);
+      case SesoriMessagePartDelta(:final sessionID):
+        await _sessionUnseenService.recordActivity(sessionId: sessionID, isUserMessage: false);
       // For child/subagent requests, `displaySessionId` is the root session the
       // UI surfaces the request under; the child has no persisted row, so route
       // to the displayed root so it becomes unseen for pending input.

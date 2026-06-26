@@ -664,9 +664,17 @@ class SessionListCubit extends Cubit<SessionListState> {
         // The REST list is authoritative at fetch time — push it into the
         // tracker so a stale live `true` can't keep a row bold after a clear
         // event was missed (e.g. seen on another phone while reconnecting).
+        // Exclude archived sessions: the bridge sets Session.unseen from
+        // timestamps even on archived rows, but they don't contribute to the
+        // project aggregate (ProjectRepository excludes them), so including them
+        // here could keep a project bold after its last unseen session was
+        // archived.
         _sessionUnseenTracker.reconcileSessionUnseen(
           projectId: _projectId,
-          unseenBySessionId: {for (final s in data.items) s.id: s.unseen},
+          unseenBySessionId: {
+            for (final s in data.items)
+              if (s.time?.archived == null) s.id: s.unseen,
+          },
         );
         _emitFiltered();
         return true;

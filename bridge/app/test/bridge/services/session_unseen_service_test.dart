@@ -156,6 +156,27 @@ void main() {
       expect(await unseen("s1"), isTrue);
     });
 
+    test("activity timestamp is clamped above persisted markers (clock rollback)", () async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSessionsIfMissing(
+        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+      );
+      // Persist markers far in the future (e.g. stored before a clock rollback).
+      await db.sessionDao.setActivityTimestamps(
+        sessionId: "s1",
+        activityAt: 10000,
+        userMessageAt: 10000,
+        seenAt: 10000,
+      );
+      expect(await unseen("s1"), isFalse);
+
+      // New assistant activity arrives with a wall clock BELOW the stored
+      // markers; it must still bold the session.
+      clock = 1000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      expect(await unseen("s1"), isTrue);
+    });
+
     test("emits unseenChanges with project aggregate", () async {
       final events = <UnseenChange>[];
       final sub = service.unseenChanges.listen(events.add);

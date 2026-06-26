@@ -80,9 +80,10 @@ class SessionViewingService with Disposable {
   void _onLifecycleChanged(LifecycleState state) {
     switch (state) {
       case LifecycleState.paused:
+      case LifecycleState.hidden:
         _isPaused = true;
-        // Backgrounded: stop viewing on the bridge but keep the intended
-        // session so resume can re-assert it.
+        // No longer visible (backgrounded or minimized): stop viewing on the
+        // bridge but keep the intended session so resume can re-assert it.
         if (_currentSessionId != null) {
           _enqueueSend(null);
         }
@@ -92,7 +93,6 @@ class SessionViewingService with Disposable {
           _enqueueSend(_currentSessionId);
         }
       case LifecycleState.inactive:
-      case LifecycleState.hidden:
       case LifecycleState.detached:
         break;
     }

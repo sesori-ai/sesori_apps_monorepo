@@ -46,6 +46,12 @@ class SessionUnseenService {
   /// clearing the unseen flag).
   final Map<String, Future<void>> _sessionWriteTails = {};
 
+  /// Session ids that have no persisted row and didn't resolve to a project
+  /// (i.e. child/subagent sessions). Cached so an active subagent doesn't turn
+  /// every `message.part`/`message.updated` event into a full project scan via
+  /// `findProjectIdForSession`.
+  final Set<String> _unresolvedSessions = {};
+
   SessionUnseenService({
     required SessionUnseenRepository unseenRepository,
     required ProjectRepository projectRepository,
@@ -71,6 +77,21 @@ class SessionUnseenService {
     return _lastIssued = wall > _lastIssued ? wall : _lastIssued + 1;
   }
 
+  /// Activity timestamp clamped above the row's persisted markers. The
+  /// monotonic clock is process-local, so after a restart or a system-clock
+  /// rollback it can start below stored timestamps; without this clamp a new
+  /// assistant activity could write `last_activity_at` <= `max(userMessage,
+  /// seen)` and the session would never bold. Clamping keeps the monotonic
+  /// invariant intact for subsequent writes.
+  int _activityTimestamp({required int? userMessageAt, required int? seenAt}) {
+    final floor = (userMessageAt ?? 0) > (seenAt ?? 0) ? (userMessageAt ?? 0) : (seenAt ?? 0);
+    final next = _nextTimestamp();
+    if (next > floor) return next;
+    final at = floor + 1;
+    if (at > _lastIssued) _lastIssued = at;
+    return at;
+  }
+
   /// Records activity for [sessionId]. No-op when the session has no persisted
   /// row (child/subagent sessions, or sessions not yet learned). While the
   /// session is being viewed, the seen timestamp is advanced too so it never
@@ -79,6 +100,13 @@ class SessionUnseenService {
     required String sessionId,
     required bool isUserMessage,
   }) {
+    // Known child/subagent session — skip without re-resolving (avoids a full
+    // project scan on every streamed part for an active subagent).
+    if (_unresolvedSessions.contains(sessionId)) return Future<void>.value();
+    // Capture the viewed state at submission time, not when the (possibly
+    // delayed) serialized write executes — otherwise navigating away while
+    // events are queued could persist already-viewed activity as unseen.
+    final viewedAtSubmit = _viewTracker.isViewed(sessionId: sessionId);
     return _serialize(sessionId, () async {
       final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
       if (row == null) {
@@ -86,22 +114,24 @@ class SessionUnseenService {
         // so activity isn't silently dropped (e.g. a root session created on
         // the laptop while the bridge was offline).
         final projectId = await _sessionRepository.findProjectIdForSession(sessionId: sessionId);
-        if (projectId == null) return;
+        if (projectId == null) {
+          _unresolvedSessions.add(sessionId);
+          return;
+        }
         await _unseenRepository.ensureRootSessionActivity(
           sessionId: sessionId,
           projectId: projectId,
-          activityAt: _nextTimestamp(),
-          advanceSeen: _viewTracker.isViewed(sessionId: sessionId),
+          activityAt: _activityTimestamp(userMessageAt: null, seenAt: null),
+          advanceSeen: viewedAtSubmit,
         );
         await _emit(sessionId: sessionId, projectId: projectId);
         return;
       }
-      final advanceSeen = _viewTracker.isViewed(sessionId: sessionId);
       await _unseenRepository.recordActivity(
         sessionId: sessionId,
-        at: _nextTimestamp(),
+        at: _activityTimestamp(userMessageAt: row.userMessageAt, seenAt: row.seenAt),
         isUserMessage: isUserMessage,
-        advanceSeen: advanceSeen,
+        advanceSeen: viewedAtSubmit,
       );
       await _emit(sessionId: sessionId, projectId: row.projectId);
     });
@@ -117,12 +147,13 @@ class SessionUnseenService {
     required String? parentId,
   }) {
     if (parentId != null) return Future<void>.value();
+    final viewedAtSubmit = _viewTracker.isViewed(sessionId: sessionId);
     return _serialize(sessionId, () async {
       await _unseenRepository.ensureRootSessionActivity(
         sessionId: sessionId,
         projectId: projectId,
         activityAt: _nextTimestamp(),
-        advanceSeen: _viewTracker.isViewed(sessionId: sessionId),
+        advanceSeen: viewedAtSubmit,
       );
       await _emit(sessionId: sessionId, projectId: projectId);
     });
@@ -149,11 +180,7 @@ class SessionUnseenService {
       if (row == null) return;
       // Force activity strictly past both the user-message and seen markers so
       // the session reliably bolds even when the user's own message is latest.
-      final floor = (row.userMessageAt ?? 0) > (row.seenAt ?? 0) ? (row.userMessageAt ?? 0) : (row.seenAt ?? 0);
-      final ts = _nextTimestamp();
-      final at = ts > floor ? ts : floor + 1;
-      // Keep the monotonic clock above this stamp so later writes can't go below it.
-      if (at > _lastIssued) _lastIssued = at;
+      final at = _activityTimestamp(userMessageAt: row.userMessageAt, seenAt: row.seenAt);
       await _unseenRepository.markSessionUnseen(sessionId: sessionId, at: at);
       await _emit(sessionId: sessionId, projectId: row.projectId);
     });
