@@ -156,7 +156,8 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   this PR must ensure supervised restart never calls `spawnSuccessor()`.
 - **Risk:** Med. **Size:** S-M.
 - **Acceptance:** phone-triggered restart → exit 86 in supervised mode; standalone
-  successor handoff unchanged.
+  successor handoff unchanged; **supervised mode never calls `spawnSuccessor()`**
+  (closes the PR-1.1 `--control-url`-replay gap — asserted by test).
 - **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
 
 ## PR 1.8 — Disable self-update + reconcile when supervised

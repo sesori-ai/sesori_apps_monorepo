@@ -37,6 +37,13 @@
 > or ADR (§7) no longer holds — fix it in the **same PR**: record it in the phase
 > doc's **Plan-deltas** and amend the affected section above. A stale plan is
 > worse than none.
+>
+> **Track every deferral in the plan — always.** Whenever a PR defers work to a
+> later stage (a known gap, a follow-up, a reviewer point answered with "PR X
+> handles this"), record it in the **same PR** in BOTH: (a) the owning later
+> PR's **Acceptance** in its phase doc, and (b) the §8 risk register. A deferral
+> that lives only in a PR reply, commit message, or chat is **not tracked** and
+> will be lost — those are not the plan.
 
 ---
 
@@ -231,6 +238,7 @@ and consumes only the exported interfaces (`AuthTokenProvider`/`OAuthFlowProvide
 | Windows code-signing cert | **OPEN — lead time** | TBD | blocks PR 3.4 (signed Windows); EV clears SmartScreen faster |
 | Control-channel secret bootstrap (off-argv) | OPEN | TBD | ADR A8; designed in PR 1.1 / PR 2.6 |
 | Orphaned helper on GUI crash | OPEN | TBD | ADR A9; parent-loss policy in PR 1.1 |
+| Supervised restart replays `--control-url` (no stdin secret) | OPEN — until PR 1.7 | TBD | PR 1.1 gap; PR 1.7 makes supervised restart `exit(86)` not `spawnSuccessor()`. Unreachable pre-GUI; successor fails closed (`ControlSecretApi` timeout → exit 1) |
 | Uninstall vs shared CLI state | OPEN | TBD | ADR A10; scope cleanup in PR 3.11 |
 | RelayClient live re-auth on token push | OPEN | TBD | ADR A12; PR 1.5 must add the subscription/reconnect path + live-connection test |
 | `core/widgets` not pure leaf UI | OPEN | TBD | `connection_overlay.dart` imports app DI/routing/go_router; PR 4.1 must refactor + declare deps first |
