@@ -280,6 +280,7 @@ class _InstallCommandBoxState extends State<_InstallCommandBox> {
                   bottom: PregoSpacing.xs,
                 ),
                 child: Row(
+                  spacing: PregoSpacing.lg,
                   children: [
                     for (var i = 0; i < widget.methods.length; i++) _buildTab(index: i),
                   ],
@@ -309,6 +310,7 @@ class _InstallCommandBoxState extends State<_InstallCommandBox> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    const SizedBox(width: PregoSpacing.md),
                     // Transparent Material so the InkResponse splash paints on
                     // top of the bgSurface1 fill — without it the ripple renders
                     // on the Scaffold's Material, hidden behind this Container.
