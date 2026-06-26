@@ -199,26 +199,29 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
                         ),
                       ),
                     ),
-                    PromptInput(
-                      // Persist the unsent prompt per project so it survives
-                      // leaving and returning to the new-session screen before
-                      // a session exists; cleared once the session is created.
-                      draftKey: "new-session:${widget.projectId}",
-                      isBusy: state is NewSessionSending,
-                      onSend: (String text, String? command) {
-                        context.read<NewSessionCubit>().createSession(
-                          text: text,
-                          command: command,
-                          dedicatedWorktree: _dedicatedWorktree,
-                        );
-                      },
-                      onAbort: _dismissScreen,
-                      header: _buildErrorBanner(state),
-                      composerHeader: _buildComposerHeader(state),
-                      availableCommands: state.agentModelData?.commands ?? const [],
-                      stagedCommand: state.agentModelData?.stagedCommand,
-                      onCommandSelected: context.read<NewSessionCubit>().stageCommand,
-                      onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: PromptInput(
+                        // Persist the unsent prompt per project so it survives
+                        // leaving and returning to the new-session screen before
+                        // a session exists; cleared once the session is created.
+                        draftKey: "new-session:${widget.projectId}",
+                        isBusy: state is NewSessionSending,
+                        onSend: (String text, String? command) {
+                          context.read<NewSessionCubit>().createSession(
+                            text: text,
+                            command: command,
+                            dedicatedWorktree: _dedicatedWorktree,
+                          );
+                        },
+                        onAbort: _dismissScreen,
+                        header: _buildErrorBanner(state),
+                        composerHeader: _buildComposerHeader(state),
+                        availableCommands: state.agentModelData?.commands ?? const [],
+                        stagedCommand: state.agentModelData?.stagedCommand,
+                        onCommandSelected: context.read<NewSessionCubit>().stageCommand,
+                        onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
+                      ),
                     ),
                   ],
                 ),
