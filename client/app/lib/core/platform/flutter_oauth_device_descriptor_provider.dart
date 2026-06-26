@@ -42,20 +42,25 @@ class FlutterOAuthDeviceDescriptorProvider implements OAuthDeviceDescriptorProvi
       };
 
   Future<DeviceInfo> _device({required String? appVersion}) async {
+    // Web has no native device-info channel and the mobile getters throw an
+    // UnsupportedError there; skip them to avoid noisy stack traces.
+    if (kIsWeb) {
+      return DeviceInfo(name: _fallbackName(), osVersion: null, appVersion: appVersion);
+    }
     try {
       switch (defaultTargetPlatform) {
         case TargetPlatform.iOS:
           final info = await _deviceInfo.iosInfo;
           return DeviceInfo(
-            name: _clamp(info.name, _maxNameLength) ?? _fallbackName(),
-            osVersion: _clamp("iOS ${info.systemVersion}", _maxVersionLength),
+            name: _clamp(value: info.name, maxLength: _maxNameLength) ?? _fallbackName(),
+            osVersion: _clamp(value: "iOS ${info.systemVersion}", maxLength: _maxVersionLength),
             appVersion: appVersion,
           );
         case TargetPlatform.android:
           final info = await _deviceInfo.androidInfo;
           return DeviceInfo(
-            name: _clamp("${info.manufacturer} ${info.model}", _maxNameLength) ?? _fallbackName(),
-            osVersion: _clamp("Android ${info.version.release}", _maxVersionLength),
+            name: _clamp(value: "${info.manufacturer} ${info.model}", maxLength: _maxNameLength) ?? _fallbackName(),
+            osVersion: _clamp(value: "Android ${info.version.release}", maxLength: _maxVersionLength),
             appVersion: appVersion,
           );
         case TargetPlatform.macOS:
@@ -73,7 +78,7 @@ class FlutterOAuthDeviceDescriptorProvider implements OAuthDeviceDescriptorProvi
   Future<String?> _appVersion() async {
     try {
       final info = await PackageInfo.fromPlatform();
-      return _clamp(info.version, _maxVersionLength);
+      return _clamp(value: info.version, maxLength: _maxVersionLength);
     } catch (error, stackTrace) {
       logw("Failed to read app version for the OAuth device descriptor", error, stackTrace);
       return null;
@@ -89,7 +94,7 @@ class FlutterOAuthDeviceDescriptorProvider implements OAuthDeviceDescriptorProvi
         TargetPlatform.fuchsia => "Device",
       };
 
-  String? _clamp(String value, int maxLength) {
+  String? _clamp({required String value, required int maxLength}) {
     final trimmed = value.trim();
     if (trimmed.isEmpty) return null;
     return trimmed.length > maxLength ? trimmed.substring(0, maxLength).trim() : trimmed;

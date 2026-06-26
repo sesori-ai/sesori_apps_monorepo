@@ -121,6 +121,7 @@ void main() {
       },
       expect: () => [
         isA<LoginAuthenticating>(),
+        isA<LoginPolling>(),
         isA<LoginFailed>(),
       ],
     );

@@ -154,6 +154,12 @@ class LoginCubit extends Cubit<LoginState> {
       final initResponse = await _oAuthFlowProvider.startOAuthFlow(provider: provider);
       if (isClosed) return false;
 
+      // Enter the resumable polling state BEFORE launching the browser. Opening
+      // the browser can suspend the app before launch() returns; the OAuth
+      // session already exists, so _onAppResumed must observe a LoginPolling
+      // state (not LoginAuthenticating) to recover and resume polling.
+      emit(const LoginState.polling());
+
       logd("Opening ${provider.label} auth URL in browser");
 
       final launched = await _urlLauncher.launch(Uri.parse(initResponse.authUrl));
@@ -167,7 +173,6 @@ class LoginCubit extends Cubit<LoginState> {
 
       _didActivePollEnterBackground = _isInBackground;
       _isPolling = true;
-      emit(const LoginState.polling());
       try {
         await _oAuthFlowProvider.pollForResult();
       } finally {

@@ -756,7 +756,7 @@ class BridgeRuntimeRunner {
   /// always satisfied, and clamp to the 120-char server limit. The cosmetic OS
   /// version is omitted when it can't be derived.
   static DeviceInfo _bridgeDeviceInfo() {
-    final hostname = io.Platform.localHostname.trim();
+    final hostname = _localHostname().trim();
     final name = hostname.isEmpty ? "Sesori Bridge" : hostname;
     return DeviceInfo(
       name: name.length > 120 ? name.substring(0, 120).trim() : name,
@@ -767,6 +767,18 @@ class BridgeRuntimeRunner {
       ),
       appVersion: appVersion,
     );
+  }
+
+  /// `Platform.localHostname` can throw (e.g. `SocketException` when hostname
+  /// resolution fails in restricted/containerized environments). The descriptor
+  /// is best-effort, so degrade to an empty name and let the caller fall back.
+  static String _localHostname() {
+    try {
+      return io.Platform.localHostname;
+    } on Object catch (error) {
+      Log.w("Failed to read localHostname for the device descriptor", error);
+      return "";
+    }
   }
 
   /// Reads `/etc/os-release` (Linux only) so [OsVersionFormatter] can derive the
