@@ -72,7 +72,7 @@ class LoginCubit extends Cubit<LoginState> {
 
   Future<void> _onAppResumed() async {
     if (_isPolling) return;
-    if (state is LoginAwaitingConfirmation || state is LoginPolling || state is LoginTimeout) {
+    if (state is LoginPolling || state is LoginTimeout) {
       final hasActiveSession = await _oAuthFlowProvider.hasActiveOAuthSession();
       if (!hasActiveSession) {
         // A background interruption parks the flow in LoginPolling. If the
@@ -86,19 +86,9 @@ class LoginCubit extends Cubit<LoginState> {
       }
       if (isClosed) return;
 
-      final currentUserCode = switch (state) {
-        LoginAwaitingConfirmation(:final userCode) => userCode,
-        LoginPolling(:final userCode) => userCode,
-        LoginTimeout() => null,
-        LoginIdle() => null,
-        LoginAuthenticating() => null,
-        LoginSuccess() => null,
-        LoginFailed() => null,
-      };
-
       _didActivePollEnterBackground = _isInBackground;
       _isPolling = true;
-      emit(LoginState.polling(userCode: currentUserCode));
+      emit(const LoginState.polling());
       try {
         await _oAuthFlowProvider.resumeOAuthFlow();
         if (isClosed) return;
@@ -108,7 +98,7 @@ class LoginCubit extends Cubit<LoginState> {
         if (isClosed) return;
         emit(const LoginState.timeout());
       } catch (e, st) {
-        if (_handlePollInterruption(error: e, userCode: currentUserCode)) return;
+        if (_handlePollInterruption(error: e)) return;
         loge("OAuth resumed but failed", e, st);
         if (isClosed) return;
         emit(const LoginState.failed(reason: LoginFailedReason.unknown));
@@ -126,13 +116,13 @@ class LoginCubit extends Cubit<LoginState> {
   ///
   /// Returns true when the error was handled as a recoverable interruption, in
   /// which case the caller must stop and not emit a failure state.
-  bool _handlePollInterruption({required Object error, required String? userCode}) {
+  bool _handlePollInterruption({required Object error}) {
     if (!_isRecoverablePollInterruption(error)) return false;
     if (!_isInBackground && !_didActivePollEnterBackground) return false;
     final alreadyForeground = !_isInBackground;
     _didActivePollEnterBackground = false;
     if (isClosed) return true;
-    emit(LoginState.polling(userCode: userCode));
+    emit(const LoginState.polling());
     if (alreadyForeground) {
       // The app already returned to the foreground before this abort surfaced,
       // so no further `resumed` lifecycle event will arrive to drive recovery.
@@ -160,13 +150,9 @@ class LoginCubit extends Cubit<LoginState> {
   Future<bool> loginWithProvider(OAuthProvider provider) async {
     emit(const LoginState.authenticating());
 
-    String? pollingUserCode;
     try {
       final initResponse = await _oAuthFlowProvider.startOAuthFlow(provider: provider);
       if (isClosed) return false;
-
-      pollingUserCode = initResponse.userCode;
-      emit(LoginState.awaitingConfirmation(userCode: initResponse.userCode));
 
       logd("Opening ${provider.label} auth URL in browser");
 
@@ -181,7 +167,7 @@ class LoginCubit extends Cubit<LoginState> {
 
       _didActivePollEnterBackground = _isInBackground;
       _isPolling = true;
-      emit(LoginState.polling(userCode: initResponse.userCode));
+      emit(const LoginState.polling());
       try {
         await _oAuthFlowProvider.pollForResult();
       } finally {
@@ -197,7 +183,7 @@ class LoginCubit extends Cubit<LoginState> {
       emit(const LoginState.timeout());
       return false;
     } catch (e, st) {
-      if (_handlePollInterruption(error: e, userCode: pollingUserCode)) return false;
+      if (_handlePollInterruption(error: e)) return false;
       loge("${provider.label} login failed", e, st);
       if (isClosed) return false;
       emit(const LoginState.failed(reason: LoginFailedReason.unknown));

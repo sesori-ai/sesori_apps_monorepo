@@ -19,6 +19,7 @@ export "src/models/auth/auth_url_response.dart";
 export "src/models/auth/auth_user.dart";
 export "src/models/auth/bridge_summary.dart";
 export "src/models/auth/bridges_list_response.dart";
+export "src/models/auth/device_info.dart";
 export "src/models/auth/logout_response.dart";
 export "src/models/auth/register_bridge_request.dart";
 export "src/models/auth/session_status_response.dart";

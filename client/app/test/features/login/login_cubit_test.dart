@@ -42,7 +42,6 @@ void main() {
         (_) async => const AuthInitResponse(
           authUrl: "https://auth.example.com/login",
           state: "test-state",
-          userCode: "ABCD",
           expiresIn: 300,
         ),
       );
@@ -58,39 +57,13 @@ void main() {
     });
 
     blocTest<LoginCubit, LoginState>(
-      "loginWithProvider emits authenticating → awaitingConfirmation → polling → success",
+      "loginWithProvider emits authenticating → polling → success",
       build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession, mockLifecycleSource),
       act: (cubit) async {
         await cubit.loginWithProvider(AuthProvider.github);
       },
       expect: () => [
         isA<LoginAuthenticating>(),
-        isA<LoginAwaitingConfirmation>(),
-        isA<LoginPolling>(),
-        isA<LoginSuccess>(),
-      ],
-    );
-
-    blocTest<LoginCubit, LoginState>(
-      "loginWithProvider emits awaitingConfirmation with correct userCode",
-      build: () => LoginCubit(mockOAuthFlowProvider, mockUrlLauncher, mockAuthSession, mockLifecycleSource),
-      act: (cubit) async {
-        when(
-          () => mockOAuthFlowProvider.startOAuthFlow(provider: any(named: "provider")),
-        ).thenAnswer(
-          (_) async => const AuthInitResponse(
-            authUrl: "https://auth.example.com/login",
-            state: "test-state",
-            userCode: "XYZ9",
-            expiresIn: 300,
-          ),
-        );
-
-        await cubit.loginWithProvider(AuthProvider.github);
-      },
-      expect: () => [
-        isA<LoginAuthenticating>(),
-        isA<LoginAwaitingConfirmation>().having((s) => s.userCode, "userCode", "XYZ9"),
         isA<LoginPolling>(),
         isA<LoginSuccess>(),
       ],
@@ -148,7 +121,6 @@ void main() {
       },
       expect: () => [
         isA<LoginAuthenticating>(),
-        isA<LoginAwaitingConfirmation>(),
         isA<LoginFailed>(),
       ],
     );
@@ -165,7 +137,6 @@ void main() {
       },
       expect: () => [
         isA<LoginAuthenticating>(),
-        isA<LoginAwaitingConfirmation>(),
         isA<LoginPolling>(),
         isA<LoginTimeout>(),
       ],

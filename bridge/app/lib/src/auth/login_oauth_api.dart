@@ -13,11 +13,17 @@ Uri _buildUri({required String base, required String path}) {
 class LoginOAuthApi {
   final String authBackendUrl;
   final http.Client _client;
+  final String _clientType;
+  final DeviceInfo _device;
 
   LoginOAuthApi({
     required this.authBackendUrl,
     required http.Client client,
-  }) : _client = client;
+    required String clientType,
+    required DeviceInfo device,
+  })  : _client = client,
+        _clientType = clientType,
+        _device = device;
 
   Future<AuthInitResponse> initOAuthSession({
     required OAuthProvider provider,
@@ -30,7 +36,7 @@ class LoginOAuthApi {
         "Content-Type": "application/json",
         oauthSessionTokenHeader: sessionToken,
       },
-      body: jsonEncode(const AuthInitRequest(clientType: "bridge").toJson()),
+      body: jsonEncode(AuthInitRequest(clientType: _clientType, device: _device).toJson()),
     );
 
     if (response.statusCode != 200) {
@@ -44,8 +50,8 @@ class LoginOAuthApi {
       throw Exception("auth init response malformed: $e");
     }
 
-    if (initResp.authUrl.isEmpty || initResp.state.isEmpty || initResp.userCode.isEmpty) {
-      throw Exception("auth init response missing authUrl/state/userCode");
+    if (initResp.authUrl.isEmpty || initResp.state.isEmpty) {
+      throw Exception("auth init response missing authUrl/state");
     }
 
     return initResp;

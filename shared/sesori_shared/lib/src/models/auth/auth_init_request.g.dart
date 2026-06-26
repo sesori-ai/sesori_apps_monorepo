@@ -6,8 +6,13 @@ part of 'auth_init_request.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_AuthInitRequest _$AuthInitRequestFromJson(Map json) =>
-    _AuthInitRequest(clientType: json['clientType'] as String);
+_AuthInitRequest _$AuthInitRequestFromJson(Map json) => _AuthInitRequest(
+  clientType: json['clientType'] as String,
+  device: DeviceInfo.fromJson(Map<String, dynamic>.from(json['device'] as Map)),
+);
 
 Map<String, dynamic> _$AuthInitRequestToJson(_AuthInitRequest instance) =>
-    <String, dynamic>{'clientType': instance.clientType};
+    <String, dynamic>{
+      'clientType': instance.clientType,
+      'device': instance.device.toJson(),
+    };

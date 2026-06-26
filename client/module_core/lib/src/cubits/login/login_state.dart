@@ -10,9 +10,7 @@ sealed class LoginState with _$LoginState {
 
   const factory LoginState.authenticating() = LoginAuthenticating;
 
-  const factory LoginState.awaitingConfirmation({required String userCode}) = LoginAwaitingConfirmation;
-
-  const factory LoginState.polling({String? userCode}) = LoginPolling;
+  const factory LoginState.polling() = LoginPolling;
 
   const factory LoginState.timeout() = LoginTimeout;
 

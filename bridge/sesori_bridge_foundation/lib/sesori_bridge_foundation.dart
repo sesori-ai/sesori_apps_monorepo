@@ -8,6 +8,7 @@ export "src/binary_download_client.dart";
 export "src/checksum_validator.dart";
 export "src/command_executor.dart";
 export "src/host_process_command_executor.dart";
+export "src/os_version_formatter.dart";
 export "src/platform_target.dart";
 export "src/semantic_version.dart";
 export "src/sesori_data_directory.dart";

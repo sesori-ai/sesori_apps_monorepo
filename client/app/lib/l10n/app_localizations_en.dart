@@ -487,12 +487,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginAwaitingCallback => 'Waiting for authorization...';
 
   @override
-  String loginAwaitingConfirmation(String userCode) {
-    return 'Confirm this code on the login page: $userCode';
-  }
-
-  @override
-  String get loginPolling => 'Confirming authorization...';
+  String get loginPolling => 'Confirm the sign-in in your browser to continue.';
 
   @override
   String get loginTimeout => 'Authorization timed out. Please try again.';

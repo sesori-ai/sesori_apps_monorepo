@@ -25,7 +25,6 @@ class MockLifecycleSource extends Mock implements LifecycleSource {}
 const testAuthInitResponse = AuthInitResponse(
   authUrl: "https://accounts.google.com/o/oauth2/auth",
   state: "oauth-state",
-  userCode: "ABCD",
   expiresIn: 300,
 );
 
@@ -85,7 +84,6 @@ void main() {
         act: (cubit) async => cubit.loginWithProvider(AuthProvider.google),
         expect: () => [
           isA<LoginAuthenticating>(),
-          isA<LoginAwaitingConfirmation>().having((state) => state.userCode, "userCode", "ABCD"),
           isA<LoginPolling>(),
           isA<LoginSuccess>(),
         ],
@@ -98,12 +96,11 @@ void main() {
       );
 
       blocTest<LoginCubit, LoginState>(
-        "loginWithProvider(AuthProvider.google) emits user code before polling then success",
+        "loginWithProvider(AuthProvider.google) emits polling then success",
         build: buildCubit,
         act: (cubit) async => cubit.loginWithProvider(AuthProvider.google),
         expect: () => [
           isA<LoginAuthenticating>(),
-          isA<LoginAwaitingConfirmation>().having((state) => state.userCode, "userCode", "ABCD"),
           isA<LoginPolling>(),
           isA<LoginSuccess>(),
         ],
@@ -118,7 +115,6 @@ void main() {
         act: (cubit) async => cubit.loginWithProvider(AuthProvider.google),
         expect: () => [
           isA<LoginAuthenticating>(),
-          isA<LoginAwaitingConfirmation>(),
           isA<LoginPolling>(),
           isA<LoginSuccess>(),
         ],
@@ -148,7 +144,6 @@ void main() {
         },
         expect: () => [
           isA<LoginAuthenticating>(),
-          isA<LoginAwaitingConfirmation>(),
           isA<LoginFailed>(),
         ],
         verify: (_) {
@@ -165,7 +160,6 @@ void main() {
         },
         expect: () => [
           isA<LoginAuthenticating>(),
-          isA<LoginAwaitingConfirmation>(),
           isA<LoginPolling>(),
           isA<LoginTimeout>(),
         ],
@@ -335,7 +329,6 @@ void main() {
           },
           expect: () => [
             isA<LoginAuthenticating>(),
-            isA<LoginAwaitingConfirmation>(),
             isA<LoginPolling>(),
             isA<LoginFailed>().having(
               (state) => state.reason,
@@ -407,7 +400,8 @@ void main() {
         when(() => mockOAuthFlowProvider.hasActiveOAuthSession()).thenAnswer((_) async => true);
 
         final cubit = buildCubit();
-        cubit.emit(LoginState.awaitingConfirmation(userCode: testAuthInitResponse.userCode));
+        // Park the flow in a resumable state (e.g. a prior timeout) before resume.
+        cubit.emit(const LoginState.timeout());
 
         final states = <LoginState>[];
         final sub = cubit.stream.listen(states.add);
@@ -431,7 +425,8 @@ void main() {
         when(() => mockOAuthFlowProvider.hasActiveOAuthSession()).thenAnswer((_) async => false);
 
         final cubit = buildCubit();
-        cubit.emit(LoginState.awaitingConfirmation(userCode: testAuthInitResponse.userCode));
+        // A resumable, non-polling state (timeout) must not auto-reset to idle.
+        cubit.emit(const LoginState.timeout());
 
         final states = <LoginState>[];
         final sub = cubit.stream.listen(states.add);
