@@ -118,22 +118,21 @@ class BridgeRuntimeRunner {
   /// shutdown coordinator's backstop is sized from it (budget + slack).
   static const Duration _pluginShutdownBudget = Duration(seconds: 10);
 
-  /// How long the control-channel parent-loss exit waits for a graceful
-  /// shutdown before forcing exit with the abnormal loss code. Kept BELOW the
-  /// coordinator's backstop (ordered budget `_pluginShutdownBudget` + 10s slack)
-  /// so this path always exits non-zero — a control-channel loss must never be
-  /// reported to the supervisor as a clean (0) exit, even if the plugin stop
-  /// hangs and the backstop would otherwise fire with the neutral code 0.
-  static const Duration _controlLossShutdownBudget = Duration(seconds: 15);
-
   static Future<int> run({
     required BridgeCliOptions options,
     required PluginConfig pluginConfig,
     required String pluginId,
   }) async {
     final failureLatch = PluginFailureLatch();
+    // Set when a control-channel loss triggers shutdown, so BOTH the explicit
+    // exit and the coordinator backstop report the abnormal code. A loss must
+    // never look like a clean (0) exit, even if the stop hangs — and because
+    // the backstop fires at (ordered budget + slack), its timing varies with
+    // how many ordered steps are registered (none yet before the plugin
+    // starts), so a fixed timeout race against it is not reliable.
+    int? supervisedLossExitCode;
     final shutdownCoordinator = BridgeShutdownCoordinator(
-      backstopExitCode: () => failureLatch.failure == null ? 0 : 1,
+      backstopExitCode: () => supervisedLossExitCode ?? (failureLatch.failure == null ? 0 : 1),
     );
     final subscriptions = CompositeSubscription();
     shutdownCoordinator.add(disposable: subscriptions.cancel);
@@ -213,6 +212,7 @@ class BridgeRuntimeRunner {
         await _startSupervisedControlChannel(
           options: options,
           shutdownCoordinator: shutdownCoordinator,
+          requestAbnormalExit: (code) => supervisedLossExitCode = code,
         );
       }
 
@@ -475,6 +475,7 @@ class BridgeRuntimeRunner {
   static Future<void> _startSupervisedControlChannel({
     required BridgeCliOptions options,
     required BridgeShutdownCoordinator shutdownCoordinator,
+    required void Function(int code) requestAbnormalExit,
   }) async {
     final url = Uri.parse(options.controlUrl!);
     if (!isLoopbackControlUrl(url)) {
@@ -495,8 +496,13 @@ class BridgeRuntimeRunner {
       connectionState: controlChannelClient.connectionState,
       // Don't hard-exit straight from the loss timer: that bypasses the ordered
       // plugin stop in the shutdown coordinator and could orphan an owned
-      // backend runtime (e.g. OpenCode). Shut down gracefully first, then exit.
-      exitProcess: (code) => unawaited(_shutdownThenExit(shutdownCoordinator: shutdownCoordinator, code: code)),
+      // backend runtime (e.g. OpenCode). Record the abnormal code (so the
+      // coordinator backstop reports it too if the stop hangs), then shut down
+      // gracefully before exiting.
+      exitProcess: (code) {
+        requestAbnormalExit(code);
+        unawaited(_shutdownThenExit(shutdownCoordinator: shutdownCoordinator, code: code));
+      },
     );
     lossListener.start();
     shutdownCoordinator.add(disposable: lossListener.dispose);
@@ -507,21 +513,19 @@ class BridgeRuntimeRunner {
   /// Graceful termination for the control-channel parent-loss policy (ADR A9):
   /// run the ordered shutdown (which stops the plugin and any owned runtime)
   /// before exiting, so a hard exit from the loss timer cannot orphan the
-  /// backend process. The coordinator's own backstop bounds a hung stop. The
+  /// backend process. If the stop hangs, the coordinator backstop fires — and
+  /// because the loss code was recorded via `requestAbnormalExit`, the backstop
+  /// reports that abnormal code, not the neutral 0, so a loss is never seen as a
+  /// clean exit regardless of the backstop's (step-count-dependent) timing. The
   /// precise exit code the GUI observes is finalized in Phase 2 (PR 2.7).
   static Future<void> _shutdownThenExit({
     required BridgeShutdownCoordinator shutdownCoordinator,
     required int code,
   }) async {
-    // Bound the graceful stop below the coordinator's own backstop so this path
-    // always exits with the abnormal loss `code`. If the stop hangs, our
-    // timeout fires (and we exit non-zero) before the backstop would exit with
-    // its neutral code 0. The underlying shutdown future keeps running, but the
-    // process is exiting anyway.
     try {
-      await shutdownCoordinator.shutdown().timeout(_controlLossShutdownBudget);
+      await shutdownCoordinator.shutdown();
     } catch (error, stackTrace) {
-      Log.w("[control] graceful shutdown after control-channel loss did not finish cleanly", error, stackTrace);
+      Log.w("[control] graceful shutdown after control-channel loss failed", error, stackTrace);
     }
     io.exit(code);
   }
