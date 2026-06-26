@@ -55,8 +55,8 @@ void main() {
     });
 
     test("new root session is unseen; child session is ignored", () async {
-      await service.recordSessionCreated(sessionId: "root", projectId: "p1", parentId: null, createdAt: 1000);
-      await service.recordSessionCreated(sessionId: "child", projectId: "p1", parentId: "root", createdAt: 1000);
+      await service.recordSessionCreated(sessionId: "root", projectId: "p1", parentId: null);
+      await service.recordSessionCreated(sessionId: "child", projectId: "p1", parentId: "root");
 
       expect(await unseen("root"), isTrue);
       expect(await unseen("child"), isFalse); // never persisted
@@ -71,18 +71,19 @@ void main() {
       expect(await unseen("s1"), isFalse);
 
       clock = 2000;
-      await service.recordActivity(sessionId: "s1", at: 2000, isUserMessage: false);
+      await service.recordActivity(sessionId: "s1", isUserMessage: false);
       expect(await unseen("s1"), isTrue);
     });
 
     test("activity while viewing does not bold (seen advances)", () async {
-      await service.recordSessionCreated(sessionId: "s1", projectId: "p1", parentId: null, createdAt: 1000);
+      await service.recordSessionCreated(sessionId: "s1", projectId: "p1", parentId: null);
       viewTracker.setViewing(connID: 1, sessionId: "s1");
       // view-start marks it seen.
       await Future<void>.delayed(Duration.zero);
       expect(await unseen("s1"), isFalse);
 
-      await service.recordActivity(sessionId: "s1", at: 3000, isUserMessage: false);
+      clock = 3000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: false);
       expect(await unseen("s1"), isFalse);
     });
 
@@ -92,11 +93,13 @@ void main() {
         sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
       );
       // Some AI activity exists, but it's currently seen.
-      await service.recordActivity(sessionId: "s1", at: 600, isUserMessage: false);
+      clock = 600;
+      await service.recordActivity(sessionId: "s1", isUserMessage: false);
       clock = 700;
       await service.markRead(sessionId: "s1");
       expect(await unseen("s1"), isFalse);
 
+      clock = 750;
       await service.markUnread(sessionId: "s1");
       expect(await unseen("s1"), isTrue);
 
@@ -111,7 +114,8 @@ void main() {
         sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
       );
       // Latest activity is the user's own message -> normally NOT bold.
-      await service.recordActivity(sessionId: "s1", at: 600, isUserMessage: true);
+      clock = 600;
+      await service.recordActivity(sessionId: "s1", isUserMessage: true);
       expect(await unseen("s1"), isFalse);
 
       clock = 700;
@@ -119,12 +123,24 @@ void main() {
       expect(await unseen("s1"), isTrue);
     });
 
+    test("monotonic clock keeps same-ms user+assistant activity ordered (stays unseen)", () async {
+      await service.recordSessionCreated(sessionId: "s1", projectId: "p1", parentId: null);
+      // Both events fall in the same wall-clock millisecond. A user message then
+      // an assistant message must still leave activity strictly above the
+      // user-message timestamp, so the session stays unseen.
+      clock = 2000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: true);
+      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      expect(await unseen("s1"), isTrue);
+    });
+
     test("serializes ordered activity for one session (no out-of-order clear)", () async {
-      await service.recordSessionCreated(sessionId: "s1", projectId: "p1", parentId: null, createdAt: 1000);
+      await service.recordSessionCreated(sessionId: "s1", projectId: "p1", parentId: null);
+      clock = 2000;
       // Fire a user message then an AI message without awaiting between them;
       // the AI activity (later) must win so the session stays unseen.
-      final f1 = service.recordActivity(sessionId: "s1", at: 2000, isUserMessage: true);
-      final f2 = service.recordActivity(sessionId: "s1", at: 2001, isUserMessage: false);
+      final f1 = service.recordActivity(sessionId: "s1", isUserMessage: true);
+      final f2 = service.recordActivity(sessionId: "s1", isUserMessage: false);
       await Future.wait([f1, f2]);
       expect(await unseen("s1"), isTrue);
     });
@@ -133,7 +149,7 @@ void main() {
       final events = <UnseenChange>[];
       final sub = service.unseenChanges.listen(events.add);
 
-      await service.recordSessionCreated(sessionId: "root", projectId: "p1", parentId: null, createdAt: 1000);
+      await service.recordSessionCreated(sessionId: "root", projectId: "p1", parentId: null);
       await Future<void>.delayed(Duration.zero);
 
       expect(events, isNotEmpty);

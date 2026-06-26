@@ -80,26 +80,26 @@ class SessionUnseenRepository {
   }
 
   /// Ensures a ROOT session row exists for [sessionId] and stamps its activity
-  /// at [createdAt] so a brand-new session is immediately unseen even before any
-  /// list fetch. When [advanceSeen] is true (a phone is already viewing it), the
-  /// seen timestamp is advanced too so it does not bold under the watcher.
+  /// at [activityAt] so a brand-new session is immediately unseen even before
+  /// any list fetch. When [advanceSeen] is true (a phone is already viewing it),
+  /// the seen timestamp is advanced too so it does not bold under the watcher.
   /// Wrapped in a transaction so the project FK cannot fire.
   Future<void> ensureRootSessionActivity({
     required String sessionId,
     required String projectId,
-    required int createdAt,
+    required int activityAt,
     required bool advanceSeen,
   }) async {
     await _db.transaction(() async {
       await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
       await _sessionDao.insertSessionsIfMissing(
-        sessions: [(sessionId: sessionId, projectId: projectId, createdAt: createdAt, archivedAt: null)],
+        sessions: [(sessionId: sessionId, projectId: projectId, createdAt: activityAt, archivedAt: null)],
       );
       await _sessionDao.setActivityTimestamps(
         sessionId: sessionId,
-        activityAt: createdAt,
+        activityAt: activityAt,
         userMessageAt: null,
-        seenAt: advanceSeen ? createdAt : null,
+        seenAt: advanceSeen ? activityAt : null,
       );
     });
   }

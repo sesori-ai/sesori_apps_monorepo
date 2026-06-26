@@ -585,19 +585,16 @@ class OrchestratorSession {
   /// everything else is ignored. A user-authored message (or reply) advances the
   /// "last user message" timestamp in addition to general activity.
   Future<void> _routeUnseenActivity(SesoriSseEvent event) async {
-    final now = DateTime.now().millisecondsSinceEpoch;
     switch (event) {
       case SesoriSessionCreated(:final info):
         await _sessionUnseenService.recordSessionCreated(
           sessionId: info.id,
           projectId: info.projectID,
           parentId: info.parentID,
-          createdAt: info.time?.created ?? now,
         );
       case SesoriMessageUpdated(:final info):
         await _sessionUnseenService.recordActivity(
           sessionId: info.sessionID,
-          at: now,
           isUserMessage: info is MessageUser,
         );
       // For child/subagent requests, `displaySessionId` is the root session the
@@ -606,25 +603,29 @@ class OrchestratorSession {
       case SesoriQuestionAsked(:final sessionID, :final displaySessionId):
         await _sessionUnseenService.recordActivity(
           sessionId: displaySessionId ?? sessionID,
-          at: now,
           isUserMessage: false,
         );
       case SesoriPermissionAsked(:final sessionID, :final displaySessionId):
         await _sessionUnseenService.recordActivity(
           sessionId: displaySessionId ?? sessionID,
-          at: now,
           isUserMessage: false,
         );
+      // Question replied/rejected and permission replied are all user responses
+      // to a pending prompt, so they advance the user-interaction timestamp and
+      // clear the unseen state.
       case SesoriQuestionReplied(:final sessionID, :final displaySessionId):
         await _sessionUnseenService.recordActivity(
           sessionId: displaySessionId ?? sessionID,
-          at: now,
+          isUserMessage: true,
+        );
+      case SesoriQuestionRejected(:final sessionID, :final displaySessionId):
+        await _sessionUnseenService.recordActivity(
+          sessionId: displaySessionId ?? sessionID,
           isUserMessage: true,
         );
       case SesoriPermissionReplied(:final sessionID, :final displaySessionId):
         await _sessionUnseenService.recordActivity(
           sessionId: displaySessionId ?? sessionID,
-          at: now,
           isUserMessage: true,
         );
       default:

@@ -25,7 +25,14 @@ class SessionUnseenService {
   final SessionUnseenRepository _unseenRepository;
   final ProjectRepository _projectRepository;
   final SessionViewTracker _viewTracker;
-  final int Function() _now;
+  final int Function() _wallClock;
+
+  /// Last timestamp this service issued. Used to keep `_nextTimestamp`
+  /// strictly monotonic so two events processed within the same millisecond
+  /// (e.g. a user `message.updated` immediately followed by the assistant's)
+  /// still receive distinct, ordered timestamps — otherwise activity could
+  /// equal the user-message timestamp and the session would wrongly stay seen.
+  int _lastIssued = 0;
 
   final StreamController<UnseenChange> _changes = StreamController<UnseenChange>.broadcast();
   StreamSubscription<String>? _viewStartsSubscription;
@@ -45,7 +52,7 @@ class SessionUnseenService {
   }) : _unseenRepository = unseenRepository,
        _projectRepository = projectRepository,
        _viewTracker = viewTracker,
-       _now = now ?? (() => DateTime.now().millisecondsSinceEpoch) {
+       _wallClock = now ?? (() => DateTime.now().millisecondsSinceEpoch) {
     _viewStartsSubscription = _viewTracker.viewStarts.listen(_onViewStarted);
   }
 
@@ -53,13 +60,19 @@ class SessionUnseenService {
   /// have changed.
   Stream<UnseenChange> get unseenChanges => _changes.stream;
 
+  /// Strictly-increasing timestamp source. Returns the wall clock, but never a
+  /// value <= the previous one, so ordered writes always get ordered timestamps.
+  int _nextTimestamp() {
+    final wall = _wallClock();
+    return _lastIssued = wall > _lastIssued ? wall : _lastIssued + 1;
+  }
+
   /// Records activity for [sessionId]. No-op when the session has no persisted
   /// row (child/subagent sessions, or sessions not yet learned). While the
   /// session is being viewed, the seen timestamp is advanced too so it never
   /// bolds under the watcher.
   Future<void> recordActivity({
     required String sessionId,
-    required int at,
     required bool isUserMessage,
   }) {
     return _serialize(sessionId, () async {
@@ -68,7 +81,7 @@ class SessionUnseenService {
       final advanceSeen = _viewTracker.isViewed(sessionId: sessionId);
       await _unseenRepository.recordActivity(
         sessionId: sessionId,
-        at: at,
+        at: _nextTimestamp(),
         isUserMessage: isUserMessage,
         advanceSeen: advanceSeen,
       );
@@ -84,14 +97,13 @@ class SessionUnseenService {
     required String sessionId,
     required String projectId,
     required String? parentId,
-    required int createdAt,
   }) {
     if (parentId != null) return Future<void>.value();
     return _serialize(sessionId, () async {
       await _unseenRepository.ensureRootSessionActivity(
         sessionId: sessionId,
         projectId: projectId,
-        createdAt: createdAt,
+        activityAt: _nextTimestamp(),
         advanceSeen: _viewTracker.isViewed(sessionId: sessionId),
       );
       await _emit(sessionId: sessionId, projectId: projectId);
@@ -99,22 +111,29 @@ class SessionUnseenService {
   }
 
   /// "Mark as Read": stamp seen at max(now, lastActivity) so it clears.
+  /// Errors are propagated to the caller (this is a user-initiated request).
   Future<void> markRead({required String sessionId}) {
-    return _serialize(sessionId, () async {
+    return _serialize(sessionId, rethrowErrors: true, () async {
       final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
       if (row == null) return;
-      final seenAt = (row.activityAt ?? 0) > _now() ? row.activityAt! : _now();
+      final now = _nextTimestamp();
+      final seenAt = (row.activityAt ?? 0) > now ? row.activityAt! : now;
       await _unseenRepository.markSessionSeen(sessionId: sessionId, at: seenAt);
       await _emit(sessionId: sessionId, projectId: row.projectId);
     });
   }
 
   /// "Mark as Unread": force the session bold regardless of prior state.
+  /// Errors are propagated to the caller (this is a user-initiated request).
   Future<void> markUnread({required String sessionId}) {
-    return _serialize(sessionId, () async {
+    return _serialize(sessionId, rethrowErrors: true, () async {
       final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
       if (row == null) return;
-      await _unseenRepository.markSessionUnseen(sessionId: sessionId, at: _now());
+      // Force activity strictly past both the user-message and seen markers so
+      // the session reliably bolds even when the user's own message is latest.
+      final floor = (row.userMessageAt ?? 0) > (row.seenAt ?? 0) ? (row.userMessageAt ?? 0) : (row.seenAt ?? 0);
+      final at = _nextTimestamp() > floor ? _nextTimestamp() : floor + 1;
+      await _unseenRepository.markSessionUnseen(sessionId: sessionId, at: at);
       await _emit(sessionId: sessionId, projectId: row.projectId);
     });
   }
@@ -123,31 +142,41 @@ class SessionUnseenService {
     return _serialize(sessionId, () async {
       final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
       if (row == null) return;
-      await _unseenRepository.markSessionSeen(sessionId: sessionId, at: _now());
+      await _unseenRepository.markSessionSeen(sessionId: sessionId, at: _nextTimestamp());
       await _emit(sessionId: sessionId, projectId: row.projectId);
     });
   }
 
   /// Runs [operation] after any in-flight write for [sessionId] completes, so
-  /// ordered events for the same session commit in order. Failures are caught
-  /// and logged here so callers (including fire-and-forget `unawaited` paths in
-  /// the orchestrator) never see an unhandled async error.
-  Future<void> _serialize(String sessionId, Future<void> Function() operation) {
+  /// ordered events for the same session commit in order.
+  ///
+  /// By default failures are caught and logged so fire-and-forget callers (the
+  /// orchestrator's SSE path) never see an unhandled async error. User-initiated
+  /// operations pass [rethrowErrors] so the failure surfaces to the request
+  /// handler (which turns it into a non-2xx response) — while still keeping the
+  /// per-session ordering intact for any writes chained after it.
+  Future<void> _serialize(
+    String sessionId,
+    Future<void> Function() operation, {
+    bool rethrowErrors = false,
+  }) {
     final previous = _sessionWriteTails[sessionId] ?? Future<void>.value();
-    final next = previous.then((_) => operation()).catchError((Object error, StackTrace stackTrace) {
+    // The chain must continue regardless of this op's outcome, so the tail used
+    // for ordering swallows errors; the returned future (for the caller) may
+    // rethrow when requested.
+    final result = previous.then((_) => operation());
+    final tail = result.catchError((Object error, StackTrace stackTrace) {
       Log.w("unseen update failed for session $sessionId", error, stackTrace);
     });
-    _sessionWriteTails[sessionId] = next;
-    // Drop the tail once it settles if nothing newer chained onto it, so the
-    // map does not grow unbounded across many sessions.
+    _sessionWriteTails[sessionId] = tail;
     unawaited(
-      next.whenComplete(() {
-        if (identical(_sessionWriteTails[sessionId], next)) {
+      tail.whenComplete(() {
+        if (identical(_sessionWriteTails[sessionId], tail)) {
           _sessionWriteTails.remove(sessionId);
         }
       }),
     );
-    return next;
+    return rethrowErrors ? result : tail;
   }
 
   Future<void> _emit({required String sessionId, required String projectId}) async {
@@ -170,6 +199,9 @@ class SessionUnseenService {
 
   Future<void> dispose() async {
     await _viewStartsSubscription?.cancel();
+    // Let in-flight serialized writes finish (their tails swallow errors) before
+    // closing the stream, so no operation runs against a closed controller.
+    await Future.wait(_sessionWriteTails.values).catchError((_) => const <void>[]);
     await _changes.close();
   }
 }

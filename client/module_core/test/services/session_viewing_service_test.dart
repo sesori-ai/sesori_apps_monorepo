@@ -51,49 +51,59 @@ void main() {
       lifecycleSource: lifecycle,
     );
 
-    test("setViewingSession sends the session id", () {
-      build().setViewingSession("s1");
+    test("setViewingSession sends the session id", () async {
+      final service = build()..setViewingSession("s1");
+      await service.sendTail;
       verify(() => viewRepository.sendSessionView("s1")).called(1);
     });
 
-    test("clearViewingSession sends null only when the id matches the current view", () {
+    test("clearViewingSession sends null only when the id matches the current view", () async {
       final service = build()..setViewingSession("s1");
+      await service.sendTail;
       clearInteractions(viewRepository);
 
       service.clearViewingSession("other");
       verifyNever(() => viewRepository.sendSessionView(any()));
 
       service.clearViewingSession("s1");
+      await service.sendTail;
       verify(() => viewRepository.sendSessionView(null)).called(1);
     });
 
     test("re-asserts the current view when the connection returns to connected", () async {
       final service = build()..setViewingSession("s1");
       // Let the seeded status/lifecycle replay settle, then isolate the reconnect.
+      await service.sendTail;
       await Future<void>.delayed(Duration.zero);
       clearInteractions(viewRepository);
 
       status.add(_reconnecting);
       status.add(_connected);
+      await service.sendTail;
       await Future<void>.delayed(Duration.zero);
 
       verify(() => viewRepository.sendSessionView("s1")).called(1);
       service.clearViewingSession("s1");
+      await service.sendTail;
     });
 
     test("background sends null but keeps the session; resume re-asserts", () async {
       final service = build()..setViewingSession("s1");
+      await service.sendTail;
       await Future<void>.delayed(Duration.zero);
       clearInteractions(viewRepository);
 
       lifecycle.emit(LifecycleState.paused);
+      await service.sendTail;
       await Future<void>.delayed(Duration.zero);
       verify(() => viewRepository.sendSessionView(null)).called(1);
 
       lifecycle.emit(LifecycleState.resumed);
+      await service.sendTail;
       await Future<void>.delayed(Duration.zero);
       verify(() => viewRepository.sendSessionView("s1")).called(1);
       service.clearViewingSession("s1");
+      await service.sendTail;
     });
   });
 }

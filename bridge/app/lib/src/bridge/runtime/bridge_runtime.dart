@@ -232,9 +232,27 @@ class BridgeRuntime {
   Future<void> close() async {
     // Dispose the global unseen collaborators here (their owner), not in
     // OrchestratorSession (a consumer that may be recreated across restarts).
-    await _sessionUnseenService.dispose();
-    await _sessionViewTracker.dispose();
-    await _database.close();
+    // Each step is isolated so one failure cannot skip the remaining cleanup;
+    // the first error is preserved and rethrown after everything has run.
+    Object? firstError;
+    StackTrace? firstStackTrace;
+
+    Future<void> step(Future<void> Function() dispose) async {
+      try {
+        await dispose();
+      } catch (error, stackTrace) {
+        firstError ??= error;
+        firstStackTrace ??= stackTrace;
+      }
+    }
+
+    await step(_sessionUnseenService.dispose);
+    await step(_sessionViewTracker.dispose);
+    await step(_database.close);
+
+    if (firstError != null) {
+      Error.throwWithStackTrace(firstError!, firstStackTrace!);
+    }
   }
 }
 

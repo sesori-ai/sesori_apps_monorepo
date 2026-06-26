@@ -661,6 +661,13 @@ class SessionListCubit extends Cubit<SessionListState> {
     switch (sessionsResponse) {
       case SuccessResponse(:final data):
         _allSessions = data.items;
+        // The REST list is authoritative at fetch time — push it into the
+        // tracker so a stale live `true` can't keep a row bold after a clear
+        // event was missed (e.g. seen on another phone while reconnecting).
+        _sessionUnseenTracker.reconcileSessionUnseen(
+          projectId: _projectId,
+          unseenBySessionId: {for (final s in data.items) s.id: s.unseen},
+        );
         _emitFiltered();
         return true;
 

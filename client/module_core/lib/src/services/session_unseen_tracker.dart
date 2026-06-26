@@ -48,11 +48,31 @@ class SessionUnseenTracker with Disposable {
   /// (a REST `/projects` refresh). This keeps the tracker as the single source
   /// of truth so a stale live `true` (e.g. after the last unseen session was
   /// archived without a follow-up SSE event) cannot indefinitely override a
-  /// fresh aggregate. Per-session state is left untouched.
+  /// fresh aggregate.
   void reconcileProjectUnseen(Map<String, bool> unseenByProjectId) {
     if (_projectUnseen.isClosed) return;
     final projects = Map<String, bool>.from(_projectUnseen.value);
     projects.addAll(unseenByProjectId);
+    _projectUnseen.add(projects);
+  }
+
+  /// Reconciles the per-session unseen state for [projectId] from an
+  /// authoritative source (a REST `/sessions` refresh). Replaces the tracked
+  /// session map for that project so a stale live `true` cannot keep a row bold
+  /// after a clear event was missed (e.g. the session was seen on another phone
+  /// while this client was reconnecting). Also refreshes the project-level
+  /// aggregate so the two stay consistent.
+  void reconcileSessionUnseen({
+    required String projectId,
+    required Map<String, bool> unseenBySessionId,
+  }) {
+    if (_sessionUnseen.isClosed) return;
+    final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
+    sessions[projectId] = Map<String, bool>.from(unseenBySessionId);
+    _sessionUnseen.add(sessions);
+
+    final projects = Map<String, bool>.from(_projectUnseen.value);
+    projects[projectId] = unseenBySessionId.values.any((unseen) => unseen);
     _projectUnseen.add(projects);
   }
 
