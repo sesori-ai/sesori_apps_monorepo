@@ -643,6 +643,9 @@ class SessionListCubit extends Cubit<SessionListState> {
   }
 
   Future<bool> _fetchSessions({bool silent = false, bool waitForPrData = false}) async {
+    // Capture the tracker generation BEFORE the fetch so a live update that
+    // arrives while it's in flight isn't overwritten by this (older) snapshot.
+    final unseenGeneration = _sessionUnseenTracker.generation;
     final (sessionsResponse, baseBranchResponse) = await (
       _projectService.listSessions(
         projectId: _projectId,
@@ -675,6 +678,7 @@ class SessionListCubit extends Cubit<SessionListState> {
             for (final s in data.items)
               if (s.time?.archived == null) s.id: s.unseen,
           },
+          sinceGeneration: unseenGeneration,
         );
         _emitFiltered();
         return true;

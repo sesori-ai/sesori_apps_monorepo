@@ -479,6 +479,9 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   }
 
   Future<bool> _fetchProjects({bool silent = false}) async {
+    // Capture the tracker generation BEFORE the fetch so a live update that
+    // arrives while it's in flight isn't overwritten by this (older) snapshot.
+    final unseenGeneration = _sessionUnseenTracker.generation;
     final projectResponse = await _projectService.listProjects();
     if (isClosed) return false;
 
@@ -487,9 +490,10 @@ class ProjectListCubit extends Cubit<ProjectListState> {
         // The REST aggregate is authoritative at fetch time — push it into the
         // tracker so a stale live `true` cannot keep a project bold after its
         // last unseen session was archived/deleted without a follow-up event.
-        _sessionUnseenTracker.reconcileProjectUnseen({
-          for (final p in projects) p.id: p.hasUnseenChanges,
-        });
+        _sessionUnseenTracker.reconcileProjectUnseen(
+          {for (final p in projects) p.id: p.hasUnseenChanges},
+          sinceGeneration: unseenGeneration,
+        );
         emit(
           ProjectListState.loaded(
             projects: projects,

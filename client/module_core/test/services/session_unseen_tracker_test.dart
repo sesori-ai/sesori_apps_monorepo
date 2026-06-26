@@ -61,6 +61,35 @@ void main() {
       tracker.onDispose();
     });
 
+    test("reconcile is skipped for a project with a newer live update (generation guard)", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // A REST fetch starts here.
+      final gen = tracker.generation;
+
+      // A live event for p1 arrives while the fetch is in flight.
+      events.add(unseenEvent(projectID: "p1", sessionId: "s1", unseen: true, projectHasUnseenChanges: true));
+      await Future<void>.delayed(Duration.zero);
+
+      // The (older) REST snapshot now tries to clear p1 — it must be ignored.
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": false},
+        sinceGeneration: gen,
+      );
+      expect(tracker.currentProjectUnseen["p1"], isTrue);
+      expect(tracker.currentSessionUnseen["p1"]?["s1"], isTrue);
+
+      // A fresh fetch (generation captured after the live event) reconciles.
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": false},
+        sinceGeneration: tracker.generation,
+      );
+      expect(tracker.currentProjectUnseen["p1"], isFalse);
+      tracker.onDispose();
+    });
+
     test("a later seen event clears the session and updates the project aggregate", () async {
       final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
 

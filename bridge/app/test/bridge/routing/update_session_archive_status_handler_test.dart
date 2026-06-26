@@ -50,6 +50,7 @@ void main() {
             db: db,
           ),
         ),
+        sessionUnseenService: buildTestSessionUnseenService(db, plugin),
       );
     });
 

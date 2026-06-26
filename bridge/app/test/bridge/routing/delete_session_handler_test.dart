@@ -47,6 +47,7 @@ void main() {
           sessionDao: db.sessionDao,
           db: db,
         ),
+        sessionUnseenService: buildTestSessionUnseenService(db, plugin),
       );
     });
 

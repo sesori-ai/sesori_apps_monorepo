@@ -11,6 +11,7 @@ import "../services/pr_sync_service.dart";
 import "../services/session_archive_service.dart";
 import "../services/session_creation_service.dart";
 import "../services/session_persistence_service.dart";
+import "../services/session_unseen_service.dart";
 import "../services/worktree_service.dart";
 import "abort_session_handler.dart";
 import "create_project_handler.dart";
@@ -77,6 +78,7 @@ class RequestRouter {
     required GetAgentsHandler getAgentsHandler,
     required PostAgentsHandler postAgentsHandler,
     required MarkSessionSeenHandler markSessionSeenHandler,
+    required SessionUnseenService sessionUnseenService,
     required BridgeRestartService restartService,
   }) : _handlers = _buildHandlers(
          plugin: plugin,
@@ -97,6 +99,7 @@ class RequestRouter {
          getAgentsHandler: getAgentsHandler,
          postAgentsHandler: postAgentsHandler,
          markSessionSeenHandler: markSessionSeenHandler,
+         sessionUnseenService: sessionUnseenService,
          restartService: restartService,
        );
 
@@ -119,6 +122,7 @@ class RequestRouter {
     required GetAgentsHandler getAgentsHandler,
     required PostAgentsHandler postAgentsHandler,
     required MarkSessionSeenHandler markSessionSeenHandler,
+    required SessionUnseenService sessionUnseenService,
     required BridgeRestartService restartService,
   }) {
     return [
@@ -139,12 +143,16 @@ class RequestRouter {
       CreateSessionHandler(sessionCreationService: sessionCreationService),
       RenameSessionHandler(sessionRepository: sessionRepository),
       markSessionSeenHandler,
-      UpdateSessionArchiveStatusHandler(sessionArchiveService: sessionArchiveService),
+      UpdateSessionArchiveStatusHandler(
+        sessionArchiveService: sessionArchiveService,
+        sessionUnseenService: sessionUnseenService,
+      ),
       DeleteSessionHandler(
         plugin: plugin,
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
         sessionPersistenceService: sessionPersistenceService,
+        sessionUnseenService: sessionUnseenService,
       ),
       sendPromptHandler,
       abortSessionHandler,

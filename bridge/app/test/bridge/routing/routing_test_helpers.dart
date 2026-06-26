@@ -14,14 +14,47 @@ import "package:sesori_bridge/src/bridge/repositories/mappers/prompt_part_mapper
 import "package:sesori_bridge/src/bridge/repositories/mappers/pull_request_mapper.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/sse/sse_manager.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
+
+/// Builds a real [SessionUnseenService] backed by [db] for handler/router tests.
+SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginApi plugin) {
+  const calculator = SessionUnseenCalculator();
+  return SessionUnseenService(
+    unseenRepository: SessionUnseenRepository(
+      sessionDao: db.sessionDao,
+      projectsDao: db.projectsDao,
+      db: db,
+      calculator: calculator,
+    ),
+    projectRepository: ProjectRepository(
+      plugin: plugin,
+      projectsDao: db.projectsDao,
+      sessionDao: db.sessionDao,
+      unseenCalculator: calculator,
+    ),
+    sessionRepository: SessionRepository(
+      plugin: plugin,
+      sessionDao: db.sessionDao,
+      pullRequestRepository: PullRequestRepository(
+        pullRequestDao: db.pullRequestDao,
+        projectsDao: db.projectsDao,
+      ),
+      unseenCalculator: calculator,
+    ),
+    viewTracker: SessionViewTracker(),
+  );
+}
 
 /// Convenience factory for [RelayRequest] instances in tests.
 RelayRequest makeRequest(

@@ -282,6 +282,7 @@ class OrchestratorSession {
          prSyncService: prSyncService,
          projectRepository: projectRepository,
          markSessionSeenHandler: MarkSessionSeenHandler(sessionUnseenService: sessionUnseenService),
+         sessionUnseenService: sessionUnseenService,
          providerRepository: ProviderRepository(plugin: plugin),
          getAgentsHandler: GetAgentsHandler(
            AgentRepository(plugin: plugin),

@@ -39,12 +39,10 @@ class SessionUnseenService {
   final StreamController<UnseenChange> _changes = StreamController<UnseenChange>.broadcast();
   StreamSubscription<String>? _viewStartsSubscription;
 
-  /// Per-session write tail. All mutations for one session are chained here so
-  /// they commit in submission order — without this, two fire-and-forget
-  /// activity events for the same session could persist out of order (e.g. a
-  /// user message then an assistant message writing in reverse, wrongly
-  /// clearing the unseen flag).
-  final Map<String, Future<void>> _sessionWriteTails = {};
+  /// Single global write tail. All unseen mutations (across all sessions) are
+  /// chained here so both per-session writes and the project-level aggregate
+  /// emits happen in submission order. See [_serialize].
+  Future<void> _writeTail = Future<void>.value();
 
   /// Session ids that had no persisted row and didn't resolve to a project
   /// (i.e. child/subagent sessions), mapped to the time the negative result was
@@ -257,6 +255,18 @@ class SessionUnseenService {
     });
   }
 
+  /// Recomputes and emits the unseen state for [sessionId] after a change made
+  /// outside this service that can flip the project aggregate — archiving /
+  /// unarchiving a session (archived rows are excluded from the aggregate), or a
+  /// local `DELETE /session/delete` that already removed the row. [projectId] is
+  /// required because the row may be gone (deleted). When the row no longer
+  /// exists the session is reported `unseen: false`.
+  Future<void> notifyExternalChange({required String sessionId, required String projectId}) {
+    return _serialize(sessionId, () async {
+      await _emit(sessionId: sessionId, projectId: projectId);
+    });
+  }
+
   Future<void> _onViewStarted(String sessionId) {
     return _serialize(sessionId, () async {
       final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
@@ -270,36 +280,35 @@ class SessionUnseenService {
     });
   }
 
-  /// Runs [operation] after any in-flight write for [sessionId] completes, so
-  /// ordered events for the same session commit in order.
+  /// Runs [operation] after any in-flight unseen write completes.
+  ///
+  /// Serialization is GLOBAL (a single tail), not per-session: an operation
+  /// emits the project-level aggregate as authoritative, so two operations on
+  /// different sessions of the same project must also be ordered — otherwise
+  /// "mark A read" (aggregate=false) could be emitted after "B got activity"
+  /// (aggregate=true) and leave clients with a stale `false`. A global queue
+  /// keeps both the per-session writes and the cross-session aggregate emits in
+  /// submission order. The operations are tiny, infrequent DB writes, so the
+  /// reduced concurrency is irrelevant.
   ///
   /// By default failures are caught and logged so fire-and-forget callers (the
   /// orchestrator's SSE path) never see an unhandled async error. User-initiated
   /// operations pass [rethrowErrors] so the failure surfaces to the request
-  /// handler (which turns it into a non-2xx response) — while still keeping the
-  /// per-session ordering intact for any writes chained after it.
+  /// handler (which turns it into a non-2xx response) — while keeping the queue
+  /// intact for writes chained after it.
   Future<void> _serialize(
     String sessionId,
     Future<void> Function() operation, {
     bool rethrowErrors = false,
   }) {
-    final previous = _sessionWriteTails[sessionId] ?? Future<void>.value();
     // The chain must continue regardless of this op's outcome, so the tail used
     // for ordering swallows errors; the returned future (for the caller) may
     // rethrow when requested.
-    final result = previous.then((_) => operation());
-    final tail = result.catchError((Object error, StackTrace stackTrace) {
+    final result = _writeTail.then((_) => operation());
+    _writeTail = result.catchError((Object error, StackTrace stackTrace) {
       Log.w("unseen update failed for session $sessionId", error, stackTrace);
     });
-    _sessionWriteTails[sessionId] = tail;
-    unawaited(
-      tail.whenComplete(() {
-        if (identical(_sessionWriteTails[sessionId], tail)) {
-          _sessionWriteTails.remove(sessionId);
-        }
-      }),
-    );
-    return rethrowErrors ? result : tail;
+    return rethrowErrors ? result : _writeTail;
   }
 
   Future<void> _emit({required String sessionId, required String projectId}) async {
@@ -322,9 +331,9 @@ class SessionUnseenService {
 
   Future<void> dispose() async {
     await _viewStartsSubscription?.cancel();
-    // Let in-flight serialized writes finish (their tails swallow errors) before
+    // Let the in-flight write queue drain (the tail swallows errors) before
     // closing the stream, so no operation runs against a closed controller.
-    await Future.wait(_sessionWriteTails.values).catchError((_) => const <void>[]);
+    await _writeTail.catchError((_) {});
     await _changes.close();
   }
 }

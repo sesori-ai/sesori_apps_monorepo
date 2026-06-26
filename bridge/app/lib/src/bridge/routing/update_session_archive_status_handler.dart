@@ -4,15 +4,19 @@ import "dart:convert";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../services/session_archive_service.dart";
+import "../services/session_unseen_service.dart";
 import "request_handler.dart";
 
 /// Handles `PATCH /session/update/archive` — updates archive status for a session.
 class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSessionArchiveRequest, Session> {
   final SessionArchiveService _sessionArchiveService;
+  final SessionUnseenService _sessionUnseenService;
 
   UpdateSessionArchiveStatusHandler({
     required SessionArchiveService sessionArchiveService,
+    required SessionUnseenService sessionUnseenService,
   }) : _sessionArchiveService = sessionArchiveService,
+       _sessionUnseenService = sessionUnseenService,
        super(
          HttpMethod.patch,
          "/session/update/archive",
@@ -32,13 +36,20 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
       throw buildErrorResponse(request, 400, "empty session id");
     }
     try {
-      return await _sessionArchiveService.updateArchiveStatus(
+      final session = await _sessionArchiveService.updateArchiveStatus(
         sessionId: sessionId,
         archived: body.archived,
         deleteWorktree: body.deleteWorktree,
         deleteBranch: body.deleteBranch,
         force: body.force,
       );
+      // Archive/unarchive flips whether this session contributes to the project
+      // aggregate (archived rows are excluded), so emit an unseen change for
+      // other connected clients. Fire-and-forget; the service serializes/logs.
+      unawaited(
+        _sessionUnseenService.notifyExternalChange(sessionId: session.id, projectId: session.projectID),
+      );
+      return session;
     } on SessionArchiveConflictException catch (e) {
       throw RelayResponse(
         id: request.id,

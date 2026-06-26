@@ -25,12 +25,25 @@ class SessionUnseenTracker with Disposable {
   // project ID -> (session ID -> unseen).
   final BehaviorSubject<Map<String, Map<String, bool>>> _sessionUnseen = BehaviorSubject.seeded(const {});
 
+  // Monotonic counter bumped on every live SSE update, with the generation at
+  // which each project last received one. A REST reconcile captures the current
+  // generation before its fetch and is skipped for any project that received a
+  // newer live update meanwhile — so a slow REST response can't clobber fresher
+  // live state (a race the cubit's combined session+base-branch await opens).
+  int _generation = 0;
+  final Map<String, int> _projectLiveGeneration = {};
+
   SessionUnseenTracker(
     ConnectionService connectionService, {
     required FailureReporter failureReporter,
   }) : _failureReporter = failureReporter {
     _subscription = connectionService.events.listen(_handleEvent);
   }
+
+  /// Snapshot of the live-update generation. Capture this before starting a REST
+  /// fetch and pass it back to a `reconcile*` call to guard against overwriting
+  /// newer live updates that arrive while the fetch is in flight.
+  int get generation => _generation;
 
   /// project ID -> whether it has unseen changes. Late subscribers get the
   /// latest cached value.
@@ -49,10 +62,17 @@ class SessionUnseenTracker with Disposable {
   /// of truth so a stale live `true` (e.g. after the last unseen session was
   /// archived without a follow-up SSE event) cannot indefinitely override a
   /// fresh aggregate.
-  void reconcileProjectUnseen(Map<String, bool> unseenByProjectId) {
+  ///
+  /// [sinceGeneration] is the [generation] captured before the fetch started;
+  /// projects that received a newer live update meanwhile are left untouched so
+  /// the slow REST snapshot can't clobber fresher live state.
+  void reconcileProjectUnseen(Map<String, bool> unseenByProjectId, {required int sinceGeneration}) {
     if (_projectUnseen.isClosed) return;
     final projects = Map<String, bool>.from(_projectUnseen.value);
-    projects.addAll(unseenByProjectId);
+    for (final entry in unseenByProjectId.entries) {
+      if ((_projectLiveGeneration[entry.key] ?? 0) > sinceGeneration) continue;
+      projects[entry.key] = entry.value;
+    }
     _projectUnseen.add(projects);
   }
 
@@ -62,11 +82,18 @@ class SessionUnseenTracker with Disposable {
   /// after a clear event was missed (e.g. the session was seen on another phone
   /// while this client was reconnecting). Also refreshes the project-level
   /// aggregate so the two stay consistent.
+  ///
+  /// Skipped when a newer live update for [projectId] arrived since
+  /// [sinceGeneration] (captured before the fetch), so a slow REST response
+  /// can't overwrite fresher live state.
   void reconcileSessionUnseen({
     required String projectId,
     required Map<String, bool> unseenBySessionId,
+    required int sinceGeneration,
   }) {
     if (_sessionUnseen.isClosed) return;
+    if ((_projectLiveGeneration[projectId] ?? 0) > sinceGeneration) return;
+
     final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
     sessions[projectId] = Map<String, bool>.from(unseenBySessionId);
     _sessionUnseen.add(sessions);
@@ -85,6 +112,8 @@ class SessionUnseenTracker with Disposable {
             :final unseen,
             :final projectHasUnseenChanges,
           )) {
+        _projectLiveGeneration[projectID] = ++_generation;
+
         final projects = Map<String, bool>.from(_projectUnseen.value);
         projects[projectID] = projectHasUnseenChanges;
         _projectUnseen.add(projects);

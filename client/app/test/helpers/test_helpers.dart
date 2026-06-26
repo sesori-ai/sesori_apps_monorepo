@@ -158,6 +158,19 @@ class FakeSessionUnseenTracker extends Mock implements SessionUnseenTracker {
   @override
   Map<String, Map<String, bool>> get currentSessionUnseen => _sessionUnseen.value;
 
+  @override
+  int get generation => 0;
+
+  @override
+  void reconcileProjectUnseen(Map<String, bool> unseenByProjectId, {required int sinceGeneration}) {}
+
+  @override
+  void reconcileSessionUnseen({
+    required String projectId,
+    required Map<String, bool> unseenBySessionId,
+    required int sinceGeneration,
+  }) {}
+
   void emitProjectUnseen(Map<String, bool> unseen) => _projectUnseen.add(unseen);
 
   void emitSessionUnseen(Map<String, Map<String, bool>> unseen) => _sessionUnseen.add(unseen);
