@@ -12,6 +12,11 @@ sealed class ProjectListState with _$ProjectListState {
   const factory ProjectListState.loaded({
     required List<Project> projects,
     required Map<String, int> activityById,
+
+    /// Map of project ID -> whether it has unseen changes (bold title). Merges
+    /// the REST-seeded `Project.hasUnseenChanges` with live
+    /// `SesoriSessionUnseenChanged` updates, the latter taking precedence.
+    @Default({}) Map<String, bool> unseenByProjectId,
     @Default(false) bool isRefreshing,
   }) = ProjectListLoaded;
 

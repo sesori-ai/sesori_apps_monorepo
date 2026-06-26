@@ -63,6 +63,14 @@ Map<String, dynamic> _$RelaySseUnsubscribeToJson(
   RelaySseUnsubscribe instance,
 ) => <String, dynamic>{'type': instance.$type};
 
+RelaySessionView _$RelaySessionViewFromJson(Map json) => RelaySessionView(
+  sessionId: json['sessionId'] as String?,
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$RelaySessionViewToJson(RelaySessionView instance) =>
+    <String, dynamic>{'sessionId': ?instance.sessionId, 'type': instance.$type};
+
 RelayKeyExchange _$RelayKeyExchangeFromJson(Map json) => RelayKeyExchange(
   publicKey: json['publicKey'] as String,
   $type: json['type'] as String?,

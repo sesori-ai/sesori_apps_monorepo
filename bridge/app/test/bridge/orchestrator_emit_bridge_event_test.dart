@@ -21,10 +21,14 @@ import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/completion_push_listener.dart";
@@ -59,10 +63,13 @@ void main() {
       plugin: plugin,
       sessionDao: database.sessionDao,
       pullRequestRepository: pullRequestRepository,
+      unseenCalculator: const SessionUnseenCalculator(),
     );
     final projectRepository = ProjectRepository(
       plugin: plugin,
       projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      unseenCalculator: const SessionUnseenCalculator(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
@@ -110,6 +117,22 @@ void main() {
       prSyncService: fakePrSyncService,
       sessionRepository: sessionRepository,
       projectRepository: projectRepository,
+        sessionUnseenService: SessionUnseenService(
+          unseenRepository: SessionUnseenRepository(
+            sessionDao: database.sessionDao,
+            projectsDao: database.projectsDao,
+            db: database,
+            calculator: const SessionUnseenCalculator(),
+          ),
+          projectRepository: ProjectRepository(
+            plugin: plugin,
+            projectsDao: database.projectsDao,
+            sessionDao: database.sessionDao,
+            unseenCalculator: const SessionUnseenCalculator(),
+          ),
+          viewTracker: SessionViewTracker(),
+        ),
+        sessionViewTracker: SessionViewTracker(),
       permissionRepository: permissionRepository,
       questionRepository: QuestionRepository(plugin: plugin),
       sessionPersistenceService: sessionPersistenceService,
@@ -190,6 +213,7 @@ void main() {
       plugin: plugin,
       sessionDao: database.sessionDao,
       pullRequestRepository: pullRequestRepository,
+      unseenCalculator: const SessionUnseenCalculator(),
     );
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
@@ -200,7 +224,7 @@ void main() {
       sessionRepository: sessionRepository,
       failureReporter: FakeFailureReporter(),
     );
-    final projectRepository = ProjectRepository(plugin: plugin, projectsDao: database.projectsDao);
+    final projectRepository = ProjectRepository(plugin: plugin, projectsDao: database.projectsDao, sessionDao: database.sessionDao, unseenCalculator: const SessionUnseenCalculator(),);
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
@@ -238,6 +262,22 @@ void main() {
       prSyncService: fakePrSyncService,
       sessionRepository: sessionRepository,
       projectRepository: projectRepository,
+        sessionUnseenService: SessionUnseenService(
+          unseenRepository: SessionUnseenRepository(
+            sessionDao: database.sessionDao,
+            projectsDao: database.projectsDao,
+            db: database,
+            calculator: const SessionUnseenCalculator(),
+          ),
+          projectRepository: ProjectRepository(
+            plugin: plugin,
+            projectsDao: database.projectsDao,
+            sessionDao: database.sessionDao,
+            unseenCalculator: const SessionUnseenCalculator(),
+          ),
+          viewTracker: SessionViewTracker(),
+        ),
+        sessionViewTracker: SessionViewTracker(),
       permissionRepository: permissionRepository,
       questionRepository: QuestionRepository(plugin: plugin),
       sessionPersistenceService: sessionPersistenceService,
@@ -307,6 +347,7 @@ void main() {
       plugin: plugin,
       sessionDao: database.sessionDao,
       pullRequestRepository: pullRequestRepository,
+      unseenCalculator: const SessionUnseenCalculator(),
     );
     final enrichGate = Completer<void>();
     final sessionRepository = _DelayingSessionRepository(
@@ -316,6 +357,8 @@ void main() {
     final projectRepository = ProjectRepository(
       plugin: plugin,
       projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      unseenCalculator: const SessionUnseenCalculator(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
@@ -394,6 +437,22 @@ void main() {
       prSyncService: _FakePrSyncService(),
       sessionRepository: sessionRepository,
       projectRepository: projectRepository,
+        sessionUnseenService: SessionUnseenService(
+          unseenRepository: SessionUnseenRepository(
+            sessionDao: database.sessionDao,
+            projectsDao: database.projectsDao,
+            db: database,
+            calculator: const SessionUnseenCalculator(),
+          ),
+          projectRepository: ProjectRepository(
+            plugin: plugin,
+            projectsDao: database.projectsDao,
+            sessionDao: database.sessionDao,
+            unseenCalculator: const SessionUnseenCalculator(),
+          ),
+          viewTracker: SessionViewTracker(),
+        ),
+        sessionViewTracker: SessionViewTracker(),
       permissionRepository: permissionRepository,
       questionRepository: QuestionRepository(plugin: plugin),
       sessionPersistenceService: sessionPersistenceService,
@@ -470,10 +529,13 @@ void main() {
       plugin: plugin,
       sessionDao: database.sessionDao,
       pullRequestRepository: pullRequestRepository,
+      unseenCalculator: const SessionUnseenCalculator(),
     );
     final projectRepository = ProjectRepository(
       plugin: plugin,
       projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      unseenCalculator: const SessionUnseenCalculator(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
@@ -521,6 +583,22 @@ void main() {
       prSyncService: _FakePrSyncService(),
       sessionRepository: sessionRepository,
       projectRepository: projectRepository,
+        sessionUnseenService: SessionUnseenService(
+          unseenRepository: SessionUnseenRepository(
+            sessionDao: database.sessionDao,
+            projectsDao: database.projectsDao,
+            db: database,
+            calculator: const SessionUnseenCalculator(),
+          ),
+          projectRepository: ProjectRepository(
+            plugin: plugin,
+            projectsDao: database.projectsDao,
+            sessionDao: database.sessionDao,
+            unseenCalculator: const SessionUnseenCalculator(),
+          ),
+          viewTracker: SessionViewTracker(),
+        ),
+        sessionViewTracker: SessionViewTracker(),
       permissionRepository: permissionRepository,
       questionRepository: QuestionRepository(plugin: plugin),
       sessionPersistenceService: sessionPersistenceService,
@@ -568,10 +646,13 @@ void main() {
       plugin: plugin,
       sessionDao: database.sessionDao,
       pullRequestRepository: pullRequestRepository,
+      unseenCalculator: const SessionUnseenCalculator(),
     );
     final projectRepository = ProjectRepository(
       plugin: plugin,
       projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      unseenCalculator: const SessionUnseenCalculator(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
@@ -619,6 +700,22 @@ void main() {
       prSyncService: _FakePrSyncService(),
       sessionRepository: sessionRepository,
       projectRepository: projectRepository,
+        sessionUnseenService: SessionUnseenService(
+          unseenRepository: SessionUnseenRepository(
+            sessionDao: database.sessionDao,
+            projectsDao: database.projectsDao,
+            db: database,
+            calculator: const SessionUnseenCalculator(),
+          ),
+          projectRepository: ProjectRepository(
+            plugin: plugin,
+            projectsDao: database.projectsDao,
+            sessionDao: database.sessionDao,
+            unseenCalculator: const SessionUnseenCalculator(),
+          ),
+          viewTracker: SessionViewTracker(),
+        ),
+        sessionViewTracker: SessionViewTracker(),
       permissionRepository: permissionRepository,
       questionRepository: QuestionRepository(plugin: plugin),
       sessionPersistenceService: sessionPersistenceService,
@@ -691,10 +788,13 @@ void main() {
       plugin: plugin,
       sessionDao: database.sessionDao,
       pullRequestRepository: pullRequestRepository,
+      unseenCalculator: const SessionUnseenCalculator(),
     );
     final projectRepository = ProjectRepository(
       plugin: plugin,
       projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      unseenCalculator: const SessionUnseenCalculator(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
@@ -742,6 +842,22 @@ void main() {
       prSyncService: _FakePrSyncService(),
       sessionRepository: sessionRepository,
       projectRepository: projectRepository,
+        sessionUnseenService: SessionUnseenService(
+          unseenRepository: SessionUnseenRepository(
+            sessionDao: database.sessionDao,
+            projectsDao: database.projectsDao,
+            db: database,
+            calculator: const SessionUnseenCalculator(),
+          ),
+          projectRepository: ProjectRepository(
+            plugin: plugin,
+            projectsDao: database.projectsDao,
+            sessionDao: database.sessionDao,
+            unseenCalculator: const SessionUnseenCalculator(),
+          ),
+          viewTracker: SessionViewTracker(),
+        ),
+        sessionViewTracker: SessionViewTracker(),
       permissionRepository: permissionRepository,
       questionRepository: QuestionRepository(plugin: plugin),
       sessionPersistenceService: sessionPersistenceService,

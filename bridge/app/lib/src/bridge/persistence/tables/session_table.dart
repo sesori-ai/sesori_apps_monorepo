@@ -44,6 +44,19 @@ class SessionTable extends Table {
   TextColumn get lastAgentModel => text().nullable().map(const AgentModelConverter())();
   IntColumn get createdAt => integer()();
 
+  // ── Unseen-changes tracking (ms since epoch; null == 0 == "seen") ──────────
+  // Last activity of ANY kind (user OR AI message, question.asked,
+  // permission.asked).
+  IntColumn get lastActivityAt => integer().nullable()();
+
+  // Last time the user "saw" this session: viewing the detail screen (open /
+  // while-viewing / close) or an explicit "Mark as Read".
+  IntColumn get lastSeenAt => integer().nullable()();
+
+  // Last user-originated interaction (user message, question/permission reply).
+  // Kept pure (separate from viewing) for forward-looking features.
+  IntColumn get lastUserMessageAt => integer().nullable()();
+
   @override
   bool get withoutRowId => true;
 
@@ -65,6 +78,9 @@ sealed class SessionDto with _$SessionDto, $SessionTableTableToColumns {
     required String? lastAgent,
     required AgentModel? lastAgentModel,
     required int createdAt,
+    required int? lastActivityAt,
+    required int? lastSeenAt,
+    required int? lastUserMessageAt,
   }) = _SessionDto;
 
   const SessionDto._();

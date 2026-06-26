@@ -35,6 +35,7 @@ export "src/models/sesori/discover_project_request.dart";
 export "src/models/sesori/file_diff.dart";
 export "src/models/sesori/filesystem_suggestion.dart";
 export "src/models/sesori/health_response.dart";
+export "src/models/sesori/mark_session_seen_request.dart";
 export "src/models/sesori/message.dart";
 export "src/models/sesori/message_part.dart";
 export "src/models/sesori/message_with_parts.dart";

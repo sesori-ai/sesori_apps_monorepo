@@ -232,6 +232,15 @@ class ConnectionService {
     _activeDirectory = directory;
   }
 
+  /// Stateless transport primitive: declares to the bridge which session this
+  /// phone is currently viewing ([sessionId] == null when viewing nothing).
+  /// Fire-and-forget; silently no-ops when not connected. The viewing-state
+  /// machine (current session, reconnect/lifecycle re-assert) is owned by
+  /// `SessionViewingService` (Layer 3), not here.
+  Future<void> sendSessionView(String? sessionId) async {
+    await _relayClient?.sendSessionView(sessionId);
+  }
+
   /// Connects to the server. Health-checks first, then opens SSE stream
   /// for ongoing heartbeat monitoring.
   Future<ApiResponse<HealthResponse>> connect(

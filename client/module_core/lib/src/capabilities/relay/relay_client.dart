@@ -357,6 +357,16 @@ class RelayClient {
     return controller.stream;
   }
 
+  /// Declares to the bridge which session this phone is currently viewing
+  /// ([sessionId] == null when viewing nothing). Fire-and-forget control
+  /// message; no-op when not connected.
+  Future<void> sendSessionView(String? sessionId) async {
+    if (!isConnected || _sessionEncryptor == null) {
+      return;
+    }
+    await _sendEncryptedMessage(RelayMessage.sessionView(sessionId: sessionId));
+  }
+
   Future<void> disconnect() async {
     if (_disposed) {
       return;

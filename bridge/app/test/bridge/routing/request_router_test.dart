@@ -10,11 +10,14 @@ import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/abort_session_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/get_agents_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/get_commands_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/get_session_diffs_handler.dart";
+import "package:sesori_bridge/src/bridge/routing/handlers/mark_session_seen_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/post_agents_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
 import "package:sesori_bridge/src/bridge/routing/send_prompt_handler.dart";
@@ -23,6 +26,8 @@ import "package:sesori_bridge/src/bridge/services/session_archive_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -48,8 +53,9 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         pullRequestRepository: PullRequestRepository(pullRequestDao: db.pullRequestDao, projectsDao: db.projectsDao),
+        unseenCalculator: const SessionUnseenCalculator(),
       );
-      final projectRepository = ProjectRepository(plugin: plugin, projectsDao: db.projectsDao);
+      final projectRepository = ProjectRepository(plugin: plugin, projectsDao: db.projectsDao, sessionDao: db.sessionDao, unseenCalculator: const SessionUnseenCalculator(),);
       final providerRepository = ProviderRepository(plugin: plugin);
       final permissionRepository = PermissionRepository(plugin: plugin);
       final questionRepository = QuestionRepository(plugin: plugin);
@@ -105,6 +111,23 @@ void main() {
         providerRepository: providerRepository,
         getAgentsHandler: GetAgentsHandler(AgentRepository(plugin: plugin)),
         postAgentsHandler: PostAgentsHandler(AgentRepository(plugin: plugin)),
+        markSessionSeenHandler: MarkSessionSeenHandler(
+          sessionUnseenService: SessionUnseenService(
+            unseenRepository: SessionUnseenRepository(
+              sessionDao: db.sessionDao,
+              projectsDao: db.projectsDao,
+              db: db,
+              calculator: const SessionUnseenCalculator(),
+            ),
+            projectRepository: ProjectRepository(
+              plugin: plugin,
+              projectsDao: db.projectsDao,
+              sessionDao: db.sessionDao,
+              unseenCalculator: const SessionUnseenCalculator(),
+            ),
+            viewTracker: SessionViewTracker(),
+          ),
+        ),
         permissionRepository: permissionRepository,
         questionRepository: questionRepository,
         sessionPersistenceService: sessionPersistenceService,
@@ -382,7 +405,7 @@ void main() {
         pullRequestRepository: fakePullRequestRepository,
       );
 
-      final projectRepository = ProjectRepository(plugin: plugin, projectsDao: db.projectsDao);
+      final projectRepository = ProjectRepository(plugin: plugin, projectsDao: db.projectsDao, sessionDao: db.sessionDao, unseenCalculator: const SessionUnseenCalculator(),);
       final providerRepository = ProviderRepository(plugin: plugin);
       final permissionRepository = PermissionRepository(plugin: plugin);
       final sessionPersistenceService = SessionPersistenceService(
@@ -409,6 +432,7 @@ void main() {
             pullRequestDao: db.pullRequestDao,
             projectsDao: db.projectsDao,
           ),
+          unseenCalculator: const SessionUnseenCalculator(),
         ),
         processRunner: FakeProcessRunner(),
       );
@@ -443,6 +467,23 @@ void main() {
         providerRepository: providerRepository,
         getAgentsHandler: GetAgentsHandler(AgentRepository(plugin: plugin)),
         postAgentsHandler: PostAgentsHandler(AgentRepository(plugin: plugin)),
+        markSessionSeenHandler: MarkSessionSeenHandler(
+          sessionUnseenService: SessionUnseenService(
+            unseenRepository: SessionUnseenRepository(
+              sessionDao: db.sessionDao,
+              projectsDao: db.projectsDao,
+              db: db,
+              calculator: const SessionUnseenCalculator(),
+            ),
+            projectRepository: ProjectRepository(
+              plugin: plugin,
+              projectsDao: db.projectsDao,
+              sessionDao: db.sessionDao,
+              unseenCalculator: const SessionUnseenCalculator(),
+            ),
+            viewTracker: SessionViewTracker(),
+          ),
+        ),
         permissionRepository: permissionRepository,
         questionRepository: QuestionRepository(plugin: plugin),
         sessionPersistenceService: sessionPersistenceService,

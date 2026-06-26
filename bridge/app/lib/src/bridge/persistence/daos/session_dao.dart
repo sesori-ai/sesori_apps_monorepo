@@ -6,6 +6,16 @@ import "../tables/session_table.dart";
 
 part "session_dao.g.dart";
 
+/// Raw unseen-relevant columns for one session row. The unseen formula is
+/// applied in the repository layer, not here.
+typedef SessionUnseenRow = ({
+  String sessionId,
+  int? archivedAt,
+  int? activityAt,
+  int? seenAt,
+  int? userMessageAt,
+});
+
 @DriftAccessor(tables: [SessionTable])
 class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   SessionDao(super.attachedDatabase);
@@ -70,6 +80,57 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
 
   Future<List<SessionDto>> getSessionsByProject({required String projectId}) async {
     return (select(sessionTable)..where((t) => t.projectId.equals(projectId))).get();
+  }
+
+  // ── Unseen-changes tracking ──────────────────────────────────────────────
+
+  /// Sets [lastActivityAt] for [sessionId], and optionally advances
+  /// [lastUserMessageAt] and/or [lastSeenAt] in the same write. Each `null`
+  /// argument leaves that column untouched. Affects 0 rows when the session is
+  /// not persisted (e.g. a child session) — a deliberate no-op.
+  Future<void> setActivityTimestamps({
+    required String sessionId,
+    required int activityAt,
+    required int? userMessageAt,
+    required int? seenAt,
+  }) async {
+    await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
+      SessionTableCompanion(
+        lastActivityAt: Value(activityAt),
+        lastUserMessageAt: userMessageAt == null ? const Value.absent() : Value(userMessageAt),
+        lastSeenAt: seenAt == null ? const Value.absent() : Value(seenAt),
+      ),
+    );
+  }
+
+  /// Sets [lastSeenAt] for [sessionId] (used by viewing + "Mark as Read").
+  Future<void> setSeenAt({required String sessionId, required int seenAt}) async {
+    await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
+      SessionTableCompanion(lastSeenAt: Value(seenAt)),
+    );
+  }
+
+  /// Clears [lastSeenAt] for [sessionId] (used by "Mark as Unread").
+  Future<void> clearSeenAt({required String sessionId}) async {
+    await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
+      const SessionTableCompanion(lastSeenAt: Value(null)),
+    );
+  }
+
+  /// Returns the unseen-relevant columns for every session in [projectId].
+  /// The repository applies the unseen formula; the DAO stays query-only.
+  Future<List<SessionUnseenRow>> getUnseenRowsForProject({required String projectId}) async {
+    final rows = await (select(sessionTable)..where((t) => t.projectId.equals(projectId))).get();
+    return [
+      for (final r in rows)
+        (
+          sessionId: r.sessionId,
+          archivedAt: r.archivedAt,
+          activityAt: r.lastActivityAt,
+          seenAt: r.lastSeenAt,
+          userMessageAt: r.lastUserMessageAt,
+        ),
+    ];
   }
 
   Future<Map<String, SessionDto>> getSessionsByIds({required List<String> sessionIds}) async {

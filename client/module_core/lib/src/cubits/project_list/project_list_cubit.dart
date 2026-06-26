@@ -16,6 +16,7 @@ import "../../platform/route_source.dart";
 import "../../repositories/bridge_repository.dart";
 import "../../routing/app_routes.dart";
 import "../../services/registered_bridges_store.dart";
+import "../../services/session_unseen_tracker.dart";
 import "project_list_state.dart";
 
 /// How long to wait after an activity event before auto-refreshing project
@@ -30,6 +31,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   final ProjectService _projectService;
   final ConnectionService _connectionService;
   final SseEventRepository _sseEventRepository;
+  final SessionUnseenTracker _sessionUnseenTracker;
   final BridgeRepository _bridgeRepository;
   final RegisteredBridgesStore _registeredBridgesStore;
   final FailureReporter _failureReporter;
@@ -41,12 +43,14 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     ConnectionService connectionService,
     SseEventRepository sseEventRepository,
     RouteSource routeSource, {
+    required SessionUnseenTracker sessionUnseenTracker,
     required BridgeRepository bridgeRepository,
     required RegisteredBridgesStore registeredBridgesStore,
     required FailureReporter failureReporter,
   }) : _projectService = projectService,
        _connectionService = connectionService,
        _sseEventRepository = sseEventRepository,
+       _sessionUnseenTracker = sessionUnseenTracker,
        _bridgeRepository = bridgeRepository,
        _registeredBridgesStore = registeredBridgesStore,
        _failureReporter = failureReporter,
@@ -56,6 +60,11 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     // 1. Immediate activity badge updates (no API call).
     _subscriptions.add(
       _sseEventRepository.projectActivity.listen(_onActivityUpdated),
+    );
+
+    // 1b. Immediate unseen (bold) updates (no API call).
+    _subscriptions.add(
+      _sessionUnseenTracker.projectUnseen.listen((_) => _onUnseenUpdated()),
     );
 
     // 2. Auto-refresh: throttled project data fetch, active only while the
@@ -113,9 +122,9 @@ class ProjectListCubit extends Cubit<ProjectListState> {
       if (state case final ProjectListLoaded loaded) {
         if (isClosed) return;
         emit(
-          ProjectListState.loaded(
-            projects: loaded.projects,
+          loaded.copyWith(
             activityById: activityById,
+            unseenByProjectId: _unseenByProjectId(loaded.projects),
           ),
         );
       }
@@ -134,6 +143,22 @@ class ProjectListCubit extends Cubit<ProjectListState> {
             .catchError((_) {}),
       );
     }
+  }
+
+  void _onUnseenUpdated() {
+    if (isClosed) return;
+    if (state case final ProjectListLoaded loaded) {
+      emit(loaded.copyWith(unseenByProjectId: _unseenByProjectId(loaded.projects)));
+    }
+  }
+
+  /// Merges the REST-seeded `Project.hasUnseenChanges` with the live tracker
+  /// map (the tracker takes precedence once it has an entry).
+  Map<String, bool> _unseenByProjectId(List<Project> projects) {
+    final live = _sessionUnseenTracker.currentProjectUnseen;
+    return {
+      for (final project in projects) project.id: live[project.id] ?? project.hasUnseenChanges,
+    };
   }
 
   /// Whether the bridge (the user's computer) is currently unreachable, in
@@ -401,10 +426,12 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     if (isClosed) return;
     if (response is! SuccessResponse) return;
     if (state case final ProjectListLoaded loaded) {
+      final remaining = loaded.projects.where((p) => p.id != projectId).toList();
       emit(
         ProjectListState.loaded(
-          projects: loaded.projects.where((p) => p.id != projectId).toList(),
+          projects: remaining,
           activityById: loaded.activityById,
+          unseenByProjectId: _unseenByProjectId(remaining),
         ),
       );
     }
@@ -462,6 +489,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
           ProjectListState.loaded(
             projects: projects,
             activityById: _sseEventRepository.currentProjectActivity,
+            unseenByProjectId: _unseenByProjectId(projects),
           ),
         );
         return true;

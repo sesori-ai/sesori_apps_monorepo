@@ -14,6 +14,7 @@ import "../../platform/notification_canceller.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
 import "../../services/session_detail_load_service.dart";
+import "../../services/session_viewing_service.dart";
 import "../../utils/model_filter/default_model_selector.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
@@ -25,6 +26,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final SessionRepository _sessionRepository;
   final ConnectionService _connectionService;
   final PermissionRepository _permissionRepository;
+  final SessionViewingService _sessionViewingService;
   static const _defaultModelSelector = DefaultModelSelector();
   final String _sessionId;
   final String _projectId;
@@ -68,6 +70,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required SessionDetailLoadService loadService,
     required SessionRepository promptDispatcher,
     required PermissionRepository permissionRepository,
+    required SessionViewingService sessionViewingService,
     required String sessionId,
     required String projectId,
     required NotificationCanceller notificationCanceller,
@@ -76,6 +79,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
        _sessionRepository = promptDispatcher,
        _connectionService = connectionService,
        _permissionRepository = permissionRepository,
+       _sessionViewingService = sessionViewingService,
        _sessionId = sessionId,
        _projectId = projectId,
        _notificationCanceller = notificationCanceller,
@@ -86,6 +90,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     _globalEventSubscription = _connectionService.events.listen(_handleGlobalEvent);
     _connectionStatusSubscription = _connectionService.status.listen(_onConnectionStatusChanged);
     _staleSubscription = _connectionService.dataMayBeStale.listen((_) => _onDataMayBeStale());
+    // Declare that the user is now viewing this session (marks it seen, and
+    // suppresses bolding while the screen is open).
+    _sessionViewingService.setViewingSession(_sessionId);
     _loadMessages(isReload: false);
   }
 
@@ -413,6 +420,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       SesoriWorktreeReady() ||
       SesoriWorktreeFailed() ||
       SesoriSessionPromptDefaultsChanged() ||
+      // Unseen-state changes are list-level concerns handled by the trackers;
+      // the detail screen does not react to them.
+      SesoriSessionUnseenChanged() ||
       // Intentionally excluded: triggers a silent refresh, but during loading
       // we are already fetching the latest snapshot, so replaying it would
       // cause a redundant refresh immediately after load.
@@ -491,6 +501,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriTuiToastShow() ||
             SesoriWorktreeReady() ||
             SesoriWorktreeFailed() ||
+            SesoriSessionUnseenChanged() ||
             SesoriSessionPromptDefaultsChanged():
           break;
         case SesoriSessionsUpdated(:final projectID):
@@ -1310,6 +1321,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   @override
   Future<void> close() {
+    _sessionViewingService.clearViewingSession(_sessionId);
     _pendingSessionEvents.clear();
     _pendingGlobalEvents.clear();
     _eventSubscription.cancel();

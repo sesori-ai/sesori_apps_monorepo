@@ -2,6 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../persistence/tables/session_table.dart";
+import "../session_unseen_calculator.dart";
 
 /// Maps a [PluginSession] to the shared [Session] type used in relay responses.
 extension PluginSessionMapper on PluginSession {
@@ -44,6 +45,7 @@ Session enrichSharedSession({
   required Session session,
   required SessionDto? storedSession,
   required PullRequestInfo? pullRequest,
+  required SessionUnseenCalculator unseenCalculator,
 }) {
   var result = session;
 
@@ -60,6 +62,11 @@ Session enrichSharedSession({
       time: mergedTime,
       hasWorktree: storedSession.worktreePath != null,
       promptDefaults: _promptDefaultsFromStoredSession(storedSession),
+      unseen: unseenCalculator.isUnseen(
+        activity: storedSession.lastActivityAt,
+        userMessage: storedSession.lastUserMessageAt,
+        seen: storedSession.lastSeenAt,
+      ),
     );
   }
 
@@ -85,6 +92,7 @@ List<Session> enrichSharedSessions({
   required List<Session> sessions,
   required Map<String, SessionDto> storedSessionsById,
   required Map<String, PullRequestInfo> pullRequestsBySessionId,
+  required SessionUnseenCalculator unseenCalculator,
 }) {
   return sessions
       .map(
@@ -92,6 +100,7 @@ List<Session> enrichSharedSessions({
           session: session,
           storedSession: storedSessionsById[session.id],
           pullRequest: pullRequestsBySessionId[session.id],
+          unseenCalculator: unseenCalculator,
         ),
       )
       .toList(growable: false);

@@ -2,7 +2,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Bridg
 import "package:sesori_shared/sesori_shared.dart" show Project;
 
 import "../persistence/daos/projects_dao.dart";
+import "../persistence/daos/session_dao.dart";
 import "mappers/plugin_project_mapper.dart";
+import "session_unseen_calculator.dart";
 
 /// Project data aggregator that fetches plugin projects, persists them
 /// atomically via a single batch insert, and returns the visible/sorted list
@@ -18,12 +20,18 @@ import "mappers/plugin_project_mapper.dart";
 class ProjectRepository {
   final BridgePluginApi _plugin;
   final ProjectsDao _projectsDao;
+  final SessionDao _sessionDao;
+  final SessionUnseenCalculator _unseenCalculator;
 
   ProjectRepository({
     required BridgePluginApi plugin,
     required ProjectsDao projectsDao,
+    required SessionDao sessionDao,
+    required SessionUnseenCalculator unseenCalculator,
   }) : _plugin = plugin,
-       _projectsDao = projectsDao;
+       _projectsDao = projectsDao,
+       _sessionDao = sessionDao,
+       _unseenCalculator = unseenCalculator;
 
   Future<List<Project>> getProjects() async {
     final pluginProjects = await _plugin.getProjects();
@@ -31,11 +39,43 @@ class ProjectRepository {
       projectIds: [for (final p in pluginProjects) p.id],
     );
     final hiddenIds = await _projectsDao.getHiddenProjectIds();
-    final projects = pluginProjects.where((p) => !hiddenIds.contains(p.id)).map((p) => p.toSharedProject()).toList();
+    final visible = pluginProjects.where((p) => !hiddenIds.contains(p.id)).toList(growable: false);
+    final unseenById = await unseenByProjectId(
+      projectIds: [for (final p in visible) p.id],
+    );
+    final projects = visible
+        .map((p) => p.toSharedProject().copyWith(hasUnseenChanges: unseenById[p.id] ?? false))
+        .toList();
     projects.sort(
       (a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0),
     );
     return projects;
+  }
+
+  /// Whether [projectId] has at least one non-archived session with unseen
+  /// changes. Child sessions never have a row, so they cannot contribute.
+  Future<bool> projectHasUnseenChanges({required String projectId}) async {
+    final rows = await _sessionDao.getUnseenRowsForProject(projectId: projectId);
+    for (final row in rows) {
+      if (row.archivedAt != null) continue;
+      if (_unseenCalculator.isUnseen(
+        activity: row.activityAt,
+        userMessage: row.userMessageAt,
+        seen: row.seenAt,
+      )) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Batch variant of [projectHasUnseenChanges] for the `/projects` list.
+  Future<Map<String, bool>> unseenByProjectId({required List<String> projectIds}) async {
+    final result = <String, bool>{};
+    for (final id in projectIds) {
+      result[id] = await projectHasUnseenChanges(projectId: id);
+    }
+    return result;
   }
 
   Future<Project> openProject({required String path}) async {

@@ -13,6 +13,7 @@ import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
 import 'generated/schema_v5.dart' as v5;
 import 'generated/schema_v6.dart' as v6;
+import 'generated/schema_v7.dart' as v7;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -586,6 +587,107 @@ void main() {
                 lastAgent: null,
                 lastAgentModel: null,
                 createdAt: 1700000002000,
+              ),
+            ]),
+          );
+        },
+      );
+    },
+  );
+
+  test('migration v6 → v7 structural validation', () async {
+    final connection = await verifier.startAt(6);
+    final db = AppDatabase(connection);
+
+    await verifier.migrateAndValidate(db, 7);
+    await db.close();
+  });
+
+  test(
+    'migration v6 → v7 preserves sessions and defaults unseen fields to null',
+    () async {
+      const oldProjectsTableData = [
+        v6.ProjectsTableData(
+          projectId: 'project-1',
+          hidden: 0,
+          baseBranch: 'main',
+          worktreeCounter: 2,
+        ),
+      ];
+      const oldSessionsTableData = [
+        v6.SessionsTableData(
+          sessionId: 'session-1',
+          projectId: 'project-1',
+          worktreePath: '/tmp/worktrees/session-1',
+          branchName: 'feat/one',
+          isDedicated: 1,
+          archivedAt: null,
+          baseBranch: 'main',
+          baseCommit: 'abc123',
+          lastAgent: 'build',
+          lastAgentModel: 'anthropic|claude',
+          createdAt: 1700000000000,
+        ),
+        v6.SessionsTableData(
+          sessionId: 'session-2',
+          projectId: 'project-1',
+          worktreePath: null,
+          branchName: null,
+          isDedicated: 0,
+          archivedAt: 1700000001000,
+          baseBranch: null,
+          baseCommit: null,
+          lastAgent: null,
+          lastAgentModel: null,
+          createdAt: 1700000002000,
+        ),
+      ];
+
+      await verifier.testWithDataIntegrity(
+        oldVersion: 6,
+        newVersion: 7,
+        createOld: v6.DatabaseAtV6.new,
+        createNew: v7.DatabaseAtV7.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, oldDb) {
+          batch.insertAll(oldDb.projectsTable, oldProjectsTableData);
+          batch.insertAll(oldDb.sessionsTable, oldSessionsTableData);
+        },
+        validateItems: (newDb) async {
+          expect(
+            await newDb.select(newDb.sessionsTable).get(),
+            unorderedEquals(const [
+              v7.SessionsTableData(
+                sessionId: 'session-1',
+                projectId: 'project-1',
+                worktreePath: '/tmp/worktrees/session-1',
+                branchName: 'feat/one',
+                isDedicated: 1,
+                archivedAt: null,
+                baseBranch: 'main',
+                baseCommit: 'abc123',
+                lastAgent: 'build',
+                lastAgentModel: 'anthropic|claude',
+                createdAt: 1700000000000,
+                lastActivityAt: null,
+                lastSeenAt: null,
+                lastUserMessageAt: null,
+              ),
+              v7.SessionsTableData(
+                sessionId: 'session-2',
+                projectId: 'project-1',
+                worktreePath: null,
+                branchName: null,
+                isDedicated: 0,
+                archivedAt: 1700000001000,
+                baseBranch: null,
+                baseCommit: null,
+                lastAgent: null,
+                lastAgentModel: null,
+                createdAt: 1700000002000,
+                lastActivityAt: null,
+                lastSeenAt: null,
+                lastUserMessageAt: null,
               ),
             ]),
           );

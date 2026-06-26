@@ -39,6 +39,7 @@ class ProjectListScreen extends StatelessWidget {
         getIt<ConnectionService>(),
         getIt<SseEventRepository>(),
         getIt<RouteSource>(),
+        sessionUnseenTracker: getIt<SessionUnseenTracker>(),
         bridgeRepository: getIt<BridgeRepository>(),
         registeredBridgesStore: getIt<RegisteredBridgesStore>(),
         failureReporter: getIt<FailureReporter>(),
@@ -171,7 +172,7 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
           child: hasRegisteredBridges ? const _BridgeOfflineView() : const _BridgeOnboardingView(),
         ),
       ],
-      ProjectListLoaded(:final projects, :final activityById) => [
+      ProjectListLoaded(:final projects, :final activityById, :final unseenByProjectId) => [
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
         if (projects.isEmpty)
           SliverFillRemaining(
@@ -196,6 +197,7 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
                 return _ProjectTile(
                   project: project,
                   activeSessions: activityById[project.id] ?? 0,
+                  unseen: unseenByProjectId[project.id] ?? false,
                   onLongPress: () => _showProjectMenu(context: context, project: project),
                 );
               },

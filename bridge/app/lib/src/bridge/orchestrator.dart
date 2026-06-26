@@ -29,6 +29,7 @@ import "routing/abort_session_handler.dart";
 import "routing/get_agents_handler.dart";
 import "routing/get_commands_handler.dart";
 import "routing/get_session_diffs_handler.dart";
+import "routing/handlers/mark_session_seen_handler.dart";
 import "routing/post_agents_handler.dart";
 import "routing/request_router.dart";
 import "routing/send_prompt_handler.dart";
@@ -39,6 +40,8 @@ import "services/session_creation_service.dart";
 import "services/session_event_enrichment_service.dart";
 import "services/session_persistence_service.dart";
 import "services/session_prompt_service.dart";
+import "services/session_unseen_service.dart";
+import "services/session_view_tracker.dart";
 import "services/worktree_service.dart";
 import "sse/bridge_event_mapper.dart";
 import "sse/sse_manager.dart";
@@ -59,6 +62,8 @@ class Orchestrator {
   final PrSyncService _prSyncService;
   final SessionRepository _sessionRepository;
   final ProjectRepository _projectRepository;
+  final SessionUnseenService _sessionUnseenService;
+  final SessionViewTracker _sessionViewTracker;
   final PermissionRepository _permissionRepository;
   final QuestionRepository _questionRepository;
   final SessionPersistenceService _sessionPersistenceService;
@@ -80,6 +85,8 @@ class Orchestrator {
     required PrSyncService prSyncService,
     required SessionRepository sessionRepository,
     required ProjectRepository projectRepository,
+    required SessionUnseenService sessionUnseenService,
+    required SessionViewTracker sessionViewTracker,
     required PermissionRepository permissionRepository,
     required QuestionRepository questionRepository,
     required SessionPersistenceService sessionPersistenceService,
@@ -98,6 +105,8 @@ class Orchestrator {
        _sessionRepository = sessionRepository,
        _prSyncService = prSyncService,
        _projectRepository = projectRepository,
+       _sessionUnseenService = sessionUnseenService,
+       _sessionViewTracker = sessionViewTracker,
        _permissionRepository = permissionRepository,
        _questionRepository = questionRepository,
        _sessionPersistenceService = sessionPersistenceService,
@@ -143,6 +152,8 @@ class Orchestrator {
       sessionRepository: _sessionRepository,
       prSyncService: _prSyncService,
       projectRepository: _projectRepository,
+      sessionUnseenService: _sessionUnseenService,
+      sessionViewTracker: _sessionViewTracker,
       permissionRepository: _permissionRepository,
       questionRepository: _questionRepository,
       sessionPersistenceService: _sessionPersistenceService,
@@ -183,6 +194,8 @@ class OrchestratorSession {
   final StreamController<int> _bytesSentController;
   final FailureReporter _failureReporter;
   final PrSyncService _prSyncService;
+  final SessionUnseenService _sessionUnseenService;
+  final SessionViewTracker _sessionViewTracker;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final SessionAbortService _sessionAbortService;
   final BridgeRestartService _restartService;
@@ -224,6 +237,8 @@ class OrchestratorSession {
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
     required ProjectRepository projectRepository,
+    required SessionUnseenService sessionUnseenService,
+    required SessionViewTracker sessionViewTracker,
     required PermissionRepository permissionRepository,
     required QuestionRepository questionRepository,
     required SessionPersistenceService sessionPersistenceService,
@@ -245,6 +260,8 @@ class OrchestratorSession {
        _bytesSentController = bytesSentController,
        _failureReporter = failureReporter,
        _prSyncService = prSyncService,
+       _sessionUnseenService = sessionUnseenService,
+       _sessionViewTracker = sessionViewTracker,
        _sessionAbortService = sessionAbortService,
        _restartService = restartService,
        _router = RequestRouter(
@@ -264,6 +281,7 @@ class OrchestratorSession {
          ),
          prSyncService: prSyncService,
          projectRepository: projectRepository,
+         markSessionSeenHandler: MarkSessionSeenHandler(sessionUnseenService: sessionUnseenService),
          providerRepository: ProviderRepository(plugin: plugin),
          getAgentsHandler: GetAgentsHandler(
            AgentRepository(plugin: plugin),
@@ -351,6 +369,18 @@ class OrchestratorSession {
             _sseManager.enqueueEvent(SesoriSseEvent.sessionsUpdated(projectID: projectId));
           })
           .addTo(_subscriptions);
+      _sessionUnseenService.unseenChanges
+          .listen((change) {
+            _sseManager.enqueueEvent(
+              SesoriSseEvent.sessionUnseenChanged(
+                projectID: change.projectId,
+                sessionId: change.sessionId,
+                unseen: change.unseen,
+                projectHasUnseenChanges: change.projectHasUnseenChanges,
+              ),
+            );
+          })
+          .addTo(_subscriptions);
     } catch (e) {
       throw Exception("failed to connect to relay: $e");
     }
@@ -375,6 +405,7 @@ class OrchestratorSession {
         Log.w("Relay connection lost. Reconnecting...");
         _sseManager.orphanAll();
         activePhones.clear();
+        _sessionViewTracker.clearAll();
 
         if (_client.closeCode == RelayCloseCodes.bridgeRevoked) {
           Log.w("Relay reports this bridge as revoked — re-registering with a fresh bridge id");
@@ -423,7 +454,9 @@ class OrchestratorSession {
       Log.v("[shutdown] completion listener disposed (+${teardownSw.elapsedMilliseconds}ms)");
       _maintenanceListener.dispose();
       _prSyncService.dispose();
-      Log.v("[shutdown] maintenance + pr-sync listeners disposed (+${teardownSw.elapsedMilliseconds}ms)");
+      await _sessionUnseenService.dispose();
+      await _sessionViewTracker.dispose();
+      Log.v("[shutdown] maintenance + pr-sync + unseen listeners disposed (+${teardownSw.elapsedMilliseconds}ms)");
       // Plugin teardown is owned by BridgePlugin.shutdown(), run as the
       // shutdown coordinator's ordered step — the deprecated direct
       // api.dispose() call is gone since the descriptor flip.
@@ -520,6 +553,7 @@ class OrchestratorSession {
         );
         _completionListener.handleSseEvent(sesoriEvent);
         _sseManager.enqueueEvent(sesoriEvent);
+        unawaited(_routeUnseenActivity(sesoriEvent));
       } else {
         Log.v("[sse] mapping returned null — event dropped");
       }
@@ -537,6 +571,40 @@ class OrchestratorSession {
             )
             .catchError((_) {}),
       );
+    }
+  }
+
+  /// Feeds an already-mapped [SesoriSseEvent] into the unseen-changes tracker.
+  /// Only message activity and pending input requests advance unseen state;
+  /// everything else is ignored. A user-authored message (or reply) advances the
+  /// "last user message" timestamp in addition to general activity.
+  Future<void> _routeUnseenActivity(SesoriSseEvent event) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    switch (event) {
+      case SesoriSessionCreated(:final info):
+        await _sessionUnseenService.recordSessionCreated(
+          sessionId: info.id,
+          projectId: info.projectID,
+          parentId: info.parentID,
+          createdAt: info.time?.created ?? now,
+        );
+      case SesoriMessageUpdated(:final info):
+        await _sessionUnseenService.recordActivity(
+          sessionId: info.sessionID,
+          at: now,
+          isUserMessage: info is MessageUser,
+        );
+      case SesoriQuestionAsked(:final sessionID):
+        await _sessionUnseenService.recordActivity(sessionId: sessionID, at: now, isUserMessage: false);
+      case SesoriPermissionAsked(:final sessionID):
+        await _sessionUnseenService.recordActivity(sessionId: sessionID, at: now, isUserMessage: false);
+      case SesoriQuestionReplied(:final sessionID):
+        await _sessionUnseenService.recordActivity(sessionId: sessionID, at: now, isUserMessage: true);
+      case SesoriPermissionReplied(:final sessionID):
+        await _sessionUnseenService.recordActivity(sessionId: sessionID, at: now, isUserMessage: true);
+      default:
+        // Not an unseen-relevant event.
+        break;
     }
   }
 
@@ -591,6 +659,7 @@ class OrchestratorSession {
             kxManager.removeExchange(connID);
             activePhones.remove(connID);
             _sseManager.removeSubscriber(connID);
+            _sessionViewTracker.releaseConnection(connID: connID);
         }
         continue;
       }
@@ -820,6 +889,9 @@ class OrchestratorSession {
       case RelaySseUnsubscribe():
         Log.v("SseUnsubscribe connID=$connID");
         _sseManager.unsubscribe(connID);
+      case RelaySessionView(:final sessionId):
+        Log.v("SessionView connID=$connID sessionId=$sessionId");
+        _sessionViewTracker.setViewing(connID: connID, sessionId: sessionId);
       default:
         Log.v("unhandled msg type: ${msg.runtimeType}");
     }

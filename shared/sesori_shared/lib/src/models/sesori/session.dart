@@ -44,6 +44,11 @@ sealed class Session with _$Session {
     required PullRequestInfo? pullRequest,
     required SessionPromptDefaults? promptDefaults,
     @Default(false) bool hasWorktree,
+    // Whether this session has unseen activity (new changes the user has not
+    // viewed). Backend-computed; advances on activity and is cleared by viewing
+    // the session or an explicit mark-as-read. Defaults to false so older
+    // payloads (and the baseline) deserialize as "seen".
+    @Default(false) bool unseen,
   }) = _Session;
 
   factory Session.fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);

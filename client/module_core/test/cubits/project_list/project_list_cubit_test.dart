@@ -50,6 +50,7 @@ void main() {
     late MockRouteSource mockRouteSource;
     late MockBridgeRepository mockBridgeRepository;
     late MockRegisteredBridgesStore mockRegisteredBridgesStore;
+    late FakeSessionUnseenTracker fakeSessionUnseenTracker;
     late MockFailureReporter mockFailureReporter;
     late BehaviorSubject<ConnectionStatus> statusController;
 
@@ -60,6 +61,7 @@ void main() {
       mockRouteSource = MockRouteSource();
       mockBridgeRepository = MockBridgeRepository();
       mockRegisteredBridgesStore = MockRegisteredBridgesStore();
+      fakeSessionUnseenTracker = FakeSessionUnseenTracker();
       mockFailureReporter = MockFailureReporter();
       statusController = BehaviorSubject<ConnectionStatus>.seeded(
         _connectedStatus,
@@ -100,6 +102,7 @@ void main() {
       mockConnectionService,
       mockSseEventRepository,
       mockRouteSource,
+      sessionUnseenTracker: fakeSessionUnseenTracker,
       bridgeRepository: mockBridgeRepository,
       registeredBridgesStore: mockRegisteredBridgesStore,
       failureReporter: mockFailureReporter,

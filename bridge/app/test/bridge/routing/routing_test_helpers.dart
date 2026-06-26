@@ -16,6 +16,7 @@ import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/sse/sse_manager.dart";
@@ -419,6 +420,9 @@ class FakeSessionDao {
       lastAgent: lastAgent,
       lastAgentModel: lastAgentModel,
       createdAt: createdAt,
+      lastActivityAt: null,
+      lastSeenAt: null,
+      lastUserMessageAt: null,
     );
   }
 
@@ -894,6 +898,7 @@ class FakeSessionRepository implements SessionRepository {
       sessions: sessions,
       storedSessionsById: dbSessions,
       pullRequestsBySessionId: pullRequestsBySessionId,
+      unseenCalculator: const SessionUnseenCalculator(),
     );
   }
 

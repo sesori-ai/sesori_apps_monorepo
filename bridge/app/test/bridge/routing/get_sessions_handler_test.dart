@@ -3,6 +3,7 @@ import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/get_sessions_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -346,6 +347,9 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
           createdAt: 100,
+          lastActivityAt: null,
+          lastSeenAt: null,
+          lastUserMessageAt: null,
         ),
       );
 
@@ -416,6 +420,9 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
           createdAt: 100,
+          lastActivityAt: null,
+          lastSeenAt: null,
+          lastUserMessageAt: null,
         ),
       );
 
@@ -477,6 +484,9 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
           createdAt: 100,
+          lastActivityAt: null,
+          lastSeenAt: null,
+          lastUserMessageAt: null,
         ),
       );
       sessionDao.setSession(
@@ -492,6 +502,9 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
           createdAt: 100,
+          lastActivityAt: null,
+          lastSeenAt: null,
+          lastUserMessageAt: null,
         ),
       );
 
@@ -535,6 +548,9 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
           createdAt: 100,
+          lastActivityAt: null,
+          lastSeenAt: null,
+          lastUserMessageAt: null,
         ),
       );
 
@@ -575,6 +591,9 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
           createdAt: 100,
+          lastActivityAt: null,
+          lastSeenAt: null,
+          lastUserMessageAt: null,
         ),
       );
 
@@ -670,6 +689,7 @@ void main() {
             pullRequestDao: db.pullRequestDao,
             projectsDao: db.projectsDao,
           ),
+          unseenCalculator: const SessionUnseenCalculator(),
         ),
         prSyncService: prSyncService,
         sessionPersistenceService: sessionPersistenceService,

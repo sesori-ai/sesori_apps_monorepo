@@ -32,6 +32,7 @@ import "get_session_permissions_handler.dart";
 import "get_session_questions_handler.dart";
 import "get_session_statuses_handler.dart";
 import "get_sessions_handler.dart";
+import "handlers/mark_session_seen_handler.dart";
 import "health_check_handler.dart";
 import "hide_project_handler.dart";
 import "open_project_handler.dart";
@@ -75,6 +76,7 @@ class RequestRouter {
     required GetSessionDiffsHandler sessionDiffsHandler,
     required GetAgentsHandler getAgentsHandler,
     required PostAgentsHandler postAgentsHandler,
+    required MarkSessionSeenHandler markSessionSeenHandler,
     required BridgeRestartService restartService,
   }) : _handlers = _buildHandlers(
          plugin: plugin,
@@ -94,6 +96,7 @@ class RequestRouter {
          sessionDiffsHandler: sessionDiffsHandler,
          getAgentsHandler: getAgentsHandler,
          postAgentsHandler: postAgentsHandler,
+         markSessionSeenHandler: markSessionSeenHandler,
          restartService: restartService,
        );
 
@@ -115,6 +118,7 @@ class RequestRouter {
     required GetSessionDiffsHandler sessionDiffsHandler,
     required GetAgentsHandler getAgentsHandler,
     required PostAgentsHandler postAgentsHandler,
+    required MarkSessionSeenHandler markSessionSeenHandler,
     required BridgeRestartService restartService,
   }) {
     return [
@@ -134,6 +138,7 @@ class RequestRouter {
       ),
       CreateSessionHandler(sessionCreationService: sessionCreationService),
       RenameSessionHandler(sessionRepository: sessionRepository),
+      markSessionSeenHandler,
       UpdateSessionArchiveStatusHandler(sessionArchiveService: sessionArchiveService),
       DeleteSessionHandler(
         plugin: plugin,

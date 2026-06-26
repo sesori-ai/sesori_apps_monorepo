@@ -787,6 +787,18 @@ abstract class AppLocalizations {
   /// **'Unarchive'**
   String get sessionListUnarchive;
 
+  /// No description provided for @sessionListMarkRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as read'**
+  String get sessionListMarkRead;
+
+  /// No description provided for @sessionListMarkUnread.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as unread'**
+  String get sessionListMarkUnread;
+
   /// No description provided for @sessionListDelete.
   ///
   /// In en, this message translates to:

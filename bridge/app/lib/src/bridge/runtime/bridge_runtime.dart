@@ -35,10 +35,14 @@ import "../repositories/project_repository.dart";
 import "../repositories/pull_request_repository.dart";
 import "../repositories/question_repository.dart";
 import "../repositories/session_repository.dart";
+import "../repositories/session_unseen_calculator.dart";
+import "../repositories/session_unseen_repository.dart";
 import "../repositories/worktree_repository.dart";
 import "../services/pr_sync_service.dart";
 import "../services/session_event_enrichment_service.dart";
 import "../services/session_persistence_service.dart";
+import "../services/session_unseen_service.dart";
+import "../services/session_view_tracker.dart";
 import "../services/worktree_service.dart";
 import "bridge_shutdown_coordinator.dart";
 
@@ -79,10 +83,30 @@ class BridgeRuntime {
       pullRequestDao: database.pullRequestDao,
       projectsDao: database.projectsDao,
     );
+    const unseenCalculator = SessionUnseenCalculator();
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
       pullRequestRepository: pullRequestRepository,
+      unseenCalculator: unseenCalculator,
+    );
+    final projectRepository = ProjectRepository(
+      plugin: plugin,
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      unseenCalculator: unseenCalculator,
+    );
+    final sessionUnseenRepository = SessionUnseenRepository(
+      sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
+      db: database,
+      calculator: unseenCalculator,
+    );
+    final sessionViewTracker = SessionViewTracker();
+    final sessionUnseenService = SessionUnseenService(
+      unseenRepository: sessionUnseenRepository,
+      projectRepository: projectRepository,
+      viewTracker: sessionViewTracker,
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
@@ -155,7 +179,9 @@ class BridgeRuntime {
           sessionRepository: sessionRepository,
         ),
         sessionRepository: sessionRepository,
-        projectRepository: ProjectRepository(plugin: plugin, projectsDao: database.projectsDao),
+        projectRepository: projectRepository,
+        sessionUnseenService: sessionUnseenService,
+        sessionViewTracker: sessionViewTracker,
         permissionRepository: PermissionRepository(plugin: plugin),
         questionRepository: QuestionRepository(plugin: plugin),
         sessionPersistenceService: SessionPersistenceService(

@@ -25,6 +25,7 @@ void main() {
     late MockProjectService mockProjectService;
     late MockConnectionService mockConnectionService;
     late MockSseEventRepository mockSseEventRepository;
+    late FakeSessionUnseenTracker fakeSessionUnseenTracker;
     late MockRouteSource mockRouteSource;
     late MockFailureReporter mockFailureReporter;
     late StreamController<SseEvent> eventController;
@@ -37,6 +38,7 @@ void main() {
       mockProjectService = MockProjectService();
       mockConnectionService = MockConnectionService();
       mockSseEventRepository = MockSseEventRepository();
+      fakeSessionUnseenTracker = FakeSessionUnseenTracker();
       mockFailureReporter = MockFailureReporter();
       eventController = StreamController<SseEvent>.broadcast();
       statusController = BehaviorSubject<ConnectionStatus>.seeded(
@@ -72,6 +74,7 @@ void main() {
       projectService: mockProjectService,
       connectionService: mockConnectionService,
       sseEventRepository: mockSseEventRepository,
+      sessionUnseenTracker: fakeSessionUnseenTracker,
       routeSource: mockRouteSource,
       projectId: projectId,
       failureReporter: mockFailureReporter,
@@ -1410,6 +1413,7 @@ void main() {
           projectService: mockProjectService,
           connectionService: mockConnectionService,
           sseEventRepository: mockSseEventRepository,
+          sessionUnseenTracker: fakeSessionUnseenTracker,
           routeSource: mockRouteSource,
           projectId: "global",
           failureReporter: mockFailureReporter,
