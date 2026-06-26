@@ -81,6 +81,10 @@ class SessionViewingService with Disposable {
     switch (state) {
       case LifecycleState.paused:
       case LifecycleState.hidden:
+        // Mobile fires `hidden` then `paused` back-to-back; only act on the
+        // first transition into the not-visible state to avoid a duplicate
+        // clear send.
+        if (_isPaused) return;
         _isPaused = true;
         // No longer visible (backgrounded or minimized): stop viewing on the
         // bridge but keep the intended session so resume can re-assert it.
@@ -88,6 +92,7 @@ class SessionViewingService with Disposable {
           _enqueueSend(null);
         }
       case LifecycleState.resumed:
+        if (!_isPaused) return;
         _isPaused = false;
         if (_currentSessionId != null) {
           _enqueueSend(_currentSessionId);

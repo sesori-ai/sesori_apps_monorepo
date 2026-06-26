@@ -105,5 +105,22 @@ void main() {
       service.clearViewingSession("s1");
       await service.sendTail;
     });
+
+    test("hidden + paused fired back-to-back only sends one clear", () async {
+      final service = build()..setViewingSession("s1");
+      await service.sendTail;
+      await Future<void>.delayed(Duration.zero);
+      clearInteractions(viewRepository);
+
+      // Mobile emits `hidden` then `paused` when backgrounding.
+      lifecycle.emit(LifecycleState.hidden);
+      lifecycle.emit(LifecycleState.paused);
+      await service.sendTail;
+      await Future<void>.delayed(Duration.zero);
+
+      verify(() => viewRepository.sendSessionView(null)).called(1);
+      service.clearViewingSession("s1");
+      await service.sendTail;
+    });
   });
 }

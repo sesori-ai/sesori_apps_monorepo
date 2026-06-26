@@ -49,8 +49,19 @@ class SessionUnseenService {
   /// Session ids that have no persisted row and didn't resolve to a project
   /// (i.e. child/subagent sessions). Cached so an active subagent doesn't turn
   /// every `message.part`/`message.updated` event into a full project scan via
-  /// `findProjectIdForSession`.
-  final Set<String> _unresolvedSessions = {};
+  /// `findProjectIdForSession`. Invalidated when a session later proves
+  /// resolvable (`recordSessionCreated`), and bounded to avoid unbounded growth
+  /// over a long-lived bridge (LinkedHashSet preserves insertion order, so the
+  /// oldest entry is evicted first).
+  static const int _maxUnresolvedCached = 1024;
+  final Set<String> _unresolvedSessions = <String>{};
+
+  void _markUnresolved(String sessionId) {
+    if (_unresolvedSessions.length >= _maxUnresolvedCached) {
+      _unresolvedSessions.remove(_unresolvedSessions.first);
+    }
+    _unresolvedSessions.add(sessionId);
+  }
 
   SessionUnseenService({
     required SessionUnseenRepository unseenRepository,
@@ -115,7 +126,7 @@ class SessionUnseenService {
         // the laptop while the bridge was offline).
         final projectId = await _sessionRepository.findProjectIdForSession(sessionId: sessionId);
         if (projectId == null) {
-          _unresolvedSessions.add(sessionId);
+          _markUnresolved(sessionId);
           return;
         }
         await _unseenRepository.ensureRootSessionActivity(
@@ -147,6 +158,10 @@ class SessionUnseenService {
     required String? parentId,
   }) {
     if (parentId != null) return Future<void>.value();
+    // A root session.created proves this session is resolvable now, so drop any
+    // stale "unresolved" marker (it may have been cached as unresolved if an
+    // activity event arrived before the bridge learned of it).
+    _unresolvedSessions.remove(sessionId);
     final viewedAtSubmit = _viewTracker.isViewed(sessionId: sessionId);
     return _serialize(sessionId, () async {
       await _unseenRepository.ensureRootSessionActivity(
