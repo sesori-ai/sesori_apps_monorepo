@@ -55,7 +55,13 @@ void main() {
         expect(initRequest.method, equals('POST'));
         expect(initRequest.path, equals('/auth/github/init'));
         expect(initRequest.queryParameters, isEmpty);
-        expect(initRequest.body, equals({'clientType': 'bridge'}));
+        expect(
+          initRequest.body,
+          equals({
+            'clientType': 'bridge_macos',
+            'device': {'name': 'Test Mac', 'osVersion': 'macOS 14.5', 'appVersion': '1.2.0'},
+          }),
+        );
         expect(initRequest.contentType, startsWith('application/json'));
         expect(initRequest.sessionToken, matches(RegExp(r'^[0-9a-f]{64}$')));
         expect(initRequest.body!.values, isNot(contains(initRequest.sessionToken)));
@@ -272,6 +278,8 @@ void main() {
         final api = LoginOAuthApi(
           authBackendUrl: authServer.baseUrl,
           client: authServer.client,
+          clientType: 'bridge_macos',
+          device: DeviceInfo(name: 'Test Mac', osVersion: null, appVersion: null),
         );
 
         await api.ackOAuthSessionCompletion(sessionToken: 'session-token-123');
@@ -521,6 +529,8 @@ LoginOAuthService _createOAuthService({
     api: LoginOAuthApi(
       authBackendUrl: authServer.baseUrl,
       client: authServer.client,
+      clientType: 'bridge_macos',
+      device: DeviceInfo(name: 'Test Mac', osVersion: 'macOS 14.5', appVersion: '1.2.0'),
     ),
     browserLauncher: browserLauncher,
     browserOpenability: browserOpenability,

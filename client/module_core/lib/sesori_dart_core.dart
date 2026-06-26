@@ -11,6 +11,8 @@ export "package:sesori_auth/sesori_auth.dart"
         AuthSession,
         AuthState,
         AuthUnauthenticated,
+        OAuthDeviceDescriptor,
+        OAuthDeviceDescriptorProvider,
         OAuthFlowProvider,
         SecureStorage;
 export "package:sesori_auth/sesori_auth.dart"

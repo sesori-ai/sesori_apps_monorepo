@@ -8,21 +8,42 @@
 
 ## Current pointer
 
-- **Last completed phase:** Phase 0 — `mobile/`→`client/` rename (PR 0.1)
-- **In-flight PR:** none
+- **Last completed phase:** Phase 1 — PR 1.2 Control-protocol Freezed DTOs in `sesori_shared` (`ControlMessage` + `ControlProvisionProgress` mirror)
 - **Branch:** one feature branch per PR, cut from `main`
 
-> **The pointer is backward-looking.** "Last completed phase" advances only once
-> a phase's PRs have all landed, so right after any merge it reflects what is
-> genuinely done. Use **In-flight PR** for work in progress; the next action is
-> intentionally not tracked here — read it off the first ☐ in the PR status
-> index (§9).
+> **Advance this pointer to the PR you just raised.** There is no separate
+> "in-flight" field: when you open a PR, set **Last completed phase** above to
+> that PR and mark its §9 row ☑. PRs squash-merge one at a time, so the pointer
+> (and the §9 index) read true the moment that PR merges. Do this for every PR
+> as you progress.
+>
+> **How to resume (derive the next action — do NOT ask first).** When told to
+> "continue with the next phase/PR", resolve it deterministically:
+> 1. The next action is the **first ☐ in the PR status index (§9)**, read
+>    top-to-bottom. Phases and the PRs within them are strictly ordered and are
+>    completed in order (a later phase depends on earlier phases existing).
+> 2. **Read the prior Findings logs / Plan-deltas first** — this file plus the
+>    relevant `phase-N-*.md` — an earlier PR may have recorded a decision, delta,
+>    naming choice, or gotcha that affects the next PR.
+> 3. **The session worktree/branch name is NOT authoritative** and may not match
+>    the plan — e.g. a branch named `…-phase-2` while the first ☐ is still in
+>    Phase 1. The plan always wins; never infer the phase/PR from the branch name.
+> 4. **Default scope = one PR per session** (matches "one feature branch per
+>    PR"). Implement the single next PR, run both Aristotle gates (§5), open it,
+>    then stop unless the user says otherwise.
 >
 > **Keep the plan true.** If a PR reveals that an assumption here was wrong — a
 > locked decision (§3), release-safety invariant (§4), component design (§6),
 > or ADR (§7) no longer holds — fix it in the **same PR**: record it in the phase
 > doc's **Plan-deltas** and amend the affected section above. A stale plan is
 > worse than none.
+>
+> **Track every deferral in the plan — always.** Whenever a PR defers work to a
+> later stage (a known gap, a follow-up, a reviewer point answered with "PR X
+> handles this"), record it in the **same PR** in BOTH: (a) the owning later
+> PR's **Acceptance** in its phase doc, and (b) the §8 risk register. A deferral
+> that lives only in a PR reply, commit message, or chat is **not tracked** and
+> will be lost — those are not the plan.
 
 ---
 
@@ -152,6 +173,8 @@ mobile release.**
 | Component | Layer / dir | Role |
 |---|---|---|
 | `ControlChannelClient` | Layer 0 `bridge/app/lib/src/.../foundation/` (target layer, not the legacy nested tree) | loopback WS client; connect/reconnect; send/receive |
+| `ControlSecretApi` | Layer 1 `api/` | reads the per-spawn secret off-argv (first stdin line); sent as the control-channel WS `Authorization: Bearer` upgrade header (PR 1.1) |
+| `ControlChannelLossListener` | `control/` subsystem | ADR A9 grace-period process exit on sustained control-channel loss; injected `exitProcess` (PR 1.1) |
 | Control-protocol Freezed DTOs | `shared/sesori_shared` | pure wire types (incl. provision-progress mirror) |
 | `ControlChannelTokenService` | Layer 3 `auth/` | implements `AccessTokenProvider`/`TokenRefresher`; pull + push token stream |
 | `BridgeControlMessageDispatcher` | Layer 4 | routes inbound control msgs (token push → token service, restart → handoff, logout → unregister-and-exit) |
@@ -215,6 +238,7 @@ and consumes only the exported interfaces (`AuthTokenProvider`/`OAuthFlowProvide
 | Windows code-signing cert | **OPEN — lead time** | TBD | blocks PR 3.4 (signed Windows); EV clears SmartScreen faster |
 | Control-channel secret bootstrap (off-argv) | OPEN | TBD | ADR A8; designed in PR 1.1 / PR 2.6 |
 | Orphaned helper on GUI crash | OPEN | TBD | ADR A9; parent-loss policy in PR 1.1 |
+| Supervised restart replays `--control-url` (no stdin secret) | OPEN — until PR 1.7 | TBD | PR 1.1 gap; PR 1.7 makes supervised restart `exit(86)` not `spawnSuccessor()`. Unreachable pre-GUI; successor fails closed (`ControlSecretApi` timeout → exit 1) |
 | Uninstall vs shared CLI state | OPEN | TBD | ADR A10; scope cleanup in PR 3.11 |
 | RelayClient live re-auth on token push | OPEN | TBD | ADR A12; PR 1.5 must add the subscription/reconnect path + live-connection test |
 | `core/widgets` not pure leaf UI | OPEN | TBD | `connection_overlay.dart` imports app DI/routing/go_router; PR 4.1 must refactor + declare deps first |
@@ -232,8 +256,8 @@ Legend: ☐ pending · ◐ in-progress · ☑ done. Sizes: **S** ≤150 LOC · *
 - ☑ 0.1 `mobile/`→`client/` everywhere (atomic) — **Med-High / L**
 
 ### Phase 1 — Bridge supervised mode → `phase-1-bridge-supervised.md`
-- ☐ 1.1 `--control-url` + off-argv secret bootstrap + `ControlChannelClient` skeleton — Low-Med / M
-- ☐ 1.2 Control-protocol Freezed DTOs (incl. provision-progress mirror) — Low / S-M
+- ☑ 1.1 `--control-url` + off-argv secret bootstrap + `ControlChannelClient` skeleton — Low-Med / M
+- ☑ 1.2 Control-protocol Freezed DTOs (incl. provision-progress mirror) — Low / S-M
 - ☐ 1.3 Supervised auth bootstrap (short-circuit `ensureAuthenticated`) — Med / M
 - ☐ 1.4 Token provider **pull** over channel (+ timeout/GUI-down) — Med / M
 - ☐ 1.5 Token-stream **push** → relay client — Med / S-M

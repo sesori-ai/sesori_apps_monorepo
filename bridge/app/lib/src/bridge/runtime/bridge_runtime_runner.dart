@@ -3,9 +3,11 @@ import "dart:io" as io;
 
 import "package:clock/clock.dart";
 import "package:http/http.dart" as http;
+import "package:meta/meta.dart";
 import "package:path/path.dart" as path;
 import "package:rxdart/rxdart.dart";
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show ArchiveExtractor, BinaryDownloadClient, ChecksumValidator;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
+    show ArchiveExtractor, BinaryDownloadClient, ChecksumValidator, OsVersionFormatter, PlatformOs;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         BridgePlugin,
@@ -23,8 +25,10 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         ServerClock,
         StartAbortController,
         StartAbortSignal;
+import "package:sesori_shared/sesori_shared.dart" show DeviceInfo;
 
 import "../../api/bridge_settings_api.dart";
+import "../../api/control_secret_api.dart";
 import "../../auth/bridge_registration_api.dart";
 import "../../auth/bridge_registration_repository.dart";
 import "../../auth/bridge_registration_service.dart";
@@ -34,6 +38,8 @@ import "../../auth/login_oauth_api.dart";
 import "../../auth/login_oauth_service.dart";
 import "../../auth/token.dart";
 import "../../auth/token_manager.dart";
+import "../../control/control_channel_loss_listener.dart";
+import "../../foundation/control_channel_client.dart";
 import "../../repositories/bridge_settings_repository.dart";
 import "../../server/api/loopback_port_api.dart";
 import "../../server/api/runtime_file_api.dart";
@@ -120,8 +126,15 @@ class BridgeRuntimeRunner {
     required String pluginId,
   }) async {
     final failureLatch = PluginFailureLatch();
+    // Set when a control-channel loss triggers shutdown, so BOTH the explicit
+    // exit and the coordinator backstop report the abnormal code. A loss must
+    // never look like a clean (0) exit, even if the stop hangs — and because
+    // the backstop fires at (ordered budget + slack), its timing varies with
+    // how many ordered steps are registered (none yet before the plugin
+    // starts), so a fixed timeout race against it is not reliable.
+    int? supervisedLossExitCode;
     final shutdownCoordinator = BridgeShutdownCoordinator(
-      backstopExitCode: () => failureLatch.failure == null ? 0 : 1,
+      backstopExitCode: () => supervisedLossExitCode ?? (failureLatch.failure == null ? 0 : 1),
     );
     final subscriptions = CompositeSubscription();
     shutdownCoordinator.add(disposable: subscriptions.cancel);
@@ -183,6 +196,8 @@ class BridgeRuntimeRunner {
         api: LoginOAuthApi(
           authBackendUrl: options.authBackendUrl,
           client: httpClient,
+          clientType: "bridge_${PlatformOs.fromOperatingSystem(operatingSystem: io.Platform.operatingSystem).value}",
+          device: _bridgeDeviceInfo(),
         ),
         browserLauncher: openOAuthBrowser,
         browserOpenability: detectBrowserOpenability,
@@ -194,6 +209,17 @@ class BridgeRuntimeRunner {
     );
 
     try {
+      // Supervised mode (desktop GUI): bring up the loopback control channel
+      // before anything else so the GUI sees the helper connect promptly. Every
+      // step here is gated by `--control-url`; standalone startup is unchanged.
+      if (options.isSupervised) {
+        await _startSupervisedControlChannel(
+          options: options,
+          shutdownCoordinator: shutdownCoordinator,
+          requestAbnormalExit: (code) => supervisedLossExitCode = code,
+        );
+      }
+
       final runtimeOwnershipError = unsupportedPackageRuntimeMessage(
         executablePath: io.Platform.resolvedExecutable,
         managedExecutablePath: managedRuntimePaths.binaryPath,
@@ -431,6 +457,81 @@ class BridgeRuntimeRunner {
     } finally {
       await shutdownCoordinator.shutdown();
     }
+  }
+
+  /// Whether [url] is an acceptable supervised control-channel endpoint: a
+  /// loopback host over ws/wss. The GUI hosts the control channel on loopback,
+  /// so anything else is rejected — the bridge fails closed rather than sending
+  /// the per-spawn bearer secret to a non-loopback endpoint (defense in depth,
+  /// since `--control-url` is GUI-supplied and could be misconfigured/tampered).
+  @visibleForTesting
+  static bool isLoopbackControlUrl(Uri url) {
+    if (url.scheme != "ws" && url.scheme != "wss") return false;
+    final host = url.host.toLowerCase();
+    return host == "127.0.0.1" || host == "localhost" || host == "::1";
+  }
+
+  /// Supervised-mode bootstrap: validate the loopback control URL, read the
+  /// per-spawn secret off-argv (stdin), arm the parent-loss exit policy (ADR
+  /// A9), then connect the GUI's loopback control channel. Both the client and
+  /// the loss listener are torn down via the shutdown coordinator. Only ever
+  /// called when `--control-url` is set.
+  static Future<void> _startSupervisedControlChannel({
+    required BridgeCliOptions options,
+    required BridgeShutdownCoordinator shutdownCoordinator,
+    required void Function(int code) requestAbnormalExit,
+  }) async {
+    final url = Uri.parse(options.controlUrl!);
+    if (!isLoopbackControlUrl(url)) {
+      throw StateError(
+        "Refusing supervised control URL '${options.controlUrl}': must be a loopback ws/wss endpoint",
+      );
+    }
+
+    final secret = await ControlSecretApi(input: io.stdin).readSecret();
+    final controlChannelClient = ControlChannelClient(url: url, secret: secret);
+    shutdownCoordinator.add(disposable: controlChannelClient.dispose);
+
+    // Subscribe the parent-loss policy BEFORE connecting: the first
+    // `disconnected` transition must never be missed (reconnect failures don't
+    // re-emit it), otherwise a GUI crash during this startup window would leave
+    // the ADR A9 grace timer un-armed and the helper running with no parent.
+    final lossListener = ControlChannelLossListener(
+      connectionState: controlChannelClient.connectionState,
+      // Don't hard-exit straight from the loss timer: that bypasses the ordered
+      // plugin stop in the shutdown coordinator and could orphan an owned
+      // backend runtime (e.g. OpenCode). Record the abnormal code (so the
+      // coordinator backstop reports it too if the stop hangs), then shut down
+      // gracefully before exiting.
+      exitProcess: (code) {
+        requestAbnormalExit(code);
+        unawaited(_shutdownThenExit(shutdownCoordinator: shutdownCoordinator, code: code));
+      },
+    );
+    lossListener.start();
+    shutdownCoordinator.add(disposable: lossListener.dispose);
+
+    await controlChannelClient.connect();
+  }
+
+  /// Graceful termination for the control-channel parent-loss policy (ADR A9):
+  /// run the ordered shutdown (which stops the plugin and any owned runtime)
+  /// before exiting, so a hard exit from the loss timer cannot orphan the
+  /// backend process. If the stop hangs, the coordinator backstop fires — and
+  /// because the loss code was recorded via `requestAbnormalExit`, the backstop
+  /// reports that abnormal code, not the neutral 0, so a loss is never seen as a
+  /// clean exit regardless of the backstop's (step-count-dependent) timing. The
+  /// precise exit code the GUI observes is finalized in Phase 2 (PR 2.7).
+  static Future<void> _shutdownThenExit({
+    required BridgeShutdownCoordinator shutdownCoordinator,
+    required int code,
+  }) async {
+    try {
+      await shutdownCoordinator.shutdown();
+    } catch (error, stackTrace) {
+      Log.w("[control] graceful shutdown after control-channel loss failed", error, stackTrace);
+    }
+    io.exit(code);
   }
 
   /// Runs the plugin's runtime-provisioning phase, rendering progress and
@@ -743,5 +844,49 @@ class BridgeRuntimeRunner {
 
   static String _buildOwnerSessionId({required ProcessIdentity currentBridgeIdentity}) {
     return '${currentBridgeIdentity.pid}:${currentBridgeIdentity.startMarker ?? currentBridgeIdentity.capturedAt.toIso8601String()}';
+  }
+
+  /// Describes this bridge machine for the auth-server confirmation page.
+  ///
+  /// Best-effort: [io.Platform.localHostname] is virtually always present, but
+  /// we fall back to a constant so the server's required, non-empty `name` is
+  /// always satisfied, and clamp to the 120-char server limit. The cosmetic OS
+  /// version is omitted when it can't be derived.
+  static DeviceInfo _bridgeDeviceInfo() {
+    final hostname = _localHostname().trim();
+    final name = hostname.isEmpty ? "Sesori Bridge" : hostname;
+    return DeviceInfo(
+      name: name.length > 120 ? name.substring(0, 120).trim() : name,
+      osVersion: const OsVersionFormatter().format(
+        operatingSystem: io.Platform.operatingSystem,
+        operatingSystemVersion: io.Platform.operatingSystemVersion,
+        osReleaseContents: _readLinuxOsRelease(),
+      ),
+      appVersion: appVersion,
+    );
+  }
+
+  /// `Platform.localHostname` can throw (e.g. `SocketException` when hostname
+  /// resolution fails in restricted/containerized environments). The descriptor
+  /// is best-effort, so degrade to an empty name and let the caller fall back.
+  static String _localHostname() {
+    try {
+      return io.Platform.localHostname;
+    } on Object catch (error) {
+      Log.w("Failed to read localHostname for the device descriptor", error);
+      return "";
+    }
+  }
+
+  /// Reads `/etc/os-release` (Linux only) so [OsVersionFormatter] can derive the
+  /// distro label; null on other platforms or when the file can't be read.
+  static String? _readLinuxOsRelease() {
+    if (!io.Platform.isLinux) return null;
+    try {
+      return io.File("/etc/os-release").readAsStringSync();
+    } on io.IOException catch (error) {
+      Log.w("Failed to read /etc/os-release for the device descriptor", error);
+      return null;
+    }
   }
 }

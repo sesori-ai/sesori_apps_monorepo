@@ -9,6 +9,7 @@
 // coverage:ignore-file
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+import 'package:device_info_plus/device_info_plus.dart' as _i833;
 import 'package:firebase_crashlytics/firebase_crashlytics.dart' as _i141;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'
     as _i163;
@@ -35,6 +36,8 @@ import 'package:sesori_mobile/core/platform/firebase_push_messaging_source.dart'
     as _i1042;
 import 'package:sesori_mobile/core/platform/flutter_local_notification_client.dart'
     as _i636;
+import 'package:sesori_mobile/core/platform/flutter_oauth_device_descriptor_provider.dart'
+    as _i363;
 import 'package:sesori_mobile/core/platform/flutter_secure_storage_adapter.dart'
     as _i816;
 import 'package:sesori_mobile/core/platform/flutter_url_launcher.dart' as _i10;
@@ -63,6 +66,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i1039.AudioRecorder>(() => registerModule.audioRecorder);
     gh.lazySingleton<_i163.FlutterLocalNotificationsPlugin>(
       () => registerModule.flutterLocalNotificationsPlugin,
+    );
+    gh.lazySingleton<_i833.DeviceInfoPlugin>(
+      () => registerModule.deviceInfoPlugin,
     );
     gh.lazySingleton<_i558.FlutterSecureStorage>(
       () => registerModule.secureStorage,
@@ -98,6 +104,11 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i816.FlutterSecureStorageAdapter(gh<_i558.FlutterSecureStorage>()),
     );
     gh.lazySingleton<_i948.UrlLauncher>(() => _i10.FlutterUrlLauncher());
+    gh.lazySingleton<_i948.OAuthDeviceDescriptorProvider>(
+      () => _i363.FlutterOAuthDeviceDescriptorProvider(
+        gh<_i833.DeviceInfoPlugin>(),
+      ),
+    );
     gh.lazySingleton<_i553.FailureReporter>(
       () => _i534.CrashlyticsFailureReporter(gh<_i141.FirebaseCrashlytics>()),
     );

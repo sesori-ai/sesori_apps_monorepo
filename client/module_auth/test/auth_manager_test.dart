@@ -6,6 +6,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/src/auth_config.dart";
 import "package:sesori_auth/src/auth_manager.dart";
 import "package:sesori_auth/src/models/auth_state.dart";
+import "package:sesori_auth/src/platform/oauth_device_descriptor_provider.dart";
 import "package:sesori_auth/src/storage/oauth_storage_service.dart";
 import "package:sesori_auth/src/storage/token_storage_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -16,6 +17,15 @@ class MockHttpClient extends Mock implements http.Client {}
 class MockTokenStorageService extends Mock implements TokenStorageService {}
 
 class MockOAuthStorageService extends Mock implements OAuthStorageService {}
+
+/// Returns a fixed descriptor so the init body is deterministic in tests.
+class FakeOAuthDeviceDescriptorProvider implements OAuthDeviceDescriptorProvider {
+  @override
+  Future<OAuthDeviceDescriptor> describe() async => const OAuthDeviceDescriptor(
+        clientType: "app_ios",
+        device: DeviceInfo(name: "Test iPhone", osVersion: "iOS 17.5", appVersion: "1.2.0"),
+      );
+}
 
 void main() {
   setUpAll(() {
@@ -42,7 +52,7 @@ void main() {
     mockHttpClient = MockHttpClient();
     mockTokenStorage = MockTokenStorageService();
     mockOAuthStorage = MockOAuthStorageService();
-    authManager = AuthManager(mockHttpClient, mockTokenStorage, mockOAuthStorage);
+    authManager = AuthManager(mockHttpClient, mockTokenStorage, mockOAuthStorage, FakeOAuthDeviceDescriptorProvider());
     when(
       () => mockOAuthStorage.saveOAuthSession(
         sessionToken: any(named: "sessionToken"),
@@ -269,7 +279,7 @@ void main() {
   });
 
   group("OAuth flow", () {
-    test("startOAuthFlow creates header-only session token and returns user code details", () async {
+    test("startOAuthFlow creates header-only session token and sends the device descriptor", () async {
       const authUrl = "https://github.com/login/oauth/authorize?client_id=abc";
       when(
         () => mockHttpClient.post(
@@ -279,7 +289,7 @@ void main() {
         ),
       ).thenAnswer(
         (_) async => http.Response(
-          jsonEncode({"authUrl": authUrl, "state": "state-1", "userCode": "A1B2", "expiresIn": 300}),
+          jsonEncode({"authUrl": authUrl, "state": "state-1", "expiresIn": 300}),
           200,
         ),
       );
@@ -288,7 +298,6 @@ void main() {
 
       expect(result.authUrl, authUrl);
       expect(result.state, "state-1");
-      expect(result.userCode, "A1B2");
       expect(result.expiresIn, 300);
 
       final capturedPostCall = verify(
@@ -303,7 +312,10 @@ void main() {
       final sessionToken = headers["X-Sesori-Session-Token"];
       expect(sessionToken, matches(RegExp(r"^[0-9a-f]{64}$")));
       expect(headers["Content-Type"], "application/json");
-      expect(body, {"clientType": "app"});
+      expect(body, {
+        "clientType": "app_ios",
+        "device": {"name": "Test iPhone", "osVersion": "iOS 17.5", "appVersion": "1.2.0"},
+      });
       expect(body.values, isNot(contains(sessionToken)));
       verifyNever(
         () => mockOAuthStorage.saveAuthProviderAndPkceVerifier(
@@ -318,6 +330,7 @@ void main() {
         mockHttpClient,
         mockTokenStorage,
         mockOAuthStorage,
+        FakeOAuthDeviceDescriptorProvider(),
         pollInterval: Duration.zero,
         delay: (_) async {},
       );
@@ -420,6 +433,7 @@ void main() {
         mockHttpClient,
         mockTokenStorage,
         mockOAuthStorage,
+        FakeOAuthDeviceDescriptorProvider(),
         pollInterval: Duration.zero,
         delay: (_) async {},
       );
@@ -489,6 +503,7 @@ void main() {
         mockHttpClient,
         mockTokenStorage,
         mockOAuthStorage,
+        FakeOAuthDeviceDescriptorProvider(),
         pollInterval: Duration.zero,
         delay: (_) async {},
       );
@@ -555,6 +570,7 @@ void main() {
         mockHttpClient,
         mockTokenStorage,
         mockOAuthStorage,
+        FakeOAuthDeviceDescriptorProvider(),
         pollInterval: Duration.zero,
         delay: (_) async {},
       );
@@ -728,6 +744,7 @@ void main() {
         mockHttpClient,
         mockTokenStorage,
         mockOAuthStorage,
+        FakeOAuthDeviceDescriptorProvider(),
         pollInterval: Duration.zero,
         delay: (_) async {},
       );
@@ -804,7 +821,7 @@ void main() {
         mockHttpClient = MockHttpClient();
         mockTokenStorage = MockTokenStorageService();
         mockOAuthStorage = MockOAuthStorageService();
-        authManager = AuthManager(mockHttpClient, mockTokenStorage, mockOAuthStorage);
+    authManager = AuthManager(mockHttpClient, mockTokenStorage, mockOAuthStorage, FakeOAuthDeviceDescriptorProvider());
         await arrangeStartedFlow(statusResponse: statusResponse);
 
         await expectLater(authManager.pollForResult(), throwsA(isA<StateError>()));
@@ -818,6 +835,7 @@ void main() {
         mockHttpClient,
         mockTokenStorage,
         mockOAuthStorage,
+        FakeOAuthDeviceDescriptorProvider(),
         pollInterval: Duration.zero,
         pollTimeout: Duration.zero,
         delay: (_) async {},

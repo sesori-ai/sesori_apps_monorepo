@@ -46,7 +46,39 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 - **Acceptance:** standalone unchanged; with supervised bootstrap the client
   connects to a fake server in tests; reconnect on drop; the secret never
   appears in `ps`/argv; control-channel loss triggers grace-period exit.
-- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+- **Aristotle:** plan ☑ · impl ☑.
+- **Findings:** Shipped as three gated units + the `--control-url` option.
+  `ControlChannelClient` (Layer 0 `foundation/`) owns connect + its own
+  exp-backoff auto-reconnect (the GUI may come/go while the bridge stays up, so
+  unlike `RelayClient` the reconnect loop lives in the client, not a consumer),
+  a raw `inbound` text stream, `send`, and a `connectionState` stream. The
+  per-spawn secret is read as the first stdin line (`ControlSecretApi`) and
+  presented to the GUI as an `Authorization: Bearer` header on the WS **upgrade
+  request** — transport-level auth, off-argv, and independent of the PR-1.2 wire
+  DTOs. Parent-loss exit (ADR A9) is a separate `ControlChannelLossListener`
+  with an injected `exitProcess` (root passes `io.exit`), grace 5s, exit code
+  `1`. A real drop emits `disconnected` (arms grace); a clean `dispose` closes
+  the state stream `done` (no grace) so shutdown never self-exits. Standalone is
+  byte-identical (everything behind `isSupervised`). `make analyze` clean;
+  `make test` 1504 pass.
+- **Review round 2:** addressed reviewer feedback — enforce loopback ws/wss on
+  `--control-url` before dialing (fail closed, don't leak the bearer secret);
+  subscribe the loss listener *before* `connect()` (don't miss the first
+  `disconnected`); post-handshake liveness guard in `_openChannel`; isolate
+  teardown steps + handle `cancel()` errors. **Control-loss exit is graceful:**
+  it routes through `shutdownCoordinator.shutdown()` (ordered plugin stop) before
+  `io.exit`, so a hard exit from the loss timer can't orphan an owned runtime.
+  The supervised `spawnSuccessor()` flag-replay gap is tracked to **PR 1.7**.
+- **Deltas:** §6 placed only `ControlChannelClient` (foundation, kept). Two
+  components plan-review pinned to specific layers were NOT pre-specified in §6
+  and are now added there: the off-argv secret reader is a **Layer-1
+  `ControlSecretApi`** in `api/` (mirrors `TerminalPromptApi`; a stdin reader is
+  data access, not a foundation primitive — `Reader` is not a sanctioned
+  suffix), and the ADR-A9 grace-exit is a **`ControlChannelLossListener` in a
+  new `control/` subsystem dir** (a decision-making `Listener` cannot live in
+  Layer-0 `foundation/`). Parent-loss exit code is provisionally `1`
+  (`controlChannelLostExitCode`); the GUI-side exit-code state machine (PR
+  2.7 / 1.7) may refine it.
 
 ## PR 1.2 — Control-protocol Freezed DTOs (incl. provision-progress mirror)
 - **Goal:** Define wire DTOs in `shared/sesori_shared`: `token_request`,
@@ -63,7 +95,33 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   the exception to the "Phase 1 = bridge only" standing text):** round-trip
   serialization tests; no logic in shared; **`sesori_shared` codegen + tests
   pass AND `client/app` (mobile product) still builds** (no consumer break).
-- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+- **Aristotle:** plan ☑ · impl ☑.
+- **Findings:** Shipped as two pure-data Freezed sealed unions in
+  `shared/sesori_shared/lib/src/protocol/` (alongside `messages.dart`/`RelayMessage`,
+  the precedent), not under `models/` — these are protocol wire types.
+  `ControlMessage` is a single bidirectional union keyed by `type`
+  (`unionValueCase: snake`) with 10 variants: `token_request`/`token_response`
+  (id-correlated; null `accessToken` ⇒ GUI couldn't supply), `token_update`
+  (push), `status`, `prompt_request`/`prompt_response` (id-correlated),
+  `restart` (intentional-restart heads-up), `unregister_and_exit`, `registered`
+  (carries `bridgeId`, ADR A13), and `provision_progress` (wraps the nested
+  union). `ControlProvisionProgress` is a separate union mirroring
+  `RuntimeProvisionProgress` 1:1 (resolving/downloading/extracting/verifying/
+  notice/ready/failed) — the source lives in `sesori_plugin_interface` and MUST
+  NOT be imported (dependency direction), so it is mirrored; the derived
+  `fraction` getter is intentionally dropped (pure data). Forward-compat: three
+  enums (`ControlRelayConnectionState`/`ControlPluginHealthState`/
+  `ControlPromptKind`) each carry an `unknown` `@JsonValue` fallback +
+  `@JsonKey(unknownEnumValue:)`; optional fields use `@Default`; null keys auto-
+  drop (build.yaml `include_if_null:false`). No catch-all message-type variant
+  (matches `RelayMessage`; GUI+helper are same-commit, ADR/§2). 25 round-trip/
+  discriminator/fallback tests; `sesori_shared` 265 tests + analyze clean;
+  `client/app` (mobile) `flutter analyze` clean (additive, no consumer break).
+- **Deltas:** §6 listed only "Control-protocol Freezed DTOs | `shared/sesori_shared`".
+  Concretely realized as two unions in `lib/src/protocol/` (not `models/`),
+  matching `RelayMessage`'s home. Status/prompt field shapes (the three enums +
+  `activeSessionCount`) are introduced here; their senders (PRs 1.9/1.10/1.12)
+  may extend them **additively** via `@Default` fields / new enum values.
 
 ## PR 1.3 — Supervised auth bootstrap
 - **Goal:** In supervised mode, short-circuit
@@ -117,9 +175,15 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 - **Goal:** In supervised mode `handleRestartHandoff()` flushes the
   `{restarting:true}` response then `exit(86)` instead of
   `BridgeRestartService.spawnSuccessor()`. Name the exact bypass call site.
+  **Closes the PR-1.1 interim gap:** until this lands, a supervised
+  `spawnSuccessor()` replays `--control-url` into the detached successor with no
+  off-argv secret on stdin, so the successor fails in `ControlSecretApi` instead
+  of reconnecting. Not reachable by any shipping path pre-GUI (Phase 2), but
+  this PR must ensure supervised restart never calls `spawnSuccessor()`.
 - **Risk:** Med. **Size:** S-M.
 - **Acceptance:** phone-triggered restart → exit 86 in supervised mode; standalone
-  successor handoff unchanged.
+  successor handoff unchanged; **supervised mode never calls `spawnSuccessor()`**
+  (closes the PR-1.1 `--control-url`-replay gap — asserted by test).
 - **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
 
 ## PR 1.8 — Disable self-update + reconcile when supervised

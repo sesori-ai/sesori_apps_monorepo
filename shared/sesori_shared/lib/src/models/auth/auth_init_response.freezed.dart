@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AuthInitResponse {
 
- String get authUrl; String get state; String get userCode; int get expiresIn;
+ String get authUrl; String get state; int get expiresIn;
 /// Create a copy of AuthInitResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $AuthInitResponseCopyWith<AuthInitResponse> get copyWith => _$AuthInitResponseCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthInitResponse&&(identical(other.authUrl, authUrl) || other.authUrl == authUrl)&&(identical(other.state, state) || other.state == state)&&(identical(other.userCode, userCode) || other.userCode == userCode)&&(identical(other.expiresIn, expiresIn) || other.expiresIn == expiresIn));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthInitResponse&&(identical(other.authUrl, authUrl) || other.authUrl == authUrl)&&(identical(other.state, state) || other.state == state)&&(identical(other.expiresIn, expiresIn) || other.expiresIn == expiresIn));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,authUrl,state,userCode,expiresIn);
+int get hashCode => Object.hash(runtimeType,authUrl,state,expiresIn);
 
 @override
 String toString() {
-  return 'AuthInitResponse(authUrl: $authUrl, state: $state, userCode: $userCode, expiresIn: $expiresIn)';
+  return 'AuthInitResponse(authUrl: $authUrl, state: $state, expiresIn: $expiresIn)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $AuthInitResponseCopyWith<$Res>  {
   factory $AuthInitResponseCopyWith(AuthInitResponse value, $Res Function(AuthInitResponse) _then) = _$AuthInitResponseCopyWithImpl;
 @useResult
 $Res call({
- String authUrl, String state, String userCode, int expiresIn
+ String authUrl, String state, int expiresIn
 });
 
 
@@ -65,11 +65,10 @@ class _$AuthInitResponseCopyWithImpl<$Res>
 
 /// Create a copy of AuthInitResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? authUrl = null,Object? state = null,Object? userCode = null,Object? expiresIn = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? authUrl = null,Object? state = null,Object? expiresIn = null,}) {
   return _then(_self.copyWith(
 authUrl: null == authUrl ? _self.authUrl : authUrl // ignore: cast_nullable_to_non_nullable
 as String,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
-as String,userCode: null == userCode ? _self.userCode : userCode // ignore: cast_nullable_to_non_nullable
 as String,expiresIn: null == expiresIn ? _self.expiresIn : expiresIn // ignore: cast_nullable_to_non_nullable
 as int,
   ));
@@ -83,12 +82,11 @@ as int,
 @JsonSerializable()
 
 class _AuthInitResponse implements AuthInitResponse {
-  const _AuthInitResponse({required this.authUrl, required this.state, required this.userCode, required this.expiresIn});
+  const _AuthInitResponse({required this.authUrl, required this.state, required this.expiresIn});
   factory _AuthInitResponse.fromJson(Map<String, dynamic> json) => _$AuthInitResponseFromJson(json);
 
 @override final  String authUrl;
 @override final  String state;
-@override final  String userCode;
 @override final  int expiresIn;
 
 /// Create a copy of AuthInitResponse
@@ -104,16 +102,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AuthInitResponse&&(identical(other.authUrl, authUrl) || other.authUrl == authUrl)&&(identical(other.state, state) || other.state == state)&&(identical(other.userCode, userCode) || other.userCode == userCode)&&(identical(other.expiresIn, expiresIn) || other.expiresIn == expiresIn));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AuthInitResponse&&(identical(other.authUrl, authUrl) || other.authUrl == authUrl)&&(identical(other.state, state) || other.state == state)&&(identical(other.expiresIn, expiresIn) || other.expiresIn == expiresIn));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,authUrl,state,userCode,expiresIn);
+int get hashCode => Object.hash(runtimeType,authUrl,state,expiresIn);
 
 @override
 String toString() {
-  return 'AuthInitResponse(authUrl: $authUrl, state: $state, userCode: $userCode, expiresIn: $expiresIn)';
+  return 'AuthInitResponse(authUrl: $authUrl, state: $state, expiresIn: $expiresIn)';
 }
 
 
@@ -124,7 +122,7 @@ abstract mixin class _$AuthInitResponseCopyWith<$Res> implements $AuthInitRespon
   factory _$AuthInitResponseCopyWith(_AuthInitResponse value, $Res Function(_AuthInitResponse) _then) = __$AuthInitResponseCopyWithImpl;
 @override @useResult
 $Res call({
- String authUrl, String state, String userCode, int expiresIn
+ String authUrl, String state, int expiresIn
 });
 
 
@@ -141,11 +139,10 @@ class __$AuthInitResponseCopyWithImpl<$Res>
 
 /// Create a copy of AuthInitResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? authUrl = null,Object? state = null,Object? userCode = null,Object? expiresIn = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? authUrl = null,Object? state = null,Object? expiresIn = null,}) {
   return _then(_AuthInitResponse(
 authUrl: null == authUrl ? _self.authUrl : authUrl // ignore: cast_nullable_to_non_nullable
 as String,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
-as String,userCode: null == userCode ? _self.userCode : userCode // ignore: cast_nullable_to_non_nullable
 as String,expiresIn: null == expiresIn ? _self.expiresIn : expiresIn // ignore: cast_nullable_to_non_nullable
 as int,
   ));
