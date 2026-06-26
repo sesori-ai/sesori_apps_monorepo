@@ -114,6 +114,28 @@ void main() {
       await service.dispose();
       await expectation;
     });
+
+    test("requestToken after dispose fails fast without waiting for the timeout", () async {
+      final client = _FakeControlChannelClient();
+      final service = ControlChannelTokenService(client: client);
+      await service.dispose();
+
+      // A long timeout proves the failure is the disposed guard, not the timer.
+      await expectLater(
+        service.requestToken(timeout: const Duration(seconds: 30)),
+        throwsA(isA<ControlTokenUnavailableException>()),
+      );
+      // No request frame is sent once disposed.
+      expect(client.sentFrames, isEmpty);
+    });
+
+    test("dispose is idempotent", () async {
+      final client = _FakeControlChannelClient();
+      final service = ControlChannelTokenService(client: client);
+
+      await service.dispose();
+      await service.dispose();
+    });
   });
 }
 

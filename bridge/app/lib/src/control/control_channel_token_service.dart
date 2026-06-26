@@ -50,6 +50,14 @@ class ControlChannelTokenService {
     bool forceRefresh = false,
     Duration timeout = _defaultRequestTimeout,
   }) async {
+    // After dispose the inbound subscription is cancelled, so a response can
+    // never arrive — fail fast instead of registering a completer that would
+    // only resolve via the timeout.
+    if (_disposed) {
+      throw const ControlTokenUnavailableException(
+        "Control channel token service has been disposed.",
+      );
+    }
     final id = "token-${_nextRequestId++}";
     final completer = Completer<String?>();
     _pending[id] = completer;
@@ -72,6 +80,7 @@ class ControlChannelTokenService {
   }
 
   Future<void> dispose() async {
+    if (_disposed) return;
     _disposed = true;
     // Isolate the cancel so a failure still lets teardown finish.
     try {
