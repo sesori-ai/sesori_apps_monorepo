@@ -63,12 +63,15 @@ Aristotle verdicts · Findings log · Plan-deltas.
 
 ## PR 3.6 — Update-apply policy (stop helper first) + failed-update/rollback + UX
 - **Goal:** Add `DesktopUpdateService` in `module_desktop_core/lib/src/services/`
-  as the Layer-3 owner of update-apply policy. It marks the helper stop as
-  **expected** (suppress respawn — reuse the PR 2.7 "expected exit" flag), stops
-  the helper via `BridgeProcessService`, stages/applies through the dumb Layer-0
-  `AppUpdater` adapter, relaunches, then **restores last-on** via
-  `DesktopInstanceService`. Also surface update-available/failed in the window
-  and handle failed staging/apply gracefully (no bricking).
+  as the Layer-3 owner of update-apply policy. It calls the
+  `BridgeProcessRepository` expected-stop operation (which marks the helper stop
+  as expected and suppresses respawn), stages/applies through
+  `AppUpdateRepository` (which wraps the dumb Layer-0 `AppUpdater` adapter),
+  relaunches, then **restores last-on** through lower-layer desktop-instance
+  repository semantics. Also surface update-available/failed in the window and
+  handle failed staging/apply gracefully (no bricking). The service must avoid
+  same-layer service dependencies on `BridgeProcessService` or
+  `DesktopInstanceService`.
 
   The bundled bridge is a running child of the app install; on Windows a running
   executable can't be replaced, and on any OS applying a bundle update while the
@@ -78,7 +81,8 @@ Aristotle verdicts · Findings log · Plan-deltas.
   thrash), applies, relaunches, and restores last-on; a Windows
   running-executable replace doesn't fail; an injected failed update leaves the
   app runnable + reports it; `AppUpdater` remains a dumb adapter with no helper
-  stop/restore policy.
+  stop/restore policy; `DesktopUpdateService` depends only on lower-layer
+  collaborators.
 
 ## PR 3.7 — macOS self-update (Sparkle)
 - **Goal:** `auto_updater`/Sparkle + EdDSA keys + appcast generation from GitHub
@@ -103,15 +107,17 @@ Aristotle verdicts · Findings log · Plan-deltas.
   bump the desktop package; add a **Desktop** section to `CHANGELOG.md`; publish
   appcast/zsync to releases keyed to the shared version.
 - **Trigger paths:** PR 0.1 excluded `client/desktop/**` from the (mobile-product)
-  release triggers, so this PR must **add `client/desktop/**` (and any
-  desktop-owned UI package paths) to the desktop release jobs' triggers** —
-  otherwise a desktop-only fix never starts the internal release / appcast-zsync
-  publish and the self-update channel silently misses releases. The desktop jobs
-  stay **non-blocking** for the CLI/mobile legs (invariant #3).
+  release triggers, so this PR must **add `client/desktop/**`,
+  `client/module_desktop_core/**`, and any desktop-owned UI package paths to the
+  desktop release jobs' triggers** — otherwise a desktop-only fix never starts
+  the internal release / appcast-zsync publish and the self-update channel
+  silently misses releases. The desktop jobs stay **non-blocking** for the
+  CLI/mobile legs (invariant #3).
 - **Risk:** Med. **Size:** M.
 - **Acceptance:** an internal release dry-run produces signed, self-update-ready
-  desktop artifacts; a **desktop-only** change triggers the desktop release/appcast
-  publish; a forced desktop-leg failure does **not** block the CLI/mobile release.
+  desktop artifacts; a **desktop-only shell or desktop-core** change triggers the
+  desktop release/appcast publish; a forced desktop-leg failure does **not** block
+  the CLI/mobile release.
 
 ## PR 3.11 — Uninstall + login-item cleanup (desktop-owned state only)
 - **Goal:** Per-OS uninstall removes the **login item** and **GUI-owned** state

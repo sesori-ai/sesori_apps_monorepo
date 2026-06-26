@@ -92,11 +92,15 @@ Desktop-specific process supervision does **not** live in the Flutter shell and
 does **not** live in shared `module_core`. The client workspace graph is:
 
 ```
-client/app ───────────────┐
-                           ├─→ module_app_ui → module_core → module_auth → sesori_shared
-client/desktop ───────────┘
+client/app ───────────────→ module_app_ui ─┐
+     │                                      │
+     └──────────────────────────────────────┴→ module_core → module_auth → sesori_shared
+
+client/desktop ───────────→ module_app_ui ─┐
+     │                                      │
+     ├──────────────────────────────────────┴→ module_core → module_auth → sesori_shared
      │
-     └─→ module_desktop_core → module_core → module_auth → sesori_shared
+     └→ module_desktop_core ─────────────────→ module_core
 ```
 
 - `client/desktop` is a Flutter product shell: DI, presentation, routing/window
@@ -224,13 +228,13 @@ internal `new`).
 |---|---|---|
 | `ControlChannelServer` | `module_desktop_core` Layer 0 | GUI-hosted loopback WS host + per-spawn secret; inbound-as-stream + `send`; loopback-only, bad secrets rejected, one authenticated helper per spawn |
 | process API (mirrors `HostProcessCommandExecutor`) | `module_desktop_core` Layer 1 | spawn/kill/monitor a long-lived child |
-| `BridgeProcessRepository` | `module_desktop_core` Layer 2 | wraps the process API |
+| `BridgeProcessRepository` | `module_desktop_core` Layer 2 | wraps the process API and owns the expected-exit marker / atomic expected-stop operation used by process and update services |
 | `BridgeStatusTracker` / `BridgePromptTracker` | `module_desktop_core` Layer 2 | hold status/pending-prompt state as stream/snapshot; written by the dispatcher, read by the cubit/service |
-| `BridgeExitTracker` | `module_desktop_core` Layer 2 | owns exit-code/backoff/give-up state derived from process exits so `BridgeProcessService` does not become the state-machine owner |
-| `BridgeProcessService` | `module_desktop_core` Layer 3 | bridge child lifecycle: authenticated spawn gating, control flags, repository calls, and actioning `BridgeExitTracker` decisions |
+| `BridgeProcessService` | `module_desktop_core` Layer 3 | bridge child lifecycle: authenticated spawn gating, repository calls, exit-code/backoff decisions, and respawn/stop side effects. It reads expected-exit state from `BridgeProcessRepository`; it does not own that marker. |
 | `DesktopInstanceRepository` | `module_desktop_core` Layer 2 | wraps the single-instance lock API/storage boundary |
 | `DesktopInstanceService` | `module_desktop_core` Layer 3 | GUI single-instance lock orchestration, last-on restore, focus-first behavior |
-| `DesktopUpdateService` | `module_desktop_core` Layer 3 | update-apply policy: mark helper stop as expected, stop via `BridgeProcessService`, stage/apply via dumb `AppUpdater`, relaunch, and restore last-on via `DesktopInstanceService` |
+| `AppUpdateRepository` | `module_desktop_core` Layer 2 | wraps dumb `AppUpdater` staging/apply operations so services do not own OS-update transport details |
+| `DesktopUpdateService` | `module_desktop_core` Layer 3 | update-apply policy using lower-layer repositories/adapters only: perform the repository-owned expected-stop operation, stage/apply through `AppUpdateRepository`, relaunch, and restore last-on through desktop-instance repository semantics |
 | `ControlMessageDispatcher` | `module_desktop_core` Layer 4 | subscribes to `ControlChannelServer`'s inbound stream and writes **down** into Layer-2 trackers / token seam: token req → `AuthTokenProvider`; status/progress → `BridgeStatusTracker`; prompts → `BridgePromptTracker`. It depends only downward; it does NOT touch the cubit/UI. |
 | `BridgeControlCubit` | `module_desktop_core` Layer 4 | toggle on/off (→ service), expose status + prompts (← trackers) for tray + window |
 | `SystemTray` / `WindowHost` / `LaunchAtLogin` / `AppUpdater` | `module_desktop_core` Layer 0 capability interfaces; `client/desktop` impls | wrap `tray_manager` / `window_manager` / `launch_at_startup` / `auto_updater`; adapters stay dumb |
@@ -261,7 +265,7 @@ also wires `configureCoreDependencies(getIt)` before `configureDesktopCoreDepend
 | A15 | Module-core platform prerequisites are registered **before resolving the module_core services that need them** | `LoginCubit` needs `LifecycleSource`; `ConnectionService` later needs `RelayCryptoService`/`FailureReporter`. Lean v1 does not resolve `ConnectionService`; Phase 4 must register relay prerequisites before accessory UI uses it. |
 | A16 | `SystemTray` stays a **dumb Layer-0 adapter**; the Layer-4 cubit drives it and consumes the service/tracker | a platform adapter must not depend on process lifecycle or status state from higher layers — that reverses dependency direction |
 | A17 | The helper emits a **`registered` control event with `bridgeId`**; the GUI persists it on receipt | gives the GUI a readable id for the offline-unregister fallback (A13) before any crash/stop |
-| A18 | `DesktopUpdateService` **stops the helper (expected-exit, suppress respawn) before staging/apply**, restores last-on after relaunch | a running child can't be replaced (Windows) and respawn-during-apply risks mixed-version/failed updates; `AppUpdater` stays a dumb Layer-0 adapter |
+| A18 | `DesktopUpdateService` **stops the helper (repository-owned expected-exit, suppress respawn) before staging/apply**, restores last-on after relaunch | a running child can't be replaced (Windows) and respawn-during-apply risks mixed-version/failed updates; `AppUpdater` stays a dumb Layer-0 adapter behind `AppUpdateRepository`, and the service avoids same-level service dependencies |
 | A19 | Desktop offline/onboarding uses a **desktop seam** that starts the supervised helper, not mobile `reconnectBridge()`/`BridgeInstall` CLI prompts | on desktop the app *is* the bridge; the shared mobile actions don't start the helper |
 | A20 | Desktop business logic lives in **`module_desktop_core`** | keeps `client/desktop` a Flutter shell and prevents `module_core` from inheriting tray/process/bundled-helper concerns |
 | A21 | Desktop relay-client connection is deferred until accessory UI | lean v1 needs login/control/status only; resolving relay transport early adds platform prerequisites and test surface without user-visible v1 value |
@@ -312,7 +316,7 @@ Legend: ☐ pending · ◐ in-progress · ☑ done. Sizes: **S** ≤150 LOC · *
 - ☐ 2.4 Control status/prompt trackers baseline (no relay client yet) — Low-Med / S-M
 - ☐ 2.5a Re-export `AuthTokenProvider` from `module_core` (seam) — Low / S
 - ☐ 2.5 `ControlChannelServer` + `ControlMessageDispatcher` + token responder — Med / M
-- ☐ 2.6 `BridgeProcessService`: spawn/kill/path + control flags — High / M
+- ☐ 2.6 `BridgeProcessService`: spawn/kill/path + expected-stop boundary — High / M
 - ☐ 2.7 Exit-code state machine (86/0/other + backoff) — High / M
 - ☐ 2.8 Spike: bundled bridge runtime-ownership + `--hidden` contention — Med / S-M
 - ☐ 2.9 Tray menu + reusable control cubit — Med / M
@@ -321,7 +325,7 @@ Legend: ☐ pending · ◐ in-progress · ☑ done. Sizes: **S** ≤150 LOC · *
 - ☐ 2.12 GUI single-instance + persist on/off & last-state — Low-Med / S-M
 - ☐ 2.13 Logout coordination (GUI: unregister→kill→invalidate) — Med / S-M
 - ☐ 2.14 Desktop `FailureReporter` impl — Low-Med / S-M
-- ☐ 2.15 E2E integration (spawn→handshake→token→restart→logout; local fakes) — Med / M
+- ☐ 2.15 E2E integration (spawn→handshake→token→helper relay auth→restart→logout; local fakes) — Med / M
 - ☐ 2.16 First-run provisioning progress UI + degraded state — Med / M
 
 ### Phase 3 — Packaging / signing / self-update (= v1) → `phase-3-packaging.md`

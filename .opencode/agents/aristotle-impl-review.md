@@ -274,11 +274,15 @@ Core rules that apply universally:
 **B-C1. Product Dependency Diagram**
 
 ```
-client/app ───────────────┐
-                           ├─→ module_app_ui → module_core → module_auth → sesori_shared
-client/desktop ───────────┘
+client/app ───────────────→ module_app_ui ─┐
+     │                                      │
+     └──────────────────────────────────────┴→ module_core → module_auth → sesori_shared
+
+client/desktop ───────────→ module_app_ui ─┐
+     │                                      │
+     ├──────────────────────────────────────┴→ module_core → module_auth → sesori_shared
      │
-     └─→ module_desktop_core → module_core → module_auth → sesori_shared
+     └→ module_desktop_core ─────────────────→ module_core
 ```
 
 **Dependency rules:**
@@ -523,8 +527,9 @@ process APIs/repositories/services, control-channel orchestration, status/prompt
 trackers, update-apply orchestration (`DesktopUpdateService`), desktop cubits,
 and desktop platform interfaces. It may depend on `module_core` and
 `sesori_shared`; `module_core` must not depend on it. Platform adapters such as
-`AppUpdater` remain dumb Layer-0 boundaries; helper-stop/apply/restore policy
-belongs in `DesktopUpdateService`.
+`AppUpdater` remain dumb Layer-0 boundaries behind repositories such as
+`AppUpdateRepository`; helper-stop/apply/restore policy belongs in
+`DesktopUpdateService`, which must depend only on lower-layer collaborators.
 
 `module_app_ui` is a shared Flutter UI package. It may depend on `module_core`,
 `module_prego`, and direct Flutter UI dependencies. It must not import

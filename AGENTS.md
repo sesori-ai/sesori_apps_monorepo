@@ -188,11 +188,15 @@ lib/src/
 **Module dependency direction (never reverse, never skip):**
 
 ```
-client/app ───────────────┐
-                           ├─→ module_app_ui → module_core → module_auth → sesori_shared
-client/desktop ───────────┘
+client/app ───────────────→ module_app_ui ─┐
+     │                                      │
+     └──────────────────────────────────────┴→ module_core → module_auth → sesori_shared
+
+client/desktop ───────────→ module_app_ui ─┐
+     │                                      │
+     ├──────────────────────────────────────┴→ module_core → module_auth → sesori_shared
      │
-     └─→ module_desktop_core → module_core → module_auth → sesori_shared
+     └→ module_desktop_core ─────────────────→ module_core
 ```
 
 `client/app` and `client/desktop` may have `module_auth` in pubspec only for DI
@@ -263,12 +267,12 @@ module_desktop_core/lib/src/
 │
 ├── repositories/            # Layer 2
 │   ├── bridge_process_repository.dart
-│   └── desktop_instance_repository.dart
+│   ├── desktop_instance_repository.dart
+│   └── app_update_repository.dart
 │
 ├── trackers/                # Layer 2 — reactive state derived from events
 │   ├── bridge_status_tracker.dart
-│   ├── bridge_prompt_tracker.dart
-│   └── bridge_exit_tracker.dart
+│   └── bridge_prompt_tracker.dart
 │
 ├── services/                # Layer 3
 │   ├── bridge_process_service.dart

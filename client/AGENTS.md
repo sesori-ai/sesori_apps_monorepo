@@ -21,11 +21,15 @@ dart run build_runner build --delete-conflicting-outputs  # per module, after mo
 ## Module Dependency Direction
 
 ```
-client/app ───────────────┐
-                           ├─→ module_app_ui → module_core → module_auth → sesori_shared
-client/desktop ───────────┘
+client/app ───────────────→ module_app_ui ─┐
+     │                                      │
+     └──────────────────────────────────────┴→ module_core → module_auth → sesori_shared
+
+client/desktop ───────────→ module_app_ui ─┐
+     │                                      │
+     ├──────────────────────────────────────┴→ module_core → module_auth → sesori_shared
      │
-     └─→ module_desktop_core → module_core → module_auth → sesori_shared
+     └→ module_desktop_core ─────────────────→ module_core
 ```
 
 NEVER reverse this. NEVER skip layers. `client/app` and `client/desktop` may

@@ -105,11 +105,14 @@ Aristotle verdicts · Findings log · Plan-deltas.
   dispatcher→cubit dependency and no same-level dispatcher↔service edge; no direct
   `module_auth` import in non-DI source.
 
-## PR 2.6 — `BridgeProcessService`: spawn/kill/path + control flags
+## PR 2.6 — `BridgeProcessService`: spawn/kill/path + expected-stop boundary
 - **Goal:** Spawn the bridge binary (path resolution dev + packaged) passing
   `--control-url` + the **off-argv** control secret (ADR A8); kill; monitor exit.
   Layer-3 service over a Layer-2 `BridgeProcessRepository` over a Layer-1 process
-  API (mirrors `HostProcessCommandExecutor`). No exit-code state machine yet.
+  API (mirrors `HostProcessCommandExecutor`). `BridgeProcessRepository` owns the
+  expected-exit marker and exposes an atomic expected-stop operation so update
+  logic can suppress respawn without depending on `BridgeProcessService`. No
+  exit-code state machine yet.
   The service refuses to spawn while the GUI is unauthenticated; the cubit/window
   surfaces login-required instead of starting a helper that will immediately fail.
 - **Scope note:** guard against invalid/non-positive PIDs (`pid <= 0`) at the
@@ -121,16 +124,15 @@ Aristotle verdicts · Findings log · Plan-deltas.
   not visible in `ps`/argv; non-positive PIDs handled gracefully.
 
 ## PR 2.7 — Exit-code state machine
-- **Goal:** Add `BridgeExitTracker` in `module_desktop_core` Layer 2 to own
-  exit-code/backoff/give-up state derived from process exits. `BridgeProcessService`
-  consumes tracker decisions and performs the spawn/stop side effects. Mapping:
-  86→respawn (no backoff), 0→stop (no respawn), auth-required clean exit→stop
-  with login-required state, other→crash backoff + give-up + tray surfacing; GUI
-  "expected exit" flag for GUI-initiated kills. Isolated state-machine tests.
+- **Goal:** Keep exit-code/backoff decisions in `BridgeProcessService`, because
+  respawn/stop/give-up policy is process lifecycle business logic. Mapping:
+  86→respawn (no backoff), 0→stop (no respawn), repository-marked expected stop
+  →stop (no respawn), auth-required clean exit→stop with login-required state,
+  other→crash backoff + give-up + tray surfacing. Isolated state-machine tests
+  exercise the service with fake `BridgeProcessRepository` inputs.
 - **Risk:** High. **Size:** M.
 - **Acceptance:** each exit class drives the correct action; give-up after N rapid
-  crashes surfaces an error; `BridgeProcessService` does not own the backoff
-  state directly.
+  crashes surfaces an error; exit policy does not live in a Layer-2 tracker.
 
 ## PR 2.8 — Spike: bundled bridge runtime-ownership + `--hidden` contention
 - **Goal:** Run the bridge from a **fake bundle layout**; confirm it does NOT trip
@@ -205,11 +207,13 @@ Aristotle verdicts · Findings log · Plan-deltas.
 
 ## PR 2.15 — E2E integration
 - **Goal:** Run GUI+helper together with local fakes: spawn → control handshake →
-  token push/pull → trigger 86 → respawn → logout → unregister. Use fake
-  auth/token/control/relay boundaries; do not depend on external Sesori services.
+  token push/pull → helper relay connect/authenticate against a fake relay →
+  trigger 86 → respawn → logout → unregister. Use fake auth/token/control/relay
+  boundaries; do not depend on external Sesori services.
 - **Risk:** Med. **Size:** M.
 - **Acceptance:** the full happy path passes as an automated/scripted test using
-  local fakes; failures are deterministic in CI.
+  local fakes; the helper proves it can authenticate to the fake relay with the
+  GUI-supplied token before restart/logout; failures are deterministic in CI.
 
 ## PR 2.16 — First-run provisioning progress UI + degraded state
 - **Goal:** Render `RuntimeProvisionProgress` (download bar/status) from the
