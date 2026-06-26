@@ -8,9 +8,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:sesori_shared/sesori_shared.dart" show StringExtensions;
 
-import "../opencode_db_api.dart";
-import "../opencode_db_maintenance_service.dart";
-import "../opencode_db_repository.dart";
 import "../opencode_plugin_impl.dart";
 import "open_code_bridge_plugin.dart";
 import "open_code_managed_api.dart";
@@ -46,24 +43,6 @@ OpenCodeManagedApi _defaultBuildApi({
   );
 }
 
-/// Runs the opportunistic OpenCode database maintenance for [environment].
-/// The production default locates `opencode.db` under `XDG_DATA_HOME` (or
-/// `~/.local/share`) and delegates to [OpenCodeDbMaintenanceService]; tests
-/// inject a recorder.
-typedef OpenCodeDbOptimizer = Future<void> Function({required Map<String, String> environment});
-
-Future<void> _defaultOptimizeDb({required Map<String, String> environment}) async {
-  final homeDir = environment["HOME"] ?? environment["USERPROFILE"];
-  if (homeDir == null) {
-    return;
-  }
-
-  await OpenCodeDbMaintenanceService(
-    repository: OpenCodeDbRepository(api: OpenCodeDbApi()),
-  ).optimizeIfNeeded(
-    dbPath: '${environment["XDG_DATA_HOME"] ?? "$homeDir/.local/share"}/opencode/opencode.db',
-  );
-}
 
 /// The real, const OpenCode plugin descriptor: it owns the full OpenCode runtime
 /// lifecycle (stale cleanup, start-or-attach, health, ownership persistence,
@@ -75,8 +54,7 @@ Future<void> _defaultOptimizeDb({required Map<String, String> environment}) asyn
 /// deadline-paced health confirmation, the start intent recorded to a
 /// bridge-private side file, pre-probed explicit ports, early child exits
 /// treated as authoritative failure, and bounded restart pinned to the
-/// original port. OpenCode database maintenance also runs here, at the top of
-/// [start].
+/// original port.
 ///
 /// The optional constructor parameters are test seams (and the random/candidate
 /// sources the supervisor needs); the registered descriptor is `const
@@ -90,7 +68,6 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
     Duration degradedDebounce = const Duration(seconds: 5),
     Duration coldStartBudget = openCodeColdStartBudget,
     Duration versionProbeTimeout = openCodeVersionProbeTimeout,
-    OpenCodeDbOptimizer? optimizeDb,
     ManagedRuntimeProvisionService? provisionService,
   }) : _buildApi = buildApi,
        _probeClientFactory = probeClientFactory,
@@ -99,7 +76,6 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
        _degradedDebounce = degradedDebounce,
        _coldStartBudget = coldStartBudget,
        _versionProbeTimeout = versionProbeTimeout,
-       _optimizeDb = optimizeDb,
        _provisionService = provisionService;
 
   final OpenCodeManagedApiFactory? _buildApi;
@@ -109,7 +85,6 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
   final Duration _degradedDebounce;
   final Duration _coldStartBudget;
   final Duration _versionProbeTimeout;
-  final OpenCodeDbOptimizer? _optimizeDb;
 
   /// Test seam for the runtime provisioner. Production builds a default in
   /// [ensureRuntime] from the host's process service and an HTTP client.
@@ -356,17 +331,9 @@ class OpenCodePluginDescriptor extends BridgePluginDescriptor {
 
   @override
   Future<OpenCodeBridgePlugin> start(PluginHost host) async {
-    // Opportunistic database maintenance runs first, before any runtime state
-    // is acquired (it moved here from the runner at the flip). The service is
-    // documented never-throwing and the sqlite3 work runs in a worker isolate,
-    // so awaiting it under the startup mutex keeps the event loop — and the
-    // cooperative abort below — responsive. The catch is belt-and-suspenders:
-    // best-effort maintenance must never be able to fail the bridge start.
-    try {
-      await (_optimizeDb ?? _defaultOptimizeDb)(environment: host.environment);
-    } on Object catch (error, stackTrace) {
-      Log.w("[opencode] database maintenance failed; continuing startup", error, stackTrace);
-    }
+    // The OpenCode database is intentionally left untouched. Previous
+    // auto-vacuum maintenance has been removed because it interfered with
+    // the database while OpenCode was running.
     if (host.startAborted.isAborted) {
       throw const PluginStartAbortedException();
     }
