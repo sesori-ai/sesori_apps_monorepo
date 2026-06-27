@@ -31,7 +31,9 @@ Aristotle verdicts · Findings log · Plan-deltas.
   (`go_router`, `flutter_svg`, etc.) in `module_app_ui`'s pubspec.
 - **Risk:** Med-High. **Size:** M (split the refactor out if it grows).
 - **Acceptance:** `client/app` consumes the moved code via the package, builds +
-  tests pass, **no dependency cycle** `module_app_ui` → `client/app`.
+  tests pass, **no dependency cycle** `module_app_ui` → `client/app`; mobile
+  CI/release path filters include `client/module_app_ui/**` once mobile screens
+  depend on the package.
 
 > **Standing rule for every move PR (4.2–4.6):** the package-boundary hazard
 > from PR 4.1 applies to **screens too** — current screens (e.g.

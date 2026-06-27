@@ -290,6 +290,7 @@ seams through `module_core` interfaces, not `AuthManager` internals.
 | Supervised restart replays `--control-url` (no stdin secret) | OPEN — until PR 1.7 | TBD | PR 1.1 gap; PR 1.7 makes supervised restart `exit(86)` not `spawnSuccessor()`. Unreachable pre-GUI; successor fails closed (`ControlSecretApi` timeout → exit 1) |
 | Uninstall vs shared CLI state | OPEN | TBD | ADR A10; scope cleanup in PR 3.11 |
 | RelayClient live re-auth on token push | OPEN | TBD | ADR A12; PR 1.5 must add the subscription/reconnect path + live-connection test |
+| Desktop relay client / `ConnectionService` deferral | OPEN — deferred to Phase 4 | TBD | ADR A21; lean v1 control/status must not resolve relay transport. PR 4.7 owns desktop relay prerequisites and accessory-UI connection acceptance. |
 | `core/widgets` not pure leaf UI | OPEN | TBD | `connection_overlay.dart` imports app DI/routing/go_router; PR 4.1 must refactor + declare deps first |
 | CI secrets (Dev ID, notarization key, EdDSA appcast, GPG) | OPEN | TBD | PR 3.0b |
 | Flutter multi-window viability (v2 popover) | OPEN | TBD | de-risk with a spike before Phase 5 popover |

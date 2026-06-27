@@ -104,8 +104,9 @@ Aristotle verdicts · Findings log · Plan-deltas.
 ## PR 3.10 — Release-pipeline integration (non-blocking) + versioning
 - **Goal:** Hook the desktop build into `release-all-platforms.yml` +
   `submit-release.yml` as **non-blocking** legs; extend `make bump-version` to
-  bump the desktop package; add a **Desktop** section to `CHANGELOG.md`; publish
-  appcast/zsync to releases keyed to the shared version.
+  bump the desktop package; add a **Desktop** section to `CHANGELOG.md`; update
+  `tool/generate_release_notes.dart` so desktop-owned paths classify as Desktop
+  instead of App; publish appcast/zsync to releases keyed to the shared version.
 - **Trigger paths:** PR 0.1 excluded `client/desktop/**` from the (mobile-product)
   release triggers, so this PR must **add `client/desktop/**`,
   `client/module_desktop_core/**`, `client/module_app_ui/**`, and any other
@@ -117,7 +118,9 @@ Aristotle verdicts · Findings log · Plan-deltas.
 - **Acceptance:** an internal release dry-run produces signed, self-update-ready
   desktop artifacts; a **desktop-only shell, desktop-core, or shared-UI** change
   triggers the desktop release/appcast publish; a forced desktop-leg failure does
-  **not** block the CLI/mobile release.
+  **not** block the CLI/mobile release; release notes classify
+  `client/desktop/**`, `client/module_desktop_core/**`, and desktop-consumed UI
+  changes under Desktop rather than App.
 
 ## PR 3.11 — Uninstall + login-item cleanup (desktop-owned state only)
 - **Goal:** Per-OS uninstall removes the **login item** and **GUI-owned** state

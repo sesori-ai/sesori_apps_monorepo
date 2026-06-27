@@ -31,26 +31,30 @@ Aristotle verdicts · Findings log · Plan-deltas.
 ## PR 2.2 — Desktop platform adapters (module_core + module_desktop_core prerequisites)
 - **Goal:** Register desktop implementations before any DI slice resolves the
   services that need them. Early login requires `SecureStorage`, `UrlLauncher`,
-  `LifecycleSource`, and a desktop `http.Client`. Lean v1 does **not** resolve
-  `ConnectionService`; `RelayCryptoService`/`FailureReporter` must be registered
-  before Phase 4 accessory UI resolves relay transport, and a no-op
-  `FailureReporter` may still land here if the package-level DI resolver eagerly
-  requires it. Desktop-core capability interfaces (`SystemTray`, `WindowHost`,
-  `LaunchAtLogin`, `AppUpdater`) are introduced with no-op or fakeable adapters
-  only when the corresponding Phase 2 slice first uses them.
+  `LifecycleSource`, a desktop `OAuthDeviceDescriptorProvider`, and a desktop
+  `http.Client`. Lean v1 does **not** resolve `ConnectionService`;
+  `RelayCryptoService`/`FailureReporter` must be registered before Phase 4
+  accessory UI resolves relay transport, and a no-op `FailureReporter` may still
+  land here if the package-level DI resolver eagerly requires it. Desktop-core
+  capability interfaces (`SystemTray`, `WindowHost`, `LaunchAtLogin`,
+  `AppUpdater`) are introduced with no-op or fakeable adapters only when the
+  corresponding Phase 2 slice first uses them.
 
   | Interface / dependency | Owned by | Desktop implementation timing |
   |---|---|---|
   | `SecureStorage` | `module_auth`/`module_core` seam | PR 2.2 |
   | `UrlLauncher` | `module_core` seam | PR 2.2 |
   | `LifecycleSource` | `module_core` seam | PR 2.2 |
+  | `OAuthDeviceDescriptorProvider` | `module_auth` DI prerequisite | PR 2.2 before `configureAuthDependencies` |
   | `http.Client` | `module_auth` DI prerequisite | PR 2.2 before `configureAuthDependencies` |
   | `RelayCryptoService` / `FailureReporter` | `module_core` relay prerequisites | before any desktop `ConnectionService` resolution; no later than PR 4.7 |
   | `SystemTray` / `WindowHost` / `LaunchAtLogin` / `AppUpdater` | `module_desktop_core` seams | introduced by the Phase 2 PR that first uses each capability |
 
 - **Risk:** Low-Med. **Size:** S-M.
-- **Acceptance:** secure storage read/write works per OS; `get_it` resolves
-  `LoginCubit` and the auth `http.Client` with no missing-registration errors;
+- **Acceptance:** secure storage read/write works per OS; auth DI resolves with
+  the desktop `http.Client` and `OAuthDeviceDescriptorProvider`; `LoginCubit` can
+  be constructed from dependencies resolved through `get_it` with no
+  missing-registration errors, but the cubit itself is not registered in DI;
   desktop-core adapters used by this PR resolve through DI; no relay
   `ConnectionService` resolution is required before Phase 4.
 
