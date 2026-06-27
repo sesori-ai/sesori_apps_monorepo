@@ -75,25 +75,55 @@ class ProjectInitializationService {
 
     _filesystemRepository.createProjectDirectory(path: path);
 
-    final initialized = await _worktreeRepository.initRepository(path: path);
+    // git init must succeed for the project to be usable, so a non-zero exit
+    // OR a thrown execution error both become the typed failure the handler
+    // maps to 500.
+    bool initialized;
+    try {
+      initialized = await _worktreeRepository.initRepository(path: path);
+    } on Object catch (error, stackTrace) {
+      Log.w("ProjectInitializationService: git init threw for $path", error, stackTrace);
+      throw ProjectGitInitException(path: path);
+    }
     if (!initialized) {
       throw ProjectGitInitException(path: path);
     }
 
     _filesystemRepository.ensureGitignoreEntry(projectPath: path, entry: _gitignoreEntry);
 
-    final staged = await _worktreeRepository.stageAll(projectPath: path);
-    if (!staged) {
-      Log.w("ProjectInitializationService: git add failed for $path");
+    // Staging and the initial commit are best-effort: a non-zero exit OR a
+    // thrown execution error is logged and swallowed, since the directory is a
+    // valid initialized repository regardless.
+    if (!await _stageBestEffort(path: path)) {
       return;
     }
+    await _commitBestEffort(path: path);
+  }
 
-    final committed = await _worktreeRepository.commitAll(
-      projectPath: path,
-      message: _initialCommitMessage,
-    );
-    if (!committed) {
-      Log.w("ProjectInitializationService: initial commit failed for $path");
+  Future<bool> _stageBestEffort({required String path}) async {
+    try {
+      if (!await _worktreeRepository.stageAll(projectPath: path)) {
+        Log.w("ProjectInitializationService: git add failed for $path");
+        return false;
+      }
+      return true;
+    } on Object catch (error, stackTrace) {
+      Log.w("ProjectInitializationService: git add threw for $path", error, stackTrace);
+      return false;
+    }
+  }
+
+  Future<void> _commitBestEffort({required String path}) async {
+    try {
+      final committed = await _worktreeRepository.commitAll(
+        projectPath: path,
+        message: _initialCommitMessage,
+      );
+      if (!committed) {
+        Log.w("ProjectInitializationService: initial commit failed for $path");
+      }
+    } on Object catch (error, stackTrace) {
+      Log.w("ProjectInitializationService: initial commit threw for $path", error, stackTrace);
     }
   }
 }

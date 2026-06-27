@@ -1,5 +1,6 @@
 import "dart:io";
 
+import "package:path/path.dart" as p;
 import "package:sesori_shared/sesori_shared.dart" show FilesystemSuggestion, FilesystemSuggestions;
 
 import "../api/filesystem_api.dart";
@@ -61,23 +62,30 @@ class FilesystemRepository {
       final entries =
           _filesystemApi
               .listDirectories(prefix)
-              .where((d) => !d.path.split("/").last.startsWith("."))
-              .take(maxResults)
               .map((d) {
-                final name = d.path.split("/").last;
+                final name = p.basename(d.path);
                 final isGitRepo = _filesystemApi.gitDirectoryExists(d.path);
                 return FilesystemSuggestion(path: d.path, name: name, isGitRepo: isGitRepo);
               })
+              .where((s) => !s.name.startsWith("."))
               .toList()
+            // Sort before truncating so the returned subset is the
+            // deterministic alphabetical top-N, not an arbitrary slice of the
+            // filesystem's listing order.
             ..sort((a, b) => a.name.compareTo(b.name));
 
-      return FilesystemSuggestions(data: entries);
+      return FilesystemSuggestions(data: entries.take(maxResults).toList());
     });
   }
 
   /// Classifies what exists at [path].
   ///
   /// Throws [FilesystemPermissionDeniedException] on an OS permission denial.
+  /// A directory that can be stat'ed but not read (e.g. macOS Full Disk
+  /// Access/TCC denial) is probed here so the open-project path surfaces the
+  /// same actionable permission error as browsing/creation, instead of
+  /// returning [FilesystemEntityKind.directory] and failing later as a generic
+  /// upstream error.
   FilesystemEntityKind classifyPath({required String path}) {
     return _guard(path: path, () {
       final type = _filesystemApi.entityType(path);
@@ -87,6 +95,10 @@ class FilesystemRepository {
       if (type != FileSystemEntityType.directory) {
         return FilesystemEntityKind.notDirectory;
       }
+      // Probe readability: a stat-only success is not enough to open the
+      // directory as a project. A permission denial here is translated to
+      // FilesystemPermissionDeniedException by _guard.
+      _filesystemApi.listDirectories(path);
       return FilesystemEntityKind.directory;
     });
   }

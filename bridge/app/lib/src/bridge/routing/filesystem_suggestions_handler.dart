@@ -41,8 +41,8 @@ class FilesystemSuggestionsHandler extends BodyRequestHandler<FilesystemSuggesti
       throw buildErrorResponse(request, 403, "permission denied: $prefix");
     } on FilesystemDirectoryNotFoundException {
       throw buildErrorResponse(request, 404, "directory not found");
-    } on FileSystemException catch (error) {
-      Log.w("FilesystemSuggestionsHandler: failed to list $prefix", error);
+    } on FileSystemException catch (error, stackTrace) {
+      Log.w("FilesystemSuggestionsHandler: failed to list $prefix", error, stackTrace);
       throw buildErrorResponse(request, 500, "failed to list filesystem suggestions");
     }
   }

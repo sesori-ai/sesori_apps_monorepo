@@ -49,6 +49,16 @@ void main() {
       expect(repository.classifyPath(path: "${tempDir.path}/none"), FilesystemEntityKind.notFound);
     });
 
+    test("listSuggestions returns deterministic alphabetical top-N when truncating", () {
+      for (final name in ["c", "a", "d", "b"]) {
+        Directory("${tempDir.path}/$name").createSync();
+      }
+
+      final result = repository.listSuggestions(prefix: tempDir.path, maxResults: 2);
+
+      expect(result.data.map((s) => s.name).toList(), ["a", "b"]);
+    });
+
     test("translates a permission denial into FilesystemPermissionDeniedException", () {
       final repo = FilesystemRepository(
         filesystemApi: _PermissionDeniedFilesystemApi(),
@@ -60,6 +70,21 @@ void main() {
         throwsA(
           isA<FilesystemPermissionDeniedException>().having((e) => e.path, "path", "/protected"),
         ),
+      );
+    });
+
+    test("classifyPath probes readability and reports a permission denial", () {
+      // A directory that stats fine but cannot be listed (e.g. macOS Full Disk
+      // Access denial) must surface as a permission denial, not a plain
+      // directory, so the open-project path returns 403.
+      final repo = FilesystemRepository(
+        filesystemApi: _PermissionDeniedFilesystemApi(),
+        permissionValidator: const FilesystemPermissionValidator(),
+      );
+
+      expect(
+        () => repo.classifyPath(path: "/protected"),
+        throwsA(isA<FilesystemPermissionDeniedException>()),
       );
     });
   });

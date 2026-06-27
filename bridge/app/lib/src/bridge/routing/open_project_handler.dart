@@ -48,8 +48,8 @@ class OpenProjectHandler extends BodyRequestHandler<ProjectPathRequest, Project>
       kind = _filesystemRepository.classifyPath(path: path);
     } on FilesystemPermissionDeniedException {
       throw buildErrorResponse(request, 403, "permission denied: $path");
-    } on FileSystemException catch (error) {
-      Log.w("OpenProjectHandler: failed to classify $path", error);
+    } on FileSystemException catch (error, stackTrace) {
+      Log.w("OpenProjectHandler: failed to classify $path", error, stackTrace);
       throw buildErrorResponse(request, 500, "failed to open directory");
     }
 

@@ -403,9 +403,16 @@ class BridgeRuntimeRunner {
       // Run startup diagnostics before composing the runtime so the
       // filesystem-access result can be carried into the health snapshot the
       // phone reads (to proactively warn about missing macOS Full Disk Access).
-      final diagnostics = BridgeDiagnostics();
-      final filesystemAccessOk = await diagnostics.checkFilesystemAccess();
-      await diagnostics.checkGitAvailable();
+      // Diagnostics are advisory: an unexpected failure must never abort
+      // startup, so default to "ok" (no degraded warning) on error.
+      var filesystemAccessOk = true;
+      try {
+        final diagnostics = BridgeDiagnostics();
+        filesystemAccessOk = await diagnostics.checkFilesystemAccess();
+        await diagnostics.checkGitAvailable();
+      } on Object catch (error, stackTrace) {
+        Log.w("Startup diagnostics failed; continuing without a degraded-access warning", error, stackTrace);
+      }
 
       final runtime = BridgeRuntime.create(
         config: BridgeConfig(
