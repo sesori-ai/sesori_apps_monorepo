@@ -134,7 +134,13 @@ If a mobile feature needs a platform capability not already abstracted:
 3. Register the implementation in DI phase 1 (`getIt.init()`)
 4. Consume it from `module_core` via the interface — never reach for `package:flutter` from `module_core`
 
-There is ONE production implementation per interface. Do not add factories, alternatives, or abstract factories unless there is a real second implementor (e.g., a test fake is NOT a second implementor — see "No Pointless Interfaces" philosophy in the bridge AGENTS.md; `implements` works on any class in Dart 3).
+There is ONE production implementation per interface **per product/platform**.
+Mobile adapters live in `client/app`; desktop adapters for shared `module_core`
+interfaces live in `client/desktop`. Do not add factories, alternatives, or
+abstract factories unless there is a real second production implementor for the
+same product/platform (e.g., a test fake is NOT a second implementor — see "No
+Pointless Interfaces" philosophy in the bridge AGENTS.md; `implements` works on
+any class in Dart 3).
 
 Desktop-only platform capabilities are defined in
 `module_desktop_core/lib/src/foundation/platform/` and implemented in
