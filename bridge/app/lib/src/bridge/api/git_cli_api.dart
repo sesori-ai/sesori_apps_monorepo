@@ -32,6 +32,24 @@ class GitCliApi {
     return _gitPathExists(gitPath: "$projectPath/.git");
   }
 
+  /// Initializes a new git repository at [path]. Returns `true` on success.
+  Future<bool> initRepository({required String path}) async {
+    final result = await _processRunner.run("git", ["init", path]);
+    return result.exitCode == 0;
+  }
+
+  /// Stages all changes in [projectPath]. Returns `true` on success.
+  Future<bool> stageAll({required String projectPath}) async {
+    final result = await runGit(projectPath: projectPath, arguments: const ["add", "."]);
+    return result.exitCode == 0;
+  }
+
+  /// Creates a commit with [message] in [projectPath]. Returns `true` on success.
+  Future<bool> commitAll({required String projectPath, required String message}) async {
+    final result = await runGit(projectPath: projectPath, arguments: ["commit", "-m", message]);
+    return result.exitCode == 0;
+  }
+
   Future<bool> hasAtLeastOneCommit({required String projectPath}) async {
     final result = await runGit(projectPath: projectPath, arguments: const ["rev-parse", "HEAD"]);
     return result.exitCode == 0;

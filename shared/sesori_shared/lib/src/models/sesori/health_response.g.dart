@@ -9,7 +9,12 @@ part of 'health_response.dart';
 _HealthResponse _$HealthResponseFromJson(Map json) => _HealthResponse(
   healthy: json['healthy'] as bool,
   version: json['version'] as String,
+  filesystemAccessDegraded: json['filesystemAccessDegraded'] as bool?,
 );
 
 Map<String, dynamic> _$HealthResponseToJson(_HealthResponse instance) =>
-    <String, dynamic>{'healthy': instance.healthy, 'version': instance.version};
+    <String, dynamic>{
+      'healthy': instance.healthy,
+      'version': instance.version,
+      'filesystemAccessDegraded': ?instance.filesystemAccessDegraded,
+    };

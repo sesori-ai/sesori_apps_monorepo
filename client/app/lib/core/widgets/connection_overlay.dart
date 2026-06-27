@@ -43,6 +43,8 @@ class _ConnectionOverlayBody extends StatelessWidget {
     final showOverlay = status is ConnectionLost;
     final isReconnecting = status is ConnectionReconnecting;
     final isBridgeOffline = status is ConnectionBridgeOffline;
+    final filesystemAccessDegraded =
+        status is ConnectionConnected && (status.health.filesystemAccessDegraded ?? false);
 
     return Stack(
       children: [
@@ -56,6 +58,18 @@ class _ConnectionOverlayBody extends StatelessWidget {
             right: 0,
             child: SafeArea(
               child: _BridgeOfflineBanner(),
+            ),
+          ),
+
+        // Non-blocking filesystem-access warning — the bridge can't read some
+        // directories (e.g. macOS Full Disk Access not granted to the terminal).
+        if (filesystemAccessDegraded)
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              child: _FilesystemAccessBanner(),
             ),
           ),
 
@@ -134,6 +148,26 @@ class _BridgeOfflineBanner extends StatelessWidget {
       type: PregoInlineAlertsNotificationsType.warning,
       title: loc.bridgeDisconnectedTitle,
       icon: TablerRegular.broadcast_off,
+    );
+  }
+}
+
+class _FilesystemAccessBanner extends StatelessWidget {
+  const _FilesystemAccessBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+
+    // Purely informational: the relay/bridge connection is healthy, but the
+    // bridge's host process lacks permission to read some directories (on
+    // macOS, Full Disk Access for the terminal running the bridge). The user
+    // resolves this on their Mac, so there is no in-app action here.
+    return PregoInlineAlertsNotifications(
+      type: PregoInlineAlertsNotificationsType.warning,
+      title: loc.filesystemAccessDegradedTitle,
+      supportingText: loc.filesystemAccessDegradedBody,
+      icon: TablerRegular.folder_x,
     );
   }
 }

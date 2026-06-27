@@ -1,5 +1,4 @@
 import "package:flutter/material.dart";
-import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -56,27 +55,20 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
     if (_browsingPath.isEmpty) return;
     setState(() => _actionLoading = true);
 
-    final success = await widget.cubit.discoverProject(path: _browsingPath);
+    final outcome = await widget.cubit.discoverProject(path: _browsingPath);
 
     if (!mounted) return;
     setState(() => _actionLoading = false);
 
     final loc = context.loc;
-    if (success) {
-      _dismissDialog();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(loc.projectDiscovered),
-          duration: kSnackBarDuration,
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(loc.projectDiscoverFailed),
-          duration: kSnackBarDuration,
-        ),
-      );
+    switch (outcome) {
+      case AddProjectOutcome.success:
+        _dismissDialog();
+        _showSnackBar(loc.projectDiscovered);
+      case AddProjectOutcome.permissionDenied:
+        _showSnackBar(loc.addProjectPermissionDenied);
+      case AddProjectOutcome.otherError:
+        _showSnackBar(loc.projectDiscoverFailed);
     }
   }
 
@@ -87,28 +79,27 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
     final fullPath = "$_browsingPath/$name";
     setState(() => _actionLoading = true);
 
-    final success = await widget.cubit.createProject(path: fullPath);
+    final outcome = await widget.cubit.createProject(path: fullPath);
 
     if (!mounted) return;
     setState(() => _actionLoading = false);
 
     final loc = context.loc;
-    if (success) {
-      _dismissDialog();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(loc.projectCreated),
-          duration: kSnackBarDuration,
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(loc.projectCreateFailed),
-          duration: kSnackBarDuration,
-        ),
-      );
+    switch (outcome) {
+      case AddProjectOutcome.success:
+        _dismissDialog();
+        _showSnackBar(loc.projectCreated);
+      case AddProjectOutcome.permissionDenied:
+        _showSnackBar(loc.addProjectPermissionDenied);
+      case AddProjectOutcome.otherError:
+        _showSnackBar(loc.projectCreateFailed);
     }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: kSnackBarDuration),
+    );
   }
 
   @override
@@ -147,6 +138,7 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
               Expanded(
                 child: _DirectoryBrowser(
                   key: _browserKey,
+                  cubit: widget.cubit,
                   onPathChanged: (path) => setState(() => _browsingPath = path),
                 ),
               ),
@@ -216,9 +208,10 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
 // ---------------------------------------------------------------------------
 
 class _DirectoryBrowser extends StatefulWidget {
+  final ProjectListCubit cubit;
   final ValueChanged<String>? onPathChanged;
 
-  const _DirectoryBrowser({this.onPathChanged, super.key});
+  const _DirectoryBrowser({required this.cubit, this.onPathChanged, super.key});
 
   @override
   State<_DirectoryBrowser> createState() => _DirectoryBrowserState();
@@ -229,6 +222,7 @@ class _DirectoryBrowserState extends State<_DirectoryBrowser> {
   List<FilesystemSuggestion> _entries = [];
   bool _loading = false;
   bool _hasError = false;
+  bool _permissionDenied = false;
 
   String get currentPath => _currentPath;
 
@@ -242,22 +236,29 @@ class _DirectoryBrowserState extends State<_DirectoryBrowser> {
     setState(() {
       _loading = true;
       _hasError = false;
+      _permissionDenied = false;
     });
 
-    final response = await GetIt.instance<ProjectService>().getFilesystemSuggestions(
+    final outcome = await widget.cubit.fetchFilesystemSuggestions(
       prefix: _currentPath.isEmpty ? null : _currentPath,
     );
 
     if (!mounted) return;
     setState(() {
       _loading = false;
-      switch (response) {
-        case SuccessResponse(:final data):
-          _entries = data.data;
+      switch (outcome) {
+        case FilesystemSuggestionsSuccess(:final suggestions):
+          _entries = suggestions.data;
           _hasError = false;
-        case ErrorResponse():
+          _permissionDenied = false;
+        case FilesystemSuggestionsPermissionDenied():
           _entries = [];
           _hasError = true;
+          _permissionDenied = true;
+        case FilesystemSuggestionsError():
+          _entries = [];
+          _hasError = true;
+          _permissionDenied = false;
       }
     });
   }
@@ -321,10 +322,14 @@ class _DirectoryBrowserState extends State<_DirectoryBrowser> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.error_outline, size: 48, color: prego.colors.fgErrorPrimary),
+                        Icon(
+                          _permissionDenied ? Icons.lock_outline : Icons.error_outline,
+                          size: 48,
+                          color: prego.colors.fgErrorPrimary,
+                        ),
                         const SizedBox(height: 12),
                         Text(
-                          loc.fetchDirectoryFailed,
+                          _permissionDenied ? loc.fetchDirectoryPermissionDenied : loc.fetchDirectoryFailed,
                           textAlign: TextAlign.center,
                           style: prego.textTheme.textSm.regular.copyWith(
                             color: prego.colors.fgErrorPrimary,

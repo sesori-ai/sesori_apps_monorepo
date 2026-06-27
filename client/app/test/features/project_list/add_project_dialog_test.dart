@@ -149,21 +149,23 @@ Widget _buildProjectListShell({required ProjectListCubit cubit}) {
 }
 
 void _stubSuggestionsWithEntries(
-  MockProjectService service, {
+  MockProjectListCubit cubit, {
   required List<FilesystemSuggestion> entries,
 }) {
   when(
-    () => service.getFilesystemSuggestions(prefix: any(named: "prefix")),
-  ).thenAnswer((_) async => ApiResponse.success(FilesystemSuggestions(data: entries)));
+    () => cubit.fetchFilesystemSuggestions(prefix: any(named: "prefix")),
+  ).thenAnswer(
+    (_) async => FilesystemSuggestionsSuccess(suggestions: FilesystemSuggestions(data: entries)),
+  );
 }
 
 void _stubSuggestionsPerPrefix(
-  MockProjectService service, {
+  MockProjectListCubit cubit, {
   required Map<String, List<FilesystemSuggestion>> byPrefix,
 }) {
-  when(() => service.getFilesystemSuggestions(prefix: any(named: "prefix"))).thenAnswer((invocation) async {
+  when(() => cubit.fetchFilesystemSuggestions(prefix: any(named: "prefix"))).thenAnswer((invocation) async {
     final prefix = invocation.namedArguments[const Symbol("prefix")] as String?;
-    return ApiResponse.success(FilesystemSuggestions(data: byPrefix[prefix ?? ""] ?? []));
+    return FilesystemSuggestionsSuccess(suggestions: FilesystemSuggestions(data: byPrefix[prefix ?? ""] ?? []));
   });
 }
 
@@ -198,7 +200,7 @@ void main() {
       when(() => mockCubit.state).thenReturn(
         const ProjectListState.loaded(projects: [], activityById: {}),
       );
-      _stubSuggestionsWithEntries(mockProjectService, entries: _homeDirEntries);
+      _stubSuggestionsWithEntries(mockCubit, entries: _homeDirEntries);
 
       await tester.pumpWidget(_buildProjectListShell(cubit: mockCubit));
 
@@ -277,7 +279,7 @@ void main() {
       when(() => mockCubit.state).thenReturn(
         const ProjectListState.loaded(projects: [], activityById: {}),
       );
-      _stubSuggestionsWithEntries(mockProjectService, entries: _homeDirEntries);
+      _stubSuggestionsWithEntries(mockCubit, entries: _homeDirEntries);
 
       await tester.pumpWidget(_buildProjectListShell(cubit: mockCubit));
 
@@ -295,7 +297,7 @@ void main() {
 
   group("AddProjectDialog", () {
     testWidgets("shows directory browser with entries and both action buttons", (tester) async {
-      _stubSuggestionsWithEntries(mockProjectService, entries: _homeDirEntries);
+      _stubSuggestionsWithEntries(mockCubit, entries: _homeDirEntries);
 
       await tester.pumpWidget(
         _buildApp(
@@ -335,7 +337,7 @@ void main() {
 
     testWidgets("tapping a directory entry navigates into it", (tester) async {
       _stubSuggestionsPerPrefix(
-        mockProjectService,
+        mockCubit,
         byPrefix: {
           "": _homeDirEntries,
           "/home/user/projects": _projectsDirEntries,
@@ -371,7 +373,7 @@ void main() {
 
     testWidgets("back button navigates up one directory level", (tester) async {
       _stubSuggestionsPerPrefix(
-        mockProjectService,
+        mockCubit,
         byPrefix: {
           "": _homeDirEntries,
           "/home/user/projects": _projectsDirEntries,
@@ -409,13 +411,13 @@ void main() {
 
     testWidgets("Open as Project calls discoverProject with browsed path", (tester) async {
       _stubSuggestionsPerPrefix(
-        mockProjectService,
+        mockCubit,
         byPrefix: {
           "": _homeDirEntries,
           "/home/user/my-repo": const [],
         },
       );
-      when(() => mockCubit.discoverProject(path: any(named: "path"))).thenAnswer((_) async => true);
+      when(() => mockCubit.discoverProject(path: any(named: "path"))).thenAnswer((_) async => AddProjectOutcome.success);
 
       await tester.pumpWidget(
         _buildApp(
@@ -447,13 +449,13 @@ void main() {
 
     testWidgets("Create constructs path from browsed dir + typed name", (tester) async {
       _stubSuggestionsPerPrefix(
-        mockProjectService,
+        mockCubit,
         byPrefix: {
           "": _homeDirEntries,
           "/home/user/projects": _projectsDirEntries,
         },
       );
-      when(() => mockCubit.createProject(path: any(named: "path"))).thenAnswer((_) async => true);
+      when(() => mockCubit.createProject(path: any(named: "path"))).thenAnswer((_) async => AddProjectOutcome.success);
 
       await tester.pumpWidget(
         _buildApp(
@@ -488,7 +490,7 @@ void main() {
     });
 
     testWidgets("empty directory shows empty state message", (tester) async {
-      _stubSuggestionsWithEntries(mockProjectService, entries: const []);
+      _stubSuggestionsWithEntries(mockCubit, entries: const []);
 
       await tester.pumpWidget(
         _buildApp(
@@ -512,8 +514,8 @@ void main() {
 
     testWidgets("loading state shows progress indicator", (tester) async {
       when(
-        () => mockProjectService.getFilesystemSuggestions(prefix: any(named: "prefix")),
-      ).thenAnswer((_) => Completer<ApiResponse<FilesystemSuggestions>>().future);
+        () => mockCubit.fetchFilesystemSuggestions(prefix: any(named: "prefix")),
+      ).thenAnswer((_) => Completer<FilesystemSuggestionsOutcome>().future);
 
       await tester.pumpWidget(
         _buildApp(

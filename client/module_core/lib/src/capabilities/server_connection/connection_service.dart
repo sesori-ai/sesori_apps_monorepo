@@ -290,7 +290,7 @@ class ConnectionService {
       // return leaves it in `connecting` — only the former should park here.
       if (relayClient.connectionState == RelayClientConnectionState.connected &&
           !relayClient.isConnected) {
-        const bridgeOfflineHealth = HealthResponse(healthy: true, version: "");
+        const bridgeOfflineHealth = HealthResponse(healthy: true, version: "", filesystemAccessDegraded: null);
         _clearConnectingRelayClient(relayClient);
         _relayClient = relayClient;
         _authRetryCount = 0;
@@ -312,7 +312,12 @@ class ConnectionService {
       }
 
       // A resume_ack already proves the bridge is reachable; only fresh-DH
-      // connects need the extra health round-trip.
+      // connects need the extra health round-trip. A non-error status code is
+      // sufficient proof of liveness — the bridge only returns 200 when the
+      // underlying backend is healthy. We parse the body (when present) so the
+      // bridge can report a degraded filesystem-access warning to the phone;
+      // an older bridge that sends no/legacy body falls back to plain healthy.
+      var health = const HealthResponse(healthy: true, version: "", filesystemAccessDegraded: null);
       if (!relayClient.didResume) {
         final response = await relayClient.sendRequest(
           RelayRequest(
@@ -334,11 +339,9 @@ class ConnectionService {
             ),
           );
         }
-      }
 
-      // A non-error status code is sufficient — the bridge only returns 200
-      // when the underlying backend is healthy. The response body is ignored.
-      const health = HealthResponse(healthy: true, version: "");
+        health = _parseHealthResponse(response.body) ?? health;
+      }
 
       // The handshake spanned several awaits; if a newer attempt or a disconnect
       // landed meanwhile, tear down this socket instead of committing it as the
@@ -383,6 +386,23 @@ class ConnectionService {
   void _clearConnectingRelayClient(RelayClient relayClient) {
     if (identical(_connectingRelayClient, relayClient)) {
       _connectingRelayClient = null;
+    }
+  }
+
+  /// Parses the `/global/health` response body into a [HealthResponse].
+  ///
+  /// Returns `null` when the body is absent or malformed (e.g. an older bridge
+  /// that returns an empty `{}` body), so the caller keeps its healthy
+  /// fallback rather than failing the connection.
+  HealthResponse? _parseHealthResponse(String? body) {
+    if (body == null) return null;
+    try {
+      return HealthResponse.fromJson(jsonDecodeMap(body));
+    } on Object catch (error, stackTrace) {
+      // An older bridge returns an empty `{}` body here, which is expected and
+      // benign — keep the healthy fallback rather than treating it as failure.
+      logd("Health response body not parseable; assuming healthy", error, stackTrace);
+      return null;
     }
   }
 

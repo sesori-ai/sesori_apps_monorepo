@@ -1,13 +1,18 @@
 import "dart:io";
 
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/filesystem_repository.dart";
 import "request_handler.dart";
 
 /// Handles `POST /filesystem/suggestions` — lists child directories of a given prefix path.
 class FilesystemSuggestionsHandler extends BodyRequestHandler<FilesystemSuggestionsRequest, FilesystemSuggestions> {
-  FilesystemSuggestionsHandler()
-    : super(
+  final FilesystemRepository _filesystemRepository;
+
+  FilesystemSuggestionsHandler({required FilesystemRepository filesystemRepository})
+    : _filesystemRepository = filesystemRepository,
+      super(
         HttpMethod.post,
         "/filesystem/suggestions",
         fromJson: FilesystemSuggestionsRequest.fromJson,
@@ -23,7 +28,6 @@ class FilesystemSuggestionsHandler extends BodyRequestHandler<FilesystemSuggesti
   }) async {
     final prefix = body.prefix ?? Platform.environment["HOME"] ?? "/";
 
-    // Validate path
     if (!prefix.startsWith("/")) {
       throw buildErrorResponse(request, 400, "prefix must be an absolute path");
     }
@@ -31,31 +35,14 @@ class FilesystemSuggestionsHandler extends BodyRequestHandler<FilesystemSuggesti
       throw buildErrorResponse(request, 400, "path traversal not allowed");
     }
 
-    // List child directories
-    final dir = Directory(prefix);
-    if (!dir.existsSync()) {
-      throw buildErrorResponse(request, 404, "directory not found");
-    }
-
     try {
-      final entries =
-          dir
-              .listSync(followLinks: false)
-              .whereType<Directory>()
-              .where((d) => !d.path.split("/").last.startsWith("."))
-              .take(body.maxResults)
-              .map((d) {
-                final name = d.path.split("/").last;
-                final isGitRepo = Directory("${d.path}/.git").existsSync();
-                return FilesystemSuggestion(path: d.path, name: name, isGitRepo: isGitRepo);
-              })
-              .toList()
-            ..sort((a, b) => a.name.compareTo(b.name));
-
-      final suggestions = FilesystemSuggestions(data: entries);
-
-      return suggestions;
-    } on FileSystemException {
+      return _filesystemRepository.listSuggestions(prefix: prefix, maxResults: body.maxResults);
+    } on FilesystemPermissionDeniedException {
+      throw buildErrorResponse(request, 403, "permission denied: $prefix");
+    } on FilesystemDirectoryNotFoundException {
+      throw buildErrorResponse(request, 404, "directory not found");
+    } on FileSystemException catch (error) {
+      Log.w("FilesystemSuggestionsHandler: failed to list $prefix", error);
       throw buildErrorResponse(request, 500, "failed to list filesystem suggestions");
     }
   }

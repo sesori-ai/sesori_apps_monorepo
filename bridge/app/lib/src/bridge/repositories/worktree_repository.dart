@@ -48,6 +48,18 @@ class WorktreeRepository {
     return _gitApi.isGitInitialized(projectPath: projectPath);
   }
 
+  Future<bool> initRepository({required String path}) {
+    return _gitApi.initRepository(path: path);
+  }
+
+  Future<bool> stageAll({required String projectPath}) {
+    return _gitApi.stageAll(projectPath: projectPath);
+  }
+
+  Future<bool> commitAll({required String projectPath, required String message}) {
+    return _gitApi.commitAll(projectPath: projectPath, message: message);
+  }
+
   Future<bool> hasAtLeastOneCommit({required String projectPath}) {
     return _gitApi.hasAtLeastOneCommit(projectPath: projectPath);
   }
