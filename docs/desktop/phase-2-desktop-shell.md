@@ -177,9 +177,14 @@ Aristotle verdicts · Findings log · Plan-deltas.
 ## PR 2.12 — GUI single-instance + persist on/off & last-state
 - **Goal:** `DesktopInstanceService` over `DesktopInstanceRepository` (which wraps
   the lock/storage boundary) owns single-instance lock orchestration (second
-  launch focuses first); persist on/off + last-state; respawn bridge if last-on.
+  launch focuses first) and persists on/off + last-state. A Layer-4
+  `DesktopStartupOrchestrator` composes `DesktopInstanceService` and
+  `BridgeProcessService` to restore a last-on bridge, so the instance service
+  does not call a peer service or duplicate bridge spawn/auth/backoff policy.
 - **Risk:** Low-Med. **Size:** S-M.
-- **Acceptance:** second launch focuses first; last-on respawns bridge on boot.
+- **Acceptance:** second launch focuses first; last-on respawns bridge on boot
+  through `DesktopStartupOrchestrator`; no Layer-3 service depends on a peer
+  Layer-3 service.
 
 ## PR 2.13 — Logout coordination (GUI side) + offline unregister fallback
 - **Goal:** On logout with a **live** helper: send `unregister-and-exit` → wait

@@ -65,8 +65,8 @@ Aristotle verdicts · Findings log · Plan-deltas.
 - **Goal:** Add `DesktopUpdateService` in `module_desktop_core/lib/src/services/`
   as the Layer-3 owner of update-apply policy. It calls the
   `BridgeProcessRepository` expected-stop operation (which marks the helper stop
-  as expected and suppresses respawn), stages/applies through
-  `AppUpdateRepository` (which wraps the dumb Layer-0 `AppUpdater` adapter),
+  as expected and suppresses respawn), stages/applies through `AppUpdateRepository`
+  over a dumb Layer-1 `AppUpdateApi` (which wraps the Layer-0 `AppUpdater` adapter),
   relaunches, then **restores last-on** through lower-layer desktop-instance
   repository semantics. Also surface update-available/failed in the window and
   handle failed staging/apply gracefully (no bricking). The service must avoid
@@ -80,8 +80,9 @@ Aristotle verdicts · Findings log · Plan-deltas.
 - **Acceptance:** with a fake `AppUpdater` and the bridge **on**, the update
   policy stops the helper without respawn thrash, calls stage/apply, relaunches,
   and restores last-on; an injected failed update leaves the app runnable +
-  reports it; `AppUpdater` remains a dumb adapter with no helper stop/restore
-  policy; `DesktopUpdateService` depends only on lower-layer collaborators.
+  reports it; `AppUpdater` remains a dumb adapter behind `AppUpdateApi` with no
+  helper stop/restore policy; `DesktopUpdateService` depends only on lower-layer
+  collaborators.
 
 ## PR 3.7 — macOS self-update (Sparkle)
 - **Goal:** `auto_updater`/Sparkle + EdDSA keys + appcast generation from GitHub
@@ -109,7 +110,7 @@ Aristotle verdicts · Findings log · Plan-deltas.
   instead of App; publish appcast/zsync to releases keyed to the shared version.
 - **Trigger paths:** PR 0.1 excluded `client/desktop/**` from the (mobile-product)
   release triggers, so this PR must **add `client/desktop/**`,
-  `client/module_desktop_core/**`, `client/module_app_ui/**`, shared
+  `bridge/**`, `client/module_desktop_core/**`, `client/module_app_ui/**`, shared
   desktop-consumed paths (`client/module_core/**`, `client/module_auth/**`,
   `client/module_prego/**`, workspace client pubspec/lock/config files,
   `shared/sesori_shared/**`), and any other desktop-consumed UI package paths to

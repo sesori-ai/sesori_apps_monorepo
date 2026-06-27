@@ -43,7 +43,9 @@ have `module_auth` as a pubspec dependency solely for the
 types in source code outside that DI call. All auth functionality is accessed
 through `module_core` interfaces. `module_core` MUST NOT depend on
 `module_desktop_core`. Product shells may import `module_prego` directly for
-shell-owned presentation.
+shell-owned presentation. `module_app_ui` may depend on `module_core`,
+`module_prego`, `sesori_shared`, and direct Flutter UI dependencies; it must not
+import product shells or `module_desktop_core`.
 
 ## Testing
 
