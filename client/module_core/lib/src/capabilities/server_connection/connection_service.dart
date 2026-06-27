@@ -72,6 +72,10 @@ class ConnectionService {
   final Random _requestIdRandom = Random();
   int _authRetryCount = 0;
   Duration _relayReconnectBackoff = const Duration(seconds: 1);
+  // Last health metadata fetched on a fresh-DH connect. Resumed reconnects skip
+  // the /global/health round-trip, so this is reused to keep the degraded
+  // filesystem-access warning stable across reconnects instead of clearing it.
+  HealthResponse? _lastHealth;
   int _reconnectAttemptId = 0;
   bool _isInBackground = false;
   DateTime? _backgroundedAt;
@@ -317,7 +321,13 @@ class ConnectionService {
       // underlying backend is healthy. We parse the body (when present) so the
       // bridge can report a degraded filesystem-access warning to the phone;
       // an older bridge that sends no/legacy body falls back to plain healthy.
-      var health = const HealthResponse(healthy: true, version: "", filesystemAccessDegraded: null);
+      //
+      // On a resumed connect we reuse the last fetched health so a previously
+      // reported degraded-filesystem warning stays stable across reconnects
+      // (the bridge's access hasn't changed); only the first connect of a
+      // session falls back to the plain-healthy default.
+      var health =
+          _lastHealth ?? const HealthResponse(healthy: true, version: "", filesystemAccessDegraded: null);
       if (!relayClient.didResume) {
         final response = await relayClient.sendRequest(
           RelayRequest(
@@ -341,6 +351,7 @@ class ConnectionService {
         }
 
         health = _parseHealthResponse(response.body) ?? health;
+        _lastHealth = health;
       }
 
       // The handshake spanned several awaits; if a newer attempt or a disconnect

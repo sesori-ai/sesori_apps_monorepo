@@ -268,6 +268,72 @@ void main() {
       expect(service.currentStatus, isA<ConnectionConnected>());
     });
 
+    test("resumed reconnect preserves degraded filesystem-access health from the prior fresh connect", () async {
+      final sseController = StreamController<RelaySseEvent>.broadcast();
+      addTearDown(sseController.close);
+
+      const degradedHealth = HealthResponse(healthy: true, version: "1.0.0", filesystemAccessDegraded: true);
+
+      final initialClient = MockRelayClient();
+      final resumedClient = MockRelayClient();
+      final clients = <MockRelayClient>[initialClient, resumedClient];
+      for (final client in clients) {
+        when(() => client.isConnected).thenReturn(true);
+        when(() => client.connectionState).thenReturn(RelayClientConnectionState.connected);
+        when(() => client.subscribeSse(any())).thenAnswer((_) => sseController.stream);
+        when(() => client.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+        when(client.connect).thenAnswer((_) async {});
+        when(client.disconnect).thenAnswer((_) async {});
+      }
+      // Fresh connect reports degraded access; resumed reconnect skips /health.
+      when(() => initialClient.didResume).thenReturn(false);
+      when(() => initialClient.sendRequest(any())).thenAnswer(
+        (_) async => RelayResponse(id: "h", status: 200, body: jsonEncode(degradedHealth.toJson()), headers: const {}),
+      );
+      when(() => resumedClient.didResume).thenReturn(true);
+
+      var nextClient = 0;
+      final factory = _TestRelayClientFactory(
+        ({
+          required String relayHost,
+          required RelayCryptoService cryptoService,
+          required RoomKeyStorage roomKeyStorage,
+          required String? authToken,
+        }) => clients[nextClient++],
+      );
+      var now = DateTime(2025, 1, 1, 12, 0, 0);
+      final service = ConnectionService(
+        cryptoService,
+        roomKeyStorage,
+        authTokenProvider,
+        authSession,
+        lifecycleSource,
+        failureReporter,
+        clock: _TestClockProvider(() => now),
+        relayClientFactory: factory,
+      );
+      addTearDown(service.dispose);
+
+      await service.connect(config);
+      final initialStatus = service.currentStatus;
+      expect(initialStatus, isA<ConnectionConnected>());
+      expect((initialStatus as ConnectionConnected).health.filesystemAccessDegraded, isTrue);
+
+      // Drive a resumed reconnect via a foreground pause/resume.
+      lifecycleController.add(LifecycleState.paused);
+      await Future<void>.delayed(Duration.zero);
+      now = now.add(const Duration(seconds: 30));
+      lifecycleController.add(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      // The resumed reconnect never re-fetches /health ...
+      verifyNever(() => resumedClient.sendRequest(any()));
+      final resumedStatus = service.currentStatus;
+      expect(resumedStatus, isA<ConnectionConnected>());
+      // ... yet the degraded-access warning is preserved.
+      expect((resumedStatus as ConnectionConnected).health.filesystemAccessDegraded, isTrue);
+    });
+
     test("fresh-DH connect still sends GET /health", () async {
       final sseController = StreamController<RelaySseEvent>.broadcast();
       addTearDown(sseController.close);

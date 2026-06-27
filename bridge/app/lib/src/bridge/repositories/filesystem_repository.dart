@@ -59,22 +59,25 @@ class FilesystemRepository {
         throw FilesystemDirectoryNotFoundException(path: prefix);
       }
 
-      final entries =
+      // Filter, sort, and truncate by name FIRST, then probe `.git` only for
+      // the selected entries. Probing every child up front would stat
+      // directories that will never be returned and, because the probe runs
+      // inside _guard, an unreadable out-of-page child could 403 the whole
+      // listing.
+      final selected =
           _filesystemApi
               .listDirectories(prefix)
-              .map((d) {
-                final name = p.basename(d.path);
-                final isGitRepo = _filesystemApi.gitDirectoryExists(d.path);
-                return FilesystemSuggestion(path: d.path, name: name, isGitRepo: isGitRepo);
-              })
-              .where((s) => !s.name.startsWith("."))
+              .map((d) => (path: d.path, name: p.basename(d.path)))
+              .where((e) => !e.name.startsWith("."))
               .toList()
-            // Sort before truncating so the returned subset is the
-            // deterministic alphabetical top-N, not an arbitrary slice of the
-            // filesystem's listing order.
             ..sort((a, b) => a.name.compareTo(b.name));
 
-      return FilesystemSuggestions(data: entries.take(maxResults).toList());
+      final suggestions = selected
+          .take(maxResults)
+          .map((e) => FilesystemSuggestion(path: e.path, name: e.name, isGitRepo: _filesystemApi.gitDirectoryExists(e.path)))
+          .toList();
+
+      return FilesystemSuggestions(data: suggestions);
     });
   }
 
