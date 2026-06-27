@@ -191,19 +191,26 @@ lib/src/
 client/app ───────────────→ module_app_ui ─┐
      │                                      │
      └──────────────────────────────────────┴→ module_core → module_auth → sesori_shared
+     │
+     └→ module_prego
 
 client/desktop ───────────→ module_app_ui ─┐
      │                                      │
      ├──────────────────────────────────────┴→ module_core → module_auth → sesori_shared
      │
      └→ module_desktop_core ─────────────────→ module_core
+     │                         │
+     │                         └→ sesori_shared
+     └→ module_prego
 ```
 
 `client/app` and `client/desktop` may have `module_auth` in pubspec only for DI
 wiring (`configureAuthDependencies(getIt)`) — they MUST NOT import
 `module_auth` types in source code outside that DI call. All auth functionality
-is accessed through `module_core` interfaces. `module_app_ui` is introduced in
-Phase 4; until then the product shells consume their own UI directly.
+is accessed through `module_core` interfaces. Product shells may import
+`module_prego` directly for shell-owned presentation. `module_app_ui` is
+introduced in Phase 4; until then the product shells consume their own UI
+directly.
 
 **`module_core` — target directory structure:**
 

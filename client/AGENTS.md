@@ -24,12 +24,17 @@ dart run build_runner build --delete-conflicting-outputs  # per module, after mo
 client/app ───────────────→ module_app_ui ─┐
      │                                      │
      └──────────────────────────────────────┴→ module_core → module_auth → sesori_shared
+     │
+     └→ module_prego
 
 client/desktop ───────────→ module_app_ui ─┐
      │                                      │
      ├──────────────────────────────────────┴→ module_core → module_auth → sesori_shared
      │
      └→ module_desktop_core ─────────────────→ module_core
+     │                         │
+     │                         └→ sesori_shared
+     └→ module_prego
 ```
 
 NEVER reverse this. NEVER skip layers. `client/app` and `client/desktop` may
@@ -37,7 +42,8 @@ have `module_auth` as a pubspec dependency solely for the
 `configureAuthDependencies(getIt)` DI call — they MUST NOT import `module_auth`
 types in source code outside that DI call. All auth functionality is accessed
 through `module_core` interfaces. `module_core` MUST NOT depend on
-`module_desktop_core`.
+`module_desktop_core`. Product shells may import `module_prego` directly for
+shell-owned presentation.
 
 ## Testing
 

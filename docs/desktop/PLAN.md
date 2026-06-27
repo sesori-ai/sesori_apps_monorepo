@@ -95,12 +95,17 @@ does **not** live in shared `module_core`. The client workspace graph is:
 client/app ───────────────→ module_app_ui ─┐
      │                                      │
      └──────────────────────────────────────┴→ module_core → module_auth → sesori_shared
+     │
+     └→ module_prego
 
 client/desktop ───────────→ module_app_ui ─┐
      │                                      │
      ├──────────────────────────────────────┴→ module_core → module_auth → sesori_shared
      │
      └→ module_desktop_core ─────────────────→ module_core
+     │                         │
+     │                         └→ sesori_shared
+     └→ module_prego
 ```
 
 - `client/desktop` is a Flutter product shell: DI, presentation, routing/window
@@ -114,6 +119,9 @@ client/desktop ───────────→ module_app_ui ─┐
   `module_prego`, but it must never import `client/app`, `client/desktop`, or
   `module_desktop_core`. Product-specific behavior enters through injected
   callbacks/strategies composed by the product shell.
+- Product shells may import `module_prego` directly for shell-owned
+  presentation. `module_desktop_core` may import `sesori_shared` directly for
+  control-protocol DTOs.
 
 ### Data flow
 
@@ -241,8 +249,10 @@ internal `new`).
 | desktop `SecureStorage` / `UrlLauncher` / `FailureReporter` impls | `client/desktop` Layer 0 adapters | platform adapters for `module_core` seams |
 
 Auth: `client/desktop` registers `module_auth` via `configureAuthDependencies(getIt)`
-and consumes only the exported interfaces (`AuthTokenProvider`/`OAuthFlowProvider`/`AuthSession`) — **no direct `AuthManager` import**. `client/desktop`
-also wires `configureCoreDependencies(getIt)` before `configureDesktopCoreDependencies(getIt)` so `module_desktop_core` can depend on shared `module_core` seams.
+and wires `configureCoreDependencies(getIt)` before
+`configureDesktopCoreDependencies(getIt)`. Outside that DI call, the shell must
+not import `module_auth` types directly; `module_desktop_core` consumes auth
+seams through `module_core` interfaces, not `AuthManager` internals.
 
 ## 7. Architecture decision records (ADR)
 
