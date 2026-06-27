@@ -48,6 +48,7 @@ class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher 
   final Map<String, Completer<String?>> _pending = <String, Completer<String?>>{};
   late final StreamSubscription<String> _subscription;
   int _nextRequestId = 0;
+  int _latestRequestSeq = -1;
   bool _disposed = false;
   Future<void>? _disposeFuture;
 
@@ -93,11 +94,24 @@ class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher 
         "Control channel token service has been disposed.",
       );
     }
-    final id = "token-${_nextRequestId++}";
+    final seq = _nextRequestId++;
+    final id = "token-$seq";
+    // Track the most recently issued pull so an older overlapping response can't
+    // clobber the cache with a staler token than a later pull already wrote.
+    _latestRequestSeq = seq;
     final completer = Completer<String?>();
     _pending[id] = completer;
     try {
-      _client.send(jsonEncode(ControlMessage.tokenRequest(id: id, forceRefresh: forceRefresh).toJson()));
+      try {
+        _client.send(jsonEncode(ControlMessage.tokenRequest(id: id, forceRefresh: forceRefresh).toJson()));
+      } on ControlChannelNotConnectedException {
+        // The loopback channel is down (GUI outage / mid-reconnect). Surface the
+        // documented typed failure so refresh callers (e.g. relay re-auth) handle
+        // a GUI-unavailable pull uniformly instead of a raw transport error.
+        throw const ControlTokenUnavailableException(
+          "The desktop app control channel is not connected.",
+        );
+      }
       final accessToken = await completer.future.timeout(_requestTimeout);
       if (accessToken == null) {
         throw const ControlTokenUnavailableException(
@@ -105,9 +119,11 @@ class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher 
         );
       }
       // Cache the latest token so the synchronous getter and tokenStream stay
-      // current. Skip if a dispose raced this pull (which closes the subject) —
-      // returning the token to the caller is still correct mid-shutdown.
-      if (!_disposed) {
+      // current. Only the most recently issued pull writes the shared cache (so a
+      // slower older response can't overwrite a newer token), and skip if a
+      // dispose raced this pull (which closes the subject) — returning the token
+      // to the caller is still correct mid-shutdown.
+      if (!_disposed && seq == _latestRequestSeq) {
         _tokenSubject.add(accessToken);
       }
       return accessToken;

@@ -93,6 +93,44 @@ void main() {
       expect(() => service.accessToken, throwsStateError);
     });
 
+    test("maps a disconnected-channel send failure to a typed token failure", () async {
+      final client = _FakeControlChannelClient()..throwOnSend = true;
+      final service = ControlChannelTokenService(client: client);
+      addTearDown(service.dispose);
+
+      await expectLater(
+        service.getAccessToken(),
+        throwsA(isA<ControlTokenUnavailableException>()),
+      );
+    });
+
+    test("a slower older pull does not overwrite the newer cached token", () async {
+      final client = _FakeControlChannelClient();
+      final service = ControlChannelTokenService(client: client);
+      addTearDown(service.dispose);
+
+      final first = service.getAccessToken();
+      await pumpEventQueue();
+      final second = service.getAccessToken(forceRefresh: true);
+      await pumpEventQueue();
+
+      final firstRequest = _decode(client.sentFrames[0]) as ControlTokenRequest;
+      final secondRequest = _decode(client.sentFrames[1]) as ControlTokenRequest;
+
+      // The newer (second, latest-issued) pull resolves first and caches its
+      // token.
+      client.emit(_encode(ControlMessage.tokenResponse(id: secondRequest.id, accessToken: "new")));
+      expect(await second, equals("new"));
+      expect(service.accessToken, equals("new"));
+
+      // The older (first) pull's response arrives late: its caller still gets it,
+      // but it must NOT clobber the newer cached token.
+      client.emit(_encode(ControlMessage.tokenResponse(id: firstRequest.id, accessToken: "old")));
+      expect(await first, equals("old"));
+      await pumpEventQueue();
+      expect(service.accessToken, equals("new"));
+    });
+
     test("times out with a typed failure when no response arrives", () async {
       final client = _FakeControlChannelClient();
       final service = ControlChannelTokenService(
@@ -205,13 +243,21 @@ class _FakeControlChannelClient implements ControlChannelClient {
   final StreamController<String> _inbound = StreamController<String>.broadcast();
   final List<String> sentFrames = <String>[];
 
+  /// Mimics [ControlChannelClient.send] throwing when the channel is down.
+  bool throwOnSend = false;
+
   void emit(String frame) => _inbound.add(frame);
 
   @override
   Stream<String> get inbound => _inbound.stream;
 
   @override
-  void send(String frame) => sentFrames.add(frame);
+  void send(String frame) {
+    if (throwOnSend) {
+      throw const ControlChannelNotConnectedException("Control channel is not connected");
+    }
+    sentFrames.add(frame);
+  }
 
   @override
   Stream<ControlChannelConnectionState> get connectionState => const Stream<ControlChannelConnectionState>.empty();
