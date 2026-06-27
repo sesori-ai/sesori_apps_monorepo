@@ -351,7 +351,6 @@ class ConnectionService {
         }
 
         health = _parseHealthResponse(response.body) ?? health;
-        _lastHealth = health;
       }
 
       // The handshake spanned several awaits; if a newer attempt or a disconnect
@@ -362,6 +361,10 @@ class ConnectionService {
         await relayClient.disconnect();
         return ApiResponse.error(ApiError.generic());
       }
+
+      // Cache health only after the staleness gate, so a superseded attempt
+      // never updates the warning shown for the live connection.
+      _lastHealth = health;
 
       _clearConnectingRelayClient(relayClient);
       _relayClient = relayClient;
