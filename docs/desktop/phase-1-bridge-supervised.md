@@ -133,7 +133,39 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   reads** (this is distinct from PR 1.1's optional one-shot secret-bootstrap
   stdin handshake, which is not an auth prompt); standalone interactive flow
   untouched.
-- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+- **Aristotle:** plan ☑ · impl ☑.
+- **Findings:** Shipped `ControlChannelTokenService` in `control/` (beside
+  `ControlChannelLossListener`), NOT `auth/`: the service depends on the Layer-0
+  `ControlChannelClient`, and `auth/` is a self-contained subsystem that must not
+  depend on core `foundation/`. It owns the token request/response round-trip —
+  sends an id-correlated `ControlMessage.tokenRequest` (monotonic id), subscribes
+  to `ControlChannelClient.inbound`, decodes each frame to `ControlMessage`, and
+  completes the matching pending request on `tokenResponse`. A null `accessToken`
+  (GUI signed-out/mid-login) or a request timeout yields a typed
+  `ControlTokenUnavailableException` — not logged at the throw (the `run()` catch
+  surfaces it once, no double-log); undecodable/forward-compat frames are warned
+  and skipped, other variants ignored. `dispose()` cancels the inbound
+  subscription and fails any in-flight request so shutdown can't hang on the
+  timeout. Composition: `_startSupervisedControlChannel` is renamed
+  `_connectSupervisedControlChannel` and now returns the connected client; the
+  runner builds the token service from that same client (shared with the loss
+  listener) and registers its dispose. The auth bootstrap branches — supervised ⇒
+  `requestToken()`, standalone ⇒ unchanged `ensureAuthenticated()` — and
+  `logAuthenticatedUser` runs identically on both paths. `BridgeRuntimeAuthService`
+  is unchanged, so standalone is byte-identical (its existing tests stay green);
+  `dart analyze --fatal-infos` clean; 1517 app tests pass (7 new for the service).
+- **Deltas:** §6 / the PR-1.4 line place this class in `auth/` (Layer 3); plan
+  review re-homed it to `control/` for this PR because `auth/` cannot depend on
+  the Layer-0 `ControlChannelClient`. When PR 1.4 makes the class implement the
+  `auth/` interfaces (`AccessTokenProvider`/`TokenRefresher`), it must resolve the
+  resulting `control/`→`auth/` direction (an auth-side adapter, or an auth-local
+  transport abstraction). PR 1.3 handles only the token request/response
+  correlation; `token_update` push, the provider/refresher interfaces,
+  force-refresh policy, and richer GUI-down/mid-login wait semantics remain PR
+  1.4 (the initial pull is a one-shot request with a 30s timeout). Downstream
+  `TokenManager` still seeds from the resolved access token on both paths;
+  supervised registration/refresh rework is deferred to PRs 1.4/1.5/1.6 and isn't
+  reached pre-GUI (Phase 2).
 
 ## PR 1.4 — Token provider **pull** over channel
 - **Goal:** `ControlChannelTokenService` (Layer 3 `auth/`) implements
