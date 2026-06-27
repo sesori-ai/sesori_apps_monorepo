@@ -446,22 +446,27 @@ class SessionListCubit extends Cubit<SessionListState> {
     }
   }
 
-  /// Marks a session read (clears its bold) or unread (forces bold). The bridge
-  /// echoes the change via SSE, so the optimistic local update keeps the row in
-  /// sync immediately and is reconciled by the tracker.
+  /// Marks a session read (clears its bold) or unread (forces bold). The change
+  /// is applied optimistically to the [SessionUnseenTracker] — the source of
+  /// truth both list cubits recompute from — so the row/project update
+  /// immediately AND survive a delayed or missed `session.unseen_changed` echo
+  /// (e.g. across a reconnect). The bridge's echo, when it arrives, overwrites
+  /// this with the authoritative aggregate. On failure the prior value is
+  /// restored.
   Future<void> markSessionSeen({required String sessionId, required bool read}) async {
     final current = state;
-    if (current is SessionListLoaded) {
-      final optimistic = Map<String, bool>.from(current.unseenBySessionId);
-      optimistic[sessionId] = !read;
-      emit(current.copyWith(unseenBySessionId: optimistic));
-    }
+    final priorUnseen = current is SessionListLoaded ? (current.unseenBySessionId[sessionId] ?? false) : false;
+    _sessionUnseenTracker.applyLocalSessionUnseen(
+      projectId: _projectId,
+      sessionId: sessionId,
+      unseen: !read,
+    );
+    _onUnseenUpdated();
     try {
       final response = await _sessionService.markSessionSeen(sessionId: sessionId, read: read);
       if (isClosed) return;
       if (response is ErrorResponse) {
-        // Revert the optimistic update on failure.
-        _onUnseenUpdated();
+        _revertLocalUnseen(sessionId: sessionId, priorUnseen: priorUnseen);
       }
     } catch (e, st) {
       unawaited(
@@ -476,8 +481,19 @@ class SessionListCubit extends Cubit<SessionListState> {
             )
             .catchError((_) {}),
       );
-      if (!isClosed) _onUnseenUpdated();
+      if (!isClosed) _revertLocalUnseen(sessionId: sessionId, priorUnseen: priorUnseen);
     }
+  }
+
+  /// Restores the pre-action unseen value in the tracker after a failed
+  /// mark-read/unread, so the optimistic change doesn't stick.
+  void _revertLocalUnseen({required String sessionId, required bool priorUnseen}) {
+    _sessionUnseenTracker.applyLocalSessionUnseen(
+      projectId: _projectId,
+      sessionId: sessionId,
+      unseen: priorUnseen,
+    );
+    _onUnseenUpdated();
   }
 
   /// Deletes a session permanently.

@@ -1796,5 +1796,60 @@ void main() {
         verify(() => mockProjectService.listSessions(projectId: projectId, waitForPrData: any(named: "waitForPrData"))).called(greaterThanOrEqualTo(1));
       },
     );
+
+    test("markSessionSeen updates the tracker so a missed echo can't re-bold", () async {
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      when(
+        () => mockProjectService.listSessions(projectId: projectId, waitForPrData: any(named: "waitForPrData")),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1"), testSession(id: "s2")])),
+      );
+      when(
+        () => mockSessionService.markSessionSeen(sessionId: "s1", read: true),
+      ).thenAnswer((_) async => ApiResponse.success(null));
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+      // s1 is unseen via the live tracker.
+      fakeSessionUnseenTracker.emitSessionUnseen({
+        projectId: {"s1": true},
+      });
+      await Future<void>.delayed(Duration.zero);
+      expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isTrue);
+
+      await cubit.markSessionSeen(sessionId: "s1", read: true);
+      await Future<void>.delayed(Duration.zero);
+
+      // The tracker (source of truth on recompute) now holds the read, so even
+      // without the bridge's echo a recompute keeps the row cleared.
+      expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?["s1"], isFalse);
+      expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isFalse);
+    });
+
+    test("markSessionSeen reverts the tracker change on failure", () async {
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      when(
+        () => mockProjectService.listSessions(projectId: projectId, waitForPrData: any(named: "waitForPrData")),
+      ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
+      when(
+        () => mockSessionService.markSessionSeen(sessionId: "s1", read: true),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+      fakeSessionUnseenTracker.emitSessionUnseen({
+        projectId: {"s1": true},
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      await cubit.markSessionSeen(sessionId: "s1", read: true);
+      await Future<void>.delayed(Duration.zero);
+
+      // The optimistic clear was rolled back to the prior unseen state.
+      expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?["s1"], isTrue);
+      expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isTrue);
+    });
   });
 }

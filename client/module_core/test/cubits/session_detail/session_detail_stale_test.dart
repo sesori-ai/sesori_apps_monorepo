@@ -398,6 +398,43 @@ void main() {
       verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(lessThanOrEqualTo(2));
     });
 
+    test("foreground relay reconnect re-asserts the view without a stale signal", () async {
+      final viewingService = stubbedSessionViewingService();
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: viewingService,
+        lifecycleSource: FakeLifecycleSource(),
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      clearInteractions(mockSessionService);
+      clearInteractions(viewingService);
+
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer(
+        (_) async =>
+            ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-reconnected")])),
+      );
+
+      // A foreground relay drop + reconnect: no lifecycle resume, no
+      // dataMayBeStale. The bridge released the old viewer, so the cubit must
+      // refresh and re-declare the view on the reconnect transition.
+      connectionStatus.add(connectionLostStatus);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      connectionStatus.add(connectedStatus);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(1);
+      verify(() => viewingService.setViewingSession(sessionId)).called(greaterThanOrEqualTo(1));
+    });
+
     test("resume while disconnected forces a fresh refresh on reconnect", () async {
       final viewingService = stubbedSessionViewingService();
       final lifecycle = FakeLifecycleSource();

@@ -148,6 +148,39 @@ class SessionUnseenTracker with Disposable {
     _projectUnseen.add(projects);
   }
 
+  /// Applies a local, optimistic unseen change for one session — e.g. an
+  /// in-flight "mark as read/unread" — so the tracker (the source of truth the
+  /// list cubits recompute from) reflects the action immediately rather than
+  /// waiting for the bridge's `session.unseen_changed` echo, which can be
+  /// delayed or missed across a reconnect. Without this the cubit's optimistic
+  /// state could be clobbered by any unrelated recompute that re-reads the
+  /// tracker's stale value.
+  ///
+  /// Bumps the live generation so a slow REST reconcile in flight can't override
+  /// it before the echo lands. The authoritative echo, when it arrives,
+  /// overwrites this with the bridge's recomputed aggregate. The project
+  /// aggregate is recomputed from the (post-load complete) per-session map.
+  void applyLocalSessionUnseen({
+    required String projectId,
+    required String sessionId,
+    required bool unseen,
+  }) {
+    if (_sessionUnseen.isClosed) return;
+    final generation = ++_generation;
+    _projectLiveGeneration[projectId] = generation;
+    (_sessionLiveGeneration[projectId] ??= {})[sessionId] = generation;
+
+    final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
+    final projectSessions = Map<String, bool>.from(sessions[projectId] ?? const {});
+    projectSessions[sessionId] = unseen;
+    sessions[projectId] = projectSessions;
+    _sessionUnseen.add(sessions);
+
+    final projects = Map<String, bool>.from(_projectUnseen.value);
+    projects[projectId] = projectSessions.values.any((u) => u);
+    _projectUnseen.add(projects);
+  }
+
   void _handleEvent(SseEvent event) {
     try {
       if (event.data

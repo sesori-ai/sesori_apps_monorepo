@@ -49,6 +49,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   bool _pendingForcedRefresh = false;
   bool _needsStaleRefresh = false;
   bool _needsFreshRefreshOnReconnect = false;
+  bool _wasConnected = false;
   bool _waitingForConnection = false;
 
   /// Pending session-scoped SSE events that arrived while the cubit was in
@@ -95,6 +96,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
        _failureReporter = failureReporter,
        super(const SessionDetailState.loading()) {
     _streamingBuffer = StreamingTextBuffer(onFlush: _emitStreamingSnapshot);
+    // Seed the connection state so the BehaviorSubject's immediate replay isn't
+    // treated as a reconnect transition.
+    _wasConnected = _connectionService.currentStatus is ConnectionConnected;
     _eventSubscription = _connectionService.sessionEvents(_sessionId).listen(_handleEvent);
     _globalEventSubscription = _connectionService.events.listen(_handleGlobalEvent);
     _connectionStatusSubscription = _connectionService.status.listen(_onConnectionStatusChanged);
@@ -860,7 +864,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   void _onConnectionStatusChanged(ConnectionStatus status) {
     if (isClosed) return;
-    if (status is ConnectionConnected) {
+    final isConnected = status is ConnectionConnected;
+    final reconnected = isConnected && !_wasConnected;
+    _wasConnected = isConnected;
+    if (isConnected) {
       if (_waitingForConnection) {
         _waitingForConnection = false;
         unawaited(_loadMessages(isReload: true));
@@ -877,6 +884,12 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         } else {
           _silentRefresh();
         }
+      } else if (reconnected && state is SessionDetailLoaded) {
+        // A foreground relay reconnect (no lifecycle resume, no stale signal):
+        // the bridge released the old connection's viewer, so re-establish a
+        // current transcript and re-declare the view. Forced-fresh so the
+        // re-assert only happens after content that reflects the reconnect.
+        _forceFreshRefresh();
       }
     }
   }
