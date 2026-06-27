@@ -1,6 +1,8 @@
 # Sesori Shared (Dart)
 
-Pure Dart library — crypto primitives + protocol types shared by `sesori_bridge_dart` and `sesori_mobile`. No Flutter dependency. Works in native binaries and Flutter apps.
+Pure Dart library — crypto primitives + protocol types shared by the bridge,
+mobile app, desktop core, and shared app UI. No Flutter dependency. Works in
+native binaries and Flutter apps.
 
 ## Error Handling
 

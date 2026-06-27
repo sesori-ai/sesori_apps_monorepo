@@ -519,6 +519,10 @@ repositories, services, or cubits; those belong in `module_desktop_core`.
   (`client/app` or `client/desktop`).
 - Cubits are NOT registered in DI — they are constructed in `BlocProvider(create:)`
 - Cubits call services and emit state. They do not perform HTTP calls directly.
+- For reactive state, mobile/shared cubits subscribe to `ConnectionService`
+  streams. Desktop control cubits may subscribe to `module_desktop_core` tracker
+  streams such as `BridgeStatusTracker` and `BridgePromptTracker` while relay
+  transport remains deferred.
 
 **B-C7. DI**
 
@@ -537,9 +541,10 @@ process APIs/repositories/services, control-channel orchestration, status/prompt
 trackers, update-apply orchestration (`DesktopUpdateService`), desktop cubits,
 and desktop platform interfaces. It may depend on `module_core` and
 `sesori_shared`; `module_core` must not depend on it. Platform adapters such as
-`AppUpdater` remain dumb Layer-0 boundaries behind repositories such as
-`AppUpdateRepository`; helper-stop/apply/restore policy belongs in
-`DesktopUpdateService`, which must depend only on lower-layer collaborators.
+`AppUpdater` remain dumb Layer-0 boundaries behind Layer-1 APIs such as
+`AppUpdateApi` and repositories such as `AppUpdateRepository`;
+helper-stop/apply/restore policy belongs in `DesktopUpdateService`, which must
+depend only on lower-layer collaborators.
 
 `module_app_ui` is a shared Flutter UI package. It may depend on `module_core`,
 `module_prego`, `sesori_shared`, and direct Flutter UI dependencies. It must not import
@@ -863,7 +868,7 @@ When reviewing imports: if a file in `services/` imports from `api/`, that is a 
 
 **B-S1. Dual-Consumer Constraint**
 
-`sesori_shared` is consumed by BOTH bridge and mobile. Any change to it MUST consider impact on both consumers. It must not contain bridge-specific or mobile-specific logic.
+`sesori_shared` is consumed by bridge, mobile, desktop core, and shared app UI. Any change to it MUST consider impact on all affected consumers. It must not contain bridge-specific, mobile-specific, or desktop-specific logic.
 
 **B-S2. Scope**
 

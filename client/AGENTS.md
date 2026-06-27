@@ -90,7 +90,10 @@ Cubits orchestrate: they call services/repositories and emit state. They MUST NO
 - Depend on other cubits
 - Hold business logic that belongs in a Service
 
-For reactive state (connection, SSE events), cubits subscribe to streams exposed by `ConnectionService`. Never poll.
+For reactive state (connection, SSE events), mobile/shared cubits subscribe to
+streams exposed by `ConnectionService`. Desktop control cubits may subscribe to
+`module_desktop_core` tracker streams such as `BridgeStatusTracker` and
+`BridgePromptTracker` while relay transport remains deferred. Never poll.
 
 ## Class Suffix Guidance
 
@@ -173,6 +176,9 @@ or single-instance business logic in `client/desktop`.
 - `dart pub get` exits 0 from `client/`
 - `dart analyze` exits 0 in touched modules
 - All relevant tests pass (`flutter test` for product shells, `dart test` for pure Dart modules)
+- Shared-module changes also validate affected downstream product shells: mobile
+  for `module_core`/`module_auth`/`module_prego`, and desktop once
+  `client/desktop` or `module_desktop_core` exists.
 
 ## Per-Module Details
 

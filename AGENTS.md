@@ -274,6 +274,7 @@ module_desktop_core/lib/src/
 ├── api/                     # Layer 1
 │   ├── bridge_process_api.dart
 │   ├── desktop_instance_api.dart
+│   ├── app_update_api.dart
 │   └── desktop_storage.dart
 │
 ├── repositories/            # Layer 2
@@ -551,5 +552,6 @@ This applies in every workspace (bridge, mobile, shared).
 
 ## Forbidden
 
-- Don't modify `shared/sesori_shared` without considering impact on both bridge and mobile consumers.
+- Don't modify `shared/sesori_shared` without considering impact on all consumers:
+  bridge, mobile, desktop core, and shared app UI.
 - Don't create a root-level `pubspec.yaml`. There is no root workspace.
