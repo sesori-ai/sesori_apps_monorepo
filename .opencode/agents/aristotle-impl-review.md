@@ -475,7 +475,9 @@ When reviewing imports: if a file in `services/` imports from `api/`, that is a 
 ```
 Layer 0 — Platform Implementations
 └─ Concrete Flutter implementations of module_core platform interfaces
-└─ One implementation per interface — no alternatives, no factories
+└─ One implementation per interface per product/platform — no alternatives or
+   factories inside a single shell. Mobile and desktop may each provide their
+   own adapter for shared module_core interfaces.
 └─ Examples: FlutterSecureStorageAdapter, FlutterUrlLauncher, AppLifecycleObserver,
    AppLinksDeepLinkSource, GoRouterRouteSource, CrashlyticsFailureReporter
 └─ No cross-dependency between implementations
@@ -484,8 +486,10 @@ Layer 0 — Platform Implementations
         ▲ registered in DI, consumed by module_core via interfaces
 
 Layer 1 — Infrastructure
-└─ DI wiring: 3-phase init (platform → auth → core) — the ONLY place that calls
-   configureAuthDependencies and configureCoreDependencies
+└─ DI wiring: mobile uses 3-phase init (platform → auth → core). Desktop adds
+   desktop-core after core (platform → auth → core → desktop-core). This layer is
+   the ONLY shell place that calls configureAuthDependencies,
+   configureCoreDependencies, and configureDesktopCoreDependencies.
 └─ Routing: GoRouter configuration using AppRoute definitions from module_core
 └─ No business logic — only wiring and navigation configuration
 └─ Location: lib/core/{di,routing}/
