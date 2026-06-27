@@ -48,7 +48,7 @@ class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher 
   final Map<String, Completer<String?>> _pending = <String, Completer<String?>>{};
   late final StreamSubscription<String> _subscription;
   int _nextRequestId = 0;
-  int _latestRequestSeq = -1;
+  int _latestCachedSeq = -1;
   bool _disposed = false;
   Future<void>? _disposeFuture;
 
@@ -96,9 +96,6 @@ class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher 
     }
     final seq = _nextRequestId++;
     final id = "token-$seq";
-    // Track the most recently issued pull so an older overlapping response can't
-    // clobber the cache with a staler token than a later pull already wrote.
-    _latestRequestSeq = seq;
     final completer = Completer<String?>();
     _pending[id] = completer;
     try {
@@ -119,11 +116,14 @@ class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher 
         );
       }
       // Cache the latest token so the synchronous getter and tokenStream stay
-      // current. Only the most recently issued pull writes the shared cache (so a
-      // slower older response can't overwrite a newer token), and skip if a
-      // dispose raced this pull (which closes the subject) — returning the token
-      // to the caller is still correct mid-shutdown.
-      if (!_disposed && seq == _latestRequestSeq) {
+      // current. Only advance the cache when this response is newer than what's
+      // already cached (seq > _latestCachedSeq), so a slower older response can't
+      // overwrite a newer token — while a newer pull that FAILS still leaves an
+      // older successful pull free to cache. Skip if a dispose raced this pull
+      // (which closes the subject) — returning the token to the caller is still
+      // correct mid-shutdown.
+      if (!_disposed && seq > _latestCachedSeq) {
+        _latestCachedSeq = seq;
         _tokenSubject.add(accessToken);
       }
       return accessToken;

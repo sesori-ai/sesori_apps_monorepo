@@ -131,6 +131,31 @@ void main() {
       expect(service.accessToken, equals("new"));
     });
 
+    test("a failed newer pull does not block an older successful pull from caching", () async {
+      final client = _FakeControlChannelClient();
+      final service = ControlChannelTokenService(client: client);
+      addTearDown(service.dispose);
+
+      final first = service.getAccessToken();
+      await pumpEventQueue();
+      final second = service.getAccessToken();
+      await pumpEventQueue();
+
+      final firstRequest = _decode(client.sentFrames[0]) as ControlTokenRequest;
+      final secondRequest = _decode(client.sentFrames[1]) as ControlTokenRequest;
+
+      // The newer (second) pull fails — the GUI couldn't supply a token.
+      client.emit(_encode(ControlMessage.tokenResponse(id: secondRequest.id, accessToken: null)));
+      await expectLater(second, throwsA(isA<ControlTokenUnavailableException>()));
+
+      // The older (first) pull then succeeds: its valid token must still be
+      // cached even though a newer request was issued (and failed) after it.
+      client.emit(_encode(ControlMessage.tokenResponse(id: firstRequest.id, accessToken: "older-but-valid")));
+      expect(await first, equals("older-but-valid"));
+      await pumpEventQueue();
+      expect(service.accessToken, equals("older-but-valid"));
+    });
+
     test("times out with a typed failure when no response arrives", () async {
       final client = _FakeControlChannelClient();
       final service = ControlChannelTokenService(
