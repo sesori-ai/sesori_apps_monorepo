@@ -179,7 +179,43 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 - **Risk:** Med. **Size:** M.
 - **Acceptance:** force-refresh requests a fresh token; timeout + GUI-down paths
   yield a typed failure (logged once at the surfacing point, not double-logged).
-- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+- **Aristotle:** plan ☑ · impl ☑.
+- **Findings:** Promoted `ControlChannelTokenService` from `control/` (Layer 4) to
+  `services/` (Layer 3) — the placement the PR-1.4 goal specifies. It now
+  `implements AccessTokenProvider, TokenRefresher` while living in `services/`, so
+  `auth/` gains no dependency on core `foundation/` transport (resolving the
+  PR-1.3 `control/`→`auth/` delta). The Layer-3 service's direct dependency on the
+  Layer-0 `ControlChannelClient` is the AGENTS.md-blessed "control-channel token
+  service over `ControlChannelClient`" seam. PR-1.3's `requestToken` became the
+  interface's `getAccessToken({forceRefresh})`: it forwards `forceRefresh` to the
+  GUI, blocks on the id-correlated reply with a constructor-configurable timeout
+  (default 30s), and caches each pulled token in a `BehaviorSubject` so the
+  synchronous `accessToken` getter and `tokenStream` stay current. Null token
+  (signed out / mid-login) and timeout still throw the typed
+  `ControlTokenUnavailableException` (not logged at the throw; the caller logs
+  once); `accessToken` throws `StateError` before the first successful pull (the
+  composition root awaits the bootstrap pull before exposing the provider);
+  `dispose` now also closes the subject. Composition: in supervised mode the
+  runner selects the control-channel service as the `accessTokenProvider` +
+  `tokenRefresher` (and the registration refresher) and skips constructing
+  `TokenManager` — the GUI is the sole token authority; standalone constructs and
+  uses `TokenManager` exactly as before (byte-identical, existing auth/runtime
+  tests stay green). Two implementors of the auth interfaces now coexist by design
+  (`TokenManager` in `auth/` for the standalone refresh-token flow,
+  `ControlChannelTokenService` in `services/` for the supervised GUI pull); the
+  composition root picks by `options.isSupervised` — a strategy seam.
+  `dart analyze --fatal-infos` clean; `make analyze` clean; 1522 app tests pass
+  (13 in the moved service test).
+- **Deltas:** Earlier text placed this class in `auth/` (Layer 3); the merged plan
+  now specifies `services/`, which this PR implements — so `auth/` never imports
+  `foundation/` transport. PR 1.4 wires the supervised provider/refresher but adds
+  **no** `token_update` push handling and **no** `RelayClient` `tokenStream`
+  consumption, so the supervised provider path is exercised only by unit tests
+  pre-GUI (Phase 2); pushed `token_update` → live relay re-auth remains PR 1.5 and
+  supervised registration + `bridgeId`-out-of-`token.json` remains PR 1.6. "Richer
+  mid-login wait" is bounded by the one-reply `token_response` DTO: a mid-login GUI
+  replies with a null token (typed failure); genuine wait-for-login-completion
+  arrives with the `token_update` push in PR 1.5.
 
 ## PR 1.5 — Token-stream **push** → relay re-auth
 - **Goal:** Make a GUI-pushed `token_update` actually re-authenticate the live

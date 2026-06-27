@@ -1,8 +1,8 @@
 import "dart:async";
 import "dart:convert";
 
-import "package:sesori_bridge/src/control/control_channel_token_service.dart";
 import "package:sesori_bridge/src/foundation/control_channel_client.dart";
+import "package:sesori_bridge/src/services/control_channel_token_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -13,7 +13,7 @@ void main() {
       final service = ControlChannelTokenService(client: client);
       addTearDown(service.dispose);
 
-      final future = service.requestToken();
+      final future = service.getAccessToken();
       await pumpEventQueue();
 
       expect(client.sentFrames, hasLength(1));
@@ -25,42 +25,84 @@ void main() {
       expect(await future, equals("tok-123"));
     });
 
-    test("forwards forceRefresh in the request", () async {
+    test("forwards forceRefresh in the request and returns the fresh token", () async {
       final client = _FakeControlChannelClient();
       final service = ControlChannelTokenService(client: client);
       addTearDown(service.dispose);
 
-      final future = service.requestToken(forceRefresh: true);
+      final future = service.getAccessToken(forceRefresh: true);
       await pumpEventQueue();
 
       final request = _decode(client.sentFrames.single) as ControlTokenRequest;
       expect(request.forceRefresh, isTrue);
 
-      client.emit(_encode(ControlMessage.tokenResponse(id: request.id, accessToken: "tok")));
-      await future;
+      client.emit(_encode(ControlMessage.tokenResponse(id: request.id, accessToken: "fresh")));
+      expect(await future, equals("fresh"));
     });
 
-    test("a null access token surfaces a typed failure", () async {
+    test("caches the latest pulled token for accessToken and tokenStream", () async {
       final client = _FakeControlChannelClient();
       final service = ControlChannelTokenService(client: client);
       addTearDown(service.dispose);
 
-      final future = service.requestToken();
+      final emitted = <String>[];
+      final subscription = service.tokenStream.listen(emitted.add);
+      addTearDown(subscription.cancel);
+
+      final first = service.getAccessToken();
+      await pumpEventQueue();
+      final firstRequest = _decode(client.sentFrames[0]) as ControlTokenRequest;
+      client.emit(_encode(ControlMessage.tokenResponse(id: firstRequest.id, accessToken: "tok-1")));
+      await first;
+
+      expect(service.accessToken, equals("tok-1"));
+
+      final second = service.getAccessToken(forceRefresh: true);
+      await pumpEventQueue();
+      final secondRequest = _decode(client.sentFrames[1]) as ControlTokenRequest;
+      client.emit(_encode(ControlMessage.tokenResponse(id: secondRequest.id, accessToken: "tok-2")));
+      await second;
+
+      // The synchronous getter reflects the most recent pull, and the stream saw
+      // both tokens in order.
+      expect(service.accessToken, equals("tok-2"));
+      await pumpEventQueue();
+      expect(emitted, equals(<String>["tok-1", "tok-2"]));
+    });
+
+    test("accessToken throws before the first successful pull", () {
+      final client = _FakeControlChannelClient();
+      final service = ControlChannelTokenService(client: client);
+      addTearDown(service.dispose);
+
+      expect(() => service.accessToken, throwsStateError);
+    });
+
+    test("a null access token surfaces a typed failure and leaves the cache empty", () async {
+      final client = _FakeControlChannelClient();
+      final service = ControlChannelTokenService(client: client);
+      addTearDown(service.dispose);
+
+      final future = service.getAccessToken();
       await pumpEventQueue();
       final request = _decode(client.sentFrames.single) as ControlTokenRequest;
 
       client.emit(_encode(ControlMessage.tokenResponse(id: request.id, accessToken: null)));
 
       await expectLater(future, throwsA(isA<ControlTokenUnavailableException>()));
+      expect(() => service.accessToken, throwsStateError);
     });
 
     test("times out with a typed failure when no response arrives", () async {
       final client = _FakeControlChannelClient();
-      final service = ControlChannelTokenService(client: client);
+      final service = ControlChannelTokenService(
+        client: client,
+        requestTimeout: const Duration(milliseconds: 20),
+      );
       addTearDown(service.dispose);
 
       await expectLater(
-        service.requestToken(timeout: const Duration(milliseconds: 20)),
+        service.getAccessToken(),
         throwsA(isA<ControlTokenUnavailableException>()),
       );
     });
@@ -70,7 +112,7 @@ void main() {
       final service = ControlChannelTokenService(client: client);
       addTearDown(service.dispose);
 
-      final future = service.requestToken(timeout: const Duration(seconds: 5));
+      final future = service.getAccessToken();
       await pumpEventQueue();
       final request = _decode(client.sentFrames.single) as ControlTokenRequest;
 
@@ -85,7 +127,7 @@ void main() {
       final service = ControlChannelTokenService(client: client);
       addTearDown(service.dispose);
 
-      final future = service.requestToken(timeout: const Duration(seconds: 5));
+      final future = service.getAccessToken();
       await pumpEventQueue();
       final request = _decode(client.sentFrames.single) as ControlTokenRequest;
 
@@ -107,7 +149,7 @@ void main() {
       final client = _FakeControlChannelClient();
       final service = ControlChannelTokenService(client: client);
 
-      final future = service.requestToken(timeout: const Duration(seconds: 30));
+      final future = service.getAccessToken();
       await pumpEventQueue();
       final expectation = expectLater(future, throwsA(isA<ControlTokenUnavailableException>()));
 
@@ -115,14 +157,17 @@ void main() {
       await expectation;
     });
 
-    test("requestToken after dispose fails fast without waiting for the timeout", () async {
+    test("getAccessToken after dispose fails fast without waiting for the timeout", () async {
       final client = _FakeControlChannelClient();
-      final service = ControlChannelTokenService(client: client);
+      // A long timeout proves the failure is the disposed guard, not the timer.
+      final service = ControlChannelTokenService(
+        client: client,
+        requestTimeout: const Duration(seconds: 30),
+      );
       await service.dispose();
 
-      // A long timeout proves the failure is the disposed guard, not the timer.
       await expectLater(
-        service.requestToken(timeout: const Duration(seconds: 30)),
+        service.getAccessToken(),
         throwsA(isA<ControlTokenUnavailableException>()),
       );
       // No request frame is sent once disposed.

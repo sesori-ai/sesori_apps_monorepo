@@ -29,6 +29,7 @@ import "package:sesori_shared/sesori_shared.dart" show DeviceInfo;
 
 import "../../api/bridge_settings_api.dart";
 import "../../api/control_secret_api.dart";
+import "../../auth/access_token_provider.dart";
 import "../../auth/bridge_registration_api.dart";
 import "../../auth/bridge_registration_repository.dart";
 import "../../auth/bridge_registration_service.dart";
@@ -38,8 +39,8 @@ import "../../auth/login_oauth_api.dart";
 import "../../auth/login_oauth_service.dart";
 import "../../auth/token.dart";
 import "../../auth/token_manager.dart";
+import "../../auth/token_refresher.dart";
 import "../../control/control_channel_loss_listener.dart";
-import "../../control/control_channel_token_service.dart";
 import "../../foundation/control_channel_client.dart";
 import "../../repositories/bridge_settings_repository.dart";
 import "../../server/api/loopback_port_api.dart";
@@ -59,6 +60,7 @@ import "../../server/repositories/startup_mutex_repository.dart";
 import "../../server/repositories/terminal_prompt_repository.dart";
 import "../../server/services/bridge_instance_service.dart";
 import "../../server/services/bridge_restart_service.dart";
+import "../../services/control_channel_token_service.dart";
 import "../../updater/api/checksum_manifest_api.dart";
 import "../../updater/api/github_releases_api.dart";
 import "../../updater/api/managed_runtime_manifest_api.dart";
@@ -287,7 +289,7 @@ class BridgeRuntimeRunner {
       final String authAccessToken;
       final supervisedTokenService = controlChannelTokenService;
       if (supervisedTokenService != null) {
-        authAccessToken = await supervisedTokenService.requestToken();
+        authAccessToken = await supervisedTokenService.getAccessToken();
       } else {
         final authTokens = await runtimeAuthService.ensureAuthenticated(options: options);
         authAccessToken = authTokens.accessToken;
@@ -388,13 +390,28 @@ class BridgeRuntimeRunner {
           })
           .addTo(subscriptions);
 
-      final tokenManager = TokenManager(
-        initialToken: authAccessToken,
-        authBackendUrl: options.authBackendUrl,
-        loadTokens: loadTokens,
-        saveTokens: saveTokens,
-      );
-      shutdownCoordinator.add(disposable: tokenManager.dispose);
+      // In supervised mode the GUI is the token authority: the control-channel
+      // token service is the access-token provider + refresher, pulling tokens
+      // from the GUI over the loopback channel. Standalone keeps the
+      // TokenManager, which refreshes against the auth server with the locally
+      // stored refresh token (no GUI exists to ask). The control service's
+      // dispose is already registered with the shutdown coordinator above.
+      final AccessTokenProvider accessTokenProvider;
+      final TokenRefresher tokenRefresher;
+      if (supervisedTokenService != null) {
+        accessTokenProvider = supervisedTokenService;
+        tokenRefresher = supervisedTokenService;
+      } else {
+        final tokenManager = TokenManager(
+          initialToken: authAccessToken,
+          authBackendUrl: options.authBackendUrl,
+          loadTokens: loadTokens,
+          saveTokens: saveTokens,
+        );
+        shutdownCoordinator.add(disposable: tokenManager.dispose);
+        accessTokenProvider = tokenManager;
+        tokenRefresher = tokenManager;
+      }
 
       final bridgeRegistrationService = BridgeRegistrationService(
         repository: BridgeRegistrationRepository(
@@ -403,7 +420,7 @@ class BridgeRuntimeRunner {
             client: httpClient,
           ),
         ),
-        tokenRefresher: tokenManager,
+        tokenRefresher: tokenRefresher,
         loadTokens: loadTokens,
         saveTokens: saveTokens,
         hostName: io.Platform.localHostname,
@@ -427,8 +444,8 @@ class BridgeRuntimeRunner {
         ),
         plugin: plugin.api,
         httpClient: httpClient,
-        accessTokenProvider: tokenManager,
-        tokenRefresher: tokenManager,
+        accessTokenProvider: accessTokenProvider,
+        tokenRefresher: tokenRefresher,
         bridgeRegistrationService: bridgeRegistrationService,
         database: AppDatabase.create(),
         processRunner: processRunner,
