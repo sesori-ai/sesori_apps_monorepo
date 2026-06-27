@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -135,6 +136,7 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
                 ),
               ),
               const SizedBox(height: 8),
+              const _FilesystemAccessBanner(),
               Expanded(
                 child: _DirectoryBrowser(
                   key: _browserKey,
@@ -414,6 +416,43 @@ class _DirectoryTile extends StatelessWidget {
       ),
       trailing: const Icon(Icons.chevron_right),
       onTap: onTap,
+    );
+  }
+}
+
+/// Inline warning shown at the top of the Add Project sheet when the bridge
+/// reported degraded host filesystem access (e.g. macOS Full Disk Access not
+/// granted to the terminal running the bridge). It is scoped to this sheet —
+/// where the user is browsing directories — rather than shown app-wide, since
+/// it is only actionable here.
+class _FilesystemAccessBanner extends StatelessWidget {
+  const _FilesystemAccessBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final connectionService = GetIt.instance<ConnectionService>();
+    return StreamBuilder<ConnectionStatus>(
+      stream: connectionService.status,
+      initialData: connectionService.currentStatus,
+      builder: (context, snapshot) {
+        final status = snapshot.data;
+        final degraded = status is ConnectionConnected && (status.health.filesystemAccessDegraded ?? false);
+        if (!degraded) return const SizedBox.shrink();
+
+        final loc = context.loc;
+        return Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 8),
+          // Purely informational: the connection is healthy, but the bridge's
+          // host process lacks permission to read some directories. The user
+          // resolves this on their Mac, so there is no in-app action here.
+          child: PregoInlineAlertsNotifications(
+            type: PregoInlineAlertsNotificationsType.warning,
+            title: loc.filesystemAccessDegradedTitle,
+            supportingText: loc.filesystemAccessDegradedBody,
+            icon: TablerRegular.folder_x,
+          ),
+        );
+      },
     );
   }
 }
