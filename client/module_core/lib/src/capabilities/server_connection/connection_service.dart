@@ -318,17 +318,22 @@ class ConnectionService {
       // A resume_ack already proves the bridge is reachable; only fresh-DH
       // connects need the extra health round-trip. A non-error status code is
       // sufficient proof of liveness — the bridge only returns 200 when the
-      // underlying backend is healthy. We parse the body (when present) so the
-      // bridge can report a degraded filesystem-access warning to the phone;
-      // an older bridge that sends no/legacy body falls back to plain healthy.
+      // underlying backend is healthy.
       //
-      // On a resumed connect we reuse the last fetched health so a previously
+      // On a RESUMED connect we reuse the last fetched health so a previously
       // reported degraded-filesystem warning stays stable across reconnects
-      // (the bridge's access hasn't changed); only the first connect of a
-      // session falls back to the plain-healthy default.
-      var health =
-          _lastHealth ?? const HealthResponse(healthy: true, version: "", filesystemAccessDegraded: null);
-      if (!relayClient.didResume) {
+      // (the bridge's access hasn't changed and we don't re-probe).
+      //
+      // On a FRESH connect we parse the body (when present) so the bridge can
+      // report a degraded filesystem-access warning. A new bridge identity is
+      // being probed here, so an unparseable/legacy body must fall back to the
+      // plain-healthy default — NOT a cached flag from a previous bridge, which
+      // would otherwise leak a stale degraded warning onto a different bridge.
+      const defaultHealth = HealthResponse(healthy: true, version: "", filesystemAccessDegraded: null);
+      HealthResponse health;
+      if (relayClient.didResume) {
+        health = _lastHealth ?? defaultHealth;
+      } else {
         final response = await relayClient.sendRequest(
           RelayRequest(
             id: _nextRelayRequestId(),
@@ -350,7 +355,7 @@ class ConnectionService {
           );
         }
 
-        health = _parseHealthResponse(response.body) ?? health;
+        health = _parseHealthResponse(response.body) ?? defaultHealth;
       }
 
       // The handshake spanned several awaits; if a newer attempt or a disconnect

@@ -334,6 +334,72 @@ void main() {
       expect((resumedStatus as ConnectionConnected).health.filesystemAccessDegraded, isTrue);
     });
 
+    test("fresh reconnect with an unparseable body does not carry over a stale degraded flag", () async {
+      final sseController = StreamController<RelaySseEvent>.broadcast();
+      addTearDown(sseController.close);
+
+      const degradedHealth = HealthResponse(healthy: true, version: "1.0.0", filesystemAccessDegraded: true);
+
+      final degradedClient = MockRelayClient();
+      final freshClient = MockRelayClient();
+      final clients = <MockRelayClient>[degradedClient, freshClient];
+      for (final client in clients) {
+        when(() => client.isConnected).thenReturn(true);
+        when(() => client.connectionState).thenReturn(RelayClientConnectionState.connected);
+        when(() => client.subscribeSse(any())).thenAnswer((_) => sseController.stream);
+        when(() => client.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+        when(client.connect).thenAnswer((_) async {});
+        when(client.disconnect).thenAnswer((_) async {});
+        // Both are fresh-DH connects (no resume), so each re-probes /health.
+        when(() => client.didResume).thenReturn(false);
+      }
+      // First bridge reports degraded access; the second is an older/different
+      // bridge that returns an empty (unparseable) body.
+      when(() => degradedClient.sendRequest(any())).thenAnswer(
+        (_) async => RelayResponse(id: "h", status: 200, body: jsonEncode(degradedHealth.toJson()), headers: const {}),
+      );
+      when(() => freshClient.sendRequest(any())).thenAnswer(
+        (_) async => const RelayResponse(id: "h", status: 200, body: "{}", headers: {}),
+      );
+
+      var nextClient = 0;
+      final factory = _TestRelayClientFactory(
+        ({
+          required String relayHost,
+          required RelayCryptoService cryptoService,
+          required RoomKeyStorage roomKeyStorage,
+          required String? authToken,
+        }) => clients[nextClient++],
+      );
+      var now = DateTime(2025, 1, 1, 12, 0, 0);
+      final service = ConnectionService(
+        cryptoService,
+        roomKeyStorage,
+        authTokenProvider,
+        authSession,
+        lifecycleSource,
+        failureReporter,
+        clock: _TestClockProvider(() => now),
+        relayClientFactory: factory,
+      );
+      addTearDown(service.dispose);
+
+      await service.connect(config);
+      expect((service.currentStatus as ConnectionConnected).health.filesystemAccessDegraded, isTrue);
+
+      // A fresh reconnect to a different bridge re-probes /health and gets an
+      // unparseable body — it must fall back to plain-healthy, not the cache.
+      lifecycleController.add(LifecycleState.paused);
+      await Future<void>.delayed(Duration.zero);
+      now = now.add(const Duration(seconds: 30));
+      lifecycleController.add(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      final freshStatus = service.currentStatus;
+      expect(freshStatus, isA<ConnectionConnected>());
+      expect((freshStatus as ConnectionConnected).health.filesystemAccessDegraded, isNull);
+    });
+
     test("fresh-DH connect still sends GET /health", () async {
       final sseController = StreamController<RelaySseEvent>.broadcast();
       addTearDown(sseController.close);
