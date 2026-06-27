@@ -1,26 +1,58 @@
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
+import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
+import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
+import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
+import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/create_project_handler.dart";
+import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
 void main() {
   group("CreateProjectHandler", () {
     late _FakeBridgePluginForCreateProject plugin;
+    late AppDatabase db;
     late CreateProjectHandler handler;
     late Directory tempDir;
 
     setUp(() async {
       plugin = _FakeBridgePluginForCreateProject();
-      handler = CreateProjectHandler(plugin);
+      db = createTestDatabase();
+      final filesystemRepository = FilesystemRepository(
+        filesystemApi: const FilesystemApi(),
+        permissionValidator: const FilesystemPermissionValidator(),
+      );
+      handler = CreateProjectHandler(
+        projectInitializationService: ProjectInitializationService(
+          worktreeRepository: WorktreeRepository(
+            projectsDao: db.projectsDao,
+            sessionDao: db.sessionDao,
+            plugin: plugin,
+            gitApi: GitCliApi(
+              processRunner: ProcessRunner(),
+              gitPathExists: ({required String gitPath}) =>
+                  FileSystemEntity.typeSync(gitPath) != FileSystemEntityType.notFound,
+            ),
+          ),
+          filesystemRepository: filesystemRepository,
+        ),
+        projectRepository: ProjectRepository(plugin: plugin, projectsDao: db.projectsDao),
+      );
       tempDir = await Directory.systemTemp.createTemp("create-project-handler-test-");
     });
 
     tearDown(() async {
       await plugin.close();
+      await db.close();
       if (tempDir.existsSync()) {
         await tempDir.delete(recursive: true);
       }

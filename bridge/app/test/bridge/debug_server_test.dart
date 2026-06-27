@@ -47,6 +47,7 @@ _DebugServerHarness _createDebugServerHarness({
     processRunner: ProcessRunner(),
     failureReporter: FakeFailureReporter(),
     restartService: restartService ?? buildTestRestartService(),
+    filesystemAccessOk: true,
   );
   final debugServer = runtime.createDebugServer(port: port);
   return _DebugServerHarness(

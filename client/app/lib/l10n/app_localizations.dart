@@ -1189,6 +1189,30 @@ abstract class AppLocalizations {
   /// **'Failed to discover project'**
   String get projectDiscoverFailed;
 
+  /// No description provided for @fetchDirectoryPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'The bridge can\'t access this folder. On macOS, grant Full Disk Access to the terminal running the bridge in System Settings → Privacy & Security → Full Disk Access, then retry.'**
+  String get fetchDirectoryPermissionDenied;
+
+  /// No description provided for @addProjectPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'The bridge can\'t access that folder. Grant the terminal running the bridge Full Disk Access on your Mac, then try again.'**
+  String get addProjectPermissionDenied;
+
+  /// No description provided for @filesystemAccessDegradedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Limited folder access'**
+  String get filesystemAccessDegradedTitle;
+
+  /// No description provided for @filesystemAccessDegradedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The bridge can\'t read some folders. On macOS, grant Full Disk Access to the terminal running the bridge in System Settings → Privacy & Security.'**
+  String get filesystemAccessDegradedBody;
+
   /// No description provided for @questionReplyFailed.
   ///
   /// In en, this message translates to:

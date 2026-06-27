@@ -1,21 +1,27 @@
 import "dart:io";
 
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/filesystem_repository.dart";
 import "../repositories/project_repository.dart";
 import "request_handler.dart";
 
 /// Handles `POST /project/open` — opens an existing directory as a project.
 class OpenProjectHandler extends BodyRequestHandler<ProjectPathRequest, Project> {
+  final FilesystemRepository _filesystemRepository;
   final ProjectRepository _projectRepository;
 
-  OpenProjectHandler({required ProjectRepository projectRepository})
-    : _projectRepository = projectRepository,
-      super(
-        HttpMethod.post,
-        "/project/open",
-        fromJson: ProjectPathRequest.fromJson,
-      );
+  OpenProjectHandler({
+    required FilesystemRepository filesystemRepository,
+    required ProjectRepository projectRepository,
+  }) : _filesystemRepository = filesystemRepository,
+       _projectRepository = projectRepository,
+       super(
+         HttpMethod.post,
+         "/project/open",
+         fromJson: ProjectPathRequest.fromJson,
+       );
 
   @override
   Future<Project> handle(
@@ -27,7 +33,6 @@ class OpenProjectHandler extends BodyRequestHandler<ProjectPathRequest, Project>
   }) async {
     final path = body.path;
 
-    // Validate path
     if (path.isEmpty) {
       throw buildErrorResponse(request, 400, "path must not be empty");
     }
@@ -38,15 +43,23 @@ class OpenProjectHandler extends BodyRequestHandler<ProjectPathRequest, Project>
       throw buildErrorResponse(request, 400, "path traversal not allowed");
     }
 
-    // Verify directory exists
-    final entity = FileSystemEntity.typeSync(path, followLinks: false);
-    if (entity == FileSystemEntityType.notFound) {
-      throw buildErrorResponse(request, 404, "directory not found");
-    }
-    if (entity != FileSystemEntityType.directory) {
-      throw buildErrorResponse(request, 400, "path is not a directory");
+    final FilesystemEntityKind kind;
+    try {
+      kind = _filesystemRepository.classifyPath(path: path);
+    } on FilesystemPermissionDeniedException {
+      throw buildErrorResponse(request, 403, "permission denied: $path");
+    } on FileSystemException catch (error, stackTrace) {
+      Log.w("OpenProjectHandler: failed to classify $path", error, stackTrace);
+      throw buildErrorResponse(request, 500, "failed to open directory");
     }
 
-    return _projectRepository.openProject(path: path);
+    switch (kind) {
+      case FilesystemEntityKind.notFound:
+        throw buildErrorResponse(request, 404, "directory not found");
+      case FilesystemEntityKind.notDirectory:
+        throw buildErrorResponse(request, 400, "path is not a directory");
+      case FilesystemEntityKind.directory:
+        return _projectRepository.openProject(path: path);
+    }
   }
 }

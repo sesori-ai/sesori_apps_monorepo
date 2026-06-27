@@ -111,6 +111,7 @@ class FakeBridgePlugin implements BridgePluginApi {
   // ── Error injection ──────────────────────────────────────────────────────
 
   bool throwOnHealthCheck = false;
+  bool healthCheckResult = true;
   bool throwOnGetProjects = false;
   Object? throwOnGetProjectsError;
   Object? throwOnGetProjectError;
@@ -132,7 +133,7 @@ class FakeBridgePlugin implements BridgePluginApi {
   @override
   Future<bool> healthCheck() async {
     if (throwOnHealthCheck) throw Exception("healthCheck error");
-    return true;
+    return healthCheckResult;
   }
 
   @override

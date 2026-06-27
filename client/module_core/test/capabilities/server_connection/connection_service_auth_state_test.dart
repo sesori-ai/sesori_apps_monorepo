@@ -188,7 +188,7 @@ void main() {
       service.emitStatusForTesting(
         const ConnectionStatus.connected(
           config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "t"),
-          health: HealthResponse(healthy: true, version: "1"),
+          health: HealthResponse(healthy: true, version: "1", filesystemAccessDegraded: null),
         ),
       );
 

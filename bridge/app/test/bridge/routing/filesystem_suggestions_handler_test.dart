@@ -1,5 +1,8 @@
 import "dart:io";
 
+import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
+import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
+import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/filesystem_suggestions_handler.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -12,7 +15,12 @@ void main() {
     late Directory tempDir;
 
     setUp(() {
-      handler = FilesystemSuggestionsHandler();
+      handler = FilesystemSuggestionsHandler(
+        filesystemRepository: FilesystemRepository(
+          filesystemApi: const FilesystemApi(),
+          permissionValidator: const FilesystemPermissionValidator(),
+        ),
+      );
       tempDir = Directory.systemTemp.createTempSync("sesori_test_");
     });
 

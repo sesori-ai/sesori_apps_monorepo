@@ -5,6 +5,7 @@ import 'package:clock/clock.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 import 'package:sesori_shared/sesori_shared.dart';
 
+import '../../bridge/foundation/filesystem_permission_validator.dart';
 import '../../bridge/foundation/process_runner.dart';
 
 const Duration _invalidLockGracePeriod = Duration(seconds: 2);
@@ -293,12 +294,13 @@ class UpdateLock {
   }
 
   static bool _isPermissionDenied({required FileSystemException error}) {
-    final int? code = error.osError?.errorCode;
-    if (code == 13 || code == 5) {
+    // The shared validator covers EPERM(1)/EACCES(13) and permission messages.
+    // EIO(5) is additionally treated as a denial here because a failing lock
+    // volume must abort acquisition just like a permission error.
+    if (const FilesystemPermissionValidator().isPermissionDenied(error)) {
       return true;
     }
-    final String message = '${error.osError?.message ?? ''} ${error.message}'.toLowerCase();
-    return message.contains('permission denied') || message.contains('access is denied');
+    return error.osError?.errorCode == 5;
   }
 
   static _LockOwner? _parseOwner({required String content}) {
