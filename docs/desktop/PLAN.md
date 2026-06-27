@@ -115,10 +115,10 @@ client/desktop ───────────→ module_app_ui ─┐
   trackers, services, and cubits.
 - `module_core` owns shared relay/auth seams and stays unaware of desktop-only
   tray/process/bundled-helper concerns.
-- `module_app_ui` is introduced in Phase 4. It may depend on `module_core` and
-  `module_prego`, but it must never import `client/app`, `client/desktop`, or
-  `module_desktop_core`. Product-specific behavior enters through injected
-  callbacks/strategies composed by the product shell.
+- `module_app_ui` is introduced in Phase 4. It may depend on `module_core`,
+  `module_prego`, and `sesori_shared`, but it must never import `client/app`,
+  `client/desktop`, or `module_desktop_core`. Product-specific behavior enters
+  through injected callbacks/strategies composed by the product shell.
 - Product shells may import `module_prego` directly for shell-owned
   presentation. `module_desktop_core` may import `sesori_shared` directly for
   control-protocol DTOs.

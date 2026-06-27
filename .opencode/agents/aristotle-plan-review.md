@@ -304,7 +304,7 @@ client/desktop ───────────→ module_app_ui ─┐
 - `client/app` and `client/desktop` may have `module_auth` as a pubspec dependency solely for DI wiring (`configureAuthDependencies(getIt)`). Beyond that single DI call, product shells MUST NOT import or reference `module_auth` types in source code. All auth functionality is accessed through `module_core` interfaces.
 - `module_core` MUST NOT depend on `module_desktop_core`; mobile must not inherit desktop tray/process/bundled-helper concerns.
 - Product shells may import `module_prego` directly for shell-owned presentation.
-- `module_app_ui` may depend on `module_core`, `module_prego`, and direct Flutter UI dependencies. It MUST NOT import `client/app`, `client/desktop`, or `module_desktop_core`.
+- `module_app_ui` may depend on `module_core`, `module_prego`, `sesori_shared`, and direct Flutter UI dependencies. It MUST NOT import `client/app`, `client/desktop`, or `module_desktop_core`.
 
 **Hard constraints:**
 
@@ -544,7 +544,7 @@ and desktop platform interfaces. It may depend on `module_core` and
 `DesktopUpdateService`, which must depend only on lower-layer collaborators.
 
 `module_app_ui` is a shared Flutter UI package. It may depend on `module_core`,
-`module_prego`, and direct Flutter UI dependencies. It must not import
+`module_prego`, `sesori_shared`, and direct Flutter UI dependencies. It must not import
 `client/app`, `client/desktop`, or `module_desktop_core`; product-specific
 behavior enters through constructor parameters/callback strategies composed by
 the product shell.
@@ -784,7 +784,8 @@ Layer 3 — Services (business logic)
 └─ MUST use Repositories (Layer 2) for data/API operations. MUST NOT call APIs
    (Layer 1) directly. Direct Layer-0 transport dependencies are acceptable only
    for services whose own responsibility is that transport/control seam (for
-   example a control-channel token service over `ControlChannelClient`). This is
+   example a control-channel token service over `ControlChannelClient`); they
+   still must not bypass repositories for data access. This is
    the most common violation — plans frequently bypass the repository layer and
    call APIs or execute shell commands directly from services. This MUST be
    rejected.

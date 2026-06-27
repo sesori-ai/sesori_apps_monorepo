@@ -109,18 +109,21 @@ Aristotle verdicts · Findings log · Plan-deltas.
   instead of App; publish appcast/zsync to releases keyed to the shared version.
 - **Trigger paths:** PR 0.1 excluded `client/desktop/**` from the (mobile-product)
   release triggers, so this PR must **add `client/desktop/**`,
-  `client/module_desktop_core/**`, `client/module_app_ui/**`, and any other
-  desktop-consumed UI package paths to the desktop release jobs' triggers** —
-  otherwise a desktop-only fix never starts the internal release /
-  appcast-zsync publish and the self-update channel silently misses releases.
-  The desktop jobs stay **non-blocking** for the CLI/mobile legs (invariant #3).
+  `client/module_desktop_core/**`, `client/module_app_ui/**`, shared
+  desktop-consumed paths (`client/module_core/**`, `client/module_auth/**`,
+  `client/module_prego/**`, workspace client pubspec/lock/config files), and any
+  other desktop-consumed UI package paths to the desktop release jobs'
+  triggers** — otherwise a desktop-only or shared-client fix never starts the
+  internal release / appcast-zsync publish and the self-update channel silently
+  misses releases. The desktop jobs stay **non-blocking** for the CLI/mobile
+  legs (invariant #3).
 - **Risk:** Med. **Size:** M.
 - **Acceptance:** an internal release dry-run produces signed, self-update-ready
   desktop artifacts; a **desktop-only shell, desktop-core, or shared-UI** change
   triggers the desktop release/appcast publish; a forced desktop-leg failure does
   **not** block the CLI/mobile release; release notes classify
-  `client/desktop/**`, `client/module_desktop_core/**`, and desktop-consumed UI
-  changes under Desktop rather than App.
+  `client/desktop/**`, `client/module_desktop_core/**`, desktop-consumed UI, and
+  shared client dependencies under Desktop as appropriate rather than App-only.
 
 ## PR 3.11 — Uninstall + login-item cleanup (desktop-owned state only)
 - **Goal:** Per-OS uninstall removes the **login item** and **GUI-owned** state

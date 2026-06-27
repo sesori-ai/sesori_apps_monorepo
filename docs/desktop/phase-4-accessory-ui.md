@@ -8,8 +8,8 @@
 **Standing acceptance (all Phase 4 PRs):** `client/app` (the mobile product) builds + tests pass + a
 mobile release dry-run passes after each PR (release-safety invariant #2). No UI
 behaviour change for mobile. `module_app_ui` may depend on `module_core`,
-`module_prego`, and direct Flutter UI dependencies, but it must never import
-`client/app`, `client/desktop`, or `module_desktop_core`.
+`module_prego`, `sesori_shared`, and direct Flutter UI dependencies, but it must
+never import `client/app`, `client/desktop`, or `module_desktop_core`.
 
 **Per-PR template:** Goal · Scope · Risk · Review-size · Acceptance · DoD ·
 Aristotle verdicts · Findings log · Plan-deltas.

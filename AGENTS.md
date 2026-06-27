@@ -162,6 +162,10 @@ app/lib/src/
 
 - BridgePlugin is semantically a Layer 1 data source (it exposes a public API for projects/sessions/messages)
 - Routing handlers use Repositories/Services — they MUST NOT call APIs (Layer 1) directly
+- Services must use Repositories for data/API operations. A direct Layer-0
+  transport dependency is allowed only when the service itself owns that
+  transport/control seam, such as a control-channel token service over
+  `ControlChannelClient`; it still must not bypass repositories for data access.
 - For bridge session lifecycle flows, routing handlers MUST NOT depend on `BridgePlugin` directly. Treat `BridgePlugin` as Layer 1/API. Thin plugin-backed session commands and lookups belong in `SessionRepository`; multi-step session orchestration (create, archive, unarchive) belongs in services.
 - All mappers belong in `repositories/mappers/`, NOT in `routing/`
 - `auth/`, `push/`, `server/` are self-contained subsystems outside the layer hierarchy
@@ -303,8 +307,8 @@ module_desktop_core/lib/src/
 
 - Contains shared widgets/screens only; no product-shell DI, process supervision,
   platform adapters, or auth/token ownership.
-- May depend on `module_core`, `module_prego`, and Flutter UI dependencies it
-  directly uses.
+- May depend on `module_core`, `module_prego`, `sesori_shared`, and Flutter UI
+  dependencies it directly uses.
 - MUST NOT import from `client/app`, `client/desktop`, or `module_desktop_core`.
 - Product-specific behaviour (for example desktop bridge-offline actions) enters
   through constructor parameters/callback strategies composed by the product shell.
