@@ -333,6 +333,114 @@ void main() {
       verify(() => viewingService.setViewingSession(sessionId)).called(greaterThanOrEqualTo(1));
     });
 
+    test("rapid resumes during an in-flight refresh do not start overlapping refreshes", () async {
+      final viewingService = stubbedSessionViewingService();
+      final lifecycle = FakeLifecycleSource();
+      addTearDown(lifecycle.close);
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: viewingService,
+        lifecycleSource: lifecycle,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      clearInteractions(mockSessionService);
+
+      // Track concurrency of getMessages: it must never run two at once
+      // (single-flight). Gate the first call so it stays in flight across the
+      // rapid resume cycles.
+      var concurrent = 0;
+      var maxConcurrent = 0;
+      final gate = Completer<void>();
+      var firstGet = true;
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer((_) async {
+        concurrent++;
+        if (concurrent > maxConcurrent) maxConcurrent = concurrent;
+        try {
+          if (firstGet) {
+            firstGet = false;
+            await gate.future;
+          }
+          return ApiResponse.success(
+            MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-resumed")]),
+          );
+        } finally {
+          concurrent--;
+        }
+      });
+
+      // Start an in-flight refresh.
+      mockConnectionService.emitDataMayBeStale();
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      // Two rapid pause/resume cycles while the first refresh is gated.
+      lifecycle.emitState(LifecycleState.paused);
+      lifecycle.emitState(LifecycleState.resumed);
+      lifecycle.emitState(LifecycleState.paused);
+      lifecycle.emitState(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      gate.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+
+      // Never two refreshes at once.
+      expect(maxConcurrent, equals(1));
+      // The rapid resumes coalesce into a single appended forced refresh, so at
+      // most the in-flight one plus one more ran.
+      verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(lessThanOrEqualTo(2));
+    });
+
+    test("resume while disconnected forces a fresh refresh on reconnect", () async {
+      final viewingService = stubbedSessionViewingService();
+      final lifecycle = FakeLifecycleSource();
+      addTearDown(lifecycle.close);
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: viewingService,
+        lifecycleSource: lifecycle,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      clearInteractions(mockSessionService);
+      clearInteractions(viewingService);
+
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer(
+        (_) async =>
+            ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-resumed")])),
+      );
+
+      // Disconnect, background, resume — all while disconnected: the refresh is
+      // deferred to the reconnect path.
+      connectionStatus.add(connectionLostStatus);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      lifecycle.emitState(LifecycleState.paused);
+      lifecycle.emitState(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      verifyNever(() => mockSessionService.getMessages(sessionId: sessionId));
+
+      // Reconnect: the deferred resume refresh runs and re-asserts the view.
+      connectionStatus.add(connectedStatus);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(1);
+      verify(() => viewingService.setViewingSession(sessionId)).called(greaterThanOrEqualTo(1));
+    });
+
     test("silent refresh preserves selectedAgent and selectedAgentModel", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,

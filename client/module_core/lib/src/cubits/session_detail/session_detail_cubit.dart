@@ -45,7 +45,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   bool _wasPaused = false;
   late final StreamingTextBuffer _streamingBuffer;
   Future<void>? _activeRefresh;
+  int _refreshGeneration = 0;
+  bool _pendingForcedRefresh = false;
   bool _needsStaleRefresh = false;
+  bool _needsFreshRefreshOnReconnect = false;
   bool _waitingForConnection = false;
 
   /// Pending session-scoped SSE events that arrived while the cubit was in
@@ -145,23 +148,45 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   void _silentRefresh() {
     if (state is! SessionDetailLoaded) return;
-    _activeRefresh ??= _doSilentRefresh().whenComplete(() => _activeRefresh = null);
+    if (_activeRefresh != null) return;
+    _startRefreshChain(Future<void>.value());
   }
 
   /// Like [_silentRefresh] but guarantees a refresh that started *after* this
   /// call — it will not coalesce onto an already-in-flight request that may have
   /// begun before the app was backgrounded (and thus would render a snapshot
   /// missing activity that arrived while hidden). Used on resume so the view is
-  /// only re-asserted after genuinely fresh content.
+  /// only re-asserted after genuinely fresh content. If called repeatedly while
+  /// a chain is in flight, exactly one additional refresh is appended (a pending
+  /// flag), so rapid pause/resume can't stack many redundant refreshes.
   void _forceFreshRefresh() {
     if (state is! SessionDetailLoaded) return;
     final inFlight = _activeRefresh;
     if (inFlight == null) {
-      _silentRefresh();
+      _startRefreshChain(Future<void>.value());
       return;
     }
-    // Chain a brand-new refresh after the in-flight one completes.
-    _activeRefresh = inFlight.then((_) => _doSilentRefresh()).whenComplete(() => _activeRefresh = null);
+    // A chain is already running; request exactly one fresh refresh after it.
+    _pendingForcedRefresh = true;
+  }
+
+  /// Starts a refresh chain after [precursor] completes and takes ownership of
+  /// [_activeRefresh]. A generation token ensures only the chain that currently
+  /// owns [_activeRefresh] clears it on completion — a superseding chain won't
+  /// be nulled out from under by an older chain's completion (which would let
+  /// [_silentRefresh] start a concurrent refresh and break single-flight).
+  void _startRefreshChain(Future<void> precursor) {
+    final token = ++_refreshGeneration;
+    _activeRefresh = precursor.then((_) => _doSilentRefresh()).whenComplete(() {
+      if (_refreshGeneration != token) return; // superseded by a newer chain
+      _activeRefresh = null;
+      if (_pendingForcedRefresh && !isClosed && state is SessionDetailLoaded) {
+        _pendingForcedRefresh = false;
+        _startRefreshChain(Future<void>.value());
+      } else {
+        _pendingForcedRefresh = false;
+      }
+    });
   }
 
   Future<void> _doSilentRefresh() async {
@@ -821,8 +846,11 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           _forceFreshRefresh();
         } else {
           // Disconnected: defer to the reconnect path, which refreshes (and
-          // thus re-asserts) once the connection returns.
+          // thus re-asserts) once the connection returns. Flag that this deferred
+          // refresh must be a FORCED-fresh one (resume guarantee), not a
+          // coalescing _silentRefresh.
           _needsStaleRefresh = true;
+          _needsFreshRefreshOnReconnect = true;
         }
       case LifecycleState.inactive:
       case LifecycleState.detached:
@@ -841,7 +869,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       _tryDrainQueue();
       if (_needsStaleRefresh) {
         _needsStaleRefresh = false;
-        _silentRefresh();
+        // A refresh deferred from a resume must be forced-fresh to keep the
+        // post-resume guarantee; an ordinary stale signal can coalesce.
+        if (_needsFreshRefreshOnReconnect) {
+          _needsFreshRefreshOnReconnect = false;
+          _forceFreshRefresh();
+        } else {
+          _silentRefresh();
+        }
       }
     }
   }
