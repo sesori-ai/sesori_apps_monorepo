@@ -122,6 +122,30 @@ void main() {
       tracker.onDispose();
     });
 
+    test("reconcile preserves a live session that is absent from the REST snapshot", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // A /sessions fetch begins (the snapshot will contain only s1).
+      final gen = tracker.generation;
+
+      // While in flight, a brand-new session s2 becomes unseen via a live event
+      // (e.g. session.created landed after the request started).
+      events.add(unseenEvent(projectID: "p1", sessionId: "s2", unseen: true, projectHasUnseenChanges: true));
+      await Future<void>.delayed(Duration.zero);
+
+      // The older REST snapshot lands without s2. s2 must be preserved (its live
+      // generation is newer than the fetch), not dropped.
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": false},
+        sinceGeneration: gen,
+      );
+      expect(tracker.currentSessionUnseen["p1"]?["s1"], isFalse);
+      expect(tracker.currentSessionUnseen["p1"]?["s2"], isTrue);
+      expect(tracker.currentProjectUnseen["p1"], isTrue);
+      tracker.onDispose();
+    });
+
     test("a later seen event clears the session and updates the project aggregate", () async {
       final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
 

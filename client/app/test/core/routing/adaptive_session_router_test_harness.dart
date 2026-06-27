@@ -170,6 +170,7 @@ class AdaptiveSessionRouterTestHarness {
     getIt.registerSingleton<SseEventRepository>(sseEventRepository);
     getIt.registerSingleton<SessionUnseenTracker>(FakeSessionUnseenTracker());
     getIt.registerSingleton<SessionViewingService>(stubbedSessionViewingService());
+    getIt.registerSingleton<LifecycleSource>(MockLifecycleSource());
     getIt.registerSingleton<RouteSource>(routeSource);
     getIt.registerSingleton<FailureReporter>(failureReporter);
     getIt.registerSingleton<PermissionRepository>(permissionRepository);

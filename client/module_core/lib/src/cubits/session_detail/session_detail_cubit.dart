@@ -10,6 +10,7 @@ import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
+import "../../platform/lifecycle_source.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
@@ -27,6 +28,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final ConnectionService _connectionService;
   final PermissionRepository _permissionRepository;
   final SessionViewingService _sessionViewingService;
+  final LifecycleSource _lifecycleSource;
   static const _defaultModelSelector = DefaultModelSelector();
   final String _sessionId;
   final String _projectId;
@@ -39,6 +41,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   late final StreamSubscription<SseEvent> _globalEventSubscription;
   late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
   late final StreamSubscription<void> _staleSubscription;
+  late final StreamSubscription<LifecycleState> _lifecycleSubscription;
+  bool _wasPaused = false;
   late final StreamingTextBuffer _streamingBuffer;
   Future<void>? _activeRefresh;
   bool _needsStaleRefresh = false;
@@ -71,6 +75,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required SessionRepository promptDispatcher,
     required PermissionRepository permissionRepository,
     required SessionViewingService sessionViewingService,
+    required LifecycleSource lifecycleSource,
     required String sessionId,
     required String projectId,
     required NotificationCanceller notificationCanceller,
@@ -80,6 +85,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
        _connectionService = connectionService,
        _permissionRepository = permissionRepository,
        _sessionViewingService = sessionViewingService,
+       _lifecycleSource = lifecycleSource,
        _sessionId = sessionId,
        _projectId = projectId,
        _notificationCanceller = notificationCanceller,
@@ -90,6 +96,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     _globalEventSubscription = _connectionService.events.listen(_handleGlobalEvent);
     _connectionStatusSubscription = _connectionService.status.listen(_onConnectionStatusChanged);
     _staleSubscription = _connectionService.dataMayBeStale.listen((_) => _onDataMayBeStale());
+    _lifecycleSubscription = _lifecycleSource.lifecycleStateStream.listen(_onLifecycleChanged);
     _loadMessages(isReload: false);
   }
 
@@ -778,6 +785,33 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     }
   }
 
+  void _onLifecycleChanged(LifecycleState state) {
+    switch (state) {
+      case LifecycleState.paused:
+      case LifecycleState.hidden:
+        _wasPaused = true;
+      case LifecycleState.resumed:
+        if (!_wasPaused) return;
+        _wasPaused = false;
+        // On every resume, refresh so the transcript is current, then the
+        // refresh re-asserts the viewing session once fresh content renders.
+        // This covers short resumes that don't emit dataMayBeStale: the
+        // viewing service cleared the view on background and does not
+        // auto-re-assert, so without this the bridge would have no active
+        // viewer and later in-view activity would be persisted as unseen.
+        if (_isConnected) {
+          _silentRefresh();
+        } else {
+          // Disconnected: defer to the reconnect path, which refreshes (and
+          // thus re-asserts) once the connection returns.
+          _needsStaleRefresh = true;
+        }
+      case LifecycleState.inactive:
+      case LifecycleState.detached:
+        break;
+    }
+  }
+
   void _onConnectionStatusChanged(ConnectionStatus status) {
     if (isClosed) return;
     if (status is ConnectionConnected) {
@@ -1337,6 +1371,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     _globalEventSubscription.cancel();
     _connectionStatusSubscription.cancel();
     _staleSubscription.cancel();
+    _lifecycleSubscription.cancel();
     _streamingBuffer.dispose();
     _questionStream.close();
     _permissionStream.close();

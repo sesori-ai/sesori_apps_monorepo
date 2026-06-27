@@ -8,6 +8,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_e
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
+import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
@@ -111,6 +112,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          lifecycleSource: FakeLifecycleSource(),
           sessionId: sessionId,
           projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
@@ -164,6 +166,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -210,6 +213,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: viewingService,
+        lifecycleSource: FakeLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -234,6 +238,45 @@ void main() {
       verify(() => viewingService.setViewingSession(sessionId)).called(1);
     });
 
+    test("resume drives a refresh that re-asserts the viewing session", () async {
+      final viewingService = stubbedSessionViewingService();
+      final lifecycle = FakeLifecycleSource();
+      addTearDown(lifecycle.close);
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: viewingService,
+        lifecycleSource: lifecycle,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      verify(() => viewingService.setViewingSession(sessionId)).called(1);
+      clearInteractions(mockSessionService);
+      clearInteractions(viewingService);
+
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer(
+        (_) async =>
+            ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-resumed")])),
+      );
+
+      // A short background then resume WITHOUT any dataMayBeStale signal: the
+      // cubit must still refresh and re-assert so the bridge has an active
+      // viewer for subsequent in-view activity.
+      lifecycle.emitState(LifecycleState.paused);
+      lifecycle.emitState(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(1);
+      verify(() => viewingService.setViewingSession(sessionId)).called(1);
+    });
+
     test("silent refresh preserves selectedAgent and selectedAgentModel", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,
@@ -241,6 +284,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -317,6 +361,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -348,6 +393,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -414,6 +460,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -451,6 +498,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -484,6 +532,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -508,6 +557,7 @@ void main() {
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
           sessionViewingService: stubbedSessionViewingService(),
+          lifecycleSource: FakeLifecycleSource(),
           sessionId: sessionId,
           projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
@@ -546,6 +596,7 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,

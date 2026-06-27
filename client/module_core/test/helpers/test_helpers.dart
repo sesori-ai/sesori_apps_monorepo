@@ -11,6 +11,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/capabilities/session/session_service.dart";
 import "package:sesori_dart_core/src/capabilities/sse/session_activity_info.dart";
 import "package:sesori_dart_core/src/capabilities/sse/sse_event_repository.dart";
+import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/route_source.dart";
 import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
@@ -20,6 +21,19 @@ import "package:sesori_dart_core/src/services/registered_bridges_store.dart";
 import "package:sesori_dart_core/src/services/session_unseen_tracker.dart";
 import "package:sesori_dart_core/src/services/session_viewing_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
+
+/// A [LifecycleSource] seeded as resumed, for cubits that subscribe to
+/// lifecycle. Call [emitState] to drive transitions in tests.
+class FakeLifecycleSource implements LifecycleSource {
+  final BehaviorSubject<LifecycleState> _state = BehaviorSubject.seeded(LifecycleState.resumed);
+
+  @override
+  ValueStream<LifecycleState> get lifecycleStateStream => _state.stream;
+
+  void emitState(LifecycleState state) => _state.add(state);
+
+  void close() => _state.close();
+}
 
 class MockProjectService extends Mock implements ProjectService {}
 

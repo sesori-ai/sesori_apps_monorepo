@@ -95,6 +95,12 @@ class SessionUnseenTracker with Disposable {
   /// value, while its siblings are still reconciled from the REST snapshot. This
   /// prevents an unrelated live update from discarding the whole snapshot (so a
   /// missed clear for one session isn't stranded by activity on another).
+  ///
+  /// A session that received a newer live update but is absent from the REST
+  /// snapshot (e.g. a `session.created`/unseen event landed while an older
+  /// `/sessions` request was still in flight) is preserved rather than dropped,
+  /// so a freshly-created unseen session doesn't lose its bold until the next
+  /// refresh.
   void reconcileSessionUnseen({
     required String projectId,
     required Map<String, bool> unseenBySessionId,
@@ -112,6 +118,14 @@ class SessionUnseenTracker with Disposable {
       if ((liveGenerations[entry.key] ?? 0) > sinceGeneration) {
         merged[entry.key] = existing[entry.key] ?? entry.value;
       } else {
+        merged[entry.key] = entry.value;
+      }
+    }
+    // Carry forward any existing entry that got a newer live update but is not
+    // in the REST snapshot, so its live value isn't dropped by the replace.
+    for (final entry in existing.entries) {
+      if (merged.containsKey(entry.key)) continue;
+      if ((liveGenerations[entry.key] ?? 0) > sinceGeneration) {
         merged[entry.key] = entry.value;
       }
     }
