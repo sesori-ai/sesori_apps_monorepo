@@ -157,6 +157,16 @@ class SessionUnseenService {
       // The row exists, so this is a known (resolvable) session — drop any stale
       // unresolved marker so future events take the fast path normally.
       _unresolvedSessions.remove(sessionId);
+      // Coalesce streaming output: once a non-user activity has already made the
+      // session unseen and no phone is viewing it, further deltas don't change
+      // the unseen state and the SSE emit is identical. Skip the redundant DB
+      // write + recompute + emit so a long backgrounded response can't flood the
+      // global write queue and delay view-start/mark-read for other sessions.
+      // (A later mark-read stamps seen at `now`, which is always past the
+      // skipped, older activity timestamp, so correctness is preserved.)
+      if (!isUserMessage && !viewedAtSubmit && _unseenRepository.unseenForRow(row)) {
+        return;
+      }
       await _unseenRepository.recordActivity(
         sessionId: sessionId,
         at: _activityTimestamp(userMessageAt: row.userMessageAt, seenAt: row.seenAt),

@@ -96,11 +96,17 @@ class SessionUnseenTracker with Disposable {
   /// prevents an unrelated live update from discarding the whole snapshot (so a
   /// missed clear for one session isn't stranded by activity on another).
   ///
-  /// A session that received a newer live update but is absent from the REST
-  /// snapshot (e.g. a `session.created`/unseen event landed while an older
+  /// A session that became unseen via a newer live update but is absent from the
+  /// REST snapshot (e.g. a `session.created`/unseen event landed while an older
   /// `/sessions` request was still in flight) is preserved rather than dropped,
   /// so a freshly-created unseen session doesn't lose its bold until the next
-  /// refresh.
+  /// refresh — BUT only while the project's latest live aggregate still reports
+  /// unseen. An archived session is intentionally omitted from `/sessions`; its
+  /// archive event sets the project aggregate to false even though the
+  /// per-session `unseen` flag (derived from timestamps) can still be true, so
+  /// preserving it would wrongly re-bold the project. Gating on the live project
+  /// aggregate keeps creations (aggregate true) while dropping archives
+  /// (aggregate false).
   void reconcileSessionUnseen({
     required String projectId,
     required Map<String, bool> unseenBySessionId,
@@ -121,12 +127,17 @@ class SessionUnseenTracker with Disposable {
         merged[entry.key] = entry.value;
       }
     }
-    // Carry forward any existing entry that got a newer live update but is not
-    // in the REST snapshot, so its live value isn't dropped by the replace.
-    for (final entry in existing.entries) {
-      if (merged.containsKey(entry.key)) continue;
-      if ((liveGenerations[entry.key] ?? 0) > sinceGeneration) {
-        merged[entry.key] = entry.value;
+    // Carry forward an unseen session that got a newer live update but is absent
+    // from the REST snapshot — but only when the project's latest live aggregate
+    // still reports unseen, so an archived (de-aggregated) session is dropped
+    // while a freshly-created one is kept.
+    final projectStillUnseenLive = _projectUnseen.value[projectId] ?? false;
+    if (projectStillUnseenLive) {
+      for (final entry in existing.entries) {
+        if (merged.containsKey(entry.key)) continue;
+        if (entry.value && (liveGenerations[entry.key] ?? 0) > sinceGeneration) {
+          merged[entry.key] = entry.value;
+        }
       }
     }
     sessions[projectId] = merged;

@@ -148,6 +148,22 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     _activeRefresh ??= _doSilentRefresh().whenComplete(() => _activeRefresh = null);
   }
 
+  /// Like [_silentRefresh] but guarantees a refresh that started *after* this
+  /// call — it will not coalesce onto an already-in-flight request that may have
+  /// begun before the app was backgrounded (and thus would render a snapshot
+  /// missing activity that arrived while hidden). Used on resume so the view is
+  /// only re-asserted after genuinely fresh content.
+  void _forceFreshRefresh() {
+    if (state is! SessionDetailLoaded) return;
+    final inFlight = _activeRefresh;
+    if (inFlight == null) {
+      _silentRefresh();
+      return;
+    }
+    // Chain a brand-new refresh after the in-flight one completes.
+    _activeRefresh = inFlight.then((_) => _doSilentRefresh()).whenComplete(() => _activeRefresh = null);
+  }
+
   Future<void> _doSilentRefresh() async {
     final current = state;
     if (current is! SessionDetailLoaded) return;
@@ -799,8 +815,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
         // viewing service cleared the view on background and does not
         // auto-re-assert, so without this the bridge would have no active
         // viewer and later in-view activity would be persisted as unseen.
+        // Force a fresh refresh (don't coalesce onto a request that may have
+        // started before backgrounding and would miss hidden activity).
         if (_isConnected) {
-          _silentRefresh();
+          _forceFreshRefresh();
         } else {
           // Disconnected: defer to the reconnect path, which refreshes (and
           // thus re-asserts) once the connection returns.

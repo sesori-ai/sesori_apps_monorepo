@@ -146,6 +146,41 @@ void main() {
       tracker.onDispose();
     });
 
+    test("reconcile does NOT preserve an archived session omitted from the REST snapshot", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // Two unseen sessions exist; the project is bold.
+      final gen0 = tracker.generation;
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": true, "s2": true},
+        sinceGeneration: gen0,
+      );
+      expect(tracker.currentProjectUnseen["p1"], isTrue);
+
+      // A /sessions refresh begins (snapshot will omit the archived s1).
+      final gen = tracker.generation;
+
+      // s1 is archived: the archive event carries unseen:true (from timestamps)
+      // but projectHasUnseenChanges:false (it left the aggregate). s2 is also
+      // seen now, so the project should end up not bold.
+      events.add(unseenEvent(projectID: "p1", sessionId: "s1", unseen: true, projectHasUnseenChanges: false));
+      await Future<void>.delayed(Duration.zero);
+
+      // REST snapshot lands without the archived s1, and s2 cleared.
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s2": false},
+        sinceGeneration: gen,
+      );
+
+      // s1 must NOT be carried forward (its project aggregate is false), so the
+      // project is not re-bolded.
+      expect(tracker.currentSessionUnseen["p1"]?.containsKey("s1"), isFalse);
+      expect(tracker.currentProjectUnseen["p1"], isFalse);
+      tracker.onDispose();
+    });
+
     test("a later seen event clears the session and updates the project aggregate", () async {
       final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
 

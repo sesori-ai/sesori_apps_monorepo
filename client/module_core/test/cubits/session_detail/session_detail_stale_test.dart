@@ -277,6 +277,62 @@ void main() {
       verify(() => viewingService.setViewingSession(sessionId)).called(1);
     });
 
+    test("resume forces a fresh refresh rather than coalescing onto a pre-background one", () async {
+      final viewingService = stubbedSessionViewingService();
+      final lifecycle = FakeLifecycleSource();
+      addTearDown(lifecycle.close);
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: viewingService,
+        lifecycleSource: lifecycle,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      clearInteractions(mockSessionService);
+      clearInteractions(viewingService);
+
+      // Gate the first refresh's getMessages so it is still in flight when the
+      // app backgrounds (simulating a refresh that began before backgrounding).
+      final gate = Completer<void>();
+      var firstGet = true;
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer((_) async {
+        if (firstGet) {
+          firstGet = false;
+          await gate.future;
+        }
+        return ApiResponse.success(
+          MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-resumed")]),
+        );
+      });
+
+      // Start a refresh (in flight, gated).
+      mockConnectionService.emitDataMayBeStale();
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      // Background, then resume while the first refresh is still gated.
+      lifecycle.emitState(LifecycleState.paused);
+      lifecycle.emitState(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      // Release the first refresh; the forced post-resume refresh must run too.
+      gate.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      // Two getMessages: the pre-background one and the forced post-resume one
+      // (it did NOT coalesce onto the older request).
+      verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(2);
+      // The view is re-asserted after the (fresh) refresh renders.
+      verify(() => viewingService.setViewingSession(sessionId)).called(greaterThanOrEqualTo(1));
+    });
+
     test("silent refresh preserves selectedAgent and selectedAgentModel", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,

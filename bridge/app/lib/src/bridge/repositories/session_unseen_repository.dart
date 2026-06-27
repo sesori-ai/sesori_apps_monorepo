@@ -118,6 +118,12 @@ class SessionUnseenRepository {
   Future<bool> isUnseen({required String sessionId}) async {
     final row = await getUnseenRow(sessionId: sessionId);
     if (row == null) return false;
+    return unseenForRow(row);
+  }
+
+  /// Whether an already-fetched [row] currently has unseen changes. Lets callers
+  /// avoid a re-read when they already hold the row.
+  bool unseenForRow(UnseenRow row) {
     return _calculator.isUnseen(
       activity: row.activityAt,
       userMessage: row.userMessageAt,

@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -103,6 +105,36 @@ void main() {
       verify(() => viewRepository.sendSessionView(sessionId: "s1")).called(1);
       service.clearViewingSession("s1");
       await service.sendTail;
+    });
+
+    test("a set queued behind a slow send is revalidated to null if the app backgrounds first", () async {
+      // Gate the FIRST send (an initial s0 declaration) so the subsequent s1
+      // set queues behind it and has not executed yet when the app backgrounds.
+      final gate = Completer<void>();
+      var firstCall = true;
+      when(() => viewRepository.sendSessionView(sessionId: any(named: "sessionId"))).thenAnswer((_) async {
+        if (firstCall) {
+          firstCall = false;
+          await gate.future;
+        }
+      });
+
+      final service = build()..setViewingSession("s0");
+      // s1 set queues behind the gated s0 send (its closure has NOT run yet).
+      service.setViewingSession("s1");
+      // App backgrounds before s1's queued closure executes.
+      lifecycle.emit(LifecycleState.paused);
+      // Release the gate so the queue drains.
+      gate.complete();
+      await service.sendTail;
+
+      final sent = verify(() => viewRepository.sendSessionView(sessionId: captureAny(named: "sessionId"))).captured;
+      // s0 went out before the pause. The s1 declaration, which executed after
+      // the pause, must have been revalidated to null — never sent as a non-null
+      // viewer while hidden. The trailing background clear is null too.
+      expect(sent.first, equals("s0"));
+      expect(sent.sublist(1).whereType<String>(), isEmpty);
+      expect(sent, contains(null));
     });
 
     test("hidden + paused fired back-to-back only sends one clear", () async {

@@ -205,6 +205,57 @@ void main() {
       expect(await unseen("s1"), isTrue);
     });
 
+    test("coalesces streaming assistant deltas once the session is already unseen", () async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSessionsIfMissing(
+        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+      );
+
+      final events = <UnseenChange>[];
+      final sub = service.unseenChanges.listen(events.add);
+
+      // First assistant activity bolds the session and emits.
+      clock = 2000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      await Future<void>.delayed(Duration.zero);
+      expect(await unseen("s1"), isTrue);
+      final afterFirst = events.length;
+      expect(afterFirst, greaterThanOrEqualTo(1));
+
+      // Subsequent streaming deltas (assistant, not viewed) are coalesced: no
+      // additional DB write or emit while it's already unseen.
+      clock = 2001;
+      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      clock = 2002;
+      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      await Future<void>.delayed(Duration.zero);
+      expect(events.length, equals(afterFirst));
+
+      // A later mark-read still clears it (correctness preserved despite the
+      // skipped activity bumps).
+      clock = 3000;
+      await service.markRead(sessionId: "s1");
+      expect(await unseen("s1"), isFalse);
+
+      await sub.cancel();
+    });
+
+    test("a user message after the session is unseen is NOT coalesced (updates user-message marker)", () async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSessionsIfMissing(
+        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+      );
+      clock = 2000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      expect(await unseen("s1"), isTrue);
+
+      // The user then sends their own message: this must still be recorded (it
+      // advances last_user_message_at), and clears the bold.
+      clock = 2500;
+      await service.recordActivity(sessionId: "s1", isUserMessage: true);
+      expect(await unseen("s1"), isFalse);
+    });
+
     test("emits unseenChanges with project aggregate", () async {
       final events = <UnseenChange>[];
       final sub = service.unseenChanges.listen(events.add);
