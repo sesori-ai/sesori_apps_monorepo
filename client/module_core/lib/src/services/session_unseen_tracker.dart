@@ -40,6 +40,25 @@ class SessionUnseenTracker with Disposable {
   // project ID -> (session ID -> generation of its last live update).
   final Map<String, Map<String, int>> _sessionLiveGeneration = {};
 
+  // project ID -> session IDs known to be EXCLUDED from the project aggregate
+  // (archived). The bridge omits archived sessions from the aggregate, so an
+  // archive event arrives as unseen:true (per-session, from timestamps) together
+  // with projectHasUnseenChanges:false — a combination only possible when this
+  // session does not count toward the aggregate. Tracking these lets aggregate
+  // recomputes (REST reconcile and local optimistic updates) skip them instead
+  // of resurrecting a stale `true`.
+  final Map<String, Set<String>> _excludedSessions = {};
+
+  /// Whether any session in [projectSessions] for [projectId] is unseen AND not
+  /// excluded (archived). Used wherever the project aggregate is recomputed.
+  bool _anyUnseen({required String projectId, required Map<String, bool> projectSessions}) {
+    final excluded = _excludedSessions[projectId] ?? const <String>{};
+    for (final entry in projectSessions.entries) {
+      if (entry.value && !excluded.contains(entry.key)) return true;
+    }
+    return false;
+  }
+
   SessionUnseenTracker(
     ConnectionService connectionService, {
     required FailureReporter failureReporter,
@@ -144,8 +163,15 @@ class SessionUnseenTracker with Disposable {
     _sessionUnseen.add(sessions);
 
     final projects = Map<String, bool>.from(_projectUnseen.value);
-    projects[projectId] = merged.values.any((unseen) => unseen);
-    _projectUnseen.add(projects);
+    // If a newer live aggregate arrived since the fetch began (e.g. an archive
+    // SSE set it false while this slow /sessions response still lists the
+    // archived session as present+unseen), keep that authoritative live value
+    // rather than recomputing from the stale snapshot. Otherwise recompute,
+    // excluding archived sessions.
+    if ((_projectLiveGeneration[projectId] ?? 0) <= sinceGeneration) {
+      projects[projectId] = _anyUnseen(projectId: projectId, projectSessions: merged);
+      _projectUnseen.add(projects);
+    }
   }
 
   /// Applies a local, optimistic unseen change for one session — e.g. an
@@ -169,6 +195,11 @@ class SessionUnseenTracker with Disposable {
     final generation = ++_generation;
     _projectLiveGeneration[projectId] = generation;
     (_sessionLiveGeneration[projectId] ??= {})[sessionId] = generation;
+    // A local mark-read/unread never changes archive state; an already-archived
+    // (excluded) session must not start counting toward the aggregate.
+    if (!unseen) {
+      _excludedSessions[projectId]?.remove(sessionId);
+    }
 
     final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
     final projectSessions = Map<String, bool>.from(sessions[projectId] ?? const {});
@@ -177,7 +208,9 @@ class SessionUnseenTracker with Disposable {
     _sessionUnseen.add(sessions);
 
     final projects = Map<String, bool>.from(_projectUnseen.value);
-    projects[projectId] = projectSessions.values.any((u) => u);
+    // Exclude archived sessions so a stale unseen:true archived entry can't
+    // re-bold the project, and the generation bump won't make that stick.
+    projects[projectId] = _anyUnseen(projectId: projectId, projectSessions: projectSessions);
     _projectUnseen.add(projects);
   }
 
@@ -193,6 +226,15 @@ class SessionUnseenTracker with Disposable {
         final generation = ++_generation;
         _projectLiveGeneration[projectID] = generation;
         (_sessionLiveGeneration[projectID] ??= {})[sessionId] = generation;
+
+        // unseen:true together with projectHasUnseenChanges:false can only mean
+        // this session is excluded from the aggregate (archived). Record/clear
+        // that so aggregate recomputes ignore it.
+        if (unseen && !projectHasUnseenChanges) {
+          (_excludedSessions[projectID] ??= <String>{}).add(sessionId);
+        } else {
+          _excludedSessions[projectID]?.remove(sessionId);
+        }
 
         final projects = Map<String, bool>.from(_projectUnseen.value);
         projects[projectID] = projectHasUnseenChanges;

@@ -181,6 +181,59 @@ void main() {
       tracker.onDispose();
     });
 
+    test("a stale /sessions response cannot overwrite a newer live archive aggregate", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // Two unseen sessions; project bold.
+      final gen0 = tracker.generation;
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": true, "s2": true},
+        sinceGeneration: gen0,
+      );
+      expect(tracker.currentProjectUnseen["p1"], isTrue);
+
+      // A slow /sessions fetch begins (its snapshot still lists s1 as present+unseen).
+      final gen = tracker.generation;
+
+      // Meanwhile s2 is seen and s1 is archived: the archive event carries
+      // unseen:true (timestamps) but projectHasUnseenChanges:false.
+      events.add(unseenEvent(projectID: "p1", sessionId: "s2", unseen: false, projectHasUnseenChanges: true));
+      events.add(unseenEvent(projectID: "p1", sessionId: "s1", unseen: true, projectHasUnseenChanges: false));
+      await Future<void>.delayed(Duration.zero);
+      expect(tracker.currentProjectUnseen["p1"], isFalse);
+
+      // The stale REST response lands, still listing s1 present+unseen. It must
+      // NOT re-bold the project: the live aggregate (false) is newer.
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": true, "s2": true},
+        sinceGeneration: gen,
+      );
+      expect(tracker.currentProjectUnseen["p1"], isFalse);
+      tracker.onDispose();
+    });
+
+    test("local mark of another session ignores an archived unseen entry in the aggregate", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // s1 archived (excluded), s2 seen. Project not bold.
+      events.add(unseenEvent(projectID: "p1", sessionId: "s1", unseen: true, projectHasUnseenChanges: false));
+      events.add(unseenEvent(projectID: "p1", sessionId: "s2", unseen: false, projectHasUnseenChanges: false));
+      await Future<void>.delayed(Duration.zero);
+      expect(tracker.currentProjectUnseen["p1"], isFalse);
+
+      // Optimistically mark s2 read again — the archived s1 entry (still
+      // unseen:true in the map) must not re-bold the project.
+      tracker.applyLocalSessionUnseen(projectId: "p1", sessionId: "s2", unseen: false);
+      expect(tracker.currentProjectUnseen["p1"], isFalse);
+
+      // Even marking the archived s1 as unread must not re-bold the project.
+      tracker.applyLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: true);
+      expect(tracker.currentProjectUnseen["p1"], isFalse);
+      tracker.onDispose();
+    });
+
     test("a later seen event clears the session and updates the project aggregate", () async {
       final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
 

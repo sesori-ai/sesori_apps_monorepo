@@ -108,8 +108,38 @@ void main() {
     });
 
     test("a set queued behind a slow send is revalidated to null if the app backgrounds first", () async {
-      // Gate the FIRST send (an initial s0 declaration) so the subsequent s1
-      // set queues behind it and has not executed yet when the app backgrounds.
+      // Gate the first send so a second (re-asserting) set queues behind it and
+      // executes only after the app has backgrounded.
+      final gate = Completer<void>();
+      var firstCall = true;
+      when(() => viewRepository.sendSessionView(sessionId: any(named: "sessionId"))).thenAnswer((_) async {
+        if (firstCall) {
+          firstCall = false;
+          await gate.future;
+        }
+      });
+
+      final service = build()..setViewingSession("s1");
+      // Let the first s1 send start and park on the gate (in-flight, pre-pause).
+      await Future<void>.delayed(Duration.zero);
+      // A second declaration for the still-current session queues behind it.
+      service.setViewingSession("s1");
+      // Background before the queued send executes.
+      lifecycle.emit(LifecycleState.paused);
+      await Future<void>.delayed(Duration.zero);
+      gate.complete();
+      await service.sendTail;
+
+      final sent = verify(() => viewRepository.sendSessionView(sessionId: captureAny(named: "sessionId"))).captured;
+      // The in-flight send went out as s1; the queued re-assert, which executed
+      // after the pause, was revalidated to null (never a viewer while hidden).
+      expect(sent.first, equals("s1"));
+      expect(sent.sublist(1).whereType<String>(), isEmpty);
+      expect(sent, contains(null));
+    });
+
+    test("a set queued behind a slow send is revalidated to null when superseded by navigation", () async {
+      // Gate the s0 send so the s1 navigation queues behind it.
       final gate = Completer<void>();
       var firstCall = true;
       when(() => viewRepository.sendSessionView(sessionId: any(named: "sessionId"))).thenAnswer((_) async {
@@ -120,21 +150,16 @@ void main() {
       });
 
       final service = build()..setViewingSession("s0");
-      // s1 set queues behind the gated s0 send (its closure has NOT run yet).
+      // Navigate to s1 before s0's gated send executes. s0 is no longer current.
       service.setViewingSession("s1");
-      // App backgrounds before s1's queued closure executes.
-      lifecycle.emit(LifecycleState.paused);
-      // Release the gate so the queue drains.
       gate.complete();
       await service.sendTail;
 
       final sent = verify(() => viewRepository.sendSessionView(sessionId: captureAny(named: "sessionId"))).captured;
-      // s0 went out before the pause. The s1 declaration, which executed after
-      // the pause, must have been revalidated to null — never sent as a non-null
-      // viewer while hidden. The trailing background clear is null too.
-      expect(sent.first, equals("s0"));
-      expect(sent.sublist(1).whereType<String>(), isEmpty);
-      expect(sent, contains(null));
+      // s0 was superseded by s1 before it executed, so it must NOT be sent as an
+      // active viewer; only the current session s1 is declared.
+      expect(sent.whereType<String>(), equals(["s1"]));
+      expect(sent.contains("s0"), isFalse);
     });
 
     test("hidden + paused fired back-to-back only sends one clear", () async {

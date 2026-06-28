@@ -398,6 +398,56 @@ void main() {
       verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(lessThanOrEqualTo(2));
     });
 
+    test("an initial load that spans a background/resume refreshes before declaring the view", () async {
+      final viewingService = stubbedSessionViewingService();
+      final lifecycle = FakeLifecycleSource();
+      addTearDown(lifecycle.close);
+
+      // Gate the initial load's getMessages so it is still in flight while the
+      // app backgrounds and resumes.
+      final gate = Completer<void>();
+      var firstGet = true;
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer((_) async {
+        if (firstGet) {
+          firstGet = false;
+          await gate.future;
+        }
+        return ApiResponse.success(
+          MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-initial")]),
+        );
+      });
+
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: viewingService,
+        lifecycleSource: lifecycle,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      // Initial load is in flight (gated). Background then resume.
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      lifecycle.emitState(LifecycleState.paused);
+      lifecycle.emitState(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      // Let the initial load finish; it must NOT declare the view on its
+      // possibly-stale snapshot — it triggers a fresh refresh first.
+      gate.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+
+      // A second getMessages (the forced refresh) ran, and the view was declared
+      // only after it.
+      verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(2);
+      verify(() => viewingService.setViewingSession(sessionId)).called(greaterThanOrEqualTo(1));
+    });
+
     test("foreground relay reconnect re-asserts the view without a stale signal", () async {
       final viewingService = stubbedSessionViewingService();
       final cubit = SessionDetailCubit(

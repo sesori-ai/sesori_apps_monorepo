@@ -65,16 +65,21 @@ class SessionViewingService with Disposable {
   /// transmitted in order. [sessionId] is the intended target (null = clear).
   ///
   /// The actual value is re-validated when the queued send executes, not
-  /// captured now: a non-null "set" that was queued while visible must NOT go
-  /// out if the app has since been backgrounded (otherwise the bridge briefly
-  /// records an active viewer while hidden, and background activity could
-  /// advance `last_seen_at` before the user sees it). In that race we send null
-  /// instead, collapsing harmlessly with the background clear that follows.
-  /// The repository send already swallows transport errors, so the tail never
-  /// breaks.
+  /// captured now. A non-null "set" is sent only if, at execution time, the app
+  /// is still visible AND that session is still the current one:
+  /// - If the app backgrounded meanwhile, sending it would make the bridge
+  ///   briefly record an active viewer while hidden (background activity could
+  ///   then advance `last_seen_at` before the user sees it).
+  /// - If the user has since closed it or navigated to another session (a set
+  ///   queued behind a slow earlier send), declaring the stale target would mark
+  ///   a no-longer-visible screen seen and leave the current one unprotected.
+  /// In either case we send null instead, collapsing harmlessly with the clear /
+  /// newer declaration that follows. The repository send already swallows
+  /// transport errors, so the tail never breaks.
   void _enqueueSend(String? sessionId) {
     _sendTail = _sendTail.then((_) {
-      final effective = (sessionId != null && _isPaused) ? null : sessionId;
+      final stillCurrent = sessionId == _currentSessionId;
+      final effective = (sessionId != null && (_isPaused || !stillCurrent)) ? null : sessionId;
       return _viewRepository.sendSessionView(sessionId: effective);
     });
     unawaited(_sendTail);

@@ -43,6 +43,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   late final StreamSubscription<void> _staleSubscription;
   late final StreamSubscription<LifecycleState> _lifecycleSubscription;
   bool _wasPaused = false;
+  bool _resumedDuringLoad = false;
   late final StreamingTextBuffer _streamingBuffer;
   Future<void>? _activeRefresh;
   int _refreshGeneration = 0;
@@ -122,11 +123,26 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       case SessionDetailLoadResultLoaded(:final snapshot):
         _waitingForConnection = false;
         emit(_buildLoadedState(snapshot: snapshot));
-        // Declare that the user is now viewing this session only after the
-        // transcript has actually loaded — otherwise a load that fails or stays
-        // in the waiting-for-connection path would mark the session read (and
-        // clear its bold globally) while the user only saw a loading/error state.
-        _sessionViewingService.setViewingSession(_sessionId);
+        if (_resumedDuringLoad) {
+          // The app was backgrounded/resumed while this load was in flight, so
+          // the response may predate activity that arrived while hidden. Don't
+          // declare the view on this possibly-stale snapshot; refresh first and
+          // let the refresh re-assert the view once fresh content renders (or
+          // defer to the reconnect path when offline).
+          _resumedDuringLoad = false;
+          if (_isConnected) {
+            _forceFreshRefresh();
+          } else {
+            _needsStaleRefresh = true;
+            _needsFreshRefreshOnReconnect = true;
+          }
+        } else {
+          // Declare that the user is now viewing this session only after the
+          // transcript has actually loaded — otherwise a load that fails or stays
+          // in the waiting-for-connection path would mark the session read (and
+          // clear its bold globally) while the user only saw a loading/error state.
+          _sessionViewingService.setViewingSession(_sessionId);
+        }
         _drainPendingEvents();
         _tryDrainQueue();
       case SessionDetailLoadResultWaitingForConnection():
@@ -838,6 +854,13 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       case LifecycleState.resumed:
         if (!_wasPaused) return;
         _wasPaused = false;
+        // If the initial transcript is still loading, the in-flight load may
+        // predate hidden activity. Flag it so _loadMessages refreshes before
+        // declaring the view instead of acting on a possibly-stale snapshot.
+        if (this.state is! SessionDetailLoaded) {
+          _resumedDuringLoad = true;
+          return;
+        }
         // On every resume, refresh so the transcript is current, then the
         // refresh re-asserts the viewing session once fresh content renders.
         // This covers short resumes that don't emit dataMayBeStale: the
