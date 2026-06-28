@@ -6,6 +6,24 @@ Sesori connects AI coding assistants (like OpenCode) to mobile devices over an e
 
 Phone ↔ bridge traffic is end-to-end encrypted (X25519 key exchange + XChaCha20-Poly1305). The phone can browse projects, read sessions, respond to AI questions, and receive real-time events.
 
+## Product Direction (read before planning a feature)
+
+Sesori today is "monitor + answer one assistant from your phone." The destination is an **ambient dev cockpit**: multiple surfaces (phone, `client/desktop`, later web), multiple bridges (laptop, desktop, managed VMs), multiple plugin backends (OpenCode, Codex, our own harness), opt-in autonomy over CI/review, and eventually a master agent across sessions. Full detail in **`docs/VISION.md`**; build order in **`docs/ROADMAP.md`**; the active desktop workstream in **`docs/desktop/PLAN.md`**.
+
+**This biases design; it does not licence building the future early.** When two designs both satisfy the layer rules, prefer the one that doesn't foreclose a direction below — but **never add abstraction/generalization for these before a concrete present need**. YAGNI and the cohesion/ownership rules still win.
+
+**Directional invariants (don't weld these doors shut):**
+
+- **Plugin boundary is sacred** — no backend specifics leak past `BridgePluginApi` into `shared/`, the relay protocol, or the client; our own harness is *just a plugin*; differing abilities are optional, declared capabilities.
+- **The bridge is one of many** — keep per-bridge addressing first-class across client/relay/auth (multi-client per bridge already works; multi-bridge is the new axis).
+- **Shared brain, thin shells** — `module_core` stays Flutter-free and surface-agnostic; the client is online-first with minimal local cache.
+- **Headless-first bridge** — desktop GUI supervision is additive and gated; the standalone/VM path stays first-class (this is what enables managed VMs).
+- **One session-control surface** — a human and a future master agent drive sessions through the same API; no automation backdoor; autonomy is opt-in and intercepted at the bridge seam.
+- **Two trust postures, kept apart** — local mode is zero-knowledge (E2E phone↔bridge); **managed VMs are a trusted-Sesori posture** where that guarantee does not hold. Never let managed mode silently weaken local mode.
+- **Teams-later, cheaply** — carry an owner/identity on durable entities even while it's always "me".
+
+**Explicitly NOT building now** (don't design for these): cross-plugin live session migration (dropped); cost/usage metering; a permission-policy framework (trivial to add later at the bridge interception point); teams/multi-user implementation; offline/local-first client caching.
+
 ## Data Flow (condensed)
 
 Understand these three hops when working on any module:
