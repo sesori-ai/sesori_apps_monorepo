@@ -215,7 +215,12 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   supervised registration + `bridgeId`-out-of-`token.json` remains PR 1.6. "Richer
   mid-login wait" is bounded by the one-reply `token_response` DTO: a mid-login GUI
   replies with a null token (typed failure); genuine wait-for-login-completion
-  arrives with the `token_update` push in PR 1.5.
+  arrives with the `token_update` push in PR 1.5. Two review-driven edges are
+  deferred to and now enumerated in **PR 1.5's scope**: (a) the `token_update`
+  push must become the authoritative cache source, retiring this PR's interim
+  pull-ordering heuristic so a forced refresh isn't masked by a later non-forced
+  pull; and (b) a relay reconnect after a null `token_response` (sign-out) must
+  not reuse the stale cached token.
 
 ## PR 1.5 — Token-stream **push** → relay re-auth
 - **Goal:** Make a GUI-pushed `token_update` actually re-authenticate the live
@@ -224,10 +229,29 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   stream leaves an **open** WebSocket on the old JWT until reconnect. This PR
   wires the `RelayClient` subscription → re-auth/reconnect path so a refresh
   while connected takes effect (ADR A12).
+- **Scope (carried from PR 1.4 review — MUST be addressed here):**
+  - **Handle the `token_update` push.** `ControlChannelTokenService` must consume
+    inbound `ControlMessage.tokenUpdate` and adopt the pushed token into its
+    cached `accessToken`/`tokenStream`. This makes the GUI push the authoritative
+    cache source and **retires PR 1.4's interim pull-ordering freshness heuristic**
+    (`_latestCachedSeq`): once the GUI pushes, overlapping force/non-force pull
+    ordering no longer decides what is cached, so a forced-refresh result can no
+    longer be masked by a later non-forced pull (the deferred PR-1.4 review edge).
+  - **No stale token on reconnect after sign-out.** A null `token_response`
+    (signed out / mid-login) leaves PR 1.4's cache holding the previous token, and
+    `RelayClient.connect` reads that snapshot on reconnect. The reconnect/re-auth
+    path must obtain a *current* token (subscribe to `tokenStream` for live
+    re-auth and/or pull on reconnect) instead of blindly reusing the stale cached
+    `accessToken`, so the relay never re-authenticates as a signed-out user. (Note:
+    `token_update` carries a non-null token only — it cannot signal sign-out; a
+    hard logout is the `unregister_and_exit` path in PR 1.11.)
 - **Risk:** Med (silent-auth-failure if wrong). **Size:** M.
 - **Acceptance:** with a **live** relay connection (not just stream
   propagation), a pushed token update re-authenticates without losing the
-  session; covered by a connection-level test.
+  session; covered by a connection-level test. A `token_update` push updates the
+  shared cache regardless of any in-flight pull ordering. After a null
+  `token_response` (signed out / mid-login), a relay reconnect does **not**
+  re-authenticate from the stale cached token.
 - **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
 
 ## PR 1.6 — Supervised registration + `bridgeId` out of `token.json`
