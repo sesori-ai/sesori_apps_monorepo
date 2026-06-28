@@ -234,6 +234,70 @@ void main() {
       tracker.onDispose();
     });
 
+    test("revertLocalSessionUnseen is a no-op when a newer update landed since the action", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // Optimistically mark s1 unread (e.g. an in-flight mark-unread request).
+      final gen = tracker.applyLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: true);
+
+      // Genuine live activity for s1 arrives (newer generation) before the
+      // request fails.
+      events.add(unseenEvent(projectID: "p1", sessionId: "s1", unseen: true, projectHasUnseenChanges: true));
+      await Future<void>.delayed(Duration.zero);
+
+      // The failed request tries to revert to the pre-click value (false) — it
+      // must be ignored because a newer update exists.
+      tracker.revertLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: false, ifGeneration: gen);
+      expect(tracker.currentSessionUnseen["p1"]?["s1"], isTrue);
+      expect(tracker.currentProjectUnseen["p1"], isTrue);
+      tracker.onDispose();
+    });
+
+    test("revertLocalSessionUnseen rolls back when no newer update landed", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+      final gen = tracker.applyLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: true);
+      expect(tracker.currentSessionUnseen["p1"]?["s1"], isTrue);
+
+      tracker.revertLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: false, ifGeneration: gen);
+      expect(tracker.currentSessionUnseen["p1"]?["s1"], isFalse);
+      tracker.onDispose();
+    });
+
+    test("reconcile excludes an absent carried-forward session from the aggregate", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // s1 and s2 both unseen.
+      final gen0 = tracker.generation;
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": true, "s2": true},
+        sinceGeneration: gen0,
+      );
+
+      // A /sessions fetch begins.
+      final gen = tracker.generation;
+      // s1 is archived while s2 stays unseen: the archive SSE carries
+      // unseen:true AND projectHasUnseenChanges:true (s2), so exclusion can't be
+      // detected from the event.
+      events.add(unseenEvent(projectID: "p1", sessionId: "s1", unseen: true, projectHasUnseenChanges: true));
+      await Future<void>.delayed(Duration.zero);
+
+      // The authoritative /sessions list (archived s1 omitted) lands. s1 is
+      // carried forward (live + project still unseen) but EXCLUDED from the
+      // aggregate.
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s2": true},
+        sinceGeneration: gen,
+      );
+
+      // Now mark s2 read locally. Only the excluded archived s1 remains unseen,
+      // so the project must NOT stay bold.
+      tracker.applyLocalSessionUnseen(projectId: "p1", sessionId: "s2", unseen: false);
+      expect(tracker.currentProjectUnseen["p1"], isFalse);
+      tracker.onDispose();
+    });
+
     test("a later seen event clears the session and updates the project aggregate", () async {
       final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
 

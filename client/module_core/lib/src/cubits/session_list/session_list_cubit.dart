@@ -456,7 +456,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   Future<void> markSessionSeen({required String sessionId, required bool read}) async {
     final current = state;
     final priorUnseen = current is SessionListLoaded ? (current.unseenBySessionId[sessionId] ?? false) : false;
-    _sessionUnseenTracker.applyLocalSessionUnseen(
+    final optimisticGeneration = _sessionUnseenTracker.applyLocalSessionUnseen(
       projectId: _projectId,
       sessionId: sessionId,
       unseen: !read,
@@ -466,7 +466,7 @@ class SessionListCubit extends Cubit<SessionListState> {
       final response = await _sessionService.markSessionSeen(sessionId: sessionId, read: read);
       if (isClosed) return;
       if (response is ErrorResponse) {
-        _revertLocalUnseen(sessionId: sessionId, priorUnseen: priorUnseen);
+        _revertLocalUnseen(sessionId: sessionId, priorUnseen: priorUnseen, optimisticGeneration: optimisticGeneration);
       }
     } catch (e, st) {
       unawaited(
@@ -481,17 +481,26 @@ class SessionListCubit extends Cubit<SessionListState> {
             )
             .catchError((_) {}),
       );
-      if (!isClosed) _revertLocalUnseen(sessionId: sessionId, priorUnseen: priorUnseen);
+      if (!isClosed) {
+        _revertLocalUnseen(sessionId: sessionId, priorUnseen: priorUnseen, optimisticGeneration: optimisticGeneration);
+      }
     }
   }
 
   /// Restores the pre-action unseen value in the tracker after a failed
-  /// mark-read/unread, so the optimistic change doesn't stick.
-  void _revertLocalUnseen({required String sessionId, required bool priorUnseen}) {
-    _sessionUnseenTracker.applyLocalSessionUnseen(
+  /// mark-read/unread — but only if no newer update for this session landed
+  /// since (e.g. genuine live activity arrived while the request was in flight),
+  /// so the rollback can't clobber fresher state.
+  void _revertLocalUnseen({
+    required String sessionId,
+    required bool priorUnseen,
+    required int optimisticGeneration,
+  }) {
+    _sessionUnseenTracker.revertLocalSessionUnseen(
       projectId: _projectId,
       sessionId: sessionId,
       unseen: priorUnseen,
+      ifGeneration: optimisticGeneration,
     );
     _onUnseenUpdated();
   }
