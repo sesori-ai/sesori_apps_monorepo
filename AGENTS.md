@@ -18,9 +18,10 @@ Sesori today is "monitor + answer one assistant from your phone." The destinatio
 - **The bridge is one of many** — keep per-bridge addressing first-class across client/relay/auth (multi-client per bridge already works; multi-bridge is the new axis).
 - **Shared brain, thin shells** — `module_core` stays Flutter-free and surface-agnostic; the client is online-first with minimal local cache.
 - **Headless-first bridge** — desktop GUI supervision is additive and gated; the standalone/VM path stays first-class (this is what enables managed VMs).
-- **One session-control surface** — a human and a future master agent drive sessions through the same API; no automation backdoor; autonomy is opt-in and intercepted at the bridge seam.
+- **One session-control surface** — a human and a future master agent drive sessions through the same API; no automation backdoor.
 - **Two trust postures, kept apart** — local mode is zero-knowledge (E2E phone↔bridge); **managed VMs are a trusted-Sesori posture** where that guarantee does not hold. Never let managed mode silently weaken local mode.
 - **Teams-later, cheaply** — carry an owner/identity on durable entities even while it's always "me".
+- **Autonomy at the bridge seam** — opt-in automation (auto-handle CI/review, future auto-approve) is intercepted at the bridge, not scattered into clients or plugins.
 
 **Explicitly NOT building now** (don't design for these): cross-plugin live session migration (dropped); cost/usage metering; a permission-policy framework (trivial to add later at the bridge interception point); teams/multi-user implementation; offline/local-first client caching.
 

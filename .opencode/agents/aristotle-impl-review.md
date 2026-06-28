@@ -208,7 +208,7 @@ Concretely checkable in code:
 3. **One session-control surface** — new code that drives sessions through an automation-only path that bypasses the normal session/request API.
 4. **Two trust postures** — new code that routes local-mode application data through a path the relay or a Sesori backend can read in cleartext.
 
-For the remaining `docs/VISION.md` invariants (per-bridge addressing, headless-first, teams-later owner/identity), flag only when the change concretely breaks them in the diff; do not speculate.
+For the remaining `docs/VISION.md` invariants (per-bridge addressing, headless-first, teams-later owner/identity, autonomy at the bridge seam), flag only when the change concretely breaks them in the diff; do not speculate.
 
 **Mirror image (A5):** new abstraction or infrastructure built for a future `docs/VISION.md` / `docs/ROADMAP.md` item with no present consumer is an **A5** violation — reject under A5. Direction never licences premature construction.
 
