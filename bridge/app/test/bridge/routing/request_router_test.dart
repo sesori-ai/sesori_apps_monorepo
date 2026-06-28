@@ -1,9 +1,13 @@
 import "dart:convert";
 
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
+import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
+import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/health_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
@@ -11,23 +15,19 @@ import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.da
 import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
-import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/abort_session_handler.dart";
-import "package:sesori_bridge/src/bridge/routing/get_agents_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/get_commands_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/get_session_diffs_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/handlers/mark_session_seen_handler.dart";
-import "package:sesori_bridge/src/bridge/routing/post_agents_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/request_router.dart";
 import "package:sesori_bridge/src/bridge/routing/send_prompt_handler.dart";
+import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_abort_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_archive_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
-import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -55,7 +55,34 @@ void main() {
         pullRequestRepository: PullRequestRepository(pullRequestDao: db.pullRequestDao, projectsDao: db.projectsDao),
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      final projectRepository = ProjectRepository(plugin: plugin, projectsDao: db.projectsDao, sessionDao: db.sessionDao, unseenCalculator: const SessionUnseenCalculator(),);
+      final projectRepository = ProjectRepository(
+        plugin: plugin,
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      final filesystemRepository = FilesystemRepository(
+        filesystemApi: const FilesystemApi(),
+        permissionValidator: const FilesystemPermissionValidator(),
+      );
+      final projectInitializationService = ProjectInitializationService(
+        worktreeRepository: WorktreeRepository(
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+          gitApi: GitCliApi(
+            processRunner: FakeProcessRunner(),
+            gitPathExists: ({required String gitPath}) => true,
+          ),
+          plugin: plugin,
+        ),
+        filesystemRepository: filesystemRepository,
+      );
+      final healthRepository = HealthRepository(
+        plugin: plugin,
+        bridgeVersion: "0.0.0-test",
+        filesystemAccessOk: true,
+      );
+      final agentRepository = AgentRepository(plugin: plugin);
       final providerRepository = ProviderRepository(plugin: plugin);
       final permissionRepository = PermissionRepository(plugin: plugin);
       final questionRepository = QuestionRepository(plugin: plugin);
@@ -108,26 +135,13 @@ void main() {
         ),
         prSyncService: FakePrSyncService(),
         projectRepository: projectRepository,
+        filesystemRepository: filesystemRepository,
+        projectInitializationService: projectInitializationService,
+        healthRepository: healthRepository,
         providerRepository: providerRepository,
-        getAgentsHandler: GetAgentsHandler(AgentRepository(plugin: plugin)),
-        postAgentsHandler: PostAgentsHandler(AgentRepository(plugin: plugin)),
+        agentRepository: agentRepository,
         markSessionSeenHandler: MarkSessionSeenHandler(
-          sessionUnseenService: SessionUnseenService(
-            unseenRepository: SessionUnseenRepository(
-              sessionDao: db.sessionDao,
-              projectsDao: db.projectsDao,
-              db: db,
-              calculator: const SessionUnseenCalculator(),
-            ),
-            projectRepository: ProjectRepository(
-              plugin: plugin,
-              projectsDao: db.projectsDao,
-              sessionDao: db.sessionDao,
-              unseenCalculator: const SessionUnseenCalculator(),
-            ),
-            sessionRepository: sessionRepository,
-viewTracker: SessionViewTracker(),
-          ),
+          sessionUnseenService: buildTestSessionUnseenService(db, plugin),
         ),
         sessionUnseenService: buildTestSessionUnseenService(db, plugin),
         permissionRepository: permissionRepository,
@@ -407,7 +421,34 @@ viewTracker: SessionViewTracker(),
         pullRequestRepository: fakePullRequestRepository,
       );
 
-      final projectRepository = ProjectRepository(plugin: plugin, projectsDao: db.projectsDao, sessionDao: db.sessionDao, unseenCalculator: const SessionUnseenCalculator(),);
+      final projectRepository = ProjectRepository(
+        plugin: plugin,
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      final filesystemRepository = FilesystemRepository(
+        filesystemApi: const FilesystemApi(),
+        permissionValidator: const FilesystemPermissionValidator(),
+      );
+      final projectInitializationService = ProjectInitializationService(
+        worktreeRepository: WorktreeRepository(
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+          gitApi: GitCliApi(
+            processRunner: FakeProcessRunner(),
+            gitPathExists: ({required String gitPath}) => true,
+          ),
+          plugin: plugin,
+        ),
+        filesystemRepository: filesystemRepository,
+      );
+      final healthRepository = HealthRepository(
+        plugin: plugin,
+        bridgeVersion: "0.0.0-test",
+        filesystemAccessOk: true,
+      );
+      final agentRepository = AgentRepository(plugin: plugin);
       final providerRepository = ProviderRepository(plugin: plugin);
       final permissionRepository = PermissionRepository(plugin: plugin);
       final sessionPersistenceService = SessionPersistenceService(
@@ -466,26 +507,13 @@ viewTracker: SessionViewTracker(),
         ),
         prSyncService: spyPrSyncService,
         projectRepository: projectRepository,
+        filesystemRepository: filesystemRepository,
+        projectInitializationService: projectInitializationService,
+        healthRepository: healthRepository,
         providerRepository: providerRepository,
-        getAgentsHandler: GetAgentsHandler(AgentRepository(plugin: plugin)),
-        postAgentsHandler: PostAgentsHandler(AgentRepository(plugin: plugin)),
+        agentRepository: agentRepository,
         markSessionSeenHandler: MarkSessionSeenHandler(
-          sessionUnseenService: SessionUnseenService(
-            unseenRepository: SessionUnseenRepository(
-              sessionDao: db.sessionDao,
-              projectsDao: db.projectsDao,
-              db: db,
-              calculator: const SessionUnseenCalculator(),
-            ),
-            projectRepository: ProjectRepository(
-              plugin: plugin,
-              projectsDao: db.projectsDao,
-              sessionDao: db.sessionDao,
-              unseenCalculator: const SessionUnseenCalculator(),
-            ),
-            sessionRepository: sessionRepository,
-viewTracker: SessionViewTracker(),
-          ),
+          sessionUnseenService: buildTestSessionUnseenService(db, plugin),
         ),
         sessionUnseenService: buildTestSessionUnseenService(db, plugin),
         permissionRepository: permissionRepository,

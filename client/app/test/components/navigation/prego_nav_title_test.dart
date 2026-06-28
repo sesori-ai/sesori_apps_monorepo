@@ -5,7 +5,7 @@ import "package:theme_prego/module_prego.dart";
 /// Layout guard for [PregoNavTitle], the centred two-line title block of the
 /// glass top bar.
 ///
-/// The bar is a fixed 54pt (`PregoTopNavigation`'s `_appBarHeight`). With the
+/// The bar is a fixed 54pt (`PregoTopNavigation.barHeight`). With the
 /// design tokens' body-text line heights, a title + subtitle stack measured
 /// 28 + 24 = 52pt — only 2pt under the bar — so Android's slightly taller text
 /// metrics tipped the inner [Column] into a 3px bottom overflow on the

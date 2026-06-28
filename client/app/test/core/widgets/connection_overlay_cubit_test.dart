@@ -59,6 +59,7 @@ void main() {
         const health = HealthResponse(
           healthy: true,
           version: "0.1.200",
+          filesystemAccessDegraded: null,
         );
 
         statusStream.add(

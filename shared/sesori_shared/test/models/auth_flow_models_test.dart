@@ -3,14 +3,41 @@ import "package:test/test.dart";
 
 void main() {
   group("AuthInitRequest", () {
-    test("round-trips through JSON", () {
-      const original = AuthInitRequest(clientType: "mobile");
+    test("round-trips through JSON with a full device", () {
+      const original = AuthInitRequest(
+        clientType: "app_ios",
+        device: DeviceInfo(name: "Alex's iPhone", osVersion: "iOS 17.5", appVersion: "1.2.0"),
+      );
 
       final json = original.toJson();
       final restored = AuthInitRequest.fromJson(json);
 
       expect(restored, equals(original));
-      expect(json, equals({"clientType": "mobile"}));
+      expect(
+        json,
+        equals({
+          "clientType": "app_ios",
+          "device": {"name": "Alex's iPhone", "osVersion": "iOS 17.5", "appVersion": "1.2.0"},
+        }),
+      );
+    });
+
+    test("omits null device version fields from the wire payload", () {
+      const original = AuthInitRequest(
+        clientType: "bridge_macos",
+        device: DeviceInfo(name: "Alex's MacBook Pro", osVersion: null, appVersion: null),
+      );
+
+      final json = original.toJson();
+
+      expect(
+        json,
+        equals({
+          "clientType": "bridge_macos",
+          "device": {"name": "Alex's MacBook Pro"},
+        }),
+      );
+      expect(AuthInitRequest.fromJson(json), equals(original));
     });
   });
 
@@ -19,7 +46,6 @@ void main() {
       const original = AuthInitResponse(
         authUrl: "https://example.com/auth",
         state: "state-123",
-        userCode: "ABCD-EFGH",
         expiresIn: 600,
       );
 
@@ -32,7 +58,6 @@ void main() {
         equals({
           "authUrl": "https://example.com/auth",
           "state": "state-123",
-          "userCode": "ABCD-EFGH",
           "expiresIn": 600,
         }),
       );

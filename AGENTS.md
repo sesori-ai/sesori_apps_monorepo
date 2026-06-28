@@ -36,7 +36,7 @@ Each layer has a specific responsibility and a dedicated directory. Dependencies
 | **Layer 1 — API**        | Dumb data-access classes that execute operations (HTTP calls, DB queries, shell commands, plugins). Parse responses into models. No decision-making logic.                                                     | `api/`                        |
 | **Layer 2 — Repository** | Aggregates data from one or more Layer 1 sources. Maps API/DB DTOs to internal models. **MANDATORY** even when only one data source exists — it just delegates. All mapping logic lives here and nowhere else. | `repositories/`               |
 | **Layer 3 — Service**    | Business logic and coordination. Decision-making lives here. MUST use Repositories, NEVER call APIs directly.                                                                                                  | `services/`                   |
-| **Layer 4+ — Consumer**  | Consumes services/repositories. Cubits (mobile), request handlers (bridge), orchestrators.                                                                                                                     | `cubits/`, `routing/`, `sse/` |
+| **Layer 4+ — Consumer**  | Consumes services/repositories. Cubits (client), request handlers (bridge), orchestrators.                                                                                                                     | `cubits/`, `routing/`, `sse/` |
 
 **Core rules:**
 
@@ -61,7 +61,9 @@ Pick a class suffix that accurately reflects the class's role. Vague names (`Man
 **Data access:**
 
 - **`Api`** / **`Dao`** — Layer 1 data access.
+- **`Storage`** — file/key-value persistence boundary for a small owned dataset.
 - **`Client`** — transport-level; HTTP/WebSocket to an external system.
+- **`Server`** — transport-level host that accepts inbound local/network connections; no business logic.
 - **`Repository`** — Layer 2 aggregator + mapper.
 
 **Reactive / event wiring:**
@@ -81,7 +83,7 @@ Pick a class suffix that accurately reflects the class's role. Vague names (`Man
 
 **State management:**
 
-- **`Cubit`** — mobile only, Layer 4.
+- **`Cubit`** — client state management, Layer 4. Cubits live in pure Dart client modules (`module_core` or `module_desktop_core`), never in Flutter product shells.
 
 **Forbidden suffixes:** `Manager`, `Helper`, `Utils`, `Wrapper`, `Handler` (except for routing handlers in the bridge `routing/` layer).
 
@@ -133,6 +135,8 @@ app/lib/src/
 │   ├── request_handler.dart      # base handler classes (Get/Body variants)
 │   └── handlers/                 # ~30 concrete handlers
 │
+├── control/                 # Layer 4 — supervised-mode control-channel consumers/listeners
+│
 ├── sse/                     # Layer 4 — event delivery
 │   ├── sse_service.dart          # subscriber queues, orphan replay
 │   └── bridge_event_mapper.dart  # BridgeSseEvent → SesoriSseEvent
@@ -158,6 +162,10 @@ app/lib/src/
 
 - BridgePlugin is semantically a Layer 1 data source (it exposes a public API for projects/sessions/messages)
 - Routing handlers use Repositories/Services — they MUST NOT call APIs (Layer 1) directly
+- Services must use Repositories for data/API operations. A direct Layer-0
+  transport dependency is allowed only when the service itself owns that
+  transport/control seam, such as a control-channel token service over
+  `ControlChannelClient`; it still must not bypass repositories for data access.
 - For bridge session lifecycle flows, routing handlers MUST NOT depend on `BridgePlugin` directly. Treat `BridgePlugin` as Layer 1/API. Thin plugin-backed session commands and lookups belong in `SessionRepository`; multi-step session orchestration (create, archive, unarchive) belongs in services.
 - All mappers belong in `repositories/mappers/`, NOT in `routing/`
 - `auth/`, `push/`, `server/` are self-contained subsystems outside the layer hierarchy
@@ -179,15 +187,34 @@ lib/src/
 └── sse/                     # SSE pipeline components (SseConnection, SseEventParser, SseEventMapper)
 ```
 
-### Mobile workspace (`client/`)
+### Client workspace (`client/`)
 
 **Module dependency direction (never reverse, never skip):**
 
 ```
-app → module_core → module_auth → sesori_shared
+client/app ───────────────→ module_app_ui ─┐
+     │                                      │
+     └──────────────────────────────────────┴→ module_core → module_auth → sesori_shared
+     │
+     └→ module_prego
+
+client/desktop ───────────→ module_app_ui ─┐
+     │                                      │
+     ├──────────────────────────────────────┴→ module_core → module_auth → sesori_shared
+     │
+     └→ module_desktop_core ─────────────────→ module_core
+     │                         │
+     │                         └→ sesori_shared
+     └→ module_prego
 ```
 
-`app` has `module_auth` in pubspec only for DI wiring — it MUST NOT import `module_auth` types in source code.
+`client/app` and `client/desktop` may have `module_auth` in pubspec only for DI
+wiring (`configureAuthDependencies(getIt)`) — they MUST NOT import
+`module_auth` types in source code outside that DI call. All auth functionality
+is accessed through `module_core` interfaces. Product shells may import
+`module_prego` directly for shell-owned presentation. `module_app_ui` is
+introduced in Phase 4; until then the product shells consume their own UI
+directly.
 
 **`module_core` — target directory structure:**
 
@@ -231,6 +258,62 @@ module_core/lib/src/
 - Cubits MUST NOT import from `api/` or depend on other cubits
 - No cross-dependency between repositories, between services, or between cubits
 
+**`module_desktop_core` — target directory structure:**
+
+Pure Dart desktop business module. Owns desktop-specific bridge supervision,
+control-channel orchestration, tray/window state, and desktop cubits. It may
+depend on `module_core` for shared relay/auth seams and on `sesori_shared` for
+control protocol DTOs. `module_core` MUST NOT depend on `module_desktop_core`.
+
+```
+module_desktop_core/lib/src/
+├── foundation/              # Layer 0
+│   ├── platform/            #   SystemTray, WindowHost, LaunchAtLogin, AppUpdater
+│   └── control_channel_server.dart
+│
+├── api/                     # Layer 1
+│   ├── bridge_process_api.dart
+│   ├── desktop_instance_api.dart
+│   ├── app_update_api.dart
+│   └── desktop_storage.dart
+│
+├── repositories/            # Layer 2
+│   ├── bridge_process_repository.dart
+│   ├── desktop_instance_repository.dart
+│   └── app_update_repository.dart
+│
+├── trackers/                # Layer 2 — reactive state derived from events
+│   ├── bridge_status_tracker.dart
+│   └── bridge_prompt_tracker.dart
+│
+├── services/                # Layer 3
+│   ├── bridge_process_service.dart
+│   ├── desktop_instance_service.dart
+│   └── desktop_update_service.dart
+│
+├── control/                 # Layer 4
+│   └── control_message_dispatcher.dart
+│
+└── cubits/                  # Layer 4
+    └── bridge_control/
+```
+
+- `client/desktop` provides the concrete Flutter/platform implementations for
+  `module_desktop_core` platform interfaces.
+- Desktop cubits live in `module_desktop_core`, never in `client/desktop`.
+- Desktop process supervision MUST stay out of `module_core`; mobile must never
+  inherit tray/process/bundled-helper concerns.
+
+**`module_app_ui` — shared Flutter UI package (Phase 4):**
+
+- Contains shared widgets/screens only; no product-shell DI, process supervision,
+  platform adapters, or auth/token ownership.
+- May depend on `module_core`, `module_prego`, `sesori_shared`, and Flutter UI
+  dependencies it directly uses.
+- MUST NOT import from `client/app`, `client/desktop`, or `module_desktop_core`.
+- Product-specific behaviour (for example desktop bridge-offline actions) enters
+  through constructor parameters/callback strategies composed by the product shell.
+
 **`app` (Flutter shell) — target directory structure:**
 
 ```
@@ -253,6 +336,22 @@ app/lib/
 - Features NEVER instantiate services or call APIs directly — only through cubits
 - `module_core` MUST NOT import `package:flutter`
 - `module_auth` MUST NOT import `module_core`
+
+**`desktop` (Flutter shell) — target directory structure:**
+
+```
+desktop/lib/
+├── core/platform/           # concrete implementations of module_core/module_desktop_core interfaces
+├── core/di/                 # DI wiring: platform → auth → core → desktop_core
+├── core/routing/            # window/router composition
+├── core/widgets/            # desktop-only presentation
+└── main_desktop.dart
+```
+
+- `client/desktop` is a Flutter product shell. It wires DI, owns presentation,
+  and implements platform adapters.
+- It MUST NOT contain bridge process business logic, control-message routing,
+  repositories, services, or cubits; those belong in `module_desktop_core`.
 
 **`module_auth` — internal structure:**
 
@@ -277,9 +376,9 @@ module_auth/lib/src/
 - **Relay protocol:** `RelayMessage` sealed class in `sesori_shared` defines all message types (auth, key_exchange, ready, request, response, sse_event, etc.). Binary wire format: `[version_byte][nonce (24B)][ciphertext + auth tag]`.
 - **Request routing (bridge):** Explicit handler chain. `RequestRouter` tries each registered handler in order; first match wins. Unmatched routes return 404 — there is no catch-all proxy.
 - **SSE pipeline (bridge):** `SseConnection` → `SseEventParser` → plugin event stream → `Orchestrator` → `SSEManager` → per-phone encrypted delivery with event buffering.
-- **Mobile state management:** BLoC/Cubit pattern. Cubits live in `module_core` (pure Dart, testable). UI widgets in `app/` consume cubit state.
-- **Mobile DI:** 3-phase injection: platform adapters → auth → core services.
-- **Mobile relay client:** `RelayClient` handles WebSocket lifecycle, key exchange, encryption/decryption. `RelayHttpApiClient` wraps it to expose a familiar HTTP interface. `ConnectionService` manages reconnect with exponential backoff + jitter.
+- **Client state management:** BLoC/Cubit pattern. Mobile cubits live in `module_core`; desktop cubits live in `module_desktop_core`. Flutter shells consume cubit state.
+- **Client DI:** mobile uses platform adapters → auth → core services. Desktop uses platform adapters → auth → core services → desktop core.
+- **Client relay client:** `RelayClient` handles WebSocket lifecycle, key exchange, encryption/decryption. `RelayHttpApiClient` wraps it to expose a familiar HTTP interface. `ConnectionService` manages reconnect with exponential backoff + jitter.
 
 ## Reactive vs. Polling
 
@@ -293,7 +392,7 @@ When adding a feature that consumes real-time data, subscribe to the existing st
 ## Monorepo Layout
 
 - `bridge/` — pure Dart CLI workspace (relay server + plugin system)
-- `client/` — Flutter workspace (mobile client)
+- `client/` — Flutter workspace (mobile app, desktop app, and shared client modules)
 - `shared/sesori_shared/` — pure Dart, shared crypto and protocol types
 
 Two independent Dart workspaces. `shared/sesori_shared` is consumed via path dependency by both.
@@ -391,6 +490,24 @@ int computeNotificationId(String sessionId, NotificationCategory category) { ...
 MyClass([FlutterLocalNotificationsPlugin? plugin]) : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
 ```
 
+## Code Comments
+
+Comments live in the codebase forever; the implementation plan you happen to be
+executing does not. Keep them timeless.
+
+- **Never reference the implementation plan from source comments.** No PR numbers
+  (`PR 1.7`), phase IDs (`Phase 2`), ADR codes (`ADR A13`), or plan-section refs
+  (`§8`). They are tracking artifacts that rot the moment the work merges and mean
+  nothing to a future reader. This includes doc comments, inline comments, and
+  TODOs.
+- **Keep the rationale, drop the pointer.** The *reason* a thing exists is often
+  worth a comment — just state it directly. Write "carries `bridgeId` so the GUI
+  can persist a readable copy for an offline-unregister fallback", not "… fallback
+  (ADR A13)"; write "intentional restart, so the supervisor respawns instead of
+  treating it as a crash", not "… as a crash (PR 1.7)".
+- Plan/phase status, deferrals, and cross-PR sequencing belong in the plan and
+  phase docs (e.g. `docs/desktop/*.md`), never in code.
+
 ## Analysis
 
 Strict analysis is enabled across all packages. Don't add `// ignore:` comments without a written justification in the same line.
@@ -435,5 +552,6 @@ This applies in every workspace (bridge, mobile, shared).
 
 ## Forbidden
 
-- Don't modify `shared/sesori_shared` without considering impact on both bridge and mobile consumers.
+- Don't modify `shared/sesori_shared` without considering impact on all consumers:
+  bridge, mobile, desktop core, and shared app UI.
 - Don't create a root-level `pubspec.yaml`. There is no root workspace.

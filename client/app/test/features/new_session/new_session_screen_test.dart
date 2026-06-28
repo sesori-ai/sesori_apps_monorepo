@@ -4,6 +4,7 @@ import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
+import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/capabilities/voice/voice_transcription_service.dart";
@@ -108,19 +109,20 @@ void main() {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(OutlinedButton, "xhigh"), findsOneWidget);
+    expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(OutlinedButton, "xhigh"));
+    await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
     await tester.pumpAndSettle();
 
-    expect(find.text("Variant"), findsOneWidget);
-    expect(find.text("Default"), findsWidgets);
-    expect(find.widgetWithText(ListTile, "xhigh"), findsOneWidget);
+    // The variant pill morphs into a glass popup listing the Default option
+    // plus the model's variants.
+    expect(find.widgetWithText(GlassMenuItem, "Default"), findsOneWidget);
+    expect(find.widgetWithText(GlassMenuItem, "xhigh"), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(ListTile, "xhigh"));
+    await tester.tap(find.widgetWithText(GlassMenuItem, "xhigh"));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(OutlinedButton, "xhigh"), findsOneWidget);
+    expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
   });
 
   testWidgets("selecting a different variant updates the displayed variant", (tester) async {
@@ -153,19 +155,19 @@ void main() {
     await tester.pumpAndSettle();
 
     // Initially shows the agent's default variant.
-    expect(find.widgetWithText(OutlinedButton, "xhigh"), findsOneWidget);
+    expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
 
     // Open variant picker.
-    await tester.tap(find.widgetWithText(OutlinedButton, "xhigh"));
+    await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
     await tester.pumpAndSettle();
 
     // Select a different variant.
-    await tester.tap(find.widgetWithText(ListTile, "low"));
+    await tester.tap(find.widgetWithText(GlassMenuItem, "low"));
     await tester.pumpAndSettle();
 
     // The UI should now reflect the newly selected variant.
-    expect(find.widgetWithText(OutlinedButton, "low"), findsOneWidget);
-    expect(find.widgetWithText(OutlinedButton, "xhigh"), findsNothing);
+    expect(find.widgetWithText(GlassButton, "low"), findsOneWidget);
+    expect(find.widgetWithText(GlassButton, "xhigh"), findsNothing);
   });
 
   testWidgets("selecting Default clears the displayed variant", (tester) async {
@@ -198,43 +200,43 @@ void main() {
     await tester.pumpAndSettle();
 
     // Initially shows the agent's default variant.
-    expect(find.widgetWithText(OutlinedButton, "xhigh"), findsOneWidget);
+    expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
 
     // Open variant picker.
-    await tester.tap(find.widgetWithText(OutlinedButton, "xhigh"));
+    await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
     await tester.pumpAndSettle();
 
     // Select Default (null variant).
-    await tester.tap(find.widgetWithText(ListTile, "Default"));
+    await tester.tap(find.widgetWithText(GlassMenuItem, "Default"));
     await tester.pumpAndSettle();
 
     // The UI should now show "Default".
-    expect(find.widgetWithText(OutlinedButton, "Default"), findsOneWidget);
-    expect(find.widgetWithText(OutlinedButton, "xhigh"), findsNothing);
+    expect(find.widgetWithText(GlassButton, "Default"), findsOneWidget);
+    expect(find.widgetWithText(GlassButton, "xhigh"), findsNothing);
   });
 
   testWidgets("preserves selectedAgentModel variant when changing agent", (tester) async {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(OutlinedButton, "xhigh"));
+    await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(ListTile, "xhigh"));
+    await tester.tap(find.widgetWithText(GlassMenuItem, "xhigh"));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(OutlinedButton, "xhigh"), findsOneWidget);
+    expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(OutlinedButton, "coder"));
+    await tester.tap(find.widgetWithText(GlassButton, "coder"));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(ListTile, "reviewer"));
+    await tester.tap(find.widgetWithText(GlassMenuItem, "reviewer"));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(OutlinedButton, "reviewer"), findsOneWidget);
+    expect(find.widgetWithText(GlassButton, "reviewer"), findsOneWidget);
     // Changing the agent seeds the variant from the agent's default.
-    // Reviewer has variant: null, so the button shows "Default".
-    expect(find.widgetWithText(OutlinedButton, "Default"), findsOneWidget);
+    // Reviewer has variant: null, so the pill shows "Default".
+    expect(find.widgetWithText(GlassButton, "Default"), findsOneWidget);
   });
 
   testWidgets("shows the loading overlay with accessible message during sending", (tester) async {
@@ -257,7 +259,7 @@ void main() {
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
-    await tester.enterText(find.byType(TextField), "test message");
+    await tester.enterText(find.byType(EditableText), "test message");
     await tester.tap(find.byIcon(Icons.send), warnIfMissed: false);
     await tester.pump();
 
@@ -285,7 +287,7 @@ void main() {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField), "test message");
+    await tester.enterText(find.byType(EditableText), "test message");
     await tester.tap(find.byIcon(Icons.send), warnIfMissed: false);
     await tester.pump();
 
@@ -332,7 +334,7 @@ void main() {
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
-    await tester.enterText(find.byType(TextField), "test message");
+    await tester.enterText(find.byType(EditableText), "test message");
     await tester.tap(find.byIcon(Icons.send), warnIfMissed: false);
     await tester.pump();
 
@@ -375,7 +377,7 @@ void main() {
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
-    await tester.enterText(find.byType(TextField), "test message");
+    await tester.enterText(find.byType(EditableText), "test message");
     await tester.tap(find.byIcon(Icons.send), warnIfMissed: false);
     await tester.pump();
 
@@ -420,7 +422,7 @@ void main() {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField), "test message");
+    await tester.enterText(find.byType(EditableText), "test message");
     await tester.tap(find.byIcon(Icons.send));
     await tester.pump();
 
@@ -435,7 +437,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.byType(NewSessionScreen), findsNothing);
-    expect(find.byType(TextField), findsNothing);
+    expect(find.byType(EditableText), findsNothing);
   });
 
   testWidgets("does not show snackbar when auto-navigating after creating a session", (tester) async {
@@ -458,7 +460,7 @@ void main() {
 
     final loc = AppLocalizations.of(tester.element(find.byType(NewSessionScreen)))!;
 
-    await tester.enterText(find.byType(TextField), "test message");
+    await tester.enterText(find.byType(EditableText), "test message");
     await tester.tap(find.byIcon(Icons.send));
     await tester.pump();
 
@@ -490,7 +492,7 @@ void main() {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField), "test message");
+    await tester.enterText(find.byType(EditableText), "test message");
     await tester.tap(find.byIcon(Icons.send));
     await tester.pump();
 
@@ -502,10 +504,10 @@ void main() {
     expect(find.byKey(const Key("new_session_loading_overlay")), findsNothing);
     // Error text now comes from the shared, localized ApiError mapping.
     expect(find.text("An unknown error occurred"), findsOneWidget);
-    expect(find.byType(TextField), findsOneWidget);
+    expect(find.byType(EditableText), findsOneWidget);
     expect(find.byIcon(Icons.send), findsOneWidget);
 
-    await tester.enterText(find.byType(TextField), "retry message");
+    await tester.enterText(find.byType(EditableText), "retry message");
     await tester.pump();
 
     expect(find.text("retry message"), findsOneWidget);
@@ -518,7 +520,7 @@ void main() {
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField), "half-written idea");
+    await tester.enterText(find.byType(EditableText), "half-written idea");
     await tester.pump();
 
     // Tear the screen down (e.g. the user navigates away) before creating a

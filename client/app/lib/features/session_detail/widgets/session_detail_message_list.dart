@@ -65,6 +65,19 @@ class SessionDetailMessageList extends StatefulWidget {
   final Map<String, SessionStatus> childStatuses;
   final String? retryErrorMessage;
 
+  /// Height of the floating composer overlaying the list's bottom edge. Used
+  /// both as extra bottom scroll padding — so the newest message rests clear of
+  /// the composer while older content scrolls up behind its fade — and to lift
+  /// the "jump to latest" pill above the composer. Zero in the read-only
+  /// variant, which renders no composer.
+  final double bottomInset;
+
+  /// Top inset (status bar + nav bar height) the list scrolls behind. Added as
+  /// extra top scroll padding so the oldest message rests clear of the
+  /// transparent bar at full scroll, while content in between scrolls up behind
+  /// it and dissolves into the bar's fade.
+  final double topInset;
+
   const SessionDetailMessageList({
     super.key,
     required this.projectId,
@@ -73,6 +86,8 @@ class SessionDetailMessageList extends StatefulWidget {
     required this.children,
     required this.childStatuses,
     this.retryErrorMessage,
+    this.bottomInset = 0,
+    this.topInset = 0,
   });
 
   @override
@@ -289,6 +304,8 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
         tapTargetKey: _kJumpToLatestKey,
         label: loc.sessionDetailJumpToLatest,
         onTap: () => _follow.animateToEdge(),
+        // Lift the pill clear of the floating composer overlaid below.
+        bottomInset: widget.bottomInset,
       ),
       // Horizontal "peek" gesture: slide the transcript left to reveal
       // each message's timestamp on the right. Driven by a raw [Listener]
@@ -374,8 +391,8 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
               insertAnimationDuration: Duration.zero,
               removeAnimationDuration: Duration.zero,
               shouldScrollToEndWhenSendingMessage: false,
-              topPadding: 8,
-              bottomPadding: 8,
+              topPadding: 8 + widget.topInset,
+              bottomPadding: 8 + widget.bottomInset,
               handleSafeArea: false,
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
               // Always allow overscroll/bounce, even when the transcript is

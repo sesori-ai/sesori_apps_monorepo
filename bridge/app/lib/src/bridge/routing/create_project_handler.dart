@@ -1,21 +1,25 @@
-import "dart:io";
-
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../repositories/mappers/plugin_project_mapper.dart";
+import "../repositories/filesystem_repository.dart";
+import "../repositories/project_repository.dart";
+import "../services/project_initialization_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /project/create` — creates a new project directory with git init.
 class CreateProjectHandler extends BodyRequestHandler<ProjectPathRequest, Project> {
-  final BridgePluginApi _plugin;
+  final ProjectInitializationService _projectInitializationService;
+  final ProjectRepository _projectRepository;
 
-  CreateProjectHandler(this._plugin)
-    : super(
-        HttpMethod.post,
-        "/project/create",
-        fromJson: ProjectPathRequest.fromJson,
-      );
+  CreateProjectHandler({
+    required ProjectInitializationService projectInitializationService,
+    required ProjectRepository projectRepository,
+  }) : _projectInitializationService = projectInitializationService,
+       _projectRepository = projectRepository,
+       super(
+         HttpMethod.post,
+         "/project/create",
+         fromJson: ProjectPathRequest.fromJson,
+       );
 
   @override
   Future<Project> handle(
@@ -37,54 +41,18 @@ class CreateProjectHandler extends BodyRequestHandler<ProjectPathRequest, Projec
       throw buildErrorResponse(request, 400, "path traversal not allowed");
     }
 
-    final parentDir = Directory(path).parent;
-    if (!parentDir.existsSync()) {
+    try {
+      await _projectInitializationService.initializeProject(path: path);
+    } on FilesystemPermissionDeniedException {
+      throw buildErrorResponse(request, 403, "permission denied: $path");
+    } on ProjectParentMissingException {
       throw buildErrorResponse(request, 400, "parent directory does not exist");
-    }
-
-    if (Directory(path).existsSync()) {
+    } on ProjectDirectoryExistsException {
       throw buildErrorResponse(request, 409, "directory already exists");
+    } on ProjectGitInitException {
+      throw buildErrorResponse(request, 500, "git init failed");
     }
 
-    try {
-      Directory(path).createSync(recursive: false);
-    } on FileSystemException catch (error) {
-      throw buildErrorResponse(request, 500, "failed to create directory: $error");
-    }
-
-    final gitResult = await Process.run("git", ["init", path]);
-    if (gitResult.exitCode != 0) {
-      throw buildErrorResponse(request, 500, "git init failed: ${gitResult.stderr}");
-    }
-
-    // Write .gitignore with .worktrees/ entry (idempotent)
-    final gitignoreFile = File("$path/.gitignore");
-    try {
-      final content = gitignoreFile.existsSync() ? await gitignoreFile.readAsString() : "";
-      if (!content.contains(".worktrees/")) {
-        await gitignoreFile.writeAsString(".worktrees/\n", mode: FileMode.append);
-      }
-    } on FileSystemException catch (error) {
-      throw buildErrorResponse(request, 500, "failed to write .gitignore: $error");
-    }
-
-    final addResult = await Process.run("git", ["add", "."], workingDirectory: path);
-    if (addResult.exitCode != 0) {
-      Log.w("CreateProjectHandler: git add failed for $path: ${addResult.stderr}");
-    } else {
-      final commitResult = await Process.run(
-        "git",
-        ["commit", "-m", "Initial commit"],
-        workingDirectory: path,
-      );
-      if (commitResult.exitCode != 0) {
-        Log.w("CreateProjectHandler: initial commit failed for $path: ${commitResult.stderr}");
-      }
-    }
-
-    final pluginProject = await _plugin.getProject(path);
-    final project = pluginProject.toSharedProject(hasUnseenChanges: false);
-
-    return project;
+    return _projectRepository.openProject(path: path);
   }
 }

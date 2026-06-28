@@ -8,6 +8,7 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart" show AppRouteDef;
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/cubits/project_list/add_project_outcome.dart";
 import "package:sesori_dart_core/src/cubits/project_list/project_list_cubit.dart";
 import "package:sesori_dart_core/src/cubits/project_list/project_list_state.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -30,7 +31,7 @@ const _connectionConfig = ServerConnectionConfig(
   relayHost: "relay.example.com",
   authToken: "test-token",
 );
-const _connectionHealth = HealthResponse(healthy: true, version: "0.1.200");
+const _connectionHealth = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
 const _connectedStatus = ConnectionStatus.connected(
   config: _connectionConfig,
   health: _connectionHealth,
@@ -715,7 +716,7 @@ void main() {
           (_) async => ApiResponse.success(Projects(data: [projectA, projectB])),
         );
         final result = await cubit.createProject(path: "/dev/new");
-        expect(result, isTrue);
+        expect(result, AddProjectOutcome.success);
       },
       skip: 1,
       expect: () => [
@@ -737,7 +738,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     blocTest<ProjectListCubit, ProjectListState>(
-      "createProject: returns false and emits no state on API error",
+      "createProject: returns otherError and emits no state on API error",
       build: () {
         when(
           () => mockProjectService.listProjects(),
@@ -750,7 +751,33 @@ void main() {
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
         final result = await cubit.createProject(path: "/dev/new");
-        expect(result, isFalse);
+        expect(result, AddProjectOutcome.otherError);
+      },
+      skip: 1,
+      expect: () => <ProjectListState>[],
+    );
+
+    // -------------------------------------------------------------------------
+    // Test 4c2: createProject permission denial (HTTP 403)
+    // -------------------------------------------------------------------------
+
+    blocTest<ProjectListCubit, ProjectListState>(
+      "createProject: returns permissionDenied on a 403 from the bridge",
+      build: () {
+        when(
+          () => mockProjectService.listProjects(),
+        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
+        when(() => mockProjectService.createProject(path: any(named: "path"))).thenAnswer(
+          (_) async => ApiResponse.error(
+            ApiError.nonSuccessCode(errorCode: 403, rawErrorString: "permission denied: /dev/new"),
+          ),
+        );
+        return buildCubit();
+      },
+      act: (cubit) async {
+        await Future<void>.delayed(Duration.zero);
+        final result = await cubit.createProject(path: "/dev/new");
+        expect(result, AddProjectOutcome.permissionDenied);
       },
       skip: 1,
       expect: () => <ProjectListState>[],
@@ -777,7 +804,7 @@ void main() {
           (_) async => ApiResponse.success(Projects(data: [projectA, projectB])),
         );
         final result = await cubit.discoverProject(path: "/dev/B");
-        expect(result, isTrue);
+        expect(result, AddProjectOutcome.success);
       },
       skip: 1,
       expect: () => [
@@ -797,6 +824,61 @@ void main() {
         verify(() => mockProjectService.discoverProject(path: "/dev/B")).called(1);
       },
     );
+
+    // -------------------------------------------------------------------------
+    // Test 4d2: fetchFilesystemSuggestions outcomes
+    // -------------------------------------------------------------------------
+
+    test("fetchFilesystemSuggestions returns success with data", () async {
+      when(
+        () => mockProjectService.listProjects(),
+      ).thenAnswer((_) async => ApiResponse.success(const Projects(data: [])));
+      const suggestions = FilesystemSuggestions(
+        data: [FilesystemSuggestion(path: "/dev/a", name: "a", isGitRepo: false)],
+      );
+      when(
+        () => mockProjectService.getFilesystemSuggestions(prefix: any(named: "prefix")),
+      ).thenAnswer((_) async => ApiResponse.success(suggestions));
+
+      final cubit = buildCubit();
+      final result = await cubit.fetchFilesystemSuggestions(prefix: "/dev");
+
+      expect(result, isA<FilesystemSuggestionsSuccess>());
+      expect((result as FilesystemSuggestionsSuccess).suggestions.data, hasLength(1));
+      await cubit.close();
+    });
+
+    test("fetchFilesystemSuggestions returns permissionDenied on a 403", () async {
+      when(
+        () => mockProjectService.listProjects(),
+      ).thenAnswer((_) async => ApiResponse.success(const Projects(data: [])));
+      when(() => mockProjectService.getFilesystemSuggestions(prefix: any(named: "prefix"))).thenAnswer(
+        (_) async => ApiResponse.error(
+          ApiError.nonSuccessCode(errorCode: 403, rawErrorString: "permission denied: /dev"),
+        ),
+      );
+
+      final cubit = buildCubit();
+      final result = await cubit.fetchFilesystemSuggestions(prefix: "/dev");
+
+      expect(result, isA<FilesystemSuggestionsPermissionDenied>());
+      await cubit.close();
+    });
+
+    test("fetchFilesystemSuggestions returns error on a non-permission failure", () async {
+      when(
+        () => mockProjectService.listProjects(),
+      ).thenAnswer((_) async => ApiResponse.success(const Projects(data: [])));
+      when(
+        () => mockProjectService.getFilesystemSuggestions(prefix: any(named: "prefix")),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+
+      final cubit = buildCubit();
+      final result = await cubit.fetchFilesystemSuggestions(prefix: "/dev");
+
+      expect(result, isA<FilesystemSuggestionsError>());
+      await cubit.close();
+    });
 
     // -------------------------------------------------------------------------
     // Test 4e: renameProject success
@@ -1229,7 +1311,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200");
+        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
         statusController.add(
           const ConnectionStatus.connected(config: config, health: health),
         );
@@ -1259,7 +1341,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200");
+        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
         statusController.add(
           const ConnectionStatus.connected(config: config, health: health),
         );
@@ -1299,7 +1381,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200");
+        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
         const connected = ConnectionStatus.connected(config: config, health: health);
 
         // Fire two rapid ConnectionConnected events.
@@ -1333,7 +1415,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200");
+        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
         statusController.add(
           const ConnectionStatus.connected(config: config, health: health),
         );
@@ -1387,7 +1469,7 @@ void main() {
         final retryFuture = cubit.retryLoadProjects();
         await Future<void>.delayed(Duration.zero);
         await Future<void>.delayed(Duration.zero);
-        const health = HealthResponse(healthy: true, version: "0.1.200");
+        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
         statusController.add(
           const ConnectionStatus.connected(config: config, health: health),
         );
@@ -1417,7 +1499,7 @@ void main() {
           relayHost: "relay.example.com",
           authToken: "test-token",
         );
-        const health = HealthResponse(healthy: true, version: "0.1.200");
+        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connected(config: config, health: health),
         );
@@ -1530,7 +1612,7 @@ void main() {
             relayHost: "relay.example.com",
             authToken: "test-token",
           );
-          const health = HealthResponse(healthy: true, version: "0.1.200");
+          const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
           statusController.add(
             const ConnectionStatus.connected(config: config, health: health),
           );

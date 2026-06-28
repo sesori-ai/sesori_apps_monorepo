@@ -64,19 +64,37 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get projectsOnboardingTitle => 'Set up Sesori Bridge';
+  String get projectsOnboardingPhoneStatusStep => 'Step 1:';
 
   @override
-  String get projectsOnboardingStep1Action => 'Install & Run';
+  String get projectsOnboardingPhoneStatusConnected => 'Phone connected';
 
   @override
-  String get projectsOnboardingBridgeName => 'Sesori Bridge';
+  String get projectsOnboardingPcStatusStep => 'Step 2:';
 
   @override
-  String get projectsOnboardingTabUnix => 'Linux/Mac';
+  String get projectsOnboardingPcStatusRun => 'Run Sesori on your PC';
 
   @override
-  String get projectsOnboardingTabWindows => 'Windows';
+  String get projectsOnboardingPcStatusWhy => 'Why is this needed?';
+
+  @override
+  String get projectsOnboardingInstallUnixLabel => 'macOS, Linux, WSL';
+
+  @override
+  String get projectsOnboardingInstallUnixMethod => 'curl';
+
+  @override
+  String get projectsOnboardingInstallWindowsLabel => 'Windows PowerShell';
+
+  @override
+  String get projectsOnboardingInstallWindowsMethod => 'native';
+
+  @override
+  String get projectsOnboardingInstallMethodNpm => 'npm';
+
+  @override
+  String get projectsOnboardingInstallMethodBun => 'bun';
 
   @override
   String get projectsOnboardingCommandCopied => 'Command copied to clipboard';
@@ -85,45 +103,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsOnboardingCopyCommand => 'Copy command';
 
   @override
-  String get projectsOnboardingStepCompleted => 'Completed';
-
-  @override
-  String get projectsOnboardingStep2Action => 'Sign in';
-
-  @override
-  String get projectsOnboardingStep2Accent => 'on your computer';
-
-  @override
-  String get projectsOnboardingAccountPrefix => 'Use ';
-
-  @override
-  String projectsOnboardingAccountSuffix(String provider) {
-    return ' with $provider';
-  }
-
-  @override
-  String get projectsOnboardingAccountFallback => 'Sign in with the same account you used here.';
-
-  @override
-  String get projectsOnboardingStep3Title => 'Create or open a folder';
-
-  @override
-  String get projectsOnboardingStep3Detail => 'Once connected, your projects will appear here.';
-
-  @override
-  String get projectsConnectedTitle => 'Your bridge is connected';
-
-  @override
-  String get projectsConnectedStep2Action => 'Signed in';
-
-  @override
-  String get projectsConnectedStep3Detail => 'Choose a folder to start your first session.';
-
-  @override
-  String get projectsConnectedAccountFallback => 'Signed in with the account you used here.';
-
-  @override
-  String get projectsOnboardingOpenFolder => 'Open a folder';
+  String get projectsOnboardingShareCommand => 'Share command';
 
   @override
   String get projectsBridgeOfflineTitle => 'Bridge disconnected';
@@ -493,12 +473,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginAwaitingCallback => 'Waiting for authorization...';
 
   @override
-  String loginAwaitingConfirmation(String userCode) {
-    return 'Confirm this code on the login page: $userCode';
-  }
-
-  @override
-  String get loginPolling => 'Confirming authorization...';
+  String get loginPolling => 'Confirm the sign-in in your browser to continue.';
 
   @override
   String get loginTimeout => 'Authorization timed out. Please try again.';
@@ -637,6 +612,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get projectDiscoverFailed => 'Failed to discover project';
+
+  @override
+  String get fetchDirectoryPermissionDenied =>
+      'The bridge can\'t access this folder. On macOS, grant Full Disk Access to the terminal running the bridge in System Settings → Privacy & Security → Full Disk Access, then retry.';
+
+  @override
+  String get addProjectPermissionDenied =>
+      'The bridge can\'t access that folder. Grant the terminal running the bridge Full Disk Access on your Mac, then try again.';
+
+  @override
+  String get filesystemAccessDegradedTitle => 'Limited folder access';
+
+  @override
+  String get filesystemAccessDegradedBody =>
+      'The bridge can\'t read some folders. On macOS, grant Full Disk Access to the terminal running the bridge in System Settings → Privacy & Security.';
 
   @override
   String get questionReplyFailed => 'Failed to send answer. Please try again.';

@@ -7,7 +7,9 @@
 
 **Standing acceptance (all Phase 4 PRs):** `client/app` (the mobile product) builds + tests pass + a
 mobile release dry-run passes after each PR (release-safety invariant #2). No UI
-behaviour change for mobile.
+behaviour change for mobile. `module_app_ui` may depend on `module_core`,
+`module_prego`, `sesori_shared`, and direct Flutter UI dependencies, but it must
+never import `client/app`, `client/desktop`, or `module_desktop_core`.
 
 **Per-PR template:** Goal · Scope · Risk · Review-size · Acceptance · DoD ·
 Aristotle verdicts · Findings log · Plan-deltas.
@@ -29,7 +31,9 @@ Aristotle verdicts · Findings log · Plan-deltas.
   (`go_router`, `flutter_svg`, etc.) in `module_app_ui`'s pubspec.
 - **Risk:** Med-High. **Size:** M (split the refactor out if it grows).
 - **Acceptance:** `client/app` consumes the moved code via the package, builds +
-  tests pass, **no dependency cycle** `module_app_ui` → `client/app`.
+  tests pass, **no dependency cycle** `module_app_ui` → `client/app`; mobile
+  CI/release path filters include `client/module_app_ui/**` once mobile screens
+  depend on the package.
 
 > **Standing rule for every move PR (4.2–4.6):** the package-boundary hazard
 > from PR 4.1 applies to **screens too** — current screens (e.g.
@@ -42,7 +46,7 @@ Aristotle verdicts · Findings log · Plan-deltas.
 > includes **"no `module_app_ui` → `client/app` cycle."**
 
 ## PR 4.2 — Voice: move only real UI; keep services behind module_core seams
-- **Goal:** Note that `mobile/app/lib/capabilities/voice/` is **not UI** — it's
+- **Goal:** Note that `client/app/lib/capabilities/voice/` is **not UI** — it's
   injectable services/config (`VoiceTranscriptionService` (which calls the
   Layer-1 `VoiceApi` directly), `WakeLockService`, `RecordingFileProvider`,
   `audio_format_config`). So this PR must **not** move that directory into the
@@ -79,7 +83,10 @@ Aristotle verdicts · Findings log · Plan-deltas.
 
 ## PR 4.7 — Desktop router composition + wire accessory UI into window
 - **Goal:** Compose the desktop GoRouter from the shared screens; render the full
-  accessory UI in the desktop window via the relay.
+  accessory UI in the desktop window via the relay. This is the first desktop
+  slice that resolves `ConnectionService`; register any remaining relay
+  prerequisites (`RelayCryptoService`, `FailureReporter`, lifecycle hooks) before
+  wiring shared screens.
 - **Desktop offline/onboarding seam:** the shared screens' bridge-offline flow
   calls `ProjectListCubit.reconnectBridge()` (relay reconnect only) and shows
   `BridgeInstall` CLI commands (install `sesori-bridge` in a terminal) — both
@@ -92,4 +99,6 @@ Aristotle verdicts · Findings log · Plan-deltas.
 - **Risk:** Med. **Size:** M.
 - **Acceptance:** desktop shows projects/sessions/chat through the relay; the
   bridge-offline state offers "start the bridge" (drives `BridgeProcessService`),
-  not a CLI-install/reconnect prompt; mobile offline UX unchanged.
+  not a CLI-install/reconnect prompt; mobile offline UX unchanged; no
+  `module_app_ui` import of `client/app`, `client/desktop`, or
+  `module_desktop_core`.

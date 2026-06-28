@@ -7,6 +7,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
 import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/project_list/add_project_dialog.dart";
 import "package:sesori_mobile/l10n/app_localizations.dart";
@@ -149,43 +150,75 @@ Widget _buildProjectListShell({required ProjectListCubit cubit}) {
 }
 
 void _stubSuggestionsWithEntries(
-  MockProjectService service, {
+  MockProjectListCubit cubit, {
   required List<FilesystemSuggestion> entries,
 }) {
   when(
-    () => service.getFilesystemSuggestions(prefix: any(named: "prefix")),
-  ).thenAnswer((_) async => ApiResponse.success(FilesystemSuggestions(data: entries)));
+    () => cubit.fetchFilesystemSuggestions(prefix: any(named: "prefix")),
+  ).thenAnswer(
+    (_) async => FilesystemSuggestionsSuccess(suggestions: FilesystemSuggestions(data: entries)),
+  );
 }
 
 void _stubSuggestionsPerPrefix(
-  MockProjectService service, {
+  MockProjectListCubit cubit, {
   required Map<String, List<FilesystemSuggestion>> byPrefix,
 }) {
-  when(() => service.getFilesystemSuggestions(prefix: any(named: "prefix"))).thenAnswer((invocation) async {
+  when(() => cubit.fetchFilesystemSuggestions(prefix: any(named: "prefix"))).thenAnswer((invocation) async {
     final prefix = invocation.namedArguments[const Symbol("prefix")] as String?;
-    return ApiResponse.success(FilesystemSuggestions(data: byPrefix[prefix ?? ""] ?? []));
+    return FilesystemSuggestionsSuccess(suggestions: FilesystemSuggestions(data: byPrefix[prefix ?? ""] ?? []));
   });
 }
 
 void main() {
   late MockProjectListCubit mockCubit;
   late MockProjectService mockProjectService;
+  late MockConnectionService mockConnectionService;
+  late BehaviorSubject<ConnectionStatus> connectionStatusController;
+
+  void stubConnectionStatus(ConnectionStatus status) {
+    connectionStatusController.add(status);
+    when(() => mockConnectionService.status).thenAnswer((_) => connectionStatusController);
+    when(() => mockConnectionService.currentStatus).thenReturn(status);
+  }
 
   setUp(() {
     mockCubit = MockProjectListCubit();
     mockProjectService = MockProjectService();
+    mockConnectionService = MockConnectionService();
+    connectionStatusController = BehaviorSubject<ConnectionStatus>.seeded(
+      const ConnectionStatus.connected(
+        config: ServerConnectionConfig(relayHost: "relay.example.com"),
+        health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null),
+      ),
+    );
+    // Default: connected with no degraded filesystem access.
+    stubConnectionStatus(
+      const ConnectionStatus.connected(
+        config: ServerConnectionConfig(relayHost: "relay.example.com"),
+        health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null),
+      ),
+    );
 
     final getIt = GetIt.instance;
     if (getIt.isRegistered<ProjectService>()) {
       getIt.unregister<ProjectService>();
     }
     getIt.registerSingleton<ProjectService>(mockProjectService);
+    if (getIt.isRegistered<ConnectionService>()) {
+      getIt.unregister<ConnectionService>();
+    }
+    getIt.registerSingleton<ConnectionService>(mockConnectionService);
   });
 
-  tearDown(() {
+  tearDown(() async {
+    await connectionStatusController.close();
     final getIt = GetIt.instance;
     if (getIt.isRegistered<ProjectService>()) {
       getIt.unregister<ProjectService>();
+    }
+    if (getIt.isRegistered<ConnectionService>()) {
+      getIt.unregister<ConnectionService>();
     }
   });
 
@@ -198,7 +231,7 @@ void main() {
       when(() => mockCubit.state).thenReturn(
         const ProjectListState.loaded(projects: [], activityById: {}),
       );
-      _stubSuggestionsWithEntries(mockProjectService, entries: _homeDirEntries);
+      _stubSuggestionsWithEntries(mockCubit, entries: _homeDirEntries);
 
       await tester.pumpWidget(_buildProjectListShell(cubit: mockCubit));
 
@@ -211,6 +244,63 @@ void main() {
       expect(find.text("Add Project"), findsWidgets);
       expect(find.text("projects"), findsOneWidget);
       expect(find.text("Open as Project"), findsOneWidget);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Filesystem-access warning banner (scoped to this sheet)
+  // -------------------------------------------------------------------------
+
+  group("Filesystem-access banner", () {
+    testWidgets("shows the limited-folder-access warning when the bridge reports degraded access", (tester) async {
+      stubConnectionStatus(
+        const ConnectionStatus.connected(
+          config: ServerConnectionConfig(relayHost: "relay.example.com"),
+          health: HealthResponse(healthy: true, version: "1.0.0", filesystemAccessDegraded: true),
+        ),
+      );
+      _stubSuggestionsWithEntries(mockCubit, entries: _homeDirEntries);
+
+      await tester.pumpWidget(
+        _buildApp(
+          cubit: mockCubit,
+          child: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => showAddProjectDialog(context, mockCubit),
+                child: const Text("Open"),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      expect(find.text("Limited folder access"), findsOneWidget);
+    });
+
+    testWidgets("hides the warning when filesystem access is not degraded", (tester) async {
+      // Default stubbed status has filesystemAccessDegraded: null.
+      _stubSuggestionsWithEntries(mockCubit, entries: _homeDirEntries);
+
+      await tester.pumpWidget(
+        _buildApp(
+          cubit: mockCubit,
+          child: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => showAddProjectDialog(context, mockCubit),
+                child: const Text("Open"),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      expect(find.text("Limited folder access"), findsNothing);
     });
   });
 
@@ -277,7 +367,7 @@ void main() {
       when(() => mockCubit.state).thenReturn(
         const ProjectListState.loaded(projects: [], activityById: {}),
       );
-      _stubSuggestionsWithEntries(mockProjectService, entries: _homeDirEntries);
+      _stubSuggestionsWithEntries(mockCubit, entries: _homeDirEntries);
 
       await tester.pumpWidget(_buildProjectListShell(cubit: mockCubit));
 
@@ -295,7 +385,7 @@ void main() {
 
   group("AddProjectDialog", () {
     testWidgets("shows directory browser with entries and both action buttons", (tester) async {
-      _stubSuggestionsWithEntries(mockProjectService, entries: _homeDirEntries);
+      _stubSuggestionsWithEntries(mockCubit, entries: _homeDirEntries);
 
       await tester.pumpWidget(
         _buildApp(
@@ -335,7 +425,7 @@ void main() {
 
     testWidgets("tapping a directory entry navigates into it", (tester) async {
       _stubSuggestionsPerPrefix(
-        mockProjectService,
+        mockCubit,
         byPrefix: {
           "": _homeDirEntries,
           "/home/user/projects": _projectsDirEntries,
@@ -371,7 +461,7 @@ void main() {
 
     testWidgets("back button navigates up one directory level", (tester) async {
       _stubSuggestionsPerPrefix(
-        mockProjectService,
+        mockCubit,
         byPrefix: {
           "": _homeDirEntries,
           "/home/user/projects": _projectsDirEntries,
@@ -409,13 +499,13 @@ void main() {
 
     testWidgets("Open as Project calls discoverProject with browsed path", (tester) async {
       _stubSuggestionsPerPrefix(
-        mockProjectService,
+        mockCubit,
         byPrefix: {
           "": _homeDirEntries,
           "/home/user/my-repo": const [],
         },
       );
-      when(() => mockCubit.discoverProject(path: any(named: "path"))).thenAnswer((_) async => true);
+      when(() => mockCubit.discoverProject(path: any(named: "path"))).thenAnswer((_) async => AddProjectOutcome.success);
 
       await tester.pumpWidget(
         _buildApp(
@@ -447,13 +537,13 @@ void main() {
 
     testWidgets("Create constructs path from browsed dir + typed name", (tester) async {
       _stubSuggestionsPerPrefix(
-        mockProjectService,
+        mockCubit,
         byPrefix: {
           "": _homeDirEntries,
           "/home/user/projects": _projectsDirEntries,
         },
       );
-      when(() => mockCubit.createProject(path: any(named: "path"))).thenAnswer((_) async => true);
+      when(() => mockCubit.createProject(path: any(named: "path"))).thenAnswer((_) async => AddProjectOutcome.success);
 
       await tester.pumpWidget(
         _buildApp(
@@ -488,7 +578,7 @@ void main() {
     });
 
     testWidgets("empty directory shows empty state message", (tester) async {
-      _stubSuggestionsWithEntries(mockProjectService, entries: const []);
+      _stubSuggestionsWithEntries(mockCubit, entries: const []);
 
       await tester.pumpWidget(
         _buildApp(
@@ -512,8 +602,8 @@ void main() {
 
     testWidgets("loading state shows progress indicator", (tester) async {
       when(
-        () => mockProjectService.getFilesystemSuggestions(prefix: any(named: "prefix")),
-      ).thenAnswer((_) => Completer<ApiResponse<FilesystemSuggestions>>().future);
+        () => mockCubit.fetchFilesystemSuggestions(prefix: any(named: "prefix")),
+      ).thenAnswer((_) => Completer<FilesystemSuggestionsOutcome>().future);
 
       await tester.pumpWidget(
         _buildApp(

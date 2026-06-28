@@ -94,8 +94,10 @@ class PregoTopNavigation extends StatelessWidget implements PreferredSizeWidget 
   /// [leading] nor [onBack] is supplied.
   final bool automaticallyImplyLeading;
 
-  /// [GlassAppBar]'s content height — matches the Figma design.
-  static const double _appBarHeight = 54;
+  /// [GlassAppBar]'s content height — matches the Figma design. Public so bodies
+  /// that own their own scroll behind the bar (see [PregoGlassScaffold] with
+  /// `reserveBarSpace: false`) can compute the top inset their content must clear.
+  static const double barHeight = 54;
 
   /// Scroll distance over which the large title collapses into the bar — the
   /// value used by the showcase's `_LargeTitleCollapseDemo`.
@@ -117,7 +119,7 @@ class PregoTopNavigation extends StatelessWidget implements PreferredSizeWidget 
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(_appBarHeight);
+  Size get preferredSize => const Size.fromHeight(barHeight);
 
   @override
   Widget build(BuildContext context) {

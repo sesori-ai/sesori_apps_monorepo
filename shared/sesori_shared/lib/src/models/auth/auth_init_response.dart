@@ -8,7 +8,6 @@ sealed class AuthInitResponse with _$AuthInitResponse {
   const factory AuthInitResponse({
     required String authUrl,
     required String state,
-    required String userCode,
     required int expiresIn,
   }) = _AuthInitResponse;
 

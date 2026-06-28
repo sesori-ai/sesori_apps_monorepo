@@ -11,6 +11,8 @@ export "package:sesori_auth/sesori_auth.dart"
         AuthSession,
         AuthState,
         AuthUnauthenticated,
+        OAuthDeviceDescriptor,
+        OAuthDeviceDescriptorProvider,
         OAuthFlowProvider,
         SecureStorage;
 export "package:sesori_auth/sesori_auth.dart"
@@ -55,6 +57,7 @@ export "src/cubits/new_session/new_session_cubit.dart";
 export "src/cubits/new_session/new_session_state.dart";
 export "src/cubits/notification_preferences/notification_preferences_cubit.dart";
 export "src/cubits/notification_preferences/notification_preferences_state.dart";
+export "src/cubits/project_list/add_project_outcome.dart";
 export "src/cubits/project_list/project_list_cubit.dart";
 export "src/cubits/project_list/project_list_state.dart";
 export "src/cubits/session_detail/queued_session_submission.dart";

@@ -14,13 +14,13 @@ import "interfaces/auth_session.dart";
 import "interfaces/auth_token_provider.dart";
 import "interfaces/oauth_flow_provider.dart";
 import "models/auth_state.dart";
+import "platform/oauth_device_descriptor_provider.dart";
 import "storage/oauth_storage_service.dart";
 import "storage/token_storage_service.dart";
 
 @lazySingleton
 class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   static const _sessionTokenHeader = "X-Sesori-Session-Token";
-  static const _mobileClientType = "app";
   static const _defaultPollInterval = Duration(milliseconds: 250);
   static const _defaultPollTimeout = Duration(minutes: 5);
   static const _defaultRequestTimeout = Duration(seconds: 35);
@@ -29,6 +29,7 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   final http.Client _client;
   final TokenStorageService _tokenStorage;
   final OAuthStorageService _oAuthStorage;
+  final OAuthDeviceDescriptorProvider _deviceDescriptorProvider;
   final BehaviorSubject<AuthState> _authState;
   final Duration _pollInterval;
   final Duration _pollTimeout;
@@ -38,13 +39,15 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
   AuthManager(
     http.Client client,
     TokenStorageService tokenStorage,
-    OAuthStorageService oAuthStorage, {
+    OAuthStorageService oAuthStorage,
+    OAuthDeviceDescriptorProvider deviceDescriptorProvider, {
     @visibleForTesting Duration pollInterval = _defaultPollInterval,
     @visibleForTesting Duration pollTimeout = _defaultPollTimeout,
     @visibleForTesting Future<void> Function(Duration duration)? delay,
   }) : _client = client,
        _tokenStorage = tokenStorage,
        _oAuthStorage = oAuthStorage,
+       _deviceDescriptorProvider = deviceDescriptorProvider,
        _pollInterval = pollInterval,
        _pollTimeout = pollTimeout,
        _delay = delay ?? Future<void>.delayed,
@@ -62,7 +65,8 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     http.Client client,
     TokenStorageService tokenStorage,
     OAuthStorageService oAuthStorage,
-  ) => AuthManager(client, tokenStorage, oAuthStorage);
+    OAuthDeviceDescriptorProvider deviceDescriptorProvider,
+  ) => AuthManager(client, tokenStorage, oAuthStorage, deviceDescriptorProvider);
 
   @override
   ValueStream<AuthState> get authStateStream => _authState.stream;
@@ -98,10 +102,11 @@ class AuthManager implements AuthTokenProvider, OAuthFlowProvider, AuthSession {
     _oAuthSessionToken = sessionToken;
 
     try {
+      final descriptor = await _deviceDescriptorProvider.describe();
       final uri = Uri.parse("$authBaseUrl/auth/${provider.key}/init");
       final response = await _post(
         uri,
-        body: const AuthInitRequest(clientType: _mobileClientType).toJson(),
+        body: AuthInitRequest(clientType: descriptor.clientType, device: descriptor.device).toJson(),
         headers: {_sessionTokenHeader: sessionToken},
       );
       _ensureSuccess(response, context: "Failed to start ${provider.label} auth flow");

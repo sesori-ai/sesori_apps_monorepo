@@ -19,19 +19,26 @@ import "../../push/push_notification_content_builder.dart";
 import "../../push/push_rate_limiter.dart";
 import "../../push/push_session_state_tracker.dart";
 import "../../server/services/bridge_restart_service.dart";
+import "../../version.dart";
+import "../api/filesystem_api.dart";
 import "../api/gh_cli_api.dart";
 import "../api/git_cli_api.dart";
 import "../bandwidth_tracker.dart";
 import "../debug_server.dart";
+import "../foundation/filesystem_permission_validator.dart";
 import "../foundation/process_runner.dart";
 import "../metadata_service.dart";
 import "../models/bridge_config.dart";
 import "../orchestrator.dart";
 import "../persistence/database.dart";
 import "../relay_client.dart";
+import "../repositories/agent_repository.dart";
+import "../repositories/filesystem_repository.dart";
+import "../repositories/health_repository.dart";
 import "../repositories/permission_repository.dart";
 import "../repositories/pr_source_repository.dart";
 import "../repositories/project_repository.dart";
+import "../repositories/provider_repository.dart";
 import "../repositories/pull_request_repository.dart";
 import "../repositories/question_repository.dart";
 import "../repositories/session_repository.dart";
@@ -39,6 +46,7 @@ import "../repositories/session_unseen_calculator.dart";
 import "../repositories/session_unseen_repository.dart";
 import "../repositories/worktree_repository.dart";
 import "../services/pr_sync_service.dart";
+import "../services/project_initialization_service.dart";
 import "../services/session_event_enrichment_service.dart";
 import "../services/session_persistence_service.dart";
 import "../services/session_unseen_service.dart";
@@ -86,6 +94,7 @@ class BridgeRuntime {
     required ProcessRunner processRunner,
     required FailureReporter failureReporter,
     required BridgeRestartService restartService,
+    required bool filesystemAccessOk,
   }) {
     final pullRequestRepository = PullRequestRepository(
       pullRequestDao: database.pullRequestDao,
@@ -144,6 +153,27 @@ class BridgeRuntime {
       rssBytesReader: readCurrentRssBytes,
     );
 
+    final filesystemRepository = FilesystemRepository(
+      filesystemApi: const FilesystemApi(),
+      permissionValidator: const FilesystemPermissionValidator(),
+    );
+    final projectInitializationService = ProjectInitializationService(
+      worktreeRepository: WorktreeRepository(
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        plugin: plugin,
+        gitApi: GitCliApi(processRunner: processRunner, gitPathExists: _gitPathExists),
+      ),
+      filesystemRepository: filesystemRepository,
+    );
+    final healthRepository = HealthRepository(
+      plugin: plugin,
+      bridgeVersion: appVersion,
+      filesystemAccessOk: filesystemAccessOk,
+    );
+    final providerRepository = ProviderRepository(plugin: plugin);
+    final agentRepository = AgentRepository(plugin: plugin);
+
     return BridgeRuntime(
       database: database,
       plugin: plugin,
@@ -193,6 +223,11 @@ class BridgeRuntime {
         projectRepository: projectRepository,
         sessionUnseenService: sessionUnseenService,
         sessionViewTracker: sessionViewTracker,
+        filesystemRepository: filesystemRepository,
+        projectInitializationService: projectInitializationService,
+        healthRepository: healthRepository,
+        providerRepository: providerRepository,
+        agentRepository: agentRepository,
         permissionRepository: PermissionRepository(plugin: plugin),
         questionRepository: QuestionRepository(plugin: plugin),
         sessionPersistenceService: SessionPersistenceService(

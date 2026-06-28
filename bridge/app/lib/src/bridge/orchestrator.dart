@@ -20,20 +20,21 @@ import "metadata_service.dart";
 import "models/bridge_config.dart";
 import "relay_client.dart";
 import "repositories/agent_repository.dart";
+import "repositories/filesystem_repository.dart";
+import "repositories/health_repository.dart";
 import "repositories/permission_repository.dart";
 import "repositories/project_repository.dart";
 import "repositories/provider_repository.dart";
 import "repositories/question_repository.dart";
 import "repositories/session_repository.dart";
 import "routing/abort_session_handler.dart";
-import "routing/get_agents_handler.dart";
 import "routing/get_commands_handler.dart";
 import "routing/get_session_diffs_handler.dart";
 import "routing/handlers/mark_session_seen_handler.dart";
-import "routing/post_agents_handler.dart";
 import "routing/request_router.dart";
 import "routing/send_prompt_handler.dart";
 import "services/pr_sync_service.dart";
+import "services/project_initialization_service.dart";
 import "services/session_abort_service.dart";
 import "services/session_archive_service.dart";
 import "services/session_creation_service.dart";
@@ -64,6 +65,11 @@ class Orchestrator {
   final ProjectRepository _projectRepository;
   final SessionUnseenService _sessionUnseenService;
   final SessionViewTracker _sessionViewTracker;
+  final FilesystemRepository _filesystemRepository;
+  final ProjectInitializationService _projectInitializationService;
+  final HealthRepository _healthRepository;
+  final ProviderRepository _providerRepository;
+  final AgentRepository _agentRepository;
   final PermissionRepository _permissionRepository;
   final QuestionRepository _questionRepository;
   final SessionPersistenceService _sessionPersistenceService;
@@ -87,6 +93,11 @@ class Orchestrator {
     required ProjectRepository projectRepository,
     required SessionUnseenService sessionUnseenService,
     required SessionViewTracker sessionViewTracker,
+    required FilesystemRepository filesystemRepository,
+    required ProjectInitializationService projectInitializationService,
+    required HealthRepository healthRepository,
+    required ProviderRepository providerRepository,
+    required AgentRepository agentRepository,
     required PermissionRepository permissionRepository,
     required QuestionRepository questionRepository,
     required SessionPersistenceService sessionPersistenceService,
@@ -107,6 +118,11 @@ class Orchestrator {
        _projectRepository = projectRepository,
        _sessionUnseenService = sessionUnseenService,
        _sessionViewTracker = sessionViewTracker,
+       _filesystemRepository = filesystemRepository,
+       _projectInitializationService = projectInitializationService,
+       _healthRepository = healthRepository,
+       _providerRepository = providerRepository,
+       _agentRepository = agentRepository,
        _permissionRepository = permissionRepository,
        _questionRepository = questionRepository,
        _sessionPersistenceService = sessionPersistenceService,
@@ -154,6 +170,11 @@ class Orchestrator {
       projectRepository: _projectRepository,
       sessionUnseenService: _sessionUnseenService,
       sessionViewTracker: _sessionViewTracker,
+      filesystemRepository: _filesystemRepository,
+      projectInitializationService: _projectInitializationService,
+      healthRepository: _healthRepository,
+      providerRepository: _providerRepository,
+      agentRepository: _agentRepository,
       permissionRepository: _permissionRepository,
       questionRepository: _questionRepository,
       sessionPersistenceService: _sessionPersistenceService,
@@ -239,6 +260,11 @@ class OrchestratorSession {
     required ProjectRepository projectRepository,
     required SessionUnseenService sessionUnseenService,
     required SessionViewTracker sessionViewTracker,
+    required FilesystemRepository filesystemRepository,
+    required ProjectInitializationService projectInitializationService,
+    required HealthRepository healthRepository,
+    required ProviderRepository providerRepository,
+    required AgentRepository agentRepository,
     required PermissionRepository permissionRepository,
     required QuestionRepository questionRepository,
     required SessionPersistenceService sessionPersistenceService,
@@ -281,15 +307,13 @@ class OrchestratorSession {
          ),
          prSyncService: prSyncService,
          projectRepository: projectRepository,
+         filesystemRepository: filesystemRepository,
+         projectInitializationService: projectInitializationService,
+         healthRepository: healthRepository,
+         providerRepository: providerRepository,
+         agentRepository: agentRepository,
          markSessionSeenHandler: MarkSessionSeenHandler(sessionUnseenService: sessionUnseenService),
          sessionUnseenService: sessionUnseenService,
-         providerRepository: ProviderRepository(plugin: plugin),
-         getAgentsHandler: GetAgentsHandler(
-           AgentRepository(plugin: plugin),
-         ),
-         postAgentsHandler: PostAgentsHandler(
-           AgentRepository(plugin: plugin),
-         ),
          permissionRepository: permissionRepository,
          questionRepository: questionRepository,
          sessionPersistenceService: sessionPersistenceService,
