@@ -326,6 +326,7 @@ class _PromptInputState extends State<PromptInput> {
                 PregoButtonsIconGlass(
                   onPressed: _voiceState == _VoiceState.idle ? _openCommandPicker : null,
                   icon: TablerRegular.slash,
+                  semanticLabel: loc.sessionDetailCommandPickerTitle,
                 ),
                 Expanded(
                   child: switch (_voiceState) {
