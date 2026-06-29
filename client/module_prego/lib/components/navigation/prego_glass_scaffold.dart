@@ -1,5 +1,3 @@
-import "dart:math" as math;
-
 import "package:flutter/material.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 
@@ -149,22 +147,6 @@ class PregoGlassScaffold extends StatefulWidget {
 class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
   final ScrollController _scrollController = ScrollController();
 
-  /// Page glass-layer settings replicated from the showcase's
-  /// `RecommendedGlassSettings.standard` (an example-only constant, not a
-  /// package export).
-  static const LiquidGlassSettings _pageSettings = LiquidGlassSettings(
-    blur: 4,
-    thickness: 10,
-    glassColor: Color.fromRGBO(255, 255, 255, 0.08),
-    lightAngle: 0.75 * math.pi,
-    lightIntensity: 0.7,
-    ambientStrength: 0,
-    saturation: 1.2,
-    refractiveIndex: 1.2,
-    chromaticAberration: 0.01,
-    specularSharpness: GlassSpecularSharpness.medium,
-  );
-
   @override
   void dispose() {
     _scrollController.dispose();
@@ -193,9 +175,7 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
 
     Widget scrollView = CustomScrollView(
       controller: _scrollController,
-      physics: widget.scrollable
-          ? const AlwaysScrollableScrollPhysics()
-          : const NeverScrollableScrollPhysics(),
+      physics: widget.scrollable ? const AlwaysScrollableScrollPhysics() : const NeverScrollableScrollPhysics(),
       slivers: [
         // When the body scrolls behind the bar, reserve space so the title
         // clears it. When it doesn't, GlassScaffold already insets the body
@@ -206,7 +186,11 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
         // Inline mode shows a fixed title in the bar, so there is no large
         // title sliver to scroll away.
         if (!inline)
-          _LargeTitleSliver(title: widget.title, subtitle: widget.subtitle, scrollController: _scrollController),
+          _LargeTitleSliver(
+            title: widget.title,
+            subtitle: widget.subtitle,
+            scrollController: _scrollController,
+          ),
         ...widget.slivers,
       ],
     );
@@ -257,7 +241,6 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
 
     return GlassScaffold(
       backgroundColor: backgroundColor,
-      settings: _pageSettings,
       statusBarStyle: GlassStatusBarStyle.auto,
       extendBody: extendBehind,
       topEdgeFade: false, // Disable the top edge fade -- we use our own custom gradient
@@ -290,7 +273,12 @@ class _LargeTitleSliver extends StatelessWidget {
 
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.x3l, 0, PregoSpacing.x3l, PregoSpacing.xl),
+        padding: const EdgeInsetsDirectional.fromSTEB(
+          PregoSpacing.x3l,
+          0,
+          PregoSpacing.x3l,
+          PregoSpacing.xl,
+        ),
         child: ListenableBuilder(
           listenable: scrollController,
           builder: (context, _) {
