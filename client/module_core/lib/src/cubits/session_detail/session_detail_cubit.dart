@@ -303,7 +303,15 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
           // mark the session seen on the bridge before fresh content is shown,
           // clearing its bold while the user still sees the stale snapshot), so
           // the cubit drives it here once the refresh has landed.
-          _sessionViewingService.setViewingSession(_sessionId);
+          //
+          // BUT skip the reassert when a forced fresh refresh is still pending:
+          // this refresh may have started before the app was backgrounded, so
+          // its snapshot can predate hidden activity. Re-asserting now would mark
+          // that activity seen before it's loaded. The queued post-resume forced
+          // refresh will re-assert once it renders genuinely-fresh content.
+          if (!_pendingForcedRefresh) {
+            _sessionViewingService.setViewingSession(_sessionId);
+          }
           _drainPendingEvents();
         case SessionDetailLoadResultWaitingForConnection():
           _waitingForConnection = true;

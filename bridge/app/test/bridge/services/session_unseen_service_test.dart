@@ -283,10 +283,30 @@ void main() {
       await sub.cancel();
     });
 
-    test("mark on an unknown session without a projectId is a silent no-op", () async {
+    test("markUnread on an unknown session emits a clear AND throws so the client rolls back", () async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+
       final events = <UnseenChange>[];
       final sub = service.unseenChanges.listen(events.add);
-      await service.markUnread(sessionId: "ghost", projectId: null);
+
+      await expectLater(
+        () => service.markUnread(sessionId: "ghost", projectId: "p1"),
+        throwsA(isA<SessionUnseenRowMissingException>()),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      // It still emitted the authoritative clear for other clients.
+      expect(events.where((e) => e.sessionId == "ghost").single.unseen, isFalse);
+      await sub.cancel();
+    });
+
+    test("markUnread on an unknown session without a projectId throws without emitting", () async {
+      final events = <UnseenChange>[];
+      final sub = service.unseenChanges.listen(events.add);
+      await expectLater(
+        () => service.markUnread(sessionId: "ghost", projectId: null),
+        throwsA(isA<SessionUnseenRowMissingException>()),
+      );
       await Future<void>.delayed(Duration.zero);
       expect(events, isEmpty);
       await sub.cancel();

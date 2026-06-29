@@ -7,6 +7,17 @@ import "../repositories/session_repository.dart";
 import "../repositories/session_unseen_repository.dart";
 import "session_view_tracker.dart";
 
+/// Thrown by [SessionUnseenService.markUnread] when the target session has no
+/// row (deleted / unknown). The service still emits an authoritative clear for
+/// other clients, but this is rethrown so the requesting client receives a
+/// non-2xx and rolls back its optimistic "unread" — otherwise, if it misses the
+/// clear SSE (e.g. during a reconnect), a 2xx would leave a phantom unseen row.
+class SessionUnseenRowMissingException implements Exception {
+  final String sessionId;
+
+  SessionUnseenRowMissingException({required this.sessionId});
+}
+
 /// A single emitted unseen-state change for one session, plus the recomputed
 /// project-level aggregate. The orchestrator maps this to
 /// `SesoriSseEvent.sessionUnseenChanged`.
@@ -260,8 +271,11 @@ class SessionUnseenService {
     return _serialize(sessionId, rethrowErrors: true, () async {
       final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
       if (row == null) {
+        // Emit a clear for other clients, then surface the missing row so the
+        // requesting client rolls back its optimistic unread even if it misses
+        // the clear SSE (a 2xx would otherwise leave a phantom unseen row).
         await _emitMissingRowClear(sessionId: sessionId, projectId: projectId);
-        return;
+        throw SessionUnseenRowMissingException(sessionId: sessionId);
       }
       // Force activity strictly past both the user-message and seen markers so
       // the session reliably bolds even when the user's own message is latest.

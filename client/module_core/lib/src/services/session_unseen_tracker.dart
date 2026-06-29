@@ -37,8 +37,19 @@ class SessionUnseenTracker with Disposable {
   // not discard the REST clear for its siblings.
   int _generation = 0;
   final Map<String, int> _projectLiveGeneration = {};
-  // project ID -> (session ID -> generation of its last live update).
+  // project ID -> (session ID -> generation of its last LIVE update). Bumped
+  // ONLY by live SSE events and local optimistic applies — NOT by REST
+  // reconciles. A `/sessions` reconcile uses this to keep a fresher live value
+  // over its (possibly stale) snapshot; recording REST values here would let an
+  // older overlapping REST response make a session look "live-newer" and cause a
+  // newer REST reconcile to preserve the stale value.
   final Map<String, Map<String, int>> _sessionLiveGeneration = {};
+  // project ID -> (session ID -> generation of its last MUTATION of any kind:
+  // live event, local apply, OR a REST reconcile that changed its value). Used
+  // solely by [revertLocalSessionUnseen] to detect whether anything changed the
+  // session since an optimistic apply, so a failed-request rollback never
+  // clobbers a newer authoritative value.
+  final Map<String, Map<String, int>> _sessionMutationGeneration = {};
 
   // project ID -> session IDs known to be EXCLUDED from the project aggregate
   // (archived). The bridge omits archived sessions from the aggregate, so an
@@ -173,15 +184,19 @@ class SessionUnseenTracker with Disposable {
     sessions[projectId] = merged;
     _sessionUnseen.add(sessions);
 
-    // Stamp a fresh generation ONLY for sessions whose value actually changed.
-    // This invalidates an in-flight optimistic rollback for a session that this
-    // authoritative REST reconcile updated (so the late revert becomes a no-op),
-    // while leaving an unchanged session's generation intact so a legitimate
-    // post-failure revert of THAT session still applies.
+    // Stamp the MUTATION generation (not the live one) for sessions whose value
+    // actually changed. This invalidates an in-flight optimistic rollback for a
+    // session this authoritative REST reconcile updated (the late revert becomes
+    // a no-op), while leaving an unchanged session's generation intact so a
+    // legitimate post-failure revert of THAT session still applies. It must NOT
+    // touch the live-generation map — otherwise an older overlapping REST
+    // response would make a session look live-newer and cause a newer REST
+    // reconcile (with the same captured sinceGeneration) to keep the stale value.
     final reconcileGeneration = ++_generation;
+    final mutationGenerations = _sessionMutationGeneration[projectId] ??= {};
     for (final entry in merged.entries) {
       if (existing[entry.key] != entry.value) {
-        liveGenerations[entry.key] = reconcileGeneration;
+        mutationGenerations[entry.key] = reconcileGeneration;
       }
     }
 
@@ -219,7 +234,7 @@ class SessionUnseenTracker with Disposable {
   /// recompute could wrongly clear (or, with a stale archived entry, wrongly
   /// keep) the project bold. The authoritative bridge echo settles it instead.
   ///
-  /// Returns the generation assigned to this update. Pass it to
+  /// Returns the mutation generation assigned to this update. Pass it to
   /// [revertLocalSessionUnseen] to roll back only when no newer update landed.
   int applyLocalSessionUnseen({
     required String projectId,
@@ -228,7 +243,10 @@ class SessionUnseenTracker with Disposable {
   }) {
     if (_sessionUnseen.isClosed) return _generation;
     final generation = ++_generation;
+    // A local optimistic change is both a live-style update (protect it from a
+    // stale in-flight REST snapshot) and a mutation (detectable by a rollback).
     (_sessionLiveGeneration[projectId] ??= {})[sessionId] = generation;
+    (_sessionMutationGeneration[projectId] ??= {})[sessionId] = generation;
 
     final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
     final projectSessions = Map<String, bool>.from(sessions[projectId] ?? const {});
@@ -272,11 +290,15 @@ class SessionUnseenTracker with Disposable {
     required int ifGeneration,
   }) {
     if (_sessionUnseen.isClosed) return;
-    if ((_sessionLiveGeneration[projectId]?[sessionId] ?? 0) != ifGeneration) return;
+    // Guard on the MUTATION generation: any change since the optimistic apply —
+    // a live event, another apply, OR a REST reconcile that changed this session
+    // — must block the rollback so it can't clobber a newer authoritative value.
+    if ((_sessionMutationGeneration[projectId]?[sessionId] ?? 0) != ifGeneration) return;
 
     final generation = ++_generation;
     _projectLiveGeneration[projectId] = generation;
     (_sessionLiveGeneration[projectId] ??= {})[sessionId] = generation;
+    (_sessionMutationGeneration[projectId] ??= {})[sessionId] = generation;
 
     final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
     final projectSessions = Map<String, bool>.from(sessions[projectId] ?? const {});
@@ -301,6 +323,7 @@ class SessionUnseenTracker with Disposable {
         final generation = ++_generation;
         _projectLiveGeneration[projectID] = generation;
         (_sessionLiveGeneration[projectID] ??= {})[sessionId] = generation;
+        (_sessionMutationGeneration[projectID] ??= {})[sessionId] = generation;
 
         // unseen:true together with projectHasUnseenChanges:false can only mean
         // this session is excluded from the aggregate (archived). Record it.

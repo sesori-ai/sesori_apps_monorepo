@@ -277,6 +277,61 @@ void main() {
       verify(() => viewingService.setViewingSession(sessionId)).called(1);
     });
 
+    test("a pre-background refresh does not reassert the view while a forced refresh is pending", () async {
+      final viewingService = stubbedSessionViewingService();
+      final lifecycle = FakeLifecycleSource();
+      addTearDown(lifecycle.close);
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: viewingService,
+        lifecycleSource: lifecycle,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      clearInteractions(mockSessionService);
+      clearInteractions(viewingService);
+
+      // Gate the first (pre-background) refresh so it is still in flight when the
+      // app backgrounds and resumes.
+      final gate = Completer<void>();
+      var firstGet = true;
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer((_) async {
+        if (firstGet) {
+          firstGet = false;
+          await gate.future;
+        }
+        return ApiResponse.success(
+          MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg")]),
+        );
+      });
+
+      // Start the pre-background refresh (in flight, gated).
+      mockConnectionService.emitDataMayBeStale();
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      // Background then resume → queues a forced post-resume refresh.
+      lifecycle.emitState(LifecycleState.paused);
+      lifecycle.emitState(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      // Release the gated pre-background refresh; let everything settle.
+      gate.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+
+      // The view is re-asserted by the forced post-resume refresh — exactly once,
+      // NOT additionally by the stale pre-background refresh whose snapshot could
+      // predate hidden activity.
+      verify(() => viewingService.setViewingSession(sessionId)).called(1);
+    });
+
     test("resume forces a fresh refresh rather than coalescing onto a pre-background one", () async {
       final viewingService = stubbedSessionViewingService();
       final lifecycle = FakeLifecycleSource();

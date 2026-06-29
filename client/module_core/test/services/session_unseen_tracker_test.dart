@@ -502,6 +502,40 @@ void main() {
       tracker.onDispose();
     });
 
+    test("a newer /sessions clear is not blocked by an older overlapping reconcile", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // s1 currently seen.
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": false},
+        sinceGeneration: tracker.generation,
+      );
+
+      // Two overlapping /sessions refreshes both captured this generation.
+      final sg = tracker.generation;
+
+      // The OLDER response (stale snapshot) lands first and flips s1 to unseen.
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": true},
+        sinceGeneration: sg,
+      );
+      expect(tracker.currentSessionUnseen["p1"]?["s1"], isTrue);
+
+      // The NEWER response (started after a remote mark-read) authoritatively
+      // says s1 is seen. Because REST reconciles don't pollute the live-
+      // generation map, this is not treated as older-than-a-live-update and the
+      // clear applies.
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": false},
+        sinceGeneration: sg,
+      );
+      expect(tracker.currentSessionUnseen["p1"]?["s1"], isFalse);
+      tracker.onDispose();
+    });
+
     test("a later seen event clears the session and updates the project aggregate", () async {
       final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
 
