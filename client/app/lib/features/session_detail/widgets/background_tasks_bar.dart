@@ -86,7 +86,7 @@ class _BackgroundTasksBarState extends State<BackgroundTasksBar> {
     if (widget.children.isEmpty) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 8),
       child: LayoutBuilder(
         builder: (context, constraints) {
           _cardWidth = constraints.maxWidth;

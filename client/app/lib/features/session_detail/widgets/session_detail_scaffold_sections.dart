@@ -36,7 +36,7 @@ class SessionDetailPendingBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final prego = context.prego;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0),
       child: GlassContainer(
         useOwnLayer: true,
         clipBehavior: Clip.antiAlias,
