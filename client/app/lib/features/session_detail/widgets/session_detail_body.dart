@@ -129,6 +129,10 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
       // behind the transparent bar like every other screen. Skip the auto top
       // spacer that would otherwise confine the loaded view below the bar.
       reserveBarSpace: false,
+      // The loaded view fills the viewport and the chat list owns its own
+      // (reversed) scroll, so the outer page must not scroll — otherwise a drag
+      // that starts on the pinned composer overscrolls/bounces the whole page.
+      scrollable: false,
       automaticallyImplyLeading: showLeading,
       actions: actions.isEmpty ? null : actions,
       slivers: [
