@@ -384,16 +384,24 @@ class OrchestratorSession {
           })
           .addTo(_subscriptions);
 
-      // Live re-auth: when the token provider emits a new access token while the
-      // relay is connected (supervised mode, the GUI pushed a token_update), the
-      // open WebSocket is still authenticated on the previous JWT. Drop the relay
-      // so the reconnect loop below re-authenticates on the fresh token — the same
-      // path a relay-side disconnect drives, so both triggers stay symmetric.
-      // `skip(1)` ignores the BehaviorSubject's replayed current value, which is
-      // the token connect() already used; only a genuinely new token re-auths.
+      // Live re-auth: when the token provider emits a token that differs from the
+      // one the relay socket is actually authenticated with (supervised mode, the
+      // GUI pushed a token_update), the open WebSocket is still on the previous
+      // JWT. Drop the relay so the reconnect loop below re-authenticates on the
+      // fresh token — the same path a relay-side disconnect drives, so both
+      // triggers stay symmetric.
+      //
+      // Compare against the token the socket actually used for auth
+      // ([RelayClient.lastAuthedToken]) rather than skipping the BehaviorSubject's
+      // replayed value. This (a) ignores routine unchanged pulls (e.g. metadata
+      // generation) so they don't needlessly drop a live connection, (b) breaks
+      // the feedback loop where the reconnect path's own force-pull re-emits the
+      // token it just authenticated with, and (c) still re-auths for a push that
+      // landed in the gap between connect() and this subscription, since that
+      // pushed token differs from the one connect() sent.
       _accessTokenProvider.tokenStream
-          .skip(1)
-          .listen((_) => unawaited(_reauthenticateRelay()))
+          .where((token) => token != _client.lastAuthedToken)
+          .listen((token) => unawaited(_reauthenticateRelay()))
           .addTo(_subscriptions);
     } catch (e) {
       throw Exception("failed to connect to relay: $e");
@@ -592,19 +600,30 @@ class OrchestratorSession {
     }
   }
 
-  /// Force-refreshes the access token before a relay reconnect. Returns whether a
-  /// usable token is now available: `false` means the refresher could not supply
-  /// one (in supervised mode, the GUI reported signed-out / mid-login), in which
-  /// case the caller MUST NOT reconnect — doing so would re-authenticate the relay
-  /// from a stale cached token as a signed-out user.
+  /// Force-refreshes the access token before a relay reconnect. Returns whether
+  /// the reconnect may proceed.
+  ///
+  /// Returns `false` only when the token is genuinely unavailable
+  /// ([ControlTokenUnavailableException] — in supervised mode the GUI reported
+  /// signed-out / mid-login, and the service has invalidated its cache): the
+  /// caller MUST NOT reconnect, because there is no safe token to authenticate
+  /// with. Any other refresh failure (e.g. standalone [TokenManager] hitting a
+  /// transiently-down auth-refresh endpoint) returns `true` so the reconnect
+  /// still proceeds with the existing, possibly-still-valid cached token —
+  /// preserving the pre-existing standalone resilience.
   Future<bool> _refreshAccessToken() async {
     try {
       await _tokenRefresher.getAccessToken(forceRefresh: true);
       Log.i("Access token refreshed successfully");
       return true;
-    } catch (e) {
-      Log.w("Token refresh failed: $e");
+    } on ControlTokenUnavailableException catch (e) {
+      Log.w("No access token available for reconnect: $e");
       return false;
+    } catch (e) {
+      // Transient refresh failure with a cached token still on hand: reconnect
+      // with it rather than blocking the relay until refresh recovers.
+      Log.w("Token refresh failed; reconnecting with the cached token: $e");
+      return true;
     }
   }
 

@@ -10,17 +10,6 @@ import "../auth/access_token_provider.dart";
 import "../auth/token_refresher.dart";
 import "../foundation/control_channel_client.dart";
 
-/// Thrown when the GUI cannot supply an access token over the control channel —
-/// either it replied with a null token (signed out / mid-login) or it did not
-/// reply within the request timeout. The caller surfaces and logs this once, so
-/// this path deliberately does not log it (avoids double-logging).
-class ControlTokenUnavailableException implements Exception {
-  final String reason;
-  const ControlTokenUnavailableException(this.reason);
-  @override
-  String toString() => "ControlTokenUnavailableException: $reason";
-}
-
 /// Supervised-mode access-token authority over the loopback control channel: the
 /// GUI, not an interactive terminal or the auth server's refresh endpoint, is
 /// the bridge's token source. This service is the supervised-mode counterpart of
@@ -34,10 +23,12 @@ class ControlTokenUnavailableException implements Exception {
 /// [accessToken] getter and [tokenStream] reflect it.
 ///
 /// The GUI is the authoritative token source: a pushed [ControlMessage.tokenUpdate]
-/// is adopted directly into the cache (driving [accessToken]/[tokenStream]), so the
-/// steady-state cache writer is the push, not pull ordering — there is no
-/// pull-sequence freshness heuristic. A pull still seeds the cache before any push
-/// exists (bootstrap), and the last write wins.
+/// is adopted directly into the cache (driving [accessToken]/[tokenStream]). A pull
+/// also seeds the cache, but a monotonic cache generation guards every cache
+/// mutation: a pull applies its own result only if nothing newer (a push or a
+/// later pull) mutated the cache while it was in flight. So a slow older pull can
+/// neither overwrite a newer pushed/pulled token nor clear a newer sign-out — the
+/// newest writer always wins, regardless of which response happens to arrive last.
 ///
 /// A null [ControlTokenResponse] (signed out / mid-login) invalidates the cache: the
 /// synchronous [accessToken] getter throws again until a fresh token (pull or push)
@@ -59,6 +50,12 @@ class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher 
   final Map<String, Completer<String?>> _pending = <String, Completer<String?>>{};
   late final StreamSubscription<String> _subscription;
   int _nextRequestId = 0;
+  // Monotonic counter bumped on every cache mutation (a cached token or a
+  // sign-out invalidation). A pull captures it before sending and applies its
+  // own result only if nothing newer mutated the cache meanwhile, so a slow
+  // in-flight pull can neither overwrite a newer GUI push/pull nor clear a
+  // newer sign-out. Pushes and newer pulls always win over older in-flight ones.
+  int _cacheGeneration = 0;
   // A null token_response (signed out / mid-login) sets this so the synchronous
   // accessToken getter throws even though the BehaviorSubject still holds the
   // last (now stale) value — a BehaviorSubject cannot un-emit. Cleared the next
@@ -117,6 +114,10 @@ class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher 
         "Control channel token service has been disposed.",
       );
     }
+    // Snapshot the cache generation before sending: this pull may only apply its
+    // own result (cache the token, or invalidate on null) if nothing newer — a
+    // GUI push or a later pull — mutated the cache while this one was in flight.
+    final startGeneration = _cacheGeneration;
     final id = "token-${_nextRequestId++}";
     final completer = Completer<String?>();
     _pending[id] = completer;
@@ -136,16 +137,23 @@ class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher 
         // Signed out / mid-login: invalidate any previously cached token so a
         // reconnect can't re-authenticate the relay from a stale token. The
         // GUI push (token_update) is non-null and so can never signal this.
-        _invalidateCache();
+        // Skip if a newer token was cached since this pull started — that newer
+        // token is authoritative and this stale null must not clear it.
+        if (_cacheGeneration == startGeneration) {
+          _invalidateCache();
+        }
         throw const ControlTokenUnavailableException(
           "The desktop app could not supply an access token (signed out or mid-login).",
         );
       }
-      // Seed the cache so the synchronous getter and tokenStream stay current.
-      // No pull-sequence gate: the GUI's token_update push is the authoritative
-      // steady-state writer, so the last write simply wins. A pull only seeds
-      // the cache before any push exists (bootstrap).
-      _cacheToken(accessToken);
+      // Seed the cache so the synchronous getter and tokenStream stay current,
+      // but only if nothing newer was cached while this pull was in flight: a GUI
+      // token_update push (or a later pull) is authoritative, so a slow older
+      // pull must not revert accessToken/tokenStream to a now-stale token. The
+      // caller still receives this pull's own token below.
+      if (_cacheGeneration == startGeneration) {
+        _cacheToken(accessToken);
+      }
       return accessToken;
     } on TimeoutException {
       throw const ControlTokenUnavailableException(
@@ -219,6 +227,7 @@ class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher 
   /// receive their token; only the cache write is moot mid-shutdown.
   void _cacheToken(String token) {
     if (_disposed) return;
+    _cacheGeneration++;
     _invalidated = false;
     _tokenSubject.add(token);
   }
@@ -228,6 +237,7 @@ class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher 
   /// BehaviorSubject still holds the stale value (it cannot un-emit), but the
   /// guarded getter refuses to return it.
   void _invalidateCache() {
+    _cacheGeneration++;
     _invalidated = true;
   }
 }

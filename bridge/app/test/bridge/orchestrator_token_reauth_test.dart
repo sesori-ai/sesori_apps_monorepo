@@ -65,6 +65,22 @@ void main() {
       expect(secondAuth["token"], equals("token-2"), reason: "relay re-authenticated on the new token");
     });
 
+    test("a routine pull re-emitting the same token does not drop the connection", () async {
+      final authority = _ScriptedTokenAuthority("token-1");
+      final harness = await _ReauthHarness.start(authority: authority);
+      addTearDown(harness.close);
+
+      final firstSocket = await harness.relayServer.nextClient();
+      await _firstTextMessage(firstSocket);
+
+      // A routine pull (e.g. metadata generation) re-emits the SAME token value
+      // the socket already authenticated with. This must NOT re-auth/flap the
+      // live connection.
+      authority.emit("token-1");
+      await Future<void>.delayed(const Duration(seconds: 1));
+      expect(harness.relayServer.connectedClientCount, equals(1), reason: "unchanged token must not re-auth");
+    });
+
     test("a relay drop while signed out does not reconnect with a stale token", () async {
       final authority = _ScriptedTokenAuthority("token-1");
       final harness = await _ReauthHarness.start(authority: authority);
@@ -91,6 +107,26 @@ void main() {
       final secondAuth = await _firstTextMessage(secondSocket);
       expect(secondAuth["token"], equals("token-restored"));
     });
+
+    test("a transient refresh failure still reconnects with the cached token", () async {
+      final authority = _ScriptedTokenAuthority("token-1");
+      final harness = await _ReauthHarness.start(authority: authority);
+      addTearDown(harness.close);
+
+      final firstSocket = await harness.relayServer.nextClient();
+      await _firstTextMessage(firstSocket);
+
+      // The refresher fails transiently (not a typed unavailable / sign-out), as
+      // a standalone TokenManager would when its auth-refresh endpoint is down
+      // but the cached JWT is still valid. The reconnect must still proceed using
+      // the cached token rather than deferring.
+      authority.transientFailRefresh = true;
+      await firstSocket.close();
+
+      final secondSocket = await harness.relayServer.nextClient(timeout: const Duration(seconds: 10));
+      final secondAuth = await _firstTextMessage(secondSocket);
+      expect(secondAuth["token"], equals("token-1"), reason: "reconnect uses the cached token");
+    });
   });
 }
 
@@ -107,6 +143,7 @@ class _ScriptedTokenAuthority implements AccessTokenProvider, TokenRefresher {
   final BehaviorSubject<String> _subject;
   String current;
   bool failRefresh = false;
+  bool transientFailRefresh = false;
 
   _ScriptedTokenAuthority(this.current) : _subject = BehaviorSubject<String>.seeded(current);
 
@@ -125,7 +162,15 @@ class _ScriptedTokenAuthority implements AccessTokenProvider, TokenRefresher {
   @override
   Future<String> getAccessToken({bool forceRefresh = false}) async {
     if (failRefresh) {
-      throw const _SignedOutException();
+      // Mirror the supervised service: a signed-out / mid-login GUI surfaces a
+      // typed unavailable failure (the orchestrator defers reconnect on this).
+      throw const ControlTokenUnavailableException("signed out");
+    }
+    if (transientFailRefresh) {
+      // Mirror a standalone TokenManager whose auth-refresh endpoint is
+      // transiently down while a valid cached token is still on hand. The
+      // orchestrator must reconnect with the cached token rather than defer.
+      throw const _TransientRefreshException();
     }
     return current;
   }
@@ -133,8 +178,8 @@ class _ScriptedTokenAuthority implements AccessTokenProvider, TokenRefresher {
   Future<void> dispose() => _subject.close();
 }
 
-class _SignedOutException implements Exception {
-  const _SignedOutException();
+class _TransientRefreshException implements Exception {
+  const _TransientRefreshException();
 }
 
 class _ReauthHarness {

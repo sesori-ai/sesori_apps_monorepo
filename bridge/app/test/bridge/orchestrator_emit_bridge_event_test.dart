@@ -91,7 +91,7 @@ void main() {
     );
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
-      accessTokenProvider: FakeAccessTokenProvider(""),
+      accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
@@ -228,7 +228,7 @@ void main() {
     );
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
-      accessTokenProvider: FakeAccessTokenProvider(""),
+      accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
@@ -398,7 +398,7 @@ void main() {
     );
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
-      accessTokenProvider: FakeAccessTokenProvider(""),
+      accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
 
@@ -583,7 +583,7 @@ void main() {
     );
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
-      accessTokenProvider: FakeAccessTokenProvider(""),
+      accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
@@ -708,7 +708,7 @@ void main() {
     );
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
-      accessTokenProvider: FakeAccessTokenProvider(""),
+      accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
@@ -858,7 +858,7 @@ void main() {
     );
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
-      accessTokenProvider: FakeAccessTokenProvider(""),
+      accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(

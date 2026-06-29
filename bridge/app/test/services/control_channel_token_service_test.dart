@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:convert";
 
+import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/foundation/control_channel_client.dart";
 import "package:sesori_bridge/src/services/control_channel_token_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -182,7 +183,7 @@ void main() {
       expect(service.accessToken, equals("fresh"));
     });
 
-    test("a failed newer pull does not block an older successful pull from caching", () async {
+    test("an older in-flight pull does not clear a newer sign-out invalidation", () async {
       final client = _FakeControlChannelClient();
       final service = ControlChannelTokenService(client: client);
       addTearDown(service.dispose);
@@ -195,16 +196,51 @@ void main() {
       final firstRequest = _decode(client.sentFrames[0]) as ControlTokenRequest;
       final secondRequest = _decode(client.sentFrames[1]) as ControlTokenRequest;
 
-      // The newer (second) pull fails — the GUI couldn't supply a token.
+      // The newer (second) pull resolves first with a sign-out (null), which
+      // invalidates the cache.
       client.emit(_encode(ControlMessage.tokenResponse(id: secondRequest.id, accessToken: null)));
       await expectLater(second, throwsA(isA<ControlTokenUnavailableException>()));
+      expect(() => service.accessToken, throwsStateError);
 
-      // The older (first) pull then succeeds: its valid token must still be
-      // cached even though a newer request was issued (and failed) after it.
-      client.emit(_encode(ControlMessage.tokenResponse(id: firstRequest.id, accessToken: "older-but-valid")));
-      expect(await first, equals("older-but-valid"));
+      // The older (first) pull then resolves with a token that was captured
+      // BEFORE the sign-out. Its caller still receives it, but it must NOT clear
+      // the newer invalidation — a reconnect must not re-auth from a pre-sign-out
+      // token. Only a pull issued after the sign-out (or a push) may re-cache.
+      client.emit(_encode(ControlMessage.tokenResponse(id: firstRequest.id, accessToken: "pre-sign-out")));
+      expect(await first, equals("pre-sign-out"));
       await pumpEventQueue();
-      expect(service.accessToken, equals("older-but-valid"));
+      expect(() => service.accessToken, throwsStateError);
+
+      // A fresh pull issued after the sign-out restores the cache.
+      final third = service.getAccessToken(forceRefresh: true);
+      await pumpEventQueue();
+      final thirdRequest = _decode(client.sentFrames[2]) as ControlTokenRequest;
+      client.emit(_encode(ControlMessage.tokenResponse(id: thirdRequest.id, accessToken: "fresh")));
+      await third;
+      expect(service.accessToken, equals("fresh"));
+    });
+
+    test("a pushed token_update wins over a slower older pull response", () async {
+      final client = _FakeControlChannelClient();
+      final service = ControlChannelTokenService(client: client);
+      addTearDown(service.dispose);
+
+      // A pull is issued, then the GUI pushes a fresher token before the pull's
+      // own response arrives.
+      final pull = service.getAccessToken();
+      await pumpEventQueue();
+      final pullRequest = _decode(client.sentFrames.single) as ControlTokenRequest;
+
+      client.emit(_encode(const ControlMessage.tokenUpdate(accessToken: "pushed")));
+      await pumpEventQueue();
+      expect(service.accessToken, equals("pushed"));
+
+      // The older pull now resolves: its caller still gets its token, but it must
+      // not revert the cache to the older value the push superseded.
+      client.emit(_encode(ControlMessage.tokenResponse(id: pullRequest.id, accessToken: "older-pull")));
+      expect(await pull, equals("older-pull"));
+      await pumpEventQueue();
+      expect(service.accessToken, equals("pushed"));
     });
 
     test("times out with a typed failure when no response arrives", () async {
