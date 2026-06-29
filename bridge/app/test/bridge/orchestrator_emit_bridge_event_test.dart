@@ -98,7 +98,7 @@ void main() {
     );
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
-      accessTokenProvider: FakeAccessTokenProvider(""),
+      accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
@@ -119,6 +119,7 @@ void main() {
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
       maintenanceListener: pushSubsystem.maintenanceListener,
+      accessTokenProvider: FakeAccessTokenProvider(),
       tokenRefresher: _FakeTokenRefresher(),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: FakeFailureReporter(),
@@ -252,7 +253,7 @@ void main() {
     );
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
-      accessTokenProvider: FakeAccessTokenProvider(""),
+      accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
@@ -296,6 +297,7 @@ void main() {
       pushDispatcher: pushDispatcher,
       completionListener: pushListeners.completionListener,
       maintenanceListener: pushListeners.maintenanceListener,
+      accessTokenProvider: FakeAccessTokenProvider(),
       tokenRefresher: _FakeTokenRefresher(),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: FakeFailureReporter(),
@@ -446,7 +448,7 @@ void main() {
     );
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
-      accessTokenProvider: FakeAccessTokenProvider(""),
+      accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
 
@@ -498,6 +500,7 @@ void main() {
       pushDispatcher: pushDispatcher,
       completionListener: pushListeners.completionListener,
       maintenanceListener: pushListeners.maintenanceListener,
+      accessTokenProvider: FakeAccessTokenProvider(),
       tokenRefresher: _FakeTokenRefresher(),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: FakeFailureReporter(),
@@ -650,7 +653,7 @@ void main() {
     );
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
-      accessTokenProvider: FakeAccessTokenProvider(""),
+      accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
@@ -671,6 +674,7 @@ void main() {
       pushDispatcher: pushDispatcher,
       completionListener: pushListeners.completionListener,
       maintenanceListener: pushListeners.maintenanceListener,
+      accessTokenProvider: FakeAccessTokenProvider(),
       tokenRefresher: _FakeTokenRefresher(),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: FakeFailureReporter(),
@@ -794,7 +798,7 @@ void main() {
     );
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
-      accessTokenProvider: FakeAccessTokenProvider(""),
+      accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
@@ -815,6 +819,7 @@ void main() {
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
       maintenanceListener: pushSubsystem.maintenanceListener,
+      accessTokenProvider: FakeAccessTokenProvider(),
       tokenRefresher: _FakeTokenRefresher(),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: FakeFailureReporter(),
@@ -963,7 +968,7 @@ void main() {
     );
     final relayClient = RelayClient(
       relayURL: "ws://127.0.0.1:${relayServer.port}",
-      accessTokenProvider: FakeAccessTokenProvider(""),
+      accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
@@ -984,6 +989,7 @@ void main() {
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
       maintenanceListener: pushSubsystem.maintenanceListener,
+      accessTokenProvider: FakeAccessTokenProvider(),
       tokenRefresher: _FakeTokenRefresher(),
       bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: FakeFailureReporter(),

@@ -208,6 +208,7 @@ class BridgeRuntime {
           rateLimiter: pushRateLimiter,
           telemetryBuilder: telemetryBuilder,
         ),
+        accessTokenProvider: accessTokenProvider,
         tokenRefresher: tokenRefresher,
         bridgeRegistrationService: bridgeRegistrationService,
         failureReporter: failureReporter,

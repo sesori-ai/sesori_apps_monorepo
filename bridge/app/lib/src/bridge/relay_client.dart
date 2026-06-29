@@ -25,6 +25,7 @@ class RelayClient {
   final Duration _pingInterval;
   final Duration _connectTimeout;
   IOWebSocketChannel? _channel;
+  String? _lastAuthedToken;
 
   RelayClient({
     required String relayURL,
@@ -41,6 +42,12 @@ class RelayClient {
   /// The WebSocket close code of the current connection, available once the
   /// connection has closed and until [close] or [reconnect] discards it.
   int? get closeCode => _channel?.closeCode;
+
+  /// The access token most recently sent in an auth message by [connect], or
+  /// `null` if the last connect sent no auth (empty token). Lets a live re-auth
+  /// trigger compare a freshly emitted token against the one this socket is
+  /// actually authenticated with, so it re-auths only on a real change.
+  String? get lastAuthedToken => _lastAuthedToken;
 
   Future<void> connect() async {
     final wsURL = _buildWebSocketURL(_relayURL);
@@ -71,6 +78,9 @@ class RelayClient {
         bridgeId: _bridgeIdProvider.bridgeId,
       );
       channel.sink.add(jsonEncode(authMessage.toJson()));
+      _lastAuthedToken = token;
+    } else {
+      _lastAuthedToken = null;
     }
   }
 
