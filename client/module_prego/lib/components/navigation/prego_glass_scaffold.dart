@@ -138,11 +138,6 @@ class PregoGlassScaffold extends StatefulWidget {
 class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
   final ScrollController _scrollController = ScrollController();
 
-  /// How far past the bar the scroll-edge colour fade ramps out. A little longer
-  /// than the package default (20) for a softer, smoother release of content
-  /// below the bar.
-  static const double _scrollEdgeFadeExtent = 80;
-
   /// Page glass-layer settings replicated from the showcase's
   /// `RecommendedGlassSettings.standard` (an example-only constant, not a
   /// package export).
@@ -167,6 +162,7 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
 
   @override
   Widget build(BuildContext context) {
+    final backgroundColor = widget.backgroundColor ?? context.prego.colors.bgPrimary;
     final topPad = MediaQuery.paddingOf(context).top;
     final extendBehind = widget.extendBodyBehindBar;
     final inline = widget.inlineTitle;
@@ -230,9 +226,9 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    context.prego.colors.bgPrimary.withValues(alpha: 0.9),
-                    context.prego.colors.bgPrimary.withValues(alpha: 0.7),
-                    context.prego.colors.bgPrimary.withValues(alpha: 0),
+                    backgroundColor.withValues(alpha: 0.9),
+                    backgroundColor.withValues(alpha: 0.7),
+                    backgroundColor.withValues(alpha: 0),
                   ],
                   stops: const [0, 0.8, 1.0],
                   begin: Alignment.topCenter,
@@ -247,13 +243,12 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
     ];
 
     return GlassScaffold(
-      backgroundColor: widget.backgroundColor ?? context.prego.colors.bgPrimary,
+      backgroundColor: backgroundColor,
       settings: _pageSettings,
       statusBarStyle: GlassStatusBarStyle.auto,
       extendBody: extendBehind,
-      // Extend the package's colour fade past the bar by the same amount the
-      // blur ramps out over, so the two scroll-edge effects share one boundary.
-      topEdgeFadeExtent: _scrollEdgeFadeExtent,
+      topEdgeFade: false, // Disable the top edge fade -- we use our own custom gradient
+      bottomEdgeFade: false, // Disable the bottom edge fade -- we use our own custom gradient
       floatingActionButton: widget.floatingActionButton,
       bodyOverlays: bodyOverlays.isEmpty ? null : bodyOverlays,
       appBar: topNav,
