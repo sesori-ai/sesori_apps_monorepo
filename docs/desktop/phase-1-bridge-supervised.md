@@ -239,12 +239,17 @@ runs **under the startup mutex**, which reinforces PR 1.12.
     longer be masked by a later non-forced pull (the deferred PR-1.4 review edge).
   - **No stale token on reconnect after sign-out.** A null `token_response`
     (signed out / mid-login) leaves PR 1.4's cache holding the previous token, and
-    `RelayClient.connect` reads that snapshot on reconnect. The reconnect/re-auth
-    path must obtain a *current* token (subscribe to `tokenStream` for live
-    re-auth and/or pull on reconnect) instead of blindly reusing the stale cached
-    `accessToken`, so the relay never re-authenticates as a signed-out user. (Note:
-    `token_update` carries a non-null token only — it cannot signal sign-out; a
-    hard logout is the `unregister_and_exit` path in PR 1.11.)
+    `RelayClient.connect` reads that snapshot on reconnect. Subscribing to
+    `tokenStream` is **not** sufficient for this case: it is a `BehaviorSubject`
+    that replays the last (stale) value, and `token_update` is non-null only, so it
+    can never push a "no token" / sign-out signal. The reconnect path must
+    therefore obtain a **fresh** token by pulling on reconnect, **and/or** the
+    cache must be invalidated on a null `token_response` — these are required, not
+    interchangeable with a stream subscription — so the relay never
+    re-authenticates as a signed-out user. (`tokenStream` subscription remains the
+    mechanism for the *live* re-auth case — adopting a `token_update` while
+    connected — which is separate. A hard logout is the `unregister_and_exit` path
+    in PR 1.11.)
 - **Risk:** Med (silent-auth-failure if wrong). **Size:** M.
 - **Acceptance:** with a **live** relay connection (not just stream
   propagation), a pushed token update re-authenticates without losing the
