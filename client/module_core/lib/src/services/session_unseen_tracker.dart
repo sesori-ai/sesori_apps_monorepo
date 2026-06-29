@@ -208,6 +208,15 @@ class SessionUnseenTracker with Disposable {
         mutationGenerations[entry.key] = reconcileGeneration;
       }
     }
+    // A session that WAS tracked but is now absent from this authoritative
+    // reconcile (and wasn't carried forward) has been deleted/removed — stamp its
+    // mutation generation too, so a late failed-request rollback can't resurrect
+    // stale unseen state for a row REST already proved is gone.
+    for (final id in existing.keys) {
+      if (!merged.containsKey(id)) {
+        mutationGenerations[id] = reconcileGeneration;
+      }
+    }
 
     final projects = Map<String, bool>.from(_projectUnseen.value);
     // If a newer live aggregate arrived since the fetch began (e.g. an archive

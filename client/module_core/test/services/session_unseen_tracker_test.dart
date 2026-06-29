@@ -693,6 +693,39 @@ void main() {
       tracker.onDispose();
     });
 
+    test("a reconcile that omits a deleted session blocks a stale rollback for it", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // s1 tracked as unseen.
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": true},
+        sinceGeneration: tracker.generation,
+      );
+
+      // Optimistically mark s1 read (in-flight request).
+      final g = tracker.applyLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: false);
+
+      // An authoritative /sessions reconcile now omits s1 (it was deleted).
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: const {},
+        sinceGeneration: g,
+      );
+
+      // The request then fails: the rollback to the pre-click unseen:true must be
+      // a no-op — REST already proved s1 is gone, so it can't be resurrected.
+      tracker.revertLocalSessionUnseen(
+        projectId: "p1",
+        sessionId: "s1",
+        unseen: true,
+        projectUnseen: true,
+        ifGeneration: g,
+      );
+      expect(tracker.currentSessionUnseen["p1"]?["s1"], anyOf(isNull, isFalse));
+      tracker.onDispose();
+    });
+
     test("a later seen event clears the session and updates the project aggregate", () async {
       final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
 
