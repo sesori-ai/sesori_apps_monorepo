@@ -43,6 +43,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   late final StreamSubscription<void> _staleSubscription;
   late final StreamSubscription<LifecycleState> _lifecycleSubscription;
   bool _wasPaused = false;
+  bool _loadInFlight = false;
   bool _resumedDuringLoad = false;
   late final StreamingTextBuffer _streamingBuffer;
   Future<void>? _activeRefresh;
@@ -114,9 +115,15 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   Future<void> _loadMessages({required bool isReload}) async {
     emit(const SessionDetailState.loading());
-    final result = isReload
-        ? await _loadService.reload(sessionId: _sessionId, projectId: _projectId)
-        : await _loadService.load(sessionId: _sessionId, projectId: _projectId);
+    _loadInFlight = true;
+    final SessionDetailLoadResult result;
+    try {
+      result = isReload
+          ? await _loadService.reload(sessionId: _sessionId, projectId: _projectId)
+          : await _loadService.load(sessionId: _sessionId, projectId: _projectId);
+    } finally {
+      _loadInFlight = false;
+    }
     if (isClosed) return;
 
     switch (result) {
@@ -862,13 +869,20 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       case LifecycleState.resumed:
         if (!_wasPaused) return;
         _wasPaused = false;
-        // If the initial transcript is still loading, the in-flight load may
-        // predate hidden activity. Flag it so _loadMessages refreshes before
-        // declaring the view instead of acting on a possibly-stale snapshot.
-        if (this.state is! SessionDetailLoaded) {
+        // If an initial load is actually IN FLIGHT, its response may predate
+        // hidden activity. Flag it so _loadMessages refreshes before declaring
+        // the view instead of acting on a possibly-stale snapshot. Only an
+        // in-flight load matters: a failed/waiting state with no load running
+        // (e.g. the user will retry after resume) should NOT be deferred, or its
+        // fresh load would render loaded-but-not-declared and miss in-view
+        // activity until a second forced refresh.
+        if (_loadInFlight) {
           _resumedDuringLoad = true;
           return;
         }
+        // Not loaded and not loading (failed/waiting): nothing to re-assert yet;
+        // the next load/retry declares the view on completion.
+        if (this.state is! SessionDetailLoaded) return;
         // On every resume, refresh so the transcript is current, then the
         // refresh re-asserts the viewing session once fresh content renders.
         // This covers short resumes that don't emit dataMayBeStale: the

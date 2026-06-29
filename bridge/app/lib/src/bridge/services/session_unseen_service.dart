@@ -261,7 +261,10 @@ class SessionUnseenService {
       final now = _nextTimestamp();
       final seenAt = (row.activityAt ?? 0) > now ? row.activityAt! : now;
       await _unseenRepository.markSessionSeen(sessionId: sessionId, at: seenAt);
-      await _emit(sessionId: sessionId, projectId: row.projectId);
+      // Propagate emit failures: the client clears only the row optimistically
+      // and leaves the project aggregate to this echo, so a 2xx without the
+      // emitted aggregate could leave the project bold until a full refresh.
+      await _computeAndEmit(sessionId: sessionId, projectId: row.projectId);
     });
   }
 
@@ -281,7 +284,8 @@ class SessionUnseenService {
       // the session reliably bolds even when the user's own message is latest.
       final at = _activityTimestamp(userMessageAt: row.userMessageAt, seenAt: row.seenAt);
       await _unseenRepository.markSessionUnseen(sessionId: sessionId, at: at);
-      await _emit(sessionId: sessionId, projectId: row.projectId);
+      // Propagate emit failures (user-initiated request); see markRead.
+      await _computeAndEmit(sessionId: sessionId, projectId: row.projectId);
     });
   }
 

@@ -300,6 +300,42 @@ void main() {
       await sub.cancel();
     });
 
+    test("markRead on an EXISTING row propagates an emit failure to the caller", () async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSessionsIfMissing(
+        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+      );
+      final failing = SessionUnseenService(
+        unseenRepository: SessionUnseenRepository(
+          sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
+          db: db,
+          calculator: const SessionUnseenCalculator(),
+        ),
+        projectRepository: _ThrowingProjectRepository(),
+        sessionRepository: SessionRepository(
+          plugin: _FakePlugin(),
+          sessionDao: db.sessionDao,
+          pullRequestRepository: PullRequestRepository(
+            pullRequestDao: db.pullRequestDao,
+            projectsDao: db.projectsDao,
+          ),
+          unseenCalculator: const SessionUnseenCalculator(),
+        ),
+        viewTracker: SessionViewTracker(),
+        now: () => clock,
+      );
+      addTearDown(failing.dispose);
+
+      // The row exists and is marked seen, but the aggregate emit throws — the
+      // user-initiated mark-read must surface the failure (not report success
+      // without the client ever receiving the authoritative aggregate).
+      await expectLater(
+        () => failing.markRead(sessionId: "s1", projectId: "p1"),
+        throwsA(anything),
+      );
+    });
+
     test("markRead on an unknown session propagates an emit failure to the caller", () async {
       // A service whose project repository throws when recomputing the aggregate.
       final failing = SessionUnseenService(

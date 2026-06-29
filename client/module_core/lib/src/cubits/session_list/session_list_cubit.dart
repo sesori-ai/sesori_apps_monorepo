@@ -555,19 +555,20 @@ class SessionListCubit extends Cubit<SessionListState> {
       return false;
     }
 
-    if (isClosed) return false;
-
     return switch (response) {
       SuccessResponse() => () {
         // Settle the project aggregate locally so a deleted last-unseen session
         // un-bolds its project immediately, without depending on the bridge's
         // fire-and-forget unseen echo (which can be missed across a reconnect
-        // after the 2xx delete response).
+        // after the 2xx delete response). The tracker is app-scoped and outlives
+        // this cubit, so the mutation must run even if the cubit closed before
+        // the response arrived; only the UI emit is gated on isClosed.
         _sessionUnseenTracker.removeSession(projectId: _projectId, sessionId: sessionId);
-        _onUnseenUpdated();
+        if (!isClosed) _onUnseenUpdated();
         return true;
       }(),
       ErrorResponse(:final error) => () {
+        if (isClosed) return false;
         loge("Failed to delete session: ${error.toString()}");
         _reinsertSession(originalSession);
         return false;

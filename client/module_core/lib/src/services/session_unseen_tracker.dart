@@ -165,15 +165,15 @@ class SessionUnseenTracker with Disposable {
     }
     // Reconcile archived rows too — so the archived-list display reflects a live
     // read echo instead of falling back to the stale REST `unseen` — but keep
-    // them EXCLUDED from the project aggregate. A newer live update (e.g. an
-    // unarchive) supersedes the archived classification: drop the exclusion then.
+    // them EXCLUDED from the project aggregate. The /sessions list is the
+    // authoritative source of archive state, and a live unseen echo (read OR
+    // unread) never changes whether a row is archived, so these stay excluded
+    // regardless of their live generation. An actual unarchive surfaces the row
+    // as active in a later /sessions reconcile, which un-excludes it via the loop
+    // above.
     for (final entry in archivedUnseenBySessionId.entries) {
-      final live = keptLiveValue(id: entry.key, restValue: entry.value);
-      if (live) {
-        excluded?.remove(entry.key);
-      } else {
-        (_excludedSessions[projectId] ??= <String>{}).add(entry.key);
-      }
+      keptLiveValue(id: entry.key, restValue: entry.value);
+      (_excludedSessions[projectId] ??= <String>{}).add(entry.key);
     }
     // Carry forward a session that got a newer live update but is absent from
     // the (older) REST snapshot — but only when the project's latest live
@@ -217,8 +217,13 @@ class SessionUnseenTracker with Disposable {
     // the AUTHORITATIVE REST snapshot only (archived rows are already omitted
     // from it) — never over `merged`, so a carried-forward absent session (whose
     // archival the client can't detect) can't inflate the project aggregate.
+    //
+    // Do NOT stamp `_projectLiveGeneration` here: the authoritative REST source
+    // for the project aggregate is `/projects` (see [reconcileProjectUnseen]),
+    // not `/sessions`. Stamping it from a `/sessions` reconcile would let an
+    // older `/sessions` response that lands first block a newer `/projects`
+    // clear (it would look generation-newer), leaving the project bold.
     if ((_projectLiveGeneration[projectId] ?? 0) <= sinceGeneration) {
-      _projectLiveGeneration[projectId] = reconcileGeneration;
       projects[projectId] = unseenBySessionId.values.any((unseen) => unseen);
       _projectUnseen.add(projects);
     }
@@ -286,11 +291,16 @@ class SessionUnseenTracker with Disposable {
   /// live `session.unseen_changed` (or another action) that arrived while the
   /// request was in flight.
   ///
-  /// Restores both the per-session [unseen] value and the project aggregate to
-  /// [projectUnseen] (the value before the optimistic apply). The aggregate
-  /// restore matters because an optimistic mark-UNREAD that bolded a previously
-  /// un-bold project leaves no bridge echo when the request fails, so without
-  /// this the project would stay bold indefinitely.
+  /// Restores the per-session [unseen] value, and the project aggregate to
+  /// [projectUnseen] (the value before the optimistic apply) — but the aggregate
+  /// restore happens ONLY when this apply's change is still the latest
+  /// project-level update. The aggregate restore matters because an optimistic
+  /// mark-UNREAD that bolded a previously un-bold project leaves no bridge echo
+  /// when the request fails, so without it the project would stay bold. But if
+  /// another session in the same project received a live/REST update meanwhile,
+  /// restoring the captured (stale) aggregate would clobber that newer state, so
+  /// in that case the per-session value is rolled back without touching the
+  /// aggregate.
   void revertLocalSessionUnseen({
     required String projectId,
     required String sessionId,
@@ -304,8 +314,13 @@ class SessionUnseenTracker with Disposable {
     // — must block the rollback so it can't clobber a newer authoritative value.
     if ((_sessionMutationGeneration[projectId]?[sessionId] ?? 0) != ifGeneration) return;
 
+    // Only restore the project aggregate if THIS apply is still the latest
+    // project-level change (a mark-unread bold sets _projectLiveGeneration to its
+    // generation; a mark-read leaves it untouched). If another session advanced
+    // it since, leave the aggregate alone — the newer state wins.
+    final restoreAggregate = (_projectLiveGeneration[projectId] ?? 0) == ifGeneration;
+
     final generation = ++_generation;
-    _projectLiveGeneration[projectId] = generation;
     (_sessionLiveGeneration[projectId] ??= {})[sessionId] = generation;
     (_sessionMutationGeneration[projectId] ??= {})[sessionId] = generation;
 
@@ -315,9 +330,12 @@ class SessionUnseenTracker with Disposable {
     sessions[projectId] = projectSessions;
     _sessionUnseen.add(sessions);
 
-    final projects = Map<String, bool>.from(_projectUnseen.value);
-    projects[projectId] = projectUnseen;
-    _projectUnseen.add(projects);
+    if (restoreAggregate) {
+      _projectLiveGeneration[projectId] = generation;
+      final projects = Map<String, bool>.from(_projectUnseen.value);
+      projects[projectId] = projectUnseen;
+      _projectUnseen.add(projects);
+    }
   }
 
   /// Removes [sessionId] after a confirmed local deletion and recomputes the
