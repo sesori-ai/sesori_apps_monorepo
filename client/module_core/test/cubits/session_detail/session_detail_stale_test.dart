@@ -563,6 +563,70 @@ void main() {
       verify(() => viewingService.setViewingSession(sessionId)).called(greaterThanOrEqualTo(1));
     });
 
+    test("a resume during two overlapping loads defers BOTH (neither declares the view on a stale snapshot)", () async {
+      final viewingService = stubbedSessionViewingService();
+      final lifecycle = FakeLifecycleSource();
+      addTearDown(lifecycle.close);
+
+      // Call 1 (initial load) and call 2 (an overlapping reload) are each gated
+      // so both are in flight when the app resumes. Call 3+ (the forced refresh
+      // each deferred load triggers) fails, so if either load wrongly declares
+      // the view on its possibly-stale snapshot instead of deferring, the test
+      // catches it via setViewingSession.
+      final gateA = Completer<void>();
+      final gateB = Completer<void>();
+      var call = 0;
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer((_) async {
+        call++;
+        if (call == 1) {
+          await gateA.future;
+          return ApiResponse.success(
+            MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-a")]),
+          );
+        }
+        if (call == 2) {
+          await gateB.future;
+          return ApiResponse.success(
+            MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-b")]),
+          );
+        }
+        return ApiResponse.error(ApiError.generic());
+      });
+
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: viewingService,
+        lifecycleSource: lifecycle,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      // Initial load A in flight; start an overlapping reload B.
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      unawaited(cubit.reload());
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      // Resume while BOTH A and B are in flight: each must be deferred.
+      lifecycle.emitState(LifecycleState.paused);
+      lifecycle.emitState(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      // Release both loads. Each is resumed-during, so each forces a fresh
+      // refresh (which fails) rather than declaring the view on its stale
+      // snapshot — so the view is never declared.
+      gateA.complete();
+      gateB.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+
+      verifyNever(() => viewingService.setViewingSession(sessionId));
+    });
+
     test("foreground relay reconnect re-asserts the view without a stale signal", () async {
       final viewingService = stubbedSessionViewingService();
       final cubit = SessionDetailCubit(

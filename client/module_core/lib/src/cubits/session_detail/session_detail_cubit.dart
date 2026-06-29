@@ -43,13 +43,19 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   late final StreamSubscription<void> _staleSubscription;
   late final StreamSubscription<LifecycleState> _lifecycleSubscription;
   bool _wasPaused = false;
-  // Count of in-flight _loadMessages calls (not a bool) so overlapping loads are
-  // tracked correctly: the first completion must not report "no load running"
-  // while another is still in flight, which would let a resume skip the
-  // stale-snapshot defer for the load that is genuinely still running.
-  int _loadsInFlight = 0;
-  bool get _loadInFlight => _loadsInFlight > 0;
-  bool _resumedDuringLoad = false;
+  int _nextLoadId = 0;
+  // Ids of _loadMessages calls currently executing. A set (not a counter) so
+  // overlapping loads stay individually identifiable for the resume-defer logic
+  // below; non-empty means at least one load is in flight.
+  final Set<int> _activeLoadIds = <int>{};
+  bool get _loadInFlight => _activeLoadIds.isNotEmpty;
+  // Ids of loads that were in flight when the app resumed from background. Such a
+  // load's snapshot may predate activity that arrived while hidden, so it must
+  // refresh before declaring the view instead of acting on a possibly-stale
+  // result. Tracked per-load (not a single bool) so a resume during overlapping
+  // loads defers EACH in-flight load, and the defer can't leak into a later
+  // fresh load that started after the resume.
+  final Set<int> _resumedLoadIds = <int>{};
   late final StreamingTextBuffer _streamingBuffer;
   Future<void>? _activeRefresh;
   int _refreshGeneration = 0;
@@ -120,25 +126,27 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   Future<void> _loadMessages({required bool isReload}) async {
     emit(const SessionDetailState.loading());
-    _loadsInFlight++;
+    final loadId = _nextLoadId++;
+    _activeLoadIds.add(loadId);
     final SessionDetailLoadResult result;
     try {
       result = isReload
           ? await _loadService.reload(sessionId: _sessionId, projectId: _projectId)
           : await _loadService.load(sessionId: _sessionId, projectId: _projectId);
     } finally {
-      _loadsInFlight--;
+      _activeLoadIds.remove(loadId);
     }
     if (isClosed) return;
 
-    // This load owns the resume-defer flag: capture and clear it now so the
-    // outcome below decides based on it, but a LATER fresh load (e.g. a retry
-    // after a Failed/WaitingForConnection outcome that completes while the app
-    // is already visible) doesn't inherit a stale defer and wrongly skip
-    // declaring the view. Reading-then-clearing is atomic here — no lifecycle
-    // callback can interleave between the await above and this synchronous code.
-    final resumedDuringThisLoad = _resumedDuringLoad;
-    _resumedDuringLoad = false;
+    // Did the app resume while THIS specific load was in flight? If so its
+    // snapshot may predate activity that arrived while hidden, so refresh before
+    // declaring the view. Scoped to this load's id (not a shared bool) so an
+    // overlapping load carries its own defer and a Failed/WaitingForConnection
+    // outcome can't leak the defer into a later fresh load. The
+    // WaitingForConnection branch intentionally does NOT read this: it produced
+    // no snapshot, and the retry it starts begins after the resume, so that
+    // retry is genuinely fresh and declares the view normally.
+    final resumedDuringThisLoad = _resumedLoadIds.remove(loadId);
 
     switch (result) {
       case SessionDetailLoadResultLoaded(:final snapshot):
@@ -882,15 +890,15 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       case LifecycleState.resumed:
         if (!_wasPaused) return;
         _wasPaused = false;
-        // If an initial load is actually IN FLIGHT, its response may predate
-        // hidden activity. Flag it so _loadMessages refreshes before declaring
-        // the view instead of acting on a possibly-stale snapshot. Only an
-        // in-flight load matters: a failed/waiting state with no load running
-        // (e.g. the user will retry after resume) should NOT be deferred, or its
-        // fresh load would render loaded-but-not-declared and miss in-view
-        // activity until a second forced refresh.
+        // If any load is actually IN FLIGHT, its response may predate hidden
+        // activity. Flag EVERY in-flight load so each refreshes before declaring
+        // the view instead of acting on a possibly-stale snapshot. Only in-flight
+        // loads matter: a failed/waiting state with no load running (e.g. the
+        // user will retry after resume) should NOT be deferred, or its fresh load
+        // would render loaded-but-not-declared and miss in-view activity until a
+        // second forced refresh.
         if (_loadInFlight) {
-          _resumedDuringLoad = true;
+          _resumedLoadIds.addAll(_activeLoadIds);
           return;
         }
         // Not loaded and not loading (failed/waiting): nothing to re-assert yet;
