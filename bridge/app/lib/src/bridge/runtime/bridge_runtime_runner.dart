@@ -30,6 +30,7 @@ import "package:sesori_shared/sesori_shared.dart" show DeviceInfo;
 import "../../api/bridge_settings_api.dart";
 import "../../api/control_secret_api.dart";
 import "../../auth/access_token_provider.dart";
+import "../../auth/bridge_id_storage.dart";
 import "../../auth/bridge_registration_api.dart";
 import "../../auth/bridge_registration_repository.dart";
 import "../../auth/bridge_registration_service.dart";
@@ -421,8 +422,8 @@ class BridgeRuntimeRunner {
           ),
         ),
         tokenRefresher: tokenRefresher,
-        loadTokens: loadTokens,
-        saveTokens: saveTokens,
+        bridgeIdStorage: BridgeIdStorage(filePath: bridgeIdPath()),
+        readLegacyBridgeId: readLegacyBridgeId,
         hostName: io.Platform.localHostname,
         platform: BridgeRegistrationService.currentPlatformName(),
       );

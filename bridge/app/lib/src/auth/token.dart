@@ -2,22 +2,18 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 import 'package:sesori_shared/sesori_shared.dart';
 
 /// TokenData holds authentication tokens for the Sesori Bridge.
 class TokenData {
   final String accessToken;
   final String refreshToken;
-
-  /// The bridge id assigned by the auth server's `/auth/bridges` endpoint,
-  /// or null when this bridge has not registered yet.
-  final String? bridgeId;
   final AuthProvider lastProvider;
 
   TokenData({
     required this.accessToken,
     required this.refreshToken,
-    required this.bridgeId,
     required this.lastProvider,
   });
 
@@ -35,26 +31,49 @@ class TokenData {
     return TokenData(
       accessToken: json['accessToken'] as String,
       refreshToken: json['refreshToken'] as String,
-      bridgeId: json['bridgeId'] as String?,
       lastProvider: provider,
     );
   }
 
   /// Converts the TokenData instance to a JSON map.
   Map<String, dynamic> toJson() {
-    final json = <String, dynamic>{
+    return <String, dynamic>{
       'accessToken': accessToken,
       'refreshToken': refreshToken,
+      'lastProvider': lastProvider.key,
     };
-    if (bridgeId != null) {
-      json['bridgeId'] = bridgeId;
-    }
-    json['lastProvider'] = lastProvider.key;
-    return json;
   }
 }
 
 String tokenPath() => '${sesoriDataDirectory()}/token.json';
+
+String bridgeIdPath() => '${sesoriDataDirectory()}/bridge_id';
+
+/// Reads the bridge id persisted by an older bridge inside `token.json`.
+///
+/// Earlier versions stored the server-minted bridge id alongside the tokens.
+/// It now lives in its own file, so this one-shot reader lets a freshly
+/// upgraded bridge adopt the legacy id once instead of re-registering and
+/// minting a duplicate entry. Returns null when the token file is absent,
+/// corrupt, or has no `bridgeId` key.
+Future<String?> readLegacyBridgeId() async {
+  final file = File(tokenPath());
+
+  try {
+    final json = jsonDecodeMap(await file.readAsString());
+    return json['bridgeId'] as String?;
+  } on PathNotFoundException {
+    // No legacy token file — nothing to adopt. This is the expected path on a
+    // fresh install and in supervised mode, so it is not worth logging.
+    return null;
+  } on FileSystemException catch (error) {
+    Log.w("Could not read legacy bridge id; skipping adoption", error);
+    return null;
+  } on FormatException catch (error) {
+    Log.w("Legacy token file is corrupt; skipping bridge-id adoption", error);
+    return null;
+  }
+}
 
 /// Saves the token data to the token file.
 /// Creates the directory structure if it doesn't exist.

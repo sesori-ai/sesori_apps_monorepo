@@ -278,12 +278,25 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   file-backed storage that lives **inside the `auth/` subsystem** (NOT new
   top-level `api/`+`repositories/` classes — that would make `auth/` depend back
   on the core repository layer; see ADR A6). Supervised registration uses the
-  supplied token; preserve carry-over semantics. Use **synchronous** filesystem
-  checks (`existsSync`/`statSync`) for the `avoid_slow_async_io` lint.
+  supplied token. Use **synchronous** filesystem checks (`existsSync`) for the
+  `avoid_slow_async_io` lint.
 - **Risk:** Med (touches `TokenData` persistence). **Size:** M.
 - **Acceptance:** supervised registers + persists bridgeId; standalone token.json
-  path unchanged.
-- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+  path unchanged (only the `bridgeId` field is removed).
+- **Aristotle:** plan ☑ · impl ☑. **Findings:** impl-review (3 rounds): (1)
+  `readLegacyBridgeId()` initially swallowed `FileSystemException`/`FormatException`
+  silently — now logs via `Log.w(message, error)` and treats `PathNotFoundException`
+  as the expected no-legacy path; (2) `BridgeIdStorage.write` used a positional
+  arg — made named `required`; (3) `FakeBridgeIdStorage` test fake used a
+  positional constructor param — made named. **Deltas:** since `bridgeId` now
+  owns its own file, the cross-writer races between token refresh and
+  registration disappear, so the carry-over re-read gymnastics in
+  `TokenManager._doRefresh`, `BridgeRuntimeAuthService._loginAndPersist`, and
+  `BridgeRegistrationService._persistBridgeId` were **deleted** rather than
+  ported. Legacy standalone users keep their id via one-time adoption from
+  `token.json` (read once when the new file is absent), implemented as an
+  injected `readLegacyBridgeId` seam so `auth/` never learns about `token.json`
+  internals from the service side.
 
 ## PR 1.7 — Exit-code restart (`86`) + bypass successor-spawn
 - **Goal:** In supervised mode `handleRestartHandoff()` flushes the

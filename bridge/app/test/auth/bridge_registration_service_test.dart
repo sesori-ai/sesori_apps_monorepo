@@ -1,7 +1,6 @@
 import "package:sesori_bridge/src/auth/bridge_registration_api.dart";
 import "package:sesori_bridge/src/auth/bridge_registration_repository.dart";
 import "package:sesori_bridge/src/auth/bridge_registration_service.dart";
-import "package:sesori_bridge/src/auth/token.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -10,24 +9,26 @@ import "../helpers/test_helpers.dart";
 
 void main() {
   late FakeBridgeRegistrationRepository repository;
-  late InMemoryTokenStore tokenStore;
+  late FakeBridgeIdStorage bridgeIdStorage;
   late _RecordingTokenRefresher tokenRefresher;
+  late _RecordingLegacyReader legacyReader;
   late BridgeRegistrationService service;
+
+  BridgeRegistrationService buildService() => BridgeRegistrationService(
+    repository: repository,
+    tokenRefresher: tokenRefresher,
+    bridgeIdStorage: bridgeIdStorage,
+    readLegacyBridgeId: legacyReader.read,
+    hostName: "dev-laptop",
+    platform: "macos",
+  );
 
   setUp(() {
     repository = FakeBridgeRegistrationRepository();
-    tokenStore = InMemoryTokenStore(
-      TokenData(accessToken: "access", refreshToken: "refresh", bridgeId: null, lastProvider: AuthProvider.github),
-    );
+    bridgeIdStorage = FakeBridgeIdStorage();
     tokenRefresher = _RecordingTokenRefresher();
-    service = BridgeRegistrationService(
-      repository: repository,
-      tokenRefresher: tokenRefresher,
-      loadTokens: tokenStore.load,
-      saveTokens: tokenStore.save,
-      hostName: "dev-laptop",
-      platform: "macos",
-    );
+    legacyReader = _RecordingLegacyReader();
+    service = buildService();
   });
 
   group("BridgeRegistrationService.ensureRegistered", () {
@@ -36,48 +37,44 @@ void main() {
 
       expect(repository.registeredBridgeIds, equals([null]));
       expect(service.bridgeId, equals("br_test1234"));
-      expect(tokenStore.tokens!.bridgeId, equals("br_test1234"));
-      expect(tokenStore.tokens!.accessToken, equals("access"));
-      expect(tokenStore.tokens!.refreshToken, equals("refresh"));
-      expect(tokenStore.tokens!.lastProvider, equals(AuthProvider.github));
+      expect(bridgeIdStorage.bridgeId, equals("br_test1234"));
     });
 
     test("posts the persisted bridge id when one exists", () async {
-      tokenStore.tokens = TokenData(
-        accessToken: "access",
-        refreshToken: "refresh",
-        bridgeId: "br_persisted1",
-        lastProvider: AuthProvider.github,
-      );
+      bridgeIdStorage.bridgeId = "br_persisted1";
       repository.nextBridgeId = "br_persisted1";
 
       await service.ensureRegistered();
 
       expect(repository.registeredBridgeIds, equals(["br_persisted1"]));
       expect(service.bridgeId, equals("br_persisted1"));
-      expect(tokenStore.tokens!.bridgeId, equals("br_persisted1"));
+      expect(bridgeIdStorage.bridgeId, equals("br_persisted1"));
+      expect(legacyReader.callCount, equals(0));
     });
 
-    test("does not clobber tokens rotated and persisted mid-registration (401-retry path)", () async {
-      // TokenManager persists a rotated access/refresh pair to the token file
-      // when it force-refreshes; persisting the bridge id afterwards must keep
-      // those rotated credentials, not a snapshot from before the refresh.
-      repository.registerError = BridgeRegistrationException(statusCode: 401, body: "expired");
-      tokenRefresher.onForceRefresh = () {
-        repository.registerError = null;
-        tokenStore.tokens = TokenData(
-          accessToken: "rotated-access",
-          refreshToken: "rotated-refresh",
-          bridgeId: null,
-          lastProvider: AuthProvider.github,
-        );
-      };
+    test("adopts a legacy bridge id from token.json when storage is empty", () async {
+      legacyReader.value = "br_legacy999";
+      repository.nextBridgeId = "br_legacy999";
 
       await service.ensureRegistered();
 
-      expect(tokenStore.tokens!.bridgeId, equals("br_test1234"));
-      expect(tokenStore.tokens!.accessToken, equals("rotated-access"));
-      expect(tokenStore.tokens!.refreshToken, equals("rotated-refresh"));
+      expect(legacyReader.callCount, equals(1));
+      expect(repository.registeredBridgeIds, equals(["br_legacy999"]));
+      expect(service.bridgeId, equals("br_legacy999"));
+      // The adopted id is written through to storage during adoption.
+      expect(bridgeIdStorage.bridgeId, equals("br_legacy999"));
+    });
+
+    test("attempts legacy adoption at most once per process", () async {
+      legacyReader.value = null;
+      repository.registerError = BridgeRegistrationException(statusCode: 500, body: "boom");
+
+      await expectLater(service.ensureRegistered(), throwsA(isA<BridgeRegistrationException>()));
+
+      repository.registerError = null;
+      await service.ensureRegistered();
+
+      expect(legacyReader.callCount, equals(1));
     });
 
     test("is memoized per process — a second call does not re-register", () async {
@@ -137,22 +134,13 @@ void main() {
       await service.handleBridgeRevoked();
 
       expect(service.bridgeId, isNull);
-      expect(tokenStore.tokens!.bridgeId, isNull);
+      expect(bridgeIdStorage.bridgeId, isNull);
 
       await service.ensureRegistered();
 
       expect(repository.registeredBridgeIds, equals([null, null]));
       expect(service.bridgeId, equals("br_fresh5678"));
-      expect(tokenStore.tokens!.bridgeId, equals("br_fresh5678"));
-    });
-
-    test("still resets the memoization when the token file cannot be updated", () async {
-      await service.ensureRegistered();
-      tokenStore.tokens = null; // Loading now throws FileSystemException.
-
-      await service.handleBridgeRevoked();
-
-      expect(service.bridgeId, isNull);
+      expect(bridgeIdStorage.bridgeId, equals("br_fresh5678"));
     });
   });
 
@@ -164,12 +152,7 @@ void main() {
     });
 
     test("deletes the persisted bridge id on the auth server", () async {
-      tokenStore.tokens = TokenData(
-        accessToken: "access",
-        refreshToken: "refresh",
-        bridgeId: "br_persisted1",
-        lastProvider: AuthProvider.github,
-      );
+      bridgeIdStorage.bridgeId = "br_persisted1";
 
       await service.unregister();
 
@@ -177,18 +160,13 @@ void main() {
     });
 
     test("treats a 404 (already revoked) as success", () async {
-      tokenStore.tokens = TokenData(
-        accessToken: "access",
-        refreshToken: "refresh",
-        bridgeId: "br_persisted1",
-        lastProvider: AuthProvider.github,
-      );
+      bridgeIdStorage.bridgeId = "br_persisted1";
       final failingRepository = _UnregisterFailingRepository(statusCode: 404);
       final failingService = BridgeRegistrationService(
         repository: failingRepository,
         tokenRefresher: tokenRefresher,
-        loadTokens: tokenStore.load,
-        saveTokens: tokenStore.save,
+        bridgeIdStorage: bridgeIdStorage,
+        readLegacyBridgeId: legacyReader.read,
         hostName: "dev-laptop",
         platform: "macos",
       );
@@ -197,18 +175,13 @@ void main() {
     });
 
     test("rethrows non-404 failures", () async {
-      tokenStore.tokens = TokenData(
-        accessToken: "access",
-        refreshToken: "refresh",
-        bridgeId: "br_persisted1",
-        lastProvider: AuthProvider.github,
-      );
+      bridgeIdStorage.bridgeId = "br_persisted1";
       final failingRepository = _UnregisterFailingRepository(statusCode: 500);
       final failingService = BridgeRegistrationService(
         repository: failingRepository,
         tokenRefresher: tokenRefresher,
-        loadTokens: tokenStore.load,
-        saveTokens: tokenStore.save,
+        bridgeIdStorage: bridgeIdStorage,
+        readLegacyBridgeId: legacyReader.read,
         hostName: "dev-laptop",
         platform: "macos",
       );
@@ -233,6 +206,16 @@ class _RecordingTokenRefresher implements TokenRefresher {
       return "refreshed-token";
     }
     return "access-token";
+  }
+}
+
+class _RecordingLegacyReader {
+  String? value;
+  int callCount = 0;
+
+  Future<String?> read() async {
+    callCount += 1;
+    return value;
   }
 }
 

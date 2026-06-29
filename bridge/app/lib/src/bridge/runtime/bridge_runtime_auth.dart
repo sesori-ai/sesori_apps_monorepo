@@ -84,7 +84,6 @@ class BridgeRuntimeAuthService {
           final tokensToSave = TokenData(
             accessToken: validation.accessToken,
             refreshToken: validation.refreshToken,
-            bridgeId: storedTokens.bridgeId,
             lastProvider: storedTokens.lastProvider,
           );
           await _saveTokens(tokensToSave);
@@ -153,30 +152,9 @@ class BridgeRuntimeAuthService {
         oAuthSessionToken = null;
     }
 
-    // A fresh login response never carries a bridge id, so carry over the one
-    // persisted by a previous registration. Otherwise an interactive re-login
-    // (e.g. expired refresh token) would wipe it and the next registration
-    // would mint a duplicate bridge entry. Carrying it across an account
-    // switch is safe: registration is idempotent on (userId, bridgeId), and a
-    // bridge id not owned by the new account just gets a fresh mint.
-    String? existingBridgeId;
-    try {
-      final existingTokens = await _loadTokens();
-      existingBridgeId = existingTokens.bridgeId;
-    } on PathNotFoundException {
-      // Token file missing — no previous bridge id to carry over.
-      existingBridgeId = null;
-    } on FileSystemException {
-      rethrow;
-    } on FormatException {
-      // Token file corrupt — no previous bridge id to carry over.
-      existingBridgeId = null;
-    }
-
     final tokensToSave = TokenData(
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
-      bridgeId: tokens.bridgeId ?? existingBridgeId,
       lastProvider: provider,
     );
     await _saveTokens(tokensToSave);

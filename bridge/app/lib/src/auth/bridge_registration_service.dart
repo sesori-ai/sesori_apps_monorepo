@@ -1,11 +1,9 @@
 import "dart:io";
 
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
-
 import "bridge_id_provider.dart";
+import "bridge_id_storage.dart";
 import "bridge_registration_api.dart";
 import "bridge_registration_repository.dart";
-import "token.dart";
 import "token_refresher.dart";
 
 /// Registers this bridge with the auth server and tracks the assigned
@@ -17,25 +15,26 @@ import "token_refresher.dart";
 class BridgeRegistrationService implements BridgeIdProvider {
   final BridgeRegistrationRepository _repository;
   final TokenRefresher _tokenRefresher;
-  final Future<TokenData> Function() _loadTokens;
-  final Future<void> Function(TokenData) _saveTokens;
+  final BridgeIdStorage _bridgeIdStorage;
+  final Future<String?> Function() _readLegacyBridgeId;
   final String _hostName;
   final String _platform;
 
   bool _registered = false;
+  bool _legacyAdoptionAttempted = false;
   String? _bridgeId;
 
   BridgeRegistrationService({
     required BridgeRegistrationRepository repository,
     required TokenRefresher tokenRefresher,
-    required Future<TokenData> Function() loadTokens,
-    required Future<void> Function(TokenData) saveTokens,
+    required BridgeIdStorage bridgeIdStorage,
+    required Future<String?> Function() readLegacyBridgeId,
     required String hostName,
     required String platform,
   }) : _repository = repository,
        _tokenRefresher = tokenRefresher,
-       _loadTokens = loadTokens,
-       _saveTokens = saveTokens,
+       _bridgeIdStorage = bridgeIdStorage,
+       _readLegacyBridgeId = readLegacyBridgeId,
        _hostName = sanitizeBridgeName(hostName),
        _platform = platform;
 
@@ -61,7 +60,7 @@ class BridgeRegistrationService implements BridgeIdProvider {
   /// Ensures this bridge is registered with the auth server.
   ///
   /// Posts the persisted bridge id (if any) so the server updates the
-  /// existing registration; the returned id is persisted to the token file.
+  /// existing registration; the returned id is persisted to its file.
   /// Throws on failure so the caller can fail the connect attempt and retry
   /// on its existing backoff.
   Future<void> ensureRegistered() async {
@@ -69,19 +68,19 @@ class BridgeRegistrationService implements BridgeIdProvider {
       return;
     }
 
-    final tokens = await _loadTokens();
+    final existingId = await _bridgeIdStorage.read() ?? await _adoptLegacyBridgeId();
     final summary = await _withAccessTokenRetry(
       (accessToken) => _repository.register(
         name: _hostName,
         platform: _platform,
-        bridgeId: tokens.bridgeId,
+        bridgeId: existingId,
         accessToken: accessToken,
       ),
     );
 
     _bridgeId = summary.id;
-    if (tokens.bridgeId != summary.id) {
-      await _persistBridgeId(summary.id);
+    if (existingId != summary.id) {
+      await _bridgeIdStorage.write(bridgeId: summary.id);
     }
     _registered = true;
   }
@@ -95,13 +94,7 @@ class BridgeRegistrationService implements BridgeIdProvider {
   Future<void> handleBridgeRevoked() async {
     _registered = false;
     _bridgeId = null;
-    try {
-      await _persistBridgeId(null);
-    } on Object catch (e) {
-      // A stale persisted id self-heals: re-registering with a revoked id
-      // makes the server mint a fresh one.
-      Log.w("[bridge-registration] failed to clear persisted bridge id: $e");
-    }
+    await _bridgeIdStorage.clear();
   }
 
   /// Removes this bridge's registration on the auth server.
@@ -109,8 +102,7 @@ class BridgeRegistrationService implements BridgeIdProvider {
   /// Does nothing when no bridge id is persisted. A 404 (already revoked)
   /// counts as success; any other failure is rethrown.
   Future<void> unregister() async {
-    final tokens = await _loadTokens();
-    final bridgeId = tokens.bridgeId;
+    final bridgeId = await _bridgeIdStorage.read();
     if (bridgeId == null) {
       return;
     }
@@ -126,6 +118,25 @@ class BridgeRegistrationService implements BridgeIdProvider {
     }
   }
 
+  /// Adopts the bridge id an older bridge persisted inside `token.json`, once.
+  ///
+  /// Runs only when [BridgeIdStorage] is empty (a fresh install or an upgrade
+  /// before the first registration) and at most once per process. Writing the
+  /// adopted id through to storage means subsequent calls read it from there
+  /// and never touch the legacy file again.
+  Future<String?> _adoptLegacyBridgeId() async {
+    if (_legacyAdoptionAttempted) {
+      return null;
+    }
+    _legacyAdoptionAttempted = true;
+
+    final legacy = await _readLegacyBridgeId();
+    if (legacy != null) {
+      await _bridgeIdStorage.write(bridgeId: legacy);
+    }
+    return legacy;
+  }
+
   Future<T> _withAccessTokenRetry<T>(Future<T> Function(String accessToken) action) async {
     final accessToken = await _tokenRefresher.getAccessToken();
     try {
@@ -137,21 +148,5 @@ class BridgeRegistrationService implements BridgeIdProvider {
       final refreshedToken = await _tokenRefresher.getAccessToken(forceRefresh: true);
       return action(refreshedToken);
     }
-  }
-
-  // Always re-reads the token file: the token refresher persists a rotated
-  // access/refresh pair mid-registration (e.g. on the 401-retry path), so a
-  // snapshot from before the register call would write stale credentials
-  // back to disk.
-  Future<void> _persistBridgeId(String? bridgeId) async {
-    final tokens = await _loadTokens();
-    await _saveTokens(
-      TokenData(
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-        bridgeId: bridgeId,
-        lastProvider: tokens.lastProvider,
-      ),
-    );
   }
 }

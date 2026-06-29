@@ -4,7 +4,6 @@ import "dart:io";
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/auth/bridge_registration_api.dart";
 import "package:sesori_bridge/src/auth/bridge_registration_service.dart";
-import "package:sesori_bridge/src/auth/token.dart";
 import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
@@ -68,7 +67,7 @@ void main() {
       final authMessage = await _firstTextMessage(bridgeSocket);
 
       expect(repository.registeredBridgeIds, equals([null]));
-      expect(harness.tokenStore.tokens!.bridgeId, equals("br_first001"));
+      expect(harness.bridgeIdStorage.bridgeId, equals("br_first001"));
       expect(authMessage["type"], equals("auth"));
       expect(authMessage["role"], equals("bridge"));
       expect(authMessage["bridgeId"], equals("br_first001"));
@@ -109,7 +108,7 @@ void main() {
         equals([null, null]),
         reason: "the revoked bridge id must not be re-posted",
       );
-      expect(harness.tokenStore.tokens!.bridgeId, equals("br_second002"));
+      expect(harness.bridgeIdStorage.bridgeId, equals("br_second002"));
       expect(authMessage["bridgeId"], equals("br_second002"));
     });
 
@@ -161,7 +160,7 @@ Future<void> _waitFor(bool Function() condition, {required String reason}) async
 
 class _RegistrationHarness {
   final FakeBridgePlugin plugin;
-  final InMemoryTokenStore tokenStore;
+  final FakeBridgeIdStorage bridgeIdStorage;
   final OrchestratorSession session;
   final Future<void> runFuture;
   final _CountingRelayServer relayServer;
@@ -169,7 +168,7 @@ class _RegistrationHarness {
 
   _RegistrationHarness._({
     required this.plugin,
-    required this.tokenStore,
+    required this.bridgeIdStorage,
     required this.session,
     required this.runFuture,
     required this.relayServer,
@@ -182,14 +181,12 @@ class _RegistrationHarness {
     final relayServer = await _CountingRelayServer.start();
     final database = createTestDatabase();
     final plugin = FakeBridgePlugin();
-    final tokenStore = InMemoryTokenStore(
-      TokenData(accessToken: "access", refreshToken: "refresh", bridgeId: null, lastProvider: AuthProvider.github),
-    );
+    final bridgeIdStorage = FakeBridgeIdStorage();
     final registrationService = BridgeRegistrationService(
       repository: repository,
       tokenRefresher: FakeTokenRefresher(),
-      loadTokens: tokenStore.load,
-      saveTokens: tokenStore.save,
+      bridgeIdStorage: bridgeIdStorage,
+      readLegacyBridgeId: () async => null,
       hostName: "test-host",
       platform: "macos",
     );
@@ -296,7 +293,7 @@ class _RegistrationHarness {
 
     return _RegistrationHarness._(
       plugin: plugin,
-      tokenStore: tokenStore,
+      bridgeIdStorage: bridgeIdStorage,
       session: session,
       runFuture: runFuture,
       relayServer: relayServer,
