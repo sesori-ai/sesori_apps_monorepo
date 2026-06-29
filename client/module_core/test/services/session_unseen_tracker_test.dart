@@ -739,5 +739,152 @@ void main() {
       });
       tracker.onDispose();
     });
+
+    test("a failed mark-unread rollback does not clobber a newer /sessions aggregate", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // p1 starts not bold (its only known session is seen).
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": false},
+        sinceGeneration: tracker.generation,
+      );
+      final prior = tracker.currentProjectUnseen["p1"] ?? false;
+      expect(prior, isFalse);
+
+      // Optimistically mark s1 unread → bolds the project.
+      final g = tracker.applyLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: true);
+      expect(tracker.currentProjectUnseen["p1"], isTrue);
+
+      // An authoritative /sessions reconcile (started after the apply) lands
+      // while the request is still in flight. It keeps s1 unseen but ALSO reports
+      // a different session s2 as genuinely unseen, so the project is legitimately
+      // bold from s2. The aggregate VALUE stays true, but it is now re-established
+      // by this authoritative snapshot (not by s1's optimistic apply).
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": true, "s2": true},
+        sinceGeneration: g,
+      );
+      expect(tracker.currentProjectUnseen["p1"], isTrue);
+
+      // s1's request then fails → rollback. s1 rolls back, but the project must
+      // NOT be cleared back to the stale pre-optimistic `false` — s2 keeps it
+      // bold. (A value-only change check would miss this because the aggregate
+      // stayed true; the rollback would wrongly clear it.)
+      tracker.revertLocalSessionUnseen(
+        projectId: "p1",
+        sessionId: "s1",
+        unseen: false,
+        projectUnseen: prior,
+        ifGeneration: g,
+      );
+      expect(tracker.currentProjectUnseen["p1"], isTrue);
+      tracker.onDispose();
+    });
+
+    test("a stale /sessions snapshot does not drop a newer live archive exclusion", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // s1 active and unseen; project bold.
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": true},
+        sinceGeneration: tracker.generation,
+      );
+
+      // A /sessions fetch begins (its snapshot still lists s1 as active).
+      final gen = tracker.generation;
+
+      // While in flight, s1 is archived live: the bridge emits unseen:true with
+      // projectHasUnseenChanges:false (archived rows don't count), which excludes
+      // s1 and clears the project aggregate.
+      events.add(unseenEvent(projectID: "p1", sessionId: "s1", unseen: true, projectHasUnseenChanges: false));
+      await Future<void>.delayed(Duration.zero);
+      expect(tracker.currentProjectUnseen["p1"], isFalse);
+
+      // The stale snapshot lands listing s1 as active. It must NOT drop the newer
+      // exclusion, or marking s1 unread below would re-bold the project off an
+      // archived row.
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": true},
+        sinceGeneration: gen,
+      );
+
+      // Marking the still-archived s1 unread must NOT bold the project.
+      tracker.applyLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: true);
+      expect(tracker.currentProjectUnseen["p1"], isFalse);
+      tracker.onDispose();
+    });
+
+    test("settleArchiveState un-bolds the project when the last unseen session is archived", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": true},
+        sinceGeneration: tracker.generation,
+      );
+      expect(tracker.currentProjectUnseen["p1"], isTrue);
+
+      tracker.settleArchiveState(projectId: "p1", sessionId: "s1", archived: true, unseen: null);
+      expect(tracker.currentProjectUnseen["p1"], isFalse);
+      tracker.onDispose();
+    });
+
+    test("settleArchiveState keeps the project bold when another unseen session remains", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": true, "s2": true},
+        sinceGeneration: tracker.generation,
+      );
+      tracker.settleArchiveState(projectId: "p1", sessionId: "s1", archived: true, unseen: null);
+      expect(tracker.currentProjectUnseen["p1"], isTrue);
+      tracker.onDispose();
+    });
+
+    test("settleArchiveState re-bolds the project when an unseen session is unarchived", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+      // s1 archived + excluded; project not bold.
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: const {},
+        archivedUnseenBySessionId: {"s1": true},
+        sinceGeneration: tracker.generation,
+      );
+      expect(tracker.currentProjectUnseen["p1"] ?? false, isFalse);
+
+      // Unarchive s1 (still unseen) → re-include in the aggregate and re-bold.
+      tracker.settleArchiveState(projectId: "p1", sessionId: "s1", archived: false, unseen: true);
+      expect(tracker.currentProjectUnseen["p1"], isTrue);
+      expect(tracker.currentSessionUnseen["p1"]?["s1"], isTrue);
+      tracker.onDispose();
+    });
+
+    test("an in-flight stale reconcile cannot undo an archive settle", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+      // s1 unseen, project bold. A /sessions fetch begins.
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": true},
+        sinceGeneration: tracker.generation,
+      );
+      final gen = tracker.generation;
+
+      // User archives s1 → settle un-bolds the project.
+      tracker.settleArchiveState(projectId: "p1", sessionId: "s1", archived: true, unseen: null);
+      expect(tracker.currentProjectUnseen["p1"], isFalse);
+
+      // The stale /sessions snapshot (started before the archive) still lists s1
+      // as active+unseen — it must not re-bold the project.
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": true},
+        sinceGeneration: gen,
+      );
+      expect(tracker.currentProjectUnseen["p1"], isFalse);
+      tracker.onDispose();
+    });
   });
 }

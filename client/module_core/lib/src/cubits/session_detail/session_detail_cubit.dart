@@ -43,7 +43,12 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   late final StreamSubscription<void> _staleSubscription;
   late final StreamSubscription<LifecycleState> _lifecycleSubscription;
   bool _wasPaused = false;
-  bool _loadInFlight = false;
+  // Count of in-flight _loadMessages calls (not a bool) so overlapping loads are
+  // tracked correctly: the first completion must not report "no load running"
+  // while another is still in flight, which would let a resume skip the
+  // stale-snapshot defer for the load that is genuinely still running.
+  int _loadsInFlight = 0;
+  bool get _loadInFlight => _loadsInFlight > 0;
   bool _resumedDuringLoad = false;
   late final StreamingTextBuffer _streamingBuffer;
   Future<void>? _activeRefresh;
@@ -115,28 +120,36 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   Future<void> _loadMessages({required bool isReload}) async {
     emit(const SessionDetailState.loading());
-    _loadInFlight = true;
+    _loadsInFlight++;
     final SessionDetailLoadResult result;
     try {
       result = isReload
           ? await _loadService.reload(sessionId: _sessionId, projectId: _projectId)
           : await _loadService.load(sessionId: _sessionId, projectId: _projectId);
     } finally {
-      _loadInFlight = false;
+      _loadsInFlight--;
     }
     if (isClosed) return;
+
+    // This load owns the resume-defer flag: capture and clear it now so the
+    // outcome below decides based on it, but a LATER fresh load (e.g. a retry
+    // after a Failed/WaitingForConnection outcome that completes while the app
+    // is already visible) doesn't inherit a stale defer and wrongly skip
+    // declaring the view. Reading-then-clearing is atomic here — no lifecycle
+    // callback can interleave between the await above and this synchronous code.
+    final resumedDuringThisLoad = _resumedDuringLoad;
+    _resumedDuringLoad = false;
 
     switch (result) {
       case SessionDetailLoadResultLoaded(:final snapshot):
         _waitingForConnection = false;
         emit(_buildLoadedState(snapshot: snapshot));
-        if (_resumedDuringLoad) {
+        if (resumedDuringThisLoad) {
           // The app was backgrounded/resumed while this load was in flight, so
           // the response may predate activity that arrived while hidden. Don't
           // declare the view on this possibly-stale snapshot; refresh first and
           // let the refresh re-assert the view once fresh content renders (or
           // defer to the reconnect path when offline).
-          _resumedDuringLoad = false;
           if (_isConnected) {
             _forceFreshRefresh();
           } else {

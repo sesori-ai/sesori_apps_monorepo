@@ -1851,5 +1851,88 @@ void main() {
       expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?["s1"], isTrue);
       expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isTrue);
     });
+
+    test("markSessionSeen reverts the app-scoped tracker even when the cubit closed mid-flight", () async {
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      when(
+        () => mockProjectService.listSessions(projectId: projectId, waitForPrData: any(named: "waitForPrData")),
+      ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
+      final markCompleter = Completer<ApiResponse<void>>();
+      when(
+        () => mockSessionService.markSessionSeen(sessionId: "s1", read: true, projectId: any(named: "projectId")),
+      ).thenAnswer((_) => markCompleter.future);
+
+      final cubit = buildCubit();
+      await Future<void>.delayed(Duration.zero);
+      fakeSessionUnseenTracker.emitSessionUnseen({
+        projectId: {"s1": true},
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      // Start the mark-read, then navigate away (close the cubit) before the
+      // response arrives.
+      final pending = cubit.markSessionSeen(sessionId: "s1", read: true);
+      await cubit.close();
+      // The request now fails. The tracker is app-scoped and outlives the cubit,
+      // so the optimistic clear must still roll back to unseen — otherwise the
+      // row stays phantom-cleared with no echo to settle it.
+      markCompleter.complete(ApiResponse.error(ApiError.generic()));
+      await pending;
+      await Future<void>.delayed(Duration.zero);
+
+      expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?["s1"], isTrue);
+    });
+
+    test("archiveSession settles the tracker so a missed echo can't keep the project bold", () async {
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      when(
+        () => mockProjectService.listSessions(projectId: projectId, waitForPrData: any(named: "waitForPrData")),
+      ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
+      when(
+        () => mockSessionService.archiveSession(
+          sessionId: "s1",
+          deleteWorktree: any(named: "deleteWorktree"),
+          deleteBranch: any(named: "deleteBranch"),
+          force: any(named: "force"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s1")));
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+      // Project bold from the only unseen session s1.
+      fakeSessionUnseenTracker.emitSessionUnseen({
+        projectId: {"s1": true},
+      });
+      fakeSessionUnseenTracker.emitProjectUnseen({projectId: true});
+      await Future<void>.delayed(Duration.zero);
+
+      await cubit.archiveSession(sessionId: "s1", deleteWorktree: false, deleteBranch: false, force: false);
+      await Future<void>.delayed(Duration.zero);
+
+      // Archiving the last unseen session must clear the project bold locally,
+      // without waiting for the fire-and-forget unseen echo.
+      expect(fakeSessionUnseenTracker.currentProjectUnseen[projectId], isFalse);
+    });
+
+    test("unarchiveSession re-includes the row in the tracker aggregate", () async {
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      when(
+        () => mockProjectService.listSessions(projectId: projectId, waitForPrData: any(named: "waitForPrData")),
+      ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
+      when(() => mockSessionService.unarchiveSession(sessionId: "s1")).thenAnswer(
+        (_) async => ApiResponse.success(testSession(id: "s1", unseen: true)),
+      );
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+      await cubit.unarchiveSession("s1");
+      await Future<void>.delayed(Duration.zero);
+
+      // The unarchived row is unseen and now counts toward the project aggregate.
+      expect(fakeSessionUnseenTracker.currentProjectUnseen[projectId], isTrue);
+      expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?["s1"], isTrue);
+    });
   });
 }

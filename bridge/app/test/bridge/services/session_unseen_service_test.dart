@@ -300,11 +300,16 @@ void main() {
       await sub.cancel();
     });
 
-    test("markRead on an EXISTING row propagates an emit failure to the caller", () async {
+    test("markRead on an EXISTING row succeeds even when the aggregate emit throws", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
         sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
       );
+      // Bold the row so mark-read has a real effect.
+      clock = 600;
+      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      expect(await unseen("s1"), isTrue);
+
       final failing = SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
           sessionDao: db.sessionDao,
@@ -327,13 +332,50 @@ void main() {
       );
       addTearDown(failing.dispose);
 
-      // The row exists and is marked seen, but the aggregate emit throws — the
-      // user-initiated mark-read must surface the failure (not report success
-      // without the client ever receiving the authoritative aggregate).
-      await expectLater(
-        () => failing.markRead(sessionId: "s1", projectId: "p1"),
-        throwsA(anything),
+      // The row write commits, so the user-initiated mark-read SUCCEEDS even
+      // though the aggregate emit throws. Failing the request would make the
+      // client roll back its optimistic clear while the row is already seen
+      // (client bold vs server seen) until the next refresh. The emit failure is
+      // swallowed + logged; the committed row reflects the user's action.
+      clock = 700;
+      await failing.markRead(sessionId: "s1", projectId: "p1");
+      expect(await unseen("s1"), isFalse);
+    });
+
+    test("markUnread on an EXISTING row succeeds even when the aggregate emit throws", () async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSessionsIfMissing(
+        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
       );
+      expect(await unseen("s1"), isFalse);
+
+      final failing = SessionUnseenService(
+        unseenRepository: SessionUnseenRepository(
+          sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
+          db: db,
+          calculator: const SessionUnseenCalculator(),
+        ),
+        projectRepository: _ThrowingProjectRepository(),
+        sessionRepository: SessionRepository(
+          plugin: _FakePlugin(),
+          sessionDao: db.sessionDao,
+          pullRequestRepository: PullRequestRepository(
+            pullRequestDao: db.pullRequestDao,
+            projectsDao: db.projectsDao,
+          ),
+          unseenCalculator: const SessionUnseenCalculator(),
+        ),
+        viewTracker: SessionViewTracker(),
+        now: () => clock,
+      );
+      addTearDown(failing.dispose);
+
+      // The unread write commits, so the request SUCCEEDS even though the
+      // aggregate emit throws; the row already reflects the user's action.
+      clock = 700;
+      await failing.markUnread(sessionId: "s1", projectId: "p1");
+      expect(await unseen("s1"), isTrue);
     });
 
     test("markRead on an unknown session propagates an emit failure to the caller", () async {

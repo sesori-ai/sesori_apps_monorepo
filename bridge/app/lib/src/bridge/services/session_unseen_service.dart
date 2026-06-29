@@ -261,10 +261,14 @@ class SessionUnseenService {
       final now = _nextTimestamp();
       final seenAt = (row.activityAt ?? 0) > now ? row.activityAt! : now;
       await _unseenRepository.markSessionSeen(sessionId: sessionId, at: seenAt);
-      // Propagate emit failures: the client clears only the row optimistically
-      // and leaves the project aggregate to this echo, so a 2xx without the
-      // emitted aggregate could leave the project bold until a full refresh.
-      await _computeAndEmit(sessionId: sessionId, projectId: row.projectId);
+      // The row mutation has committed, so the request has succeeded. The
+      // aggregate SSE is a best-effort notification: do NOT propagate its
+      // failure, or the client would roll back its optimistic clear while the
+      // row is already seen, diverging (client bold vs server seen) until the
+      // next refresh. The client's per-session clear is already correct and the
+      // project aggregate self-heals on the next /projects reconcile. (The
+      // missing-row path above still propagates: nothing was written there.)
+      await _emit(sessionId: sessionId, projectId: row.projectId);
     });
   }
 
@@ -284,8 +288,10 @@ class SessionUnseenService {
       // the session reliably bolds even when the user's own message is latest.
       final at = _activityTimestamp(userMessageAt: row.userMessageAt, seenAt: row.seenAt);
       await _unseenRepository.markSessionUnseen(sessionId: sessionId, at: at);
-      // Propagate emit failures (user-initiated request); see markRead.
-      await _computeAndEmit(sessionId: sessionId, projectId: row.projectId);
+      // The unread write has committed, so the request succeeded; the aggregate
+      // SSE is best-effort. Don't propagate its failure (see markRead) — the
+      // committed row already reflects the user's action.
+      await _emit(sessionId: sessionId, projectId: row.projectId);
     });
   }
 

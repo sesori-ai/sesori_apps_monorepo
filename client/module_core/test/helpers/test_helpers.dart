@@ -189,6 +189,36 @@ class FakeSessionUnseenTracker extends Mock implements SessionUnseenTracker {
     _projectUnseen.add(projects);
   }
 
+  final Set<String> _excluded = {};
+
+  @override
+  void settleArchiveState({
+    required String projectId,
+    required String sessionId,
+    required bool archived,
+    required bool? unseen,
+  }) {
+    final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
+    final projectSessions = Map<String, bool>.from(sessions[projectId] ?? const {});
+    if (unseen != null) projectSessions[sessionId] = unseen;
+    sessions[projectId] = projectSessions;
+    _sessionUnseen.add(sessions);
+
+    final key = "$projectId|$sessionId";
+    if (archived) {
+      _excluded.add(key);
+    } else {
+      _excluded.remove(key);
+    }
+
+    final projects = Map<String, bool>.from(_projectUnseen.value);
+    projects[projectId] = projectSessions.entries.any(
+      (e) => e.value && !_excluded.contains("$projectId|${e.key}"),
+    );
+    _projectUnseen.add(projects);
+    ++_fakeGeneration;
+  }
+
   void emitProjectUnseen(Map<String, bool> unseen) => _projectUnseen.add(unseen);
 
   void emitSessionUnseen(Map<String, Map<String, bool>> unseen) => _sessionUnseen.add(unseen);
@@ -310,7 +340,7 @@ Project testProject({String? id, String? path, String? name}) {
   });
 }
 
-Session testSession({String? id, String? title, DateTime? archivedAt}) {
+Session testSession({String? id, String? title, DateTime? archivedAt, bool unseen = false}) {
   return Session(
     id: id ?? "session-1",
     projectID: "project-1",
@@ -325,6 +355,7 @@ Session testSession({String? id, String? title, DateTime? archivedAt}) {
       archived: archivedAt?.millisecondsSinceEpoch,
     ),
     promptDefaults: null,
+    unseen: unseen,
   );
 }
 

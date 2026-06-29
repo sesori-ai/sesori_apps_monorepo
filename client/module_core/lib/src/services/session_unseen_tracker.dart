@@ -50,6 +50,16 @@ class SessionUnseenTracker with Disposable {
   // session since an optimistic apply, so a failed-request rollback never
   // clobbers a newer authoritative value.
   final Map<String, Map<String, int>> _sessionMutationGeneration = {};
+  // project ID -> generation of its last AGGREGATE mutation of any kind: a live
+  // event, a local apply that bolded it, a /sessions reconcile that recomputed
+  // it, a /projects reconcile, or a remove/archive settle. The project-level
+  // analogue of [_sessionMutationGeneration], used solely by
+  // [revertLocalSessionUnseen] to decide whether restoring the pre-optimistic
+  // aggregate is still safe. Unlike [_projectLiveGeneration] this IS bumped by a
+  // /sessions aggregate recompute (which deliberately leaves the live generation
+  // untouched), so a failed mark-unread rollback can't clobber a newer
+  // /sessions-derived aggregate.
+  final Map<String, int> _projectMutationGeneration = {};
 
   // project ID -> session IDs known to be EXCLUDED from the project aggregate
   // (archived). The bridge omits archived sessions from the aggregate, so an
@@ -105,6 +115,7 @@ class SessionUnseenTracker with Disposable {
       // by waitForPrData and started before an archive/read) can't later
       // recompute this aggregate back from its stale session snapshot.
       _projectLiveGeneration[entry.key] = appliedGeneration;
+      _projectMutationGeneration[entry.key] = appliedGeneration;
       projects[entry.key] = entry.value;
       changed = true;
     }
@@ -159,8 +170,14 @@ class SessionUnseenTracker with Disposable {
 
     for (final entry in unseenBySessionId.entries) {
       // A session present (active) in the authoritative /sessions list is not
-      // archived, so it no longer counts as excluded.
-      excluded?.remove(entry.key);
+      // archived, so it no longer counts as excluded — UNLESS a newer live
+      // update (an archive event after this fetch began) added the exclusion.
+      // A snapshot started before that archive must not drop the fresher
+      // exclusion, or marking the still-archived row unread could locally
+      // re-bold the project. Mirror keptLiveValue's live-vs-snapshot guard.
+      if ((liveGenerations[entry.key] ?? 0) <= sinceGeneration) {
+        excluded?.remove(entry.key);
+      }
       keptLiveValue(id: entry.key, restValue: entry.value);
     }
     // Reconcile archived rows too — so the archived-list display reflects a live
@@ -233,6 +250,16 @@ class SessionUnseenTracker with Disposable {
     // older `/sessions` response that lands first block a newer `/projects`
     // clear (it would look generation-newer), leaving the project bold.
     if ((_projectLiveGeneration[projectId] ?? 0) <= sinceGeneration) {
+      // Stamp the project MUTATION generation (not the live one) on EVERY
+      // recompute, even when the resulting value is unchanged: this authoritative
+      // /sessions snapshot re-establishes the aggregate, so a failed mark-unread
+      // rollback keyed to an older generation must not restore the stale
+      // pre-optimistic value over it. The value can stay `true` while its
+      // justification shifts from the optimistic session to a different
+      // genuinely-unseen one, so a value-only check would miss that and let the
+      // rollback wrongly clear the project. Mirrors the per-session mutation
+      // stamping above; the live generation stays untouched (see the note above).
+      _projectMutationGeneration[projectId] = reconcileGeneration;
       projects[projectId] = unseenBySessionId.values.any((unseen) => unseen);
       _projectUnseen.add(projects);
     }
@@ -287,6 +314,7 @@ class SessionUnseenTracker with Disposable {
     final isExcluded = _excludedSessions[projectId]?.contains(sessionId) ?? false;
     if (unseen && !isExcluded) {
       _projectLiveGeneration[projectId] = generation;
+      _projectMutationGeneration[projectId] = generation;
       final projects = Map<String, bool>.from(_projectUnseen.value);
       projects[projectId] = true;
       _projectUnseen.add(projects);
@@ -324,10 +352,13 @@ class SessionUnseenTracker with Disposable {
     if ((_sessionMutationGeneration[projectId]?[sessionId] ?? 0) != ifGeneration) return;
 
     // Only restore the project aggregate if THIS apply is still the latest
-    // project-level change (a mark-unread bold sets _projectLiveGeneration to its
-    // generation; a mark-read leaves it untouched). If another session advanced
-    // it since, leave the aggregate alone — the newer state wins.
-    final restoreAggregate = (_projectLiveGeneration[projectId] ?? 0) == ifGeneration;
+    // project-level change (a mark-unread bold stamps _projectMutationGeneration
+    // with its generation; a mark-read leaves it untouched). If anything advanced
+    // it since — a live event, another apply, OR a /sessions reconcile that
+    // recomputed the aggregate — leave it alone; the newer state wins. Guarding
+    // on the MUTATION generation (not the live one) is required because a
+    // /sessions recompute deliberately does not touch _projectLiveGeneration.
+    final restoreAggregate = (_projectMutationGeneration[projectId] ?? 0) == ifGeneration;
 
     final generation = ++_generation;
     (_sessionLiveGeneration[projectId] ??= {})[sessionId] = generation;
@@ -341,6 +372,7 @@ class SessionUnseenTracker with Disposable {
 
     if (restoreAggregate) {
       _projectLiveGeneration[projectId] = generation;
+      _projectMutationGeneration[projectId] = generation;
       final projects = Map<String, bool>.from(_projectUnseen.value);
       projects[projectId] = projectUnseen;
       _projectUnseen.add(projects);
@@ -361,7 +393,9 @@ class SessionUnseenTracker with Disposable {
     // Advance the project generation so an in-flight /projects or /sessions
     // reconcile whose sinceGeneration predates the delete can't reapply a
     // snapshot that still includes the deleted session and undo this un-bold.
-    _projectLiveGeneration[projectId] = ++_generation;
+    final generation = ++_generation;
+    _projectLiveGeneration[projectId] = generation;
+    _projectMutationGeneration[projectId] = generation;
     _sessionLiveGeneration[projectId]?.remove(sessionId);
     _sessionMutationGeneration[projectId]?.remove(sessionId);
     final excluded = _excludedSessions[projectId];
@@ -381,6 +415,55 @@ class SessionUnseenTracker with Disposable {
     _projectUnseen.add(projects);
   }
 
+  /// Settles the tracker after a confirmed local archive ([archived] true) or
+  /// unarchive ([archived] false) so the project aggregate updates immediately
+  /// instead of relying solely on the bridge's fire-and-forget
+  /// `session.unseen_changed` echo, which the client can miss across a reconnect
+  /// after the action's 2xx. The bridge omits archived sessions from the
+  /// aggregate, so archiving the last unseen session must un-bold its project and
+  /// unarchiving an unseen one must re-bold it.
+  ///
+  /// Like [removeSession] this recomputes the aggregate from the remaining
+  /// non-excluded sessions — safe because the acting client knows authoritatively
+  /// which rows are now active vs archived. [unseen] is the row's per-session
+  /// value to record (from the unarchive response); pass null to keep the
+  /// existing per-session value (archiving doesn't change whether the row itself
+  /// is unseen, only whether it counts toward the aggregate).
+  void settleArchiveState({
+    required String projectId,
+    required String sessionId,
+    required bool archived,
+    required bool? unseen,
+  }) {
+    if (_sessionUnseen.isClosed) return;
+    // Advance the project generation so an in-flight reconcile started before
+    // this action can't reapply a stale snapshot and undo the settle.
+    final generation = ++_generation;
+    _projectLiveGeneration[projectId] = generation;
+    _projectMutationGeneration[projectId] = generation;
+    (_sessionLiveGeneration[projectId] ??= {})[sessionId] = generation;
+    (_sessionMutationGeneration[projectId] ??= {})[sessionId] = generation;
+
+    final excluded = _excludedSessions[projectId] ??= <String>{};
+    if (archived) {
+      excluded.add(sessionId);
+    } else {
+      excluded.remove(sessionId);
+    }
+
+    final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
+    final projectSessions = Map<String, bool>.from(sessions[projectId] ?? const {});
+    if (unseen != null) projectSessions[sessionId] = unseen;
+    sessions[projectId] = projectSessions;
+    _sessionUnseen.add(sessions);
+
+    final projects = Map<String, bool>.from(_projectUnseen.value);
+    projects[projectId] = projectSessions.entries.any(
+      (e) => e.value && !excluded.contains(e.key),
+    );
+    _projectUnseen.add(projects);
+  }
+
   void _handleEvent(SseEvent event) {
     try {
       if (event.data
@@ -392,6 +475,7 @@ class SessionUnseenTracker with Disposable {
           )) {
         final generation = ++_generation;
         _projectLiveGeneration[projectID] = generation;
+        _projectMutationGeneration[projectID] = generation;
         (_sessionLiveGeneration[projectID] ??= {})[sessionId] = generation;
         (_sessionMutationGeneration[projectID] ??= {})[sessionId] = generation;
 

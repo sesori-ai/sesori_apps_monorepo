@@ -503,6 +503,66 @@ void main() {
       verify(() => viewingService.setViewingSession(sessionId)).called(greaterThanOrEqualTo(1));
     });
 
+    test("a load that fails after a resume clears the defer so the next fresh load declares the view", () async {
+      final viewingService = stubbedSessionViewingService();
+      final lifecycle = FakeLifecycleSource();
+      addTearDown(lifecycle.close);
+
+      // Call 1 (initial load): gated, then fails. Call 2 (the user's retry):
+      // succeeds. Call 3+ (a forced refresh — only reached on the buggy sticky-
+      // flag path): fails, so if the retry wrongly defers instead of declaring
+      // the view, the view is never asserted.
+      final gate = Completer<void>();
+      var call = 0;
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer((_) async {
+        call++;
+        if (call == 1) {
+          await gate.future;
+          return ApiResponse.error(ApiError.generic());
+        }
+        if (call == 2) {
+          return ApiResponse.success(
+            MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-retry")]),
+          );
+        }
+        return ApiResponse.error(ApiError.generic());
+      });
+
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: viewingService,
+        lifecycleSource: lifecycle,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      // Background + resume while the initial load is still in flight.
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      lifecycle.emitState(LifecycleState.paused);
+      lifecycle.emitState(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      // The initial load now FAILS. The resume-defer flag must be cleared even
+      // on this non-loaded outcome, so it can't leak into the next load.
+      gate.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      // The user retries; this fresh load started after the resume, so it must
+      // declare the view directly instead of inheriting the stale defer (which
+      // would force an extra refresh that, here, fails — leaving the view never
+      // declared).
+      await cubit.reload();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      verify(() => viewingService.setViewingSession(sessionId)).called(greaterThanOrEqualTo(1));
+    });
+
     test("foreground relay reconnect re-asserts the view without a stale signal", () async {
       final viewingService = stubbedSessionViewingService();
       final cubit = SessionDetailCubit(

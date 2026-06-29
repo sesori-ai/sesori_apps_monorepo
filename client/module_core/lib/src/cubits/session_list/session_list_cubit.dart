@@ -350,6 +350,22 @@ class SessionListCubit extends Cubit<SessionListState> {
       return false;
     }
 
+    if (response is SuccessResponse) {
+      // Settle the project aggregate locally so archiving the last unseen
+      // session un-bolds its project immediately (the bridge omits archived rows
+      // from the aggregate), without depending on the fire-and-forget unseen
+      // echo, which can be missed across a reconnect after the 2xx. The tracker
+      // is app-scoped and outlives this cubit, so the settle runs even if it
+      // closed mid-flight; only the UI emit is gated on isClosed.
+      _sessionUnseenTracker.settleArchiveState(
+        projectId: _projectId,
+        sessionId: sessionId,
+        archived: true,
+        unseen: null,
+      );
+      if (!isClosed) _onUnseenUpdated();
+    }
+
     if (isClosed) return false;
 
     return switch (response) {
@@ -381,6 +397,21 @@ class SessionListCubit extends Cubit<SessionListState> {
     _emitFiltered();
 
     final response = await _sessionService.unarchiveSession(sessionId: sessionId);
+
+    if (response is SuccessResponse<Session>) {
+      // Re-include the row in the project aggregate locally so unarchiving an
+      // unseen session re-bolds its project immediately, instead of staying
+      // excluded/un-bold until a REST refresh if the unseen echo is missed.
+      // App-scoped tracker, so this runs even if the cubit closed mid-flight.
+      _sessionUnseenTracker.settleArchiveState(
+        projectId: _projectId,
+        sessionId: sessionId,
+        archived: false,
+        unseen: response.data.unseen,
+      );
+      if (!isClosed) _onUnseenUpdated();
+    }
+
     if (isClosed) return false;
 
     return switch (response) {
@@ -465,7 +496,11 @@ class SessionListCubit extends Cubit<SessionListState> {
     _onUnseenUpdated();
     try {
       final response = await _sessionService.markSessionSeen(sessionId: sessionId, read: read, projectId: _projectId);
-      if (isClosed) return;
+      // The optimistic change was written into the app-scoped tracker, which
+      // outlives this cubit, so a failed request must still roll it back even if
+      // the user navigated away — otherwise a stale row/project stays bold with
+      // no authoritative echo to settle it. Only the UI emit is gated on
+      // isClosed (inside _revertLocalUnseen); the tracker revert always runs.
       if (response is ErrorResponse) {
         _revertLocalUnseen(
           sessionId: sessionId,
@@ -487,14 +522,12 @@ class SessionListCubit extends Cubit<SessionListState> {
             )
             .catchError((_) {}),
       );
-      if (!isClosed) {
-        _revertLocalUnseen(
-          sessionId: sessionId,
-          priorUnseen: priorUnseen,
-          priorProjectUnseen: priorProjectUnseen,
-          optimisticGeneration: optimisticGeneration,
-        );
-      }
+      _revertLocalUnseen(
+        sessionId: sessionId,
+        priorUnseen: priorUnseen,
+        priorProjectUnseen: priorProjectUnseen,
+        optimisticGeneration: optimisticGeneration,
+      );
     }
   }
 
@@ -510,6 +543,8 @@ class SessionListCubit extends Cubit<SessionListState> {
     required bool priorProjectUnseen,
     required int optimisticGeneration,
   }) {
+    // The tracker is app-scoped and outlives this cubit, so the revert must run
+    // even when the cubit has closed; _onUnseenUpdated self-gates on isClosed.
     _sessionUnseenTracker.revertLocalSessionUnseen(
       projectId: _projectId,
       sessionId: sessionId,
