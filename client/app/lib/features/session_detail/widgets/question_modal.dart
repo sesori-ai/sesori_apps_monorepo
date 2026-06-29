@@ -34,6 +34,7 @@ class QuestionModal extends StatefulWidget {
     required void Function(String requestId) onReject,
   }) {
     return showAppModalBottomSheet<void>(
+      handleBottomSafeArea: false,
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -291,10 +292,10 @@ class _QuestionModalState extends State<QuestionModal> {
                   data: info.question,
                   selectable: true,
                   onTapLink: handleMarkdownLinkTap,
-                    styleSheet: buildSessionMarkdownStyleSheet(
-                      prego: prego,
-                      paragraphStyle: prego.textTheme.textSm.medium,
-                    ),
+                  styleSheet: buildSessionMarkdownStyleSheet(
+                    prego: prego,
+                    paragraphStyle: prego.textTheme.textSm.medium,
+                  ),
                 ),
                 const SizedBox(height: 16),
 
@@ -396,9 +397,9 @@ class _OptionTile extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           option.description,
-                            style: prego.textTheme.textXs.regular.copyWith(
-                              color: prego.colors.textSecondary,
-                            ),
+                          style: prego.textTheme.textXs.regular.copyWith(
+                            color: prego.colors.textSecondary,
+                          ),
                         ),
                       ],
                     ],

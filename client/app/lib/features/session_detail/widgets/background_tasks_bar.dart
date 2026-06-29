@@ -1,12 +1,18 @@
 import "package:flutter/material.dart";
+import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 import "background_tasks_header.dart";
 import "background_tasks_list.dart";
 
-/// A floating bar shown above the prompt input when background tasks (child
-/// sessions) exist. Collapsed it shows "N Tasks Running"; tapping expands to
-/// reveal the individual task list with status + navigation.
+/// A floating glass card shown above the prompt input when background tasks
+/// (child sessions) exist. Collapsed it shows "N Tasks Running"; tapping
+/// expands the same glass surface to reveal the individual task list with
+/// status + navigation.
+///
+/// The whole bar is a single liquid-glass surface (its own layer) so it reads
+/// as one frosted card that grows, matching the glass pills in the composer
+/// directly below it.
 ///
 /// Running tasks are always shown first. Completed tasks are hidden behind a
 /// "Show N completed" toggle.
@@ -46,35 +52,44 @@ class _BackgroundTasksBarState extends State<BackgroundTasksBar> {
     if (widget.children.isEmpty) return const SizedBox.shrink();
 
     final prego = context.prego;
-    final running = _runningTasks;
-    final completed = _completedTasks;
 
-    return Material(
-      elevation: 2,
-      color: prego.colors.bgTertiary,
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          BackgroundTasksHeader(
-            runningCount: _runningCount,
-            expanded: _expanded,
-            onTap: () => setState(() {
-              _expanded = !_expanded;
-              // Reset completed visibility when collapsing.
-              if (!_expanded) _showCompleted = false;
-            }),
-          ),
-          if (_expanded)
-            BackgroundTasksList(
-              projectId: widget.projectId,
-              runningTasks: running,
-              completedTasks: completed,
-              childStatuses: widget.childStatuses,
-              showCompleted: _showCompleted,
-              onToggleCompleted: () => setState(() => _showCompleted = !_showCompleted),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: GlassContainer(
+        useOwnLayer: true,
+        clipBehavior: Clip.antiAlias,
+        padding: EdgeInsets.zero,
+        shape: const LiquidRoundedSuperellipse(borderRadius: 20),
+        settings: LiquidGlassSettings(glassColor: prego.colors.buttonGlassPrimaryBackground),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            BackgroundTasksHeader(
+              runningCount: _runningCount,
+              expanded: _expanded,
+              onTap: () => setState(() {
+                _expanded = !_expanded;
+                // Reset completed visibility when collapsing.
+                if (!_expanded) _showCompleted = false;
+              }),
             ),
-        ],
+            AnimatedSize(
+              duration: const Duration(milliseconds: 240),
+              curve: Curves.easeInOut,
+              alignment: Alignment.topCenter,
+              child: _expanded
+                  ? BackgroundTasksList(
+                      projectId: widget.projectId,
+                      runningTasks: _runningTasks,
+                      completedTasks: _completedTasks,
+                      childStatuses: widget.childStatuses,
+                      showCompleted: _showCompleted,
+                      onToggleCompleted: () => setState(() => _showCompleted = !_showCompleted),
+                    )
+                  : const SizedBox(width: double.infinity),
+            ),
+          ],
+        ),
       ),
     );
   }
