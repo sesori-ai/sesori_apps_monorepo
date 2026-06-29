@@ -207,8 +207,9 @@ void main() {
 
       var loadCalls = 0;
       TokenData? savedTokens;
+      final initialToken = _makeJwtFromNow(10);
       final manager = TokenManager(
-        initialToken: _makeJwtFromNow(10),
+        initialToken: initialToken,
         authBackendUrl: server.baseUrl,
         loadTokens: () async {
           loadCalls += 1;
@@ -228,6 +229,40 @@ void main() {
 
       await expectLater(manager.getAccessToken(), throwsA(isA<FileSystemException>()));
       expect(savedTokens, isNull);
+      // The refreshed token must not leak onto the in-memory stream when the
+      // file was cleared mid-refresh — a reconnect must not be able to use it.
+      expect(manager.accessToken, initialToken);
+    });
+
+    test("refresh that finds the token file cleared (null) does not publish the new token", () async {
+      final server = await _RefreshTestServer.start();
+      addTearDown(server.close);
+
+      var loadCalls = 0;
+      TokenData? savedTokens;
+      final initialToken = _makeJwtFromNow(10);
+      final manager = TokenManager(
+        initialToken: initialToken,
+        authBackendUrl: server.baseUrl,
+        loadTokens: () async {
+          loadCalls += 1;
+          if (loadCalls > 1) {
+            return null;
+          }
+          return TokenData(
+            accessToken: "old-access",
+            refreshToken: "refresh-token",
+            lastProvider: AuthProvider.github,
+          );
+        },
+        saveTokens: (tokens) async {
+          savedTokens = tokens;
+        },
+      );
+
+      await expectLater(manager.getAccessToken(), throwsA(isA<TokenRefreshException>()));
+      expect(savedTokens, isNull);
+      expect(manager.accessToken, initialToken);
     });
 
     test("successful refresh updates current access token", () async {
