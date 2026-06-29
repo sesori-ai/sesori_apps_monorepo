@@ -225,10 +225,11 @@ class _FlatAnchoredMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final media = MediaQuery.of(context);
-    final screen = media.size;
-    final safe = media.padding;
-    final keyboard = media.viewInsets.bottom;
+    // Granular getters so re-layout is driven only by the metrics this menu
+    // actually uses, not by any unrelated MediaQueryData change.
+    final screen = MediaQuery.sizeOf(context);
+    final safe = MediaQuery.paddingOf(context);
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
 
     // Expand toward whichever side of the trigger has more room. For the session
     // composer (triggers near the bottom) this resolves to "expand upward".
@@ -412,7 +413,13 @@ class _AnchoredMenuLayoutDelegate extends SingleChildLayoutDelegate {
 
   @override
   BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
-    final width = math.min(menuWidth, constraints.maxWidth);
+    // Cap to the padded safe area, not the full route width: getPositionForChild
+    // can only reposition the child, not shrink it, so a menuWidth wider than the
+    // viewport (e.g. a 320px menu on a 320dp screen) would otherwise overflow the
+    // edge/safe-area despite the dx clamp.
+    final availableWidth =
+        constraints.maxWidth - screenPadding.left - screenPadding.right - safe.left - safe.right;
+    final width = math.min(menuWidth, math.max(0.0, availableWidth));
     return BoxConstraints(
       minWidth: width,
       maxWidth: width,

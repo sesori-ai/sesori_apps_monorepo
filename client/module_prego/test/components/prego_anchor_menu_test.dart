@@ -74,6 +74,42 @@ void main() {
       expect(find.text("Dismiss"), findsNothing);
       expect(find.widgetWithText(InkWell, "Alpha"), findsNothing);
     }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+    testWidgets("clamps the menu width to the padded viewport on a narrow screen", (tester) async {
+      // A menuWidth (320) wider than the 320dp viewport minus its 12+12 padding
+      // must be shrunk to fit (→ 296), not just repositioned, or it overflows the
+      // screen edge. Size the whole window so the dialog route sees the narrow
+      // MediaQuery (it is pushed on the root navigator, above any local override).
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          home: Scaffold(
+            body: Center(
+              child: PregoAnchorMenu(
+                menuWidth: 320,
+                menuScreenPadding: const EdgeInsets.all(12),
+                entries: [
+                  PregoMenuItem(title: "Alpha", subtitle: null, isSelected: false, onTap: () {}),
+                ],
+                triggerBuilder: (context, toggle) => ElevatedButton(
+                  onPressed: toggle,
+                  child: const Text("Open"),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      expect(tester.getSize(find.byType(SingleChildScrollView)).width, lessThanOrEqualTo(296.0));
+    }, variant: TargetPlatformVariant.only(TargetPlatform.android));
   });
 
   group("Apple (glass) path", () {
