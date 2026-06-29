@@ -61,53 +61,72 @@ Aristotle verdicts · Findings log · Plan-deltas.
 - **Acceptance:** AppImage runs on a clean distro; bridge spawns; the AppImage +
   zsync update path is GPG-signed and verified.
 
-## PR 3.6 — macOS self-update (Sparkle)
-- **Goal:** `auto_updater`/Sparkle + EdDSA keys + appcast generation from GitHub
-  releases.
-- **Risk:** High. **Size:** M.
-- **Acceptance:** vN→vN+1 update succeeds on macOS.
+## PR 3.6 — Update-apply policy (stop helper first) + failed-update/rollback + UX
+- **Goal:** Add `DesktopUpdateService` in `module_desktop_core/lib/src/services/`
+  as the Layer-3 owner of update-apply policy. It calls the
+  `BridgeProcessRepository` expected-stop operation (which marks the helper stop
+  as expected and suppresses respawn), stages/applies through `AppUpdateRepository`
+  over a dumb Layer-1 `AppUpdateApi` (which wraps the Layer-0 `AppUpdater` adapter),
+  relaunches, then **restores last-on** through lower-layer desktop-instance
+  repository semantics. Also surface update-available/failed in the window and
+  handle failed staging/apply gracefully (no bricking). The service must avoid
+  same-layer service dependencies on `BridgeProcessService` or
+  `DesktopInstanceService`.
 
-## PR 3.7 — Windows self-update (WinSparkle)
-- **Goal:** WinSparkle + appcast.
-- **Risk:** High. **Size:** M.
-- **Acceptance:** vN→vN+1 update succeeds on Windows.
-
-## PR 3.8 — Linux self-update (zsync/AppImageUpdate)
-- **Goal:** zsync feed + AppImageUpdate integration.
-- **Risk:** Med-High. **Size:** M.
-- **Acceptance:** vN→vN+1 update succeeds on Linux.
-
-## PR 3.9 — Update-apply policy (stop helper first) + failed-update/rollback + UX
-- **Goal:** Two parts.
-  1. **Stop the helper before staging/apply.** The bundled bridge is a running
-     child of the app install; on Windows a running executable can't be replaced,
-     and on any OS applying a bundle update while the supervisor respawns the old
-     child risks a failed or mixed-version update. The updater must mark the stop
-     as **expected** (suppress respawn — reuse the PR 2.7 "expected exit" flag),
-     stop the helper, stage/apply, relaunch, then **restore last-on**.
-  2. Surface update-available/failed in the window; handle a failed staging/apply
-     gracefully (no bricking).
+  The bundled bridge is a running child of the app install; on Windows a running
+  executable can't be replaced, and on any OS applying a bundle update while the
+  supervisor respawns the old child risks a failed or mixed-version update.
 - **Risk:** Med. **Size:** M.
-- **Acceptance:** with the bridge **on**, an update stops the helper (no respawn
-  thrash), applies, relaunches, and restores last-on; a Windows
-  running-executable replace doesn't fail; an injected failed update leaves the
-  app runnable + reports it.
+- **Acceptance:** with a fake `AppUpdater` and the bridge **on**, the update
+  policy stops the helper without respawn thrash, calls stage/apply, relaunches,
+  and restores last-on; an injected failed update leaves the app runnable +
+  reports it; `AppUpdater` remains a dumb adapter behind `AppUpdateApi` with no
+  helper stop/restore policy; `DesktopUpdateService` depends only on lower-layer
+  collaborators.
+
+## PR 3.7 — macOS self-update (Sparkle)
+- **Goal:** `auto_updater`/Sparkle + EdDSA keys + appcast generation from GitHub
+  releases, using the PR 3.6 helper-stop/apply policy.
+- **Risk:** High. **Size:** M.
+- **Acceptance:** vN→vN+1 update succeeds on macOS with the bridge on and off.
+
+## PR 3.8 — Windows self-update (WinSparkle)
+- **Goal:** WinSparkle + appcast, using the PR 3.6 helper-stop/apply policy.
+- **Risk:** High. **Size:** M.
+- **Acceptance:** vN→vN+1 update succeeds on Windows with the bridge on and off;
+  replacing a running executable does not fail.
+
+## PR 3.9 — Linux self-update (zsync/AppImageUpdate)
+- **Goal:** zsync feed + AppImageUpdate integration, using the PR 3.6
+  helper-stop/apply policy.
+- **Risk:** Med-High. **Size:** M.
+- **Acceptance:** vN→vN+1 update succeeds on Linux with the bridge on and off.
 
 ## PR 3.10 — Release-pipeline integration (non-blocking) + versioning
 - **Goal:** Hook the desktop build into `release-all-platforms.yml` +
   `submit-release.yml` as **non-blocking** legs; extend `make bump-version` to
-  bump the desktop package; add a **Desktop** section to `CHANGELOG.md`; publish
-  appcast/zsync to releases keyed to the shared version.
+  bump the desktop package; add a **Desktop** section to `CHANGELOG.md`; update
+  `tool/generate_release_notes.dart` so desktop-owned paths classify as Desktop
+  instead of App; publish appcast/zsync to releases keyed to the shared version.
 - **Trigger paths:** PR 0.1 excluded `client/desktop/**` from the (mobile-product)
-  release triggers, so this PR must **add `client/desktop/**` (and any
-  desktop-owned UI package paths) to the desktop release jobs' triggers** —
-  otherwise a desktop-only fix never starts the internal release / appcast-zsync
-  publish and the self-update channel silently misses releases. The desktop jobs
-  stay **non-blocking** for the CLI/mobile legs (invariant #3).
+  release triggers, so this PR must **add `client/desktop/**`,
+  `bridge/**`, `client/module_desktop_core/**`, `client/module_app_ui/**`, shared
+  desktop-consumed paths (`client/module_core/**`, `client/module_auth/**`,
+  `client/module_prego/**`, workspace client pubspec/lock/config files,
+  `shared/sesori_shared/**`), and any other desktop-consumed UI package paths to
+  the desktop release jobs' triggers** — otherwise a desktop-only,
+  shared-client, or shared-protocol fix never starts the internal release /
+  appcast-zsync publish and the self-update channel silently misses releases.
+  The desktop jobs stay **non-blocking** for the CLI/mobile legs (invariant #3).
 - **Risk:** Med. **Size:** M.
 - **Acceptance:** an internal release dry-run produces signed, self-update-ready
-  desktop artifacts; a **desktop-only** change triggers the desktop release/appcast
-  publish; a forced desktop-leg failure does **not** block the CLI/mobile release.
+  desktop artifacts; a **desktop-only shell, desktop-core, or shared-UI** change
+  triggers the desktop release/appcast publish; a forced desktop-leg failure does
+  **not** block the CLI/mobile release; release notes classify
+  `client/desktop/**`, `client/module_desktop_core/**`, and desktop-consumed UI
+  under Desktop, shared client dependencies under all affected product sections,
+  and `shared/sesori_shared/**` under Shared/Protocol or all affected consumer
+  sections rather than App-only or Desktop-only.
 
 ## PR 3.11 — Uninstall + login-item cleanup (desktop-owned state only)
 - **Goal:** Per-OS uninstall removes the **login item** and **GUI-owned** state

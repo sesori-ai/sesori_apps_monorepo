@@ -1,25 +1,27 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/health_repository.dart";
 import "request_handler.dart";
 
-/// Handles `GET /global/health` — proxies the backend's health status.
-class HealthCheckHandler extends GetRequestHandler<SuccessEmptyResponse> {
-  final BridgePluginApi _plugin;
+/// Handles `GET /global/health` — returns the bridge health snapshot.
+class HealthCheckHandler extends GetRequestHandler<HealthResponse> {
+  final HealthRepository _healthRepository;
 
-  HealthCheckHandler(this._plugin) : super("/global/health");
+  HealthCheckHandler({required HealthRepository healthRepository})
+    : _healthRepository = healthRepository,
+      super("/global/health");
 
   @override
-  Future<SuccessEmptyResponse> handle(
+  Future<HealthResponse> handle(
     RelayRequest request, {
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
     required String? fragment,
   }) async {
-    final healthy = await _plugin.healthCheck();
-    if (!healthy) {
+    try {
+      return await _healthRepository.getHealth();
+    } on BackendUnhealthyException {
       throw buildErrorResponse(request, 503, "backend unhealthy");
     }
-    return const SuccessEmptyResponse();
   }
 }

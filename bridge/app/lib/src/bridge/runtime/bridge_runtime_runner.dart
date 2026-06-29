@@ -39,6 +39,7 @@ import "../../auth/login_oauth_service.dart";
 import "../../auth/token.dart";
 import "../../auth/token_manager.dart";
 import "../../control/control_channel_loss_listener.dart";
+import "../../control/control_channel_token_service.dart";
 import "../../foundation/control_channel_client.dart";
 import "../../repositories/bridge_settings_repository.dart";
 import "../../server/api/loopback_port_api.dart";
@@ -212,12 +213,18 @@ class BridgeRuntimeRunner {
       // Supervised mode (desktop GUI): bring up the loopback control channel
       // before anything else so the GUI sees the helper connect promptly. Every
       // step here is gated by `--control-url`; standalone startup is unchanged.
+      ControlChannelTokenService? controlChannelTokenService;
       if (options.isSupervised) {
-        await _startSupervisedControlChannel(
+        final controlChannelClient = await _connectSupervisedControlChannel(
           options: options,
           shutdownCoordinator: shutdownCoordinator,
           requestAbnormalExit: (code) => supervisedLossExitCode = code,
         );
+        // The GUI is the token authority in supervised mode: the bridge pulls
+        // its access token from the control channel instead of the interactive
+        // terminal login. Shares the same client the loss listener observes.
+        controlChannelTokenService = ControlChannelTokenService(client: controlChannelClient);
+        shutdownCoordinator.add(disposable: controlChannelTokenService.dispose);
       }
 
       final runtimeOwnershipError = unsupportedPackageRuntimeMessage(
@@ -273,10 +280,21 @@ class BridgeRuntimeRunner {
         }
       }
 
-      final authTokens = await runtimeAuthService.ensureAuthenticated(options: options);
+      // Supervised mode short-circuits the interactive auth bootstrap: no
+      // provider menu, no email/password prompt — the access token comes from
+      // the GUI over the control channel. Standalone runs the unchanged
+      // interactive flow. logAuthenticatedUser is identical on both paths.
+      final String authAccessToken;
+      final supervisedTokenService = controlChannelTokenService;
+      if (supervisedTokenService != null) {
+        authAccessToken = await supervisedTokenService.requestToken();
+      } else {
+        final authTokens = await runtimeAuthService.ensureAuthenticated(options: options);
+        authAccessToken = authTokens.accessToken;
+      }
       await runtimeAuthService.logAuthenticatedUser(
         authBackendUrl: options.authBackendUrl,
-        accessToken: authTokens.accessToken,
+        accessToken: authAccessToken,
       );
 
       final currentBridgeIdentity = await _resolveCurrentBridgeIdentity(
@@ -371,7 +389,7 @@ class BridgeRuntimeRunner {
           .addTo(subscriptions);
 
       final tokenManager = TokenManager(
-        initialToken: authTokens.accessToken,
+        initialToken: authAccessToken,
         authBackendUrl: options.authBackendUrl,
         loadTokens: loadTokens,
         saveTokens: saveTokens,
@@ -400,6 +418,20 @@ class BridgeRuntimeRunner {
         currentPid: io.pid,
       );
 
+      // Run startup diagnostics before composing the runtime so the
+      // filesystem-access result can be carried into the health snapshot the
+      // phone reads (to proactively warn about missing macOS Full Disk Access).
+      // Diagnostics are advisory: an unexpected failure must never abort
+      // startup, so default to "ok" (no degraded warning) on error.
+      var filesystemAccessOk = true;
+      try {
+        final diagnostics = BridgeDiagnostics();
+        filesystemAccessOk = await diagnostics.checkFilesystemAccess();
+        await diagnostics.checkGitAvailable();
+      } on Object catch (error, stackTrace) {
+        Log.w("Startup diagnostics failed; continuing without a degraded-access warning", error, stackTrace);
+      }
+
       final runtime = BridgeRuntime.create(
         config: BridgeConfig(
           relayURL: options.relayUrl,
@@ -416,6 +448,7 @@ class BridgeRuntimeRunner {
         processRunner: processRunner,
         failureReporter: LogFailureReporter(),
         restartService: restartService,
+        filesystemAccessOk: filesystemAccessOk,
       );
       shutdownCoordinator.add(disposable: runtime.close);
       // Defined stop semantics: stopping the active plugin cancels the
@@ -424,7 +457,6 @@ class BridgeRuntimeRunner {
       // which covers the ordinary post-session stop during shutdown.
       pluginManager.bindActiveSession(cancel: runtime.session.cancel);
 
-      await BridgeDiagnostics().runAll();
       await startDebugServerIfRequested(
         debugPort: options.debugPort,
         runtime: runtime,
@@ -473,10 +505,11 @@ class BridgeRuntimeRunner {
 
   /// Supervised-mode bootstrap: validate the loopback control URL, read the
   /// per-spawn secret off-argv (stdin), arm the parent-loss exit policy (ADR
-  /// A9), then connect the GUI's loopback control channel. Both the client and
-  /// the loss listener are torn down via the shutdown coordinator. Only ever
-  /// called when `--control-url` is set.
-  static Future<void> _startSupervisedControlChannel({
+  /// A9), then connect the GUI's loopback control channel and return the
+  /// connected client so the caller can pull the initial access token over it.
+  /// Both the client and the loss listener are torn down via the shutdown
+  /// coordinator. Only ever called when `--control-url` is set.
+  static Future<ControlChannelClient> _connectSupervisedControlChannel({
     required BridgeCliOptions options,
     required BridgeShutdownCoordinator shutdownCoordinator,
     required void Function(int code) requestAbnormalExit,
@@ -512,6 +545,7 @@ class BridgeRuntimeRunner {
     shutdownCoordinator.add(disposable: lossListener.dispose);
 
     await controlChannelClient.connect();
+    return controlChannelClient;
   }
 
   /// Graceful termination for the control-channel parent-loss policy (ADR A9):

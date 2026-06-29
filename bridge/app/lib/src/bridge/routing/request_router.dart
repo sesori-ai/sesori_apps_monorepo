@@ -2,12 +2,16 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../server/services/bridge_restart_service.dart";
+import "../repositories/agent_repository.dart";
+import "../repositories/filesystem_repository.dart";
+import "../repositories/health_repository.dart";
 import "../repositories/permission_repository.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/provider_repository.dart";
 import "../repositories/question_repository.dart";
 import "../repositories/session_repository.dart";
 import "../services/pr_sync_service.dart";
+import "../services/project_initialization_service.dart";
 import "../services/session_archive_service.dart";
 import "../services/session_creation_service.dart";
 import "../services/session_persistence_service.dart";
@@ -67,14 +71,16 @@ class RequestRouter {
     required SendPromptHandler sendPromptHandler,
     required PrSyncService prSyncService,
     required ProjectRepository projectRepository,
+    required FilesystemRepository filesystemRepository,
+    required ProjectInitializationService projectInitializationService,
+    required HealthRepository healthRepository,
     required ProviderRepository providerRepository,
+    required AgentRepository agentRepository,
     required PermissionRepository permissionRepository,
     required QuestionRepository questionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
     required GetSessionDiffsHandler sessionDiffsHandler,
-    required GetAgentsHandler getAgentsHandler,
-    required PostAgentsHandler postAgentsHandler,
     required BridgeRestartService restartService,
   }) : _handlers = _buildHandlers(
          plugin: plugin,
@@ -86,14 +92,16 @@ class RequestRouter {
          sendPromptHandler: sendPromptHandler,
          prSyncService: prSyncService,
          projectRepository: projectRepository,
+         filesystemRepository: filesystemRepository,
+         projectInitializationService: projectInitializationService,
+         healthRepository: healthRepository,
          providerRepository: providerRepository,
+         agentRepository: agentRepository,
          permissionRepository: permissionRepository,
          questionRepository: questionRepository,
          sessionPersistenceService: sessionPersistenceService,
          worktreeService: worktreeService,
          sessionDiffsHandler: sessionDiffsHandler,
-         getAgentsHandler: getAgentsHandler,
-         postAgentsHandler: postAgentsHandler,
          restartService: restartService,
        );
 
@@ -107,18 +115,20 @@ class RequestRouter {
     required SendPromptHandler sendPromptHandler,
     required PrSyncService prSyncService,
     required ProjectRepository projectRepository,
+    required FilesystemRepository filesystemRepository,
+    required ProjectInitializationService projectInitializationService,
+    required HealthRepository healthRepository,
     required ProviderRepository providerRepository,
+    required AgentRepository agentRepository,
     required PermissionRepository permissionRepository,
     required QuestionRepository questionRepository,
     required SessionPersistenceService sessionPersistenceService,
     required WorktreeService worktreeService,
     required GetSessionDiffsHandler sessionDiffsHandler,
-    required GetAgentsHandler getAgentsHandler,
-    required PostAgentsHandler postAgentsHandler,
     required BridgeRestartService restartService,
   }) {
     return [
-      HealthCheckHandler(plugin),
+      HealthCheckHandler(healthRepository: healthRepository),
       RestartBridgeHandler(restartService: restartService),
       GetCurrentProjectHandler(plugin),
       GetProjectsHandler(projectRepository: projectRepository),
@@ -144,8 +154,8 @@ class RequestRouter {
       sendPromptHandler,
       abortSessionHandler,
       GetProvidersHandler(providerRepository),
-      getAgentsHandler,
-      postAgentsHandler,
+      GetAgentsHandler(agentRepository),
+      PostAgentsHandler(agentRepository),
       GetSessionQuestionsHandler(questionRepository: questionRepository),
       GetProjectQuestionsHandler(questionRepository: questionRepository),
       GetSessionPermissionsHandler(permissionRepository: permissionRepository),
@@ -153,12 +163,18 @@ class RequestRouter {
       RejectQuestionHandler(questionRepository: questionRepository),
       ReplyToPermissionHandler(permissionRepository: permissionRepository),
       RenameProjectHandler(plugin),
-      CreateProjectHandler(plugin),
-      OpenProjectHandler(projectRepository: projectRepository),
+      CreateProjectHandler(
+        projectInitializationService: projectInitializationService,
+        projectRepository: projectRepository,
+      ),
+      OpenProjectHandler(
+        filesystemRepository: filesystemRepository,
+        projectRepository: projectRepository,
+      ),
       HideProjectHandler(projectRepository: projectRepository),
       GetBaseBranchHandler(projectRepository: projectRepository),
       SetBaseBranchHandler(projectRepository: projectRepository),
-      FilesystemSuggestionsHandler(),
+      FilesystemSuggestionsHandler(filesystemRepository: filesystemRepository),
       sessionDiffsHandler,
     ];
   }

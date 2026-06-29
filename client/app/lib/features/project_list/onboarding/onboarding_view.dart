@@ -1,13 +1,12 @@
 part of "../project_list_screen.dart";
 
 // ===========================================================================
-// Bridge onboarding checklist
+// Bridge onboarding
 //
-// One shared 3-step checklist drives both empty Projects states:
-// * disconnected — "Set up Sesori Bridge" (steps pending, folder button
-//   disabled). See [_BridgeOnboardingView].
-// * connected, no projects — "Your bridge is connected" (steps 1 & 2 ticked,
-//   folder button live). See [_ConnectedEmptyView].
+// One shared onboarding body drives both empty Projects states:
+// * disconnected — the connect-your-computer onboarding (connection graphic in
+//   its "off" state). See [_BridgeOnboardingView].
+// * connected, no projects — the same body with the graphic in its "on" state.
 // ===========================================================================
 
 /// Not-yet-connected onboarding ("Set up Sesori Bridge"). Wraps the shared
@@ -35,21 +34,16 @@ class _BridgeOnboardingView extends StatelessWidget {
   }
 }
 
-/// The shared onboarding body: hero illustration, title, and the three setup
-/// steps.
+/// The shared onboarding body: the phone/PC connection status lines, the
+/// connection graphic, the "Why is this needed?" info button, and the
+/// per-platform install command boxes.
 ///
-/// [connected] switches between the two states:
-/// * `false` — pending steps with hanging numbers and a disabled folder button.
-/// * `true`  — steps 1 & 2 ticked, the "Signed in" wording, and a live folder
-///   button wired to [onOpenFolder].
+/// [connected] switches the connection graphic between its "off" and "on"
+/// states; the rest of the body is shared by both empty Projects states.
 class _OnboardingChecklist extends StatelessWidget {
-  const _OnboardingChecklist({required this.connected, this.onOpenFolder});
+  const _OnboardingChecklist({required this.connected});
 
   final bool connected;
-
-  /// Invoked by the Step 3 folder button. Non-null only when [connected]; left
-  /// null while disconnected, which renders the button in its disabled state.
-  final VoidCallback? onOpenFolder;
 
   @override
   Widget build(BuildContext context) {
@@ -59,72 +53,322 @@ class _OnboardingChecklist extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: PregoSpacing.md),
+        Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: loc.projectsOnboardingPhoneStatusStep),
+              const TextSpan(text: " "),
+              // "Phone connected" + check icon read as a single success-colored
+              // unit confirming the connection.
+              TextSpan(
+                text: loc.projectsOnboardingPhoneStatusConnected,
+                style: TextStyle(color: prego.colors.textSuccessPrimary),
+              ),
+              WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+                  child: Icon(
+                    TablerRegular.circle_check,
+                    size: 14,
+                    color: prego.colors.textSuccessPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: PregoSpacing.x4l),
         Center(
           child: ExcludeSemantics(
-            child: connected ? const _OnboardingHero.cli() : const _OnboardingHero.offline(),
+            child: connected ? const ConnectionGraphic.connectionOn() : const ConnectionGraphic.connectionOff(),
           ),
         ),
-        const SizedBox(height: PregoSpacing.x2l),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
-          child: Text(
-            connected ? loc.projectsConnectedTitle : loc.projectsOnboardingTitle,
-            textAlign: TextAlign.center,
-            style: prego.textTheme.displayXs.medium.copyWith(color: prego.colors.textPrimary),
+        const SizedBox(height: PregoSpacing.lg),
+        Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: loc.projectsOnboardingPcStatusStep),
+              const TextSpan(text: " "),
+              TextSpan(
+                text: loc.projectsOnboardingPcStatusRun,
+                style: TextStyle(color: prego.colors.textSecondary),
+              ),
+            ],
           ),
+          style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
+          textAlign: TextAlign.center,
         ),
-        // 68px hero/title-block → steps gap from Figma (no exact spacing token:
-        // sits between x7l=64 and x8l=80).
-        const SizedBox(height: 68),
-        Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.xl, 0, PregoSpacing.xl, PregoSpacing.x3l),
+        const SizedBox(height: PregoSpacing.lg),
+        // Wrapped so the parent Column's stretch alignment doesn't force the
+        // button full-width; fullWidth: false then sizes it to its content.
+        // TODO(daniil): add the button back
+        /* Center(
+          child: PregoButtonsSolid(
+            fullWidth: false,
+            leadingIcon: TablerRegular.info_circle,
+            label: loc.projectsOnboardingPcStatusWhy,
+            hierarchy: PregoButtonsSolidHierarchy.secondary,
+            size: PregoButtonsSolidSize.sm,
+            onPressed: () {
+              // TODO(daniil): show the new bottom sheet
+            },
+          ),
+        ),*/
+        // 40px gap from the header group to the install boxes (Figma gap-5xl).
+        const SizedBox(height: PregoSpacing.x5l),
+        const Padding(
+          padding: EdgeInsetsDirectional.fromSTEB(PregoSpacing.xl, 0, PregoSpacing.xl, PregoSpacing.x3l),
+          child: _InstallCommandBoxes(),
+        ),
+      ],
+    );
+  }
+}
+
+/// The per-platform install command boxes — Unix (curl/npm/bun) and Windows
+/// (irm/npm/bun). Shared by the [_OnboardingChecklist] and the bridge-offline
+/// reconnect disclosure ([_BridgeOfflineView]) so both stay in sync; callers
+/// supply their own surrounding padding.
+class _InstallCommandBoxes extends StatelessWidget {
+  const _InstallCommandBoxes();
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _InstallCommandBox(
+          osLabel: loc.projectsOnboardingInstallUnixLabel,
+          methods: [
+            _InstallMethod(
+              label: loc.projectsOnboardingInstallUnixMethod,
+              command: BridgeInstall.macLinuxCommand,
+            ),
+            _InstallMethod(
+              label: loc.projectsOnboardingInstallMethodNpm,
+              command: BridgeInstall.npmCommand,
+            ),
+            _InstallMethod(
+              label: loc.projectsOnboardingInstallMethodBun,
+              command: BridgeInstall.bunCommand,
+            ),
+          ],
+        ),
+        const SizedBox(height: PregoSpacing.xl),
+        _InstallCommandBox(
+          osLabel: loc.projectsOnboardingInstallWindowsLabel,
+          methods: [
+            _InstallMethod(
+              label: loc.projectsOnboardingInstallWindowsMethod,
+              command: BridgeInstall.windowsCommand,
+            ),
+            _InstallMethod(
+              label: loc.projectsOnboardingInstallMethodNpm,
+              command: BridgeInstall.npmCommand,
+            ),
+            _InstallMethod(
+              label: loc.projectsOnboardingInstallMethodBun,
+              command: BridgeInstall.bunCommand,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// One selectable install method within an [_InstallCommandBox]: the tab
+/// [label] (e.g. "curl", "npm") and the one-line [command] it installs with.
+class _InstallMethod {
+  const _InstallMethod({required this.label, required this.command});
+
+  /// Tab label (literal tool name — not translated).
+  final String label;
+
+  /// The one-line install command shown and copied when this tab is selected.
+  final String command;
+}
+
+/// One platform's install instruction: a group label (e.g. "macOS, Linux,
+/// WSL"), a row of method tabs (e.g. curl/npm/bun), and the monospace one-line
+/// command for the selected method with a copy-to-clipboard button. Mirrors the
+/// Figma onboarding install boxes.
+class _InstallCommandBox extends StatefulWidget {
+  const _InstallCommandBox({
+    required this.osLabel,
+    required this.methods,
+  });
+
+  /// Platform group label shown above the box.
+  final String osLabel;
+
+  /// Selectable install methods; the first is selected initially.
+  final List<_InstallMethod> methods;
+
+  @override
+  State<_InstallCommandBox> createState() => _InstallCommandBoxState();
+}
+
+class _InstallCommandBoxState extends State<_InstallCommandBox> {
+  int _selectedIndex = 0;
+
+  _InstallMethod get _selected => widget.methods[_selectedIndex];
+
+  Future<void> _copyCommand() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final loc = context.loc;
+    // Clipboard can throw on restricted platforms/states; fail soft and skip
+    // the success snackbar. Log so a broken copy button leaves a diagnostic
+    // trail instead of failing silently.
+    try {
+      await Clipboard.setData(ClipboardData(text: _selected.command));
+    } on Object catch (error, stackTrace) {
+      logw("Failed to copy install command", error, stackTrace);
+      return;
+    }
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(loc.projectsOnboardingCommandCopied),
+        duration: kSnackBarDuration,
+      ),
+    );
+  }
+
+  Future<void> _shareCommand() async {
+    final command = _selected.command;
+    // iPad presents the share sheet as a popover anchored to a source rect;
+    // derive it from this box so the popover points at the command instead of
+    // floating (an unanchored sheet throws on iPad).
+    final renderObject = context.findRenderObject();
+    final origin = renderObject is RenderBox && renderObject.hasSize
+        ? renderObject.localToGlobal(Offset.zero) & renderObject.size
+        : null;
+    try {
+      await SharePlus.instance.share(ShareParams(text: command, sharePositionOrigin: origin));
+    } on Object catch (error, stackTrace) {
+      // Dismissing the sheet is reported via ShareResultStatus, not a throw, so
+      // reaching here is a real platform failure with nothing to recover — log
+      // it and move on.
+      logw("Failed to share install command", error, stackTrace);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final colors = prego.colors;
+    final loc = context.loc;
+    final mono = prego.textTheme.textXs.regular.copyWith(color: colors.textSecondary).monospace;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.osLabel,
+          style: prego.textTheme.textSm.regular.copyWith(color: colors.textPrimary),
+        ),
+        const SizedBox(height: PregoSpacing.md),
+        Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(PregoRadius.xl),
+          ),
+          foregroundDecoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(PregoRadius.xl),
+            border: Border.all(color: colors.borderPrimary),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _OnboardingStep(
-                number: 1,
-                completed: connected,
-                titleAction: loc.projectsOnboardingStep1Action,
-                titleAccent: loc.projectsOnboardingBridgeName,
-                child: const _CommandBlock(),
-              ),
-              const SizedBox(height: PregoSpacing.x4l),
-              _OnboardingStep(
-                number: 2,
-                completed: connected,
-                titleAction: connected ? loc.projectsConnectedStep2Action : loc.projectsOnboardingStep2Action,
-                titleAccent: loc.projectsOnboardingStep2Accent,
-                child: _AccountLine(connected: connected),
-              ),
-              const SizedBox(height: PregoSpacing.x4l),
-              _OnboardingStep(
-                number: 3,
-                titleAction: loc.projectsOnboardingStep3Title,
+              // Method tabs (curl/npm/bun); the selected one is highlighted and
+              // drives the command shown below.
+              Container(
+                width: double.infinity,
+                color: colors.bgSurface2,
+                padding: const EdgeInsetsDirectional.only(
+                  start: PregoSpacing.sm,
+                  end: PregoSpacing.sm,
+                  top: PregoSpacing.xs,
+                  bottom: PregoSpacing.xs,
+                ),
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                  spacing: PregoSpacing.lg,
+                  children: [
+                    for (var i = 0; i < widget.methods.length; i++) _buildTab(index: i),
+                  ],
+                ),
+              ),
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: colors.bgSurface1,
+                  border: Border(top: BorderSide(color: colors.borderSecondary)),
+                ),
+                padding: const EdgeInsetsDirectional.only(
+                  start: PregoSpacing.lg,
+                  top: PregoSpacing.sm,
+                  bottom: PregoSpacing.sm,
+                ),
+                child: Row(
                   children: [
                     Expanded(
+                      // semanticsLabel carries the full command so screen readers
+                      // read it even though the visible text clamps to one line.
                       child: Text(
-                        connected ? loc.projectsConnectedStep3Detail : loc.projectsOnboardingStep3Detail,
-                        style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+                        _selected.command,
+                        semanticsLabel: _selected.command,
+                        style: mono,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: PregoSpacing.lg),
-                    // Folder button: disabled (dimmed) while disconnected, since
-                    // adding a project isn't possible yet; live and wired to
-                    // [onOpenFolder] once the bridge is connected. It always
-                    // carries a screen-reader label so the icon's purpose is
-                    // announced in both states — when disabled it reads as a
-                    // plain label (no tap handler, so it isn't announced as an
-                    // actionable button); when live it is also the sole add-
-                    // project CTA, as the FAB is hidden here.
-                    PregoButtonsIconGlass(
-                      icon: TablerRegular.folder_plus,
-                      size: PregoButtonsIconGlassSize.lg,
-                      iconSize: 30,
-                      semanticLabel: loc.projectsOnboardingOpenFolder,
-                      onPressed: onOpenFolder,
+                    const SizedBox(width: PregoSpacing.md),
+                    // Transparent Material so the InkResponse splash paints on
+                    // top of the bgSurface1 fill — without it the ripple renders
+                    // on the Scaffold's Material, hidden behind this Container.
+                    Semantics(
+                      button: true,
+                      label: loc.projectsOnboardingCopyCommand,
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: InkResponse(
+                          onTap: _copyCommand,
+                          radius: 22,
+                          child: SizedBox(
+                            width: 40,
+                            height: 40,
+                            child: Center(
+                              child: Icon(TablerRegular.copy, size: 18, color: colors.textSecondary),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // Hands the selected command to the native share sheet so it
+                    // can be sent to the machine that will run it (AirDrop, etc.).
+                    Semantics(
+                      button: true,
+                      label: loc.projectsOnboardingShareCommand,
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: InkResponse(
+                          onTap: _shareCommand,
+                          radius: 22,
+                          child: SizedBox(
+                            width: 40,
+                            height: 40,
+                            child: Center(
+                              child: Icon(TablerRegular.share_3, size: 18, color: colors.textSecondary),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -135,145 +379,36 @@ class _OnboardingChecklist extends StatelessWidget {
       ],
     );
   }
-}
 
-/// One numbered onboarding step: a hanging number (or a check mark once
-/// [completed]), a two-tone title, and a body widget.
-class _OnboardingStep extends StatelessWidget {
-  const _OnboardingStep({
-    required this.number,
-    required this.titleAction,
-    this.titleAccent,
-    this.completed = false,
-    required this.child,
-  });
-
-  final int number;
-  final String titleAction;
-  final String? titleAccent;
-
-  /// When `true`, the hanging number is replaced by a check mark — the step is
-  /// already done (the connected state ticks the install & sign-in steps).
-  final bool completed;
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildTab({required int index}) {
     final prego = context.prego;
     final colors = prego.colors;
-    final loc = context.loc;
-    final titleStyle = prego.textTheme.textLg.medium;
-
-    // Leading marker sized to the title's line box so the check mark sits on
-    // the title's baseline, matching the number it replaces.
-    final fontSize = titleStyle.fontSize ?? 18.0;
-    final heightMultiple = titleStyle.height;
-    final lineHeight = heightMultiple == null ? fontSize : fontSize * heightMultiple;
-    final leading = completed
-        ? SizedBox(
-            height: lineHeight,
-            child: Icon(
-              TablerRegular.check,
-              size: 20,
-              color: colors.textPrimary,
-              semanticLabel: loc.projectsOnboardingStepCompleted,
+    final method = widget.methods[index];
+    final selected = index == _selectedIndex;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: method.label,
+      // Transparent Material so the InkWell splash paints on top of the
+      // bgSurface2 tab strip instead of behind it on the Scaffold's Material.
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: selected ? null : () => setState(() => _selectedIndex = index),
+          borderRadius: BorderRadius.circular(PregoRadius.sm),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm, vertical: PregoSpacing.xs),
+            // The selected tab reads as the active method (brand color + bold);
+            // the rest stay quiet in the secondary text color.
+            child: Text(
+              method.label,
+              style: selected
+                  ? prego.textTheme.textSm.bold.copyWith(color: colors.textPrimaryOnBrand)
+                  : prego.textTheme.textSm.regular.copyWith(color: colors.textSecondary),
             ),
-          )
-        : Text("$number.", style: titleStyle.copyWith(color: colors.textPrimary));
-
-    // The marker hangs at the left margin and the title indents past it, but
-    // the step body spans the full width below — matching the Figma layout.
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            leading,
-            const SizedBox(width: PregoSpacing.lg),
-            Expanded(
-              child: Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(
-                      text: titleAction,
-                      style: titleStyle.copyWith(color: colors.textPrimary),
-                    ),
-                    if (titleAccent != null)
-                      TextSpan(
-                        text: " $titleAccent",
-                        style: titleStyle.copyWith(color: colors.textSecondary),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
-        const SizedBox(height: PregoSpacing.sm),
-        child,
-      ],
-    );
-  }
-}
-
-/// Step 2 detail line. Shows the signed-in account as "Use {account} with
-/// {Provider}" (or just "{account} with {Provider}" once [connected]), falling
-/// back to a state-appropriate line when the account is unknown.
-class _AccountLine extends StatelessWidget {
-  const _AccountLine({required this.connected});
-
-  /// Whether the bridge is connected (the "Signed in" state). When connected,
-  /// the "Use " prefix is dropped and the account-unknown fallback confirms the
-  /// signed-in state rather than prompting a sign-in — which would contradict
-  /// the ticked "Signed in" heading above it.
-  final bool connected;
-
-  @override
-  Widget build(BuildContext context) {
-    final prego = context.prego;
-    final colors = prego.colors;
-    final loc = context.loc;
-    final baseStyle = prego.textTheme.textSm.regular.copyWith(color: colors.textSecondary);
-
-    // Subscribe to auth state rather than reading a one-shot snapshot: the
-    // session is restored asynchronously on launch (see AuthManager), so the
-    // account may resolve after this line first builds. A StreamBuilder keeps
-    // the line in sync; initialData renders the current value on the first
-    // frame without a flash.
-    final authSession = getIt<AuthSession>();
-    return StreamBuilder<AuthState>(
-      stream: authSession.authStateStream,
-      initialData: authSession.currentState,
-      builder: (context, snapshot) {
-        final authState = snapshot.data ?? authSession.currentState;
-        final (String? account, AuthProvider? provider) = switch (authState) {
-          AuthAuthenticated(:final user) => (user.providerUsername, user.provider),
-          AuthInitial() || AuthUnauthenticated() || AuthAuthenticating() || AuthFailed() => (null, null),
-        };
-
-        if (account != null && account.isNotEmpty && provider != null) {
-          return Text.rich(
-            TextSpan(
-              style: baseStyle,
-              children: [
-                if (!connected) TextSpan(text: loc.projectsOnboardingAccountPrefix),
-                TextSpan(
-                  text: account,
-                  style: baseStyle.copyWith(color: colors.textPrimary),
-                ),
-                TextSpan(text: loc.projectsOnboardingAccountSuffix(provider.label)),
-              ],
-            ),
-          );
-        }
-
-        return Text(
-          connected ? loc.projectsConnectedAccountFallback : loc.projectsOnboardingAccountFallback,
-          style: baseStyle,
-        );
-      },
+      ),
     );
   }
 }

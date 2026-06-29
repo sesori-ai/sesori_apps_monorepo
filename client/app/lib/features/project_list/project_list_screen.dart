@@ -1,13 +1,12 @@
 import "dart:async";
-import "dart:ui" as ui;
 
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
-import "package:flutter_svg/flutter_svg.dart";
 import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:share_plus/share_plus.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 import "../../core/bridge_install.dart";
@@ -21,10 +20,8 @@ import "../../core/widgets/connection_graphic.dart";
 import "add_project_dialog.dart";
 import "rename_project_dialog.dart";
 
-part "onboarding/onboarding_hero.dart";
 part "onboarding/onboarding_view.dart";
 part "widgets/bridge_offline_view.dart";
-part "widgets/command_block.dart";
 part "widgets/error_view.dart";
 part "widgets/project_tile.dart";
 
@@ -173,16 +170,15 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
       ProjectListLoaded(:final projects, :final activityById) => [
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
         if (projects.isEmpty)
-          SliverFillRemaining(
+          // Render the shared onboarding body directly (not its own scroll
+          // view) so the scaffold's pull-to-refresh drives it. SafeArea(top:
+          // false) keeps the bottom install box clear of the home indicator,
+          // matching the disconnected onboarding view.
+          const SliverFillRemaining(
             hasScrollBody: false,
-            // Render the shared checklist directly (not _ConnectedEmptyView's
-            // own scroll view) so the scaffold's pull-to-refresh drives it.
             child: SafeArea(
               top: false,
-              child: _OnboardingChecklist(
-                connected: true,
-                onOpenFolder: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
-              ),
+              child: _OnboardingChecklist(connected: true),
             ),
           )
         else ...[

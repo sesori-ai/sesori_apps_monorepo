@@ -19,7 +19,7 @@ void main() {
     late BehaviorSubject<bool> registeredStream;
 
     const config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token");
-    const health = HealthResponse(healthy: true, version: "0.1.200");
+    const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
     const connected = ConnectionStatus.connected(config: config, health: health);
     const reconnecting = ConnectionStatus.reconnecting(config: config);
     const connectionLost = ConnectionStatus.connectionLost(config: config);

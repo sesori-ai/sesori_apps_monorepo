@@ -54,7 +54,7 @@ Reject as too vague if the plan:
 
 2. Determine which workspaces the plan touches. The plan must state this explicitly. Map each proposed change to `client/`, `bridge/`, or `shared/sesori_shared/`.
 
-3. Apply the matching Section B subsection for each touched workspace. State which you applied and which you skipped. Do not skip a subsection because a workspace is lightly touched. Even a single proposed line of change in `client/` requires full B-Mobile review.
+3. Apply the matching Section B subsection for each touched workspace. State which you applied and which you skipped. Do not skip a subsection because a workspace is lightly touched. Even a single proposed line of change in `client/` requires full B-Client review.
 
 4. Walk every rule in order. For each rule in Sections A and B, internally verify whether the plan satisfies it. Only emit violations in the final output, but do not shortcut this check.
 
@@ -222,7 +222,9 @@ Orchestration & business logic:
 Data access:
 
 - **`Api`** — dumb data-access class in the API layer. Knows HOW to call an endpoint but has NO decision-making logic. Examples: `GhCliApi`, `SesoriServerApi`, `SessionApi`.
+- **`Storage`** — file/key-value persistence boundary for a small owned dataset. No business logic.
 - **`Client`** — transport-level class whose sole job is calling an external API or protocol (HTTP, WebSocket). Examples: `RelayClient`, `RelayHttpApiClient`, `PushNotificationClient`.
+- **`Server`** — transport-level host that accepts inbound local/network connections. No business logic.
 - **`Repository`** — aggregates data from one or more API sources, performs mapping. Examples: `ProjectRepository`, `SessionRepository`.
 - **`Dao`** — data access object for database operations.
 
@@ -243,7 +245,7 @@ Pure transformations (no decision-making, no orchestration):
 
 State management:
 
-- **`Cubit`** — state management (mobile only).
+- **`Cubit`** — client state management. Cubits live in pure Dart client modules (`module_core` or `module_desktop_core`), never in Flutter product shells.
 
 Forbidden suffixes (flag and suggest the correct suffix): `Manager`, `Helper`, `Utils`, `Wrapper`, `Handler` (unless it's a routing handler in the bridge `routing/` layer).
 
@@ -273,24 +275,25 @@ Core rules that apply universally:
 - Within a layer: NO cross-dependency between same-level classes unless they are base classes/abstractions designed to be reused within that layer. Review carefully: flag if an abstraction was added but seems pointless, and flag if one was NOT added but should have been to reduce duplication
 - Directory structure MUST mirror layers so violations are visible in import paths
 
-#### B-Mobile: Mobile Workspace (`client/`)
+#### B-Client: Client Workspace (`client/`)
 
-**B-M1. Layer Dependency Diagram**
+**B-C1. Product Dependency Diagram**
 
 ```
-Layer 3 ─ app (Flutter UI shell)
-           │
-           │ depends on (source imports)
-           ▼
-Layer 2 ─ module_core (pure Dart)
-           │
-           │ depends on (source imports)
-           ▼
-Layer 1 ─ module_auth (pure Dart)
-           │
-           │ depends on
-           ▼
-Layer 0 ─ sesori_shared (foundation)
+client/app ───────────────→ module_app_ui ─┐
+     │                                      │
+     └──────────────────────────────────────┴→ module_core → module_auth → sesori_shared
+     │
+     └→ module_prego
+
+client/desktop ───────────→ module_app_ui ─┐
+     │                                      │
+     ├──────────────────────────────────────┴→ module_core → module_auth → sesori_shared
+     │
+     └→ module_desktop_core ─────────────────→ module_core
+     │                         │
+     │                         └→ sesori_shared
+     └→ module_prego
 ```
 
 **Dependency rules:**
@@ -298,7 +301,10 @@ Layer 0 ─ sesori_shared (foundation)
 - Each layer may ONLY depend on the layer directly below it. No skipping.
 - `sesori_shared` (Layer 0) is the ONLY exception: any layer may import it directly since it is the foundation layer containing protocol types and crypto shared across the entire monorepo.
 - Dependencies NEVER flow upward. A lower layer must NEVER know about a higher layer.
-- `app` has `module_auth` as a pubspec dependency solely for DI wiring (`configureAuthDependencies(getIt)`). Beyond that single DI call, `app` MUST NOT import or reference `module_auth` types in source code. All auth functionality is accessed through `module_core` interfaces.
+- `client/app` and `client/desktop` may have `module_auth` as a pubspec dependency solely for DI wiring (`configureAuthDependencies(getIt)`). Beyond that single DI call, product shells MUST NOT import or reference `module_auth` types in source code. All auth functionality is accessed through `module_core` interfaces.
+- `module_core` MUST NOT depend on `module_desktop_core`; mobile must not inherit desktop tray/process/bundled-helper concerns.
+- Product shells may import `module_prego` directly for shell-owned presentation.
+- `module_app_ui` may depend on `module_core`, `module_prego`, `sesori_shared`, and direct Flutter UI dependencies. It MUST NOT import `client/app`, `client/desktop`, or `module_desktop_core`.
 
 **Hard constraints:**
 
@@ -306,15 +312,17 @@ Layer 0 ─ sesori_shared (foundation)
 - `module_auth` MUST NOT import `module_core` — dependency never flows upward
 - `module_auth` knows NOTHING about relay, WebSocket, sessions, or projects
 
-**B-M2. Layer Responsibilities**
+**B-C2. Layer Responsibilities**
 
 | Layer                     | Responsibility                                                            | Must NOT Do                                                    |
 | ------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | `app` (Flutter)           | UI widgets, screens, routing, platform adapter implementations, DI wiring | Contain business logic, services, or state management          |
+| `desktop` (Flutter)       | UI widgets, tray/window presentation, routing, platform adapter implementations, DI wiring | Contain bridge process business logic, services, repositories, dispatchers, or cubits |
 | `module_core` (pure Dart) | Business logic, services, cubits, API clients, platform interfaces        | Import Flutter, contain UI code, know about platform specifics |
+| `module_desktop_core` (pure Dart) | Desktop-specific process/control business logic, services, repositories, trackers, cubits, platform interfaces | Import Flutter, contain product-shell UI code, depend upward on `desktop` |
 | `module_auth` (pure Dart) | Token lifecycle, OAuth flow, authenticated HTTP client                    | Import module_core, know about relay/sessions/projects         |
 
-**B-M3. `module_auth` — Internal Layer Architecture**
+**B-C3. `module_auth` — Internal Layer Architecture**
 
 ```
 Layer 0 — Foundation
@@ -355,7 +363,7 @@ Key rules:
 - Consumers never use HttpApiClient directly — only AuthenticatedHttpApiClient.
 - AuthService is the SINGLE source of truth for auth state.
 
-**B-M4. `module_core` — Internal Layer Architecture**
+**B-C4. `module_core` — Internal Layer Architecture**
 
 ```
 Layer 0 — Foundation (transport primitives + platform abstractions)
@@ -468,12 +476,14 @@ module_core/lib/src/
 
 When reviewing proposed imports: if the plan puts a file in `services/` that imports from `api/`, that is a violation. If the plan puts a file in `cubits/` that imports from `api/`, that is a violation.
 
-**B-M5. `app` (Flutter) — Internal Layer Architecture**
+**B-C5. Product Flutter Shells (`app` and `desktop`) — Internal Layer Architecture**
 
 ```
 Layer 0 — Platform Implementations
 └─ Concrete Flutter implementations of module_core platform interfaces
-└─ One implementation per interface — no alternatives, no factories
+└─ One implementation per interface per product/platform — no alternatives or
+   factories inside a single shell. Mobile and desktop may each provide their
+   own adapter for shared module_core interfaces.
 └─ Examples: FlutterSecureStorageAdapter, FlutterUrlLauncher, AppLifecycleObserver,
    AppLinksDeepLinkSource, GoRouterRouteSource, CrashlyticsFailureReporter
 └─ No cross-dependency between implementations
@@ -482,8 +492,10 @@ Layer 0 — Platform Implementations
         ▲ registered in DI, consumed by module_core via interfaces
 
 Layer 1 — Infrastructure
-└─ DI wiring: 3-phase init (platform → auth → core) — the ONLY place that calls
-   configureAuthDependencies and configureCoreDependencies
+└─ DI wiring: mobile uses 3-phase init (platform → auth → core). Desktop adds
+   desktop-core after core (platform → auth → core → desktop-core). This layer is
+   the ONLY shell place that calls configureAuthDependencies,
+   configureCoreDependencies, and configureDesktopCoreDependencies.
 └─ Routing: GoRouter configuration using AppRoute definitions from module_core
 └─ No business logic — only wiring and navigation configuration
 └─ Location: lib/core/{di,routing}/
@@ -500,22 +512,51 @@ Layer 2 — Presentation
 └─ Location: lib/{core/widgets,features}/
 ```
 
-**B-M6. State Management**
+`client/desktop` follows the same shell rule: it may contain concrete platform
+implementations, DI wiring, routing/window/tray presentation, and widgets. It
+MUST NOT contain bridge process business logic, control-message dispatchers,
+repositories, services, or cubits; those belong in `module_desktop_core`.
+
+**B-C6. State Management**
 
 - BLoC/Cubit ONLY — no other state management patterns
-- Cubits live in `module_core/lib/src/cubits/`, never in `app/`
+- Mobile cubits live in `module_core/lib/src/cubits/`; desktop cubits live in
+  `module_desktop_core/lib/src/cubits/`. Cubits never live in product shells
+  (`client/app` or `client/desktop`).
 - Cubits are NOT registered in DI — they are constructed in `BlocProvider(create:)`
 - Cubits call services and emit state. They do not perform HTTP calls directly.
+- For reactive state, mobile/shared cubits subscribe to `ConnectionService`
+  streams. Desktop control cubits may subscribe to `module_desktop_core` tracker
+  streams such as `BridgeStatusTracker` and `BridgePromptTracker` while relay
+  transport remains deferred.
 
-**B-M7. DI**
+**B-C7. DI**
 
-3-phase initialization order: platform adapters → auth → core. Plans must respect this order when adding new dependencies.
+Mobile initialization order: platform adapters → auth → core. Desktop initialization order: platform adapters → auth → core → desktop core. Plans must respect this order when adding new dependencies.
 
-**B-M8. Platform Abstraction**
+**B-C8. Platform Abstraction**
 
-- Abstract interfaces defined in `module_core/lib/src/platform/`
-- Concrete Flutter implementations in `app/lib/core/platform/`
-- If the plan needs a platform capability, it must define the interface in core and implement it in app
+- Shared/mobile platform interfaces are defined in `module_core/lib/src/foundation/platform/`; concrete mobile implementations live in `app/lib/core/platform/`.
+- Desktop-only platform interfaces are defined in `module_desktop_core/lib/src/foundation/platform/`; concrete desktop implementations live in `desktop/lib/core/platform/`.
+- If the plan needs a platform capability, it must define the interface in the owning pure Dart module and implement it in the product shell.
+
+**B-C9. `module_desktop_core` and `module_app_ui`**
+
+`module_desktop_core` is pure Dart and owns desktop-only business logic: bridge
+process APIs/repositories/services, control-channel orchestration, status/prompt
+trackers, update-apply orchestration (`DesktopUpdateService`), desktop cubits,
+and desktop platform interfaces. It may depend on `module_core` and
+`sesori_shared`; `module_core` must not depend on it. Platform adapters such as
+`AppUpdater` remain dumb Layer-0 boundaries behind Layer-1 APIs such as
+`AppUpdateApi` and repositories such as `AppUpdateRepository`;
+helper-stop/apply/restore policy belongs in `DesktopUpdateService`, which must
+depend only on lower-layer collaborators.
+
+`module_app_ui` is a shared Flutter UI package. It may depend on `module_core`,
+`module_prego`, `sesori_shared`, and direct Flutter UI dependencies. It must not import
+`client/app`, `client/desktop`, or `module_desktop_core`; product-specific
+behavior enters through constructor parameters/callback strategies composed by
+the product shell.
 
 ---
 
@@ -749,9 +790,14 @@ Layer 2 — Repositories (data aggregation + mapping)
 
 Layer 3 — Services (business logic)
 └─ Decision-making, coordination, orchestration.
-└─ MUST use Repositories (Layer 2). MUST NOT call APIs (Layer 1) or transport (Layer 0) directly.
-   This is the most common violation — plans frequently bypass the repository layer and call
-   APIs or execute shell commands directly from services. This MUST be rejected.
+└─ MUST use Repositories (Layer 2) for data/API operations. MUST NOT call APIs
+   (Layer 1) directly. Direct Layer-0 transport dependencies are acceptable only
+   for services whose own responsibility is that transport/control seam (for
+   example a control-channel token service over `ControlChannelClient`); they
+   still must not bypass repositories for data access. This is
+   the most common violation — plans frequently bypass the repository layer and
+   call APIs or execute shell commands directly from services. This MUST be
+   rejected.
 └─ Examples:
    ├─ MetadataService — session metadata generation logic
    ├─ WorktreeService — worktree lifecycle decisions (when to create, cleanup, branch naming)
@@ -763,8 +809,8 @@ Layer 3 — Services (business logic)
 
         ▲ consumed by
 
-Layer 4 — Request Handling & Event Delivery
-└─ Two independent sub-groups — NO cross-dependency between them:
+Layer 4 — Request Handling, Control, & Event Delivery
+└─ Three independent sub-groups — NO cross-dependency between them:
 │
 ├─ Routing:
 │  └─ RequestRouter — ordered handler chain (first match wins, ~30 handlers)
@@ -774,6 +820,12 @@ Layer 4 — Request Handling & Event Delivery
 │     the Orchestrator handles delivery
 │  └─ NO mappers here — mapping is a Layer 2 responsibility
 │  └─ Location: app/lib/src/routing/
+│
+├─ Control:
+│  └─ Supervised-mode control-channel listeners/dispatchers
+│  └─ May depend downward on foundation/services/auth interfaces
+│  └─ Is part of the core layered app, NOT a self-contained subsystem
+│  └─ Location: app/lib/src/control/
 │
 └─ SSE:
    └─ SseService — manages subscriber queues, orphan replay on reconnect
@@ -801,6 +853,7 @@ app/lib/src/
 ├── repositories/        # Layer 2
 ├── services/            # Layer 3
 ├── routing/             # Layer 4
+├── control/             # Layer 4
 ├── sse/                 # Layer 4
 ├── orchestrator.dart    # Layer 5
 ├── auth/                # Subsystem
@@ -821,7 +874,7 @@ app/lib/src/
 
 **B-S1. Dual-Consumer Constraint**
 
-`sesori_shared` is consumed by BOTH bridge and mobile. Any plan that modifies it MUST consider impact on both consumers. It must not contain bridge-specific or mobile-specific logic.
+`sesori_shared` is consumed by bridge, mobile, desktop core, and shared app UI. Any plan that modifies it MUST consider impact on all affected consumers. It must not contain bridge-specific, mobile-specific, or desktop-specific logic.
 
 **B-S2. Scope**
 
@@ -834,7 +887,7 @@ This package contains ONLY: protocol types (`RelayMessage` sealed class hierarch
 Do not flag any of the following:
 
 1. Any layer importing `sesori_shared` directly. Documented foundation exception.
-2. `app` importing `module_auth` solely for the `configureAuthDependencies(getIt)` DI call.
+2. A Flutter product shell (`app` or `desktop`) importing `module_auth` solely for the `configureAuthDependencies(getIt)` DI call.
 3. Vertical dependencies WITHIN the `module_core` Layer 0 transport stack: `RelayClient → ConnectionService → RelayHttpApiClient`.
 4. Base classes consumed by the next layer up (e.g., `HttpApiClient` → `AuthenticatedHttpApiClient`; `RequestHandler` → routing handlers).
 5. A service composing another service when one coordinates the other (e.g., `OpenCodeService` using `OpenCodeRepository` + `ActiveSessionTracker`). Flag cross-service dependency only when it represents duplicated responsibility, not composition.
@@ -912,7 +965,7 @@ If any fail, redo the review before emitting.
 PASS
 
 ### Workspaces
-Applied: [B-Mobile / B-Bridge / B-Shared]
+Applied: [B-Client / B-Bridge / B-Shared]
 Skipped: [the others, with reason]
 
 ### Section A — General Architecture
@@ -937,7 +990,7 @@ Skipped: [the others, with reason]
 PASS
 
 ### Workspaces
-Applied: [B-Mobile / B-Bridge / B-Shared]
+Applied: [B-Client / B-Bridge / B-Shared]
 Skipped: [the others, with reason]
 
 No architectural violations detected. Layer boundaries, dependency direction, class cohesion,

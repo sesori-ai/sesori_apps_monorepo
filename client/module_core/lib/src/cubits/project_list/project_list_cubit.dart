@@ -15,6 +15,7 @@ import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
 import "../../routing/app_routes.dart";
 import "../../services/registered_bridges_service.dart";
+import "add_project_outcome.dart";
 import "project_list_state.dart";
 
 /// How long to wait after an activity event before auto-refreshing project
@@ -362,16 +363,18 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   }
 
   /// Creates a new project at [path].
-  /// Returns `true` on success (and refreshes the project list), `false` on error.
-  Future<bool> createProject({required String path}) async {
+  ///
+  /// On success the project list is refreshed. A permission denial from the
+  /// bridge is reported distinctly so the UI can show an actionable message.
+  Future<AddProjectOutcome> createProject({required String path}) async {
     final response = await _projectService.createProject(path: path);
-    if (isClosed) return false;
+    if (isClosed) return AddProjectOutcome.otherError;
     switch (response) {
       case SuccessResponse():
         await refreshProjects();
-        return true;
-      case ErrorResponse():
-        return false;
+        return AddProjectOutcome.success;
+      case ErrorResponse(:final error):
+        return _addProjectFailureOutcome(error);
     }
   }
 
@@ -390,17 +393,47 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   }
 
   /// Discovers an existing project at [path].
-  /// Returns `true` on success, `false` on error.
-  Future<bool> discoverProject({required String path}) async {
+  ///
+  /// On success the project list is refreshed. A permission denial from the
+  /// bridge is reported distinctly so the UI can show an actionable message.
+  Future<AddProjectOutcome> discoverProject({required String path}) async {
     final response = await _projectService.discoverProject(path: path);
-    if (isClosed) return false;
+    if (isClosed) return AddProjectOutcome.otherError;
     switch (response) {
       case SuccessResponse():
         await refreshProjects();
-        return true;
-      case ErrorResponse():
-        return false;
+        return AddProjectOutcome.success;
+      case ErrorResponse(:final error):
+        return _addProjectFailureOutcome(error);
     }
+  }
+
+  /// Fetches child directories of [prefix] for the directory browser.
+  ///
+  /// A permission denial from the bridge is reported distinctly so the browser
+  /// can show an actionable macOS Full Disk Access message.
+  Future<FilesystemSuggestionsOutcome> fetchFilesystemSuggestions({required String? prefix}) async {
+    final response = await _projectService.getFilesystemSuggestions(prefix: prefix);
+    switch (response) {
+      case SuccessResponse(:final data):
+        return FilesystemSuggestionsSuccess(suggestions: data);
+      case ErrorResponse(:final error):
+        if (_isPermissionDenied(error)) {
+          return const FilesystemSuggestionsPermissionDenied();
+        }
+        return const FilesystemSuggestionsError();
+    }
+  }
+
+  AddProjectOutcome _addProjectFailureOutcome(ApiError error) {
+    if (_isPermissionDenied(error)) {
+      return AddProjectOutcome.permissionDenied;
+    }
+    return AddProjectOutcome.otherError;
+  }
+
+  bool _isPermissionDenied(ApiError error) {
+    return error is NonSuccessCodeError && error.errorCode == 403;
   }
 
   Future<bool> _fetchProjects({bool silent = false}) async {

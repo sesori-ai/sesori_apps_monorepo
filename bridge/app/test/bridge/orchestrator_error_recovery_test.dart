@@ -3,20 +3,28 @@ import "dart:io";
 
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/auth/token_refresher.dart";
+import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
+import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
+import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
+import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/health_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
+import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
@@ -79,6 +87,32 @@ void main() {
         ),
         sessionRepository: sessionRepository,
         projectRepository: ProjectRepository(plugin: plugin, projectsDao: database.projectsDao),
+        filesystemRepository: FilesystemRepository(
+          filesystemApi: const FilesystemApi(),
+          permissionValidator: const FilesystemPermissionValidator(),
+        ),
+        projectInitializationService: ProjectInitializationService(
+          worktreeRepository: WorktreeRepository(
+            projectsDao: database.projectsDao,
+            sessionDao: database.sessionDao,
+            plugin: plugin,
+            gitApi: GitCliApi(
+              processRunner: ProcessRunner(),
+              gitPathExists: ({required String gitPath}) => false,
+            ),
+          ),
+          filesystemRepository: FilesystemRepository(
+            filesystemApi: const FilesystemApi(),
+            permissionValidator: const FilesystemPermissionValidator(),
+          ),
+        ),
+        healthRepository: HealthRepository(
+          plugin: plugin,
+          bridgeVersion: "0.0.0-test",
+          filesystemAccessOk: true,
+        ),
+        providerRepository: ProviderRepository(plugin: plugin),
+        agentRepository: AgentRepository(plugin: plugin),
         permissionRepository: PermissionRepository(plugin: plugin),
         questionRepository: QuestionRepository(plugin: plugin),
         sessionPersistenceService: SessionPersistenceService(
@@ -264,6 +298,32 @@ class _TestHarness {
       prSyncService: prSyncService,
       sessionRepository: sessionRepository,
       projectRepository: projectRepository,
+      filesystemRepository: FilesystemRepository(
+        filesystemApi: const FilesystemApi(),
+        permissionValidator: const FilesystemPermissionValidator(),
+      ),
+      projectInitializationService: ProjectInitializationService(
+        worktreeRepository: WorktreeRepository(
+          projectsDao: database.projectsDao,
+          sessionDao: database.sessionDao,
+          plugin: plugin,
+          gitApi: GitCliApi(
+            processRunner: ProcessRunner(),
+            gitPathExists: ({required String gitPath}) => false,
+          ),
+        ),
+        filesystemRepository: FilesystemRepository(
+          filesystemApi: const FilesystemApi(),
+          permissionValidator: const FilesystemPermissionValidator(),
+        ),
+      ),
+      healthRepository: HealthRepository(
+        plugin: plugin,
+        bridgeVersion: "0.0.0-test",
+        filesystemAccessOk: true,
+      ),
+      providerRepository: ProviderRepository(plugin: plugin),
+      agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: permissionRepository,
       questionRepository: QuestionRepository(plugin: plugin),
       sessionPersistenceService: sessionPersistenceService,
