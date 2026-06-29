@@ -139,7 +139,7 @@ class SessionUnseenTracker with Disposable {
     required String projectId,
     required Map<String, bool> unseenBySessionId,
     required int sinceGeneration,
-    Set<String> archivedSessionIds = const {},
+    Map<String, bool> archivedUnseenBySessionId = const {},
   }) {
     if (_sessionUnseen.isClosed) return;
 
@@ -147,27 +147,32 @@ class SessionUnseenTracker with Disposable {
     final liveGenerations = _sessionLiveGeneration[projectId] ??= {};
     final existing = sessions[projectId] ?? const {};
     final excluded = _excludedSessions[projectId];
-    // Record the archived rows the REST list reported as excluded from the
-    // aggregate, so an optimistic mark-unread of an archived session (even one
-    // never seen as a live archive event) doesn't locally re-bold the project.
-    // Guard each id against newer live state: if a session was archived in this
-    // (possibly stale) snapshot but a newer live update arrived since the fetch
-    // began (e.g. an unarchive), don't mark it excluded — the live state wins.
-    for (final archivedId in archivedSessionIds) {
-      if ((liveGenerations[archivedId] ?? 0) > sinceGeneration) continue;
-      (_excludedSessions[projectId] ??= <String>{}).add(archivedId);
-    }
     final merged = <String, bool>{};
+
+    bool keptLiveValue({required String id, required bool restValue}) {
+      // Keep a value that changed live after the fetch began; otherwise take the
+      // authoritative REST value.
+      final live = (liveGenerations[id] ?? 0) > sinceGeneration;
+      merged[id] = live ? (existing[id] ?? restValue) : restValue;
+      return live;
+    }
+
     for (final entry in unseenBySessionId.entries) {
-      // A session present in the authoritative /sessions list is not archived
-      // (archived rows are omitted), so it no longer counts as excluded.
+      // A session present (active) in the authoritative /sessions list is not
+      // archived, so it no longer counts as excluded.
       excluded?.remove(entry.key);
-      // Keep the live value for a session that changed after the fetch began;
-      // otherwise take the authoritative REST value.
-      if ((liveGenerations[entry.key] ?? 0) > sinceGeneration) {
-        merged[entry.key] = existing[entry.key] ?? entry.value;
+      keptLiveValue(id: entry.key, restValue: entry.value);
+    }
+    // Reconcile archived rows too — so the archived-list display reflects a live
+    // read echo instead of falling back to the stale REST `unseen` — but keep
+    // them EXCLUDED from the project aggregate. A newer live update (e.g. an
+    // unarchive) supersedes the archived classification: drop the exclusion then.
+    for (final entry in archivedUnseenBySessionId.entries) {
+      final live = keptLiveValue(id: entry.key, restValue: entry.value);
+      if (live) {
+        excluded?.remove(entry.key);
       } else {
-        merged[entry.key] = entry.value;
+        (_excludedSessions[projectId] ??= <String>{}).add(entry.key);
       }
     }
     // Carry forward a session that got a newer live update but is absent from
@@ -326,7 +331,10 @@ class SessionUnseenTracker with Disposable {
   /// across a reconnect after receiving the delete's 2xx response.
   void removeSession({required String projectId, required String sessionId}) {
     if (_sessionUnseen.isClosed) return;
-    ++_generation;
+    // Advance the project generation so an in-flight /projects or /sessions
+    // reconcile whose sinceGeneration predates the delete can't reapply a
+    // snapshot that still includes the deleted session and undo this un-bold.
+    _projectLiveGeneration[projectId] = ++_generation;
     _sessionLiveGeneration[projectId]?.remove(sessionId);
     _sessionMutationGeneration[projectId]?.remove(sessionId);
     final excluded = _excludedSessions[projectId];

@@ -726,12 +726,13 @@ class SessionListCubit extends Cubit<SessionListState> {
             for (final s in data.items)
               if (s.time?.archived == null) s.id: s.unseen,
           },
-          // Tell the tracker which rows are archived (excluded from the bridge
-          // aggregate) so a later optimistic mark-unread of an archived session
-          // doesn't locally re-bold the project.
-          archivedSessionIds: {
+          // Pass archived rows' unseen values too, so the tracker reconciles
+          // their per-session state (the archived-list display reflects a live
+          // read echo instead of the stale REST value) while keeping them
+          // excluded from the project aggregate.
+          archivedUnseenBySessionId: {
             for (final s in data.items)
-              if (s.time?.archived != null) s.id,
+              if (s.time?.archived != null) s.id: s.unseen,
           },
           sinceGeneration: unseenGeneration,
         );

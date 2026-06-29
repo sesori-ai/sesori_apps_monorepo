@@ -139,7 +139,7 @@ class FakeSessionUnseenTracker extends Mock implements SessionUnseenTracker {
     required String projectId,
     required Map<String, bool> unseenBySessionId,
     required int sinceGeneration,
-    Set<String> archivedSessionIds = const {},
+    Map<String, bool> archivedUnseenBySessionId = const {},
   }) {}
 
   int _fakeGeneration = 0;

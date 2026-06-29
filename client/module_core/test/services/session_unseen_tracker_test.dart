@@ -439,7 +439,7 @@ void main() {
       tracker.reconcileSessionUnseen(
         projectId: "p1",
         unseenBySessionId: {"s1": true},
-        archivedSessionIds: {"s2"},
+        archivedUnseenBySessionId: {"s2": false},
         sinceGeneration: tracker.generation,
       );
 
@@ -551,7 +551,7 @@ void main() {
       tracker.reconcileSessionUnseen(
         projectId: "p1",
         unseenBySessionId: const {},
-        archivedSessionIds: {"s1"},
+        archivedUnseenBySessionId: {"s1": true},
         sinceGeneration: gen,
       );
 
@@ -589,6 +589,29 @@ void main() {
 
       tracker.removeSession(projectId: "p1", sessionId: "s1");
       expect(tracker.currentProjectUnseen["p1"], isTrue);
+      tracker.onDispose();
+    });
+
+    test("reconcile preserves an archived row's live read echo over a stale REST value", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // An archived /sessions fetch begins (its snapshot still has s1 unseen).
+      final gen = tracker.generation;
+
+      // A live read echo for the archived s1 arrives meanwhile (unseen:false).
+      events.add(unseenEvent(projectID: "p1", sessionId: "s1", unseen: false, projectHasUnseenChanges: false));
+      await Future<void>.delayed(Duration.zero);
+
+      // The stale archived snapshot lands with s1 still unseen=true. Because the
+      // tracker reconciles archived rows (not just their ids), the newer live
+      // read value is preserved rather than dropped + re-bolded from stale REST.
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: const {},
+        archivedUnseenBySessionId: {"s1": true},
+        sinceGeneration: gen,
+      );
+      expect(tracker.currentSessionUnseen["p1"]?["s1"], isFalse);
       tracker.onDispose();
     });
 
