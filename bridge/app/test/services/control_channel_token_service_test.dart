@@ -104,31 +104,82 @@ void main() {
       );
     });
 
-    test("a slower older pull does not overwrite the newer cached token", () async {
+    test("a pushed token_update is adopted into accessToken and tokenStream", () async {
+      final client = _FakeControlChannelClient();
+      final service = ControlChannelTokenService(client: client);
+      addTearDown(service.dispose);
+
+      final emitted = <String>[];
+      final subscription = service.tokenStream.listen(emitted.add);
+      addTearDown(subscription.cancel);
+
+      // A GUI push with no preceding pull seeds the cache directly.
+      client.emit(_encode(const ControlMessage.tokenUpdate(accessToken: "pushed-1")));
+      await pumpEventQueue();
+      expect(service.accessToken, equals("pushed-1"));
+
+      // A later push overwrites — the push is the authoritative steady-state
+      // writer (last write wins, no pull-sequence gate).
+      client.emit(_encode(const ControlMessage.tokenUpdate(accessToken: "pushed-2")));
+      await pumpEventQueue();
+      expect(service.accessToken, equals("pushed-2"));
+      expect(emitted, equals(<String>["pushed-1", "pushed-2"]));
+    });
+
+    test("a pushed token_update clears a prior sign-out invalidation", () async {
+      final client = _FakeControlChannelClient();
+      final service = ControlChannelTokenService(client: client);
+      addTearDown(service.dispose);
+
+      // Seed, then sign out (null response) which invalidates the cache.
+      final first = service.getAccessToken();
+      await pumpEventQueue();
+      final firstRequest = _decode(client.sentFrames.single) as ControlTokenRequest;
+      client.emit(_encode(ControlMessage.tokenResponse(id: firstRequest.id, accessToken: "tok")));
+      await first;
+      expect(service.accessToken, equals("tok"));
+
+      final second = service.getAccessToken(forceRefresh: true);
+      await pumpEventQueue();
+      final secondRequest = _decode(client.sentFrames[1]) as ControlTokenRequest;
+      client.emit(_encode(ControlMessage.tokenResponse(id: secondRequest.id, accessToken: null)));
+      await expectLater(second, throwsA(isA<ControlTokenUnavailableException>()));
+      expect(() => service.accessToken, throwsStateError);
+
+      // A subsequent push re-signs-in: the getter is usable again.
+      client.emit(_encode(const ControlMessage.tokenUpdate(accessToken: "re-signed-in")));
+      await pumpEventQueue();
+      expect(service.accessToken, equals("re-signed-in"));
+    });
+
+    test("a null token_response invalidates a previously cached token", () async {
       final client = _FakeControlChannelClient();
       final service = ControlChannelTokenService(client: client);
       addTearDown(service.dispose);
 
       final first = service.getAccessToken();
       await pumpEventQueue();
+      final firstRequest = _decode(client.sentFrames.single) as ControlTokenRequest;
+      client.emit(_encode(ControlMessage.tokenResponse(id: firstRequest.id, accessToken: "tok")));
+      await first;
+      expect(service.accessToken, equals("tok"));
+
+      // Signed out: the cached token must no longer be readable, so a reconnect
+      // can never re-authenticate the relay from the stale token.
       final second = service.getAccessToken(forceRefresh: true);
       await pumpEventQueue();
-
-      final firstRequest = _decode(client.sentFrames[0]) as ControlTokenRequest;
       final secondRequest = _decode(client.sentFrames[1]) as ControlTokenRequest;
+      client.emit(_encode(ControlMessage.tokenResponse(id: secondRequest.id, accessToken: null)));
+      await expectLater(second, throwsA(isA<ControlTokenUnavailableException>()));
+      expect(() => service.accessToken, throwsStateError);
 
-      // The newer (second, latest-issued) pull resolves first and caches its
-      // token.
-      client.emit(_encode(ControlMessage.tokenResponse(id: secondRequest.id, accessToken: "new")));
-      expect(await second, equals("new"));
-      expect(service.accessToken, equals("new"));
-
-      // The older (first) pull's response arrives late: its caller still gets it,
-      // but it must NOT clobber the newer cached token.
-      client.emit(_encode(ControlMessage.tokenResponse(id: firstRequest.id, accessToken: "old")));
-      expect(await first, equals("old"));
+      // A fresh successful pull restores it.
+      final third = service.getAccessToken(forceRefresh: true);
       await pumpEventQueue();
-      expect(service.accessToken, equals("new"));
+      final thirdRequest = _decode(client.sentFrames[2]) as ControlTokenRequest;
+      client.emit(_encode(ControlMessage.tokenResponse(id: thirdRequest.id, accessToken: "fresh")));
+      await third;
+      expect(service.accessToken, equals("fresh"));
     });
 
     test("a failed newer pull does not block an older successful pull from caching", () async {

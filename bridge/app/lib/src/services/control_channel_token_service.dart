@@ -3,7 +3,8 @@ import "dart:convert";
 
 import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
-import "package:sesori_shared/sesori_shared.dart" show ControlMessage, ControlTokenResponse, jsonDecodeMap;
+import "package:sesori_shared/sesori_shared.dart"
+    show ControlMessage, ControlTokenResponse, ControlTokenUpdate, jsonDecodeMap;
 
 import "../auth/access_token_provider.dart";
 import "../auth/token_refresher.dart";
@@ -30,15 +31,25 @@ class ControlTokenUnavailableException implements Exception {
 /// [ControlMessage.tokenRequest] and awaiting the id-correlated
 /// [ControlMessage.tokenResponse], forwarding `forceRefresh` so the GUI knows
 /// whether to mint a fresh token. The latest token is cached so the synchronous
-/// [accessToken] getter and [tokenStream] reflect it. (Pushed `token_update`
-/// refreshes and the live relay re-auth that consumes [tokenStream] are wired
-/// separately.)
+/// [accessToken] getter and [tokenStream] reflect it.
+///
+/// The GUI is the authoritative token source: a pushed [ControlMessage.tokenUpdate]
+/// is adopted directly into the cache (driving [accessToken]/[tokenStream]), so the
+/// steady-state cache writer is the push, not pull ordering — there is no
+/// pull-sequence freshness heuristic. A pull still seeds the cache before any push
+/// exists (bootstrap), and the last write wins.
+///
+/// A null [ControlTokenResponse] (signed out / mid-login) invalidates the cache: the
+/// synchronous [accessToken] getter throws again until a fresh token (pull or push)
+/// arrives, so a reconnect can never re-authenticate the relay as a signed-out user
+/// from a stale cached token. (`tokenUpdate.accessToken` is non-null, so a push can
+/// never signal sign-out — only a null `tokenResponse` can.)
 ///
 /// It owns its subscription to [ControlChannelClient.inbound], decoding each
 /// frame into a [ControlMessage] and completing the matching pending request.
-/// Non-token-response frames are ignored here (other control messages are
-/// handled elsewhere); undecodable frames are logged and skipped so a malformed
-/// or forward-compat message can't stall a pull.
+/// Non-token frames are ignored here (other control messages are handled
+/// elsewhere); undecodable frames are logged and skipped so a malformed or
+/// forward-compat message can't stall a pull.
 class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher {
   static const Duration _defaultRequestTimeout = Duration(seconds: 30);
 
@@ -48,7 +59,11 @@ class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher 
   final Map<String, Completer<String?>> _pending = <String, Completer<String?>>{};
   late final StreamSubscription<String> _subscription;
   int _nextRequestId = 0;
-  int _latestCachedSeq = -1;
+  // A null token_response (signed out / mid-login) sets this so the synchronous
+  // accessToken getter throws even though the BehaviorSubject still holds the
+  // last (now stale) value — a BehaviorSubject cannot un-emit. Cleared the next
+  // time a real token is cached (pull or push).
+  bool _invalidated = false;
   bool _disposed = false;
   Future<void>? _disposeFuture;
 
@@ -60,12 +75,20 @@ class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher 
     _subscription = _client.inbound.listen(_handleFrame);
   }
 
-  /// The most recently pulled access token. Only valid after the first
-  /// successful [getAccessToken]; the composition root awaits the bootstrap pull
-  /// before exposing this service as the provider, so this never reads ahead of
-  /// a token in practice.
+  /// The most recently cached access token. Only valid after the first token is
+  /// cached (the bootstrap [getAccessToken] the composition root awaits before
+  /// exposing this provider, or a pushed [ControlMessage.tokenUpdate]), and only
+  /// while it has not been invalidated by a signed-out [ControlTokenResponse].
+  /// Throws [StateError] in either unavailable case so a caller can never read a
+  /// missing or stale-after-sign-out token.
   @override
   String get accessToken {
+    if (_invalidated) {
+      throw StateError(
+        "accessToken is unavailable — the desktop app reported no token "
+        "(signed out or mid-login); await a fresh getAccessToken() first.",
+      );
+    }
     if (!_tokenSubject.hasValue) {
       throw StateError(
         "accessToken read before the initial control-channel token pull — "
@@ -94,8 +117,7 @@ class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher 
         "Control channel token service has been disposed.",
       );
     }
-    final seq = _nextRequestId++;
-    final id = "token-$seq";
+    final id = "token-${_nextRequestId++}";
     final completer = Completer<String?>();
     _pending[id] = completer;
     try {
@@ -111,21 +133,19 @@ class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher 
       }
       final accessToken = await completer.future.timeout(_requestTimeout);
       if (accessToken == null) {
+        // Signed out / mid-login: invalidate any previously cached token so a
+        // reconnect can't re-authenticate the relay from a stale token. The
+        // GUI push (token_update) is non-null and so can never signal this.
+        _invalidateCache();
         throw const ControlTokenUnavailableException(
           "The desktop app could not supply an access token (signed out or mid-login).",
         );
       }
-      // Cache the latest token so the synchronous getter and tokenStream stay
-      // current. Only advance the cache when this response is newer than what's
-      // already cached (seq > _latestCachedSeq), so a slower older response can't
-      // overwrite a newer token — while a newer pull that FAILS still leaves an
-      // older successful pull free to cache. Skip if a dispose raced this pull
-      // (which closes the subject) — returning the token to the caller is still
-      // correct mid-shutdown.
-      if (!_disposed && seq > _latestCachedSeq) {
-        _latestCachedSeq = seq;
-        _tokenSubject.add(accessToken);
-      }
+      // Seed the cache so the synchronous getter and tokenStream stay current.
+      // No pull-sequence gate: the GUI's token_update push is the authoritative
+      // steady-state writer, so the last write simply wins. A pull only seeds
+      // the cache before any push exists (bootstrap).
+      _cacheToken(accessToken);
       return accessToken;
     } on TimeoutException {
       throw const ControlTokenUnavailableException(
@@ -176,12 +196,38 @@ class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher 
       Log.w("[control][token] ignoring undecodable control frame", error, stackTrace);
       return;
     }
-    if (message is ControlTokenResponse) {
-      final completer = _pending.remove(message.id);
-      if (completer != null && !completer.isCompleted) {
-        completer.complete(message.accessToken);
-      }
+    switch (message) {
+      case ControlTokenResponse():
+        final completer = _pending.remove(message.id);
+        if (completer != null && !completer.isCompleted) {
+          completer.complete(message.accessToken);
+        }
+      case ControlTokenUpdate():
+        // The GUI pushed a refreshed token to adopt without a request. This is
+        // the authoritative cache writer: drive accessToken/tokenStream so a
+        // live re-auth consumer sees the new token. (Non-null by protocol, so a
+        // push can never invalidate the cache — only a null pull response can.)
+        _cacheToken(message.accessToken);
+      default:
+        // Other control-message variants are not this service's concern.
+        break;
     }
-    // Other control-message variants are not this service's concern.
+  }
+
+  /// Caches [token] as the current access token, clearing any prior sign-out
+  /// invalidation. Skipped after dispose (the subject is closed) — callers still
+  /// receive their token; only the cache write is moot mid-shutdown.
+  void _cacheToken(String token) {
+    if (_disposed) return;
+    _invalidated = false;
+    _tokenSubject.add(token);
+  }
+
+  /// Marks the cache unavailable after a signed-out [ControlTokenResponse] so the
+  /// synchronous [accessToken] getter throws until a fresh token arrives. The
+  /// BehaviorSubject still holds the stale value (it cannot un-emit), but the
+  /// guarded getter refuses to return it.
+  void _invalidateCache() {
+    _invalidated = true;
   }
 }

@@ -2,9 +2,9 @@ import "dart:async";
 import "dart:io";
 
 import "package:http/http.dart" as http;
-import "package:sesori_bridge/src/auth/bridge_registration_api.dart";
-import "package:sesori_bridge/src/auth/bridge_registration_service.dart";
-import "package:sesori_bridge/src/auth/token.dart";
+import "package:rxdart/rxdart.dart";
+import "package:sesori_bridge/src/auth/access_token_provider.dart";
+import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
@@ -42,104 +42,54 @@ import "package:test/test.dart";
 import "../helpers/restart_test_support.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
-import "api/git_remote_api_test.dart";
 import "routing/routing_test_helpers.dart";
 
 void main() {
-  group("OrchestratorSession bridge registration", () {
-    test("startup registration failure fails the run without connecting to the relay", () async {
-      final repository = FakeBridgeRegistrationRepository()
-        ..registerError = BridgeRegistrationException(statusCode: 500, body: "boom");
-      final harness = await _RegistrationHarness.start(repository: repository);
+  group("OrchestratorSession token re-auth", () {
+    test("a token update while connected re-authenticates the relay on the new token", () async {
+      final authority = _ScriptedTokenAuthority("token-1");
+      final harness = await _ReauthHarness.start(authority: authority);
       addTearDown(harness.close);
 
-      await expectLater(harness.runFuture, throwsA(isA<BridgeRegistrationException>()));
+      final firstSocket = await harness.relayServer.nextClient();
+      final firstAuth = await _firstTextMessage(firstSocket);
+      expect(firstAuth["token"], equals("token-1"));
 
-      expect(repository.registeredBridgeIds, equals([null]));
-      expect(harness.relayServer.connectedClientCount, equals(0));
+      // The GUI pushes a refreshed token while the relay is connected. The
+      // service would adopt it into accessToken/tokenStream; here the scripted
+      // authority emits it directly. The orchestrator must drop and reconnect.
+      authority.emit("token-2");
+
+      final secondSocket = await harness.relayServer.nextClient();
+      final secondAuth = await _firstTextMessage(secondSocket);
+      expect(secondAuth["token"], equals("token-2"), reason: "relay re-authenticated on the new token");
     });
 
-    test("registers before the initial connect and sends the bridge id in the auth message", () async {
-      final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_first001";
-      final harness = await _RegistrationHarness.start(repository: repository);
-      addTearDown(harness.close);
-
-      final bridgeSocket = await harness.relayServer.nextClient();
-      final authMessage = await _firstTextMessage(bridgeSocket);
-
-      expect(repository.registeredBridgeIds, equals([null]));
-      expect(harness.tokenStore.tokens!.bridgeId, equals("br_first001"));
-      expect(authMessage["type"], equals("auth"));
-      expect(authMessage["role"], equals("bridge"));
-      expect(authMessage["bridgeId"], equals("br_first001"));
-    });
-
-    test("normal disconnect reconnects without re-registering", () async {
-      final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_first001";
-      final harness = await _RegistrationHarness.start(repository: repository);
+    test("a relay drop while signed out does not reconnect with a stale token", () async {
+      final authority = _ScriptedTokenAuthority("token-1");
+      final harness = await _ReauthHarness.start(authority: authority);
       addTearDown(harness.close);
 
       final firstSocket = await harness.relayServer.nextClient();
       await _firstTextMessage(firstSocket);
+
+      // Sign out: the next force-refresh (the reconnect pre-pull) fails, so the
+      // reconnect must be deferred — the relay must NOT re-auth from the stale
+      // cached token.
+      authority.failRefresh = true;
       await firstSocket.close();
 
-      final secondSocket = await harness.relayServer.nextClient();
-      final authMessage = await _firstTextMessage(secondSocket);
+      // Give the reconnect loop several backoff iterations; none should connect.
+      await Future<void>.delayed(const Duration(seconds: 2));
+      expect(harness.relayServer.connectedClientCount, equals(1), reason: "no reconnect while signed out");
 
-      expect(repository.registeredBridgeIds, equals([null]), reason: "registration is memoized per process");
-      expect(authMessage["bridgeId"], equals("br_first001"));
-    });
-
-    test("close code 4006 clears the bridge id and re-registers fresh", () async {
-      final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_first001";
-      final harness = await _RegistrationHarness.start(repository: repository);
-      addTearDown(harness.close);
-
-      final firstSocket = await harness.relayServer.nextClient();
-      await _firstTextMessage(firstSocket);
-
-      repository.nextBridgeId = "br_second002";
-      await firstSocket.close(RelayCloseCodes.bridgeRevoked);
-
-      final secondSocket = await harness.relayServer.nextClient();
-      final authMessage = await _firstTextMessage(secondSocket);
-
-      expect(
-        repository.registeredBridgeIds,
-        equals([null, null]),
-        reason: "the revoked bridge id must not be re-posted",
-      );
-      expect(harness.tokenStore.tokens!.bridgeId, equals("br_second002"));
-      expect(authMessage["bridgeId"], equals("br_second002"));
-    });
-
-    test("registration failure after 4006 retries the connect attempt on the existing backoff", () async {
-      final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_first001";
-      final harness = await _RegistrationHarness.start(repository: repository);
-      addTearDown(harness.close);
-
-      final firstSocket = await harness.relayServer.nextClient();
-      await _firstTextMessage(firstSocket);
-
-      repository
-        ..nextBridgeId = "br_second002"
-        ..registerError = BridgeRegistrationException(statusCode: 500, body: "boom");
-      await firstSocket.close(RelayCloseCodes.bridgeRevoked);
-
-      // First reconnect attempt fails on registration without touching the relay.
-      await _waitFor(
-        () => repository.registeredBridgeIds.length >= 2,
-        reason: "first re-registration attempt",
-      );
-      expect(harness.relayServer.connectedClientCount, equals(1));
-
-      // Once registration succeeds the next backoff attempt reconnects.
-      repository.registerError = null;
+      // Signing back in lets the deferred reconnect proceed.
+      authority
+        ..failRefresh = false
+        ..current = "token-restored";
       final secondSocket = await harness.relayServer.nextClient(timeout: const Duration(seconds: 10));
-      final authMessage = await _firstTextMessage(secondSocket);
-
-      expect(repository.registeredBridgeIds.length, greaterThanOrEqualTo(3));
-      expect(authMessage["bridgeId"], equals("br_second002"));
+      final secondAuth = await _firstTextMessage(secondSocket);
+      expect(secondAuth["token"], equals("token-restored"));
     });
   });
 }
@@ -149,50 +99,65 @@ Future<Map<String, dynamic>> _firstTextMessage(WebSocket socket) async {
   return jsonDecodeMap(message as String);
 }
 
-Future<void> _waitFor(bool Function() condition, {required String reason}) async {
-  final timeoutAt = DateTime.now().add(const Duration(seconds: 10));
-  while (!condition()) {
-    if (DateTime.now().isAfter(timeoutAt)) {
-      fail("Timed out waiting for: $reason");
-    }
-    await Future<void>.delayed(const Duration(milliseconds: 20));
+/// A controllable stand-in for [ControlChannelTokenService]: it is both the
+/// access-token provider (sync getter + replayed stream) and the refresher used
+/// by the reconnect pre-pull. Tests drive token pushes via [emit] and simulate a
+/// signed-out GUI via [failRefresh].
+class _ScriptedTokenAuthority implements AccessTokenProvider, TokenRefresher {
+  final BehaviorSubject<String> _subject;
+  String current;
+  bool failRefresh = false;
+
+  _ScriptedTokenAuthority(this.current) : _subject = BehaviorSubject<String>.seeded(current);
+
+  /// Pushes a new token, mirroring the service caching a `token_update`.
+  void emit(String token) {
+    current = token;
+    _subject.add(token);
   }
+
+  @override
+  String get accessToken => current;
+
+  @override
+  ValueStream<String> get tokenStream => _subject.stream;
+
+  @override
+  Future<String> getAccessToken({bool forceRefresh = false}) async {
+    if (failRefresh) {
+      throw const _SignedOutException();
+    }
+    return current;
+  }
+
+  Future<void> dispose() => _subject.close();
 }
 
-class _RegistrationHarness {
-  final FakeBridgePlugin plugin;
-  final InMemoryTokenStore tokenStore;
+class _SignedOutException implements Exception {
+  const _SignedOutException();
+}
+
+class _ReauthHarness {
   final OrchestratorSession session;
   final Future<void> runFuture;
   final _CountingRelayServer relayServer;
   final AppDatabase database;
+  final _ScriptedTokenAuthority authority;
 
-  _RegistrationHarness._({
-    required this.plugin,
-    required this.tokenStore,
+  _ReauthHarness._({
     required this.session,
     required this.runFuture,
     required this.relayServer,
     required this.database,
+    required this.authority,
   });
 
-  static Future<_RegistrationHarness> start({
-    required FakeBridgeRegistrationRepository repository,
+  static Future<_ReauthHarness> start({
+    required _ScriptedTokenAuthority authority,
   }) async {
     final relayServer = await _CountingRelayServer.start();
     final database = createTestDatabase();
     final plugin = FakeBridgePlugin();
-    final tokenStore = InMemoryTokenStore(
-      TokenData(accessToken: "access", refreshToken: "refresh", bridgeId: null, lastProvider: AuthProvider.github),
-    );
-    final registrationService = BridgeRegistrationService(
-      repository: repository,
-      tokenRefresher: FakeTokenRefresher(),
-      loadTokens: tokenStore.load,
-      saveTokens: tokenStore.save,
-      hostName: "test-host",
-      platform: "macos",
-    );
 
     final pullRequestRepository = PullRequestRepository(
       pullRequestDao: database.pullRequestDao,
@@ -214,17 +179,17 @@ class _RegistrationHarness {
       ),
       client: RelayClient(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
-        accessTokenProvider: FakeAccessTokenProvider(),
-        bridgeIdProvider: registrationService,
+        accessTokenProvider: authority,
+        bridgeIdProvider: FakeBridgeIdProvider(),
       ),
       plugin: plugin,
       metadataService: FakeMetadataService(),
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
       maintenanceListener: pushSubsystem.maintenanceListener,
-      accessTokenProvider: FakeAccessTokenProvider(),
-      tokenRefresher: FakeTokenRefresher(),
-      bridgeRegistrationService: registrationService,
+      accessTokenProvider: authority,
+      tokenRefresher: authority,
+      bridgeRegistrationService: createFakeBridgeRegistrationService(),
       failureReporter: FakeFailureReporter(),
       prSyncService: FakePrSyncService(),
       sessionRepository: sessionRepository,
@@ -267,16 +232,8 @@ class _RegistrationHarness {
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           gitApi: GitCliApi(
-            processRunner: FakeProcessRunner((
-              String executable,
-              List<String> arguments, {
-              Map<String, String>? environment,
-              String? workingDirectory,
-              Duration timeout = const Duration(seconds: 15),
-            }) async {
-              return ProcessResult(0, 127, "", "command not found");
-            }),
-            gitPathExists: ({required String gitPath}) => true,
+            processRunner: ProcessRunner(),
+            gitPathExists: ({required String gitPath}) => false,
           ),
           plugin: plugin,
         ),
@@ -289,18 +246,15 @@ class _RegistrationHarness {
     );
 
     final session = orchestrator.create();
-    // Surface run() failures through [runFuture] without triggering an
-    // unhandled async error when a test only awaits it via expectLater later.
     final runFuture = session.run();
     unawaited(runFuture.catchError((_) {}));
 
-    return _RegistrationHarness._(
-      plugin: plugin,
-      tokenStore: tokenStore,
+    return _ReauthHarness._(
       session: session,
       runFuture: runFuture,
       relayServer: relayServer,
       database: database,
+      authority: authority,
     );
   }
 
@@ -309,8 +263,9 @@ class _RegistrationHarness {
     try {
       await runFuture.timeout(const Duration(seconds: 10));
     } on Object {
-      // run() may have already completed with the error under test.
+      // run() may have already completed.
     }
+    await authority.dispose();
     await database.close();
     await relayServer.close();
   }

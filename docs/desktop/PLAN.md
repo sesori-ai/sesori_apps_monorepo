@@ -291,7 +291,7 @@ seams through `module_core` interfaces, not `AuthManager` internals.
 | Orphaned helper on GUI crash | OPEN | TBD | ADR A9; parent-loss policy in PR 1.1 |
 | Supervised restart replays `--control-url` (no stdin secret) | OPEN — until PR 1.7 | TBD | PR 1.1 gap; PR 1.7 makes supervised restart `exit(86)` not `spawnSuccessor()`. Unreachable pre-GUI; successor fails closed (`ControlSecretApi` timeout → exit 1) |
 | Uninstall vs shared CLI state | OPEN | TBD | ADR A10; scope cleanup in PR 3.11 |
-| RelayClient live re-auth on token push | OPEN | TBD | ADR A12; PR 1.5 must add the subscription/reconnect path + live-connection test |
+| RelayClient live re-auth on token push | RESOLVED in PR 1.5 | TBD | ADR A12; Orchestrator subscribes to `AccessTokenProvider.tokenStream` (skips the replayed value) and funnels a new token into the existing relay reconnect path; signed-out `token_response` invalidates the service cache and defers reconnect. Connection-level test added. |
 | Desktop relay client / `ConnectionService` deferral | OPEN — deferred to Phase 4 | TBD | ADR A21; lean v1 control/status must not resolve relay transport. PR 4.7 owns desktop relay prerequisites and accessory-UI connection acceptance. |
 | `core/widgets` not pure leaf UI | OPEN | TBD | `connection_overlay.dart` imports app DI/routing/go_router; PR 4.1 must refactor + declare deps first |
 | CI secrets (Dev ID, notarization key, EdDSA appcast, GPG) | OPEN | TBD | PR 3.0b |

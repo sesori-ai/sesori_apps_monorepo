@@ -8,6 +8,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../auth/access_token_provider.dart";
 import "../auth/bridge_registration_service.dart";
 import "../auth/token_refresher.dart";
 import "../push/completion_push_listener.dart";
@@ -54,6 +55,7 @@ class Orchestrator {
   final PushDispatcher _pushDispatcher;
   final CompletionPushListener _completionListener;
   final MaintenancePushListener _maintenanceListener;
+  final AccessTokenProvider _accessTokenProvider;
   final TokenRefresher _tokenRefresher;
   final BridgeRegistrationService _bridgeRegistrationService;
   final FailureReporter _failureReporter;
@@ -80,6 +82,7 @@ class Orchestrator {
     required PushDispatcher pushDispatcher,
     required CompletionPushListener completionListener,
     required MaintenancePushListener maintenanceListener,
+    required AccessTokenProvider accessTokenProvider,
     required TokenRefresher tokenRefresher,
     required BridgeRegistrationService bridgeRegistrationService,
     required FailureReporter failureReporter,
@@ -103,6 +106,7 @@ class Orchestrator {
        _pushDispatcher = pushDispatcher,
        _completionListener = completionListener,
        _maintenanceListener = maintenanceListener,
+       _accessTokenProvider = accessTokenProvider,
        _tokenRefresher = tokenRefresher,
        _bridgeRegistrationService = bridgeRegistrationService,
        _failureReporter = failureReporter,
@@ -150,6 +154,7 @@ class Orchestrator {
       pushDispatcher: _pushDispatcher,
       completionListener: _completionListener,
       maintenanceListener: _maintenanceListener,
+      accessTokenProvider: _accessTokenProvider,
       tokenRefresher: _tokenRefresher,
       bridgeRegistrationService: _bridgeRegistrationService,
       roomKey: roomKey,
@@ -199,6 +204,7 @@ class OrchestratorSession {
   final PushDispatcher _pushDispatcher;
   final CompletionPushListener _completionListener;
   final MaintenancePushListener _maintenanceListener;
+  final AccessTokenProvider _accessTokenProvider;
   final TokenRefresher _tokenRefresher;
   final BridgeRegistrationService _bridgeRegistrationService;
   final StreamController<int> _bytesSentController;
@@ -236,6 +242,7 @@ class OrchestratorSession {
     required PushDispatcher pushDispatcher,
     required CompletionPushListener completionListener,
     required MaintenancePushListener maintenanceListener,
+    required AccessTokenProvider accessTokenProvider,
     required TokenRefresher tokenRefresher,
     required BridgeRegistrationService bridgeRegistrationService,
     required List<int> roomKey,
@@ -264,6 +271,7 @@ class OrchestratorSession {
        _pushDispatcher = pushDispatcher,
        _completionListener = completionListener,
        _maintenanceListener = maintenanceListener,
+       _accessTokenProvider = accessTokenProvider,
        _tokenRefresher = tokenRefresher,
        _bridgeRegistrationService = bridgeRegistrationService,
        _roomKey = roomKey,
@@ -375,6 +383,18 @@ class OrchestratorSession {
             _sseManager.enqueueEvent(SesoriSseEvent.sessionsUpdated(projectID: projectId));
           })
           .addTo(_subscriptions);
+
+      // Live re-auth: when the token provider emits a new access token while the
+      // relay is connected (supervised mode, the GUI pushed a token_update), the
+      // open WebSocket is still authenticated on the previous JWT. Drop the relay
+      // so the reconnect loop below re-authenticates on the fresh token — the same
+      // path a relay-side disconnect drives, so both triggers stay symmetric.
+      // `skip(1)` ignores the BehaviorSubject's replayed current value, which is
+      // the token connect() already used; only a genuinely new token re-auths.
+      _accessTokenProvider.tokenStream
+          .skip(1)
+          .listen((_) => unawaited(_reauthenticateRelay()))
+          .addTo(_subscriptions);
     } catch (e) {
       throw Exception("failed to connect to relay: $e");
     }
@@ -412,7 +432,15 @@ class OrchestratorSession {
             return;
           }
 
-          await _refreshAccessToken();
+          // Don't reconnect without a usable token: in supervised mode a
+          // signed-out / mid-login GUI yields no token, and reconnecting would
+          // re-authenticate the relay from a stale cached token. Back off and
+          // retry — a later refresh (or a token_update push) recovers.
+          if (!await _refreshAccessToken()) {
+            Log.w("No access token available — deferring reconnect (retrying in $backoff)");
+            backoff = _nextBackoff(backoff);
+            continue;
+          }
 
           try {
             await _bridgeRegistrationService.ensureRegistered();
@@ -564,12 +592,36 @@ class OrchestratorSession {
     }
   }
 
-  Future<void> _refreshAccessToken() async {
+  /// Force-refreshes the access token before a relay reconnect. Returns whether a
+  /// usable token is now available: `false` means the refresher could not supply
+  /// one (in supervised mode, the GUI reported signed-out / mid-login), in which
+  /// case the caller MUST NOT reconnect — doing so would re-authenticate the relay
+  /// from a stale cached token as a signed-out user.
+  Future<bool> _refreshAccessToken() async {
     try {
       await _tokenRefresher.getAccessToken(forceRefresh: true);
       Log.i("Access token refreshed successfully");
+      return true;
     } catch (e) {
       Log.w("Token refresh failed: $e");
+      return false;
+    }
+  }
+
+  /// Live re-auth trigger: the token provider emitted a fresh token while the
+  /// relay was connected, so the open socket is still on the old JWT. Closing the
+  /// relay ends the active read loop, after which [run]'s reconnect block force-
+  /// pulls the new token and reconnects — the same path a relay-side drop drives.
+  /// No-op once cancelled so a token emit during shutdown can't fight teardown.
+  Future<void> _reauthenticateRelay() async {
+    if (_cancelled) return;
+    Log.i("Access token updated while connected — re-authenticating relay");
+    try {
+      await _client.close();
+    } on Object catch (error, stackTrace) {
+      // Best-effort: if the close fails the read loop still ends on the broken
+      // socket and the reconnect block recovers, so log and continue.
+      Log.w("Failed to close relay for token re-auth", error, stackTrace);
     }
   }
 
