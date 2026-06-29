@@ -52,16 +52,6 @@ class _AgentModelButtonsState extends State<AgentModelButtons> {
   /// `contains` pass over these precomputed sections.
   List<ModelPickerSection> _modelSections = const [];
 
-  /// Drives the model menu imperatively so the in-popup search affordance can
-  /// dismiss the glass popup before the full-screen search sheet rises.
-  final GlassMenuController _modelMenuController = GlassMenuController();
-
-  /// Drive the agent/variant popups imperatively so that, in a master-detail
-  /// layout, each one can re-anchor under its trigger on open via
-  /// [_alignMenuToTrigger]. (The model menu reuses [_modelMenuController].)
-  final GlassMenuController _agentMenuController = GlassMenuController();
-  final GlassMenuController _variantMenuController = GlassMenuController();
-
   @override
   void initState() {
     super.initState();
@@ -96,7 +86,6 @@ class _AgentModelButtonsState extends State<AgentModelButtons> {
         children: [
           Expanded(
             child: _AgentMenu(
-              controller: _agentMenuController,
               agents: widget.agents,
               selectedAgent: widget.selectedAgent,
               onAgentSelected: widget.onAgentSelected,
@@ -105,7 +94,6 @@ class _AgentModelButtonsState extends State<AgentModelButtons> {
           const SizedBox(width: 8),
           Expanded(
             child: _ModelMenu(
-              controller: _modelMenuController,
               sections: _modelSections,
               selected: selected,
               providers: widget.providers,
@@ -117,7 +105,6 @@ class _AgentModelButtonsState extends State<AgentModelButtons> {
             const SizedBox(width: 8),
             Expanded(
               child: _VariantMenu(
-                controller: _variantMenuController,
                 availableVariants: widget.availableVariants,
                 selectedVariant: selected?.variant,
                 onVariantSelected: widget.onVariantSelected,
@@ -129,11 +116,11 @@ class _AgentModelButtonsState extends State<AgentModelButtons> {
     );
   }
 
-  /// Collapses the glass popup and opens the full-screen, autofocused model
-  /// search sheet. Selecting there flows back through [onModelSelected]. Lives
-  /// on the State because it drives the popup controller it owns.
+  /// Opens the full-screen, autofocused model search sheet. The menu itself is
+  /// dismissed by the search affordance (via the [PregoMenuCustom] `close`
+  /// callback) before this runs. Selecting there flows back through
+  /// [onModelSelected].
   void _openModelSearchSheet() {
-    _modelMenuController.close();
     final selected = widget.selectedAgentModel;
     unawaited(
       ModelPickerSheet.show(
@@ -155,13 +142,11 @@ class _AgentModelButtonsState extends State<AgentModelButtons> {
 /// Agent-selection pill + its popup. Extracted as a widget (rather than a build
 /// method) so it gets its own element subtree and only rebuilds with its inputs.
 class _AgentMenu extends StatelessWidget {
-  final GlassMenuController controller;
   final List<AgentInfo> agents;
   final String selectedAgent;
   final ValueChanged<String> onAgentSelected;
 
   const _AgentMenu({
-    required this.controller,
     required this.agents,
     required this.selectedAgent,
     required this.onAgentSelected,
@@ -170,27 +155,18 @@ class _AgentMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    return GlassMenu(
-      controller: controller,
+    return PregoAnchorMenu(
       menuWidth: 240,
       menuHeight: agents.length > 6 ? 320 : null,
-      menuBorderRadius: 24,
-      autoAdjustToScreen: true,
-      menuPadding: const EdgeInsets.all(12),
-      settings: _menuGlass(context),
       triggerBuilder: (context, toggle) => _Trigger(
         icon: Icons.smart_toy_outlined,
         label: selectedAgent,
-        onTap: () {
-          toggle();
-          _alignMenuToTrigger(context, controller: controller);
-        },
+        onTap: toggle,
       ),
-      items: [
-        _menuLabel(context, text: loc.sessionDetailPickerAgent),
+      entries: [
+        PregoMenuLabel(text: loc.sessionDetailPickerAgent),
         for (final agent in agents)
-          _menuItem(
-            context,
+          PregoMenuItem(
             title: agent.name,
             subtitle: agent.description,
             isSelected: agent.name == selectedAgent,
@@ -204,7 +180,6 @@ class _AgentMenu extends StatelessWidget {
 /// Model-selection pill + its quick-pick popup (search affordance pinned at the
 /// top, then each provider's representative models).
 class _ModelMenu extends StatelessWidget {
-  final GlassMenuController controller;
   final List<ModelPickerSection> sections;
   final AgentModel? selected;
   final List<ProviderInfo> providers;
@@ -212,7 +187,6 @@ class _ModelMenu extends StatelessWidget {
   final VoidCallback onSearchTap;
 
   const _ModelMenu({
-    required this.controller,
     required this.sections,
     required this.selected,
     required this.providers,
@@ -223,20 +197,29 @@ class _ModelMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Tapping the search affordance escalates into the full-screen search sheet
-    // (see [_AgentModelButtonsState._openModelSearchSheet]).
-    final items = <Widget>[_ModelSearchAffordance(onTap: onSearchTap)];
+    // (see [_AgentModelButtonsState._openModelSearchSheet]). The affordance is a
+    // custom entry so it can close the menu before the sheet rises.
+    final entries = <PregoMenuEntry>[
+      PregoMenuCustom(
+        builder: (context, close) => _ModelSearchAffordance(
+          onTap: () {
+            close();
+            onSearchTap();
+          },
+        ),
+      ),
+    ];
     var modelRows = 0;
     var headerRows = 0;
     for (final section in sections) {
       final models = section.models.where((model) => model.visibleByDefault).toList();
       if (models.isEmpty) continue;
       headerRows++;
-      items.add(_menuLabel(context, text: section.providerName));
+      entries.add(PregoMenuLabel(text: section.providerName));
       for (final model in models) {
         modelRows++;
-        items.add(
-          _menuItem(
-            context,
+        entries.add(
+          PregoMenuItem(
             title: model.displayName,
             subtitle: model.family,
             isSelected: section.providerID == selected?.providerID && model.modelID == selected?.modelID,
@@ -246,36 +229,26 @@ class _ModelMenu extends StatelessWidget {
       }
     }
 
-    return GlassMenu(
-      controller: controller,
+    return PregoAnchorMenu(
       menuWidth: 320,
       menuHeight: _modelMenuHeight(modelRows: modelRows, headerRows: headerRows),
-      menuBorderRadius: 24,
-      autoAdjustToScreen: true,
-      menuPadding: const EdgeInsets.all(12),
-      settings: _menuGlass(context),
       triggerBuilder: (context, toggle) => _Trigger(
         icon: Icons.memory_outlined,
         label: _resolveModelName(context, providers: providers, selected: selected),
-        onTap: () {
-          toggle();
-          _alignMenuToTrigger(context, controller: controller);
-        },
+        onTap: toggle,
       ),
-      items: items,
+      entries: entries,
     );
   }
 }
 
 /// Variant-selection pill + its popup.
 class _VariantMenu extends StatelessWidget {
-  final GlassMenuController controller;
   final List<SessionVariant> availableVariants;
   final String? selectedVariant;
   final ValueChanged<SessionVariant?> onVariantSelected;
 
   const _VariantMenu({
-    required this.controller,
     required this.availableVariants,
     required this.selectedVariant,
     required this.onVariantSelected,
@@ -284,34 +257,24 @@ class _VariantMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    return GlassMenu(
-      controller: controller,
+    return PregoAnchorMenu(
       menuWidth: 220,
       menuHeight: availableVariants.length > 6 ? 320 : null,
-      menuBorderRadius: 24,
-      autoAdjustToScreen: true,
-      menuPadding: const EdgeInsets.all(12),
-      settings: _menuGlass(context),
       triggerBuilder: (context, toggle) => _Trigger(
         icon: Icons.speed_outlined,
         label: selectedVariant ?? loc.sessionDetailVariantDefault,
-        onTap: () {
-          toggle();
-          _alignMenuToTrigger(context, controller: controller);
-        },
+        onTap: toggle,
       ),
-      items: [
-        _menuLabel(context, text: loc.sessionDetailPickerVariant),
-        _menuItem(
-          context,
+      entries: [
+        PregoMenuLabel(text: loc.sessionDetailPickerVariant),
+        PregoMenuItem(
           title: loc.sessionDetailVariantDefault,
           subtitle: null,
           isSelected: selectedVariant == null,
           onTap: () => onVariantSelected(null),
         ),
         for (final variant in availableVariants)
-          _menuItem(
-            context,
+          PregoMenuItem(
             title: variant.id,
             subtitle: null,
             isSelected: variant.id == selectedVariant,
@@ -374,62 +337,6 @@ double _modelMenuHeight({required int modelRows, required int headerRows}) {
   const verticalPadding = 36.0;
   final natural = searchHeight + modelRows * itemHeight + headerRows * headerHeight + verticalPadding;
   return natural.clamp(120.0, 380.0);
-}
-
-Widget _menuLabel(BuildContext context, {required String text}) {
-  final prego = context.prego;
-  return GlassMenuLabel(
-    title: text,
-    style: prego.textTheme.textXs.medium.copyWith(
-      color: prego.colors.textSecondary,
-      letterSpacing: 0.8,
-    ),
-  );
-}
-
-GlassMenuItem _menuItem(
-  BuildContext context, {
-  required String title,
-  required String? subtitle,
-  required bool isSelected,
-  required VoidCallback onTap,
-}) {
-  final prego = context.prego;
-  return GlassMenuItem(
-    title: title,
-    subtitle: subtitle,
-    titleStyle: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
-    subtitleStyle: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
-    trailing: isSelected ? Icon(Icons.check, size: 16, color: prego.colors.bgBrandSolid) : null,
-    onTap: onTap,
-  );
-}
-
-LiquidGlassSettings _menuGlass(BuildContext context) {
-  final colors = context.prego.colors;
-  return LiquidGlassSettings(
-    glassColor: colors.buttonGlassPrimaryBackground,
-  );
-}
-
-/// Re-anchors a just-opened [GlassMenu] popup under its trigger when the
-/// composer is hosted inside a master-detail right pane.
-///
-/// In split/landscape layouts the session detail lives in the right pane's
-/// nested Navigator, whose Overlay is inset from the screen by the sidebar
-/// width. [GlassMenu] captures its trigger in global (screen) coordinates but
-/// paints the popup inside that nested Overlay, so the popup lands one
-/// sidebar-width too far along the main axis. Feeding the negated Overlay
-/// origin to the menu's follow-offset cancels that inset, pulling the popup
-/// back under its trigger. In a single-pane layout the Overlay already sits at
-/// the screen origin, so the correction is zero and this is a no-op.
-///
-/// Must be called right after the menu opens (after `toggle()`): opening resets
-/// the follow-offset to zero, and this re-applies the correction on top.
-void _alignMenuToTrigger(BuildContext context, {required GlassMenuController controller}) {
-  final overlayBox = Overlay.maybeOf(context)?.context.findRenderObject();
-  if (overlayBox is! RenderBox || !overlayBox.attached || !overlayBox.hasSize) return;
-  controller.setFollowOffset(-overlayBox.localToGlobal(Offset.zero));
 }
 
 String _resolveModelName(

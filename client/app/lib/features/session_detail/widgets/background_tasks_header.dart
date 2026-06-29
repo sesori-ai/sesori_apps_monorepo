@@ -1,12 +1,11 @@
 import "package:flutter/material.dart";
-import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:theme_prego/module_prego.dart";
 import "../../../core/extensions/build_context_x.dart";
 
-/// Tappable header row of the background-tasks glass card. Shows a spinner +
+/// Tappable header row of the background-tasks card. Shows a spinner +
 /// "N Tasks Running" (or a check + "Completed") and a chevron that rotates as
-/// the card expands. Rendered as a [GlassListTile] so it shares the card's
-/// glass surface and press feedback with the task rows below it.
+/// the card expands. Rendered as a [PregoListTile] so it shares the card's
+/// surface and press feedback with the task rows below it.
 class BackgroundTasksHeader extends StatelessWidget {
   final int runningCount;
   final bool expanded;
@@ -25,15 +24,15 @@ class BackgroundTasksHeader extends StatelessWidget {
     final loc = context.loc;
     final hasRunning = runningCount > 0;
 
-    return GlassListTile(
+    return PregoListTile(
       onTap: onTap,
       showDivider: false,
       leading: hasRunning
-          // GlassListTile forces the leading slot to a tight width of 32 but
-          // leaves its height free. A CircularProgressIndicator has no intrinsic
-          // size and paints to its box without preserving aspect ratio, so it
-          // renders as an oval. Center re-loosens the constraints around a fixed
-          // square so the spinner stays a 16px circle.
+          // The leading slot is a tight 32px wide but leaves its height free. A
+          // CircularProgressIndicator has no intrinsic size and paints to its box
+          // without preserving aspect ratio, so it renders as an oval. Center
+          // re-loosens the constraints around a fixed square so the spinner
+          // stays a 16px circle.
           ? Center(
               heightFactor: 1,
               child: SizedBox.square(

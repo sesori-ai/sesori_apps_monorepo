@@ -1,14 +1,16 @@
 import "package:flutter/material.dart";
-import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 import "background_tasks_header.dart";
 import "background_tasks_list.dart";
 
-/// A floating glass card shown above the prompt input when background tasks
+/// A floating card shown above the prompt input when background tasks
 /// (child sessions) exist. Collapsed it shows "N Tasks Running"; tapping
-/// expands the same glass surface to reveal the individual task list with
+/// expands the same surface to reveal the individual task list with
 /// status + navigation.
+///
+/// The surface is a [PregoCard] — frosted glass on Apple platforms, a flat
+/// Material card on Android (where the glass shader janks).
 ///
 /// The collapsed header is the only thing that occupies layout space in the
 /// bottom-controls cluster — the expanded card is painted in an [OverlayPortal]
@@ -129,13 +131,7 @@ class _BackgroundTasksBarState extends State<BackgroundTasksBar> {
   }
 
   Widget _buildCard(BuildContext context, {required bool expanded}) {
-    final prego = context.prego;
-    return GlassContainer(
-      useOwnLayer: true,
-      clipBehavior: Clip.antiAlias,
-      padding: EdgeInsets.zero,
-      shape: const LiquidRoundedSuperellipse(borderRadius: 20),
-      settings: LiquidGlassSettings(glassColor: prego.colors.buttonGlassPrimaryBackground),
+    return PregoCard(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
