@@ -274,16 +274,38 @@ void main() {
       expect(pagedDeleted, isEmpty);
       expect(await sessionDao.getSessionsByProject(projectId: "p1"), hasLength(2));
 
-      // A complete refresh reconciles it away and returns the deleted id.
+      // A complete refresh reconciles it away and returns the deleted id (the
+      // sessions were created at t=1, before this fetch start).
       final deleted = await service.persistSessionsForProject(
         projectId: "p1",
         sessions: [sharedSession("s1")],
         isCompleteList: true,
+        fetchStartedAt: 1000,
       );
       expect(deleted, equals(["s2"]));
       final remaining = await sessionDao.getSessionsByProject(projectId: "p1");
       expect(remaining, hasLength(1));
       expect(remaining.single.sessionId, equals("s1"));
+    });
+
+    test("a complete refresh without a fetch-start timestamp skips the reconcile-delete", () async {
+      await projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await service.persistSessionsForProject(
+        projectId: "p1",
+        sessions: [sharedSession("s1"), sharedSession("s2")],
+        isCompleteList: true,
+        fetchStartedAt: 1000,
+      );
+
+      // Without fetchStartedAt the guard can't be applied, so deletion is skipped
+      // entirely rather than risk removing a concurrently-created session.
+      final deleted = await service.persistSessionsForProject(
+        projectId: "p1",
+        sessions: [sharedSession("s1")],
+        isCompleteList: true,
+      );
+      expect(deleted, isEmpty);
+      expect(await sessionDao.getSessionsByProject(projectId: "p1"), hasLength(2));
     });
 
     test("does not delete a session created after the fetch started", () async {

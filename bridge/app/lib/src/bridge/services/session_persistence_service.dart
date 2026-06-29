@@ -91,14 +91,17 @@ class SessionPersistenceService {
             ),
         ],
       );
-      if (!isCompleteList) return const <String>[];
       // Only delete rows created before this fetch started, so a session created
       // concurrently (its row inserted after the snapshot was taken) is not
-      // wrongly removed just because it is absent from the stale snapshot.
+      // wrongly removed just because it is absent from the stale snapshot. The
+      // reconcile-delete is therefore skipped entirely without a pre-fetch
+      // timestamp — falling back to "now" would defeat that guard and could
+      // delete a session created during the fetch window.
+      if (!isCompleteList || fetchStartedAt == null) return const <String>[];
       return _sessionDao.deleteSessionsForProjectNotIn(
         projectId: projectId,
         keepSessionIds: [for (final s in sessions) s.id],
-        createdBefore: fetchStartedAt ?? DateTime.now().millisecondsSinceEpoch,
+        createdBefore: fetchStartedAt,
       );
     });
   }

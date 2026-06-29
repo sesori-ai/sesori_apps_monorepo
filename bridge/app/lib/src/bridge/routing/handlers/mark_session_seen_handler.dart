@@ -24,11 +24,15 @@ class MarkSessionSeenHandler extends BodyRequestHandler<MarkSessionSeenRequest, 
     if (body.sessionId.isEmpty) {
       throw buildErrorResponse(request, 400, "empty session id");
     }
+    // Normalize an empty/blank client-supplied project id to null so a malformed
+    // value can't drive a missing-row aggregate recompute against a bogus
+    // project. A null id simply skips the authoritative clear.
+    final projectId = body.projectId?.trim().isEmpty ?? true ? null : body.projectId;
     if (body.read) {
-      await _sessionUnseenService.markRead(sessionId: body.sessionId, projectId: body.projectId);
+      await _sessionUnseenService.markRead(sessionId: body.sessionId, projectId: projectId);
     } else {
       try {
-        await _sessionUnseenService.markUnread(sessionId: body.sessionId, projectId: body.projectId);
+        await _sessionUnseenService.markUnread(sessionId: body.sessionId, projectId: projectId);
       } on SessionUnseenRowMissingException {
         // The service already emitted an authoritative clear; the non-2xx tells
         // the requesting client to roll back its optimistic unread.
