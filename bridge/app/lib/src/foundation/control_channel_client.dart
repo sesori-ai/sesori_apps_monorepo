@@ -10,6 +10,17 @@ import "package:web_socket_channel/io.dart";
 /// control-protocol DTOs live in `sesori_shared` (added in a later PR).
 enum ControlChannelConnectionState { connected, disconnected }
 
+/// Thrown by [ControlChannelClient.send] when the channel is not currently
+/// connected (GUI outage or mid-reconnect). This is a transient runtime
+/// condition — not a programming error — so it is an [Exception], letting
+/// callers map it to their own typed failure rather than catching an [Error].
+class ControlChannelNotConnectedException implements Exception {
+  final String message;
+  const ControlChannelNotConnectedException(this.message);
+  @override
+  String toString() => "ControlChannelNotConnectedException: $message";
+}
+
 /// Layer-0 transport for the GUI-hosted loopback control channel used in
 /// supervised mode. It is a dumb duplex WebSocket pipe: it connects,
 /// auto-reconnects with backoff while it is alive, surfaces inbound text
@@ -80,11 +91,13 @@ class ControlChannelClient {
     }
   }
 
-  /// Sends a raw text frame. Throws [StateError] if not currently connected.
+  /// Sends a raw text frame. Throws [ControlChannelNotConnectedException] if not
+  /// currently connected (GUI outage / mid-reconnect), so callers can map that
+  /// transient condition to their own typed failure.
   void send(String frame) {
     final channel = _channel;
     if (channel == null) {
-      throw StateError("Control channel is not connected");
+      throw const ControlChannelNotConnectedException("Control channel is not connected");
     }
     channel.sink.add(frame);
   }
