@@ -88,6 +88,9 @@ void main() {
   late MockSessionDetailCubit cubit;
   late MockVoiceTranscriptionService voiceTranscriptionService;
 
+  // flutter_test defaults `defaultTargetPlatform` to android, so PregoAnchorMenu
+  // renders its flat (cue) menu here — the menu rows are Material InkWells, not
+  // GlassMenuItems. Finders below target those InkWells.
   setUp(() async {
     await GetIt.instance.reset();
     cubit = MockSessionDetailCubit();
@@ -122,9 +125,9 @@ void main() {
     await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(GlassMenuItem, "xhigh"), findsOneWidget);
+    expect(find.widgetWithText(InkWell, "xhigh"), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(GlassMenuItem, "xhigh"));
+    await tester.tap(find.widgetWithText(InkWell, "xhigh"));
     await tester.pumpAndSettle();
 
     verify(() => cubit.selectVariant(const SessionVariant(id: "xhigh"))).called(1);
@@ -176,7 +179,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Select Default (null variant).
-    await tester.tap(find.widgetWithText(GlassMenuItem, "Default"));
+    await tester.tap(find.widgetWithText(InkWell, "Default"));
     await tester.pumpAndSettle();
 
     verify(() => cubit.selectVariant(null)).called(1);
