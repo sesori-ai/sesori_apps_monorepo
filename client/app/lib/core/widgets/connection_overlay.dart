@@ -24,7 +24,11 @@ class ConnectionOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => ConnectionOverlayCubit(getIt<ConnectionService>(), getIt<AuthSession>()),
+      create: (_) => ConnectionOverlayCubit(
+        getIt<ConnectionService>(),
+        getIt<AuthSession>(),
+        getIt<RegisteredBridgesService>(),
+      ),
       child: _ConnectionOverlayBody(router: router, child: child),
     );
   }
@@ -39,10 +43,10 @@ class _ConnectionOverlayBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final status = context.watch<ConnectionOverlayCubit>().state;
-    final showOverlay = status is ConnectionLost;
-    final isReconnecting = status is ConnectionReconnecting;
-    final isBridgeOffline = status is ConnectionBridgeOffline;
+    final state = context.watch<ConnectionOverlayCubit>().state;
+    final showOverlay = state is ConnectionOverlayConnectionLost;
+    final isReconnecting = state is ConnectionOverlayReconnecting;
+    final isBridgeOffline = state is ConnectionOverlayBridgeOffline;
 
     return Stack(
       children: [

@@ -27,8 +27,10 @@ import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
+import "package:sesori_dart_core/src/services/registered_bridges_service.dart";
 import "package:sesori_dart_core/src/services/session_unseen_tracker.dart";
 import "package:sesori_dart_core/src/services/session_viewing_service.dart";
+
 import "package:sesori_mobile/capabilities/voice/audio_format_config.dart";
 import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
 import "package:sesori_mobile/capabilities/voice/wake_lock_service.dart";
@@ -45,6 +47,8 @@ class MockProjectApi extends Mock implements ProjectApi {}
 class MockProjectRepository extends Mock implements ProjectRepository {}
 
 class MockBridgeRepository extends Mock implements BridgeRepository {}
+
+class MockRegisteredBridgesService extends Mock implements RegisteredBridgesService {}
 
 class MockSessionApi extends Mock implements SessionApi {}
 

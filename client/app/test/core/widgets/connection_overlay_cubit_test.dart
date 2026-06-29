@@ -5,6 +5,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/connection_overlay/connection_overlay_cubit.dart";
+import "package:sesori_dart_core/src/cubits/connection_overlay/connection_overlay_state.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../helpers/test_helpers.dart";
@@ -13,105 +14,132 @@ void main() {
   group("ConnectionOverlayCubit", () {
     late MockConnectionService mockConnectionService;
     late MockAuthSession mockAuthSession;
+    late MockRegisteredBridgesService mockRegisteredBridgesService;
     late BehaviorSubject<ConnectionStatus> statusStream;
+    late BehaviorSubject<bool> registeredStream;
 
-    setUpAll(registerAllFallbackValues);
+    const config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token");
+    const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
+    const connected = ConnectionStatus.connected(config: config, health: health);
+    const reconnecting = ConnectionStatus.reconnecting(config: config);
+    const connectionLost = ConnectionStatus.connectionLost(config: config);
+    const bridgeOffline = ConnectionStatus.bridgeOffline(config: config, health: health);
 
     setUp(() {
       mockConnectionService = MockConnectionService();
       mockAuthSession = MockAuthSession();
-      statusStream = BehaviorSubject<ConnectionStatus>.seeded(
-        const ConnectionStatus.disconnected(),
-      );
+      mockRegisteredBridgesService = MockRegisteredBridgesService();
+      statusStream = BehaviorSubject<ConnectionStatus>.seeded(const ConnectionStatus.disconnected());
+      registeredStream = BehaviorSubject<bool>.seeded(false);
 
-      // Mock the status stream getter
       when(() => mockConnectionService.status).thenAnswer((_) => statusStream.stream);
-
-      // Mock currentStatus getter
-      when(() => mockConnectionService.currentStatus).thenReturn(
-        const ConnectionStatus.disconnected(),
-      );
-      when(() => mockAuthSession.logoutCurrentDevice()).thenAnswer((_) async {
-        return;
-      });
+      when(() => mockConnectionService.currentStatus).thenReturn(const ConnectionStatus.disconnected());
+      when(() => mockRegisteredBridgesService.isRegistered).thenAnswer((_) => registeredStream.stream);
+      when(() => mockAuthSession.logoutCurrentDevice()).thenAnswer((_) async {});
     });
 
     tearDown(() async {
       await statusStream.close();
+      await registeredStream.close();
     });
 
-    blocTest<ConnectionOverlayCubit, ConnectionStatus>(
-      "initial state matches connectionService.currentStatus",
-      build: () => ConnectionOverlayCubit(mockConnectionService, mockAuthSession),
+    ConnectionOverlayCubit buildCubit() =>
+        ConnectionOverlayCubit(mockConnectionService, mockAuthSession, mockRegisteredBridgesService);
+
+    blocTest<ConnectionOverlayCubit, ConnectionOverlayState>(
+      "starts hidden when disconnected and not registered",
+      build: buildCubit,
       verify: (cubit) {
-        expect(cubit.state, const ConnectionStatus.disconnected());
+        expect(cubit.state, const ConnectionOverlayState.hidden());
       },
     );
 
-    blocTest<ConnectionOverlayCubit, ConnectionStatus>(
-      "forwards status stream emissions to cubit state",
-      build: () => ConnectionOverlayCubit(mockConnectionService, mockAuthSession),
-      act: (cubit) async {
-        const config = ServerConnectionConfig(
-          relayHost: "relay.example.com",
-          authToken: "test-token",
-        );
-        const health = HealthResponse(
-          healthy: true,
-          version: "0.1.200",
-          filesystemAccessDegraded: null,
-        );
-
-        statusStream.add(
-          const ConnectionStatus.connected(config: config, health: health),
-        );
-
-        await Future<void>.delayed(const Duration(milliseconds: 100));
-
-        statusStream.add(
-          const ConnectionStatus.reconnecting(config: config),
-        );
-
-        await Future<void>.delayed(const Duration(milliseconds: 100));
+    blocTest<ConnectionOverlayCubit, ConnectionOverlayState>(
+      "maps connection statuses to overlay states",
+      build: buildCubit,
+      act: (_) async {
+        statusStream.add(connectionLost);
+        await Future<void>.delayed(Duration.zero);
+        statusStream.add(reconnecting);
+        await Future<void>.delayed(Duration.zero);
+        statusStream.add(connected);
+        await Future<void>.delayed(Duration.zero);
       },
-      expect: () => [
-        isA<ConnectionDisconnected>(),
-        isA<ConnectionConnected>(),
-        isA<ConnectionReconnecting>(),
+      expect: () => const [
+        ConnectionOverlayState.connectionLost(),
+        ConnectionOverlayState.reconnecting(),
+        ConnectionOverlayState.hidden(),
       ],
     );
 
-    blocTest<ConnectionOverlayCubit, ConnectionStatus>(
-      "reconnect() delegates to connectionService.reconnect()",
-      build: () => ConnectionOverlayCubit(mockConnectionService, mockAuthSession),
-      act: (cubit) {
-        cubit.reconnect();
+    blocTest<ConnectionOverlayCubit, ConnectionOverlayState>(
+      "bridge offline with NO registered bridge stays hidden (onboarding must not show the banner)",
+      build: buildCubit,
+      act: (_) async {
+        statusStream.add(bridgeOffline);
+        await Future<void>.delayed(Duration.zero);
       },
+      // bridgeOffline + unregistered derives hidden, which equals the initial
+      // hidden state, so bloc dedupes it — the proof is the unchanged state.
+      expect: () => const <ConnectionOverlayState>[],
+      verify: (cubit) {
+        expect(cubit.state, isA<ConnectionOverlayHidden>());
+      },
+    );
+
+    blocTest<ConnectionOverlayCubit, ConnectionOverlayState>(
+      "bridge offline with a registered bridge shows the banner",
+      build: () {
+        registeredStream.add(true);
+        return buildCubit();
+      },
+      act: (_) async {
+        statusStream.add(bridgeOffline);
+        await Future<void>.delayed(Duration.zero);
+      },
+      expect: () => const [ConnectionOverlayState.bridgeOffline()],
+    );
+
+    blocTest<ConnectionOverlayCubit, ConnectionOverlayState>(
+      "banner appears reactively when registration resolves true while parked offline",
+      build: buildCubit,
+      act: (_) async {
+        // Parked offline before the latch is known → still hidden (no emission).
+        statusStream.add(bridgeOffline);
+        await Future<void>.delayed(Duration.zero);
+        // The registered-bridges latch resolves true → the banner appears.
+        registeredStream.add(true);
+        await Future<void>.delayed(Duration.zero);
+      },
+      expect: () => const [ConnectionOverlayState.bridgeOffline()],
+    );
+
+    blocTest<ConnectionOverlayCubit, ConnectionOverlayState>(
+      "reconnect() delegates to connectionService.reconnect()",
+      build: buildCubit,
+      act: (cubit) => cubit.reconnect(),
       verify: (_) {
         verify(() => mockConnectionService.reconnect()).called(1);
       },
     );
 
-    blocTest<ConnectionOverlayCubit, ConnectionStatus>(
-      "disconnect() delegates to connectionService.disconnect()",
-      build: () => ConnectionOverlayCubit(mockConnectionService, mockAuthSession),
-      act: (cubit) async {
-        await cubit.disconnect();
-      },
+    blocTest<ConnectionOverlayCubit, ConnectionOverlayState>(
+      "disconnect() logs out then disconnects",
+      build: buildCubit,
+      act: (cubit) => cubit.disconnect(),
       verify: (_) {
         verify(() => mockAuthSession.logoutCurrentDevice()).called(1);
         verify(() => mockConnectionService.disconnect()).called(1);
       },
     );
 
-    blocTest<ConnectionOverlayCubit, ConnectionStatus>(
-      "closes subscription when cubit is closed",
-      build: () => ConnectionOverlayCubit(mockConnectionService, mockAuthSession),
-      act: (cubit) async {
-        await cubit.close();
-      },
+    blocTest<ConnectionOverlayCubit, ConnectionOverlayState>(
+      "closing the cubit cancels its stream subscriptions",
+      build: buildCubit,
+      act: (cubit) => cubit.close(),
       verify: (_) {
-        expect(statusStream.hasListener, false);
+        expect(statusStream.hasListener, isFalse);
+        expect(registeredStream.hasListener, isFalse);
       },
     );
   });
