@@ -463,7 +463,7 @@ class SessionListCubit extends Cubit<SessionListState> {
     );
     _onUnseenUpdated();
     try {
-      final response = await _sessionService.markSessionSeen(sessionId: sessionId, read: read);
+      final response = await _sessionService.markSessionSeen(sessionId: sessionId, read: read, projectId: _projectId);
       if (isClosed) return;
       if (response is ErrorResponse) {
         _revertLocalUnseen(sessionId: sessionId, priorUnseen: priorUnseen, optimisticGeneration: optimisticGeneration);

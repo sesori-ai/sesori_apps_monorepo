@@ -1805,7 +1805,7 @@ void main() {
         (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1"), testSession(id: "s2")])),
       );
       when(
-        () => mockSessionService.markSessionSeen(sessionId: "s1", read: true),
+        () => mockSessionService.markSessionSeen(sessionId: "s1", read: true, projectId: any(named: "projectId")),
       ).thenAnswer((_) async => ApiResponse.success(null));
 
       final cubit = buildCubit();
@@ -1833,7 +1833,7 @@ void main() {
         () => mockProjectService.listSessions(projectId: projectId, waitForPrData: any(named: "waitForPrData")),
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
       when(
-        () => mockSessionService.markSessionSeen(sessionId: "s1", read: true),
+        () => mockSessionService.markSessionSeen(sessionId: "s1", read: true, projectId: any(named: "projectId")),
       ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
       final cubit = buildCubit();

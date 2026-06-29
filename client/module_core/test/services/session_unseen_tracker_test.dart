@@ -392,6 +392,45 @@ void main() {
       tracker.onDispose();
     });
 
+    test("a /projects reconcile guards against an older /sessions reconcile", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // An older /sessions fetch begins (its snapshot still shows p1 unseen).
+      final sessionsGen = tracker.generation;
+
+      // A newer /projects refresh authoritatively clears p1.
+      tracker.reconcileProjectUnseen({"p1": false}, sinceGeneration: tracker.generation);
+      expect(tracker.currentProjectUnseen["p1"], isFalse);
+
+      // The stale /sessions response finally lands (with p1 still unseen). It is
+      // older than the /projects apply, so it must not recompute p1 back to true.
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": true},
+        sinceGeneration: sessionsGen,
+      );
+      expect(tracker.currentProjectUnseen["p1"], isFalse);
+      tracker.onDispose();
+    });
+
+    test("an archived session's exclusion survives a read echo", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // s1 archived while s2 keeps the project unseen → s1 excluded.
+      events.add(unseenEvent(projectID: "p1", sessionId: "s1", unseen: true, projectHasUnseenChanges: false));
+      await Future<void>.delayed(Duration.zero);
+
+      // The bridge echo for marking the archived s1 read is unseen:false +
+      // projectHasUnseenChanges:false — it must NOT drop s1's exclusion.
+      events.add(unseenEvent(projectID: "p1", sessionId: "s1", unseen: false, projectHasUnseenChanges: false));
+      await Future<void>.delayed(Duration.zero);
+
+      // Marking the still-archived s1 unread must not re-bold the project.
+      tracker.applyLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: true);
+      expect(tracker.currentProjectUnseen["p1"], isFalse);
+      tracker.onDispose();
+    });
+
     test("a later seen event clears the session and updates the project aggregate", () async {
       final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
 

@@ -25,13 +25,9 @@ class MarkSessionSeenHandler extends BodyRequestHandler<MarkSessionSeenRequest, 
       throw buildErrorResponse(request, 400, "empty session id");
     }
     if (body.read) {
-      await _sessionUnseenService.markRead(sessionId: body.sessionId);
+      await _sessionUnseenService.markRead(sessionId: body.sessionId, projectId: body.projectId);
     } else {
-      try {
-        await _sessionUnseenService.markUnread(sessionId: body.sessionId);
-      } on SessionUnseenRowMissingException {
-        throw buildErrorResponse(request, 404, "session not found");
-      }
+      await _sessionUnseenService.markUnread(sessionId: body.sessionId, projectId: body.projectId);
     }
     return const SuccessEmptyResponse();
   }

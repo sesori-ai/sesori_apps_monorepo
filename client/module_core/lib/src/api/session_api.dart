@@ -217,11 +217,15 @@ class SessionApi {
   }
 
   /// Marks a session read ([read] == true) or unread ([read] == false).
-  Future<ApiResponse<SuccessEmptyResponse>> markSessionSeen({required String sessionId, required bool read}) {
+  Future<ApiResponse<SuccessEmptyResponse>> markSessionSeen({
+    required String sessionId,
+    required bool read,
+    required String? projectId,
+  }) {
     return _client.post(
       "/session/seen",
       fromJson: SuccessEmptyResponse.fromJson,
-      body: MarkSessionSeenRequest(sessionId: sessionId, read: read),
+      body: MarkSessionSeenRequest(sessionId: sessionId, read: read, projectId: projectId),
     );
   }
 

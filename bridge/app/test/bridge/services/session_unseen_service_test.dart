@@ -107,15 +107,15 @@ void main() {
       clock = 600;
       await service.recordActivity(sessionId: "s1", isUserMessage: false);
       clock = 700;
-      await service.markRead(sessionId: "s1");
+      await service.markRead(sessionId: "s1", projectId: "p1");
       expect(await unseen("s1"), isFalse);
 
       clock = 750;
-      await service.markUnread(sessionId: "s1");
+      await service.markUnread(sessionId: "s1", projectId: "p1");
       expect(await unseen("s1"), isTrue);
 
       clock = 800;
-      await service.markRead(sessionId: "s1");
+      await service.markRead(sessionId: "s1", projectId: "p1");
       expect(await unseen("s1"), isFalse);
     });
 
@@ -130,7 +130,7 @@ void main() {
       expect(await unseen("s1"), isFalse);
 
       clock = 700;
-      await service.markUnread(sessionId: "s1");
+      await service.markUnread(sessionId: "s1", projectId: "p1");
       expect(await unseen("s1"), isTrue);
     });
 
@@ -234,7 +234,7 @@ void main() {
       // A later mark-read still clears it (correctness preserved despite the
       // skipped activity bumps).
       clock = 3000;
-      await service.markRead(sessionId: "s1");
+      await service.markRead(sessionId: "s1", projectId: "p1");
       expect(await unseen("s1"), isFalse);
 
       await sub.cancel();
@@ -256,17 +256,40 @@ void main() {
       expect(await unseen("s1"), isFalse);
     });
 
-    test("markUnread throws for an unknown session so the client can roll back", () async {
-      await expectLater(
-        () => service.markUnread(sessionId: "ghost"),
-        throwsA(isA<SessionUnseenRowMissingException>()),
+    test("mark on an unknown session emits an authoritative clear for its project", () async {
+      // A project with one genuinely-unseen session, plus a stale "ghost" the
+      // client still shows after a missed delete.
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSessionsIfMissing(
+        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
       );
+      clock = 2000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+
+      final events = <UnseenChange>[];
+      final sub = service.unseenChanges.listen(events.add);
+
+      // Mark the gone ghost read: no row, but with projectId the bridge emits an
+      // authoritative clear (ghost unseen:false) with the recomputed aggregate.
+      await service.markRead(sessionId: "ghost", projectId: "p1");
+      await Future<void>.delayed(Duration.zero);
+
+      final last = events.last;
+      expect(last.sessionId, "ghost");
+      expect(last.projectId, "p1");
+      expect(last.unseen, isFalse);
+      // s1 is still genuinely unseen, so the project aggregate stays true.
+      expect(last.projectHasUnseenChanges, isTrue);
+      await sub.cancel();
     });
 
-    test("markRead is a silent no-op for an unknown session", () async {
-      // Marking a gone session read leaves no phantom bold, so it stays quiet.
-      await service.markRead(sessionId: "ghost");
-      expect(await unseen("ghost"), isFalse);
+    test("mark on an unknown session without a projectId is a silent no-op", () async {
+      final events = <UnseenChange>[];
+      final sub = service.unseenChanges.listen(events.add);
+      await service.markUnread(sessionId: "ghost", projectId: null);
+      await Future<void>.delayed(Duration.zero);
+      expect(events, isEmpty);
+      await sub.cancel();
     });
 
     test("emits unseenChanges with project aggregate", () async {

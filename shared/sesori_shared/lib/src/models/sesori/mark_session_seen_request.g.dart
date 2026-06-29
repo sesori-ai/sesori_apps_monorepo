@@ -10,8 +10,13 @@ _MarkSessionSeenRequest _$MarkSessionSeenRequestFromJson(Map json) =>
     _MarkSessionSeenRequest(
       sessionId: json['sessionId'] as String,
       read: json['read'] as bool,
+      projectId: json['projectId'] as String?,
     );
 
 Map<String, dynamic> _$MarkSessionSeenRequestToJson(
   _MarkSessionSeenRequest instance,
-) => <String, dynamic>{'sessionId': instance.sessionId, 'read': instance.read};
+) => <String, dynamic>{
+  'sessionId': instance.sessionId,
+  'read': instance.read,
+  'projectId': ?instance.projectId,
+};

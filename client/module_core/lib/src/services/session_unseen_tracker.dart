@@ -85,11 +85,19 @@ class SessionUnseenTracker with Disposable {
   void reconcileProjectUnseen(Map<String, bool> unseenByProjectId, {required int sinceGeneration}) {
     if (_projectUnseen.isClosed) return;
     final projects = Map<String, bool>.from(_projectUnseen.value);
+    var changed = false;
+    final appliedGeneration = ++_generation;
     for (final entry in unseenByProjectId.entries) {
       if ((_projectLiveGeneration[entry.key] ?? 0) > sinceGeneration) continue;
+      // Treat the applied /projects value as authoritative as of now: stamp the
+      // project generation so an older /sessions response (which can be delayed
+      // by waitForPrData and started before an archive/read) can't later
+      // recompute this aggregate back from its stale session snapshot.
+      _projectLiveGeneration[entry.key] = appliedGeneration;
       projects[entry.key] = entry.value;
+      changed = true;
     }
-    _projectUnseen.add(projects);
+    if (changed) _projectUnseen.add(projects);
   }
 
   /// Reconciles the per-session unseen state for [projectId] from an
@@ -126,8 +134,12 @@ class SessionUnseenTracker with Disposable {
     final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
     final liveGenerations = _sessionLiveGeneration[projectId] ??= {};
     final existing = sessions[projectId] ?? const {};
+    final excluded = _excludedSessions[projectId];
     final merged = <String, bool>{};
     for (final entry in unseenBySessionId.entries) {
+      // A session present in the authoritative /sessions list is not archived
+      // (archived rows are omitted), so it no longer counts as excluded.
+      excluded?.remove(entry.key);
       // Keep the live value for a session that changed after the fetch began;
       // otherwise take the authoritative REST value.
       if ((liveGenerations[entry.key] ?? 0) > sinceGeneration) {
@@ -259,11 +271,18 @@ class SessionUnseenTracker with Disposable {
         (_sessionLiveGeneration[projectID] ??= {})[sessionId] = generation;
 
         // unseen:true together with projectHasUnseenChanges:false can only mean
-        // this session is excluded from the aggregate (archived). Record/clear
-        // that so aggregate recomputes ignore it.
+        // this session is excluded from the aggregate (archived). Record it.
+        // Clear the exclusion only when the session demonstrably contributes
+        // again (unseen AND the project aggregate is true). A read echo
+        // (unseen:false) is NOT proof the session is un-archived — marking an
+        // archived session read also yields unseen:false + projectHasUnseenChanges
+        // :false — so it must not drop the exclusion, otherwise a later
+        // mark-unread of that archived session would wrongly re-bold the project.
+        // The exclusion is otherwise cleared when a /sessions reconcile shows the
+        // session present (proving it is not archived).
         if (unseen && !projectHasUnseenChanges) {
           (_excludedSessions[projectID] ??= <String>{}).add(sessionId);
-        } else {
+        } else if (unseen && projectHasUnseenChanges) {
           _excludedSessions[projectID]?.remove(sessionId);
         }
 

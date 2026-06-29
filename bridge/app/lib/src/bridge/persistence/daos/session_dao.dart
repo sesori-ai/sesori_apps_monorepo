@@ -55,6 +55,14 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
       ),
       onConflict: DoUpdate(
         (_) => SessionTableCompanion(
+          // The create flow is authoritative for project_id: a placeholder row
+          // inserted by the unseen service from a live `session.created` may be
+          // keyed to the plugin-supplied (pre-canonicalization) worktree path,
+          // so adopt the create flow's canonical project id here — otherwise the
+          // session stays keyed to the wrong project and its unseen state would
+          // not count toward the original project's aggregate. The canonical
+          // project row is inserted in the same transaction, so the FK holds.
+          projectId: Value(projectId),
           // Only the worktree/agent state the create flow owns — never clobber
           // created_at or the unseen timestamps that a placeholder may have set.
           worktreePath: Value(worktreePath),

@@ -7,16 +7,6 @@ import "../repositories/session_repository.dart";
 import "../repositories/session_unseen_repository.dart";
 import "session_view_tracker.dart";
 
-/// Thrown by [SessionUnseenService.markUnread] when the target session has no
-/// persisted row (deleted, or never learned). Surfaced to the caller so the
-/// client can roll back its optimistic "unread" instead of being left with a
-/// phantom unseen entry that re-bolds the project.
-class SessionUnseenRowMissingException implements Exception {
-  final String sessionId;
-
-  SessionUnseenRowMissingException({required this.sessionId});
-}
-
 /// A single emitted unseen-state change for one session, plus the recomputed
 /// project-level aggregate. The orchestrator maps this to
 /// `SesoriSseEvent.sessionUnseenChanged`.
@@ -250,10 +240,13 @@ class SessionUnseenService {
 
   /// "Mark as Read": stamp seen at max(now, lastActivity) so it clears.
   /// Errors are propagated to the caller (this is a user-initiated request).
-  Future<void> markRead({required String sessionId}) {
+  Future<void> markRead({required String sessionId, required String? projectId}) {
     return _serialize(sessionId, rethrowErrors: true, () async {
       final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
-      if (row == null) return;
+      if (row == null) {
+        await _emitMissingRowClear(sessionId: sessionId, projectId: projectId);
+        return;
+      }
       final now = _nextTimestamp();
       final seenAt = (row.activityAt ?? 0) > now ? row.activityAt! : now;
       await _unseenRepository.markSessionSeen(sessionId: sessionId, at: seenAt);
@@ -263,14 +256,12 @@ class SessionUnseenService {
 
   /// "Mark as Unread": force the session bold regardless of prior state.
   /// Errors are propagated to the caller (this is a user-initiated request).
-  Future<void> markUnread({required String sessionId}) {
+  Future<void> markUnread({required String sessionId, required String? projectId}) {
     return _serialize(sessionId, rethrowErrors: true, () async {
       final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
       if (row == null) {
-        // No row to bold (deleted / unknown). Signal it so the caller can roll
-        // back the optimistic unread rather than leaving a phantom entry; there
-        // is no project context here to emit an authoritative clear.
-        throw SessionUnseenRowMissingException(sessionId: sessionId);
+        await _emitMissingRowClear(sessionId: sessionId, projectId: projectId);
+        return;
       }
       // Force activity strictly past both the user-message and seen markers so
       // the session reliably bolds even when the user's own message is latest.
@@ -278,6 +269,20 @@ class SessionUnseenService {
       await _unseenRepository.markSessionUnseen(sessionId: sessionId, at: at);
       await _emit(sessionId: sessionId, projectId: row.projectId);
     });
+  }
+
+  /// Emits an authoritative clear for a mark-read/unread that targeted a session
+  /// with no row (deleted, or missed during a refresh). Reports the session
+  /// `unseen: false` and recomputes the project aggregate so clients can settle
+  /// (e.g. drop a project's bold whose only unseen row was the now-gone session)
+  /// instead of waiting for a full refresh. No-op when [projectId] is unknown
+  /// (older client) — there is no project to recompute against.
+  Future<void> _emitMissingRowClear({required String sessionId, required String? projectId}) async {
+    if (projectId == null) {
+      Log.d("mark-seen for missing row $sessionId without a projectId; skipping authoritative clear");
+      return;
+    }
+    await _emit(sessionId: sessionId, projectId: projectId);
   }
 
   /// Recomputes and emits the unseen state for [sessionId] after a change made
