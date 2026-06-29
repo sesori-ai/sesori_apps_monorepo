@@ -75,6 +75,7 @@ class PregoGlassScaffold extends StatefulWidget {
     this.backgroundColor,
     this.extendBodyBehindBar = true,
     this.reserveBarSpace = true,
+    this.scrollable = true,
   });
 
   /// Primary title — shown large below the bar and, once collapsed, inline.
@@ -131,6 +132,16 @@ class PregoGlassScaffold extends StatefulWidget {
   /// insets itself (see the class doc).
   final bool reserveBarSpace;
 
+  /// Whether the page itself scrolls. Defaults to `true`
+  /// ([AlwaysScrollableScrollPhysics]). Set `false`
+  /// ([NeverScrollableScrollPhysics]) for screens whose body fills the viewport
+  /// and owns its own scroll (e.g. a reversed chat list): the outer page then
+  /// can't overscroll/bounce, so a drag that starts outside the inner list —
+  /// e.g. on a pinned composer — no longer drags the whole page. Only the body's
+  /// own scrollable moves. Incompatible with [onRefresh], which needs the page
+  /// to be draggable.
+  final bool scrollable;
+
   @override
   State<PregoGlassScaffold> createState() => _PregoGlassScaffoldState();
 }
@@ -182,7 +193,9 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
 
     Widget scrollView = CustomScrollView(
       controller: _scrollController,
-      physics: const AlwaysScrollableScrollPhysics(),
+      physics: widget.scrollable
+          ? const AlwaysScrollableScrollPhysics()
+          : const NeverScrollableScrollPhysics(),
       slivers: [
         // When the body scrolls behind the bar, reserve space so the title
         // clears it. When it doesn't, GlassScaffold already insets the body
