@@ -44,20 +44,10 @@ class SessionUnseenTracker with Disposable {
   // (archived). The bridge omits archived sessions from the aggregate, so an
   // archive event arrives as unseen:true (per-session, from timestamps) together
   // with projectHasUnseenChanges:false — a combination only possible when this
-  // session does not count toward the aggregate. Tracking these lets aggregate
-  // recomputes (REST reconcile and local optimistic updates) skip them instead
-  // of resurrecting a stale `true`.
+  // session does not count toward the aggregate. Tracking these lets the local
+  // optimistic mark path skip a mark-unread that would otherwise re-bold the
+  // project via an archived row.
   final Map<String, Set<String>> _excludedSessions = {};
-
-  /// Whether any session in [projectSessions] for [projectId] is unseen AND not
-  /// excluded (archived). Used wherever the project aggregate is recomputed.
-  bool _anyUnseen({required String projectId, required Map<String, bool> projectSessions}) {
-    final excluded = _excludedSessions[projectId] ?? const <String>{};
-    for (final entry in projectSessions.entries) {
-      if (entry.value && !excluded.contains(entry.key)) return true;
-    }
-    return false;
-  }
 
   SessionUnseenTracker(
     ConnectionService connectionService, {
@@ -164,12 +154,16 @@ class SessionUnseenTracker with Disposable {
     sessions[projectId] = merged;
     _sessionUnseen.add(sessions);
 
-    // Stamp every reconciled session with a fresh generation so an in-flight
-    // optimistic rollback (guarded on the generation it captured) cannot clobber
-    // this authoritative REST value.
+    // Stamp a fresh generation ONLY for sessions whose value actually changed.
+    // This invalidates an in-flight optimistic rollback for a session that this
+    // authoritative REST reconcile updated (so the late revert becomes a no-op),
+    // while leaving an unchanged session's generation intact so a legitimate
+    // post-failure revert of THAT session still applies.
     final reconcileGeneration = ++_generation;
-    for (final sessionId in merged.keys) {
-      liveGenerations[sessionId] = reconcileGeneration;
+    for (final entry in merged.entries) {
+      if (existing[entry.key] != entry.value) {
+        liveGenerations[entry.key] = reconcileGeneration;
+      }
     }
 
     final projects = Map<String, bool>.from(_projectUnseen.value);
@@ -177,10 +171,12 @@ class SessionUnseenTracker with Disposable {
     // SSE set it false while this slow /sessions response still lists the
     // archived session as present+unseen), keep that authoritative live value
     // rather than recomputing from the stale snapshot. Otherwise recompute over
-    // the authoritative list (archived rows are already omitted from it).
+    // the AUTHORITATIVE REST snapshot only (archived rows are already omitted
+    // from it) — never over `merged`, so a carried-forward absent session (whose
+    // archival the client can't detect) can't inflate the project aggregate.
     if ((_projectLiveGeneration[projectId] ?? 0) <= sinceGeneration) {
       _projectLiveGeneration[projectId] = reconcileGeneration;
-      projects[projectId] = _anyUnseen(projectId: projectId, projectSessions: merged);
+      projects[projectId] = unseenBySessionId.values.any((unseen) => unseen);
       _projectUnseen.add(projects);
     }
   }

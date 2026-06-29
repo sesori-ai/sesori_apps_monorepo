@@ -324,6 +324,74 @@ void main() {
       tracker.onDispose();
     });
 
+    test("reconcile does not block a revert for a session it left unchanged", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // Optimistically mark s1 unread (in-flight mark-unread).
+      final gen0 = tracker.generation;
+      final gen = tracker.applyLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: true);
+
+      // A /sessions reconcile runs while the request is in flight. Its snapshot
+      // agrees with the optimistic value (s1 unseen), so it does NOT change s1
+      // and must not bump s1's generation.
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": true},
+        sinceGeneration: gen0,
+      );
+
+      // The request fails: the revert (to the pre-click value) must still apply
+      // because the reconcile left s1 unchanged.
+      tracker.revertLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: false, ifGeneration: gen);
+      expect(tracker.currentSessionUnseen["p1"]?["s1"], isFalse);
+      tracker.onDispose();
+    });
+
+    test("reconcile blocks a revert for a session whose value it changed", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // Optimistically mark s1 unread.
+      final gen = tracker.applyLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: true);
+
+      // A reconcile started AFTER the optimistic apply (sinceGeneration == gen)
+      // delivers the authoritative value (seen), changing s1 and bumping its
+      // generation.
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": false},
+        sinceGeneration: gen,
+      );
+      expect(tracker.currentSessionUnseen["p1"]?["s1"], isFalse);
+
+      // A late failed-request revert (to the pre-click true) must be a no-op,
+      // leaving the authoritative reconciled value.
+      tracker.revertLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: true, ifGeneration: gen);
+      expect(tracker.currentSessionUnseen["p1"]?["s1"], isFalse);
+      tracker.onDispose();
+    });
+
+    test("reconcile recomputes the project aggregate from the REST snapshot only", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // A live event leaves a stale unseen entry for s_old in the map.
+      events.add(unseenEvent(projectID: "p1", sessionId: "s_old", unseen: true, projectHasUnseenChanges: true));
+      await Future<void>.delayed(Duration.zero);
+      expect(tracker.currentProjectUnseen["p1"], isTrue);
+
+      // An authoritative complete /sessions reconcile (captured after the live
+      // event, so the recompute path runs) lists only s2, seen — s_old is gone
+      // from the authoritative list. The aggregate must reflect the REST
+      // snapshot (false), not the stale s_old entry.
+      final gen = tracker.generation;
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s2": false},
+        sinceGeneration: gen,
+      );
+      expect(tracker.currentProjectUnseen["p1"], isFalse);
+      tracker.onDispose();
+    });
+
     test("a later seen event clears the session and updates the project aggregate", () async {
       final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
 
