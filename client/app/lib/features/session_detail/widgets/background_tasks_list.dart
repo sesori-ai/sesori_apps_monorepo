@@ -1,9 +1,12 @@
 import "package:flutter/material.dart";
+import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:theme_prego/module_prego.dart";
 import "background_task_row.dart";
 import "background_tasks_toggle.dart";
 
+/// The expandable body of the background-tasks glass card: a glass divider
+/// under the header, then the scrollable list of task rows. Running tasks come
+/// first; completed tasks appear after a "Show N completed" toggle.
 class BackgroundTasksList extends StatelessWidget {
   final String? projectId;
   final List<Session> runningTasks;
@@ -24,7 +27,6 @@ class BackgroundTasksList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final prego = context.prego;
     final hasRunning = runningTasks.isNotEmpty;
     final hasCompleted = completedTasks.isNotEmpty;
 
@@ -33,44 +35,42 @@ class BackgroundTasksList extends StatelessWidget {
 
     // Show toggle only when there's a mix of running and completed.
     final showToggle = hasRunning && hasCompleted;
+    final itemCount = visibleTasks.length + (showToggle ? 1 : 0);
 
-    return Container(
-      constraints: const BoxConstraints(maxHeight: 200),
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(
-            color: prego.colors.borderSecondary,
-            width: 0.5,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const GlassDivider(),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 240),
+          child: ListView.builder(
+            shrinkWrap: true,
+            padding: EdgeInsets.zero,
+            itemCount: itemCount,
+            itemBuilder: (context, index) {
+              // Toggle button goes after the visible tasks, as the last row.
+              if (showToggle && index == visibleTasks.length) {
+                return BackgroundTasksToggle(
+                  completedCount: completedTasks.length,
+                  showCompleted: showCompleted,
+                  onTap: onToggleCompleted,
+                );
+              }
+
+              final child = visibleTasks[index];
+              // Suppress the final row's divider only when nothing follows it.
+              final isLast = !showToggle && index == visibleTasks.length - 1;
+              return BackgroundTaskRow(
+                projectId: projectId,
+                session: child,
+                status: childStatuses[child.id],
+                isLast: isLast,
+              );
+            },
           ),
         ),
-      ),
-      child: ListView.separated(
-        shrinkWrap: true,
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        itemCount: visibleTasks.length + (showToggle ? 1 : 0),
-        separatorBuilder: (_, __) => Divider(
-          height: 1,
-          indent: 42,
-          color: prego.colors.borderSecondary.withValues(alpha: 0.5),
-        ),
-        itemBuilder: (context, index) {
-          // Toggle button goes after visible tasks.
-          if (index == visibleTasks.length) {
-            return BackgroundTasksToggle(
-              completedCount: completedTasks.length,
-              showCompleted: showCompleted,
-              onTap: onToggleCompleted,
-            );
-          }
-
-          final child = visibleTasks[index];
-          return BackgroundTaskRow(
-            projectId: projectId,
-            session: child,
-            status: childStatuses[child.id],
-          );
-        },
-      ),
+      ],
     );
   }
 }

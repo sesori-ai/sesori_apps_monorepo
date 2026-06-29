@@ -323,9 +323,10 @@ class _PromptInputState extends State<PromptInput> {
               spacing: 8,
               crossAxisAlignment: .end,
               children: [
-                _SlashButton(
-                  enabled: _voiceState == _VoiceState.idle,
-                  onTap: _openCommandPicker,
+                PregoButtonsIconGlass(
+                  onPressed: _voiceState == _VoiceState.idle ? _openCommandPicker : null,
+                  icon: TablerRegular.slash,
+                  semanticLabel: loc.sessionDetailCommandPickerTitle,
                 ),
                 Expanded(
                   child: switch (_voiceState) {
@@ -383,47 +384,6 @@ class _PromptInputState extends State<PromptInput> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// -----------------------------------------------------------------------------
-// Slash button
-// -----------------------------------------------------------------------------
-
-class _SlashButton extends StatelessWidget {
-  final bool enabled;
-  final Future<void> Function() onTap;
-
-  const _SlashButton({
-    required this.enabled,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final prego = context.prego;
-
-    return Material(
-      color: enabled ? prego.colors.bgQuaternary : prego.colors.bgQuaternary.withValues(alpha: 0.5),
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: enabled ? onTap : null,
-        child: SizedBox(
-          width: 44,
-          height: 44,
-          child: Center(
-            child: Text(
-              "/",
-              style: prego.textTheme.textMd.bold.copyWith(
-                color: enabled ? prego.colors.textSecondary : prego.colors.borderPrimary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

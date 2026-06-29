@@ -127,9 +127,31 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
       autoAdjustToScreen: true,
       menuPadding: widget.menuScreenPadding,
       settings: LiquidGlassSettings(glassColor: context.prego.colors.buttonGlassPrimaryBackground),
-      triggerBuilder: widget.triggerBuilder,
+      triggerBuilder: (context, toggle) => widget.triggerBuilder(context, () {
+        toggle();
+        _alignGlassMenuToTrigger(context);
+      }),
       items: [for (final entry in widget.entries) _glassEntry(context, entry)],
     );
+  }
+
+  /// Re-anchors the just-opened glass popup under its trigger when the composer
+  /// is hosted in a master-detail right pane (landscape/split layouts).
+  ///
+  /// [GlassMenu] captures its trigger in global (screen) coordinates but paints
+  /// the popup inside the enclosing [Overlay], which in a split layout is inset
+  /// from the screen by the sidebar width — so the popup lands one sidebar-width
+  /// off along the main axis. Feeding the negated Overlay origin as a
+  /// follow-offset cancels that inset. A no-op in single-pane layouts (the
+  /// Overlay sits at the screen origin); the flat path needs none of this — it
+  /// positions against the root navigator already.
+  ///
+  /// Called right after [GlassMenu]'s toggle: opening resets the follow-offset
+  /// to zero, and this re-applies the correction on top.
+  void _alignGlassMenuToTrigger(BuildContext context) {
+    final overlayBox = Overlay.maybeOf(context)?.context.findRenderObject();
+    if (overlayBox is! RenderBox || !overlayBox.attached || !overlayBox.hasSize) return;
+    _glassController.setFollowOffset(-overlayBox.localToGlobal(Offset.zero));
   }
 
   Widget _glassEntry(BuildContext context, PregoMenuEntry entry) {
