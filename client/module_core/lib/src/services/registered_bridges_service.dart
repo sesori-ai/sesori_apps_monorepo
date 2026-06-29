@@ -132,6 +132,10 @@ class RegisteredBridgesService {
           if (data.isEmpty) return false;
           // Latch the positive answer so future transitions skip the network.
           await _latch(generation);
+          // A logout may have raced the latch: it abandons (and undoes) the
+          // write, so reporting success here would still leak the old account's
+          // answer to the caller. Retire the result to match the latch.
+          if (generation != _authGeneration) return false;
           return true;
         case ErrorResponse(:final error):
           logw("Failed to fetch registered bridges: ${error.toString()}");
@@ -177,8 +181,10 @@ class RegisteredBridgesService {
     if (gen != _authGeneration) {
       // A logout raced the persist; the store's own logout-clear may have run
       // before markRegistered landed, so undo it rather than leave the old
-      // account's latch resurrected for the next account.
-      await _store.clear();
+      // account's latch resurrected for the next account. Skip the undo if the
+      // current account has since latched its own answer (_isRegistered is
+      // true) — clearing unconditionally would wipe that valid latch.
+      if (!_isRegistered.value) await _store.clear();
       return;
     }
     _latchEmit();

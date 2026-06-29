@@ -254,5 +254,59 @@ void main() {
       expect(service.isRegistered.value, isFalse);
       verify(() => store.clear()).called(1);
     });
+
+    test("a logout while the lookup's latch is persisting resolves the caller false", () async {
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([testBridgeSummary()]),
+      );
+      final markGate = Completer<void>();
+      when(() => store.markRegistered()).thenAnswer((_) => markGate.future);
+      final service = build();
+      await _settle();
+
+      // Drive a network lookup that finds a bridge, then log out while the
+      // positive answer is still being persisted.
+      final pending = service.hasRegisteredBridges();
+      await _settle();
+      authSubject.add(const AuthState.unauthenticated());
+      await _settle();
+
+      // The persist lands after the logout: the latch is retired, so the caller
+      // must see false rather than the signed-out account's stale success.
+      markGate.complete();
+
+      expect(await pending, isFalse);
+      expect(service.isRegistered.value, isFalse);
+    });
+
+    test("a stale latch completing after a new account latched does not wipe the new latch", () async {
+      var markCalls = 0;
+      final firstMarkGate = Completer<void>();
+      when(() => store.markRegistered()).thenAnswer((_) async {
+        markCalls++;
+        if (markCalls == 1) await firstMarkGate.future;
+      });
+      final service = build();
+      await _settle();
+
+      // Old account: a live connection drives a latch whose persist stalls.
+      statusSubject.add(_connected);
+      await _settle();
+
+      // Log out, then a new account signs in and latches its own answer.
+      authSubject.add(const AuthState.unauthenticated());
+      await _settle();
+      statusSubject.add(_connected);
+      await _settle();
+      expect(service.isRegistered.value, isTrue, reason: "new account latched");
+
+      // The old account's stalled persist finally lands. Its undo must not wipe
+      // the valid latch the new account just wrote.
+      firstMarkGate.complete();
+      await _settle();
+
+      expect(service.isRegistered.value, isTrue);
+      verifyNever(() => store.clear());
+    });
   });
 }
