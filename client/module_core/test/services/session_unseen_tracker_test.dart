@@ -561,6 +561,37 @@ void main() {
       tracker.onDispose();
     });
 
+    test("removeSession clears the project bold when the last unseen session is deleted", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // Project bold from a single unseen session.
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": true},
+        sinceGeneration: tracker.generation,
+      );
+      expect(tracker.currentProjectUnseen["p1"], isTrue);
+
+      // Deleting it locally settles the aggregate immediately (no echo needed).
+      tracker.removeSession(projectId: "p1", sessionId: "s1");
+      expect(tracker.currentSessionUnseen["p1"]?.containsKey("s1"), isFalse);
+      expect(tracker.currentProjectUnseen["p1"], isFalse);
+      tracker.onDispose();
+    });
+
+    test("removeSession keeps the project bold when another unseen session remains", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": true, "s2": true},
+        sinceGeneration: tracker.generation,
+      );
+
+      tracker.removeSession(projectId: "p1", sessionId: "s1");
+      expect(tracker.currentProjectUnseen["p1"], isTrue);
+      tracker.onDispose();
+    });
+
     test("a later seen event clears the session and updates the project aggregate", () async {
       final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
 

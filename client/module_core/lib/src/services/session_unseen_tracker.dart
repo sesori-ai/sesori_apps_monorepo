@@ -315,6 +315,37 @@ class SessionUnseenTracker with Disposable {
     _projectUnseen.add(projects);
   }
 
+  /// Removes [sessionId] after a confirmed local deletion and recomputes the
+  /// project aggregate from the remaining (non-excluded) sessions. The deleting
+  /// client knows authoritatively that the session is gone, so — unlike a local
+  /// mark-read — it is safe to recompute the aggregate down: a delete can only
+  /// reduce unseen-ness, and archived rows are skipped via [_excludedSessions]
+  /// (which the cubit keeps current from each /sessions reconcile). This settles
+  /// the project bold immediately instead of relying solely on the bridge's
+  /// fire-and-forget `session.unseen_changed` echo, which the client could miss
+  /// across a reconnect after receiving the delete's 2xx response.
+  void removeSession({required String projectId, required String sessionId}) {
+    if (_sessionUnseen.isClosed) return;
+    ++_generation;
+    _sessionLiveGeneration[projectId]?.remove(sessionId);
+    _sessionMutationGeneration[projectId]?.remove(sessionId);
+    final excluded = _excludedSessions[projectId];
+    excluded?.remove(sessionId);
+
+    final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
+    final projectSessions = Map<String, bool>.from(sessions[projectId] ?? const {});
+    projectSessions.remove(sessionId);
+    sessions[projectId] = projectSessions;
+    _sessionUnseen.add(sessions);
+
+    final projects = Map<String, bool>.from(_projectUnseen.value);
+    final remainingExcluded = _excludedSessions[projectId] ?? const <String>{};
+    projects[projectId] = projectSessions.entries.any(
+      (e) => e.value && !remainingExcluded.contains(e.key),
+    );
+    _projectUnseen.add(projects);
+  }
+
   void _handleEvent(SseEvent event) {
     try {
       if (event.data

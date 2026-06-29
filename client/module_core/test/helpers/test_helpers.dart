@@ -177,6 +177,18 @@ class FakeSessionUnseenTracker extends Mock implements SessionUnseenTracker {
     _projectUnseen.add(projects);
   }
 
+  @override
+  void removeSession({required String projectId, required String sessionId}) {
+    final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
+    final projectSessions = Map<String, bool>.from(sessions[projectId] ?? const {});
+    projectSessions.remove(sessionId);
+    sessions[projectId] = projectSessions;
+    _sessionUnseen.add(sessions);
+    final projects = Map<String, bool>.from(_projectUnseen.value);
+    projects[projectId] = projectSessions.values.any((u) => u);
+    _projectUnseen.add(projects);
+  }
+
   void emitProjectUnseen(Map<String, bool> unseen) => _projectUnseen.add(unseen);
 
   void emitSessionUnseen(Map<String, Map<String, bool>> unseen) => _sessionUnseen.add(unseen);
