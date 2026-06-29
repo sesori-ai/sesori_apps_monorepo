@@ -72,15 +72,6 @@ class _BackgroundTasksBarState extends State<BackgroundTasksBar> {
     }
   }
 
-  void _collapse() {
-    if (!_expanded) return;
-    setState(() {
-      _expanded = false;
-      _showCompleted = false;
-    });
-    _overlayController.hide();
-  }
-
   @override
   Widget build(BuildContext context) {
     if (widget.children.isEmpty) return const SizedBox.shrink();
@@ -113,13 +104,6 @@ class _BackgroundTasksBarState extends State<BackgroundTasksBar> {
   Widget _buildOverlay(BuildContext context) {
     return Stack(
       children: [
-        // Tap anywhere outside the card to collapse it.
-        Positioned.fill(
-          child: GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onTap: _collapse,
-          ),
-        ),
         CompositedTransformFollower(
           link: _link,
           // Pin the card's bottom edge to the header's bottom edge so it grows
