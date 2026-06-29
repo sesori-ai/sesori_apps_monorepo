@@ -222,6 +222,7 @@ class _RegistrationHarness {
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
       maintenanceListener: pushSubsystem.maintenanceListener,
+      accessTokenProvider: FakeAccessTokenProvider(),
       tokenRefresher: FakeTokenRefresher(),
       bridgeRegistrationService: registrationService,
       failureReporter: FakeFailureReporter(),

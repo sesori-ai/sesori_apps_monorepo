@@ -257,7 +257,21 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   shared cache regardless of any in-flight pull ordering. After a null
   `token_response` (signed out / mid-login), a relay reconnect does **not**
   re-authenticate from the stale cached token.
-- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+- **Aristotle:** plan ☑ · impl ☐. **Findings:** Live re-auth subscription lives
+  in the Orchestrator (it already owns the relay reconnect/backoff loop and the
+  `CompositeSubscription`); `RelayClient` stays a dumb transport. The
+  `token_update→re-auth` path funnels into the **same** reconnect block the
+  relay-drop path uses (drop the relay → existing reconnect block force-pulls the
+  new token and reconnects) — symmetric triggers, no Dispatcher needed.
+  Sign-out handling is split by ownership: `ControlChannelTokenService`
+  invalidates its own cache on a null `token_response` (the sync `accessToken`
+  getter throws again, since a `BehaviorSubject` cannot un-emit), and the
+  Orchestrator gates reconnect on a successful force-pull (a signed-out pull
+  defers reconnect on backoff instead of re-authing from the stale token). The
+  `_latestCachedSeq` pull-ordering heuristic is retired: the GUI `token_update`
+  push is the authoritative cache writer (last-write-wins); a pull only seeds the
+  cache for bootstrap, so the deferred PR-1.4 force/non-force masking edge is
+  gone. **Deltas:** —
 
 ## PR 1.6 — Supervised registration + `bridgeId` out of `token.json`
 - **Goal:** Persist `bridgeId` separately from `token.json` in a small
