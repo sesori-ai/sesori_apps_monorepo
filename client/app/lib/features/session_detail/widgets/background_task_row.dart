@@ -58,12 +58,19 @@ class BackgroundTaskRow extends StatelessWidget {
   }
 
   Widget _statusIcon({required SessionStatus? status, required PregoDesignSystem prego}) => switch (status) {
-    SessionStatusBusy() || SessionStatusRetry() => SizedBox(
-      width: 16,
-      height: 16,
-      child: CircularProgressIndicator(
-        strokeWidth: 2,
-        color: prego.colors.bgBrandSolid,
+    // GlassListTile forces the leading slot to a tight width of 32 but leaves
+    // its height free. A CircularProgressIndicator has no intrinsic size and
+    // paints to its box without preserving aspect ratio, so it renders as an
+    // oval. Center re-loosens the constraints around a fixed square so the
+    // spinner stays a 16px circle.
+    SessionStatusBusy() || SessionStatusRetry() => Center(
+      heightFactor: 1,
+      child: SizedBox.square(
+        dimension: 16,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: prego.colors.bgBrandSolid,
+        ),
       ),
     ),
     SessionStatusIdle() || null => Icon(
