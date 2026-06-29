@@ -150,8 +150,12 @@ class SessionUnseenTracker with Disposable {
     // Record the archived rows the REST list reported as excluded from the
     // aggregate, so an optimistic mark-unread of an archived session (even one
     // never seen as a live archive event) doesn't locally re-bold the project.
-    if (archivedSessionIds.isNotEmpty) {
-      (_excludedSessions[projectId] ??= <String>{}).addAll(archivedSessionIds);
+    // Guard each id against newer live state: if a session was archived in this
+    // (possibly stale) snapshot but a newer live update arrived since the fetch
+    // began (e.g. an unarchive), don't mark it excluded — the live state wins.
+    for (final archivedId in archivedSessionIds) {
+      if ((liveGenerations[archivedId] ?? 0) > sinceGeneration) continue;
+      (_excludedSessions[projectId] ??= <String>{}).add(archivedId);
     }
     final merged = <String, bool>{};
     for (final entry in unseenBySessionId.entries) {

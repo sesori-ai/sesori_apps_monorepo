@@ -536,6 +536,31 @@ void main() {
       tracker.onDispose();
     });
 
+    test("a stale REST archived id does not exclude a session unarchived live since the fetch", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // A /sessions fetch begins; its snapshot will report s1 as archived.
+      final gen = tracker.generation;
+
+      // Meanwhile s1 is unarchived live and is genuinely unseen again.
+      events.add(unseenEvent(projectID: "p1", sessionId: "s1", unseen: true, projectHasUnseenChanges: true));
+      await Future<void>.delayed(Duration.zero);
+
+      // The stale snapshot lands reporting s1 archived — but the newer live
+      // unarchive must win: s1 is NOT marked excluded.
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: const {},
+        archivedSessionIds: {"s1"},
+        sinceGeneration: gen,
+      );
+
+      // Marking s1 unread should bold the project (it is not excluded).
+      tracker.applyLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: true);
+      expect(tracker.currentProjectUnseen["p1"], isTrue);
+      tracker.onDispose();
+    });
+
     test("a later seen event clears the session and updates the project aggregate", () async {
       final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
 

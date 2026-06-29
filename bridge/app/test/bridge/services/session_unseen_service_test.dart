@@ -300,6 +300,38 @@ void main() {
       await sub.cancel();
     });
 
+    test("markRead on an unknown session propagates an emit failure to the caller", () async {
+      // A service whose project repository throws when recomputing the aggregate.
+      final failing = SessionUnseenService(
+        unseenRepository: SessionUnseenRepository(
+          sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
+          db: db,
+          calculator: const SessionUnseenCalculator(),
+        ),
+        projectRepository: _ThrowingProjectRepository(),
+        sessionRepository: SessionRepository(
+          plugin: _FakePlugin(),
+          sessionDao: db.sessionDao,
+          pullRequestRepository: PullRequestRepository(
+            pullRequestDao: db.pullRequestDao,
+            projectsDao: db.projectsDao,
+          ),
+          unseenCalculator: const SessionUnseenCalculator(),
+        ),
+        viewTracker: SessionViewTracker(),
+        now: () => clock,
+      );
+      addTearDown(failing.dispose);
+
+      // The missing-row clear can't be computed (repo throws), so the
+      // user-initiated mark-read must surface the failure, not report success.
+      await expectLater(
+        () => failing.markRead(sessionId: "ghost", projectId: "p1"),
+        throwsA(anything),
+      );
+    });
+
     test("markUnread on an unknown session without a projectId throws without emitting", () async {
       final events = <UnseenChange>[];
       final sub = service.unseenChanges.listen(events.add);
@@ -332,6 +364,14 @@ void main() {
 }
 
 class _FakePlugin implements BridgePluginApi {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _ThrowingProjectRepository implements ProjectRepository {
+  @override
+  Future<bool> projectHasUnseenChanges({required String projectId}) async => throw Exception("boom");
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

@@ -296,7 +296,11 @@ class SessionUnseenService {
       Log.d("mark-seen for missing row $sessionId without a projectId; skipping authoritative clear");
       return;
     }
-    await _emit(sessionId: sessionId, projectId: projectId);
+    // Use the throwing variant: this runs on a user-initiated mark-read/unread
+    // (rethrowErrors), so if the clear can't be computed/emitted the failure
+    // must surface as a non-2xx — otherwise the client would get success but
+    // never receive the authoritative SSE clear, leaving stale optimistic state.
+    await _computeAndEmit(sessionId: sessionId, projectId: projectId);
   }
 
   /// Recomputes and emits the unseen state for [sessionId] after a change made
@@ -355,22 +359,30 @@ class SessionUnseenService {
     return rethrowErrors ? result : _writeTail;
   }
 
+  /// Fire-and-forget emit: swallows + logs failures (for the orchestrator's SSE
+  /// path and other best-effort callers).
   Future<void> _emit({required String sessionId, required String projectId}) async {
     try {
-      final unseen = await _unseenRepository.isUnseen(sessionId: sessionId);
-      final projectHasUnseen = await _projectRepository.projectHasUnseenChanges(projectId: projectId);
-      if (_changes.isClosed) return;
-      _changes.add(
-        (
-          projectId: projectId,
-          sessionId: sessionId,
-          unseen: unseen,
-          projectHasUnseenChanges: projectHasUnseen,
-        ),
-      );
+      await _computeAndEmit(sessionId: sessionId, projectId: projectId);
     } catch (error, stackTrace) {
       Log.w("failed to compute/emit unseen change for session $sessionId", error, stackTrace);
     }
+  }
+
+  /// Computes and emits the unseen change, PROPAGATING any failure. Used by
+  /// user-initiated paths that must surface an error to the caller.
+  Future<void> _computeAndEmit({required String sessionId, required String projectId}) async {
+    final unseen = await _unseenRepository.isUnseen(sessionId: sessionId);
+    final projectHasUnseen = await _projectRepository.projectHasUnseenChanges(projectId: projectId);
+    if (_changes.isClosed) return;
+    _changes.add(
+      (
+        projectId: projectId,
+        sessionId: sessionId,
+        unseen: unseen,
+        projectHasUnseenChanges: projectHasUnseen,
+      ),
+    );
   }
 
   Future<void> dispose() async {
