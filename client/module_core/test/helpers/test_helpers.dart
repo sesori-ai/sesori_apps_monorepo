@@ -14,9 +14,10 @@ import "package:sesori_dart_core/src/capabilities/sse/sse_event_repository.dart"
 import "package:sesori_dart_core/src/platform/route_source.dart";
 import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
+import "package:sesori_dart_core/src/repositories/registered_bridges_store.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/routing/app_routes.dart";
-import "package:sesori_dart_core/src/services/registered_bridges_store.dart";
+import "package:sesori_dart_core/src/services/registered_bridges_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 class MockProjectService extends Mock implements ProjectService {}
@@ -34,6 +35,8 @@ class MockSessionRepository extends Mock implements SessionRepository {}
 class MockBridgeRepository extends Mock implements BridgeRepository {}
 
 class MockRegisteredBridgesStore extends Mock implements RegisteredBridgesStore {}
+
+class MockRegisteredBridgesService extends Mock implements RegisteredBridgesService {}
 
 class MockFailureReporter extends Mock implements FailureReporter {}
 

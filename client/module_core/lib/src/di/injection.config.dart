@@ -49,6 +49,8 @@ import 'package:sesori_dart_core/src/repositories/permission_repository.dart'
     as _i679;
 import 'package:sesori_dart_core/src/repositories/project_repository.dart'
     as _i80;
+import 'package:sesori_dart_core/src/repositories/registered_bridges_store.dart'
+    as _i217;
 import 'package:sesori_dart_core/src/repositories/session_repository.dart'
     as _i7;
 import 'package:sesori_dart_core/src/routing/notification_open_dispatcher.dart'
@@ -60,8 +62,8 @@ import 'package:sesori_dart_core/src/services/new_session_selection_tracker.dart
     as _i913;
 import 'package:sesori_dart_core/src/services/notification_registration_service.dart'
     as _i659;
-import 'package:sesori_dart_core/src/services/registered_bridges_store.dart'
-    as _i90;
+import 'package:sesori_dart_core/src/services/registered_bridges_service.dart'
+    as _i699;
 import 'package:sesori_dart_core/src/services/session_detail_load_service.dart'
     as _i709;
 import 'package:sesori_shared/sesori_shared.dart' as _i553;
@@ -109,8 +111,8 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i205.BridgeRepository>(
       () => _i205.BridgeRepository(api: gh<_i384.BridgeApi>()),
     );
-    gh.lazySingleton<_i90.RegisteredBridgesStore>(
-      () => _i90.RegisteredBridgesStore(
+    gh.lazySingleton<_i217.RegisteredBridgesStore>(
+      () => _i217.RegisteredBridgesStore(
         secureStorage: gh<_i442.SecureStorage>(),
         authSession: gh<_i442.AuthSession>(),
       ),
@@ -142,6 +144,15 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i471.NotificationRepository>(
       () => _i471.NotificationRepository(api: gh<_i400.NotificationApi>()),
+    );
+    gh.lazySingleton<_i699.RegisteredBridgesService>(
+      () => _i699.RegisteredBridgesService(
+        bridgeRepository: gh<_i205.BridgeRepository>(),
+        registeredBridgesStore: gh<_i217.RegisteredBridgesStore>(),
+        connectionService: gh<_i369.ConnectionService>(),
+        authSession: gh<_i442.AuthSession>(),
+      ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i458.NotificationPreferencesRepository>(
       () => _i458.NotificationPreferencesRepository(

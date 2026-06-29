@@ -3,7 +3,7 @@ import "dart:async";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
-import "package:sesori_dart_core/src/services/registered_bridges_store.dart";
+import "package:sesori_dart_core/src/repositories/registered_bridges_store.dart";
 import "package:test/test.dart";
 
 /// In-memory [SecureStorage] that also records how often each operation runs,

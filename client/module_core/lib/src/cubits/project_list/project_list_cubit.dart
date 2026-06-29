@@ -13,9 +13,8 @@ import "../../capabilities/sse/sse_event_repository.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
-import "../../repositories/bridge_repository.dart";
 import "../../routing/app_routes.dart";
-import "../../services/registered_bridges_store.dart";
+import "../../services/registered_bridges_service.dart";
 import "add_project_outcome.dart";
 import "project_list_state.dart";
 
@@ -31,8 +30,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   final ProjectService _projectService;
   final ConnectionService _connectionService;
   final SseEventRepository _sseEventRepository;
-  final BridgeRepository _bridgeRepository;
-  final RegisteredBridgesStore _registeredBridgesStore;
+  final RegisteredBridgesService _registeredBridgesService;
   final FailureReporter _failureReporter;
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
@@ -42,14 +40,12 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     ConnectionService connectionService,
     SseEventRepository sseEventRepository,
     RouteSource routeSource, {
-    required BridgeRepository bridgeRepository,
-    required RegisteredBridgesStore registeredBridgesStore,
+    required RegisteredBridgesService registeredBridgesService,
     required FailureReporter failureReporter,
   }) : _projectService = projectService,
        _connectionService = connectionService,
        _sseEventRepository = sseEventRepository,
-       _bridgeRepository = bridgeRepository,
-       _registeredBridgesStore = registeredBridgesStore,
+       _registeredBridgesService = registeredBridgesService,
        _failureReporter = failureReporter,
        super(const ProjectListState.loading()) {
     unawaited(_loadInitialProjects());
@@ -188,55 +184,10 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   /// this emit is skipped. Re-emitting an unchanged state is harmless (bloc
   /// dedupes equal states).
   Future<void> _emitBridgeDisconnected() async {
-    final hasRegisteredBridges = await _fetchHasRegisteredBridges();
+    final hasRegisteredBridges = await _registeredBridgesService.hasRegisteredBridges();
     if (isClosed) return;
     if (!_isBridgeUnavailable) return;
     emit(ProjectListState.bridgeDisconnected(hasRegisteredBridges: hasRegisteredBridges));
-  }
-
-  /// In-flight registered-bridges resolution, used for coalescing.
-  Future<bool>? _activeBridgesLookup;
-
-  /// Whether the account has any bridges registered with the auth server.
-  /// Concurrent calls are coalesced into a single resolution.
-  ///
-  /// The answer is a one-way latch — an account never reverts from *has a
-  /// registered bridge* to *none* — so once [RegisteredBridgesStore] knows the
-  /// positive answer (in memory this run, or persisted from a prior one) the
-  /// network lookup is skipped entirely.
-  Future<bool> _fetchHasRegisteredBridges() {
-    return _activeBridgesLookup ??= _resolveHasRegisteredBridges().whenComplete(() => _activeBridgesLookup = null);
-  }
-
-  Future<bool> _resolveHasRegisteredBridges() async {
-    // Tiers 1 & 2: in-memory flag, then persisted flag. A known-positive
-    // answer never reverts, so don't touch the network.
-    if (await _registeredBridgesStore.hasRegisteredBridges()) return true;
-    // Tier 3: ask the auth server, latching a positive answer for next time.
-    return _lookupHasRegisteredBridges();
-  }
-
-  Future<bool> _lookupHasRegisteredBridges() async {
-    // Reached via unawaited(_emitBridgeDisconnected()), so an unexpected throw
-    // (network timeout, deserialization failure) — rather than an ErrorResponse —
-    // would surface as an uncaught async error. Fail soft to `false` (the setup
-    // onboarding), the safe default for an account we can't classify yet.
-    try {
-      final response = await _bridgeRepository.getRegisteredBridges();
-      switch (response) {
-        case SuccessResponse(:final data):
-          if (data.isEmpty) return false;
-          // Latch the positive answer so future transitions skip the network.
-          await _registeredBridgesStore.markRegistered();
-          return true;
-        case ErrorResponse(:final error):
-          logw("Failed to fetch registered bridges: ${error.toString()}");
-          return false;
-      }
-    } on Object catch (error, stackTrace) {
-      logw("Failed to fetch registered bridges (unexpected error)", error, stackTrace);
-      return false;
-    }
   }
 
   void _onStaleReconnect() {
