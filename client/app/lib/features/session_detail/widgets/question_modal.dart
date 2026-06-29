@@ -1,7 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:go_router/go_router.dart";
-import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -200,17 +199,13 @@ class _QuestionModalState extends State<QuestionModal> {
     final height = MediaQuery.sizeOf(context).height * 0.7;
     final info = _currentInfo;
 
-    return GlassContainer(
+    return Container(
       height: height,
-      useOwnLayer: true,
-      clipBehavior: Clip.antiAlias,
-      padding: EdgeInsets.zero,
-      // Round only the top so the sheet still sits flush to the bottom edge.
-      shape: const LiquidVerticalRoundedSuperellipse(topRadius: 20, bottomRadius: 0),
-      // Frosted but kept fairly opaque: this is a content-heavy modal, so the
-      // chat blurs behind its edges without hurting the question's legibility.
-      settings: LiquidGlassSettings(
-        glassColor: prego.colors.bgPrimary.withValues(alpha: 0.78),
+      decoration: BoxDecoration(
+        color: prego.colors.bgPrimary,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(16),
+        ),
       ),
       child: Column(
         children: [
@@ -285,7 +280,7 @@ class _QuestionModalState extends State<QuestionModal> {
               ),
             ),
 
-          const GlassDivider(),
+          const Divider(height: 1),
 
           // Scrollable body
           Expanded(
@@ -304,22 +299,19 @@ class _QuestionModalState extends State<QuestionModal> {
                 ),
                 const SizedBox(height: 16),
 
-                // Option tiles — a grouped glass list that shares the sheet's
-                // frosted layer. Selection is shown by the filled check/radio
-                // and a brand-tinted label rather than a filled background.
-                for (var i = 0; i < info.options.length; i++)
-                  _OptionTile(
-                    option: info.options[i],
+                // Option tiles
+                ...info.options.map(
+                  (option) => _OptionTile(
+                    option: option,
                     isMultiple: info.multiple,
-                    isSelected: _selectedLabels.contains(info.options[i].label),
-                    // Suppress the trailing divider only when nothing (no
-                    // custom-answer tile) follows this option.
-                    isLast: !info.custom && i == info.options.length - 1,
-                    onTap: () => _onOptionTap(info.options[i].label),
+                    isSelected: _selectedLabels.contains(option.label),
+                    onTap: () => _onOptionTap(option.label),
                   ),
+                ),
 
-                // Custom answer tile continues the same grouped list.
-                if (info.custom)
+                // Custom answer tile
+                if (info.custom) ...[
+                  const SizedBox(height: 8),
                   _CustomAnswerTile(
                     controller: _customController,
                     focusNode: _customFocus,
@@ -327,30 +319,21 @@ class _QuestionModalState extends State<QuestionModal> {
                     isMultiple: info.multiple,
                     onTap: _onCustomTileTap,
                   ),
+                ],
               ],
             ),
           ),
 
-          // Submit / Next button. The sheet runs its glass flush to the bottom
-          // edge (handleBottomSafeArea: false), so the home-indicator inset
-          // isn't padded for us — add it here to lift the button clear of the
-          // indicator. It collapses to 0 while the keyboard is up, which already
-          // lifts the whole sheet.
+          // Submit / Next button
           Padding(
-            padding: EdgeInsetsDirectional.fromSTEB(16, 0, 16, 16 + MediaQuery.paddingOf(context).bottom),
-            child: GlassButton.custom(
-              // `_onProceed` no-ops on an empty answer, so gating via `enabled`
-              // is enough — no need to swap the callback when disabled.
-              onTap: _onProceed,
-              enabled: _canProceed,
+            padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 16),
+            child: SizedBox(
               width: double.infinity,
-              height: 52,
-              useOwnLayer: true,
-              shape: const LiquidRoundedSuperellipse(borderRadius: 16),
-              settings: LiquidGlassSettings(glassColor: prego.colors.bgBrandSolid),
-              child: Text(
-                _isLastQuestion ? loc.questionModalSubmit : loc.questionModalNext,
-                style: prego.textTheme.textMd.bold.copyWith(color: prego.colors.textWhite),
+              child: FilledButton(
+                onPressed: _canProceed ? _onProceed : null,
+                child: Text(
+                  _isLastQuestion ? loc.questionModalSubmit : loc.questionModalNext,
+                ),
               ),
             ),
           ),
@@ -368,14 +351,12 @@ class _OptionTile extends StatelessWidget {
   final QuestionOption option;
   final bool isMultiple;
   final bool isSelected;
-  final bool isLast;
   final VoidCallback onTap;
 
   const _OptionTile({
     required this.option,
     required this.isMultiple,
     required this.isSelected,
-    required this.isLast,
     required this.onTap,
   });
 
@@ -383,22 +364,51 @@ class _OptionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final prego = context.prego;
 
-    return GlassListTile(
-      onTap: onTap,
-      isLast: isLast,
-      leading: Icon(
-        isMultiple
-            ? (isSelected ? Icons.check_box : Icons.check_box_outline_blank)
-            : (isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked),
-        color: isSelected ? prego.colors.bgBrandSolid : prego.colors.borderPrimary,
-      ),
-      title: Text(option.label),
-      titleStyle: prego.textTheme.textSm.bold.copyWith(
-        color: isSelected ? prego.colors.bgBrandSolid : prego.colors.textPrimary,
-      ),
-      subtitle: option.description.isNotEmpty ? Text(option.description) : null,
-      subtitleStyle: prego.textTheme.textXs.regular.copyWith(
-        color: prego.colors.textSecondary,
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(bottom: 8),
+      child: Material(
+        color: isSelected ? prego.colors.bgBrandPrimary : prego.colors.bgSecondary,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Icon(
+                  isMultiple
+                      ? (isSelected ? Icons.check_box : Icons.check_box_outline_blank)
+                      : (isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked),
+                  color: isSelected ? prego.colors.bgBrandSolid : prego.colors.borderPrimary,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: .start,
+                    children: [
+                      Text(
+                        option.label,
+                        style: prego.textTheme.textSm.bold.copyWith(
+                          fontWeight: .bold,
+                        ),
+                      ),
+                      if (option.description.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          option.description,
+                          style: prego.textTheme.textXs.regular.copyWith(
+                            color: prego.colors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -428,50 +438,47 @@ class _CustomAnswerTile extends StatelessWidget {
     final prego = context.prego;
     final loc = context.loc;
 
-    // Rendered as a bare grouped row on the sheet's glass (no own surface) so
-    // it continues seamlessly from the option tiles above. The text field
-    // can't live inside a GlassListTile, so the row is composed by hand but
-    // mirrors the tile's leading-icon + content padding.
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              key: const Key("custom-answer-toggle"),
-              padding: const EdgeInsetsDirectional.only(top: 10),
-              child: Icon(
-                isMultiple
-                    ? (isSelected ? Icons.check_box : Icons.check_box_outline_blank)
-                    : (isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked),
-                color: isSelected ? prego.colors.bgBrandSolid : prego.colors.borderPrimary,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextField(
-                controller: controller,
-                focusNode: focusNode,
-                minLines: 1,
-                maxLines: 5,
-                style: prego.textTheme.textSm.regular.copyWith(
-                  color: prego.colors.textPrimary,
-                ),
-                decoration: InputDecoration(
-                  hintText: loc.questionModalCustomHint,
-                  hintStyle: prego.textTheme.textSm.regular.copyWith(
-                    color: prego.colors.textSecondary,
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(bottom: 8),
+      child: Material(
+        color: isSelected ? prego.colors.bgBrandPrimary : prego.colors.bgSecondary,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              crossAxisAlignment: .start,
+              children: [
+                Padding(
+                  key: const Key("custom-answer-toggle"),
+                  padding: const EdgeInsetsDirectional.only(top: 10),
+                  child: Icon(
+                    isMultiple
+                        ? (isSelected ? Icons.check_box : Icons.check_box_outline_blank)
+                        : (isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked),
+                    color: isSelected ? prego.colors.bgBrandSolid : prego.colors.borderPrimary,
                   ),
-                  border: InputBorder.none,
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
                 ),
-              ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    minLines: 1,
+                    maxLines: 5,
+                    decoration: InputDecoration(
+                      hintText: loc.questionModalCustomHint,
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
