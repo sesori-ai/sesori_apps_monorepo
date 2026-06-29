@@ -603,14 +603,18 @@ class OrchestratorSession {
   /// Force-refreshes the access token before a relay reconnect. Returns whether
   /// the reconnect may proceed.
   ///
-  /// Returns `false` only when the token is genuinely unavailable
-  /// ([ControlTokenUnavailableException] — in supervised mode the GUI reported
-  /// signed-out / mid-login, and the service has invalidated its cache): the
-  /// caller MUST NOT reconnect, because there is no safe token to authenticate
-  /// with. Any other refresh failure (e.g. standalone [TokenManager] hitting a
-  /// transiently-down auth-refresh endpoint) returns `true` so the reconnect
-  /// still proceeds with the existing, possibly-still-valid cached token —
-  /// preserving the pre-existing standalone resilience.
+  /// Returns `false` when the token is genuinely unavailable: either a
+  /// [ControlTokenUnavailableException] (supervised mode — the GUI reported
+  /// signed-out / mid-login and the service invalidated its cache), or any other
+  /// refresh failure with NO usable cached token to fall back on (e.g. standalone
+  /// [TokenManager] whose token store was deleted on logout). In both cases the
+  /// caller MUST NOT reconnect — there is no safe token to authenticate with.
+  ///
+  /// Returns `true` when a refresh succeeds, or when a refresh fails for a reason
+  /// other than unavailability AND a usable cached token still exists (e.g.
+  /// standalone [TokenManager] hitting a transiently-down auth-refresh endpoint
+  /// while its cached JWT is still valid) — so the reconnect proceeds with that
+  /// cached token, preserving the pre-existing standalone resilience.
   Future<bool> _refreshAccessToken() async {
     try {
       await _tokenRefresher.getAccessToken(forceRefresh: true);
@@ -620,8 +624,21 @@ class OrchestratorSession {
       Log.w("No access token available for reconnect: $e");
       return false;
     } catch (e) {
-      // Transient refresh failure with a cached token still on hand: reconnect
-      // with it rather than blocking the relay until refresh recovers.
+      // The refresh failed for some other reason. Only reconnect if a usable
+      // cached token actually exists — reading it throws when the cache is empty
+      // or sign-out-invalidated, in which case there is nothing safe to reconnect
+      // with and we must defer like the unavailable case above.
+      final String cachedToken;
+      try {
+        cachedToken = _accessTokenProvider.accessToken;
+      } on Object {
+        Log.w("Token refresh failed and no cached token is available; deferring reconnect: $e");
+        return false;
+      }
+      if (cachedToken.isEmpty) {
+        Log.w("Token refresh failed and the cached token is empty; deferring reconnect: $e");
+        return false;
+      }
       Log.w("Token refresh failed; reconnecting with the cached token: $e");
       return true;
     }

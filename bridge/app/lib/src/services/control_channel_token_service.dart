@@ -24,11 +24,13 @@ import "../foundation/control_channel_client.dart";
 ///
 /// The GUI is the authoritative token source: a pushed [ControlMessage.tokenUpdate]
 /// is adopted directly into the cache (driving [accessToken]/[tokenStream]). A pull
-/// also seeds the cache, but a monotonic cache generation guards every cache
-/// mutation: a pull applies its own result only if nothing newer (a push or a
-/// later pull) mutated the cache while it was in flight. So a slow older pull can
-/// neither overwrite a newer pushed/pulled token nor clear a newer sign-out — the
-/// newest writer always wins, regardless of which response happens to arrive last.
+/// also seeds the cache. Every cache write (a token or a sign-out invalidation) is
+/// stamped with a monotonic sequence at the moment it is ordered — a pull when it
+/// is issued, a push when it is adopted — and applies only if it is newer than the
+/// write currently reflected in the cache. So the newest-ISSUED decision always
+/// wins regardless of which response arrives first: a slow older pull can neither
+/// overwrite a newer pushed/pulled token nor clear a newer sign-out, and a later
+/// forced refresh is never masked by an older routine pull that completes first.
 ///
 /// A null [ControlTokenResponse] (signed out / mid-login) invalidates the cache: the
 /// synchronous [accessToken] getter throws again until a fresh token (pull or push)
@@ -49,13 +51,17 @@ class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher 
   final BehaviorSubject<String> _tokenSubject = BehaviorSubject<String>();
   final Map<String, Completer<String?>> _pending = <String, Completer<String?>>{};
   late final StreamSubscription<String> _subscription;
-  int _nextRequestId = 0;
-  // Monotonic counter bumped on every cache mutation (a cached token or a
-  // sign-out invalidation). A pull captures it before sending and applies its
-  // own result only if nothing newer mutated the cache meanwhile, so a slow
-  // in-flight pull can neither overwrite a newer GUI push/pull nor clear a
-  // newer sign-out. Pushes and newer pulls always win over older in-flight ones.
-  int _cacheGeneration = 0;
+  // Monotonic sequence stamped on every write candidate at the moment it is
+  // ordered: a pull captures its seq when it is ISSUED; a push takes a fresh seq
+  // when it is ADOPTED (so it always outranks every pull already in flight).
+  int _nextSeq = 0;
+  // The seq of the write currently reflected in the cache. A write applies only
+  // if its seq is newer than this, so the newest-ISSUED decision wins regardless
+  // of which response happens to arrive first: an older in-flight pull can never
+  // overwrite a newer push/pull's token nor clear a newer sign-out, and a later
+  // forced refresh is never masked just because an older routine pull completed
+  // first.
+  int _appliedSeq = -1;
   // A null token_response (signed out / mid-login) sets this so the synchronous
   // accessToken getter throws even though the BehaviorSubject still holds the
   // last (now stale) value — a BehaviorSubject cannot un-emit. Cleared the next
@@ -114,11 +120,12 @@ class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher 
         "Control channel token service has been disposed.",
       );
     }
-    // Snapshot the cache generation before sending: this pull may only apply its
-    // own result (cache the token, or invalidate on null) if nothing newer — a
-    // GUI push or a later pull — mutated the cache while this one was in flight.
-    final startGeneration = _cacheGeneration;
-    final id = "token-${_nextRequestId++}";
+    // Stamp this pull's issue order. Its result (cache the token, or invalidate
+    // on null) applies only if it is still the newest-issued write when it
+    // resolves — a later pull or a GUI push (each taking a higher seq) wins even
+    // if it completes first.
+    final seq = _nextSeq++;
+    final id = "token-$seq";
     final completer = Completer<String?>();
     _pending[id] = completer;
     try {
@@ -135,25 +142,21 @@ class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher 
       final accessToken = await completer.future.timeout(_requestTimeout);
       if (accessToken == null) {
         // Signed out / mid-login: invalidate any previously cached token so a
-        // reconnect can't re-authenticate the relay from a stale token. The
-        // GUI push (token_update) is non-null and so can never signal this.
-        // Skip if a newer token was cached since this pull started — that newer
-        // token is authoritative and this stale null must not clear it.
-        if (_cacheGeneration == startGeneration) {
-          _invalidateCache();
-        }
+        // reconnect can't re-authenticate the relay from a stale token. The GUI
+        // push (token_update) is non-null and so can never signal this. Apply
+        // only if this is still the newest-issued write, so a stale null can't
+        // clear a newer token (push or a later pull issued after the sign-out).
+        _applyWrite(seq, _invalidateCache);
         throw const ControlTokenUnavailableException(
           "The desktop app could not supply an access token (signed out or mid-login).",
         );
       }
       // Seed the cache so the synchronous getter and tokenStream stay current,
-      // but only if nothing newer was cached while this pull was in flight: a GUI
-      // token_update push (or a later pull) is authoritative, so a slow older
-      // pull must not revert accessToken/tokenStream to a now-stale token. The
-      // caller still receives this pull's own token below.
-      if (_cacheGeneration == startGeneration) {
-        _cacheToken(accessToken);
-      }
+      // but only if this is still the newest-issued write: a GUI token_update
+      // push or a later pull must not be reverted by a slow older pull, even one
+      // that completes after them. The caller still receives this pull's own
+      // token below regardless.
+      _applyWrite(seq, () => _cacheToken(accessToken));
       return accessToken;
     } on TimeoutException {
       throw const ControlTokenUnavailableException(
@@ -210,16 +213,28 @@ class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher 
         if (completer != null && !completer.isCompleted) {
           completer.complete(message.accessToken);
         }
-      case ControlTokenUpdate():
-        // The GUI pushed a refreshed token to adopt without a request. This is
-        // the authoritative cache writer: drive accessToken/tokenStream so a
-        // live re-auth consumer sees the new token. (Non-null by protocol, so a
-        // push can never invalidate the cache — only a null pull response can.)
-        _cacheToken(message.accessToken);
+      case ControlTokenUpdate(:final accessToken):
+        // The GUI pushed a refreshed token to adopt without a request. It takes a
+        // fresh seq at adoption time, so it outranks every pull already in flight
+        // and becomes the newest write — a slow older pull resolving afterwards
+        // can't revert it. (Non-null by protocol, so a push never invalidates the
+        // cache — only a null pull response can.)
+        _applyWrite(_nextSeq++, () => _cacheToken(accessToken));
       default:
         // Other control-message variants are not this service's concern.
         break;
     }
+  }
+
+  /// Runs [write] only if [seq] is newer than the write currently reflected in
+  /// the cache, advancing [_appliedSeq] when it does. This makes the
+  /// newest-issued write win regardless of completion order, so an older pull
+  /// resolving late can neither overwrite a newer token nor clear a newer
+  /// sign-out.
+  void _applyWrite(int seq, void Function() write) {
+    if (seq <= _appliedSeq) return;
+    _appliedSeq = seq;
+    write();
   }
 
   /// Caches [token] as the current access token, clearing any prior sign-out
@@ -227,7 +242,6 @@ class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher 
   /// receive their token; only the cache write is moot mid-shutdown.
   void _cacheToken(String token) {
     if (_disposed) return;
-    _cacheGeneration++;
     _invalidated = false;
     _tokenSubject.add(token);
   }
@@ -237,7 +251,6 @@ class ControlChannelTokenService implements AccessTokenProvider, TokenRefresher 
   /// BehaviorSubject still holds the stale value (it cannot un-emit), but the
   /// guarded getter refuses to return it.
   void _invalidateCache() {
-    _cacheGeneration++;
     _invalidated = true;
   }
 }

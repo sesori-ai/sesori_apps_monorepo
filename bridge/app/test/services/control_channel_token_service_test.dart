@@ -243,6 +243,35 @@ void main() {
       expect(service.accessToken, equals("pushed"));
     });
 
+    test("the newest-issued pull wins even when an older pull completes first", () async {
+      final client = _FakeControlChannelClient();
+      final service = ControlChannelTokenService(client: client);
+      addTearDown(service.dispose);
+
+      // Two overlapping pulls: the older (first-issued) and the newer (e.g. a
+      // forced reconnect refresh issued while a routine pull is still in flight).
+      final older = service.getAccessToken();
+      await pumpEventQueue();
+      final newer = service.getAccessToken(forceRefresh: true);
+      await pumpEventQueue();
+
+      final olderRequest = _decode(client.sentFrames[0]) as ControlTokenRequest;
+      final newerRequest = _decode(client.sentFrames[1]) as ControlTokenRequest;
+
+      // The OLDER pull happens to complete first and caches its token.
+      client.emit(_encode(ControlMessage.tokenResponse(id: olderRequest.id, accessToken: "older")));
+      expect(await older, equals("older"));
+      await pumpEventQueue();
+      expect(service.accessToken, equals("older"));
+
+      // The newer pull then completes: its fresher token must win, since it was
+      // issued later — not be masked just because the older one finished first.
+      client.emit(_encode(ControlMessage.tokenResponse(id: newerRequest.id, accessToken: "newer")));
+      expect(await newer, equals("newer"));
+      await pumpEventQueue();
+      expect(service.accessToken, equals("newer"));
+    });
+
     test("times out with a typed failure when no response arrives", () async {
       final client = _FakeControlChannelClient();
       final service = ControlChannelTokenService(

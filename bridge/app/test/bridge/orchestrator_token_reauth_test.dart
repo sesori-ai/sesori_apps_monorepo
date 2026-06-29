@@ -127,6 +127,35 @@ void main() {
       final secondAuth = await _firstTextMessage(secondSocket);
       expect(secondAuth["token"], equals("token-1"), reason: "reconnect uses the cached token");
     });
+
+    test("a refresh failure with no cached token does not reconnect", () async {
+      final authority = _ScriptedTokenAuthority("token-1");
+      final harness = await _ReauthHarness.start(authority: authority);
+      addTearDown(harness.close);
+
+      final firstSocket = await harness.relayServer.nextClient();
+      await _firstTextMessage(firstSocket);
+
+      // The refresh fails for a non-unavailable reason, but there is also no
+      // usable cached token (e.g. the token store was deleted on logout). There
+      // is nothing safe to reconnect with, so the reconnect must be deferred.
+      authority
+        ..transientFailRefresh = true
+        ..cachedTokenAvailable = false;
+      await firstSocket.close();
+
+      await Future<void>.delayed(const Duration(seconds: 2));
+      expect(harness.relayServer.connectedClientCount, equals(1), reason: "no reconnect without a safe token");
+
+      // Once a token is available again the deferred reconnect proceeds.
+      authority
+        ..transientFailRefresh = false
+        ..cachedTokenAvailable = true
+        ..current = "token-recovered";
+      final secondSocket = await harness.relayServer.nextClient(timeout: const Duration(seconds: 10));
+      final secondAuth = await _firstTextMessage(secondSocket);
+      expect(secondAuth["token"], equals("token-recovered"));
+    });
   });
 }
 
@@ -144,6 +173,9 @@ class _ScriptedTokenAuthority implements AccessTokenProvider, TokenRefresher {
   String current;
   bool failRefresh = false;
   bool transientFailRefresh = false;
+  // When false, the synchronous getter throws — mirroring a service whose cache
+  // is empty or sign-out-invalidated (no safe token to reconnect with).
+  bool cachedTokenAvailable = true;
 
   _ScriptedTokenAuthority(this.current) : _subject = BehaviorSubject<String>.seeded(current);
 
@@ -154,7 +186,12 @@ class _ScriptedTokenAuthority implements AccessTokenProvider, TokenRefresher {
   }
 
   @override
-  String get accessToken => current;
+  String get accessToken {
+    if (!cachedTokenAvailable) {
+      throw StateError("no cached token");
+    }
+    return current;
+  }
 
   @override
   ValueStream<String> get tokenStream => _subject.stream;
