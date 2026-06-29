@@ -78,7 +78,7 @@ void main() {
       // live connection.
       authority.emit("token-1");
       await Future<void>.delayed(const Duration(seconds: 1));
-      expect(harness.relayServer.connectedClientCount, equals(1), reason: "unchanged token must not re-auth");
+      expect(harness.relayServer.acceptedClientCount, equals(1), reason: "unchanged token must not re-auth");
     });
 
     test("a relay drop while signed out does not reconnect with a stale token", () async {
@@ -97,7 +97,7 @@ void main() {
 
       // Give the reconnect loop several backoff iterations; none should connect.
       await Future<void>.delayed(const Duration(seconds: 2));
-      expect(harness.relayServer.connectedClientCount, equals(1), reason: "no reconnect while signed out");
+      expect(harness.relayServer.acceptedClientCount, equals(1), reason: "no reconnect while signed out");
 
       // Signing back in lets the deferred reconnect proceed.
       authority
@@ -128,6 +128,38 @@ void main() {
       expect(secondAuth["token"], equals("token-1"), reason: "reconnect uses the cached token");
     });
 
+    test("a token update racing a bridgeRevoked close still re-registers fresh", () async {
+      final authority = _ScriptedTokenAuthority("token-1");
+      final harness = await _ReauthHarness.start(authority: authority);
+      addTearDown(harness.close);
+
+      final firstSocket = await harness.relayServer.nextClient();
+      await _firstTextMessage(firstSocket);
+      expect(harness.registrationRepository.registeredBridgeIds, equals(<String?>[null]));
+
+      // The relay revokes this bridge, then a token update is pushed after the
+      // socket has closed but (typically) before the read loop has observed the
+      // termination — the window the live re-auth guard protects. The re-auth
+      // must NOT discard the channel (which would erase the bridgeRevoked close
+      // code and make the bridge retry with the revoked id); the reconnect must
+      // observe the revoked code and re-register fresh.
+      harness.registrationRepository.nextBridgeId = "br_revoked-fresh";
+      await firstSocket.close(RelayCloseCodes.bridgeRevoked);
+      // Let the client observe the close (closeCode latches) before the push, so
+      // the guard sees a non-null close code.
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      authority.emit("token-2");
+
+      final secondSocket = await harness.relayServer.nextClient(timeout: const Duration(seconds: 10));
+      final secondAuth = await _firstTextMessage(secondSocket);
+
+      // A second registration ran (the revoked path), both posting bridgeId=null
+      // (never the revoked id), and the new socket authenticates with the fresh id.
+      expect(harness.registrationRepository.registeredBridgeIds.length, greaterThanOrEqualTo(2));
+      expect(harness.registrationRepository.registeredBridgeIds, everyElement(isNull));
+      expect(secondAuth["bridgeId"], equals("br_revoked-fresh"));
+    });
+
     test("a refresh failure with no cached token does not reconnect", () async {
       final authority = _ScriptedTokenAuthority("token-1");
       final harness = await _ReauthHarness.start(authority: authority);
@@ -145,7 +177,7 @@ void main() {
       await firstSocket.close();
 
       await Future<void>.delayed(const Duration(seconds: 2));
-      expect(harness.relayServer.connectedClientCount, equals(1), reason: "no reconnect without a safe token");
+      expect(harness.relayServer.acceptedClientCount, equals(1), reason: "no reconnect without a safe token");
 
       // Once a token is available again the deferred reconnect proceeds.
       authority
@@ -225,6 +257,7 @@ class _ReauthHarness {
   final _CountingRelayServer relayServer;
   final AppDatabase database;
   final _ScriptedTokenAuthority authority;
+  final FakeBridgeRegistrationRepository registrationRepository;
 
   _ReauthHarness._({
     required this.session,
@@ -232,6 +265,7 @@ class _ReauthHarness {
     required this.relayServer,
     required this.database,
     required this.authority,
+    required this.registrationRepository,
   });
 
   static Future<_ReauthHarness> start({
@@ -240,6 +274,7 @@ class _ReauthHarness {
     final relayServer = await _CountingRelayServer.start();
     final database = createTestDatabase();
     final plugin = FakeBridgePlugin();
+    final registrationRepository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_initial";
 
     final pullRequestRepository = PullRequestRepository(
       pullRequestDao: database.pullRequestDao,
@@ -251,6 +286,10 @@ class _ReauthHarness {
       pullRequestRepository: pullRequestRepository,
     );
     final pushSubsystem = _createPushSubsystem();
+    // One registration service feeds both the orchestrator and the relay client's
+    // bridge-id provider, mirroring production — so the auth message reflects the
+    // id the revoked path re-registers.
+    final registrationService = createFakeBridgeRegistrationService(repository: registrationRepository);
 
     final orchestrator = Orchestrator(
       config: BridgeConfig(
@@ -262,7 +301,7 @@ class _ReauthHarness {
       client: RelayClient(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
         accessTokenProvider: authority,
-        bridgeIdProvider: FakeBridgeIdProvider(),
+        bridgeIdProvider: registrationService,
       ),
       plugin: plugin,
       metadataService: FakeMetadataService(),
@@ -271,7 +310,7 @@ class _ReauthHarness {
       maintenanceListener: pushSubsystem.maintenanceListener,
       accessTokenProvider: authority,
       tokenRefresher: authority,
-      bridgeRegistrationService: createFakeBridgeRegistrationService(),
+      bridgeRegistrationService: registrationService,
       failureReporter: FakeFailureReporter(),
       prSyncService: FakePrSyncService(),
       sessionRepository: sessionRepository,
@@ -337,6 +376,7 @@ class _ReauthHarness {
       relayServer: relayServer,
       database: database,
       authority: authority,
+      registrationRepository: registrationRepository,
     );
   }
 
@@ -353,10 +393,12 @@ class _ReauthHarness {
   }
 }
 
-/// A [TestRelayServer] that also counts how many clients ever connected.
+/// Thin pass-through over [TestRelayServer]. Reconnect assertions read
+/// [acceptedClientCount], which the server increments when it ACCEPTS a socket
+/// (not when a test consumes one), so a spurious reconnect that sits buffered is
+/// still observed by a "no reconnect" assertion.
 class _CountingRelayServer {
   final TestRelayServer _inner;
-  int connectedClientCount = 0;
 
   _CountingRelayServer._(this._inner);
 
@@ -366,10 +408,10 @@ class _CountingRelayServer {
 
   int get port => _inner.port;
 
+  int get acceptedClientCount => _inner.acceptedClientCount;
+
   Future<WebSocket> nextClient({Duration timeout = const Duration(seconds: 5)}) async {
-    final socket = await _inner.nextClient().timeout(timeout);
-    connectedClientCount += 1;
-    return socket;
+    return _inner.nextClient().timeout(timeout);
   }
 
   Future<void> close() => _inner.close();

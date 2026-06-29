@@ -207,6 +207,7 @@ class TestRelayServer {
   final HttpServer _server;
   final Queue<WebSocket> _bufferedClients = Queue();
   final Queue<Completer<WebSocket>> _waiters = Queue();
+  int _acceptedClientCount = 0;
 
   TestRelayServer._(this._server);
 
@@ -218,6 +219,11 @@ class TestRelayServer {
   }
 
   int get port => _server.port;
+
+  /// Number of WebSocket clients the server has accepted, counted at accept time
+  /// (not when a test consumes one via [nextClient]). A "no reconnect" assertion
+  /// must read this so a spurious reconnect that sits buffered is still observed.
+  int get acceptedClientCount => _acceptedClientCount;
 
   /// Returns the next client [WebSocket] that connects to this server.
   ///
@@ -256,6 +262,7 @@ class TestRelayServer {
     }
 
     final ws = await WebSocketTransformer.upgrade(request);
+    _acceptedClientCount += 1;
     if (_waiters.isNotEmpty) {
       _waiters.removeFirst().complete(ws);
     } else {

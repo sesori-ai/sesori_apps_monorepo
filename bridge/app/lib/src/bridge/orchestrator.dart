@@ -651,6 +651,15 @@ class OrchestratorSession {
   /// No-op once cancelled so a token emit during shutdown can't fight teardown.
   Future<void> _reauthenticateRelay() async {
     if (_cancelled) return;
+    // If the socket has already closed (closeCode is set), the read loop is
+    // about to end on its own and the reconnect block will inspect the close
+    // code. Don't call close() here: it nulls the channel and discards that code,
+    // which would mask a bridgeRevoked close and skip re-registration. Let the
+    // natural drop path handle it; the fresh token is picked up on reconnect.
+    if (_client.closeCode != null) {
+      Log.d("Token updated while the relay was already closing — letting the drop path reconnect");
+      return;
+    }
     Log.i("Access token updated while connected — re-authenticating relay");
     try {
       await _client.close();
