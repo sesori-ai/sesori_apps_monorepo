@@ -988,7 +988,7 @@ Applied: [B-Client / B-Bridge / B-Shared]
 Skipped: [the others, with reason]
 
 ### Section A — General Architecture
-[List each violated principle (A1-A10) with a reference to the specific plan step or class. Only list violations — do not list rules that pass.]
+[List each violated principle (A1-A12) with a reference to the specific plan step or class. Only list violations — do not list rules that pass.]
 
 ### Section B — Project-Specific Rules
 [For each applied subsection, list violated rules with references to specific plan steps or classes. Only list violations.]

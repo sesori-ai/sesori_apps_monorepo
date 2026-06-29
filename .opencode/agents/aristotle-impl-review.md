@@ -1028,7 +1028,7 @@ Applied: [B-Client / B-Bridge / B-Shared]
 Skipped: [the others, with reason]
 
 ### Section A — General Architecture
-[List each violated principle (A1-A10) with file:line references. Only list violations.]
+[List each violated principle (A1-A12) with file:line references. Only list violations.]
 
 ### Section B — Project-Specific Rules
 [For each applied subsection, list violated rules with file:line references. Only list violations.]
