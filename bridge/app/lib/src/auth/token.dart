@@ -61,16 +61,17 @@ Future<String?> readLegacyBridgeId() async {
 
   try {
     final json = jsonDecodeMap(await file.readAsString());
-    return json['bridgeId'] as String?;
+    final bridgeId = json['bridgeId'];
+    return bridgeId is String ? bridgeId : null;
   } on PathNotFoundException {
     // No legacy token file — nothing to adopt. This is the expected path on a
     // fresh install and in supervised mode, so it is not worth logging.
     return null;
-  } on FileSystemException catch (error) {
-    Log.w("Could not read legacy bridge id; skipping adoption", error);
-    return null;
-  } on FormatException catch (error) {
-    Log.w("Legacy token file is corrupt; skipping bridge-id adoption", error);
+  } on Object catch (error, stackTrace) {
+    // A corrupt or unexpectedly-shaped legacy token file (FileSystemException,
+    // FormatException, or a TypeError from a non-map root) must not crash
+    // startup — skip adoption and let registration mint a fresh id.
+    Log.w("Could not read legacy bridge id; skipping adoption", error, stackTrace);
     return null;
   }
 }

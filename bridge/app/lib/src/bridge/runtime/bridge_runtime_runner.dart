@@ -30,6 +30,7 @@ import "package:sesori_shared/sesori_shared.dart" show DeviceInfo;
 import "../../api/bridge_settings_api.dart";
 import "../../api/control_secret_api.dart";
 import "../../auth/access_token_provider.dart";
+import "../../auth/bridge_id_migration_service.dart";
 import "../../auth/bridge_id_storage.dart";
 import "../../auth/bridge_registration_api.dart";
 import "../../auth/bridge_registration_repository.dart";
@@ -283,6 +284,17 @@ class BridgeRuntimeRunner {
         }
       }
 
+      // Copy a legacy bridge id out of token.json into its own storage before
+      // authentication: the first token save no longer serializes bridgeId, so
+      // it would otherwise erase the only copy and force a duplicate
+      // registration. A failure here aborts startup so the next run retries the
+      // copy with the legacy source still intact.
+      final bridgeIdStorage = BridgeIdStorage(filePath: bridgeIdPath());
+      await BridgeIdMigrationService(
+        bridgeIdStorage: bridgeIdStorage,
+        readLegacyBridgeId: readLegacyBridgeId,
+      ).migrate();
+
       // Supervised mode short-circuits the interactive auth bootstrap: no
       // provider menu, no email/password prompt — the access token comes from
       // the GUI over the control channel. Standalone runs the unchanged
@@ -422,8 +434,7 @@ class BridgeRuntimeRunner {
           ),
         ),
         tokenRefresher: tokenRefresher,
-        bridgeIdStorage: BridgeIdStorage(filePath: bridgeIdPath()),
-        readLegacyBridgeId: readLegacyBridgeId,
+        bridgeIdStorage: bridgeIdStorage,
         hostName: io.Platform.localHostname,
         platform: BridgeRegistrationService.currentPlatformName(),
       );

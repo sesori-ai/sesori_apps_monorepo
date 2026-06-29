@@ -186,7 +186,6 @@ class _RegistrationHarness {
       repository: repository,
       tokenRefresher: FakeTokenRefresher(),
       bridgeIdStorage: bridgeIdStorage,
-      readLegacyBridgeId: () async => null,
       hostName: "test-host",
       platform: "macos",
     );

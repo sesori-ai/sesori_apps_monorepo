@@ -167,6 +167,69 @@ void main() {
       expect(savedTokens!.lastProvider, AuthProvider.github);
     });
 
+    test("refresh repairs a corrupt token file by persisting the response tokens", () async {
+      final server = await _RefreshTestServer.start();
+      addTearDown(server.close);
+
+      var loadCalls = 0;
+      TokenData? savedTokens;
+      final manager = TokenManager(
+        initialToken: _makeJwtFromNow(10),
+        authBackendUrl: server.baseUrl,
+        loadTokens: () async {
+          loadCalls += 1;
+          if (loadCalls > 1) {
+            throw const FormatException("corrupt token file");
+          }
+          return TokenData(
+            accessToken: "old-access",
+            refreshToken: "refresh-token",
+            lastProvider: AuthProvider.github,
+          );
+        },
+        saveTokens: (tokens) async {
+          savedTokens = tokens;
+        },
+      );
+
+      final token = await manager.getAccessToken();
+
+      expect(token, "new-access-token");
+      expect(savedTokens, isNotNull);
+      expect(savedTokens!.accessToken, "new-access-token");
+      expect(savedTokens!.refreshToken, "new-refresh-token");
+      expect(savedTokens!.lastProvider, AuthProvider.github);
+    });
+
+    test("refresh does not recreate a token file deleted mid-refresh", () async {
+      final server = await _RefreshTestServer.start();
+      addTearDown(server.close);
+
+      var loadCalls = 0;
+      TokenData? savedTokens;
+      final manager = TokenManager(
+        initialToken: _makeJwtFromNow(10),
+        authBackendUrl: server.baseUrl,
+        loadTokens: () async {
+          loadCalls += 1;
+          if (loadCalls > 1) {
+            throw const FileSystemException("token file deleted", "token.json", OSError("No such file", 2));
+          }
+          return TokenData(
+            accessToken: "old-access",
+            refreshToken: "refresh-token",
+            lastProvider: AuthProvider.github,
+          );
+        },
+        saveTokens: (tokens) async {
+          savedTokens = tokens;
+        },
+      );
+
+      await expectLater(manager.getAccessToken(), throwsA(isA<FileSystemException>()));
+      expect(savedTokens, isNull);
+    });
+
     test("successful refresh updates current access token", () async {
       final server = await _RefreshTestServer.start();
       addTearDown(server.close);

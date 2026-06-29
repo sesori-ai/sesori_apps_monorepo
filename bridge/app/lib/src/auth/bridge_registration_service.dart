@@ -1,5 +1,7 @@
 import "dart:io";
 
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+
 import "bridge_id_provider.dart";
 import "bridge_id_storage.dart";
 import "bridge_registration_api.dart";
@@ -12,29 +14,29 @@ import "token_refresher.dart";
 /// Registration is memoized per process: once [ensureRegistered] succeeds it
 /// returns immediately on subsequent calls until [handleBridgeRevoked]
 /// resets it (relay close code 4006 — bridge revoked).
+///
+/// The persisted bridge id is read from [BridgeIdStorage]; legacy ids from an
+/// older `token.json` are copied into that storage by `BridgeIdMigrationService`
+/// before authentication, so this service never reads `token.json`.
 class BridgeRegistrationService implements BridgeIdProvider {
   final BridgeRegistrationRepository _repository;
   final TokenRefresher _tokenRefresher;
   final BridgeIdStorage _bridgeIdStorage;
-  final Future<String?> Function() _readLegacyBridgeId;
   final String _hostName;
   final String _platform;
 
   bool _registered = false;
-  bool _legacyAdoptionAttempted = false;
   String? _bridgeId;
 
   BridgeRegistrationService({
     required BridgeRegistrationRepository repository,
     required TokenRefresher tokenRefresher,
     required BridgeIdStorage bridgeIdStorage,
-    required Future<String?> Function() readLegacyBridgeId,
     required String hostName,
     required String platform,
   }) : _repository = repository,
        _tokenRefresher = tokenRefresher,
        _bridgeIdStorage = bridgeIdStorage,
-       _readLegacyBridgeId = readLegacyBridgeId,
        _hostName = sanitizeBridgeName(hostName),
        _platform = platform;
 
@@ -68,7 +70,7 @@ class BridgeRegistrationService implements BridgeIdProvider {
       return;
     }
 
-    final existingId = await _bridgeIdStorage.read() ?? await _adoptLegacyBridgeId();
+    final existingId = await _bridgeIdStorage.read();
     final summary = await _withAccessTokenRetry(
       (accessToken) => _repository.register(
         name: _hostName,
@@ -94,13 +96,21 @@ class BridgeRegistrationService implements BridgeIdProvider {
   Future<void> handleBridgeRevoked() async {
     _registered = false;
     _bridgeId = null;
-    await _bridgeIdStorage.clear();
+    try {
+      await _bridgeIdStorage.clear();
+    } on Object catch (error, stackTrace) {
+      // Best-effort: a stale persisted id self-heals because re-registering
+      // with a revoked id makes the server mint a fresh one. Swallowing here
+      // keeps a transient filesystem error from aborting the reconnect path.
+      Log.w("Failed to clear persisted bridge id after revocation", error, stackTrace);
+    }
   }
 
   /// Removes this bridge's registration on the auth server.
   ///
   /// Does nothing when no bridge id is persisted. A 404 (already revoked)
-  /// counts as success; any other failure is rethrown.
+  /// counts as success; any other failure is rethrown. Clears the persisted
+  /// bridge id once the server no longer holds the registration.
   Future<void> unregister() async {
     final bridgeId = await _bridgeIdStorage.read();
     if (bridgeId == null) {
@@ -116,25 +126,7 @@ class BridgeRegistrationService implements BridgeIdProvider {
         rethrow;
       }
     }
-  }
-
-  /// Adopts the bridge id an older bridge persisted inside `token.json`, once.
-  ///
-  /// Runs only when [BridgeIdStorage] is empty (a fresh install or an upgrade
-  /// before the first registration) and at most once per process. Writing the
-  /// adopted id through to storage means subsequent calls read it from there
-  /// and never touch the legacy file again.
-  Future<String?> _adoptLegacyBridgeId() async {
-    if (_legacyAdoptionAttempted) {
-      return null;
-    }
-    _legacyAdoptionAttempted = true;
-
-    final legacy = await _readLegacyBridgeId();
-    if (legacy != null) {
-      await _bridgeIdStorage.write(bridgeId: legacy);
-    }
-    return legacy;
+    await _bridgeIdStorage.clear();
   }
 
   Future<T> _withAccessTokenRetry<T>(Future<T> Function(String accessToken) action) async {

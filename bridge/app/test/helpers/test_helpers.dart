@@ -43,6 +43,12 @@ class FakeTokenRefresher implements TokenRefresher {
 class FakeBridgeIdStorage implements BridgeIdStorage {
   String? bridgeId;
 
+  /// When non-null, [clear] throws this error instead of clearing.
+  Object? clearError;
+
+  /// When non-null, [write] throws this error instead of persisting.
+  Object? writeError;
+
   FakeBridgeIdStorage({this.bridgeId});
 
   @override
@@ -50,11 +56,19 @@ class FakeBridgeIdStorage implements BridgeIdStorage {
 
   @override
   Future<void> write({required String bridgeId}) async {
+    final error = writeError;
+    if (error != null) {
+      throw error;
+    }
     this.bridgeId = bridgeId;
   }
 
   @override
   Future<void> clear() async {
+    final error = clearError;
+    if (error != null) {
+      throw error;
+    }
     bridgeId = null;
   }
 }
@@ -105,13 +119,11 @@ class FakeBridgeRegistrationRepository implements BridgeRegistrationRepository {
 BridgeRegistrationService createFakeBridgeRegistrationService({
   BridgeRegistrationRepository? repository,
   BridgeIdStorage? bridgeIdStorage,
-  Future<String?> Function()? readLegacyBridgeId,
 }) {
   return BridgeRegistrationService(
     repository: repository ?? FakeBridgeRegistrationRepository(),
     tokenRefresher: FakeTokenRefresher(),
     bridgeIdStorage: bridgeIdStorage ?? FakeBridgeIdStorage(),
-    readLegacyBridgeId: readLegacyBridgeId ?? () async => null,
     hostName: "test-host",
     platform: "macos",
   );

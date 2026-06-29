@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
 import 'package:sesori_bridge/src/api/default_editor_api.dart';
 import 'package:sesori_bridge/src/api/wake_lock_client.dart';
+import 'package:sesori_bridge/src/auth/bridge_id_migration_service.dart';
 import 'package:sesori_bridge/src/auth/bridge_id_storage.dart';
 import 'package:sesori_bridge/src/auth/bridge_registration_api.dart';
 import 'package:sesori_bridge/src/auth/bridge_registration_repository.dart';
@@ -273,16 +274,16 @@ class LogoutCommand extends cli.Command<void> {
 /// file is deleted. Callers treat any failure as non-fatal.
 Future<void> _unregisterBridgeRegistration({required String authBackendUrl}) async {
   final bridgeIdStorage = BridgeIdStorage(filePath: bridgeIdPath());
+  // Adopt a legacy id persisted inside token.json first, so a never-reconnected
+  // legacy install still unregisters cleanly; the service reads the bridge id
+  // back out of storage.
+  await BridgeIdMigrationService(
+    bridgeIdStorage: bridgeIdStorage,
+    readLegacyBridgeId: readLegacyBridgeId,
+  ).migrate();
   if (await bridgeIdStorage.read() == null) {
-    // Adopt a legacy id persisted by an older bridge inside token.json so a
-    // never-reconnected legacy install still unregisters cleanly; the service
-    // reads the bridge id back out of storage.
-    final legacy = await readLegacyBridgeId();
-    if (legacy == null) {
-      // Nothing registered to remove.
-      return;
-    }
-    await bridgeIdStorage.write(bridgeId: legacy);
+    // Nothing registered to remove.
+    return;
   }
 
   final TokenData tokens;
@@ -310,7 +311,6 @@ Future<void> _unregisterBridgeRegistration({required String authBackendUrl}) asy
       ),
       tokenRefresher: tokenManager,
       bridgeIdStorage: bridgeIdStorage,
-      readLegacyBridgeId: readLegacyBridgeId,
       hostName: Platform.localHostname,
       platform: BridgeRegistrationService.currentPlatformName(),
     );

@@ -114,10 +114,21 @@ class TokenManager implements AccessTokenProvider, AccessTokenUpdater, TokenRefr
 
     _tokenSubject.add(authResponse.accessToken);
 
+    // Re-read the token file before persisting so a logout that deletes it
+    // mid-refresh is not resurrected: a missing file propagates (the refresh
+    // does not recreate cleared credentials), while a corrupt file falls back
+    // to the pre-refresh snapshot and the save below repairs it. Only
+    // `lastProvider` carries over; access/refresh come from the response.
+    TokenData latestTokens;
+    try {
+      latestTokens = await _loadTokens() ?? tokens;
+    } on FormatException {
+      latestTokens = tokens;
+    }
     final persistedTokens = TokenData(
       accessToken: authResponse.accessToken,
       refreshToken: authResponse.refreshToken,
-      lastProvider: tokens.lastProvider,
+      lastProvider: latestTokens.lastProvider,
     );
     await _saveTokens(persistedTokens);
 
