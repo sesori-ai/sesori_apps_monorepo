@@ -1,12 +1,12 @@
 import "package:flutter/material.dart";
-import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/module_prego.dart";
 import "background_task_row.dart";
 import "background_tasks_toggle.dart";
 
-/// The expandable body of the background-tasks glass card: a glass divider
-/// under the header, then the scrollable list of task rows. Running tasks come
-/// first; completed tasks appear after a "Show N completed" toggle.
+/// The expandable body of the background-tasks card: a divider under the
+/// header, then the scrollable list of task rows. Running tasks come first;
+/// completed tasks appear after a "Show N completed" toggle.
 class BackgroundTasksList extends StatelessWidget {
   final String? projectId;
   final List<Session> runningTasks;
@@ -41,7 +41,7 @@ class BackgroundTasksList extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const GlassDivider(),
+        const PregoDivider(),
         ConstrainedBox(
           constraints: const BoxConstraints(maxHeight: 240),
           child: ListView.builder(

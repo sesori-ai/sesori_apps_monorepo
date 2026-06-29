@@ -1,5 +1,4 @@
 import "package:flutter/material.dart";
-import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -8,7 +7,7 @@ import "../../../core/routing/app_router.dart";
 import "../../../core/routing/current_project_name.dart";
 import "../../../l10n/app_localizations.dart";
 
-/// A single background task as a glass row inside the tasks card. Shows the
+/// A single background task as a row inside the tasks card. Shows the
 /// session's status icon, title + status text, and a disclosure chevron that
 /// opens the (read-only) session detail.
 class BackgroundTaskRow extends StatelessWidget {
@@ -31,7 +30,7 @@ class BackgroundTaskRow extends StatelessWidget {
     final loc = context.loc;
     final title = session.title ?? loc.sessionDetailSubtaskUnnamed;
 
-    return GlassListTile(
+    return PregoListTile(
       isLast: isLast,
       onTap: () => context.pushRoute(
         AppRoute.sessionDetail(
@@ -58,11 +57,11 @@ class BackgroundTaskRow extends StatelessWidget {
   }
 
   Widget _statusIcon({required SessionStatus? status, required PregoDesignSystem prego}) => switch (status) {
-    // GlassListTile forces the leading slot to a tight width of 32 but leaves
-    // its height free. A CircularProgressIndicator has no intrinsic size and
-    // paints to its box without preserving aspect ratio, so it renders as an
-    // oval. Center re-loosens the constraints around a fixed square so the
-    // spinner stays a 16px circle.
+    // The leading slot is a tight 32px wide but leaves its height free. A
+    // CircularProgressIndicator has no intrinsic size and paints to its box
+    // without preserving aspect ratio, so it renders as an oval. Center
+    // re-loosens the constraints around a fixed square so the spinner stays a
+    // 16px circle.
     SessionStatusBusy() || SessionStatusRetry() => Center(
       heightFactor: 1,
       child: SizedBox.square(

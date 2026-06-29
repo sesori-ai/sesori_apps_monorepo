@@ -8,6 +8,7 @@ export 'components/menus/prego_anchor_menu.dart';
 export 'components/navigation/prego_glass_scaffold.dart';
 export 'components/navigation/prego_nav_title.dart';
 export 'components/navigation/prego_top_navigation.dart';
+export 'components/surfaces/prego_surfaces.dart';
 export 'icons/tabler_icons.g.dart';
 export 'icons/vespr_icons.g.dart';
 export 'theme/prego_glass.dart';
