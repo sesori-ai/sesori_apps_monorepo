@@ -326,7 +326,7 @@ class _PromptInputState extends State<PromptInput> {
             child: Padding(
               padding: EdgeInsetsDirectional.only(
                 top: widget.header != null ? 4 : 8,
-                bottom: MediaQuery.of(context).padding.bottom + 8,
+                bottom: MediaQuery.paddingOf(context).bottom + 8,
               ),
               child: Row(
                 spacing: 8,
