@@ -7,6 +7,16 @@ import "../repositories/session_repository.dart";
 import "../repositories/session_unseen_repository.dart";
 import "session_view_tracker.dart";
 
+/// Thrown by [SessionUnseenService.markUnread] when the target session has no
+/// persisted row (deleted, or never learned). Surfaced to the caller so the
+/// client can roll back its optimistic "unread" instead of being left with a
+/// phantom unseen entry that re-bolds the project.
+class SessionUnseenRowMissingException implements Exception {
+  final String sessionId;
+
+  SessionUnseenRowMissingException({required this.sessionId});
+}
+
 /// A single emitted unseen-state change for one session, plus the recomputed
 /// project-level aggregate. The orchestrator maps this to
 /// `SesoriSseEvent.sessionUnseenChanged`.
@@ -256,7 +266,12 @@ class SessionUnseenService {
   Future<void> markUnread({required String sessionId}) {
     return _serialize(sessionId, rethrowErrors: true, () async {
       final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
-      if (row == null) return;
+      if (row == null) {
+        // No row to bold (deleted / unknown). Signal it so the caller can roll
+        // back the optimistic unread rather than leaving a phantom entry; there
+        // is no project context here to emit an authoritative clear.
+        throw SessionUnseenRowMissingException(sessionId: sessionId);
+      }
       // Force activity strictly past both the user-message and seen markers so
       // the session reliably bolds even when the user's own message is latest.
       final at = _activityTimestamp(userMessageAt: row.userMessageAt, seenAt: row.seenAt);

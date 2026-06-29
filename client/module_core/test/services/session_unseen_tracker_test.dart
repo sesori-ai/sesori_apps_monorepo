@@ -263,38 +263,64 @@ void main() {
       tracker.onDispose();
     });
 
-    test("reconcile excludes an absent carried-forward session from the aggregate", () async {
+    test("a local mark-read does not recompute the aggregate; the bridge echo settles it", () async {
       final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
 
-      // s1 and s2 both unseen.
+      // s1 and s2 both unseen; project bold.
       final gen0 = tracker.generation;
       tracker.reconcileSessionUnseen(
         projectId: "p1",
         unseenBySessionId: {"s1": true, "s2": true},
         sinceGeneration: gen0,
       );
+      expect(tracker.currentProjectUnseen["p1"], isTrue);
 
-      // A /sessions fetch begins.
+      // Marking s2 read locally must NOT recompute the project aggregate from the
+      // per-session map (the client can't know which other rows are archived on
+      // the bridge), so the project stays bold until the authoritative echo.
+      tracker.applyLocalSessionUnseen(projectId: "p1", sessionId: "s2", unseen: false);
+      expect(tracker.currentSessionUnseen["p1"]?["s2"], isFalse);
+      expect(tracker.currentProjectUnseen["p1"], isTrue);
+
+      // The bridge echo for the mark-read carries the authoritative aggregate
+      // (s1 still genuinely unseen here) and settles it.
+      events.add(unseenEvent(projectID: "p1", sessionId: "s2", unseen: false, projectHasUnseenChanges: true));
+      await Future<void>.delayed(Duration.zero);
+      expect(tracker.currentProjectUnseen["p1"], isTrue);
+      tracker.onDispose();
+    });
+
+    test("a new session absent from a stale snapshot is NOT excluded from the aggregate", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // s2 already unseen and reconciled.
+      final gen0 = tracker.generation;
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s2": true},
+        sinceGeneration: gen0,
+      );
+
+      // A /sessions fetch begins (its snapshot will omit the soon-to-be-created s1).
       final gen = tracker.generation;
-      // s1 is archived while s2 stays unseen: the archive SSE carries
-      // unseen:true AND projectHasUnseenChanges:true (s2), so exclusion can't be
-      // detected from the event.
+      // A brand-new unseen session s1 is created after the snapshot began.
       events.add(unseenEvent(projectID: "p1", sessionId: "s1", unseen: true, projectHasUnseenChanges: true));
       await Future<void>.delayed(Duration.zero);
 
-      // The authoritative /sessions list (archived s1 omitted) lands. s1 is
-      // carried forward (live + project still unseen) but EXCLUDED from the
-      // aggregate.
+      // The stale REST snapshot (omitting s1) lands. s1 is carried forward and
+      // must NOT be excluded — it is a new session, not an archived one.
       tracker.reconcileSessionUnseen(
         projectId: "p1",
         unseenBySessionId: {"s2": true},
         sinceGeneration: gen,
       );
+      expect(tracker.currentSessionUnseen["p1"]?["s1"], isTrue);
 
-      // Now mark s2 read locally. Only the excluded archived s1 remains unseen,
-      // so the project must NOT stay bold.
+      // Marking the OTHER session (s2) read must not clear the project bold:
+      // s1 is genuinely unseen. Conservative mark-read leaves the aggregate to
+      // the echo, so the project stays bold (correct — s1 is unseen).
       tracker.applyLocalSessionUnseen(projectId: "p1", sessionId: "s2", unseen: false);
-      expect(tracker.currentProjectUnseen["p1"], isFalse);
+      expect(tracker.currentProjectUnseen["p1"], isTrue);
       tracker.onDispose();
     });
 

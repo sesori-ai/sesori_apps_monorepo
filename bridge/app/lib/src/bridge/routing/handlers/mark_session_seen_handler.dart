@@ -27,7 +27,11 @@ class MarkSessionSeenHandler extends BodyRequestHandler<MarkSessionSeenRequest, 
     if (body.read) {
       await _sessionUnseenService.markRead(sessionId: body.sessionId);
     } else {
-      await _sessionUnseenService.markUnread(sessionId: body.sessionId);
+      try {
+        await _sessionUnseenService.markUnread(sessionId: body.sessionId);
+      } on SessionUnseenRowMissingException {
+        throw buildErrorResponse(request, 404, "session not found");
+      }
     }
     return const SuccessEmptyResponse();
   }

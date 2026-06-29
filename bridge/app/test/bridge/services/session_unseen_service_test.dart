@@ -256,6 +256,19 @@ void main() {
       expect(await unseen("s1"), isFalse);
     });
 
+    test("markUnread throws for an unknown session so the client can roll back", () async {
+      await expectLater(
+        () => service.markUnread(sessionId: "ghost"),
+        throwsA(isA<SessionUnseenRowMissingException>()),
+      );
+    });
+
+    test("markRead is a silent no-op for an unknown session", () async {
+      // Marking a gone session read leaves no phantom bold, so it stays quiet.
+      await service.markRead(sessionId: "ghost");
+      expect(await unseen("ghost"), isFalse);
+    });
+
     test("emits unseenChanges with project aggregate", () async {
       final events = <UnseenChange>[];
       final sub = service.unseenChanges.listen(events.add);

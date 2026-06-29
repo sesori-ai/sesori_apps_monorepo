@@ -134,14 +134,10 @@ class SessionUnseenTracker with Disposable {
     if (_sessionUnseen.isClosed) return;
 
     final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
-    final liveGenerations = _sessionLiveGeneration[projectId] ?? const {};
+    final liveGenerations = _sessionLiveGeneration[projectId] ??= {};
     final existing = sessions[projectId] ?? const {};
-    final excluded = _excludedSessions[projectId] ??= <String>{};
     final merged = <String, bool>{};
     for (final entry in unseenBySessionId.entries) {
-      // A session present in the authoritative /sessions list is not archived
-      // (archived rows are omitted), so it must not stay excluded.
-      excluded.remove(entry.key);
       // Keep the live value for a session that changed after the fetch began;
       // otherwise take the authoritative REST value.
       if ((liveGenerations[entry.key] ?? 0) > sinceGeneration) {
@@ -150,36 +146,40 @@ class SessionUnseenTracker with Disposable {
         merged[entry.key] = entry.value;
       }
     }
-    // Carry forward an unseen session that got a newer live update but is absent
-    // from the REST snapshot — but only when the project's latest live aggregate
-    // still reports unseen, so an archived (de-aggregated) session is dropped
-    // while a freshly-created one is kept. The carried-forward entry preserves
-    // the per-session bold, but is EXCLUDED from the aggregate: being absent from
-    // the authoritative list, it must not keep the project bold on its own (the
-    // genuine project bold is preserved via the live aggregate below). This
-    // covers the case where a session was archived while another stayed unseen
-    // (so the archive SSE carried projectHasUnseenChanges:true and couldn't be
-    // detected as an exclusion at event time).
+    // Carry forward a session that got a newer live update but is absent from
+    // the (older) REST snapshot — but only when the project's latest live
+    // aggregate still reports unseen. A session whose newest live update predates
+    // this fetch and is now absent has left the authoritative list (archived /
+    // deleted) and is dropped; one with a newer-than-fetch live update is a
+    // session created after the snapshot began, so its bold is preserved.
     final projectStillUnseenLive = _projectUnseen.value[projectId] ?? false;
     if (projectStillUnseenLive) {
       for (final entry in existing.entries) {
         if (merged.containsKey(entry.key)) continue;
         if (entry.value && (liveGenerations[entry.key] ?? 0) > sinceGeneration) {
           merged[entry.key] = entry.value;
-          excluded.add(entry.key);
         }
       }
     }
     sessions[projectId] = merged;
     _sessionUnseen.add(sessions);
 
+    // Stamp every reconciled session with a fresh generation so an in-flight
+    // optimistic rollback (guarded on the generation it captured) cannot clobber
+    // this authoritative REST value.
+    final reconcileGeneration = ++_generation;
+    for (final sessionId in merged.keys) {
+      liveGenerations[sessionId] = reconcileGeneration;
+    }
+
     final projects = Map<String, bool>.from(_projectUnseen.value);
     // If a newer live aggregate arrived since the fetch began (e.g. an archive
     // SSE set it false while this slow /sessions response still lists the
     // archived session as present+unseen), keep that authoritative live value
-    // rather than recomputing from the stale snapshot. Otherwise recompute,
-    // excluding archived sessions.
+    // rather than recomputing from the stale snapshot. Otherwise recompute over
+    // the authoritative list (archived rows are already omitted from it).
     if ((_projectLiveGeneration[projectId] ?? 0) <= sinceGeneration) {
+      _projectLiveGeneration[projectId] = reconcileGeneration;
       projects[projectId] = _anyUnseen(projectId: projectId, projectSessions: merged);
       _projectUnseen.add(projects);
     }
@@ -195,8 +195,15 @@ class SessionUnseenTracker with Disposable {
   ///
   /// Bumps the live generation so a slow REST reconcile in flight can't override
   /// it before the echo lands. The authoritative echo, when it arrives,
-  /// overwrites this with the bridge's recomputed aggregate. The project
-  /// aggregate is recomputed from the (post-load complete) per-session map.
+  /// overwrites this with the bridge's recomputed aggregate.
+  ///
+  /// The project aggregate is updated only conservatively: marking a session
+  /// UNREAD bolds the project (definitely correct), but marking READ does NOT
+  /// recompute the aggregate from the per-session map — the client can't know
+  /// which other sessions are archived/excluded on the bridge, so a downward
+  /// recompute could wrongly clear (or, with a stale archived entry, wrongly
+  /// keep) the project bold. The authoritative bridge echo settles it instead.
+  ///
   /// Returns the generation assigned to this update. Pass it to
   /// [revertLocalSessionUnseen] to roll back only when no newer update landed.
   int applyLocalSessionUnseen({
@@ -208,11 +215,6 @@ class SessionUnseenTracker with Disposable {
     final generation = ++_generation;
     _projectLiveGeneration[projectId] = generation;
     (_sessionLiveGeneration[projectId] ??= {})[sessionId] = generation;
-    // A local mark-read/unread never changes archive state; an already-archived
-    // (excluded) session must not start counting toward the aggregate.
-    if (!unseen) {
-      _excludedSessions[projectId]?.remove(sessionId);
-    }
 
     final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
     final projectSessions = Map<String, bool>.from(sessions[projectId] ?? const {});
@@ -220,11 +222,15 @@ class SessionUnseenTracker with Disposable {
     sessions[projectId] = projectSessions;
     _sessionUnseen.add(sessions);
 
-    final projects = Map<String, bool>.from(_projectUnseen.value);
-    // Exclude archived sessions so a stale unseen:true archived entry can't
-    // re-bold the project, and the generation bump won't make that stick.
-    projects[projectId] = _anyUnseen(projectId: projectId, projectSessions: projectSessions);
-    _projectUnseen.add(projects);
+    // Conservative aggregate update: only a mark-UNREAD of a session that is not
+    // excluded (archived) can be locally trusted to bold the project. A
+    // mark-READ leaves the aggregate to the bridge echo.
+    final isExcluded = _excludedSessions[projectId]?.contains(sessionId) ?? false;
+    if (unseen && !isExcluded) {
+      final projects = Map<String, bool>.from(_projectUnseen.value);
+      projects[projectId] = true;
+      _projectUnseen.add(projects);
+    }
     return generation;
   }
 
