@@ -13,7 +13,6 @@
 
 ## Already in flight / landed
 
-- `mobile/` → `client/` rename — multi-surface groundwork.
 - Second backend shipped: **Codex** plugin alongside OpenCode — proves
   multi-backend.
 - Bridge **control channel** + supervised mode — desktop-supervision groundwork.
