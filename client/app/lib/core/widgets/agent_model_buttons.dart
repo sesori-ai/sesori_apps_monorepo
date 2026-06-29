@@ -56,6 +56,12 @@ class _AgentModelButtonsState extends State<AgentModelButtons> {
   /// dismiss the glass popup before the full-screen search sheet rises.
   final GlassMenuController _modelMenuController = GlassMenuController();
 
+  /// Drive the agent/variant popups imperatively so that, in a master-detail
+  /// layout, each one can re-anchor under its trigger on open via
+  /// [_alignMenuToTrigger]. (The model menu reuses [_modelMenuController].)
+  final GlassMenuController _agentMenuController = GlassMenuController();
+  final GlassMenuController _variantMenuController = GlassMenuController();
+
   @override
   void initState() {
     super.initState();
@@ -90,6 +96,7 @@ class _AgentModelButtonsState extends State<AgentModelButtons> {
         children: [
           Expanded(
             child: _AgentMenu(
+              controller: _agentMenuController,
               agents: widget.agents,
               selectedAgent: widget.selectedAgent,
               onAgentSelected: widget.onAgentSelected,
@@ -110,6 +117,7 @@ class _AgentModelButtonsState extends State<AgentModelButtons> {
             const SizedBox(width: 8),
             Expanded(
               child: _VariantMenu(
+                controller: _variantMenuController,
                 availableVariants: widget.availableVariants,
                 selectedVariant: selected?.variant,
                 onVariantSelected: widget.onVariantSelected,
@@ -147,11 +155,13 @@ class _AgentModelButtonsState extends State<AgentModelButtons> {
 /// Agent-selection pill + its popup. Extracted as a widget (rather than a build
 /// method) so it gets its own element subtree and only rebuilds with its inputs.
 class _AgentMenu extends StatelessWidget {
+  final GlassMenuController controller;
   final List<AgentInfo> agents;
   final String selectedAgent;
   final ValueChanged<String> onAgentSelected;
 
   const _AgentMenu({
+    required this.controller,
     required this.agents,
     required this.selectedAgent,
     required this.onAgentSelected,
@@ -161,6 +171,7 @@ class _AgentMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final loc = context.loc;
     return GlassMenu(
+      controller: controller,
       menuWidth: 240,
       menuHeight: agents.length > 6 ? 320 : null,
       menuBorderRadius: 24,
@@ -170,7 +181,10 @@ class _AgentMenu extends StatelessWidget {
       triggerBuilder: (context, toggle) => _Trigger(
         icon: Icons.smart_toy_outlined,
         label: selectedAgent,
-        onTap: toggle,
+        onTap: () {
+          toggle();
+          _alignMenuToTrigger(context, controller: controller);
+        },
       ),
       items: [
         _menuLabel(context, text: loc.sessionDetailPickerAgent),
@@ -243,7 +257,10 @@ class _ModelMenu extends StatelessWidget {
       triggerBuilder: (context, toggle) => _Trigger(
         icon: Icons.memory_outlined,
         label: _resolveModelName(context, providers: providers, selected: selected),
-        onTap: toggle,
+        onTap: () {
+          toggle();
+          _alignMenuToTrigger(context, controller: controller);
+        },
       ),
       items: items,
     );
@@ -252,11 +269,13 @@ class _ModelMenu extends StatelessWidget {
 
 /// Variant-selection pill + its popup.
 class _VariantMenu extends StatelessWidget {
+  final GlassMenuController controller;
   final List<SessionVariant> availableVariants;
   final String? selectedVariant;
   final ValueChanged<SessionVariant?> onVariantSelected;
 
   const _VariantMenu({
+    required this.controller,
     required this.availableVariants,
     required this.selectedVariant,
     required this.onVariantSelected,
@@ -266,6 +285,7 @@ class _VariantMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final loc = context.loc;
     return GlassMenu(
+      controller: controller,
       menuWidth: 220,
       menuHeight: availableVariants.length > 6 ? 320 : null,
       menuBorderRadius: 24,
@@ -275,7 +295,10 @@ class _VariantMenu extends StatelessWidget {
       triggerBuilder: (context, toggle) => _Trigger(
         icon: Icons.speed_outlined,
         label: selectedVariant ?? loc.sessionDetailVariantDefault,
-        onTap: toggle,
+        onTap: () {
+          toggle();
+          _alignMenuToTrigger(context, controller: controller);
+        },
       ),
       items: [
         _menuLabel(context, text: loc.sessionDetailPickerVariant),
@@ -387,6 +410,26 @@ LiquidGlassSettings _menuGlass(BuildContext context) {
   return LiquidGlassSettings(
     glassColor: colors.buttonGlassPrimaryBackground,
   );
+}
+
+/// Re-anchors a just-opened [GlassMenu] popup under its trigger when the
+/// composer is hosted inside a master-detail right pane.
+///
+/// In split/landscape layouts the session detail lives in the right pane's
+/// nested Navigator, whose Overlay is inset from the screen by the sidebar
+/// width. [GlassMenu] captures its trigger in global (screen) coordinates but
+/// paints the popup inside that nested Overlay, so the popup lands one
+/// sidebar-width too far along the main axis. Feeding the negated Overlay
+/// origin to the menu's follow-offset cancels that inset, pulling the popup
+/// back under its trigger. In a single-pane layout the Overlay already sits at
+/// the screen origin, so the correction is zero and this is a no-op.
+///
+/// Must be called right after the menu opens (after `toggle()`): opening resets
+/// the follow-offset to zero, and this re-applies the correction on top.
+void _alignMenuToTrigger(BuildContext context, {required GlassMenuController controller}) {
+  final overlayBox = Overlay.maybeOf(context)?.context.findRenderObject();
+  if (overlayBox is! RenderBox || !overlayBox.hasSize) return;
+  controller.setFollowOffset(-overlayBox.localToGlobal(Offset.zero));
 }
 
 String _resolveModelName(
