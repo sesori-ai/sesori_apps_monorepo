@@ -72,11 +72,12 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 - **Deltas:** §6 placed only `ControlChannelClient` (foundation, kept). Two
   components plan-review pinned to specific layers were NOT pre-specified in §6
   and are now added there: the off-argv secret reader is a **Layer-1
-  `ControlSecretApi`** in `api/` (mirrors `TerminalPromptApi`; a stdin reader is
-  data access, not a foundation primitive — `Reader` is not a sanctioned
-  suffix), and the ADR-A9 grace-exit is a **`ControlChannelLossListener` in a
-  new `control/` subsystem dir** (a decision-making `Listener` cannot live in
-  Layer-0 `foundation/`). Parent-loss exit code is provisionally `1`
+   `ControlSecretApi`** in `api/` (mirrors `TerminalPromptApi`; a stdin reader is
+   data access, not a foundation primitive — `Reader` is not a sanctioned
+   suffix), and the ADR-A9 grace-exit is a **`ControlChannelLossListener` in a
+   new Layer-4 `control/` dir** (a decision-making `Listener` cannot live in
+   Layer-0 `foundation/`, and `control/` is part of the core layered bridge app,
+   not a self-contained subsystem). Parent-loss exit code is provisionally `1`
   (`controlChannelLostExitCode`); the GUI-side exit-code state machine (PR
   2.7 / 1.7) may refine it.
 
@@ -133,14 +134,48 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   reads** (this is distinct from PR 1.1's optional one-shot secret-bootstrap
   stdin handshake, which is not an auth prompt); standalone interactive flow
   untouched.
-- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+- **Aristotle:** plan ☑ · impl ☑.
+- **Findings:** Shipped `ControlChannelTokenService` in `control/` (beside
+  `ControlChannelLossListener`), NOT `auth/`: the service depends on the Layer-0
+  `ControlChannelClient`, and `auth/` is a self-contained subsystem that must not
+  depend on core `foundation/`. It owns the token request/response round-trip —
+  sends an id-correlated `ControlMessage.tokenRequest` (monotonic id), subscribes
+  to `ControlChannelClient.inbound`, decodes each frame to `ControlMessage`, and
+  completes the matching pending request on `tokenResponse`. A null `accessToken`
+  (GUI signed-out/mid-login) or a request timeout yields a typed
+  `ControlTokenUnavailableException` — not logged at the throw (the `run()` catch
+  surfaces it once, no double-log); undecodable/forward-compat frames are warned
+  and skipped, other variants ignored. `dispose()` cancels the inbound
+  subscription and fails any in-flight request so shutdown can't hang on the
+  timeout. Composition: `_startSupervisedControlChannel` is renamed
+  `_connectSupervisedControlChannel` and now returns the connected client; the
+  runner builds the token service from that same client (shared with the loss
+  listener) and registers its dispose. The auth bootstrap branches — supervised ⇒
+  `requestToken()`, standalone ⇒ unchanged `ensureAuthenticated()` — and
+  `logAuthenticatedUser` runs identically on both paths. `BridgeRuntimeAuthService`
+  is unchanged, so standalone is byte-identical (its existing tests stay green);
+  `dart analyze --fatal-infos` clean; 1517 app tests pass (7 new for the service).
+- **Deltas:** §6 / the PR-1.4 line place this class in `auth/` (Layer 3); plan
+  review re-homed it to `control/` for this PR because `auth/` cannot depend on
+  the Layer-0 `ControlChannelClient`. When PR 1.4 makes the class implement the
+  `auth/` interfaces (`AccessTokenProvider`/`TokenRefresher`), it must resolve the
+  resulting `control/`→`auth/` direction (an auth-side adapter, or an auth-local
+  transport abstraction). PR 1.3 handles only the token request/response
+  correlation; `token_update` push, the provider/refresher interfaces,
+  force-refresh policy, and richer GUI-down/mid-login wait semantics remain PR
+  1.4 (the initial pull is a one-shot request with a 30s timeout). Downstream
+  `TokenManager` still seeds from the resolved access token on both paths;
+  supervised registration/refresh rework is deferred to PRs 1.4/1.5/1.6 and isn't
+  reached pre-GUI (Phase 2).
 
 ## PR 1.4 — Token provider **pull** over channel
-- **Goal:** `ControlChannelTokenService` (Layer 3 `auth/`) implements
+- **Goal:** `ControlChannelTokenService` (Layer 3 `services/`) implements
   `AccessTokenProvider`/`TokenRefresher`; `getAccessToken({forceRefresh})`
   requests a token over the channel and blocks with a timeout; define behaviour
   when the GUI is mid-login/down. Client injected from composition root (no
-  internal `new`).
+  internal `new`). It implements interfaces from `auth/` but does not live inside
+  the self-contained `auth/` subsystem, so `auth/` does not import core
+  `foundation/` transport.
 - **Risk:** Med. **Size:** M.
 - **Acceptance:** force-refresh requests a fresh token; timeout + GUI-down paths
   yield a typed failure (logged once at the surfacing point, not double-logged).
@@ -161,7 +196,7 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 
 ## PR 1.6 — Supervised registration + `bridgeId` out of `token.json`
 - **Goal:** Persist `bridgeId` separately from `token.json` in a small
-  file-backed store that lives **inside the `auth/` subsystem** (NOT new
+  file-backed storage that lives **inside the `auth/` subsystem** (NOT new
   top-level `api/`+`repositories/` classes — that would make `auth/` depend back
   on the core repository layer; see ADR A6). Supervised registration uses the
   supplied token; preserve carry-over semantics. Use **synchronous** filesystem

@@ -57,6 +57,7 @@ void main() {
       processRunner: ProcessRunner(),
       failureReporter: FakeFailureReporter(),
       restartService: buildTestRestartService(),
+      filesystemAccessOk: true,
     );
     final debugServer = runtime.createDebugServer(port: 0);
 
