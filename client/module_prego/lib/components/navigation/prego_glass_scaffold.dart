@@ -74,7 +74,7 @@ class PregoGlassScaffold extends StatefulWidget {
     this.extendBodyBehindBar = true,
     this.reserveBarSpace = true,
     this.scrollable = true,
-  });
+  }) : assert(scrollable || onRefresh == null, "onRefresh requires scrollable to be true (RefreshIndicator needs a draggable page)");
 
   /// Primary title — shown large below the bar and, once collapsed, inline.
   final String title;

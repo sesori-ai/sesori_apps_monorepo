@@ -106,6 +106,9 @@ class _BackgroundTasksBarState extends State<BackgroundTasksBar> {
       children: [
         CompositedTransformFollower(
           link: _link,
+          // Hide until linked so the card never flashes at the screen origin
+          // before its header target is laid out (e.g. during route transitions).
+          showWhenUnlinked: false,
           // Pin the card's bottom edge to the header's bottom edge so it grows
           // upward over the chat, leaving the composer below untouched.
           targetAnchor: Alignment.bottomLeft,

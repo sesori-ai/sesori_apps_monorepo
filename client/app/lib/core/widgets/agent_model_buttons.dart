@@ -428,7 +428,7 @@ LiquidGlassSettings _menuGlass(BuildContext context) {
 /// the follow-offset to zero, and this re-applies the correction on top.
 void _alignMenuToTrigger(BuildContext context, {required GlassMenuController controller}) {
   final overlayBox = Overlay.maybeOf(context)?.context.findRenderObject();
-  if (overlayBox is! RenderBox || !overlayBox.hasSize) return;
+  if (overlayBox is! RenderBox || !overlayBox.attached || !overlayBox.hasSize) return;
   controller.setFollowOffset(-overlayBox.localToGlobal(Offset.zero));
 }
 
