@@ -162,6 +162,38 @@ void main() {
       expect(sent.contains("s0"), isFalse);
     });
 
+    test("a set queued before backgrounding is invalidated even after a quick resume", () async {
+      final gate = Completer<void>();
+      var firstCall = true;
+      when(() => viewRepository.sendSessionView(sessionId: any(named: "sessionId"))).thenAnswer((_) async {
+        if (firstCall) {
+          firstCall = false;
+          await gate.future;
+        }
+      });
+
+      final service = build()..setViewingSession("s1");
+      // Let the first send park on the gate.
+      await Future<void>.delayed(Duration.zero);
+      // A second declaration for the still-current session queues behind it.
+      service.setViewingSession("s1");
+      // Background then quickly resume: _isPaused is false again, but the queued
+      // set crossed a pause boundary.
+      lifecycle.emit(LifecycleState.paused);
+      await Future<void>.delayed(Duration.zero);
+      lifecycle.emit(LifecycleState.resumed);
+      await Future<void>.delayed(Duration.zero);
+      gate.complete();
+      await service.sendTail;
+
+      final sent = verify(() => viewRepository.sendSessionView(sessionId: captureAny(named: "sessionId"))).captured;
+      // The in-flight first send went out as s1; the queued set, which crossed
+      // the pause/resume boundary, was invalidated to null (the cubit re-asserts
+      // after its post-resume refresh instead).
+      expect(sent.first, equals("s1"));
+      expect(sent.sublist(1).whereType<String>(), isEmpty);
+    });
+
     test("hidden + paused fired back-to-back only sends one clear", () async {
       final service = build()..setViewingSession("s1");
       await service.sendTail;

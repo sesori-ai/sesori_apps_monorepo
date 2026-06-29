@@ -27,6 +27,14 @@ class SessionViewingService with Disposable {
   String? _currentSessionId;
   bool _isPaused = false;
 
+  /// Bumped on every transition into the not-visible state. A queued view "set"
+  /// captures this when enqueued; if it changed by the time the send executes,
+  /// the set crossed a pause/resume boundary and is invalidated — otherwise a
+  /// set queued just before backgrounding could execute after a quick resume
+  /// (when `_isPaused` is already false again) and declare a viewer for content
+  /// that the post-resume refresh has not yet re-rendered.
+  int _pauseGeneration = 0;
+
   /// Serializes outgoing view declarations so they are sent in submission
   /// order. Each relay send awaits encryption before hitting the socket, so
   /// without this an older `clear` could overtake a newer `set` (e.g. navigating
@@ -77,9 +85,11 @@ class SessionViewingService with Disposable {
   /// newer declaration that follows. The repository send already swallows
   /// transport errors, so the tail never breaks.
   void _enqueueSend(String? sessionId) {
+    final enqueuedPauseGeneration = _pauseGeneration;
     _sendTail = _sendTail.then((_) {
       final stillCurrent = sessionId == _currentSessionId;
-      final effective = (sessionId != null && (_isPaused || !stillCurrent)) ? null : sessionId;
+      final crossedPause = _pauseGeneration != enqueuedPauseGeneration;
+      final effective = (sessionId != null && (_isPaused || !stillCurrent || crossedPause)) ? null : sessionId;
       return _viewRepository.sendSessionView(sessionId: effective);
     });
     unawaited(_sendTail);
@@ -98,6 +108,7 @@ class SessionViewingService with Disposable {
         // clear send.
         if (_isPaused) return;
         _isPaused = true;
+        _pauseGeneration++;
         // No longer visible (backgrounded or minimized): stop viewing on the
         // bridge but keep the intended session. Resume does NOT re-assert here;
         // the detail cubit re-calls setViewingSession after its silent refresh

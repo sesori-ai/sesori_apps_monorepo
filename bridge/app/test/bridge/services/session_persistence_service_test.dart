@@ -244,13 +244,13 @@ void main() {
       expect((await sessionDao.getSession(sessionId: "sess-unarchive"))?.archivedAt, isNull);
     });
 
-    Session sharedSession(String id, {int? archived}) => Session(
+    Session sharedSession(String id, {int? archived, int created = 1}) => Session(
       id: id,
       projectID: "p1",
       directory: "/tmp/$id",
       parentID: null,
       title: id,
-      time: SessionTime(created: 1, updated: 1, archived: archived),
+      time: SessionTime(created: created, updated: created, archived: archived),
       summary: null,
       pullRequest: null,
       promptDefaults: null,
@@ -284,6 +284,29 @@ void main() {
       final remaining = await sessionDao.getSessionsByProject(projectId: "p1");
       expect(remaining, hasLength(1));
       expect(remaining.single.sessionId, equals("s1"));
+    });
+
+    test("does not delete a session created after the fetch started", () async {
+      await projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      // An old session and one created at t=100.
+      await service.persistSessionsForProject(
+        projectId: "p1",
+        sessions: [sharedSession("old", created: 10), sharedSession("new", created: 100)],
+        isCompleteList: true,
+        fetchStartedAt: 200,
+      );
+      expect(await sessionDao.getSessionsByProject(projectId: "p1"), hasLength(2));
+
+      // A complete refresh whose fetch started at t=50 (before "new" existed)
+      // omits "new". It must NOT be deleted — it was created after the snapshot.
+      final deleted = await service.persistSessionsForProject(
+        projectId: "p1",
+        sessions: [sharedSession("old", created: 10)],
+        isCompleteList: true,
+        fetchStartedAt: 50,
+      );
+      expect(deleted, isEmpty);
+      expect(await sessionDao.getSessionsByProject(projectId: "p1"), hasLength(2));
     });
   });
 }

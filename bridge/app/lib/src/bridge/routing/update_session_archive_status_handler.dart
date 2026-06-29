@@ -51,7 +51,11 @@ class UpdateSessionArchiveStatusHandler extends BodyRequestHandler<UpdateSession
       // service serializes/logs.
       if (update.changed) {
         unawaited(
-          _sessionUnseenService.notifyExternalChange(sessionId: session.id, projectId: session.projectID),
+          // Use the STORED project id (update.projectId), not session.projectID:
+          // for dedicated-worktree sessions the enriched plugin session can carry
+          // the worktree directory, which would update the wrong tracker bucket
+          // and leave the original project bold until a REST refresh.
+          _sessionUnseenService.notifyExternalChange(sessionId: session.id, projectId: update.projectId),
         );
       }
       return session;

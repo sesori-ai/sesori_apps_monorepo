@@ -173,6 +173,7 @@ class FakeSessionUnseenTracker extends Mock implements SessionUnseenTracker {
     required String projectId,
     required Map<String, bool> unseenBySessionId,
     required int sinceGeneration,
+    Set<String> archivedSessionIds = const {},
   }) {}
 
   int _fakeGeneration = 0;
@@ -200,10 +201,14 @@ class FakeSessionUnseenTracker extends Mock implements SessionUnseenTracker {
     required String projectId,
     required String sessionId,
     required bool unseen,
+    required bool projectUnseen,
     required int ifGeneration,
   }) {
     if (ifGeneration != _fakeGeneration) return;
     applyLocalSessionUnseen(projectId: projectId, sessionId: sessionId, unseen: unseen);
+    final projects = Map<String, bool>.from(_projectUnseen.value);
+    projects[projectId] = projectUnseen;
+    _projectUnseen.add(projects);
   }
 
   void emitProjectUnseen(Map<String, bool> unseen) => _projectUnseen.add(unseen);

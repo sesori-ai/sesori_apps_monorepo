@@ -456,6 +456,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   Future<void> markSessionSeen({required String sessionId, required bool read}) async {
     final current = state;
     final priorUnseen = current is SessionListLoaded ? (current.unseenBySessionId[sessionId] ?? false) : false;
+    final priorProjectUnseen = _sessionUnseenTracker.currentProjectUnseen[_projectId] ?? false;
     final optimisticGeneration = _sessionUnseenTracker.applyLocalSessionUnseen(
       projectId: _projectId,
       sessionId: sessionId,
@@ -466,7 +467,12 @@ class SessionListCubit extends Cubit<SessionListState> {
       final response = await _sessionService.markSessionSeen(sessionId: sessionId, read: read, projectId: _projectId);
       if (isClosed) return;
       if (response is ErrorResponse) {
-        _revertLocalUnseen(sessionId: sessionId, priorUnseen: priorUnseen, optimisticGeneration: optimisticGeneration);
+        _revertLocalUnseen(
+          sessionId: sessionId,
+          priorUnseen: priorUnseen,
+          priorProjectUnseen: priorProjectUnseen,
+          optimisticGeneration: optimisticGeneration,
+        );
       }
     } catch (e, st) {
       unawaited(
@@ -482,24 +488,33 @@ class SessionListCubit extends Cubit<SessionListState> {
             .catchError((_) {}),
       );
       if (!isClosed) {
-        _revertLocalUnseen(sessionId: sessionId, priorUnseen: priorUnseen, optimisticGeneration: optimisticGeneration);
+        _revertLocalUnseen(
+          sessionId: sessionId,
+          priorUnseen: priorUnseen,
+          priorProjectUnseen: priorProjectUnseen,
+          optimisticGeneration: optimisticGeneration,
+        );
       }
     }
   }
 
-  /// Restores the pre-action unseen value in the tracker after a failed
-  /// mark-read/unread — but only if no newer update for this session landed
-  /// since (e.g. genuine live activity arrived while the request was in flight),
-  /// so the rollback can't clobber fresher state.
+  /// Restores the pre-action unseen value AND the prior project aggregate in the
+  /// tracker after a failed mark-read/unread — but only if no newer update for
+  /// this session landed since (e.g. genuine live activity arrived while the
+  /// request was in flight), so the rollback can't clobber fresher state. The
+  /// aggregate restore prevents an optimistic mark-unread that bolded the
+  /// project from leaving it stuck bold when the request fails (no bridge echo).
   void _revertLocalUnseen({
     required String sessionId,
     required bool priorUnseen,
+    required bool priorProjectUnseen,
     required int optimisticGeneration,
   }) {
     _sessionUnseenTracker.revertLocalSessionUnseen(
       projectId: _projectId,
       sessionId: sessionId,
       unseen: priorUnseen,
+      projectUnseen: priorProjectUnseen,
       ifGeneration: optimisticGeneration,
     );
     _onUnseenUpdated();
@@ -702,6 +717,13 @@ class SessionListCubit extends Cubit<SessionListState> {
           unseenBySessionId: {
             for (final s in data.items)
               if (s.time?.archived == null) s.id: s.unseen,
+          },
+          // Tell the tracker which rows are archived (excluded from the bridge
+          // aggregate) so a later optimistic mark-unread of an archived session
+          // doesn't locally re-bold the project.
+          archivedSessionIds: {
+            for (final s in data.items)
+              if (s.time?.archived != null) s.id,
           },
           sinceGeneration: unseenGeneration,
         );

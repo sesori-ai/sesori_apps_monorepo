@@ -23,7 +23,13 @@ class ArchiveStatusUpdate {
   final Session session;
   final bool changed;
 
-  ArchiveStatusUpdate({required this.session, required this.changed});
+  /// The STORED project id the session row is keyed by. For dedicated-worktree
+  /// sessions this can differ from `session.projectID` (the enriched plugin
+  /// session may report the worktree directory), so unseen emits must use this
+  /// to update the correct project's tracker bucket.
+  final String projectId;
+
+  ArchiveStatusUpdate({required this.session, required this.changed, required this.projectId});
 }
 
 class SessionNotFoundException implements Exception {}
@@ -60,7 +66,7 @@ class SessionArchiveService {
             force: force,
           )
         : await _doUnarchive(sessionDto: sessionDto);
-    return ArchiveStatusUpdate(session: session, changed: wasArchived != archived);
+    return ArchiveStatusUpdate(session: session, changed: wasArchived != archived, projectId: sessionDto.projectId);
   }
 
   Future<SessionDto> _getSessionDto({required String sessionId}) async {

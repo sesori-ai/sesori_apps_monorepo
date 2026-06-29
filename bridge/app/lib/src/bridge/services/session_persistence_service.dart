@@ -76,6 +76,7 @@ class SessionPersistenceService {
     required String projectId,
     required List<Session> sessions,
     bool isCompleteList = false,
+    int? fetchStartedAt,
   }) async {
     return _db.transaction(() async {
       await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
@@ -91,9 +92,13 @@ class SessionPersistenceService {
         ],
       );
       if (!isCompleteList) return const <String>[];
+      // Only delete rows created before this fetch started, so a session created
+      // concurrently (its row inserted after the snapshot was taken) is not
+      // wrongly removed just because it is absent from the stale snapshot.
       return _sessionDao.deleteSessionsForProjectNotIn(
         projectId: projectId,
         keepSessionIds: [for (final s in sessions) s.id],
+        createdBefore: fetchStartedAt ?? DateTime.now().millisecondsSinceEpoch,
       );
     });
   }

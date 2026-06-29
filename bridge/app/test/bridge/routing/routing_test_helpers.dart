@@ -660,6 +660,7 @@ class FakeSessionPersistenceService extends SessionPersistenceService {
     required String projectId,
     required List<Session> sessions,
     bool isCompleteList = false,
+    int? fetchStartedAt,
   }) async {
     persistedCalls.add((projectId: projectId, sessions: sessions));
     return const [];

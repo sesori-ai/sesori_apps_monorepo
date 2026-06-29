@@ -252,17 +252,27 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   }
 
   /// Deletes every persisted row for [projectId] whose session id is NOT in
-  /// [keepSessionIds] and returns the ids of the rows that were deleted. Used to
-  /// reconcile rows for sessions that vanished from the authoritative list
-  /// (deleted while offline / backend-side). Only safe when [keepSessionIds] is
-  /// the COMPLETE list for the project.
+  /// [keepSessionIds] and whose `created_at` is strictly before [createdBefore],
+  /// returning the ids of the rows that were deleted. Used to reconcile rows for
+  /// sessions that vanished from the authoritative list (deleted while offline /
+  /// backend-side). Only safe when [keepSessionIds] is the COMPLETE list for the
+  /// project.
+  ///
+  /// [createdBefore] (the wall-clock time the `/sessions` fetch started) guards
+  /// against deleting a session that was created AFTER the snapshot was taken
+  /// (e.g. a concurrent `/session/create`): such a row is legitimately absent
+  /// from the stale snapshot but must be kept.
   Future<List<String>> deleteSessionsForProjectNotIn({
     required String projectId,
     required List<String> keepSessionIds,
+    required int createdBefore,
   }) async {
     final rows =
         await (delete(sessionTable)..where(
-              (t) => t.projectId.equals(projectId) & t.sessionId.isNotIn(keepSessionIds),
+              (t) =>
+                  t.projectId.equals(projectId) &
+                  t.sessionId.isNotIn(keepSessionIds) &
+                  t.createdAt.isSmallerThanValue(createdBefore),
             ))
             .goAndReturn();
     return [for (final row in rows) row.sessionId];

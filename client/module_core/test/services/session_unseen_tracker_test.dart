@@ -247,7 +247,7 @@ void main() {
 
       // The failed request tries to revert to the pre-click value (false) — it
       // must be ignored because a newer update exists.
-      tracker.revertLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: false, ifGeneration: gen);
+      tracker.revertLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: false, projectUnseen: false, ifGeneration: gen);
       expect(tracker.currentSessionUnseen["p1"]?["s1"], isTrue);
       expect(tracker.currentProjectUnseen["p1"], isTrue);
       tracker.onDispose();
@@ -258,7 +258,7 @@ void main() {
       final gen = tracker.applyLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: true);
       expect(tracker.currentSessionUnseen["p1"]?["s1"], isTrue);
 
-      tracker.revertLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: false, ifGeneration: gen);
+      tracker.revertLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: false, projectUnseen: false, ifGeneration: gen);
       expect(tracker.currentSessionUnseen["p1"]?["s1"], isFalse);
       tracker.onDispose();
     });
@@ -342,7 +342,7 @@ void main() {
 
       // The request fails: the revert (to the pre-click value) must still apply
       // because the reconcile left s1 unchanged.
-      tracker.revertLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: false, ifGeneration: gen);
+      tracker.revertLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: false, projectUnseen: false, ifGeneration: gen);
       expect(tracker.currentSessionUnseen["p1"]?["s1"], isFalse);
       tracker.onDispose();
     });
@@ -365,7 +365,7 @@ void main() {
 
       // A late failed-request revert (to the pre-click true) must be a no-op,
       // leaving the authoritative reconciled value.
-      tracker.revertLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: true, ifGeneration: gen);
+      tracker.revertLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: true, projectUnseen: false, ifGeneration: gen);
       expect(tracker.currentSessionUnseen["p1"]?["s1"], isFalse);
       tracker.onDispose();
     });
@@ -427,6 +427,77 @@ void main() {
 
       // Marking the still-archived s1 unread must not re-bold the project.
       tracker.applyLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: true);
+      expect(tracker.currentProjectUnseen["p1"], isFalse);
+      tracker.onDispose();
+    });
+
+    test("reconcileSessionUnseen records archived ids as excluded", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // REST list: s1 active+unseen, s2 archived (omitted from unseenBySessionId
+      // but reported as archived).
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": true},
+        archivedSessionIds: {"s2"},
+        sinceGeneration: tracker.generation,
+      );
+
+      // Marking the archived s2 unread must not locally re-bold beyond what's
+      // already there: s2 is excluded, so it can't bold the project on its own.
+      final projects0 = tracker.currentProjectUnseen["p1"];
+      tracker.applyLocalSessionUnseen(projectId: "p1", sessionId: "s2", unseen: true);
+      expect(tracker.currentProjectUnseen["p1"], equals(projects0));
+      tracker.onDispose();
+    });
+
+    test("a local mark-read does not advance the project generation", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // p1 is currently bold from a live event.
+      events.add(unseenEvent(projectID: "p1", sessionId: "s1", unseen: true, projectHasUnseenChanges: true));
+      await Future<void>.delayed(Duration.zero);
+
+      // An older /projects fetch begins.
+      final projectsGen = tracker.generation;
+
+      // The user optimistically marks s1 read locally (aggregate left to echo).
+      tracker.applyLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: false);
+
+      // The /projects response (authoritative false) lands. Because mark-read did
+      // not advance the project generation, this is NOT treated as older and
+      // applies — clearing the project even if the SSE echo is missed.
+      tracker.reconcileProjectUnseen({"p1": false}, sinceGeneration: projectsGen);
+      expect(tracker.currentProjectUnseen["p1"], isFalse);
+      tracker.onDispose();
+    });
+
+    test("a failed mark-unread rollback restores the project aggregate", () async {
+      final tracker = SessionUnseenTracker(connectionService, failureReporter: failureReporter);
+
+      // p1 starts not bold (its only session is seen).
+      tracker.reconcileSessionUnseen(
+        projectId: "p1",
+        unseenBySessionId: {"s1": false},
+        sinceGeneration: tracker.generation,
+      );
+      expect(tracker.currentProjectUnseen["p1"], isFalse);
+
+      // Optimistically mark s1 unread → bolds the project.
+      final priorAggregate = tracker.currentProjectUnseen["p1"] ?? false;
+      final gen = tracker.applyLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: true);
+      expect(tracker.currentProjectUnseen["p1"], isTrue);
+
+      // The request fails: rollback must restore BOTH the per-session value and
+      // the project aggregate (there is no bridge echo for a failed request).
+      tracker.revertLocalSessionUnseen(
+        projectId: "p1",
+        sessionId: "s1",
+        unseen: false,
+        projectUnseen: priorAggregate,
+        ifGeneration: gen,
+      );
+      expect(tracker.currentSessionUnseen["p1"]?["s1"], isFalse);
       expect(tracker.currentProjectUnseen["p1"], isFalse);
       tracker.onDispose();
     });

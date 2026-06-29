@@ -128,6 +128,7 @@ class SessionUnseenTracker with Disposable {
     required String projectId,
     required Map<String, bool> unseenBySessionId,
     required int sinceGeneration,
+    Set<String> archivedSessionIds = const {},
   }) {
     if (_sessionUnseen.isClosed) return;
 
@@ -135,6 +136,12 @@ class SessionUnseenTracker with Disposable {
     final liveGenerations = _sessionLiveGeneration[projectId] ??= {};
     final existing = sessions[projectId] ?? const {};
     final excluded = _excludedSessions[projectId];
+    // Record the archived rows the REST list reported as excluded from the
+    // aggregate, so an optimistic mark-unread of an archived session (even one
+    // never seen as a live archive event) doesn't locally re-bold the project.
+    if (archivedSessionIds.isNotEmpty) {
+      (_excludedSessions[projectId] ??= <String>{}).addAll(archivedSessionIds);
+    }
     final merged = <String, bool>{};
     for (final entry in unseenBySessionId.entries) {
       // A session present in the authoritative /sessions list is not archived
@@ -221,7 +228,6 @@ class SessionUnseenTracker with Disposable {
   }) {
     if (_sessionUnseen.isClosed) return _generation;
     final generation = ++_generation;
-    _projectLiveGeneration[projectId] = generation;
     (_sessionLiveGeneration[projectId] ??= {})[sessionId] = generation;
 
     final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
@@ -232,9 +238,14 @@ class SessionUnseenTracker with Disposable {
 
     // Conservative aggregate update: only a mark-UNREAD of a session that is not
     // excluded (archived) can be locally trusted to bold the project. A
-    // mark-READ leaves the aggregate to the bridge echo.
+    // mark-READ leaves the aggregate to the bridge echo — and, crucially, does
+    // NOT advance the project generation, otherwise an in-flight authoritative
+    // REST clear (which carries the bridge-accepted false aggregate) would be
+    // treated as older and skipped, leaving the project bold if the echo is
+    // missed.
     final isExcluded = _excludedSessions[projectId]?.contains(sessionId) ?? false;
     if (unseen && !isExcluded) {
+      _projectLiveGeneration[projectId] = generation;
       final projects = Map<String, bool>.from(_projectUnseen.value);
       projects[projectId] = true;
       _projectUnseen.add(projects);
@@ -243,18 +254,39 @@ class SessionUnseenTracker with Disposable {
   }
 
   /// Rolls back a prior [applyLocalSessionUnseen] (identified by the generation
-  /// it returned) to [unseen] — but only if no newer update for this session has
-  /// landed since. This prevents a failed mark-read/unread from clobbering a
-  /// genuine live `session.unseen_changed` (or another action) that arrived
-  /// while the request was in flight.
+  /// it returned) — but only if no newer update for this session has landed
+  /// since. This prevents a failed mark-read/unread from clobbering a genuine
+  /// live `session.unseen_changed` (or another action) that arrived while the
+  /// request was in flight.
+  ///
+  /// Restores both the per-session [unseen] value and the project aggregate to
+  /// [projectUnseen] (the value before the optimistic apply). The aggregate
+  /// restore matters because an optimistic mark-UNREAD that bolded a previously
+  /// un-bold project leaves no bridge echo when the request fails, so without
+  /// this the project would stay bold indefinitely.
   void revertLocalSessionUnseen({
     required String projectId,
     required String sessionId,
     required bool unseen,
+    required bool projectUnseen,
     required int ifGeneration,
   }) {
+    if (_sessionUnseen.isClosed) return;
     if ((_sessionLiveGeneration[projectId]?[sessionId] ?? 0) != ifGeneration) return;
-    applyLocalSessionUnseen(projectId: projectId, sessionId: sessionId, unseen: unseen);
+
+    final generation = ++_generation;
+    _projectLiveGeneration[projectId] = generation;
+    (_sessionLiveGeneration[projectId] ??= {})[sessionId] = generation;
+
+    final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
+    final projectSessions = Map<String, bool>.from(sessions[projectId] ?? const {});
+    projectSessions[sessionId] = unseen;
+    sessions[projectId] = projectSessions;
+    _sessionUnseen.add(sessions);
+
+    final projects = Map<String, bool>.from(_projectUnseen.value);
+    projects[projectId] = projectUnseen;
+    _projectUnseen.add(projects);
   }
 
   void _handleEvent(SseEvent event) {
