@@ -26,9 +26,11 @@ end
 # build was created for, so testers/operators see exactly what changed. A short
 # `commit: <sha>` trailer is appended so the originating commit is recoverable
 # even if the matching `build-<N>` git tag is ever lost. Falls back to the SHA
-# alone if git output is unavailable. `max_length` guards against store limits
-# (Google Play release notes cap at 500 chars). NOTE: production "What's new" is
-# NOT this — it's the fixed copy (default.txt) in the private metadata repo.
+# alone if git output is unavailable. `max_length` guards against store limits:
+# Google Play documents a 500-char cap but rejects internal-track changelogs
+# before that in practice, so we trim to a safe 400 chars. NOTE: production
+# "What's new" is NOT this — it's the fixed copy (default.txt) in the private
+# metadata repo.
 def build_commit_changelog(max_length: nil)
   sha = ENV.fetch("GITHUB_SHA") { `git rev-parse HEAD`.strip }
   message = `git log -1 --format=%B #{Shellwords.escape(sha)} 2>/dev/null`.strip
@@ -222,7 +224,7 @@ platform :android do
       FileUtils.mkdir_p(changelog_dir)
       File.write(
         File.join(changelog_dir, "#{new_build_number}.txt"),
-        "#{build_commit_changelog(max_length: 500)}\n"
+        "#{build_commit_changelog(max_length: 400)}\n"
       )
 
       upload_to_play_store(
