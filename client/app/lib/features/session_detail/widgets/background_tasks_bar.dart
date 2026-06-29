@@ -86,12 +86,18 @@ class _BackgroundTasksBarState extends State<BackgroundTasksBar> {
             child: OverlayPortal(
               controller: _overlayController,
               overlayChildBuilder: _buildOverlay,
-              // In-flow footprint: only ever the collapsed header. Kept (with
-              // its size) but hidden + non-interactive while expanded, so the
-              // floating card above is the single visible surface and the
-              // cluster height — and thus the chat's bottom inset — is constant.
-              child: Visibility.maintain(
+              // In-flow footprint: only ever the collapsed header. While
+              // expanded we maintain only its size (so the cluster height — and
+              // thus the chat's bottom inset — stays constant) but NOT its
+              // interactivity or semantics: it must drop out of hit-testing and
+              // the focus/screen-reader order so the floating card above is the
+              // single live surface. (Visibility.maintain would keep it
+              // interactive and announced, hence plain Visibility here.)
+              child: Visibility(
                 visible: !_expanded,
+                maintainState: true,
+                maintainAnimation: true,
+                maintainSize: true,
                 child: _buildCard(context, expanded: false),
               ),
             ),
