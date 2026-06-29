@@ -326,7 +326,7 @@ class _QuestionModalState extends State<QuestionModal> {
 
           // Submit / Next button
           Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 16),
+            padding: EdgeInsetsDirectional.fromSTEB(16, 0, 16, 16 + MediaQuery.paddingOf(context).bottom),
             child: SizedBox(
               width: double.infinity,
               child: FilledButton(
