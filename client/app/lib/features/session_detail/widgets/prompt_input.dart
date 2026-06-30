@@ -314,73 +314,83 @@ class _PromptInputState extends State<PromptInput> {
             ),
           },
 
-          Padding(
-            padding: EdgeInsetsDirectional.only(
-              top: widget.header != null ? 4 : 8,
-              bottom: MediaQuery.of(context).padding.bottom + 8,
-            ),
-            child: Row(
-              spacing: 8,
-              crossAxisAlignment: .end,
-              children: [
-                PregoButtonsIconGlass(
-                  onPressed: _voiceState == _VoiceState.idle ? _openCommandPicker : null,
-                  icon: TablerRegular.slash,
-                  semanticLabel: loc.sessionDetailCommandPickerTitle,
-                ),
-                Expanded(
-                  child: switch (_voiceState) {
-                    _VoiceState.recording => _RecordingIndicator(amplitudeStream: _voiceService.amplitudeStream),
-                    _VoiceState.transcribing => const _TranscribingIndicator(),
-                    _VoiceState.idle => CallbackShortcuts(
-                      // Cmd/Ctrl+Enter sends (handy with a hardware keyboard);
-                      // plain Enter stays a newline via textInputAction below.
-                      bindings: <ShortcutActivator, VoidCallback>{
-                        const SingleActivator(LogicalKeyboardKey.enter, meta: true): _handleSend,
-                        const SingleActivator(LogicalKeyboardKey.enter, control: true): _handleSend,
-                      },
-                      child: GlassTextField(
-                        controller: _controller,
-                        focusNode: _focusNode,
-                        minLines: 1,
-                        maxLines: 5,
-                        textInputAction: TextInputAction.newline,
-                        // Command-aware placeholder: the staged command's hint,
-                        // else the default prompt hint. The glass field supplies
-                        // its own surface/fill/border, so only the hint text
-                        // carries over from the old InputDecoration.
-                        placeholder: _commandHintText(context),
-                      ),
-                    ),
-                  },
-                ),
-                _MicButton(
-                  voiceState: _voiceState,
-                  onTap: _handleMicTap,
-                ),
-                if (_voiceState == _VoiceState.idle) ...[
-                  // GlassIconButton has no tooltip/semanticLabel, so wrap it in
-                  // a Tooltip to restore the long-press/hover label and the
-                  // screen-reader name the old IconButton carried.
-                  Tooltip(
-                    message: loc.sessionDetailSend,
-                    child: GlassIconButton(
-                      onPressed: _handleSend,
-                      icon: const Icon(Icons.send),
-                      glowColor: prego.colors.bgBrandSolid,
-                    ),
+          // Group only the input row with the text field via a
+          // TextFieldTapRegion. The field's default `onTapOutside` unfocuses
+          // (and dismisses the keyboard) on any pointer-down outside this
+          // region; keeping the send button inside stops the hide/re-show
+          // flicker that came from [_handleSend] re-requesting focus right
+          // after. The agent/model/variant pills in [composerHeader] are
+          // deliberately left outside the region, so tapping them dismisses the
+          // keyboard (their menus want the screen space the keyboard occupies).
+          TextFieldTapRegion(
+            child: Padding(
+              padding: EdgeInsetsDirectional.only(
+                top: widget.header != null ? 4 : 8,
+                bottom: MediaQuery.paddingOf(context).bottom + 8,
+              ),
+              child: Row(
+                spacing: 8,
+                crossAxisAlignment: .end,
+                children: [
+                  PregoButtonsIconGlass(
+                    onPressed: _voiceState == _VoiceState.idle ? _openCommandPicker : null,
+                    icon: TablerRegular.slash,
+                    semanticLabel: loc.sessionDetailCommandPickerTitle,
                   ),
-                  if (widget.isBusy)
+                  Expanded(
+                    child: switch (_voiceState) {
+                      _VoiceState.recording => _RecordingIndicator(amplitudeStream: _voiceService.amplitudeStream),
+                      _VoiceState.transcribing => const _TranscribingIndicator(),
+                      _VoiceState.idle => CallbackShortcuts(
+                        // Cmd/Ctrl+Enter sends (handy with a hardware keyboard);
+                        // plain Enter stays a newline via textInputAction below.
+                        bindings: <ShortcutActivator, VoidCallback>{
+                          const SingleActivator(LogicalKeyboardKey.enter, meta: true): _handleSend,
+                          const SingleActivator(LogicalKeyboardKey.enter, control: true): _handleSend,
+                        },
+                        child: GlassTextField(
+                          controller: _controller,
+                          focusNode: _focusNode,
+                          minLines: 1,
+                          maxLines: 5,
+                          textInputAction: TextInputAction.newline,
+                          // Command-aware placeholder: the staged command's hint,
+                          // else the default prompt hint. The glass field supplies
+                          // its own surface/fill/border, so only the hint text
+                          // carries over from the old InputDecoration.
+                          placeholder: _commandHintText(context),
+                        ),
+                      ),
+                    },
+                  ),
+                  _MicButton(
+                    voiceState: _voiceState,
+                    onTap: _handleMicTap,
+                  ),
+                  if (_voiceState == _VoiceState.idle) ...[
+                    // GlassIconButton has no tooltip/semanticLabel, so wrap it in
+                    // a Tooltip to restore the long-press/hover label and the
+                    // screen-reader name the old IconButton carried.
                     Tooltip(
-                      message: loc.sessionDetailAbort,
+                      message: loc.sessionDetailSend,
                       child: GlassIconButton(
-                        onPressed: widget.onAbort,
-                        icon: const Icon(Icons.stop_circle),
-                        glowColor: prego.colors.fgErrorPrimary,
+                        onPressed: _handleSend,
+                        icon: const Icon(Icons.send),
+                        glowColor: prego.colors.bgBrandSolid,
                       ),
                     ),
+                    if (widget.isBusy)
+                      Tooltip(
+                        message: loc.sessionDetailAbort,
+                        child: GlassIconButton(
+                          onPressed: widget.onAbort,
+                          icon: const Icon(Icons.stop_circle),
+                          glowColor: prego.colors.fgErrorPrimary,
+                        ),
+                      ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ],

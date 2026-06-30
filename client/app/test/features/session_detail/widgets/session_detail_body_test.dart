@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -202,5 +203,60 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("Diffs"), findsOneWidget);
+  });
+
+  // Only the input row is grouped with the text field via a TextFieldTapRegion,
+  // so tapping the send button does not fire the field's default `onTapOutside`
+  // (which unfocuses and dismisses the keyboard) — without the region, send
+  // flickered the keyboard (hide then re-show). The agent/model/variant pills
+  // live in the composer header, outside the region, so tapping them is a tap
+  // "outside" the field and dismisses the keyboard by design.
+  FocusNode composerFocus(WidgetTester tester) => tester.widget<EditableText>(find.byType(EditableText)).focusNode;
+
+  testWidgets("pressing send keeps the composer field focused", (tester) async {
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    // Focus the field — the keyboard would rise.
+    await tester.tap(find.byType(EditableText));
+    await tester.pump();
+    expect(composerFocus(tester).hasFocus, isTrue);
+
+    // Send with an empty field: `_handleSend` is a no-op that does not
+    // re-request focus, so focus retention here proves the tap itself didn't
+    // unfocus the field (which is what produced the hide/re-show flicker).
+    await tester.tap(find.byIcon(Icons.send));
+    await tester.pump();
+    expect(composerFocus(tester).hasFocus, isTrue, reason: "send must not dismiss the keyboard");
+  });
+
+  testWidgets("opening a composer menu dismisses the keyboard (glass path)", (tester) async {
+    // Force the iOS glass path: there PregoAnchorMenu opens GlassMenu as an
+    // overlay (not a route), so the only thing that can dismiss the keyboard is
+    // the field's `onTapOutside` firing because the pill sits outside the
+    // TextFieldTapRegion. That makes this the precise guard that the menus are
+    // NOT grouped with the field. (On the Android flat path the menu is a modal
+    // route that moves focus anyway, so it can't tell the two designs apart.)
+    // Reset in a finally so a failed expect can't leak the override into later
+    // tests (the binding asserts foundation debug vars are clear before
+    // tearDowns run).
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(EditableText));
+      await tester.pump();
+      expect(composerFocus(tester).hasFocus, isTrue);
+
+      // Tapping the variant pill opens its glass popup and, because the pill is
+      // outside the field's tap region, dismisses the keyboard.
+      await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(GlassMenuItem, "xhigh"), findsOneWidget);
+      expect(composerFocus(tester).hasFocus, isFalse, reason: "opening a composer menu must dismiss the keyboard");
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 }
