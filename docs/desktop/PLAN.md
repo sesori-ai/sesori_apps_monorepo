@@ -265,7 +265,7 @@ seams through `module_core` interfaces, not `AuthManager` internals.
 | A3 | Single token authority (GUI), helper token-provided | eliminates cross-process refresh-rotation race |
 | A4 | Control-protocol DTOs in `sesori_shared` | only shared point between bridge + client workspaces; pure data |
 | A5 | `ControlChannelServer` name kept (vs Aristotle's `Listener`) | `Listener` implies one-way subscription; this is a duplex socket host; `Server` is now an explicit transport-host suffix and `DebugServer` is the precedent |
-| A6 | `bridgeId` persistence = a small file-backed storage **inside `auth/`** (no Dao) | one string; no DB/migration; keeps it within the self-contained auth subsystem so auth code doesn't depend on top-level `repositories/` |
+| A6 | `bridgeId` persistence = a small file-backed storage **inside `auth/`** (no Dao) — **implemented as `BridgeIdStorage`** | one string; no DB/migration; keeps it within the self-contained auth subsystem so auth code doesn't depend on top-level `repositories/`. Removing `bridgeId` from `TokenData` also deleted the token↔bridgeId carry-over re-reads; legacy ids are adopted once from `token.json` via an injected `readLegacyBridgeId` seam |
 | A7 | First-run provisioning UI is **v1** | first launch downloads OpenCode; user must see progress |
 | A8 | Control-channel secret delivered **off-argv** (inherited FD/pipe or stdin handshake), not `--control-secret` | argv is readable by other local processes/users; this channel issues bearer tokens, so an argv-leaked secret = token theft |
 | A9 | Helper exits on **control-channel loss** after a short grace period | if the GUI crashes/force-quits, the OS does not reliably kill the child; the helper must not linger invisibly with a live token |
@@ -314,7 +314,7 @@ Legend: ☐ pending · ◐ in-progress · ☑ done. Sizes: **S** ≤150 LOC · *
 - ☐ 1.3 Supervised auth bootstrap (short-circuit `ensureAuthenticated`) — Med / M
 - ☐ 1.4 Token provider **pull** over channel (+ timeout/GUI-down) — Med / M
 - ☐ 1.5 Token-stream **push** → relay client — Med / S-M
-- ☐ 1.6 Supervised registration + `bridgeId` out of `token.json` — Med / M
+- ☑ 1.6 Supervised registration + `bridgeId` out of `token.json` — Med / M
 - ☐ 1.7 Exit-code restart (`86`) + bypass successor-spawn — Med / S-M
 - ☐ 1.8 Disable self-update + reconcile when supervised — Low / S
 - ☐ 1.9 Re-home prompts/Console → control events — Med / M

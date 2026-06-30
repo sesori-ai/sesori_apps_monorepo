@@ -112,27 +112,32 @@ class TokenManager implements AccessTokenProvider, AccessTokenUpdater, TokenRefr
 
     final authResponse = AuthResponse.fromJson(jsonDecodeMap(response.body));
 
-    _tokenSubject.add(authResponse.accessToken);
-
-    // Re-read the token file before persisting: bridge registration can write
-    // a freshly minted bridgeId while this refresh is in flight (the
-    // background refresh at startup races registration), and persisting the
-    // pre-refresh snapshot would wipe it. A corrupt file falls back to the
-    // snapshot (the save below repairs it); a missing file propagates so a
-    // logout that deleted the file mid-refresh is not resurrected.
+    // Re-read the token file before persisting (and before publishing the new
+    // access token in-memory) so a logout that deletes it mid-refresh is not
+    // resurrected: a missing file — whether it throws or loads as null —
+    // propagates a TokenRefreshException so the refresh neither recreates the
+    // file nor leaves a usable token on the in-memory stream for a reconnect.
+    // A corrupt file (FormatException) is the one recoverable case: fall back
+    // to the pre-refresh snapshot and let the save below repair it. Only
+    // `lastProvider` carries over; access/refresh come from the response.
     TokenData latestTokens;
     try {
-      latestTokens = await _loadTokens() ?? tokens;
+      final reloaded = await _loadTokens();
+      if (reloaded == null) {
+        throw const TokenRefreshException("Token file cleared during refresh");
+      }
+      latestTokens = reloaded;
     } on FormatException {
       latestTokens = tokens;
     }
     final persistedTokens = TokenData(
       accessToken: authResponse.accessToken,
       refreshToken: authResponse.refreshToken,
-      bridgeId: latestTokens.bridgeId,
       lastProvider: latestTokens.lastProvider,
     );
     await _saveTokens(persistedTokens);
+
+    _tokenSubject.add(authResponse.accessToken);
 
     return authResponse.accessToken;
   }

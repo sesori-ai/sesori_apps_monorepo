@@ -1,7 +1,8 @@
+import "dart:io";
+
 import "package:sesori_bridge/src/auth/bridge_registration_api.dart";
 import "package:sesori_bridge/src/auth/bridge_registration_repository.dart";
 import "package:sesori_bridge/src/auth/bridge_registration_service.dart";
-import "package:sesori_bridge/src/auth/token.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -10,21 +11,18 @@ import "../helpers/test_helpers.dart";
 
 void main() {
   late FakeBridgeRegistrationRepository repository;
-  late InMemoryTokenStore tokenStore;
+  late FakeBridgeIdStorage bridgeIdStorage;
   late _RecordingTokenRefresher tokenRefresher;
   late BridgeRegistrationService service;
 
   setUp(() {
     repository = FakeBridgeRegistrationRepository();
-    tokenStore = InMemoryTokenStore(
-      TokenData(accessToken: "access", refreshToken: "refresh", bridgeId: null, lastProvider: AuthProvider.github),
-    );
+    bridgeIdStorage = FakeBridgeIdStorage();
     tokenRefresher = _RecordingTokenRefresher();
     service = BridgeRegistrationService(
       repository: repository,
       tokenRefresher: tokenRefresher,
-      loadTokens: tokenStore.load,
-      saveTokens: tokenStore.save,
+      bridgeIdStorage: bridgeIdStorage,
       hostName: "dev-laptop",
       platform: "macos",
     );
@@ -36,48 +34,18 @@ void main() {
 
       expect(repository.registeredBridgeIds, equals([null]));
       expect(service.bridgeId, equals("br_test1234"));
-      expect(tokenStore.tokens!.bridgeId, equals("br_test1234"));
-      expect(tokenStore.tokens!.accessToken, equals("access"));
-      expect(tokenStore.tokens!.refreshToken, equals("refresh"));
-      expect(tokenStore.tokens!.lastProvider, equals(AuthProvider.github));
+      expect(bridgeIdStorage.bridgeId, equals("br_test1234"));
     });
 
     test("posts the persisted bridge id when one exists", () async {
-      tokenStore.tokens = TokenData(
-        accessToken: "access",
-        refreshToken: "refresh",
-        bridgeId: "br_persisted1",
-        lastProvider: AuthProvider.github,
-      );
+      bridgeIdStorage.bridgeId = "br_persisted1";
       repository.nextBridgeId = "br_persisted1";
 
       await service.ensureRegistered();
 
       expect(repository.registeredBridgeIds, equals(["br_persisted1"]));
       expect(service.bridgeId, equals("br_persisted1"));
-      expect(tokenStore.tokens!.bridgeId, equals("br_persisted1"));
-    });
-
-    test("does not clobber tokens rotated and persisted mid-registration (401-retry path)", () async {
-      // TokenManager persists a rotated access/refresh pair to the token file
-      // when it force-refreshes; persisting the bridge id afterwards must keep
-      // those rotated credentials, not a snapshot from before the refresh.
-      repository.registerError = BridgeRegistrationException(statusCode: 401, body: "expired");
-      tokenRefresher.onForceRefresh = () {
-        repository.registerError = null;
-        tokenStore.tokens = TokenData(
-          accessToken: "rotated-access",
-          refreshToken: "rotated-refresh",
-          bridgeId: null,
-          lastProvider: AuthProvider.github,
-        );
-      };
-
-      await service.ensureRegistered();
-
-      expect(tokenStore.tokens!.bridgeId, equals("br_test1234"));
-      expect(tokenStore.tokens!.accessToken, equals("rotated-access"));
-      expect(tokenStore.tokens!.refreshToken, equals("rotated-refresh"));
+      expect(bridgeIdStorage.bridgeId, equals("br_persisted1"));
     });
 
     test("is memoized per process — a second call does not re-register", () async {
@@ -137,22 +105,27 @@ void main() {
       await service.handleBridgeRevoked();
 
       expect(service.bridgeId, isNull);
-      expect(tokenStore.tokens!.bridgeId, isNull);
+      expect(bridgeIdStorage.bridgeId, isNull);
 
       await service.ensureRegistered();
 
       expect(repository.registeredBridgeIds, equals([null, null]));
       expect(service.bridgeId, equals("br_fresh5678"));
-      expect(tokenStore.tokens!.bridgeId, equals("br_fresh5678"));
+      expect(bridgeIdStorage.bridgeId, equals("br_fresh5678"));
     });
 
-    test("still resets the memoization when the token file cannot be updated", () async {
+    test("still resets the memoization when clearing storage fails", () async {
       await service.ensureRegistered();
-      tokenStore.tokens = null; // Loading now throws FileSystemException.
+      bridgeIdStorage.clearError = const FileSystemException("clear failed");
 
       await service.handleBridgeRevoked();
 
       expect(service.bridgeId, isNull);
+
+      bridgeIdStorage.clearError = null;
+      await service.ensureRegistered();
+
+      expect(repository.registeredBridgeIds, hasLength(2));
     });
   });
 
@@ -163,52 +136,38 @@ void main() {
       expect(repository.unregisteredBridgeIds, isEmpty);
     });
 
-    test("deletes the persisted bridge id on the auth server", () async {
-      tokenStore.tokens = TokenData(
-        accessToken: "access",
-        refreshToken: "refresh",
-        bridgeId: "br_persisted1",
-        lastProvider: AuthProvider.github,
-      );
+    test("deletes the persisted bridge id on the auth server and clears storage", () async {
+      bridgeIdStorage.bridgeId = "br_persisted1";
 
       await service.unregister();
 
       expect(repository.unregisteredBridgeIds, equals(["br_persisted1"]));
+      expect(bridgeIdStorage.bridgeId, isNull);
     });
 
-    test("treats a 404 (already revoked) as success", () async {
-      tokenStore.tokens = TokenData(
-        accessToken: "access",
-        refreshToken: "refresh",
-        bridgeId: "br_persisted1",
-        lastProvider: AuthProvider.github,
-      );
+    test("treats a 404 (already revoked) as success and clears storage", () async {
+      bridgeIdStorage.bridgeId = "br_persisted1";
       final failingRepository = _UnregisterFailingRepository(statusCode: 404);
       final failingService = BridgeRegistrationService(
         repository: failingRepository,
         tokenRefresher: tokenRefresher,
-        loadTokens: tokenStore.load,
-        saveTokens: tokenStore.save,
+        bridgeIdStorage: bridgeIdStorage,
         hostName: "dev-laptop",
         platform: "macos",
       );
 
       await failingService.unregister();
+
+      expect(bridgeIdStorage.bridgeId, isNull);
     });
 
-    test("rethrows non-404 failures", () async {
-      tokenStore.tokens = TokenData(
-        accessToken: "access",
-        refreshToken: "refresh",
-        bridgeId: "br_persisted1",
-        lastProvider: AuthProvider.github,
-      );
+    test("rethrows non-404 failures and keeps the persisted id", () async {
+      bridgeIdStorage.bridgeId = "br_persisted1";
       final failingRepository = _UnregisterFailingRepository(statusCode: 500);
       final failingService = BridgeRegistrationService(
         repository: failingRepository,
         tokenRefresher: tokenRefresher,
-        loadTokens: tokenStore.load,
-        saveTokens: tokenStore.save,
+        bridgeIdStorage: bridgeIdStorage,
         hostName: "dev-laptop",
         platform: "macos",
       );
@@ -217,6 +176,7 @@ void main() {
         failingService.unregister(),
         throwsA(isA<BridgeRegistrationException>().having((e) => e.statusCode, "statusCode", 500)),
       );
+      expect(bridgeIdStorage.bridgeId, equals("br_persisted1"));
     });
   });
 }

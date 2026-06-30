@@ -6,9 +6,9 @@ import "dart:math";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge/src/auth/access_token_provider.dart";
 import "package:sesori_bridge/src/auth/bridge_id_provider.dart";
+import "package:sesori_bridge/src/auth/bridge_id_storage.dart";
 import "package:sesori_bridge/src/auth/bridge_registration_repository.dart";
 import "package:sesori_bridge/src/auth/bridge_registration_service.dart";
-import "package:sesori_bridge/src/auth/token.dart";
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -39,22 +39,37 @@ class FakeTokenRefresher implements TokenRefresher {
   Future<String> getAccessToken({bool forceRefresh = false}) async => "test-token";
 }
 
-/// In-memory token file substitute for [BridgeRegistrationService] tests.
-class InMemoryTokenStore {
-  TokenData? tokens;
+/// In-memory [BridgeIdStorage] substitute for [BridgeRegistrationService] tests.
+class FakeBridgeIdStorage implements BridgeIdStorage {
+  String? bridgeId;
 
-  InMemoryTokenStore([this.tokens]);
+  /// When non-null, [clear] throws this error instead of clearing.
+  Object? clearError;
 
-  Future<TokenData> load() async {
-    final stored = tokens;
-    if (stored == null) {
-      throw const FileSystemException("no tokens stored");
+  /// When non-null, [write] throws this error instead of persisting.
+  Object? writeError;
+
+  FakeBridgeIdStorage({this.bridgeId});
+
+  @override
+  Future<String?> read() async => bridgeId;
+
+  @override
+  Future<void> write({required String bridgeId}) async {
+    final error = writeError;
+    if (error != null) {
+      throw error;
     }
-    return stored;
+    this.bridgeId = bridgeId;
   }
 
-  Future<void> save(TokenData data) async {
-    tokens = data;
+  @override
+  Future<void> clear() async {
+    final error = clearError;
+    if (error != null) {
+      throw error;
+    }
+    bridgeId = null;
   }
 }
 
@@ -103,18 +118,12 @@ class FakeBridgeRegistrationRepository implements BridgeRegistrationRepository {
 /// for orchestrator and runtime tests.
 BridgeRegistrationService createFakeBridgeRegistrationService({
   BridgeRegistrationRepository? repository,
-  InMemoryTokenStore? tokenStore,
+  BridgeIdStorage? bridgeIdStorage,
 }) {
-  final store =
-      tokenStore ??
-      InMemoryTokenStore(
-        TokenData(accessToken: "access", refreshToken: "refresh", bridgeId: null, lastProvider: AuthProvider.github),
-      );
   return BridgeRegistrationService(
     repository: repository ?? FakeBridgeRegistrationRepository(),
     tokenRefresher: FakeTokenRefresher(),
-    loadTokens: store.load,
-    saveTokens: store.save,
+    bridgeIdStorage: bridgeIdStorage ?? FakeBridgeIdStorage(),
     hostName: "test-host",
     platform: "macos",
   );
