@@ -276,6 +276,9 @@ void main() {
         rolloutReader: SessionRolloutReader(
           environment: {"CODEX_HOME": codexHome.path},
         ),
+        projectStorage: CodexProjectStorage(
+          environment: {"CODEX_HOME": codexHome.path},
+        ),
         projectCwd: "/work/sample-app",
       );
       final projects = await plugin.getProjects();
@@ -304,6 +307,9 @@ void main() {
       final plugin = CodexPlugin(
         serverUrl: "ws://127.0.0.1:0",
         rolloutReader: SessionRolloutReader(
+          environment: {"CODEX_HOME": codexHome.path},
+        ),
+        projectStorage: CodexProjectStorage(
           environment: {"CODEX_HOME": codexHome.path},
         ),
         projectCwd: "/work/sample-app",
@@ -351,6 +357,9 @@ void main() {
       final plugin = CodexPlugin(
         serverUrl: "ws://127.0.0.1:0",
         rolloutReader: SessionRolloutReader(
+          environment: {"CODEX_HOME": codexHome.path},
+        ),
+        projectStorage: CodexProjectStorage(
           environment: {"CODEX_HOME": codexHome.path},
         ),
         projectCwd: "/work/sample-app",

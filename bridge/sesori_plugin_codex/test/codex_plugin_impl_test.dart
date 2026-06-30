@@ -20,27 +20,138 @@ void main() {
       expect(plugin.id, equals("codex"));
     });
 
-    test("getProjects synthesises a single project from launch CWD", () async {
-      // Phase 3: a single PluginProject is returned for the launch CWD.
-      // Pin both CODEX_HOME (away from the user's real history) and
-      // projectCwd so the test is hermetic.
-      final tempHome = Directory.systemTemp.createTempSync("codex-home-stub-");
+    test("getProjects derives a project per distinct session cwd plus launch cwd", () async {
+      final tempHome = Directory.systemTemp.createTempSync("codex-home-proj-");
       try {
-        final plugin = CodexPlugin(
-          serverUrl: "ws://127.0.0.1:0",
-          rolloutReader: SessionRolloutReader(
-            environment: {"CODEX_HOME": tempHome.path},
-          ),
-          projectCwd: "/repo/example",
+        _writeMetaRollout(
+          tempHome,
+          sessionId: "019a0000-1111-2222-3333-a00000000001",
+          cwd: "/work/alpha",
+          timestamp: "2026-05-01T10:00:00Z",
         );
+        _writeMetaRollout(
+          tempHome,
+          sessionId: "019a0000-1111-2222-3333-a00000000002",
+          cwd: "/work/alpha",
+          timestamp: "2026-05-03T12:00:00Z",
+        );
+        _writeMetaRollout(
+          tempHome,
+          sessionId: "019a0000-1111-2222-3333-b00000000001",
+          cwd: "/work/beta",
+          timestamp: "2026-05-02T10:00:00Z",
+        );
+
+        final plugin = _hermeticPlugin(home: tempHome, projectCwd: "/launch/dir");
         final projects = await plugin.getProjects();
-        expect(projects, hasLength(1));
-        expect(projects.single.id, equals("/repo/example"));
+        final byId = {for (final pr in projects) pr.id: pr};
+        expect(
+          byId.keys,
+          containsAll(<String>["/work/alpha", "/work/beta", "/launch/dir"]),
+        );
+        expect(byId["/work/alpha"]!.name, equals("alpha"));
+        expect(byId["/work/beta"]!.name, equals("beta"));
+        // Most-recent session activity sorts first; the session-less launch dir
+        // (time 0/0) sorts last.
+        expect(projects.first.id, equals("/work/alpha"));
+        expect(projects.last.id, equals("/launch/dir"));
+        expect(
+          byId["/work/alpha"]!.time?.updated,
+          equals(DateTime.parse("2026-05-03T12:00:00Z").millisecondsSinceEpoch),
+        );
         await plugin.dispose();
       } finally {
-        try {
-          tempHome.deleteSync(recursive: true);
-        } catch (_) {}
+        _rmTree(tempHome);
+      }
+    });
+
+    test("getSessions groups sessions by their own cwd with the correct projectID", () async {
+      final tempHome = Directory.systemTemp.createTempSync("codex-home-grp-");
+      try {
+        _writeMetaRollout(
+          tempHome,
+          sessionId: "019a0000-1111-2222-3333-a00000000001",
+          cwd: "/work/alpha",
+          timestamp: "2026-05-01T10:00:00Z",
+        );
+        _writeMetaRollout(
+          tempHome,
+          sessionId: "019a0000-1111-2222-3333-b00000000001",
+          cwd: "/work/beta",
+          timestamp: "2026-05-02T10:00:00Z",
+        );
+
+        final plugin = _hermeticPlugin(home: tempHome, projectCwd: "/launch/dir");
+        final alpha = await plugin.getSessions("/work/alpha");
+        expect(
+          alpha.map((s) => s.id).toList(),
+          equals(["019a0000-1111-2222-3333-a00000000001"]),
+        );
+        expect(alpha.single.projectID, equals("/work/alpha"));
+        expect(alpha.single.directory, equals("/work/alpha"));
+
+        final beta = await plugin.getSessions("/work/beta");
+        expect(
+          beta.map((s) => s.id).toList(),
+          equals(["019a0000-1111-2222-3333-b00000000001"]),
+        );
+        expect(beta.single.projectID, equals("/work/beta"));
+        await plugin.dispose();
+      } finally {
+        _rmTree(tempHome);
+      }
+    });
+
+    test("a session cwd and a trailing-slash launch cwd dedupe to one project", () async {
+      final tempHome = Directory.systemTemp.createTempSync("codex-home-dup-");
+      try {
+        _writeMetaRollout(
+          tempHome,
+          sessionId: "019a0000-1111-2222-3333-d00000000001",
+          cwd: "/work/dup",
+          timestamp: "2026-05-05T10:00:00Z",
+        );
+        // Launch CWD carries a trailing separator; the session CWD does not.
+        final plugin = _hermeticPlugin(home: tempHome, projectCwd: "/work/dup/");
+        final ids = (await plugin.getProjects()).map((pr) => pr.id).toList();
+        // They collapse to a single project whose id is the session cwd verbatim
+        // (so getSessions' exact filter keeps matching).
+        expect(
+          ids.where((id) => id == "/work/dup" || id == "/work/dup/").toList(),
+          equals(["/work/dup"]),
+        );
+        await plugin.dispose();
+      } finally {
+        _rmTree(tempHome);
+      }
+    });
+
+    test("getProject registers and persists an opened directory with no sessions", () async {
+      final tempHome = Directory.systemTemp.createTempSync("codex-home-open-");
+      try {
+        final plugin = _hermeticPlugin(home: tempHome, projectCwd: "/launch/dir");
+        final opened = await plugin.getProject("/work/new-folder");
+        expect(opened.id, equals("/work/new-folder"));
+        expect(opened.name, equals("new-folder"));
+        // Appears in the list right away…
+        expect(
+          (await plugin.getProjects()).map((pr) => pr.id),
+          contains("/work/new-folder"),
+        );
+        await plugin.dispose();
+
+        // …and survives a fresh plugin instance (persisted under CODEX_HOME).
+        final restarted = _hermeticPlugin(
+          home: tempHome,
+          projectCwd: "/launch/dir",
+        );
+        expect(
+          (await restarted.getProjects()).map((pr) => pr.id),
+          contains("/work/new-folder"),
+        );
+        await restarted.dispose();
+      } finally {
+        _rmTree(tempHome);
       }
     });
 
@@ -146,22 +257,12 @@ void main() {
     });
 
     test(
-      "renameProject returns the synthesised project with the new name",
+      "renameProject persists a display-name override that survives a refresh",
       () async {
-        // Phase 6 dropped the last UnimplementedError. renameProject is a
-        // no-op against codex (single-project model) but echoes the new
-        // name so any caller's local cache stays consistent.
         final tempHome = Directory.systemTemp.createTempSync("codex-home-rn-");
         try {
-          final plugin = CodexPlugin(
-            serverUrl: "ws://127.0.0.1:0",
-            rolloutReader: SessionRolloutReader(
-              environment: {"CODEX_HOME": tempHome.path},
-            ),
-            skillReader: CodexSkillReader(
-              environment: {"CODEX_HOME": tempHome.path},
-              projectCwd: tempHome.path,
-            ),
+          final plugin = _hermeticPlugin(
+            home: tempHome,
             projectCwd: "/repo/example",
           );
           final renamed =
@@ -169,10 +270,18 @@ void main() {
           expect(renamed.id, equals("/repo/example"));
           expect(renamed.name, equals("X"));
           await plugin.dispose();
+
+          // The override is persisted, so a fresh plugin still lists the name.
+          final restarted = _hermeticPlugin(
+            home: tempHome,
+            projectCwd: "/repo/example",
+          );
+          final project = (await restarted.getProjects())
+              .firstWhere((pr) => pr.id == "/repo/example");
+          expect(project.name, equals("X"));
+          await restarted.dispose();
         } finally {
-          try {
-            tempHome.deleteSync(recursive: true);
-          } catch (_) {}
+          _rmTree(tempHome);
         }
       },
     );
@@ -311,6 +420,60 @@ void main() {
       await client.dispose();
     });
   });
+}
+
+/// Builds a fully-hermetic CodexPlugin: every reader and the project store are
+/// pinned to a temp CODEX_HOME so a test never touches the user's real history.
+CodexPlugin _hermeticPlugin({
+  required Directory home,
+  required String projectCwd,
+}) {
+  final env = {"CODEX_HOME": home.path};
+  return CodexPlugin(
+    serverUrl: "ws://127.0.0.1:0",
+    rolloutReader: SessionRolloutReader(environment: env),
+    configReader: CodexConfigReader(environment: env),
+    skillReader: CodexSkillReader(environment: env, projectCwd: projectCwd),
+    projectStorage: CodexProjectStorage(environment: env),
+    projectCwd: projectCwd,
+  );
+}
+
+/// Writes a minimal rollout carrying only the `session_meta` header (id, cwd,
+/// timestamp) under a date-derived `sessions/YYYY/MM/DD/` path.
+void _writeMetaRollout(
+  Directory codexHome, {
+  required String sessionId,
+  required String cwd,
+  required String timestamp,
+}) {
+  final date = DateTime.parse(timestamp).toUtc();
+  String two(int v) => v.toString().padLeft(2, "0");
+  final dateDir = "${date.year}/${two(date.month)}/${two(date.day)}";
+  final fileName =
+      "rollout-${date.year}-${two(date.month)}-${two(date.day)}T00-00-00-$sessionId.jsonl";
+  final full = p.join(codexHome.path, "sessions", dateDir, fileName);
+  Directory(p.dirname(full)).createSync(recursive: true);
+  final line = jsonEncode({
+    "timestamp": timestamp,
+    "type": "session_meta",
+    "payload": {
+      "id": sessionId,
+      "timestamp": timestamp,
+      "cwd": cwd,
+      "cli_version": "0.142.0",
+      "model_provider": "openai",
+    },
+  });
+  File(full).writeAsStringSync("$line\n");
+}
+
+void _rmTree(Directory dir) {
+  try {
+    dir.deleteSync(recursive: true);
+  } catch (_) {
+    // Best-effort cleanup.
+  }
 }
 
 const Map<String, dynamic> _initOk = {
