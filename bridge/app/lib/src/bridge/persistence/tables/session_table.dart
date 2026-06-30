@@ -44,6 +44,12 @@ class SessionTable extends Table {
   TextColumn get lastAgentModel => text().nullable().map(const AgentModelConverter())();
   IntColumn get createdAt => integer()();
 
+  /// The id of the plugin that owns this session (e.g. "opencode", "codex").
+  /// Defaults to "opencode" so the v6→v7 migration backfills every pre-existing
+  /// row — opencode was the only shipped plugin. New sessions are stamped with
+  /// the active plugin's id at insert.
+  TextColumn get pluginId => text().withDefault(const Constant("opencode"))();
+
   @override
   bool get withoutRowId => true;
 
@@ -65,6 +71,7 @@ sealed class SessionDto with _$SessionDto, $SessionTableTableToColumns {
     required String? lastAgent,
     required AgentModel? lastAgentModel,
     required int createdAt,
+    @Default("opencode") String pluginId,
   }) = _SessionDto;
 
   const SessionDto._();

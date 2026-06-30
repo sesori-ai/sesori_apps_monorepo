@@ -26,7 +26,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -112,6 +112,14 @@ class AppDatabase extends _$AppDatabase {
       from5To6: (m, schema) async {
         await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastAgent);
         await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastAgentModel);
+      },
+      from6To7: (m, schema) async {
+        // Bridge-owned project metadata for derive-style plugins.
+        await m.addColumn(schema.projectsTable, schema.projectsTable.displayName);
+        await m.addColumn(schema.projectsTable, schema.projectsTable.openedAt);
+        // pluginId is NOT NULL with a default of "opencode", so this backfills
+        // every existing session row to opencode (the only shipped plugin).
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.pluginId);
       },
     ),
     beforeOpen: (details) async {

@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$SessionDto {
 
- String get sessionId; String get projectId; String? get worktreePath; String? get branchName; bool get isDedicated; int? get archivedAt; String? get baseBranch; String? get baseCommit; String? get lastAgent; AgentModel? get lastAgentModel; int get createdAt;
+ String get sessionId; String get projectId; String? get worktreePath; String? get branchName; bool get isDedicated; int? get archivedAt; String? get baseBranch; String? get baseCommit; String? get lastAgent; AgentModel? get lastAgentModel; int get createdAt; String get pluginId;
 /// Create a copy of SessionDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $SessionDtoCopyWith<SessionDto> get copyWith => _$SessionDtoCopyWithImpl<Session
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.worktreePath, worktreePath) || other.worktreePath == worktreePath)&&(identical(other.branchName, branchName) || other.branchName == branchName)&&(identical(other.isDedicated, isDedicated) || other.isDedicated == isDedicated)&&(identical(other.archivedAt, archivedAt) || other.archivedAt == archivedAt)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.baseCommit, baseCommit) || other.baseCommit == baseCommit)&&(identical(other.lastAgent, lastAgent) || other.lastAgent == lastAgent)&&(identical(other.lastAgentModel, lastAgentModel) || other.lastAgentModel == lastAgentModel)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.worktreePath, worktreePath) || other.worktreePath == worktreePath)&&(identical(other.branchName, branchName) || other.branchName == branchName)&&(identical(other.isDedicated, isDedicated) || other.isDedicated == isDedicated)&&(identical(other.archivedAt, archivedAt) || other.archivedAt == archivedAt)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.baseCommit, baseCommit) || other.baseCommit == baseCommit)&&(identical(other.lastAgent, lastAgent) || other.lastAgent == lastAgent)&&(identical(other.lastAgentModel, lastAgentModel) || other.lastAgentModel == lastAgentModel)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,projectId,worktreePath,branchName,isDedicated,archivedAt,baseBranch,baseCommit,lastAgent,lastAgentModel,createdAt);
+int get hashCode => Object.hash(runtimeType,sessionId,projectId,worktreePath,branchName,isDedicated,archivedAt,baseBranch,baseCommit,lastAgent,lastAgentModel,createdAt,pluginId);
 
 @override
 String toString() {
-  return 'SessionDto(sessionId: $sessionId, projectId: $projectId, worktreePath: $worktreePath, branchName: $branchName, isDedicated: $isDedicated, archivedAt: $archivedAt, baseBranch: $baseBranch, baseCommit: $baseCommit, lastAgent: $lastAgent, lastAgentModel: $lastAgentModel, createdAt: $createdAt)';
+  return 'SessionDto(sessionId: $sessionId, projectId: $projectId, worktreePath: $worktreePath, branchName: $branchName, isDedicated: $isDedicated, archivedAt: $archivedAt, baseBranch: $baseBranch, baseCommit: $baseCommit, lastAgent: $lastAgent, lastAgentModel: $lastAgentModel, createdAt: $createdAt, pluginId: $pluginId)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $SessionDtoCopyWith<$Res>  {
   factory $SessionDtoCopyWith(SessionDto value, $Res Function(SessionDto) _then) = _$SessionDtoCopyWithImpl;
 @useResult
 $Res call({
- String sessionId, String projectId, String? worktreePath, String? branchName, bool isDedicated, int? archivedAt, String? baseBranch, String? baseCommit, String? lastAgent, AgentModel? lastAgentModel, int createdAt
+ String sessionId, String projectId, String? worktreePath, String? branchName, bool isDedicated, int? archivedAt, String? baseBranch, String? baseCommit, String? lastAgent, AgentModel? lastAgentModel, int createdAt, String pluginId
 });
 
 
@@ -62,7 +62,7 @@ class _$SessionDtoCopyWithImpl<$Res>
 
 /// Create a copy of SessionDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? projectId = null,Object? worktreePath = freezed,Object? branchName = freezed,Object? isDedicated = null,Object? archivedAt = freezed,Object? baseBranch = freezed,Object? baseCommit = freezed,Object? lastAgent = freezed,Object? lastAgentModel = freezed,Object? createdAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? projectId = null,Object? worktreePath = freezed,Object? branchName = freezed,Object? isDedicated = null,Object? archivedAt = freezed,Object? baseBranch = freezed,Object? baseCommit = freezed,Object? lastAgent = freezed,Object? lastAgentModel = freezed,Object? createdAt = null,Object? pluginId = null,}) {
   return _then(_self.copyWith(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
@@ -75,7 +75,8 @@ as String?,baseCommit: freezed == baseCommit ? _self.baseCommit : baseCommit // 
 as String?,lastAgent: freezed == lastAgent ? _self.lastAgent : lastAgent // ignore: cast_nullable_to_non_nullable
 as String?,lastAgentModel: freezed == lastAgentModel ? _self.lastAgentModel : lastAgentModel // ignore: cast_nullable_to_non_nullable
 as AgentModel?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
-as int,
+as int,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 /// Create a copy of SessionDto
@@ -99,7 +100,7 @@ $AgentModelCopyWith<$Res>? get lastAgentModel {
 
 
 class _SessionDto extends SessionDto {
-  const _SessionDto({required this.sessionId, required this.projectId, required this.worktreePath, required this.branchName, required this.isDedicated, required this.archivedAt, required this.baseBranch, required this.baseCommit, required this.lastAgent, required this.lastAgentModel, required this.createdAt}): super._();
+  const _SessionDto({required this.sessionId, required this.projectId, required this.worktreePath, required this.branchName, required this.isDedicated, required this.archivedAt, required this.baseBranch, required this.baseCommit, required this.lastAgent, required this.lastAgentModel, required this.createdAt, this.pluginId = "opencode"}): super._();
   
 
 @override final  String sessionId;
@@ -113,6 +114,7 @@ class _SessionDto extends SessionDto {
 @override final  String? lastAgent;
 @override final  AgentModel? lastAgentModel;
 @override final  int createdAt;
+@override@JsonKey() final  String pluginId;
 
 /// Create a copy of SessionDto
 /// with the given fields replaced by the non-null parameter values.
@@ -124,16 +126,16 @@ _$SessionDtoCopyWith<_SessionDto> get copyWith => __$SessionDtoCopyWithImpl<_Ses
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.worktreePath, worktreePath) || other.worktreePath == worktreePath)&&(identical(other.branchName, branchName) || other.branchName == branchName)&&(identical(other.isDedicated, isDedicated) || other.isDedicated == isDedicated)&&(identical(other.archivedAt, archivedAt) || other.archivedAt == archivedAt)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.baseCommit, baseCommit) || other.baseCommit == baseCommit)&&(identical(other.lastAgent, lastAgent) || other.lastAgent == lastAgent)&&(identical(other.lastAgentModel, lastAgentModel) || other.lastAgentModel == lastAgentModel)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.worktreePath, worktreePath) || other.worktreePath == worktreePath)&&(identical(other.branchName, branchName) || other.branchName == branchName)&&(identical(other.isDedicated, isDedicated) || other.isDedicated == isDedicated)&&(identical(other.archivedAt, archivedAt) || other.archivedAt == archivedAt)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.baseCommit, baseCommit) || other.baseCommit == baseCommit)&&(identical(other.lastAgent, lastAgent) || other.lastAgent == lastAgent)&&(identical(other.lastAgentModel, lastAgentModel) || other.lastAgentModel == lastAgentModel)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,projectId,worktreePath,branchName,isDedicated,archivedAt,baseBranch,baseCommit,lastAgent,lastAgentModel,createdAt);
+int get hashCode => Object.hash(runtimeType,sessionId,projectId,worktreePath,branchName,isDedicated,archivedAt,baseBranch,baseCommit,lastAgent,lastAgentModel,createdAt,pluginId);
 
 @override
 String toString() {
-  return 'SessionDto(sessionId: $sessionId, projectId: $projectId, worktreePath: $worktreePath, branchName: $branchName, isDedicated: $isDedicated, archivedAt: $archivedAt, baseBranch: $baseBranch, baseCommit: $baseCommit, lastAgent: $lastAgent, lastAgentModel: $lastAgentModel, createdAt: $createdAt)';
+  return 'SessionDto(sessionId: $sessionId, projectId: $projectId, worktreePath: $worktreePath, branchName: $branchName, isDedicated: $isDedicated, archivedAt: $archivedAt, baseBranch: $baseBranch, baseCommit: $baseCommit, lastAgent: $lastAgent, lastAgentModel: $lastAgentModel, createdAt: $createdAt, pluginId: $pluginId)';
 }
 
 
@@ -144,7 +146,7 @@ abstract mixin class _$SessionDtoCopyWith<$Res> implements $SessionDtoCopyWith<$
   factory _$SessionDtoCopyWith(_SessionDto value, $Res Function(_SessionDto) _then) = __$SessionDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String sessionId, String projectId, String? worktreePath, String? branchName, bool isDedicated, int? archivedAt, String? baseBranch, String? baseCommit, String? lastAgent, AgentModel? lastAgentModel, int createdAt
+ String sessionId, String projectId, String? worktreePath, String? branchName, bool isDedicated, int? archivedAt, String? baseBranch, String? baseCommit, String? lastAgent, AgentModel? lastAgentModel, int createdAt, String pluginId
 });
 
 
@@ -161,7 +163,7 @@ class __$SessionDtoCopyWithImpl<$Res>
 
 /// Create a copy of SessionDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? projectId = null,Object? worktreePath = freezed,Object? branchName = freezed,Object? isDedicated = null,Object? archivedAt = freezed,Object? baseBranch = freezed,Object? baseCommit = freezed,Object? lastAgent = freezed,Object? lastAgentModel = freezed,Object? createdAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? projectId = null,Object? worktreePath = freezed,Object? branchName = freezed,Object? isDedicated = null,Object? archivedAt = freezed,Object? baseBranch = freezed,Object? baseCommit = freezed,Object? lastAgent = freezed,Object? lastAgentModel = freezed,Object? createdAt = null,Object? pluginId = null,}) {
   return _then(_SessionDto(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
@@ -174,7 +176,8 @@ as String?,baseCommit: freezed == baseCommit ? _self.baseCommit : baseCommit // 
 as String?,lastAgent: freezed == lastAgent ? _self.lastAgent : lastAgent // ignore: cast_nullable_to_non_nullable
 as String?,lastAgentModel: freezed == lastAgentModel ? _self.lastAgentModel : lastAgentModel // ignore: cast_nullable_to_non_nullable
 as AgentModel?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
-as int,
+as int,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

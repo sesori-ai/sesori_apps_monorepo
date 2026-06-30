@@ -12,6 +12,17 @@ class ProjectsTable extends Table {
   TextColumn get baseBranch => text().nullable()();
   IntColumn get worktreeCounter => integer().withDefault(const Constant(0))();
 
+  /// Bridge-persisted display-name override for a renamed project. Used by
+  /// bridge-derived plugins, which have no backend to store a project name;
+  /// null means fall back to the directory basename.
+  TextColumn get displayName => text().nullable()();
+
+  /// Wall-clock ms when the user explicitly opened this folder. Lets a folder
+  /// with no sessions yet survive a refresh, and doubles as the project's time
+  /// until a session supplies one. Null for projects discovered purely from
+  /// sessions.
+  IntColumn get openedAt => integer().nullable()();
+
   @override
   bool get withoutRowId => true;
 
@@ -26,6 +37,8 @@ sealed class ProjectDto with _$ProjectDto, $ProjectsTableTableToColumns {
     @Default(false) bool hidden,
     String? baseBranch,
     @Default(0) int worktreeCounter,
+    String? displayName,
+    int? openedAt,
   }) = _ProjectDto;
 
   const ProjectDto._();
