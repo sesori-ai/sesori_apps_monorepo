@@ -38,6 +38,7 @@ void main() {
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         db: db,
+        pluginId: "opencode",
       );
       handler = GetSessionsHandler(
         sessionRepository: sessionRepository,

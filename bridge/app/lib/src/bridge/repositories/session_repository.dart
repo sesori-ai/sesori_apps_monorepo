@@ -1,5 +1,6 @@
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show BridgePluginApi, Log, PluginSession, PluginSessionVariant;
+    show BridgeDerivedProjectSource, BridgePluginApi, Log, PluginSession, PluginSessionVariant;
 import "package:sesori_shared/sesori_shared.dart"
     show AgentModel, CommandListResponse, PrState, PromptModel, PromptPart, PullRequestInfo, Session, SessionVariant;
 
@@ -151,6 +152,20 @@ class SessionRepository {
       return storedSession.projectId;
     }
 
+    // Bridge-derived plugins return [] from getProjects(), so resolve via the
+    // session enumeration and return the canonical (normalized) directory — the
+    // project id the bridge derives and persists.
+    final plugin = _plugin;
+    if (plugin is BridgeDerivedProjectSource) {
+      final source = plugin as BridgeDerivedProjectSource;
+      for (final session in await source.listAllSessions()) {
+        if (session.id == sessionId) {
+          return normalizeProjectDirectory(session.directory);
+        }
+      }
+      return null;
+    }
+
     final projects = await _plugin.getProjects();
     for (final project in projects) {
       final projectId = project.id;
@@ -290,6 +305,7 @@ class SessionRepository {
         baseCommit: baseCommit,
         lastAgent: agent,
         lastAgentModel: agentModel,
+        pluginId: _plugin.id,
       );
     });
   }

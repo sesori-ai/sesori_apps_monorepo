@@ -13,6 +13,7 @@ import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/derived_project_builder.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/health_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
@@ -87,7 +88,12 @@ void main() {
           sessionRepository: sessionRepository,
         ),
         sessionRepository: sessionRepository,
-        projectRepository: ProjectRepository(plugin: plugin, projectsDao: database.projectsDao),
+        projectRepository: ProjectRepository(
+          plugin: plugin,
+          projectsDao: database.projectsDao,
+          trackingMode: ProjectTrackingMode.nativeBackend,
+          derivedProjectBuilder: const DerivedProjectBuilder(),
+        ),
         filesystemRepository: FilesystemRepository(
           filesystemApi: const FilesystemApi(),
           permissionValidator: const FilesystemPermissionValidator(),
@@ -120,6 +126,7 @@ void main() {
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           db: database,
+          pluginId: "opencode",
         ),
         worktreeService: WorktreeService(
           worktreeRepository: WorktreeRepository(
@@ -249,12 +256,18 @@ class _TestHarness {
       sessionRepository: sessionRepository,
     );
 
-    final projectRepository = ProjectRepository(plugin: plugin, projectsDao: database.projectsDao);
+    final projectRepository = ProjectRepository(
+      plugin: plugin,
+      projectsDao: database.projectsDao,
+      trackingMode: ProjectTrackingMode.nativeBackend,
+      derivedProjectBuilder: const DerivedProjectBuilder(),
+    );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       db: database,
+      pluginId: "opencode",
     );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(

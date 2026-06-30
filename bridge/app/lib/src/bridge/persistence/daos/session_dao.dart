@@ -21,6 +21,9 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     required String? baseCommit,
     required String? lastAgent,
     required AgentModel? lastAgentModel,
+    // Mirrors the column's DB default; production callers (SessionRepository,
+    // SessionPersistenceService) pass the active plugin id explicitly.
+    String pluginId = "opencode",
   }) async {
     await into(sessionTable).insert(
       SessionTableCompanion(
@@ -35,6 +38,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
         lastAgent: Value(lastAgent),
         lastAgentModel: Value(lastAgentModel),
         createdAt: Value(createdAt),
+        pluginId: Value(pluginId),
       ),
     );
   }
@@ -113,6 +117,8 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   /// archive state is preserved on first insert. Existing rows are never updated.
   Future<void> insertSessionsIfMissing({
     required List<({String sessionId, String projectId, int createdAt, int? archivedAt})> sessions,
+    // Mirrors the column's DB default; production callers pass the active id.
+    String pluginId = "opencode",
   }) async {
     if (sessions.isEmpty) return;
     await batch((b) {
@@ -128,6 +134,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
               isDedicated: const Value(false),
               createdAt: Value(s.createdAt),
               archivedAt: Value(s.archivedAt),
+              pluginId: Value(pluginId),
               // worktreePath, branchName, baseBranch, baseCommit intentionally
               // omitted — they default to absent (null) via SessionTableCompanion
             ),

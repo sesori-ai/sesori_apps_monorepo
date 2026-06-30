@@ -162,7 +162,7 @@ class RequestRouter {
       ReplyToQuestionHandler(questionRepository: questionRepository),
       RejectQuestionHandler(questionRepository: questionRepository),
       ReplyToPermissionHandler(permissionRepository: permissionRepository),
-      RenameProjectHandler(plugin),
+      RenameProjectHandler(projectRepository),
       CreateProjectHandler(
         projectInitializationService: projectInitializationService,
         projectRepository: projectRepository,

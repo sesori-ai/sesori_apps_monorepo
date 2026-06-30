@@ -1,4 +1,5 @@
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/derived_project_builder.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -17,6 +18,8 @@ void main() {
       repo = ProjectRepository(
         plugin: plugin,
         projectsDao: db.projectsDao,
+        trackingMode: ProjectTrackingMode.nativeBackend,
+        derivedProjectBuilder: const DerivedProjectBuilder(),
       );
     });
 
@@ -122,6 +125,88 @@ void main() {
       expect(stored, equals("main"));
     });
   });
+
+  group("ProjectRepository (bridge-derived)", () {
+    late AppDatabase db;
+    late _FakeDerivedPlugin plugin;
+    late ProjectRepository repo;
+
+    setUp(() {
+      db = createTestDatabase();
+      plugin = _FakeDerivedPlugin([]);
+      repo = ProjectRepository(
+        plugin: plugin,
+        projectsDao: db.projectsDao,
+        trackingMode: ProjectTrackingMode.bridgeDerived,
+        derivedProjectBuilder: const DerivedProjectBuilder(),
+      );
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    test("getProjects derives projects from the plugin's sessions, grouped by directory and sorted", () async {
+      plugin.sessions = [
+        _session("/tmp/proj/alpha", id: "a1", created: 10, updated: 20),
+        _session("/tmp/proj/alpha", id: "a2", created: 5, updated: 50),
+        _session("/tmp/proj/beta", id: "b1", created: 1, updated: 1),
+      ];
+
+      final result = await repo.getProjects();
+
+      expect(result.map((p) => p.id).toSet(), {"/tmp/proj/alpha", "/tmp/proj/beta"});
+      // Canonical rows are persisted so a later session insert has an FK target.
+      final rows = await db.select(db.projectsTable).get();
+      expect(rows.map((r) => r.projectId).toSet(), containsAll({"/tmp/proj/alpha", "/tmp/proj/beta"}));
+      // Sorted by updated desc: alpha (50) before beta (1).
+      expect(result.first.id, "/tmp/proj/alpha");
+    });
+
+    test("getProjects omits a project flagged hidden", () async {
+      plugin.sessions = [_session("/tmp/proj/alpha", created: 1, updated: 1)];
+      await db.projectsDao.hideProject(projectId: "/tmp/proj/alpha");
+
+      expect(await repo.getProjects(), isEmpty);
+    });
+
+    test("openProject records an opened folder so an empty project survives the listing", () async {
+      final opened = await repo.openProject(path: "/tmp/proj/empty");
+
+      expect(opened.id, "/tmp/proj/empty");
+      expect(opened.name, "empty");
+      expect((await repo.getProjects()).map((p) => p.id), contains("/tmp/proj/empty"));
+      final row = (await db.select(db.projectsTable).get()).firstWhere((r) => r.projectId == "/tmp/proj/empty");
+      expect(row.openedAt, isNotNull);
+    });
+
+    test("renameProject persists a display-name override applied on the next listing", () async {
+      plugin.sessions = [_session("/tmp/proj/alpha", created: 1, updated: 1)];
+
+      final renamed = await repo.renameProject(projectId: "/tmp/proj/alpha", name: "Renamed Alpha");
+
+      expect(renamed.name, "Renamed Alpha");
+      final listed = (await repo.getProjects()).firstWhere((p) => p.id == "/tmp/proj/alpha");
+      expect(listed.name, "Renamed Alpha");
+    });
+  });
+}
+
+PluginSession _session(
+  String directory, {
+  String id = "s",
+  required int created,
+  required int updated,
+}) {
+  return PluginSession(
+    id: id,
+    projectID: directory,
+    directory: directory,
+    parentID: null,
+    title: null,
+    time: PluginSessionTime(created: created, updated: updated, archived: null),
+    summary: null,
+  );
 }
 
 /// Minimal [BridgePluginApi] fake that only implements the surface touched by
@@ -256,4 +341,22 @@ class _FakeBridgePlugin implements BridgePluginApi {
 
   @override
   Future<void> dispose() => throw UnimplementedError();
+}
+
+/// A derive-style plugin: mixes in the bridge-derived no-ops and exposes its
+/// sessions through [BridgeDerivedProjectSource], mirroring how Codex/ACP
+/// plugins are shaped. The mixin's getProjects/getProject/renameProject win over
+/// the base fake's, so the bridge derivation path is what's exercised.
+class _FakeDerivedPlugin extends _FakeBridgePlugin
+    with BridgeDerivedProjectsMixin
+    implements BridgeDerivedProjectSource {
+  _FakeDerivedPlugin(this.sessions);
+
+  List<PluginSession> sessions;
+
+  @override
+  String get id => "codex";
+
+  @override
+  Future<List<PluginSession>> listAllSessions() async => sessions;
 }

@@ -469,6 +469,7 @@ class BridgeRuntimeRunner {
           sseReplayWindow: SSEManager.defaultReplayWindow,
         ),
         plugin: plugin.api,
+        projectTrackingMode: descriptor.projectTrackingMode,
         httpClient: httpClient,
         accessTokenProvider: accessTokenProvider,
         tokenRefresher: tokenRefresher,

@@ -9,6 +9,39 @@ part "projects_dao.g.dart";
 class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin {
   ProjectsDao(super.attachedDatabase);
 
+  /// Returns every stored project row. Used by the bridge-derived project path
+  /// to read display-name overrides and opened-folder timestamps.
+  Future<List<ProjectDto>> getAllProjects() async {
+    return select(projectsTable).get();
+  }
+
+  /// Records [projectId] as an explicitly-opened folder by stamping [openedAt],
+  /// creating the row if missing. Updates only openedAt on conflict, preserving
+  /// hidden/baseBranch/displayName/worktreeCounter. Lets a folder with no
+  /// sessions yet survive listing refreshes for bridge-derived plugins.
+  Future<void> recordOpenedProject({required String projectId, required int openedAt}) async {
+    await into(projectsTable).insert(
+      ProjectsTableCompanion.insert(projectId: projectId, openedAt: Value(openedAt)),
+      onConflict: DoUpdate(
+        (old) => ProjectsTableCompanion(openedAt: Value(openedAt)),
+        target: [projectsTable.projectId],
+      ),
+    );
+  }
+
+  /// Sets the bridge-persisted display-name override for [projectId], creating
+  /// the row if missing. Updates only displayName on conflict. Used to persist a
+  /// rename for a bridge-derived plugin that has no backend to store the name.
+  Future<void> setDisplayName({required String projectId, required String displayName}) async {
+    await into(projectsTable).insert(
+      ProjectsTableCompanion.insert(projectId: projectId, displayName: Value(displayName)),
+      onConflict: DoUpdate(
+        (old) => ProjectsTableCompanion(displayName: Value(displayName)),
+        target: [projectsTable.projectId],
+      ),
+    );
+  }
+
   /// Returns the set of all currently hidden project IDs (one-shot).
   Future<Set<String>> getHiddenProjectIds() async {
     final rows = await (select(projectsTable)..where((t) => t.hidden.equals(true))).get();

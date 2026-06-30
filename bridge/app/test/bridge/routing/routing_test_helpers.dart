@@ -605,6 +605,7 @@ class FakeSessionPersistenceService extends SessionPersistenceService {
         projectsDao: _unsupportedProjectsDao(),
         sessionDao: _unsupportedSessionDao(),
         db: _unsupportedDatabase(),
+        pluginId: "opencode",
       );
 
   static ProjectsDao _unsupportedProjectsDao() => throw UnimplementedError();

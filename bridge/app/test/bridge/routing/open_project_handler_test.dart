@@ -3,6 +3,7 @@ import "dart:io";
 import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/derived_project_builder.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/open_project_handler.dart";
@@ -30,6 +31,8 @@ void main() {
       projectRepository = ProjectRepository(
         plugin: plugin,
         projectsDao: db.projectsDao,
+        trackingMode: ProjectTrackingMode.nativeBackend,
+        derivedProjectBuilder: const DerivedProjectBuilder(),
       );
       handler = OpenProjectHandler(
         filesystemRepository: FilesystemRepository(

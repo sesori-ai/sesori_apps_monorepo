@@ -1,6 +1,8 @@
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/derived_project_builder.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/get_base_branch_handler.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -20,6 +22,8 @@ void main() {
       projectRepository = ProjectRepository(
         plugin: plugin,
         projectsDao: db.projectsDao,
+        trackingMode: ProjectTrackingMode.nativeBackend,
+        derivedProjectBuilder: const DerivedProjectBuilder(),
       );
       handler = GetBaseBranchHandler(projectRepository: projectRepository);
     });
