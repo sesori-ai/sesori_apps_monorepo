@@ -126,6 +126,45 @@ void main() {
       }
     });
 
+    test("sessions under merged trailing-slash spellings stay reachable from the one project", () async {
+      final tempHome = Directory.systemTemp.createTempSync("codex-home-reach-");
+      try {
+        // Same directory recorded two ways — with and without a trailing slash.
+        _writeMetaRollout(
+          tempHome,
+          sessionId: "019a0000-1111-2222-3333-e00000000001",
+          cwd: "/work/dup",
+          timestamp: "2026-05-07T10:00:00Z",
+        );
+        _writeMetaRollout(
+          tempHome,
+          sessionId: "019a0000-1111-2222-3333-e00000000002",
+          cwd: "/work/dup/",
+          timestamp: "2026-05-07T11:00:00Z",
+        );
+
+        final plugin = _hermeticPlugin(home: tempHome, projectCwd: "/launch/dir");
+        final dupProjects = (await plugin.getProjects())
+            .where((pr) => pr.id == "/work/dup" || pr.id == "/work/dup/")
+            .toList();
+        // The two spellings collapse to a single project…
+        expect(dupProjects, hasLength(1));
+        // …and getSessions on that project's id returns BOTH sessions, not just
+        // the one whose cwd spelling matched verbatim.
+        final sessions = await plugin.getSessions(dupProjects.single.id);
+        expect(
+          sessions.map((s) => s.id).toSet(),
+          equals({
+            "019a0000-1111-2222-3333-e00000000001",
+            "019a0000-1111-2222-3333-e00000000002",
+          }),
+        );
+        await plugin.dispose();
+      } finally {
+        _rmTree(tempHome);
+      }
+    });
+
     test("getProject registers and persists an opened directory with no sessions", () async {
       final tempHome = Directory.systemTemp.createTempSync("codex-home-open-");
       try {

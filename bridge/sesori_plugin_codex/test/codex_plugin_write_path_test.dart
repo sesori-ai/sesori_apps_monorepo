@@ -132,6 +132,32 @@ void main() {
       expect(fake.sentMethods, equals(["initialize", "thread/name/set"]));
     });
 
+    test("renameSession resolves a freshly-created session's directory from memory before its rollout flushes", () async {
+      // createSession reports cwd /work/live; no rollout is written to disk for
+      // it, so only the in-memory thread→directory mapping knows the project.
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(result: {"thread": {"id": "t-live", "cwd": "/work/live"}}),
+        const _Response(result: {}),
+      ]);
+      await plugin.createSession(
+        directory: "/work/live",
+        parentSessionId: null,
+        parts: const [],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      final renamed = await plugin.renameSession(
+        sessionId: "t-live",
+        title: "Renamed",
+      );
+      // Resolves to /work/live (the created directory), not the launch CWD.
+      expect(renamed.projectID, equals("/work/live"));
+      expect(renamed.directory, equals("/work/live"));
+    });
+
     test("getProjectQuestions scopes pending questions to the project's own sessions", () async {
       // Two live sessions in distinct project directories.
       _writeMetaRollout(

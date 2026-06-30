@@ -89,6 +89,14 @@ class CodexPlugin implements CodexManagedApi {
   /// this never goes stale against a live connection.
   final Set<String> _loadedThreads = {};
 
+  /// Working directory of each thread created in this bridge run, keyed by
+  /// thread id. codex flushes a session's rollout header to disk slightly after
+  /// `thread/start` returns, so for a just-created session this is the only
+  /// place that knows its directory — used by [_directoryForSession] and
+  /// [getProjectQuestions] so a fresh non-launch session resolves to its real
+  /// project (not the launch CWD) before its rollout exists.
+  final Map<String, String> _threadDirectory = {};
+
   factory CodexPlugin({
     required String serverUrl,
     String? capabilityToken,
@@ -297,6 +305,7 @@ class CodexPlugin implements CodexManagedApi {
         _sessionStatuses.remove(threadId);
         // The app-server unloaded this thread; a later turn must resume it.
         _loadedThreads.remove(threadId);
+        _threadDirectory.remove(threadId);
       case "thread/started":
         final thread = (params["thread"] as Map?)?.cast<String, dynamic>();
         final id = thread?["id"] as String?;
@@ -392,15 +401,14 @@ class CodexPlugin implements CodexManagedApi {
     return out;
   }
 
-  /// Dedupe key for a directory: strips a single trailing path separator so
-  /// `/a` and `/a/` collapse to one project. The project `id` emitted from
-  /// [_deriveProjects] stays verbatim — this key is only used to merge sources.
-  String _projectKey(String dir) {
-    if (dir.length > 1 && (dir.endsWith("/") || dir.endsWith(r"\"))) {
-      return dir.substring(0, dir.length - 1);
-    }
-    return dir;
-  }
+  /// Normalised dedupe/equivalence key for a directory: collapses trailing
+  /// separators and `.`/`..` segments so `/a`, `/a/`, and `/a/b/..` map to one
+  /// project (and, on Windows, preserves drive roots like `C:\`). The project
+  /// `id` emitted from [_deriveProjects] stays the verbatim cwd — this key is
+  /// only used to merge sources here and to match sessions in [getSessions]/
+  /// [getProjectQuestions], so a directory recorded under two spellings stays
+  /// reachable from its single project.
+  String _projectKey(String dir) => p.normalize(dir);
 
   String _projectName(String dir) {
     final base = p.basename(dir);
@@ -455,7 +463,14 @@ class CodexPlugin implements CodexManagedApi {
     int? limit,
   }) async {
     final records = _rolloutReader.listSessions();
-    final filtered = records.where((r) => r.cwd == projectId);
+    // Match by the normalised project key (not exact cwd) so sessions recorded
+    // under a different spelling of the same directory — e.g. a trailing
+    // separator that [_deriveProjects] merged into one project — stay reachable.
+    final target = _projectKey(projectId);
+    final filtered = records.where((r) {
+      final cwd = r.cwd;
+      return cwd != null && _projectKey(cwd) == target;
+    });
     final mapped = filtered.map(_toPluginSession).toList(growable: false);
     final from = start ?? 0;
     final until = limit == null
@@ -549,6 +564,9 @@ class CodexPlugin implements CodexManagedApi {
     // Record the directory so a session started in a brand-new project surfaces
     // as a project immediately, before codex has flushed its rollout to disk.
     _projectStorage.upsertProject(path: resolvedDirectory);
+    // Remember the thread's directory in memory so renameSession/project
+    // questions resolve it before the rollout header lands on disk.
+    _threadDirectory[threadId] = resolvedDirectory;
     return PluginSession(
       id: threadId,
       projectID: resolvedDirectory,
@@ -766,11 +784,18 @@ class CodexPlugin implements CodexManagedApi {
     );
   }
 
-  /// The CWD of the session with [sessionId] from its on-disk rollout, falling
-  /// back to the launch CWD when the session has no resolvable directory.
+  /// The CWD of the session with [sessionId]: the in-memory mapping for a
+  /// thread created this run (correct even before its rollout flushes), else the
+  /// session's own rollout header, falling back to the launch CWD. Resolves the
+  /// single rollout directly ([SessionRolloutReader.findRolloutPath] +
+  /// [SessionRolloutReader.readMeta]) rather than scanning every session.
   String _directoryForSession(String sessionId) {
-    for (final record in _rolloutReader.listSessions()) {
-      if (record.id == sessionId) return record.cwd ?? _projectCwd;
+    final live = _threadDirectory[sessionId];
+    if (live != null) return live;
+    final rolloutPath = _rolloutReader.findRolloutPath(sessionId);
+    if (rolloutPath != null) {
+      final cwd = _rolloutReader.readMeta(rolloutPath)?.cwd;
+      if (cwd != null) return cwd;
     }
     return _projectCwd;
   }
@@ -808,6 +833,7 @@ class CodexPlugin implements CodexManagedApi {
     _activeTurnByThread.remove(sessionId);
     _sessionStatuses.remove(sessionId);
     _loadedThreads.remove(sessionId);
+    _threadDirectory.remove(sessionId);
   }
 
   @override
@@ -925,16 +951,19 @@ class CodexPlugin implements CodexManagedApi {
   }) async {
     final registry = _approvalRegistry;
     if (registry == null) return const [];
-    // Scope to the sessions that belong to this project (cwd == projectId) so a
-    // pending approval in one codex project doesn't surface under every other.
-    // A just-created session whose rollout hasn't flushed yet won't be joined
-    // here; its question is still reachable in the session via getPendingQuestions.
-    final cwdById = <String, String?>{
+    // Scope to the sessions that belong to this project so a pending approval in
+    // one codex project doesn't surface under every other. Directory per session
+    // comes from the on-disk rollout (cwd, or the launch CWD when unrecorded —
+    // matching _toPluginSession) overlaid with the in-memory mapping, so a
+    // just-created session whose rollout hasn't flushed yet is still attributed.
+    final cwdById = <String, String>{
       for (final record in _rolloutReader.listSessions())
-        record.id: record.cwd,
+        record.id: record.cwd ?? _projectCwd,
+      ..._threadDirectory,
     };
+    final target = _projectKey(projectId);
     final sessionIds = _sessionStatuses.keys
-        .where((id) => cwdById[id] == projectId)
+        .where((id) => _projectKey(cwdById[id] ?? _projectCwd) == target)
         .toList(growable: false);
     return registry.pendingForProject(sessionIds);
   }
