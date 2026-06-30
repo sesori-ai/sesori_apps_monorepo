@@ -401,14 +401,16 @@ class CodexPlugin implements CodexManagedApi {
     return out;
   }
 
-  /// Normalised dedupe/equivalence key for a directory: collapses trailing
-  /// separators and `.`/`..` segments so `/a`, `/a/`, and `/a/b/..` map to one
-  /// project (and, on Windows, preserves drive roots like `C:\`). The project
-  /// `id` emitted from [_deriveProjects] stays the verbatim cwd — this key is
-  /// only used to merge sources here and to match sessions in [getSessions]/
-  /// [getProjectQuestions], so a directory recorded under two spellings stays
-  /// reachable from its single project.
-  String _projectKey(String dir) => p.normalize(dir);
+  /// Normalised dedupe/equivalence key for a directory: makes it absolute
+  /// (against the bridge CWD) then collapses trailing separators and `.`/`..`
+  /// segments, so `/a`, `/a/`, `/a/b/..`, and a relative spelling of the same
+  /// directory all map to one project (and, on Windows, preserves drive roots
+  /// like `C:\`). The project `id` emitted from [_deriveProjects] stays the
+  /// verbatim cwd — this key is only used to merge sources here and to match
+  /// sessions in [getSessions]/[getProjectQuestions], so a directory recorded
+  /// under two spellings stays reachable from its single project. (codex cwds
+  /// and opened-dir paths are already absolute, so this is defensive.)
+  String _projectKey(String dir) => p.normalize(p.absolute(dir));
 
   String _projectName(String dir) {
     final base = p.basename(dir);
