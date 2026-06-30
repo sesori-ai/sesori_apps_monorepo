@@ -8,7 +8,7 @@ environment:
 dependencies:
   crypto: ^3.0.7
   http: ^1.6.0
-  meta: ^1.16.0
+  meta: ^1.18.3
   path: ^1.9.1
   sesori_plugin_interface:
     path: ../sesori_plugin_interface

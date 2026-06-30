@@ -8,7 +8,7 @@ environment:
 dependencies:
   freezed_annotation: ^3.1.0
   json_annotation: ^4.12.0
-  path: ^1.9.0
+  path: ^1.9.1
   sesori_bridge_foundation:
     path: ../sesori_bridge_foundation
   sesori_plugin_interface:
