@@ -51,7 +51,7 @@ class ProjectRepository {
       // stamps openedAt when the folder has none.
       final source = _plugin as BridgeDerivedProjectSource;
       await _projectsDao.ensureOpenedProject(
-        projectId: normalizeProjectDirectory(source.launchDirectory),
+        projectId: normalizeProjectDirectory(directory: source.launchDirectory),
         openedAt: DateTime.now().millisecondsSinceEpoch,
       );
       final derived = await _deriveProjects();
@@ -78,11 +78,22 @@ class ProjectRepository {
     return projects;
   }
 
+  /// The project for [projectId]. A native plugin owns the lookup; for a
+  /// bridge-derived plugin the id IS the canonical directory and the plugin has
+  /// no `getProject`, so we resolve it from the derived set (or a placeholder).
+  Future<Project> getProject({required String projectId}) async {
+    if (_isDerived) {
+      return _findDerivedProject(normalizeProjectDirectory(directory: projectId));
+    }
+    final pluginProject = await _plugin.getProject(projectId);
+    return pluginProject.toSharedProject();
+  }
+
   Future<Project> openProject({required String path}) async {
     if (_isDerived) {
       // Record the folder so a project with no sessions yet survives the
       // refresh and later bridge restarts; the plugin has no getProject to call.
-      final canonical = normalizeProjectDirectory(path);
+      final canonical = normalizeProjectDirectory(directory: path);
       await _projectsDao.recordOpenedProject(
         projectId: canonical,
         openedAt: DateTime.now().millisecondsSinceEpoch,
@@ -100,7 +111,7 @@ class ProjectRepository {
     if (_isDerived) {
       // codex has no backend to store a project name, so persist a display-name
       // override that _deriveProjects applies on the next listing.
-      final canonical = normalizeProjectDirectory(projectId);
+      final canonical = normalizeProjectDirectory(directory: projectId);
       await _projectsDao.setDisplayName(projectId: canonical, displayName: name);
       return _findDerivedProject(canonical);
     }
@@ -141,17 +152,26 @@ class ProjectRepository {
   }
 
   /// The derived project for [canonicalId], or a minimal placeholder when it has
-  /// no sessions and no stored row yet (e.g. immediately after a rename whose
-  /// listing hasn't refreshed).
+  /// no sessions and no opened-folder row yet (e.g. immediately after a rename
+  /// whose listing hasn't refreshed). The placeholder still honours a stored
+  /// display-name override so a rename isn't lost to the directory basename.
   Future<Project> _findDerivedProject(String canonicalId) async {
     final derived = await _deriveProjects();
     for (final project in derived) {
       if (project.id == canonicalId) return project;
     }
+    final stored = await _projectsDao.getAllProjects();
+    String? displayName;
+    for (final row in stored) {
+      if (normalizeProjectDirectory(directory: row.projectId) == canonicalId) {
+        displayName = row.displayName;
+        break;
+      }
+    }
     final base = p.basename(canonicalId);
     return Project(
       id: canonicalId,
-      name: base.isEmpty ? canonicalId : base,
+      name: displayName != null && displayName.isNotEmpty ? displayName : (base.isEmpty ? canonicalId : base),
       time: null,
     );
   }

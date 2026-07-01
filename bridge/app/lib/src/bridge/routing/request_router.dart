@@ -130,7 +130,7 @@ class RequestRouter {
     return [
       HealthCheckHandler(healthRepository: healthRepository),
       RestartBridgeHandler(restartService: restartService),
-      GetCurrentProjectHandler(plugin),
+      GetCurrentProjectHandler(projectRepository: projectRepository),
       GetProjectsHandler(projectRepository: projectRepository),
       getCommandsHandler,
       GetSessionStatusesHandler(plugin),

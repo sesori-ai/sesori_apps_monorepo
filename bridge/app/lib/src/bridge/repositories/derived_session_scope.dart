@@ -33,7 +33,7 @@ class DerivedSessionScope {
   /// the plugin's own enumeration order.
   Future<List<PluginSession>> sessionsForProject(String projectId) async {
     final mapper = await _mapper();
-    final target = normalizeProjectDirectory(projectId);
+    final target = normalizeProjectDirectory(directory: projectId);
     return [
       for (final session in await _source.listAllSessions())
         if (mapper.canonicalDirectory(session.directory) == target) session,

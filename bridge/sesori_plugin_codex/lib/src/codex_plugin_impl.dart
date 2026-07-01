@@ -87,6 +87,14 @@ class CodexPlugin with BridgeDerivedProjectsMixin implements CodexManagedApi, Br
   /// this never goes stale against a live connection.
   final Set<String> _loadedThreads = {};
 
+  /// Normalized project directory per thread, learned the moment a thread is
+  /// started or resumed — before its rollout is flushed to disk. codex reports
+  /// a session under its own cwd, and the bridge derives one project per cwd, so
+  /// a fresh non-launch session must be attributed to its real directory
+  /// immediately (rename responses and live rename events) rather than falling
+  /// back to the launch cwd until the rollout appears on disk.
+  final Map<String, String> _threadDirectory = {};
+
   factory CodexPlugin({
     required String serverUrl,
     String? capabilityToken,
@@ -296,6 +304,8 @@ class CodexPlugin with BridgeDerivedProjectsMixin implements CodexManagedApi, Br
         final id = thread?["id"] as String?;
         if (id == null) return;
         _sessionStatuses[id] = const PluginSessionStatus.idle();
+        final cwd = thread?["cwd"] as String?;
+        if (cwd != null && cwd.isNotEmpty) _recordThreadDirectory(id, cwd);
     }
   }
 
@@ -341,11 +351,14 @@ class CodexPlugin with BridgeDerivedProjectsMixin implements CodexManagedApi, Br
   }) async {
     final records = _rolloutReader.listSessions();
     // Match on the normalized directory (not exact cwd) so the canonical project
-    // id the bridge derives keeps matching a session's own cwd spelling.
-    final target = normalizeProjectDirectory(projectId);
+    // id the bridge derives keeps matching a session's own cwd spelling. A
+    // record with no cwd falls back to the launch cwd — the same fallback
+    // [_toPluginSession] uses — so it stays listed under the project it derives
+    // into instead of vanishing from that project's session list.
+    final target = normalizeProjectDirectory(directory: projectId);
     final filtered = records.where((r) {
-      final cwd = r.cwd;
-      return cwd != null && normalizeProjectDirectory(cwd) == target;
+      final cwd = r.cwd ?? _projectCwd;
+      return normalizeProjectDirectory(directory: cwd) == target;
     });
     final mapped = filtered.map(_toPluginSession).toList(growable: false);
     final from = start ?? 0;
@@ -360,8 +373,9 @@ class CodexPlugin with BridgeDerivedProjectsMixin implements CodexManagedApi, Br
     final created = record.createdAt?.millisecondsSinceEpoch;
     final updated = record.updatedAt?.millisecondsSinceEpoch ?? created;
     // The session belongs to the project for its own cwd — never the launch cwd
-    // — so the bridge groups it under the right directory.
-    final directory = record.cwd ?? _projectCwd;
+    // — so the bridge groups it under the right directory. Normalized so it
+    // matches the canonical project id the bridge derives from the same value.
+    final directory = normalizeProjectDirectory(directory: record.cwd ?? _projectCwd);
     return PluginSession(
       id: record.id,
       projectID: directory,
@@ -436,7 +450,11 @@ class CodexPlugin with BridgeDerivedProjectsMixin implements CodexManagedApi, Br
         variant: variant,
       );
     }
-    final resolvedDirectory = (thread?["cwd"] as String?) ?? directory;
+    final resolvedDirectory = normalizeProjectDirectory(directory: (thread?["cwd"] as String?) ?? directory);
+    // Record the thread's directory now so a lookup before the rollout is
+    // flushed to disk (rename response, live rename event) attributes it to its
+    // real project instead of falling back to the launch cwd.
+    _recordThreadDirectory(threadId, resolvedDirectory);
     return PluginSession(
       id: threadId,
       projectID: resolvedDirectory,
@@ -575,6 +593,11 @@ class CodexPlugin with BridgeDerivedProjectsMixin implements CodexManagedApi, Br
       _eventMapper.setThreadModel(threadId, result["model"] as String?);
       _eventMapper.setThreadProvider(threadId, result["modelProvider"] as String?);
     }
+    // A thread resumed from a prior bridge run never re-emits `thread/started`,
+    // so learn its directory here (from the resume payload, else its rollout)
+    // to keep live rename events attributed to its real project.
+    final resumedCwd = _extractThread(result)?["cwd"] as String? ?? (result is Map ? result["cwd"] as String? : null);
+    _recordThreadDirectory(threadId, resumedCwd ?? _directoryForSession(threadId));
   }
 
   /// Whether a codex RPC error means the targeted thread is not loaded in the
@@ -654,13 +677,27 @@ class CodexPlugin with BridgeDerivedProjectsMixin implements CodexManagedApi, Br
     );
   }
 
-  /// The cwd of the session with [sessionId] from its rollout, falling back to
-  /// the launch cwd — so a renamed session is attributed to its real project.
+  /// The normalized project directory for [sessionId]: the in-memory directory
+  /// learned when the thread was started/resumed (authoritative before the
+  /// rollout is flushed), then the session's rollout cwd, then the launch cwd —
+  /// so a session is attributed to its real project even in the flush window.
   String _directoryForSession(String sessionId) {
+    final known = _threadDirectory[sessionId];
+    if (known != null) return known;
     for (final record in _rolloutReader.listSessions()) {
-      if (record.id == sessionId) return record.cwd ?? _projectCwd;
+      if (record.id == sessionId) return normalizeProjectDirectory(directory: record.cwd ?? _projectCwd);
     }
-    return _projectCwd;
+    return normalizeProjectDirectory(directory: _projectCwd);
+  }
+
+  /// Records [directory] as [threadId]'s normalized project directory and feeds
+  /// it to the event mapper so live session events carry the same cwd-derived
+  /// project id the bridge derives (otherwise the mobile session list drops
+  /// them as a project mismatch for a non-launch session).
+  void _recordThreadDirectory(String threadId, String directory) {
+    final normalized = normalizeProjectDirectory(directory: directory);
+    _threadDirectory[threadId] = normalized;
+    _eventMapper.setThreadDirectory(threadId, normalized);
   }
 
   /// Removes a codex session by deleting its rollout JSONL and dropping
@@ -683,6 +720,7 @@ class CodexPlugin with BridgeDerivedProjectsMixin implements CodexManagedApi, Br
     _activeTurnByThread.remove(sessionId);
     _sessionStatuses.remove(sessionId);
     _loadedThreads.remove(sessionId);
+    _threadDirectory.remove(sessionId);
   }
 
   @override
@@ -800,14 +838,13 @@ class CodexPlugin with BridgeDerivedProjectsMixin implements CodexManagedApi, Br
   }) async {
     final registry = _approvalRegistry;
     if (registry == null) return const [];
-    // Scope to the sessions whose cwd belongs to this project so a pending
-    // approval in one codex project doesn't surface under every other.
-    final target = normalizeProjectDirectory(projectId);
-    final cwdById = <String, String>{
-      for (final record in _rolloutReader.listSessions()) record.id: record.cwd ?? _projectCwd,
-    };
+    // Scope to the sessions whose directory belongs to this project so a pending
+    // approval in one codex project doesn't surface under every other. Resolves
+    // each session's directory via [_directoryForSession] so a freshly-created
+    // session (not yet flushed to its rollout) is still scoped correctly.
+    final target = normalizeProjectDirectory(directory: projectId);
     final sessionIds = _sessionStatuses.keys
-        .where((id) => normalizeProjectDirectory(cwdById[id] ?? _projectCwd) == target)
+        .where((id) => _directoryForSession(id) == target)
         .toList(growable: false);
     return registry.pendingForProject(sessionIds);
   }

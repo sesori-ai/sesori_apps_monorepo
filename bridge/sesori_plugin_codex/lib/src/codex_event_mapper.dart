@@ -1,3 +1,4 @@
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
@@ -73,6 +74,31 @@ class CodexEventMapper {
       _threadProvider[threadId] = provider;
     }
   }
+
+  /// Per-thread normalized project directory, fed by the plugin from the cwd it
+  /// learns on `thread/start` / `thread/resume`. Live session events carry a
+  /// session's own cwd-derived project id — not the launch cwd — so the mobile
+  /// session list, opened on that derived project, does not drop them as a
+  /// project mismatch. Falls back to [projectCwd] when unknown (e.g. a session
+  /// the current bridge run never started or resumed).
+  final Map<String, String> _threadDirectory = {};
+
+  /// Records the normalized project [directory] the plugin resolved for
+  /// [threadId]. Passing a null/empty [directory] clears the override (falls
+  /// back to [projectCwd]).
+  void setThreadDirectory(String threadId, String? directory) {
+    if (directory == null || directory.isEmpty) {
+      _threadDirectory.remove(threadId);
+    } else {
+      _threadDirectory[threadId] = directory;
+    }
+  }
+
+  /// The project id a live session event should carry for [threadId]: the
+  /// plugin-fed directory, else the notification's own [cwd], else the launch
+  /// cwd — always normalized to match the bridge's derived project id.
+  String _projectIdForThread(String threadId, {String? cwd}) =>
+      normalizeProjectDirectory(directory: _threadDirectory[threadId] ?? cwd ?? projectCwd);
 
   /// Maps a single notification to zero or more bridge events.
   List<BridgeSseEvent> map(CodexServerNotification notification) {
@@ -452,10 +478,11 @@ class CodexEventMapper {
 
   /// Builds a full [shared.Session] from a codex `thread` object.
   shared.Session _threadToSession(Map<String, dynamic> thread, String id) {
+    final projectId = _projectIdForThread(id, cwd: thread["cwd"] as String?);
     return shared.Session(
       id: id,
-      projectID: projectCwd,
-      directory: thread["cwd"] as String? ?? projectCwd,
+      projectID: projectId,
+      directory: projectId,
       parentID: null,
       title: thread["name"] as String?,
       time: _threadTime(thread),
@@ -470,10 +497,11 @@ class CodexEventMapper {
   /// this against existing session state, so the missing fields are filled
   /// in downstream.
   shared.Session _minimalSession({required String id, required String? title}) {
+    final projectId = _projectIdForThread(id);
     return shared.Session(
       id: id,
-      projectID: projectCwd,
-      directory: projectCwd,
+      projectID: projectId,
+      directory: projectId,
       parentID: null,
       title: title,
       time: null,

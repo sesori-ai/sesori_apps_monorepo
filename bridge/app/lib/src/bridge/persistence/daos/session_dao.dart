@@ -85,12 +85,20 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   Future<List<({String worktreePath, String projectId})>> getWorktreeProjectPaths({
     required String pluginId,
   }) async {
+    // Newest first, then keep one row per worktree path, so the mapping is
+    // deterministic if a worktree path was ever reused across projects (the
+    // most recent owner wins). Archived sessions are intentionally kept: their
+    // worktree still exists on disk and must fold to its parent, otherwise an
+    // archived worktree session would re-derive as its own project.
     final rows = await (select(sessionTable)
-          ..where((t) => t.worktreePath.isNotNull() & t.pluginId.equals(pluginId)))
+          ..where((t) => t.worktreePath.isNotNull() & t.pluginId.equals(pluginId))
+          ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
         .get();
+    final seen = <String>{};
     return [
       for (final row in rows)
-        if (row.worktreePath case final worktreePath?) (worktreePath: worktreePath, projectId: row.projectId),
+        if (row.worktreePath case final worktreePath?)
+          if (seen.add(worktreePath)) (worktreePath: worktreePath, projectId: row.projectId),
     ];
   }
 

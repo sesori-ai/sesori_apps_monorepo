@@ -192,7 +192,7 @@ class SessionRepository {
       final source = plugin as BridgeDerivedProjectSource;
       for (final session in await source.listAllSessions()) {
         if (session.id == sessionId) {
-          return normalizeProjectDirectory(session.directory);
+          return normalizeProjectDirectory(directory: session.directory);
         }
       }
       return null;
@@ -299,7 +299,7 @@ class SessionRepository {
     // plugin.getProject is a guarded no-op — resolve the path directly.
     if (_plugin is BridgeDerivedProjectSource) {
       final trimmed = projectId.trim();
-      return trimmed.isEmpty ? null : normalizeProjectDirectory(projectId);
+      return trimmed.isEmpty ? null : normalizeProjectDirectory(directory: trimmed);
     }
     try {
       final project = await _plugin.getProject(projectId);

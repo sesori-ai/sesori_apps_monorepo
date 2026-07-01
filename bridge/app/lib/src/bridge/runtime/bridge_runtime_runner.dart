@@ -10,6 +10,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
     show ArchiveExtractor, BinaryDownloadClient, ChecksumValidator, OsVersionFormatter, PlatformOs;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
+        BridgeDerivedProjectSource,
         BridgePlugin,
         BridgePluginDescriptor,
         Console,
@@ -20,6 +21,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginUnavailable,
         ProcessIdentity,
         ProcessUser,
+        ProjectTrackingMode,
         ProvisionReady,
         RuntimeProvisionProgress,
         ServerClock,
@@ -459,6 +461,18 @@ class BridgeRuntimeRunner {
         await diagnostics.checkGitAvailable();
       } on Object catch (error, stackTrace) {
         Log.w("Startup diagnostics failed; continuing without a degraded-access warning", error, stackTrace);
+      }
+
+      // A bridgeDerived descriptor requires its plugin to implement the
+      // derived-project capability; fail fast here with a clear message rather
+      // than letting a later unchecked cast throw an opaque TypeError deep
+      // inside a repository on the first project listing.
+      if (descriptor.projectTrackingMode == ProjectTrackingMode.bridgeDerived &&
+          plugin.api is! BridgeDerivedProjectSource) {
+        throw StateError(
+          "Plugin '$pluginId' declares ProjectTrackingMode.bridgeDerived but its "
+          "API does not implement BridgeDerivedProjectSource",
+        );
       }
 
       final runtime = BridgeRuntime.create(

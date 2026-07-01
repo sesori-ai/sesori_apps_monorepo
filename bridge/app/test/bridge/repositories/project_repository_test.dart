@@ -192,6 +192,28 @@ void main() {
       expect(listed.name, "Renamed Alpha");
     });
 
+    test("getProject resolves a derived project without calling the plugin's guarded getProject", () async {
+      plugin.sessions = [_session("/tmp/proj/alpha", id: "a1", created: 10, updated: 20)];
+
+      // The mixin's getProject throws; routing through the repository must
+      // resolve from the derived set instead of surfacing that as an error.
+      final project = await repo.getProject(projectId: "/tmp/proj/alpha");
+
+      expect(project.id, "/tmp/proj/alpha");
+      expect(project.name, "alpha");
+    });
+
+    test("getProject honours a stored display name for a project with no sessions or opened row", () async {
+      // A rename on a project that isn't otherwise in the derived set (no
+      // sessions, never opened) still persists a display-name override; the
+      // placeholder must return that name rather than the directory basename.
+      final renamed = await repo.renameProject(projectId: "/tmp/proj/ghost", name: "Ghost Renamed");
+
+      expect(renamed.name, "Ghost Renamed");
+      final resolved = await repo.getProject(projectId: "/tmp/proj/ghost");
+      expect(resolved.name, "Ghost Renamed");
+    });
+
     test("a session in a dedicated worktree folds into its parent project, not its own card", () async {
       const parent = "/tmp/proj/alpha";
       const worktree = "/tmp/proj/alpha/.worktrees/session-001";

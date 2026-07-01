@@ -5,24 +5,24 @@ void main() {
   group("normalizeProjectDirectory", () {
     test("collapses a trailing separator", () {
       expect(
-        normalizeProjectDirectory("/tmp/projects/alpha/"),
-        normalizeProjectDirectory("/tmp/projects/alpha"),
+        normalizeProjectDirectory(directory: "/tmp/projects/alpha/"),
+        normalizeProjectDirectory(directory: "/tmp/projects/alpha"),
       );
     });
 
     test("collapses `.` and `..` segments", () {
       expect(
-        normalizeProjectDirectory("/tmp/projects/alpha/."),
+        normalizeProjectDirectory(directory: "/tmp/projects/alpha/."),
         "/tmp/projects/alpha",
       );
       expect(
-        normalizeProjectDirectory("/tmp/projects/beta/../alpha"),
+        normalizeProjectDirectory(directory: "/tmp/projects/beta/../alpha"),
         "/tmp/projects/alpha",
       );
     });
 
     test("leaves an already-canonical absolute path unchanged", () {
-      expect(normalizeProjectDirectory("/tmp/projects/alpha"), "/tmp/projects/alpha");
+      expect(normalizeProjectDirectory(directory: "/tmp/projects/alpha"), "/tmp/projects/alpha");
     });
   });
 }

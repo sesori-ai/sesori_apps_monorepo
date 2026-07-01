@@ -17,7 +17,7 @@ class WorktreeProjectMapper {
     required List<({String worktreePath, String projectId})> worktreeProjectPaths,
   }) : _worktreeToProject = {
          for (final row in worktreeProjectPaths)
-           normalizeProjectDirectory(row.worktreePath): normalizeProjectDirectory(row.projectId),
+           normalizeProjectDirectory(directory: row.worktreePath): normalizeProjectDirectory(directory: row.projectId),
        };
 
   /// A mapper that knows of no worktrees — every directory is its own project.
@@ -28,7 +28,7 @@ class WorktreeProjectMapper {
   /// The canonical project directory for [directory]: the parent project when
   /// [directory] is a known worktree, else the normalized directory itself.
   String canonicalDirectory(String directory) {
-    final normalized = normalizeProjectDirectory(directory);
+    final normalized = normalizeProjectDirectory(directory: directory);
     return _worktreeToProject[normalized] ?? normalized;
   }
 }

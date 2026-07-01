@@ -10,5 +10,5 @@ import "package:path/path.dart" as p;
 /// plugin's `getSessions` filter. (Plugin cwds are already absolute, so
 /// `absolute` is defensive; it also preserves drive roots like `C:\` on
 /// Windows.)
-String normalizeProjectDirectory(String directory) =>
+String normalizeProjectDirectory({required String directory}) =>
     p.normalize(p.absolute(directory));
