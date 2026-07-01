@@ -36,4 +36,7 @@ void main() {
 class _DerivedPlugin with BridgeDerivedProjectsMixin implements BridgeDerivedProjectSource {
   @override
   Future<List<PluginSession>> listAllSessions() async => const [];
+
+  @override
+  String get launchDirectory => "/tmp/launch";
 }

@@ -20,10 +20,11 @@ void main() {
       expect(plugin.id, equals("codex"));
     });
 
-    test("getProjects synthesises a single project from launch CWD", () async {
-      // Phase 3: a single PluginProject is returned for the launch CWD.
-      // Pin both CODEX_HOME (away from the user's real history) and
-      // projectCwd so the test is hermetic.
+    test("is bridge-derived: getProjects is empty and launchDirectory is the launch CWD", () async {
+      // codex declares ProjectTrackingMode.bridgeDerived, so the bridge derives
+      // the project list from listAllSessions/launchDirectory — the plugin's own
+      // getProjects is an empty no-op from BridgeDerivedProjectsMixin. Pin
+      // CODEX_HOME away from the user's real history so the test is hermetic.
       final tempHome = Directory.systemTemp.createTempSync("codex-home-stub-");
       try {
         final plugin = CodexPlugin(
@@ -33,9 +34,9 @@ void main() {
           ),
           projectCwd: "/repo/example",
         );
-        final projects = await plugin.getProjects();
-        expect(projects, hasLength(1));
-        expect(projects.single.id, equals("/repo/example"));
+        expect(await plugin.getProjects(), isEmpty);
+        expect(plugin.launchDirectory, equals("/repo/example"));
+        expect(await plugin.listAllSessions(), isEmpty);
         await plugin.dispose();
       } finally {
         try {
@@ -146,11 +147,11 @@ void main() {
     });
 
     test(
-      "renameProject returns the synthesised project with the new name",
+      "renameProject throws — bridge-derived renames persist bridge-side",
       () async {
-        // Phase 6 dropped the last UnimplementedError. renameProject is a
-        // no-op against codex (single-project model) but echoes the new
-        // name so any caller's local cache stays consistent.
+        // codex is bridge-derived: renames are persisted by the bridge in its
+        // project store, so the plugin's renameProject (from
+        // BridgeDerivedProjectsMixin) throws to surface any misrouting.
         final tempHome = Directory.systemTemp.createTempSync("codex-home-rn-");
         try {
           final plugin = CodexPlugin(
@@ -164,10 +165,10 @@ void main() {
             ),
             projectCwd: "/repo/example",
           );
-          final renamed =
-              await plugin.renameProject(projectId: "/repo/example", name: "X");
-          expect(renamed.id, equals("/repo/example"));
-          expect(renamed.name, equals("X"));
+          await expectLater(
+            () => plugin.renameProject(projectId: "/repo/example", name: "X"),
+            throwsA(isA<UnsupportedError>()),
+          );
           await plugin.dispose();
         } finally {
           try {

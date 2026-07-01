@@ -354,9 +354,16 @@ class _FakeDerivedPlugin extends _FakeBridgePlugin
 
   List<PluginSession> sessions;
 
+  /// Points at a session directory used by the tests so the launch-folder seed
+  /// doesn't introduce an extra project the assertions don't expect.
+  String launchDir = "/tmp/proj/alpha";
+
   @override
   String get id => "codex";
 
   @override
   Future<List<PluginSession>> listAllSessions() async => sessions;
+
+  @override
+  String get launchDirectory => launchDir;
 }

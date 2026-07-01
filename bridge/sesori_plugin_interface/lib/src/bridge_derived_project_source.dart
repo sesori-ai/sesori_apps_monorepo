@@ -20,4 +20,10 @@ abstract interface class BridgeDerivedProjectSource {
   /// groups the result by [PluginSession.directory] to build the project list,
   /// so each returned session must carry its real working directory.
   Future<List<PluginSession>> listAllSessions();
+
+  /// The plugin's launch directory. The bridge seeds this as an opened folder so
+  /// it always surfaces as a project — even with no sessions yet — matching the
+  /// "there is always somewhere to start a session" behaviour derive-style
+  /// backends had before the bridge owned their project list.
+  String get launchDirectory;
 }

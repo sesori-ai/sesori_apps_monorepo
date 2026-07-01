@@ -41,6 +41,14 @@ class ProjectRepository {
 
   Future<List<Project>> getProjects() async {
     if (_isDerived) {
+      // Seed the plugin's launch directory as an opened folder so it always
+      // surfaces as a project — even with no sessions yet. Idempotent: it only
+      // stamps openedAt when the folder has none.
+      final source = _plugin as BridgeDerivedProjectSource;
+      await _projectsDao.ensureOpenedProject(
+        projectId: normalizeProjectDirectory(source.launchDirectory),
+        openedAt: DateTime.now().millisecondsSinceEpoch,
+      );
       final derived = await _deriveProjects();
       // Persist canonical rows so a later session insert (and the hidden flag)
       // have a project row to reference.

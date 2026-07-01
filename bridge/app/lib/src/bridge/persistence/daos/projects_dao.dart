@@ -29,6 +29,25 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
     );
   }
 
+  /// Stamps [openedAt] on [projectId] only when it has none yet (creating the
+  /// row if missing), so seeding the launch folder on every listing never bumps
+  /// an already-recorded time. Unlike [recordOpenedProject], an existing
+  /// openedAt is preserved.
+  Future<void> ensureOpenedProject({required String projectId, required int openedAt}) async {
+    await transaction(() async {
+      final existing = await (select(projectsTable)..where((t) => t.projectId.equals(projectId))).getSingleOrNull();
+      if (existing == null) {
+        await into(projectsTable).insert(
+          ProjectsTableCompanion.insert(projectId: projectId, openedAt: Value(openedAt)),
+        );
+      } else if (existing.openedAt == null) {
+        await (update(projectsTable)..where((t) => t.projectId.equals(projectId))).write(
+          ProjectsTableCompanion(openedAt: Value(openedAt)),
+        );
+      }
+    });
+  }
+
   /// Sets the bridge-persisted display-name override for [projectId], creating
   /// the row if missing. Updates only displayName on conflict. Used to persist a
   /// rename for a bridge-derived plugin that has no backend to store the name.

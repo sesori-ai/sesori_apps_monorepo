@@ -110,6 +110,11 @@ class CodexPluginDescriptor extends BridgePluginDescriptor {
   @override
   String get displayName => "Codex";
 
+  /// codex has no native project concept, so the bridge derives its projects
+  /// from session cwds and owns opened-folder + rename persistence.
+  @override
+  ProjectTrackingMode get projectTrackingMode => ProjectTrackingMode.bridgeDerived;
+
   @override
   List<PluginOption> get options => cliOptions;
 

@@ -263,6 +263,12 @@ class SessionRepository {
   }
 
   Future<String?> getProjectPath({required String projectId}) async {
+    // For a bridge-derived plugin the project id IS the canonical directory, and
+    // plugin.getProject is a guarded no-op — resolve the path directly.
+    if (_plugin is BridgeDerivedProjectSource) {
+      final trimmed = projectId.trim();
+      return trimmed.isEmpty ? null : normalizeProjectDirectory(projectId);
+    }
     try {
       final project = await _plugin.getProject(projectId);
       if (project.id.trim().isEmpty) {

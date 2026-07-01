@@ -1,7 +1,7 @@
 import "dart:async";
 import "dart:io" show Directory;
 
-import "package:path/path.dart" as p;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "approval_registry.dart";
@@ -29,7 +29,7 @@ import "session_rollout_reader.dart";
 ///     non-empty data while sessions are alive.
 ///
 /// Approval/permission flows still throw — those land in Phase 5.
-class CodexPlugin implements CodexManagedApi {
+class CodexPlugin with BridgeDerivedProjectsMixin implements CodexManagedApi, BridgeDerivedProjectSource {
   final String _serverUrl;
   // Passed to the default client built in [_createClient]; retained for future
   // non-loopback (`--ws-auth`) support.
@@ -321,23 +321,17 @@ class CodexPlugin implements CodexManagedApi {
     }
   }
 
-  PluginProject _synthesizedProject() {
-    final updated = DateTime.now().millisecondsSinceEpoch;
-    return PluginProject(
-      id: _projectCwd,
-      name: p.basename(_projectCwd).isEmpty
-          ? _projectCwd
-          : p.basename(_projectCwd),
-      time: PluginProjectTime(created: updated, updated: updated),
-    );
-  }
+  /// codex declares `ProjectTrackingMode.bridgeDerived`, so getProjects/
+  /// getProject/renameProject come from [BridgeDerivedProjectsMixin] and the
+  /// bridge derives the project list from these sessions. Each carries its real
+  /// rollout cwd as its directory so the bridge groups it under the right
+  /// project.
+  @override
+  Future<List<PluginSession>> listAllSessions() async =>
+      _rolloutReader.listSessions().map(_toPluginSession).toList(growable: false);
 
   @override
-  Future<List<PluginProject>> getProjects() async => [_synthesizedProject()];
-
-  @override
-  Future<PluginProject> getProject(String projectId) async =>
-      _synthesizedProject();
+  String get launchDirectory => _projectCwd;
 
   @override
   Future<List<PluginSession>> getSessions(
@@ -346,7 +340,13 @@ class CodexPlugin implements CodexManagedApi {
     int? limit,
   }) async {
     final records = _rolloutReader.listSessions();
-    final filtered = records.where((r) => r.cwd == projectId);
+    // Match on the normalized directory (not exact cwd) so the canonical project
+    // id the bridge derives keeps matching a session's own cwd spelling.
+    final target = normalizeProjectDirectory(projectId);
+    final filtered = records.where((r) {
+      final cwd = r.cwd;
+      return cwd != null && normalizeProjectDirectory(cwd) == target;
+    });
     final mapped = filtered.map(_toPluginSession).toList(growable: false);
     final from = start ?? 0;
     final until = limit == null
@@ -359,10 +359,13 @@ class CodexPlugin implements CodexManagedApi {
   PluginSession _toPluginSession(CodexSessionRecord record) {
     final created = record.createdAt?.millisecondsSinceEpoch;
     final updated = record.updatedAt?.millisecondsSinceEpoch ?? created;
+    // The session belongs to the project for its own cwd — never the launch cwd
+    // — so the bridge groups it under the right directory.
+    final directory = record.cwd ?? _projectCwd;
     return PluginSession(
       id: record.id,
-      projectID: _projectCwd,
-      directory: record.cwd ?? _projectCwd,
+      projectID: directory,
+      directory: directory,
       parentID: null,
       title: record.threadName,
       time: created == null || updated == null
@@ -433,10 +436,11 @@ class CodexPlugin implements CodexManagedApi {
         variant: variant,
       );
     }
+    final resolvedDirectory = (thread?["cwd"] as String?) ?? directory;
     return PluginSession(
       id: threadId,
-      projectID: _projectCwd,
-      directory: (thread?["cwd"] as String?) ?? directory,
+      projectID: resolvedDirectory,
+      directory: resolvedDirectory,
       parentID: parentSessionId,
       title: thread?["name"] as String?,
       time: _timeFromThread(thread),
@@ -638,10 +642,11 @@ class CodexPlugin implements CodexManagedApi {
       method: "thread/name/set",
       params: {"threadId": sessionId, "name": title},
     );
+    final directory = _directoryForSession(sessionId);
     return PluginSession(
       id: sessionId,
-      projectID: _projectCwd,
-      directory: _projectCwd,
+      projectID: directory,
+      directory: directory,
       parentID: null,
       title: title,
       time: null,
@@ -649,17 +654,13 @@ class CodexPlugin implements CodexManagedApi {
     );
   }
 
-  @override
-  Future<PluginProject> renameProject({
-    required String projectId,
-    required String name,
-  }) async {
-    // The codex backend uses a single synthesised project per launch CWD,
-    // so there is no per-project name to persist. Honour the contract by
-    // returning a project with the requested name applied so any local
-    // UI cache stays consistent.
-    final base = _synthesizedProject();
-    return PluginProject(id: base.id, name: name, time: base.time);
+  /// The cwd of the session with [sessionId] from its rollout, falling back to
+  /// the launch cwd — so a renamed session is attributed to its real project.
+  String _directoryForSession(String sessionId) {
+    for (final record in _rolloutReader.listSessions()) {
+      if (record.id == sessionId) return record.cwd ?? _projectCwd;
+    }
+    return _projectCwd;
   }
 
   /// Removes a codex session by deleting its rollout JSONL and dropping
@@ -799,9 +800,15 @@ class CodexPlugin implements CodexManagedApi {
   }) async {
     final registry = _approvalRegistry;
     if (registry == null) return const [];
-    // Single-project model: every codex session belongs to the launch
-    // project. Pull every known session id we've seen.
-    final sessionIds = _sessionStatuses.keys.toList(growable: false);
+    // Scope to the sessions whose cwd belongs to this project so a pending
+    // approval in one codex project doesn't surface under every other.
+    final target = normalizeProjectDirectory(projectId);
+    final cwdById = <String, String>{
+      for (final record in _rolloutReader.listSessions()) record.id: record.cwd ?? _projectCwd,
+    };
+    final sessionIds = _sessionStatuses.keys
+        .where((id) => normalizeProjectDirectory(cwdById[id] ?? _projectCwd) == target)
+        .toList(growable: false);
     return registry.pendingForProject(sessionIds);
   }
 
