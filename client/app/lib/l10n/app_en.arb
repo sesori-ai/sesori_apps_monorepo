@@ -45,6 +45,10 @@
   "@projectsOnboardingPcStatusRun": {
     "description": "Secondary portion of the PC status line, rendered in the secondary text color."
   },
+  "projectsOnboardingPcStatusWhy": "Why is this needed?",
+  "@projectsOnboardingPcStatusWhy": {
+    "description": "Label for the button below the PC status line that opens the bridge explainer bottom sheet; also used as that sheet's title."
+  },
   "projectsOnboardingNeedHelp": "Need help?",
   "@projectsOnboardingNeedHelp": {
     "description": "Label for the glass pill button below the PC status line that opens a menu of support channels."
@@ -473,5 +477,65 @@
   "sessionDetailShowMore": "Show more",
   "sessionDetailShowLess": "Show less",
   "emptySessionDetailTitle": "Select a session",
-  "emptySessionDetailSubtitle": "Choose a session from the list to view details"
+  "emptySessionDetailSubtitle": "Choose a session from the list to view details",
+  "projectsOnboardingWhyLede": "Your LLM of choice runs on your computer.",
+  "@projectsOnboardingWhyLede": {
+    "description": "Headline line of the onboarding 'Why is this needed?' sheet, explaining that the AI model runs on the developer's own machine."
+  },
+  "projectsOnboardingWhyBody": "The Bridge securely connects it to Sesori on your phone.",
+  "@projectsOnboardingWhyBody": {
+    "description": "Supporting line under the 'Why is this needed?' headline, explaining the Bridge's role."
+  },
+  "projectsOnboardingWhySecureTitle": "Secure access",
+  "@projectsOnboardingWhySecureTitle": {
+    "description": "Title of the 'secure access' reassurance row in the 'Why is this needed?' sheet."
+  },
+  "projectsOnboardingWhySecureSubtitle": "Your sessions are end-to-end encrypted.",
+  "@projectsOnboardingWhySecureSubtitle": {
+    "description": "Subtitle of the 'secure access' reassurance row."
+  },
+  "projectsOnboardingWhyAnywhereTitle": "Connect from anywhere",
+  "@projectsOnboardingWhyAnywhereTitle": {
+    "description": "Title of the 'connect from anywhere' reassurance row in the 'Why is this needed?' sheet."
+  },
+  "projectsOnboardingWhyAnywhereSubtitle": "No shared Wi-Fi required.",
+  "@projectsOnboardingWhyAnywhereSubtitle": {
+    "description": "Subtitle of the 'connect from anywhere' reassurance row."
+  },
+  "projectsOnboardingWhyNotifiedTitle": "Get notified",
+  "@projectsOnboardingWhyNotifiedTitle": {
+    "description": "Title of the 'get notified' reassurance row in the 'Why is this needed?' sheet."
+  },
+  "projectsOnboardingWhyNotifiedSubtitle": "Know when a task needs you.",
+  "@projectsOnboardingWhyNotifiedSubtitle": {
+    "description": "Subtitle of the 'get notified' reassurance row."
+  },
+  "projectsOnboardingWhyFaqHeader": "FAQs",
+  "@projectsOnboardingWhyFaqHeader": {
+    "description": "Section header above the FAQ list in the 'Why is this needed?' sheet."
+  },
+  "projectsOnboardingWhyFaqDirectQuestion": "Why can't the app connect directly?",
+  "@projectsOnboardingWhyFaqDirectQuestion": {
+    "description": "FAQ question about why the phone cannot reach the computer without the Bridge."
+  },
+  "projectsOnboardingWhyFaqDirectAnswer": "Your AI assistant runs on your computer, not our servers. The Bridge is the secure link that lets your phone reach it from anywhere.",
+  "@projectsOnboardingWhyFaqDirectAnswer": {
+    "description": "DRAFT copy pending final wording. Answer to the 'connect directly' FAQ question."
+  },
+  "projectsOnboardingWhyFaqPcOnQuestion": "Does my PC stay on?",
+  "@projectsOnboardingWhyFaqPcOnQuestion": {
+    "description": "FAQ question about whether the developer's computer must stay powered on."
+  },
+  "projectsOnboardingWhyFaqPcOnAnswer": "Your computer needs to be on and running Sesori for live sessions. You can start or stop it whenever you like.",
+  "@projectsOnboardingWhyFaqPcOnAnswer": {
+    "description": "DRAFT copy pending final wording. Answer to the 'does my PC stay on' FAQ question."
+  },
+  "projectsOnboardingWhyFaqReadQuestion": "Can Sesori read my sessions?",
+  "@projectsOnboardingWhyFaqReadQuestion": {
+    "description": "FAQ question about whether Sesori can read the developer's session data."
+  },
+  "projectsOnboardingWhyFaqReadAnswer": "No. Everything between your phone and computer is end-to-end encrypted — the relay only passes along sealed data it can't read.",
+  "@projectsOnboardingWhyFaqReadAnswer": {
+    "description": "DRAFT copy pending final wording. Answer to the 'can Sesori read my sessions' FAQ question."
+  }
 }

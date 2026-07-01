@@ -23,6 +23,7 @@ import "add_project_dialog.dart";
 import "rename_project_dialog.dart";
 
 part "onboarding/onboarding_view.dart";
+part "onboarding/why_bridge_info_sheet.dart";
 part "widgets/bridge_offline_view.dart";
 part "widgets/error_view.dart";
 part "widgets/project_tile.dart";

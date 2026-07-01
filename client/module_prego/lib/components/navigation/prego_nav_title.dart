@@ -8,10 +8,10 @@ import "../../module_prego.dart";
 ///
 /// Renders [title] in `text-lg / medium / text-primary` with an optional
 /// [subtitle] in `text-md / medium / text-secondary` on a centred second line.
-/// Both lines are centred and clipped to a single ellipsised line. Optional
-/// [leading] (e.g. an avatar) and [trailing] (e.g. a verified tick) widgets sit
-/// either side of the title with a `spacing-sm` gap, mirroring the component's
-/// avatar and check-mark variants.
+/// Both lines are centred and clipped to a single ellipsised line.
+///
+/// This is the top bar's centred title; the sheet header uses its own bolder,
+/// leading-or-centred title block (see [PregoTopNavigationSheets]).
 ///
 /// Used by [PregoTopNavigation] to render its fixed inline title, so the bar
 /// title looks identical wherever the bar appears (including inside

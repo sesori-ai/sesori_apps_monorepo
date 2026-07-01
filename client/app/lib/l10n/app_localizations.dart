@@ -205,6 +205,12 @@ abstract class AppLocalizations {
   /// **'Run Sesori on your PC'**
   String get projectsOnboardingPcStatusRun;
 
+  /// Label for the button below the PC status line that opens the bridge explainer bottom sheet; also used as that sheet's title.
+  ///
+  /// In en, this message translates to:
+  /// **'Why is this needed?'**
+  String get projectsOnboardingPcStatusWhy;
+
   /// Label for the glass pill button below the PC status line that opens a menu of support channels.
   ///
   /// In en, this message translates to:
@@ -1698,6 +1704,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Choose a session from the list to view details'**
   String get emptySessionDetailSubtitle;
+
+  /// Headline line of the onboarding 'Why is this needed?' sheet, explaining that the AI model runs on the developer's own machine.
+  ///
+  /// In en, this message translates to:
+  /// **'Your LLM of choice runs on your computer.'**
+  String get projectsOnboardingWhyLede;
+
+  /// Supporting line under the 'Why is this needed?' headline, explaining the Bridge's role.
+  ///
+  /// In en, this message translates to:
+  /// **'The Bridge securely connects it to Sesori on your phone.'**
+  String get projectsOnboardingWhyBody;
+
+  /// Title of the 'secure access' reassurance row in the 'Why is this needed?' sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Secure access'**
+  String get projectsOnboardingWhySecureTitle;
+
+  /// Subtitle of the 'secure access' reassurance row.
+  ///
+  /// In en, this message translates to:
+  /// **'Your sessions are end-to-end encrypted.'**
+  String get projectsOnboardingWhySecureSubtitle;
+
+  /// Title of the 'connect from anywhere' reassurance row in the 'Why is this needed?' sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect from anywhere'**
+  String get projectsOnboardingWhyAnywhereTitle;
+
+  /// Subtitle of the 'connect from anywhere' reassurance row.
+  ///
+  /// In en, this message translates to:
+  /// **'No shared Wi-Fi required.'**
+  String get projectsOnboardingWhyAnywhereSubtitle;
+
+  /// Title of the 'get notified' reassurance row in the 'Why is this needed?' sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Get notified'**
+  String get projectsOnboardingWhyNotifiedTitle;
+
+  /// Subtitle of the 'get notified' reassurance row.
+  ///
+  /// In en, this message translates to:
+  /// **'Know when a task needs you.'**
+  String get projectsOnboardingWhyNotifiedSubtitle;
+
+  /// Section header above the FAQ list in the 'Why is this needed?' sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'FAQs'**
+  String get projectsOnboardingWhyFaqHeader;
+
+  /// FAQ question about why the phone cannot reach the computer without the Bridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Why can\'t the app connect directly?'**
+  String get projectsOnboardingWhyFaqDirectQuestion;
+
+  /// DRAFT copy pending final wording. Answer to the 'connect directly' FAQ question.
+  ///
+  /// In en, this message translates to:
+  /// **'Your AI assistant runs on your computer, not our servers. The Bridge is the secure link that lets your phone reach it from anywhere.'**
+  String get projectsOnboardingWhyFaqDirectAnswer;
+
+  /// FAQ question about whether the developer's computer must stay powered on.
+  ///
+  /// In en, this message translates to:
+  /// **'Does my PC stay on?'**
+  String get projectsOnboardingWhyFaqPcOnQuestion;
+
+  /// DRAFT copy pending final wording. Answer to the 'does my PC stay on' FAQ question.
+  ///
+  /// In en, this message translates to:
+  /// **'Your computer needs to be on and running Sesori for live sessions. You can start or stop it whenever you like.'**
+  String get projectsOnboardingWhyFaqPcOnAnswer;
+
+  /// FAQ question about whether Sesori can read the developer's session data.
+  ///
+  /// In en, this message translates to:
+  /// **'Can Sesori read my sessions?'**
+  String get projectsOnboardingWhyFaqReadQuestion;
+
+  /// DRAFT copy pending final wording. Answer to the 'can Sesori read my sessions' FAQ question.
+  ///
+  /// In en, this message translates to:
+  /// **'No. Everything between your phone and computer is end-to-end encrypted — the relay only passes along sealed data it can\'t read.'**
+  String get projectsOnboardingWhyFaqReadAnswer;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
