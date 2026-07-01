@@ -12,6 +12,7 @@ import "mappers/plugin_command_mapper.dart";
 import "mappers/plugin_session_mapper.dart";
 import "mappers/prompt_part_mapper.dart";
 import "mappers/pull_request_mapper.dart";
+import "mappers/worktree_project_mapper.dart";
 import "models/stored_session.dart";
 import "pull_request_repository.dart";
 
@@ -185,14 +186,19 @@ class SessionRepository {
     }
 
     // Bridge-derived plugins return [] from getProjects(), so resolve via the
-    // session enumeration and return the canonical (normalized) directory — the
-    // project id the bridge derives and persists.
+    // session enumeration and return the canonical project directory — folding a
+    // worktree session's cwd back to its parent through the same
+    // [WorktreeProjectMapper] used by [DerivedSessionScope], so this fallback
+    // agrees with both the persisted-row path above and project→session scoping.
     final plugin = _plugin;
     if (plugin is BridgeDerivedProjectSource) {
       final source = plugin as BridgeDerivedProjectSource;
+      final mapper = WorktreeProjectMapper(
+        worktreeProjectPaths: await _sessionDao.getWorktreeProjectPaths(pluginId: plugin.id),
+      );
       for (final session in await source.listAllSessions()) {
         if (session.id == sessionId) {
-          return normalizeProjectDirectory(directory: session.directory);
+          return mapper.canonicalDirectory(session.directory);
         }
       }
       return null;

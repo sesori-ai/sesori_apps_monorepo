@@ -599,6 +599,35 @@ void main() {
       expect(sessions.map((s) => s.id).toSet(), {"s1", "w1"});
     });
 
+    test("findProjectIdForSession folds a rowless worktree session to its parent via the worktree mapper", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      const parent = "/tmp/proj/alpha";
+      const worktree = "/tmp/proj/alpha/.worktrees/session-001";
+      // Session a1 recorded the worktree→parent mapping. Session b1 also runs in
+      // that worktree but has no row of its own, so it hits the derived
+      // fallback — which must still fold it to the parent, matching how the
+      // persisted-row path and DerivedSessionScope canonicalize it.
+      final plugin = _FakeDerivedPlugin(
+        launchDirectory: parent,
+        allSessions: [pluginSession(worktree, id: "b1")],
+      );
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+      await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "a1");
+
+      final result = await repository.findProjectIdForSession(sessionId: "b1");
+
+      expect(result, equals(parent));
+    });
+
     test("getSessionsForProject scoped to the worktree path returns nothing — it belongs to its parent", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
