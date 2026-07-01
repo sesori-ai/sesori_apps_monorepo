@@ -25,6 +25,7 @@ void main() {
         projectRepository: ProjectRepository(
           plugin: plugin,
           projectsDao: projectsDao,
+          sessionDao: db.sessionDao,
           trackingMode: ProjectTrackingMode.nativeBackend,
           derivedProjectBuilder: const DerivedProjectBuilder(),
         ),

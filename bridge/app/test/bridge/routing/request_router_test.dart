@@ -56,6 +56,7 @@ void main() {
       final projectRepository = ProjectRepository(
         plugin: plugin,
         projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
         trackingMode: ProjectTrackingMode.nativeBackend,
         derivedProjectBuilder: const DerivedProjectBuilder(),
       );
@@ -83,7 +84,7 @@ void main() {
       final agentRepository = AgentRepository(plugin: plugin);
       final providerRepository = ProviderRepository(plugin: plugin);
       final permissionRepository = PermissionRepository(plugin: plugin);
-      final questionRepository = QuestionRepository(plugin: plugin);
+      final questionRepository = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao);
       final sessionPersistenceService = SessionPersistenceService(
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
@@ -419,6 +420,7 @@ void main() {
       final projectRepository = ProjectRepository(
         plugin: plugin,
         projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
         trackingMode: ProjectTrackingMode.nativeBackend,
         derivedProjectBuilder: const DerivedProjectBuilder(),
       );
@@ -508,7 +510,7 @@ void main() {
         providerRepository: providerRepository,
         agentRepository: agentRepository,
         permissionRepository: permissionRepository,
-        questionRepository: QuestionRepository(plugin: plugin),
+        questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao),
         sessionPersistenceService: sessionPersistenceService,
         worktreeService: worktreeService,
         sessionDiffsHandler: sessionDiffsHandler,

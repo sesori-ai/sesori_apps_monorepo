@@ -18,6 +18,7 @@ void main() {
       repo = ProjectRepository(
         plugin: plugin,
         projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
         trackingMode: ProjectTrackingMode.nativeBackend,
         derivedProjectBuilder: const DerivedProjectBuilder(),
       );
@@ -137,6 +138,7 @@ void main() {
       repo = ProjectRepository(
         plugin: plugin,
         projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
         trackingMode: ProjectTrackingMode.bridgeDerived,
         derivedProjectBuilder: const DerivedProjectBuilder(),
       );
@@ -188,6 +190,39 @@ void main() {
       expect(renamed.name, "Renamed Alpha");
       final listed = (await repo.getProjects()).firstWhere((p) => p.id == "/tmp/proj/alpha");
       expect(listed.name, "Renamed Alpha");
+    });
+
+    test("a session in a dedicated worktree folds into its parent project, not its own card", () async {
+      const parent = "/tmp/proj/alpha";
+      const worktree = "/tmp/proj/alpha/.worktrees/session-001";
+      // The bridge recorded this session under its parent project with the
+      // worktree path it created — mirroring SessionCreationService.
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
+      await db.sessionDao.insertSession(
+        sessionId: "w1",
+        projectId: parent,
+        isDedicated: true,
+        createdAt: 200,
+        worktreePath: worktree,
+        branchName: "session-001",
+        baseBranch: "main",
+        baseCommit: "abc123",
+        lastAgent: null,
+        lastAgentModel: null,
+        pluginId: "codex",
+      );
+      // The plugin, however, only knows the session by its worktree cwd.
+      plugin.sessions = [
+        _session(parent, id: "s1", created: 100, updated: 100),
+        _session(worktree, id: "w1", created: 200, updated: 200),
+      ];
+
+      final result = await repo.getProjects();
+
+      // One card (the parent), never a card named after the worktree.
+      expect(result.map((p) => p.id).toSet(), {parent});
+      // The worktree session's later timestamp folded into the parent.
+      expect(result.single.time?.updated, 200);
     });
   });
 }

@@ -60,6 +60,7 @@ void main() {
         final projectRepo = ProjectRepository(
           plugin: plugin,
           projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
           trackingMode: ProjectTrackingMode.nativeBackend,
           derivedProjectBuilder: const DerivedProjectBuilder(),
         );

@@ -76,6 +76,24 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     return (select(sessionTable)..where((t) => t.projectId.equals(projectId))).get();
   }
 
+  /// The worktree→project links the bridge recorded for [pluginId]: every
+  /// session created inside a dedicated worktree, as its worktree directory and
+  /// the project the user actually opened. A bridge-derived plugin reports each
+  /// session under its own cwd (the worktree path), so the derivation uses these
+  /// rows to fold a worktree's sessions back under their parent project instead
+  /// of spawning a project per worktree.
+  Future<List<({String worktreePath, String projectId})>> getWorktreeProjectPaths({
+    required String pluginId,
+  }) async {
+    final rows = await (select(sessionTable)
+          ..where((t) => t.worktreePath.isNotNull() & t.pluginId.equals(pluginId)))
+        .get();
+    return [
+      for (final row in rows)
+        if (row.worktreePath case final worktreePath?) (worktreePath: worktreePath, projectId: row.projectId),
+    ];
+  }
+
   Future<Map<String, SessionDto>> getSessionsByIds({required List<String> sessionIds}) async {
     if (sessionIds.isEmpty) {
       return <String, SessionDto>{};

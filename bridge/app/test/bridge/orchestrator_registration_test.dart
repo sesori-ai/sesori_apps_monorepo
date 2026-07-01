@@ -229,6 +229,7 @@ class _RegistrationHarness {
       projectRepository: ProjectRepository(
         plugin: plugin,
         projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
         trackingMode: ProjectTrackingMode.nativeBackend,
         derivedProjectBuilder: const DerivedProjectBuilder(),
       ),
@@ -259,7 +260,7 @@ class _RegistrationHarness {
       providerRepository: ProviderRepository(plugin: plugin),
       agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: PermissionRepository(plugin: plugin),
-      questionRepository: QuestionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
       sessionPersistenceService: SessionPersistenceService(
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,

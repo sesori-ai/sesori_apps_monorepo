@@ -72,6 +72,7 @@ void main() {
     final projectRepository = ProjectRepository(
       plugin: plugin,
       projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
       trackingMode: ProjectTrackingMode.nativeBackend,
       derivedProjectBuilder: const DerivedProjectBuilder(),
     );
@@ -150,7 +151,7 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin),
       agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -242,6 +243,7 @@ void main() {
     final projectRepository = ProjectRepository(
       plugin: plugin,
       projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
       trackingMode: ProjectTrackingMode.nativeBackend,
       derivedProjectBuilder: const DerivedProjectBuilder(),
     );
@@ -311,7 +313,7 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin),
       agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -388,6 +390,7 @@ void main() {
     final projectRepository = ProjectRepository(
       plugin: plugin,
       projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
       trackingMode: ProjectTrackingMode.nativeBackend,
       derivedProjectBuilder: const DerivedProjectBuilder(),
     );
@@ -497,7 +500,7 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin),
       agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -576,6 +579,7 @@ void main() {
     final projectRepository = ProjectRepository(
       plugin: plugin,
       projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
       trackingMode: ProjectTrackingMode.nativeBackend,
       derivedProjectBuilder: const DerivedProjectBuilder(),
     );
@@ -654,7 +658,7 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin),
       agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -704,6 +708,7 @@ void main() {
     final projectRepository = ProjectRepository(
       plugin: plugin,
       projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
       trackingMode: ProjectTrackingMode.nativeBackend,
       derivedProjectBuilder: const DerivedProjectBuilder(),
     );
@@ -782,7 +787,7 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin),
       agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -857,6 +862,7 @@ void main() {
     final projectRepository = ProjectRepository(
       plugin: plugin,
       projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
       trackingMode: ProjectTrackingMode.nativeBackend,
       derivedProjectBuilder: const DerivedProjectBuilder(),
     );
@@ -935,7 +941,7 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin),
       agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,

@@ -125,6 +125,7 @@ class BridgeRuntime {
     final projectRepository = ProjectRepository(
       plugin: plugin,
       projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
       trackingMode: projectTrackingMode,
       derivedProjectBuilder: const DerivedProjectBuilder(),
     );
@@ -201,7 +202,7 @@ class BridgeRuntime {
         providerRepository: providerRepository,
         agentRepository: agentRepository,
         permissionRepository: PermissionRepository(plugin: plugin),
-        questionRepository: QuestionRepository(plugin: plugin),
+        questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
         sessionPersistenceService: SessionPersistenceService(
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,

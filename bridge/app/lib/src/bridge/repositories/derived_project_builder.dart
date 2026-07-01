@@ -1,9 +1,9 @@
 import "package:path/path.dart" as p;
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginSession;
 import "package:sesori_shared/sesori_shared.dart" show Project, ProjectTime;
 
 import "../persistence/tables/projects_table.dart" show ProjectDto;
+import "mappers/worktree_project_mapper.dart";
 
 /// Derives the canonical project list for a bridge-derived plugin by grouping
 /// its sessions by normalized directory and folding in the bridge-persisted
@@ -13,21 +13,26 @@ import "../persistence/tables/projects_table.dart" show ProjectDto;
 /// every future ACP plugin: the plugin only reports its sessions, and all
 /// project shaping happens here. Each project's `id` is the normalized
 /// directory — the canonical id the bridge persists and hands to the client, so
-/// it must match the plugin's own `getSessions` filter (which uses the same
-/// [normalizeProjectDirectory]). The `name` is the stored display-name override
+/// it must match the plugin's own `getSessions` filter (which normalizes the
+/// same way). The `name` is the stored display-name override
 /// or the directory basename, and the time comes from the project's sessions,
 /// falling back to the opened-folder timestamp for a folder with no sessions
 /// yet.
+///
+/// A session running in a dedicated git worktree reports the worktree path as
+/// its directory; [worktreeMapper] folds it back to the project the user opened
+/// so a worktree does not surface as its own project.
 class DerivedProjectBuilder {
   const DerivedProjectBuilder();
 
   List<Project> build({
     required List<PluginSession> sessions,
     required List<ProjectDto> storedProjects,
+    required WorktreeProjectMapper worktreeMapper,
   }) {
     final accumulators = <String, _ProjectAccumulator>{};
     _ProjectAccumulator accumulatorFor(String directory) {
-      final key = normalizeProjectDirectory(directory);
+      final key = worktreeMapper.canonicalDirectory(directory);
       return accumulators.putIfAbsent(key, () => _ProjectAccumulator(id: key));
     }
 
@@ -51,7 +56,7 @@ class DerivedProjectBuilder {
     // placeholder row — no openedAt, no sessions — is intentionally NOT listed.
     final displayNameByKey = <String, String?>{};
     for (final stored in storedProjects) {
-      final key = normalizeProjectDirectory(stored.projectId);
+      final key = worktreeMapper.canonicalDirectory(stored.projectId);
       displayNameByKey[key] = stored.displayName;
       final openedAt = stored.openedAt;
       if (openedAt != null) {

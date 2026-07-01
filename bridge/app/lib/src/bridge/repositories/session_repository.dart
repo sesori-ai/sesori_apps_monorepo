@@ -7,6 +7,7 @@ import "package:sesori_shared/sesori_shared.dart"
 import "../api/database/tables/pull_requests_table.dart";
 import "../persistence/daos/session_dao.dart";
 import "../persistence/tables/session_table.dart";
+import "derived_session_scope.dart";
 import "mappers/plugin_command_mapper.dart";
 import "mappers/plugin_session_mapper.dart";
 import "mappers/prompt_part_mapper.dart";
@@ -32,13 +33,44 @@ class SessionRepository {
     required int? start,
     required int? limit,
   }) async {
-    final pluginSessions = await _plugin.getSessions(
-      projectId,
+    final pluginSessions = await _pluginSessionsForProject(
+      projectId: projectId,
       start: start,
       limit: limit,
     );
 
     return enrichSessions(sessions: pluginSessions.toSharedSessions());
+  }
+
+  /// The plugin sessions that belong to [projectId].
+  ///
+  /// A native-tracking plugin owns its own project→session grouping, so we
+  /// delegate straight to it. A bridge-derived plugin only knows each session's
+  /// own cwd — which, for a session started in a dedicated worktree, is the
+  /// worktree path rather than the project the user opened. The bridge owns that
+  /// worktree→project mapping, so for derived plugins we scope via
+  /// [DerivedSessionScope] and paginate here, keeping a worktree session under
+  /// its project.
+  Future<List<PluginSession>> _pluginSessionsForProject({
+    required String projectId,
+    required int? start,
+    required int? limit,
+  }) async {
+    final plugin = _plugin;
+    if (plugin is! BridgeDerivedProjectSource) {
+      return plugin.getSessions(projectId, start: start, limit: limit);
+    }
+
+    final scoped = await DerivedSessionScope(
+      source: plugin as BridgeDerivedProjectSource,
+      sessionDao: _sessionDao,
+      pluginId: plugin.id,
+    ).sessionsForProject(projectId);
+
+    final from = start ?? 0;
+    if (from >= scoped.length) return const [];
+    final until = limit == null ? scoped.length : (from + limit).clamp(0, scoped.length);
+    return scoped.sublist(from, until);
   }
 
   Future<Session> enrichSession({required Session session}) async {
@@ -329,7 +361,7 @@ class SessionRepository {
   }
 
   Future<PluginSession?> _getPluginSession({required String projectId, required String sessionId}) async {
-    final sessions = await _plugin.getSessions(projectId);
+    final sessions = await _pluginSessionsForProject(projectId: projectId, start: null, limit: null);
     for (final session in sessions) {
       if (session.id == sessionId) {
         return session;

@@ -5,8 +5,10 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 import "package:sesori_shared/sesori_shared.dart" show Project;
 
 import "../persistence/daos/projects_dao.dart";
+import "../persistence/daos/session_dao.dart";
 import "derived_project_builder.dart";
 import "mappers/plugin_project_mapper.dart";
+import "mappers/worktree_project_mapper.dart";
 
 /// Project data aggregator with two paths chosen by the plugin's declared
 /// [ProjectTrackingMode]:
@@ -24,16 +26,19 @@ import "mappers/plugin_project_mapper.dart";
 class ProjectRepository {
   final BridgePluginApi _plugin;
   final ProjectsDao _projectsDao;
+  final SessionDao _sessionDao;
   final ProjectTrackingMode _trackingMode;
   final DerivedProjectBuilder _derivedProjectBuilder;
 
   ProjectRepository({
     required BridgePluginApi plugin,
     required ProjectsDao projectsDao,
+    required SessionDao sessionDao,
     required ProjectTrackingMode trackingMode,
     required DerivedProjectBuilder derivedProjectBuilder,
   }) : _plugin = plugin,
        _projectsDao = projectsDao,
+       _sessionDao = sessionDao,
        _trackingMode = trackingMode,
        _derivedProjectBuilder = derivedProjectBuilder;
 
@@ -123,11 +128,16 @@ class ProjectRepository {
   /// the bridge's stored opened-folder/display-name rows.
   Future<List<Project>> _deriveProjects() async {
     final source = _plugin as BridgeDerivedProjectSource;
-    final (sessions, storedProjects) = await (
+    final (sessions, storedProjects, worktreeProjectPaths) = await (
       source.listAllSessions(),
       _projectsDao.getAllProjects(),
+      _sessionDao.getWorktreeProjectPaths(pluginId: _plugin.id),
     ).wait;
-    return _derivedProjectBuilder.build(sessions: sessions, storedProjects: storedProjects);
+    return _derivedProjectBuilder.build(
+      sessions: sessions,
+      storedProjects: storedProjects,
+      worktreeMapper: WorktreeProjectMapper(worktreeProjectPaths: worktreeProjectPaths),
+    );
   }
 
   /// The derived project for [canonicalId], or a minimal placeholder when it has
