@@ -374,7 +374,13 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   would 503 and never reach the exit-86 handoff — added a mode-aware
   `BridgeRestartService.canRestart()` (supervised ⇒ always restartable, GUI
   respawns; standalone ⇒ `canSpawnSuccessor()`) and the handler now calls it.
-  **Deltas:** —
+  **Review round 3** (cubic, 1 P2): the outer `finally { shutdownCoordinator
+  .shutdown() }` rethrows a failed ordered/parallel step (by design — a failed
+  plugin stop must exit non-zero), which thrown from a `finally` would override
+  the `86` return and re-crash an intentional restart. Now shutdown errors are
+  swallowed-with-`Log.w` **only** when a supervised restart sentinel is set (the
+  restart must still exit 86 so the GUI respawns); every other exit still
+  rethrows to preserve the loud-failure behaviour. **Deltas:** —
 
 ## PR 1.8 — Disable self-update + reconcile when supervised
 - **Goal:** Pass `SESORI_NO_UPDATE`/skip policy; assert reconcile is skipped so a

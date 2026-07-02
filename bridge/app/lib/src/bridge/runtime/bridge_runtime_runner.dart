@@ -553,7 +553,21 @@ class BridgeRuntimeRunner {
       Log.e("$error");
       return 1;
     } finally {
-      await shutdownCoordinator.shutdown();
+      try {
+        await shutdownCoordinator.shutdown();
+      } catch (error, stackTrace) {
+        // `shutdownCoordinator.shutdown()` rethrows a failed ordered/parallel
+        // step (by design — a failed plugin stop must surface as a non-zero
+        // exit). Thrown from this `finally`, that would override the return
+        // value. For a supervised restart that must NOT happen: the exit must
+        // stay the sentinel so the GUI respawns rather than treating an
+        // intentional restart as a crash. For every other exit, preserve the
+        // loud-failure behaviour by rethrowing.
+        if (requestedSupervisedRestartExitCode == null) {
+          rethrow;
+        }
+        Log.w("Shutdown error during a supervised restart; preserving the sentinel exit code", error, stackTrace);
+      }
     }
   }
 
