@@ -34,17 +34,9 @@ class _BridgeOnboardingView extends StatelessWidget {
   }
 }
 
-/// Opens an external "Need help?" contact link via the DI-registered
-/// [UrlLauncher], logging (rather than crashing) when the platform reports it
-/// could not be handled.
-Future<void> _openSupportLink({required String url}) async {
-  try {
-    final launched = await getIt<UrlLauncher>().launch(Uri.parse(url));
-    if (!launched) logw("Could not open support link: $url");
-  } on Object catch (error, stackTrace) {
-    logw("Failed to open support link", error, stackTrace);
-  }
-}
+/// Opens one of the "Need help?" contact links ([SupportLinks]) through the
+/// shared [openExternalLink] helper.
+Future<void> _openSupportLink({required String url}) => openExternalLink(url: Uri.parse(url));
 
 /// The shared onboarding body: the phone/PC connection status lines, the
 /// connection graphic, and the per-platform install command boxes. The

@@ -15,6 +15,7 @@ import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/extensions/remote_failure_x.dart";
 import "../../core/extensions/text_style_x.dart";
+import "../../core/external_link.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/support_links.dart";
 import "../../core/widgets/connection_graphic.dart";
