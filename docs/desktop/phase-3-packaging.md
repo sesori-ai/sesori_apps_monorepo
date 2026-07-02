@@ -190,9 +190,16 @@ Findings log · Plan-deltas.
 ## PR 3.10 — Release-pipeline integration (non-blocking, leg-additive) + versioning
 - **Goal:** Hook the desktop build into `release-all-platforms.yml` +
   `submit-release.yml` as **non-blocking** legs; extend `make bump-version` to
-  bump the desktop package; add a **Desktop** section to `CHANGELOG.md`; update
-  `tool/generate_release_notes.dart` so desktop-owned paths classify as Desktop
-  instead of App; publish update feeds to releases keyed to the shared version.
+  bump the desktop package **and extend the release/submit version guards**
+  (the preflight in `release-all-platforms.yml` and the resolver in
+  `submit-release.yml` currently parse only `client/app/pubspec.yaml` +
+  `bridge/app/pubspec.yaml`) to validate `client/desktop`'s version against the
+  shared version before publishing any feed — otherwise a manual drift in the
+  desktop pubspec ships an appcast/installer under the wrong tag (Decision #12)
+  and only a manual MT check would catch it; add a **Desktop** section to
+  `CHANGELOG.md`; update `tool/generate_release_notes.dart` so desktop-owned
+  paths classify as Desktop instead of App; publish update feeds to releases
+  keyed to the shared version.
   **Leg-additive:** this PR lands at the end of the macOS chain (before MT-4a)
   and integrates the legs that exist at that point — the macOS build/sign +
   Sparkle appcast. The Windows and Linux chains extend the same workflow and
@@ -216,8 +223,13 @@ Findings log · Plan-deltas.
   (mobile/bridge jobs on mobile/bridge paths, desktop jobs on desktop-consumed
   paths, `finalize` gated accordingly), or split a **separate desktop release
   workflow** that reuses the bridge-build artifacts — chosen at this PR's plan
-  review. The desktop jobs stay **non-blocking** for the CLI/mobile legs
-  (invariant #3) either way.
+  review. The desktop-relevant set must also include the **release tooling
+  inputs themselves** — `release-all-platforms.yml`, `submit-release.yml`, the
+  reusable desktop build workflow, `.github/actions/setup-flutter/**`, and the
+  root `.tool-versions` — so a workflow/action/toolchain-only change cannot
+  merge without the desktop release legs exercising it (same self-inputs rule
+  as PR 2.1's desktop CI). The desktop jobs stay **non-blocking** for the
+  CLI/mobile legs (invariant #3) either way.
 - **Risk:** Med. **Size:** M.
 - **Regression guide:** this PR touches the **live CLI/mobile release pipeline**
   — the highest-blast-radius change in the phase. Check: (1) a full release
@@ -231,7 +243,9 @@ Findings log · Plan-deltas.
   failure → `finalize` still green.
 - **Acceptance:** an internal release dry-run produces signed, self-update-ready
   desktop artifacts; a **desktop-only shell, desktop-core, or shared-UI** change
-  triggers the desktop release/appcast publish; a forced desktop-leg failure does
+  triggers the desktop release/appcast publish; a deliberately drifted
+  `client/desktop` version fails the release preflight before any feed publish;
+  a forced desktop-leg failure does
   **not** block the CLI/mobile release; release notes classify
   `client/desktop/**`, `client/module_desktop_core/**`, and desktop-consumed UI
   under Desktop, shared client dependencies under all affected product sections,
@@ -253,8 +267,16 @@ Findings log · Plan-deltas.
   registration survive trash-only removal — document that path as leaving an
   orphan the account UI can delete. Lands **before MT-4a** (the macOS ship gate
   verifies it).
-- **Best-effort server unregister first:** for users who reset/uninstall
-  **without** going through logout, do a best-effort
+- **Flow order: stop the helper FIRST, then best-effort server unregister,
+  then local cleanup.** The helper must be stopped (repository-owned
+  expected-stop, respawn suppressed) **before** `deleteBridge` runs: a live
+  helper that gets revoked observes the relay's 4006 close and immediately
+  re-registers with a fresh `bridgeId` (that is the orchestrator's revocation
+  behaviour), which would recreate a server-side registration just as the reset
+  clears GUI state and quits — leaving exactly the orphan this step exists to
+  prevent. Same ordering as the Windows uninstaller (3.11b).
+- **Best-effort server unregister (after the stop):** for users who
+  reset/uninstall **without** going through logout, do a best-effort
   `BridgeRepository.deleteBridge` (the module_core seam from PR 2.13) using the
   still-available token + GUI-persisted `bridgeId` **before** clearing GUI-owned
   credentials/state — otherwise a stale offline bridge is orphaned on the
@@ -272,11 +294,14 @@ Findings log · Plan-deltas.
 - **Regression guide:** the one thing this must never do is touch shared CLI
   state. Check: (1) after a reset, a co-installed standalone CLI still starts,
   is still logged in (`token.json` intact), and its managed runtime still
-  exists; (2) the helper is stopped before state removal (no running process
-  whose files vanish); (3) running "Disconnect & reset" while already logged
-  out / offline still completes local cleanup.
+  exists; (2) the helper is stopped (respawn suppressed) **before** the server
+  unregister and before state removal — resetting with the bridge ON must not
+  leave a freshly re-registered bridge on the account (4006 re-register race);
+  (3) running "Disconnect & reset" while already logged out / offline still
+  completes local cleanup.
 - **Acceptance:** the in-app reset removes the login item/autostart + GUI state
-  on macOS and Linux; a co-installed standalone CLI remains logged in and
+  on macOS and Linux; resetting with the bridge running leaves no re-registered
+  bridge on the account; a co-installed standalone CLI remains logged in and
   runnable; a forced mid-step failure still runs remaining steps; the
   trash-only macOS path is documented (orphan removable from the account UI).
 
@@ -303,8 +328,11 @@ Findings log · Plan-deltas.
 > **MT-4b = Windows** (after 3.11b), **MT-4c = Linux** (after 3.9). Each gate
 > runs the shared checklist below **for that OS** on **clean machines/VMs** (no
 > dev toolchain, no prior Sesori state) — that is the whole point. Item
-> applicability is marked per gate; item 8 runs fully at MT-4a and re-verifies
-> only the new leg at MT-4b/c.
+> applicability is marked per gate. Item 8 runs the release dry-run
+> **end-to-end at every gate**: PRs 3.8/3.9 extend the same shared release
+> workflow/feeds, so MT-4b/c must confirm the new leg AND that every
+> already-shipped leg still publishes correctly (e.g. the WinSparkle leg
+> landing must not regress the live macOS appcast).
 
 | # | Check | How | Pass looks like | Gates |
 |---|---|---|---|---|
@@ -315,7 +343,7 @@ Findings log · Plan-deltas.
 | 5 | Failed update | corrupt/block the update feed artifact | app stays at vN and runnable; failure reported; retry works later | all |
 | 6 | Update signature | tamper with the appcast/zsync entry (bad signature) in a test feed | update is refused loudly; nothing applied | all |
 | 7 | Version coherence | after update, check GUI about + helper version + phone-visible bridge version | all report the same unified version (Decision #12) | all |
-| 8 | Release pipeline | run the internal release dry-run end-to-end | CLI + mobile legs unaffected; desktop legs non-blocking; the platform's update feed published to the release | full at MT-4a; new-leg-only at MT-4b/c |
+| 8 | Release pipeline | run the internal release dry-run end-to-end | CLI + mobile legs unaffected; desktop legs non-blocking; the new platform's feed published AND every already-shipped platform's feed still publishes correctly | all (full dry-run at every gate) |
 | 9 | Uninstall / reset | Windows: uninstaller (3.11b); macOS/Linux: in-app "Disconnect & reset" (3.11a) | login item/autostart gone; GUI state gone; bridge gone from account list; co-installed CLI still logged in + runnable (A10) | all |
 | 10 | Trash-only removal | drag the app to Trash without reset | login item auto-disabled (macOS ≥13); orphaned bridge removable from account UI (documented) | MT-4a only |
 

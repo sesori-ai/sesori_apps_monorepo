@@ -278,28 +278,6 @@ Findings log · Plan-deltas.
   crashes surfaces an error with recent helper log lines; exit policy does not
   live in a Layer-2 tracker.
 
----
-
-## MT-2 — Manual checkpoint: first real GUI supervision (user-run)
-
-> Run after PR 2.7. First moment the real GUI supervises the real bridge — do it
-> on your daily-driver desktop before investing in tray/window polish. Dev builds
-> (`flutter run -d macos/windows/linux`) are fine.
-
-| # | Check | How | Pass looks like |
-|---|---|---|---|
-| 1 | Login | log in via the system browser from the desktop app | auth completes; interstitial names the desktop device; relogin after app restart is silent (persisted tokens) |
-| 2 | Supervised spawn | turn the bridge on from the dev window | helper spawns, control handshake completes, status goes healthy |
-| 3 | Phone end-to-end | open the mobile app | phone connects through the desktop-supervised bridge; sessions browse + a question round-trips |
-| 4 | Token authority | leave it running past access-token expiry (or force-refresh) | helper keeps working; no auth errors; no `token.json` writes by the helper |
-| 5 | Crash respawn | `kill -9` the helper | GUI respawns with backoff; phone recovers |
-| 6 | Restart sentinel | trigger restart from the phone | helper exits 86 → instant respawn; phone reconnects |
-| 7 | Auth-required | log the GUI out while the helper is off; try to start | login-required state, no spawn, no thrash (exit-87 path if it raced past the gate) |
-| 8 | Clean stop | toggle off | helper exits 0; no respawn; no orphaned `opencode serve` (`ps`) |
-| 9 | Standalone coexistence | afterwards run the terminal `sesori-bridge` | CLI still logged in; single-live precedence per PR 1.12 (no silent abort) |
-
-- **Aristotle:** n/a (no code). **Findings:** — **Deltas:** —
-
 ## PR 2.8 — Spike: bundled bridge runtime-ownership + `--hidden` contention
 - **Goal:** Run the bridge from a **fake bundle layout**; confirm it does NOT trip
   its runtime-ownership guard (`unsupportedPackageRuntimeMessage`) and that
@@ -354,6 +332,31 @@ Findings log · Plan-deltas.
   is live, not frozen (streams resubscribed if needed).
 - **Acceptance:** window opens/focuses from tray; contents reflect live state;
   "open logs" reveals the helper log directory.
+
+---
+
+## MT-2 — Manual checkpoint: first real GUI supervision (user-run)
+
+> Run after PR 2.10 — the first moment a real control surface (tray + window,
+> PRs 2.9/2.10) can drive the real bridge. Placed here deliberately: the earlier
+> PRs (2.1–2.7) build the supervision stack but expose no way for a human to log
+> in and toggle the bridge, so this gate sits right after the UI lands and
+> before autostart/single-instance/logout wiring (2.11–2.13). Dev builds
+> (`flutter run -d macos/windows/linux`) are fine.
+
+| # | Check | How | Pass looks like |
+|---|---|---|---|
+| 1 | Login | log in via the system browser from the desktop app | auth completes; interstitial names the desktop device; relogin after app restart is silent (persisted tokens) |
+| 2 | Supervised spawn | turn the bridge on from the window/tray | helper spawns, control handshake completes, status goes healthy |
+| 3 | Phone end-to-end | open the mobile app | phone connects through the desktop-supervised bridge; sessions browse + a question round-trips |
+| 4 | Token authority | leave it running past access-token expiry (or force-refresh) | helper keeps working; no auth errors; no `token.json` writes by the helper |
+| 5 | Crash respawn | `kill -9` the helper | GUI respawns with backoff; phone recovers |
+| 6 | Restart sentinel | trigger restart from the phone | helper exits 86 → instant respawn; phone reconnects |
+| 7 | Auth-required | log the GUI out while the helper is off; try to start | login-required state, no spawn, no thrash (exit-87 path if it raced past the gate) |
+| 8 | Clean stop | toggle off | helper exits 0; no respawn; no orphaned `opencode serve` (`ps`) |
+| 9 | Standalone coexistence | afterwards run the terminal `sesori-bridge` | CLI still logged in; single-live precedence per PR 1.12 (no silent abort) |
+
+- **Aristotle:** n/a (no code). **Findings:** — **Deltas:** —
 
 ## PR 2.11 — Autostart + `--hidden` boot + macOS login-item detection
 - **Goal:** `LaunchAtLogin` (`launch_at_startup`) registration with `--hidden`;
@@ -503,10 +506,14 @@ Findings log · Plan-deltas.
 | 6 | Single instance | launch a second copy (incl. while hidden) | first instance focused; no second tray icon; after kill -9, next launch still works |
 | 7 | Crash handling | kill -9 the helper twice, then let a broken helper crash-loop | backoff respawn; give-up surfaces error + recent log lines; "open logs" shows the log file |
 | 8 | GUI crash orphan check | kill -9 the **GUI** | helper self-exits within grace (A9); relaunch restores last-on |
-| 9 | Update stop boundary | (pre-Sparkle) invoke the expected-stop path via the fake updater/dev hook | helper stops without respawn thrash; last-on restored after relaunch |
-| 10 | Logout matrix | logout with helper live, then again with helper off/crashed | bridge gone from account list in both; **phone stays logged in**; local tokens cleared |
-| 11 | Cross-machine takeover (1.14) | keep a bridge running on a second machine; start the desktop bridge | old bridge shows takeover state, no flip-flop war; phone follows the desktop bridge |
-| 12 | Sleep/wake | sleep the machine 10+ min with bridge on | after wake: helper reconnects to relay; status recovers; no duplicate helper |
-| 13 | Standalone coexistence | run the terminal CLI bridge afterwards | CLI still logged in and runnable (shared state intact per A10) |
+| 9 | Logout matrix | logout with helper live, then again with helper off/crashed | bridge gone from account list in both; **phone stays logged in**; local tokens cleared |
+| 10 | Cross-machine takeover (1.14) | keep a bridge running on a second machine; start the desktop bridge | old bridge shows takeover state, no flip-flop war; phone follows the desktop bridge |
+| 11 | Sleep/wake | sleep the machine 10+ min with bridge on | after wake: helper reconnects to relay; status recovers; no duplicate helper |
+| 12 | Standalone coexistence | run the terminal CLI bridge afterwards | CLI still logged in and runnable (shared state intact per A10) |
+
+> The update-apply stop boundary is **not** manually testable at the end of
+> Phase 2 (the update path arrives with PR 3.6): it is covered by PR 3.6's
+> fake-`AppUpdater` automated tests and manually by MT-4 item 4 (self-update
+> with the bridge on).
 
 - **Aristotle:** n/a (no code). **Findings:** — **Deltas:** —

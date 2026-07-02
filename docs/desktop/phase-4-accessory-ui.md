@@ -48,7 +48,12 @@ Findings log · Plan-deltas.
 - **Acceptance:** `client/app` consumes the moved code via the package, builds +
   tests pass, **no dependency cycle** `module_app_ui` → `client/app`; mobile
   CI/release path filters include `client/module_app_ui/**` once mobile screens
-  depend on the package.
+  depend on the package, **and mobile CI gains explicit `module_app_ui`
+  analyze + `flutter test` steps** (the current mobile CI job only covers
+  `client/app`/`module_core`/`module_auth`/`no_slop_linter` — a path trigger
+  alone would start the workflow without ever checking the new package's own
+  files/tests); desktop CI's path set (PR 2.1) already covers it for the
+  desktop side.
 
 > **Standing rule for every move PR (4.2–4.6):** the package-boundary hazard
 > from PR 4.1 applies to **screens too** — current screens (e.g.

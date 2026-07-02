@@ -388,10 +388,10 @@ them). Only the user checks an MT box.
 - ☐ 2.5 `ControlChannelServer` + `ControlMessageDispatcher` + token responder — Med / M
 - ☐ 2.6 `BridgeProcessService`: spawn/kill/path + expected-stop boundary + helper log capture — High / M
 - ☐ 2.7 Exit-code state machine (86/87/0/other + backoff) — High / M
-- ☐ MT-2 Manual checkpoint: first real GUI supervision (see phase doc) — user-run
 - ☐ 2.8 Spike: bundled bridge runtime-ownership + `--hidden` contention — Med / S-M
 - ☐ 2.9 Tray menu + reusable control cubit + tray-unavailable fallback — Med / M
 - ☐ 2.10 `WindowHost` single window + v1 window contents — Med / M
+- ☐ MT-2 Manual checkpoint: first real GUI supervision (see phase doc; needs the 2.9/2.10 control surface) — user-run
 - ☐ 2.11 Autostart + `--hidden` boot + macOS login-item detection — Med / M
 - ☐ 2.12 GUI single-instance + persist on/off & last-state — Low-Med / S-M
 - ☐ 2.13 Logout coordination (GUI: unregister→kill→invalidate locally) — Med / S-M
