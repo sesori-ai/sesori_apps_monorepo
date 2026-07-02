@@ -225,7 +225,9 @@ class SessionListCubit extends Cubit<SessionListState> {
               reason: "Failed to mark session seen",
               information: [sessionId, "read=$read"],
             )
-            .catchError((_) {}),
+            .catchError((Object error, StackTrace stackTrace) {
+              loge("Failed to report mark-seen error", error, stackTrace);
+            }),
       );
       if (!isClosed) await _fetchSessions(silent: true);
     }

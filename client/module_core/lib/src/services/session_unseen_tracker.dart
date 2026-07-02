@@ -143,7 +143,9 @@ class SessionUnseenTracker with Disposable {
               reason: "Failed to handle unseen SSE event",
               information: [event.data.runtimeType.toString()],
             )
-            .catchError((_) {}),
+            .catchError((Object error, StackTrace stackTrace) {
+              loge("Failed to report unseen-event handler error", error, stackTrace);
+            }),
       );
     }
   }
