@@ -30,6 +30,9 @@ void main() {
         rolloutReader: SessionRolloutReader(
           environment: {"CODEX_HOME": codexHome.path},
         ),
+        projectStorage: CodexProjectStorage(
+          environment: {"CODEX_HOME": codexHome.path},
+        ),
         projectCwd: "/work/sample",
       );
     });
@@ -78,6 +81,129 @@ void main() {
       final turnStartParams = fake.sentParamsFor("turn/start");
       expect(turnStartParams["threadId"], equals("t-new"));
       expect((turnStartParams["input"] as List).first["text"], equals("hello codex"));
+    });
+
+    test("createSession in a new directory stamps it as projectID and registers it", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(result: {"thread": {"id": "t-other", "cwd": "/work/other"}}),
+      ]);
+
+      final session = await plugin.createSession(
+        directory: "/work/other",
+        parentSessionId: null,
+        parts: const [],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      // The session belongs to its own directory, not the launch CWD…
+      expect(session.projectID, equals("/work/other"));
+      expect(session.directory, equals("/work/other"));
+      // …and the brand-new directory surfaces as a project immediately, before
+      // codex flushes a rollout for it.
+      expect(
+        (await plugin.getProjects()).map((p) => p.id),
+        contains("/work/other"),
+      );
+    });
+
+    test("renameSession returns the session's real cwd as projectID/directory", () async {
+      _writeMetaRollout(
+        codexHome,
+        sessionId: "019a0000-1111-2222-3333-c00000000001",
+        cwd: "/work/gamma",
+        timestamp: "2026-05-04T10:00:00Z",
+      );
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(result: {}),
+      ]);
+
+      final renamed = await plugin.renameSession(
+        sessionId: "019a0000-1111-2222-3333-c00000000001",
+        title: "Renamed",
+      );
+
+      expect(renamed.title, equals("Renamed"));
+      expect(renamed.projectID, equals("/work/gamma"));
+      expect(renamed.directory, equals("/work/gamma"));
+      expect(fake.sentMethods, equals(["initialize", "thread/name/set"]));
+    });
+
+    test("renameSession resolves a freshly-created session's directory from memory before its rollout flushes", () async {
+      // createSession reports cwd /work/live; no rollout is written to disk for
+      // it, so only the in-memory thread→directory mapping knows the project.
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(result: {"thread": {"id": "t-live", "cwd": "/work/live"}}),
+        const _Response(result: {}),
+      ]);
+      await plugin.createSession(
+        directory: "/work/live",
+        parentSessionId: null,
+        parts: const [],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      final renamed = await plugin.renameSession(
+        sessionId: "t-live",
+        title: "Renamed",
+      );
+      // Resolves to /work/live (the created directory), not the launch CWD.
+      expect(renamed.projectID, equals("/work/live"));
+      expect(renamed.directory, equals("/work/live"));
+    });
+
+    test("getProjectQuestions scopes pending questions to the project's own sessions", () async {
+      // Two live sessions in distinct project directories.
+      _writeMetaRollout(
+        codexHome,
+        sessionId: "019a0000-1111-2222-3333-q0000000000a",
+        cwd: "/work/qa",
+        timestamp: "2026-05-06T10:00:00Z",
+      );
+      _writeMetaRollout(
+        codexHome,
+        sessionId: "019a0000-1111-2222-3333-q0000000000b",
+        cwd: "/work/qb",
+        timestamp: "2026-05-06T11:00:00Z",
+      );
+
+      fake.respondInOrder([const _Response(result: _initOk)]);
+      await plugin.healthCheck(); // connect + attach the approval registry
+
+      // Mark both threads live, then raise an elicitation only on the /work/qa one.
+      fake.pushNotification("turn/started", {
+        "threadId": "019a0000-1111-2222-3333-q0000000000a",
+        "turn": {"id": "u-a"},
+      });
+      fake.pushNotification("turn/started", {
+        "threadId": "019a0000-1111-2222-3333-q0000000000b",
+        "turn": {"id": "u-b"},
+      });
+      fake.pushServerRequest(900, "mcpServer/elicitation/request", {
+        "threadId": "019a0000-1111-2222-3333-q0000000000a",
+        "serverName": "fs-mcp",
+        "mode": "form",
+        "message": "Where should I write the result?",
+        "requestedSchema": {"type": "string"},
+      });
+      await pumpEventQueue();
+
+      // The /work/qa project sees its session's question…
+      expect(
+        await plugin.getProjectQuestions(projectId: "/work/qa"),
+        hasLength(1),
+      );
+      // …while /work/qb does not (no cross-project leakage).
+      expect(
+        await plugin.getProjectQuestions(projectId: "/work/qb"),
+        isEmpty,
+      );
     });
 
     test("sendPrompt resumes a thread from a prior run before the turn", () async {
@@ -265,6 +391,9 @@ void main() {
         rolloutReader: SessionRolloutReader(
           environment: {"CODEX_HOME": codexHome.path},
         ),
+        projectStorage: CodexProjectStorage(
+          environment: {"CODEX_HOME": codexHome.path},
+        ),
         projectCwd: "/work/sample",
         keepaliveInterval: const Duration(milliseconds: 20),
       );
@@ -409,6 +538,35 @@ const Map<String, dynamic> _initOk = {
   "platformFamily": "unix",
 };
 
+/// Writes a minimal rollout (session_meta header only) so the rollout reader can
+/// resolve a session's cwd in tests that exercise the read path.
+void _writeMetaRollout(
+  Directory codexHome, {
+  required String sessionId,
+  required String cwd,
+  required String timestamp,
+}) {
+  final date = DateTime.parse(timestamp).toUtc();
+  String two(int v) => v.toString().padLeft(2, "0");
+  final dateDir = "${date.year}/${two(date.month)}/${two(date.day)}";
+  final fileName =
+      "rollout-${date.year}-${two(date.month)}-${two(date.day)}T00-00-00-$sessionId.jsonl";
+  final full = "${codexHome.path}/sessions/$dateDir/$fileName";
+  Directory("${codexHome.path}/sessions/$dateDir").createSync(recursive: true);
+  final line = jsonEncode({
+    "timestamp": timestamp,
+    "type": "session_meta",
+    "payload": {
+      "id": sessionId,
+      "timestamp": timestamp,
+      "cwd": cwd,
+      "cli_version": "0.142.0",
+      "model_provider": "openai",
+    },
+  });
+  File(full).writeAsStringSync("$line\n");
+}
+
 class _Response {
   // ignore: unused_element_parameter
   const _Response({this.result, this.error});
@@ -457,12 +615,33 @@ class _FakeAppServer {
     );
   }
 
+  /// Pushes a server-originated JSON-RPC request (carries an `id`, unlike a
+  /// notification), which the client routes to its `serverRequests` stream —
+  /// the path approval/elicitation prompts arrive on.
+  void pushServerRequest(int id, String method, Map<String, dynamic> params) {
+    _serverToClient.add(
+      jsonEncode({
+        "jsonrpc": "2.0",
+        "id": id,
+        "method": method,
+        "params": params,
+      }),
+    );
+  }
+
   void _onClientFrame(Object? frame) {
     final raw = frame as String;
     final decoded = jsonDecode(raw) as Map<String, dynamic>;
+    final method = decoded["method"];
+    if (method is! String) {
+      // A client response to a server-originated request (id + result/error, no
+      // method) — e.g. the plugin denying a still-pending elicitation on
+      // dispose. No test inspects client responses, so ignore it.
+      return;
+    }
     _sent.add(
       _SentFrame(
-        method: decoded["method"] as String,
+        method: method,
         params: (decoded["params"] as Map?)?.cast<String, dynamic>(),
       ),
     );

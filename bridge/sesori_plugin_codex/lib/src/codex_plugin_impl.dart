@@ -8,6 +8,7 @@ import "approval_registry.dart";
 import "codex_app_server_client.dart";
 import "codex_config_reader.dart";
 import "codex_event_mapper.dart";
+import "codex_project_storage.dart";
 import "codex_skill_reader.dart";
 import "runtime/codex_managed_api.dart";
 import "session_rollout_reader.dart";
@@ -43,6 +44,7 @@ class CodexPlugin implements CodexManagedApi {
   final CodexConfigReader _configReader;
   final CodexSkillReader _skillReader;
   final CodexEventMapper _eventMapper;
+  final CodexProjectStorage _projectStorage;
   final String _projectCwd;
   final Duration _keepaliveInterval;
 
@@ -87,6 +89,14 @@ class CodexPlugin implements CodexManagedApi {
   /// this never goes stale against a live connection.
   final Set<String> _loadedThreads = {};
 
+  /// Working directory of each thread created in this bridge run, keyed by
+  /// thread id. codex flushes a session's rollout header to disk slightly after
+  /// `thread/start` returns, so for a just-created session this is the only
+  /// place that knows its directory — used by [_directoryForSession] and
+  /// [getProjectQuestions] so a fresh non-launch session resolves to its real
+  /// project (not the launch CWD) before its rollout exists.
+  final Map<String, String> _threadDirectory = {};
+
   factory CodexPlugin({
     required String serverUrl,
     String? capabilityToken,
@@ -95,6 +105,7 @@ class CodexPlugin implements CodexManagedApi {
     CodexConfigReader? configReader,
     CodexSkillReader? skillReader,
     CodexEventMapper? eventMapper,
+    CodexProjectStorage? projectStorage,
     String? projectCwd,
     void Function()? onConnected,
     void Function()? onDisconnected,
@@ -118,6 +129,7 @@ class CodexPlugin implements CodexManagedApi {
             projectCwd: resolvedProjectCwd,
             config: resolvedConfigReader.readDefaults(),
           ),
+      projectStorage: projectStorage ?? CodexProjectStorage(),
       projectCwd: resolvedProjectCwd,
       onConnected: onConnected,
       onDisconnected: onDisconnected,
@@ -133,6 +145,7 @@ class CodexPlugin implements CodexManagedApi {
     required CodexConfigReader configReader,
     required CodexSkillReader skillReader,
     required CodexEventMapper eventMapper,
+    required CodexProjectStorage projectStorage,
     required String projectCwd,
     void Function()? onConnected,
     void Function()? onDisconnected,
@@ -145,6 +158,7 @@ class CodexPlugin implements CodexManagedApi {
        _configReader = configReader,
        _skillReader = skillReader,
        _eventMapper = eventMapper,
+       _projectStorage = projectStorage,
        _projectCwd = projectCwd,
        _onConnected = onConnected,
        _onDisconnected = onDisconnected,
@@ -291,6 +305,7 @@ class CodexPlugin implements CodexManagedApi {
         _sessionStatuses.remove(threadId);
         // The app-server unloaded this thread; a later turn must resume it.
         _loadedThreads.remove(threadId);
+        _threadDirectory.remove(threadId);
       case "thread/started":
         final thread = (params["thread"] as Map?)?.cast<String, dynamic>();
         final id = thread?["id"] as String?;
@@ -321,23 +336,127 @@ class CodexPlugin implements CodexManagedApi {
     }
   }
 
-  PluginProject _synthesizedProject() {
-    final updated = DateTime.now().millisecondsSinceEpoch;
+  /// Builds the codex project set, keyed by a dedupe key (trailing-separator-
+  /// insensitive), from three sources:
+  ///   1. the bridge launch CWD (always present),
+  ///   2. every directory the user explicitly opened/created/renamed (persisted
+  ///      in [CodexProjectStorage]),
+  ///   3. every distinct session CWD on disk.
+  ///
+  /// Each project's `id` is the directory *verbatim* — never normalized — so
+  /// [getSessions]'s exact-equality `record.cwd == projectId` filter keeps
+  /// matching. When a directory appears as both a session CWD and another
+  /// source, the session CWD is the authoritative id and session timestamps win
+  /// over the opened-dir placeholder; a stored name override wins over the
+  /// basename. A directory with no sessions deterministically gets its
+  /// `addedAt` time (or `0`), so listing order is stable across calls.
+  Map<String, PluginProject> _deriveProjects() {
+    final accumulators = <String, _ProjectAccumulator>{};
+
+    _ProjectAccumulator accumulatorFor(String dir) => accumulators.putIfAbsent(
+      _projectKey(dir),
+      () => _ProjectAccumulator(id: dir),
+    );
+
+    // 1. Launch CWD — always present so there is at least one project and a
+    // home for the "current" project lookup.
+    accumulatorFor(_projectCwd);
+
+    // 2. Persisted opened/renamed directories.
+    for (final opened in _projectStorage.listOpenedProjects()) {
+      final accumulator = accumulatorFor(opened.path);
+      if (opened.name != null) accumulator.nameOverride = opened.name;
+      accumulator.addedAt = opened.addedAt;
+    }
+
+    // 3. Distinct session CWDs (real timestamps; cwd is the canonical id).
+    for (final record in _rolloutReader.listSessions()) {
+      final cwd = record.cwd;
+      if (cwd == null) continue;
+      final accumulator = accumulatorFor(cwd);
+      // The session's verbatim cwd is the authoritative id so getSessions' exact
+      // filter matches the id we hand back here.
+      accumulator.id = cwd;
+      final created = record.createdAt?.millisecondsSinceEpoch;
+      final updated = record.updatedAt?.millisecondsSinceEpoch ?? created;
+      if (created != null) {
+        final prior = accumulator.created;
+        accumulator.created = prior == null || created < prior ? created : prior;
+      }
+      if (updated != null) {
+        final prior = accumulator.updated;
+        accumulator.updated = prior == null || updated > prior ? updated : prior;
+      }
+    }
+
+    final out = <String, PluginProject>{};
+    for (final accumulator in accumulators.values) {
+      out[accumulator.id] = _projectForPath(
+        path: accumulator.id,
+        created: accumulator.created ?? accumulator.addedAt,
+        updated: accumulator.updated ?? accumulator.addedAt,
+        name: accumulator.nameOverride,
+      );
+    }
+    return out;
+  }
+
+  /// Normalised dedupe/equivalence key for a directory: makes it absolute
+  /// (against the bridge CWD) then collapses trailing separators and `.`/`..`
+  /// segments, so `/a`, `/a/`, `/a/b/..`, and a relative spelling of the same
+  /// directory all map to one project (and, on Windows, preserves drive roots
+  /// like `C:\`). The project `id` emitted from [_deriveProjects] stays the
+  /// verbatim cwd — this key is only used to merge sources here and to match
+  /// sessions in [getSessions]/[getProjectQuestions], so a directory recorded
+  /// under two spellings stays reachable from its single project. (codex cwds
+  /// and opened-dir paths are already absolute, so this is defensive.)
+  String _projectKey(String dir) => p.normalize(p.absolute(dir));
+
+  String _projectName(String dir) {
+    final base = p.basename(dir);
+    return base.isEmpty ? dir : base;
+  }
+
+  PluginProject _projectForPath({
+    required String path,
+    int? created,
+    int? updated,
+    String? name,
+  }) {
     return PluginProject(
-      id: _projectCwd,
-      name: p.basename(_projectCwd).isEmpty
-          ? _projectCwd
-          : p.basename(_projectCwd),
-      time: PluginProjectTime(created: updated, updated: updated),
+      id: path,
+      name: name ?? _projectName(path),
+      time: PluginProjectTime(created: created ?? 0, updated: updated ?? 0),
     );
   }
 
   @override
-  Future<List<PluginProject>> getProjects() async => [_synthesizedProject()];
+  Future<List<PluginProject>> getProjects() async {
+    final projects = _deriveProjects().values.toList();
+    projects.sort(
+      (a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0),
+    );
+    return projects;
+  }
 
   @override
-  Future<PluginProject> getProject(String projectId) async =>
-      _synthesizedProject();
+  Future<PluginProject> getProject(String projectId) async {
+    // Honors the requested path (so opening/discovering a folder returns THAT
+    // folder, not the launch CWD) and persists it so a directory with no codex
+    // sessions yet still survives the refresh and later bridge restarts.
+    _projectStorage.upsertProject(path: projectId);
+    return _findDerivedProject(projectId) ?? _projectForPath(path: projectId);
+  }
+
+  /// The derived project whose directory matches [projectId] (trailing-separator
+  /// insensitive), or null when none is known yet.
+  PluginProject? _findDerivedProject(String projectId) {
+    final key = _projectKey(projectId);
+    for (final project in _deriveProjects().values) {
+      if (_projectKey(project.id) == key) return project;
+    }
+    return null;
+  }
 
   @override
   Future<List<PluginSession>> getSessions(
@@ -346,7 +465,14 @@ class CodexPlugin implements CodexManagedApi {
     int? limit,
   }) async {
     final records = _rolloutReader.listSessions();
-    final filtered = records.where((r) => r.cwd == projectId);
+    // Match by the normalised project key (not exact cwd) so sessions recorded
+    // under a different spelling of the same directory — e.g. a trailing
+    // separator that [_deriveProjects] merged into one project — stay reachable.
+    final target = _projectKey(projectId);
+    final filtered = records.where((r) {
+      final cwd = r.cwd;
+      return cwd != null && _projectKey(cwd) == target;
+    });
     final mapped = filtered.map(_toPluginSession).toList(growable: false);
     final from = start ?? 0;
     final until = limit == null
@@ -359,10 +485,13 @@ class CodexPlugin implements CodexManagedApi {
   PluginSession _toPluginSession(CodexSessionRecord record) {
     final created = record.createdAt?.millisecondsSinceEpoch;
     final updated = record.updatedAt?.millisecondsSinceEpoch ?? created;
+    // The session belongs to the project for its own CWD — never the launch CWD
+    // — so it groups under the right directory once projects are per-CWD.
+    final directory = record.cwd ?? _projectCwd;
     return PluginSession(
       id: record.id,
-      projectID: _projectCwd,
-      directory: record.cwd ?? _projectCwd,
+      projectID: directory,
+      directory: directory,
       parentID: null,
       title: record.threadName,
       time: created == null || updated == null
@@ -433,10 +562,17 @@ class CodexPlugin implements CodexManagedApi {
         variant: variant,
       );
     }
+    final resolvedDirectory = (thread?["cwd"] as String?) ?? directory;
+    // Record the directory so a session started in a brand-new project surfaces
+    // as a project immediately, before codex has flushed its rollout to disk.
+    _projectStorage.upsertProject(path: resolvedDirectory);
+    // Remember the thread's directory in memory so renameSession/project
+    // questions resolve it before the rollout header lands on disk.
+    _threadDirectory[threadId] = resolvedDirectory;
     return PluginSession(
       id: threadId,
-      projectID: _projectCwd,
-      directory: (thread?["cwd"] as String?) ?? directory,
+      projectID: resolvedDirectory,
+      directory: resolvedDirectory,
       parentID: parentSessionId,
       title: thread?["name"] as String?,
       time: _timeFromThread(thread),
@@ -638,10 +774,11 @@ class CodexPlugin implements CodexManagedApi {
       method: "thread/name/set",
       params: {"threadId": sessionId, "name": title},
     );
+    final directory = _directoryForSession(sessionId);
     return PluginSession(
       id: sessionId,
-      projectID: _projectCwd,
-      directory: _projectCwd,
+      projectID: directory,
+      directory: directory,
       parentID: null,
       title: title,
       time: null,
@@ -649,17 +786,33 @@ class CodexPlugin implements CodexManagedApi {
     );
   }
 
+  /// The CWD of the session with [sessionId]: the in-memory mapping for a
+  /// thread created this run (correct even before its rollout flushes), else the
+  /// session's own rollout header, falling back to the launch CWD. Resolves the
+  /// single rollout directly ([SessionRolloutReader.findRolloutPath] +
+  /// [SessionRolloutReader.readMeta]) rather than scanning every session.
+  String _directoryForSession(String sessionId) {
+    final live = _threadDirectory[sessionId];
+    if (live != null) return live;
+    final rolloutPath = _rolloutReader.findRolloutPath(sessionId);
+    if (rolloutPath != null) {
+      final cwd = _rolloutReader.readMeta(rolloutPath)?.cwd;
+      if (cwd != null) return cwd;
+    }
+    return _projectCwd;
+  }
+
   @override
   Future<PluginProject> renameProject({
     required String projectId,
     required String name,
   }) async {
-    // The codex backend uses a single synthesised project per launch CWD,
-    // so there is no per-project name to persist. Honour the contract by
-    // returning a project with the requested name applied so any local
-    // UI cache stays consistent.
-    final base = _synthesizedProject();
-    return PluginProject(id: base.id, name: name, time: base.time);
+    // codex has no native per-project name, so persist a display-name override
+    // in the project store; _deriveProjects applies it on the next listing so
+    // the rename survives a refresh and a bridge restart.
+    _projectStorage.upsertProject(path: projectId, name: name);
+    return _findDerivedProject(projectId) ??
+        _projectForPath(path: projectId, name: name);
   }
 
   /// Removes a codex session by deleting its rollout JSONL and dropping
@@ -682,6 +835,7 @@ class CodexPlugin implements CodexManagedApi {
     _activeTurnByThread.remove(sessionId);
     _sessionStatuses.remove(sessionId);
     _loadedThreads.remove(sessionId);
+    _threadDirectory.remove(sessionId);
   }
 
   @override
@@ -799,9 +953,20 @@ class CodexPlugin implements CodexManagedApi {
   }) async {
     final registry = _approvalRegistry;
     if (registry == null) return const [];
-    // Single-project model: every codex session belongs to the launch
-    // project. Pull every known session id we've seen.
-    final sessionIds = _sessionStatuses.keys.toList(growable: false);
+    // Scope to the sessions that belong to this project so a pending approval in
+    // one codex project doesn't surface under every other. Directory per session
+    // comes from the on-disk rollout (cwd, or the launch CWD when unrecorded —
+    // matching _toPluginSession) overlaid with the in-memory mapping, so a
+    // just-created session whose rollout hasn't flushed yet is still attributed.
+    final cwdById = <String, String>{
+      for (final record in _rolloutReader.listSessions())
+        record.id: record.cwd ?? _projectCwd,
+      ..._threadDirectory,
+    };
+    final target = _projectKey(projectId);
+    final sessionIds = _sessionStatuses.keys
+        .where((id) => _projectKey(cwdById[id] ?? _projectCwd) == target)
+        .toList(growable: false);
     return registry.pendingForProject(sessionIds);
   }
 
@@ -980,4 +1145,21 @@ class CodexPlugin implements CodexManagedApi {
     _client = null;
     await _eventBuffer.close();
   }
+}
+
+/// Mutable scratch holder used by [CodexPlugin._deriveProjects] to merge a
+/// directory's facts across its three sources (launch CWD, opened-dir store,
+/// session CWDs) before materializing one [PluginProject]. File-private and
+/// single-use — it owns no behaviour, just the partial state of one project
+/// while sources are folded together.
+class _ProjectAccumulator {
+  _ProjectAccumulator({required this.id});
+
+  /// The directory verbatim; a session CWD overwrites a placeholder so the
+  /// emitted id matches what getSessions filters on.
+  String id;
+  String? nameOverride;
+  int? addedAt;
+  int? created;
+  int? updated;
 }

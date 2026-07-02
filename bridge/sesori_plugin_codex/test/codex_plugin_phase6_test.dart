@@ -39,6 +39,9 @@ void main() {
         environment: {"CODEX_HOME": codexHome.path},
         projectCwd: projectCwd.path,
       ),
+      projectStorage: CodexProjectStorage(
+        environment: {"CODEX_HOME": codexHome.path},
+      ),
       projectCwd: projectCwd.path,
     );
 
