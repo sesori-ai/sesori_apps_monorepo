@@ -513,7 +513,7 @@ Findings log · Plan-deltas.
 
 > The update-apply stop boundary is **not** manually testable at the end of
 > Phase 2 (the update path arrives with PR 3.6): it is covered by PR 3.6's
-> fake-`AppUpdater` automated tests and manually by MT-4 item 4 (self-update
-> with the bridge on).
+> fake-`AppUpdater` automated tests and manually by the self-update item
+> (item 4) in the per-OS MT-4 ship gates (MT-4a/MT-4b/MT-4c).
 
 - **Aristotle:** n/a (no code). **Findings:** — **Deltas:** —
