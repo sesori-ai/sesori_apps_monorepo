@@ -34,9 +34,23 @@ class _BridgeOnboardingView extends StatelessWidget {
   }
 }
 
+/// Opens an external "Need help?" contact link via the DI-registered
+/// [UrlLauncher], logging (rather than crashing) when the platform reports it
+/// could not be handled.
+Future<void> _openSupportLink(String url) async {
+  try {
+    final launched = await getIt<UrlLauncher>().launch(Uri.parse(url));
+    if (!launched) logw("Could not open support link: $url");
+  } on Object catch (error, stackTrace) {
+    logw("Failed to open support link", error, stackTrace);
+  }
+}
+
 /// The shared onboarding body: the phone/PC connection status lines, the
-/// connection graphic, the "Why is this needed?" info button, and the
-/// per-platform install command boxes.
+/// connection graphic, and the per-platform install command boxes. The
+/// "Need help?" support menu ([_NeedHelpMenu]) is not part of this scroll flow —
+/// it rides the scaffold's floating-action slot, pinned to the bottom-right
+/// corner above the home indicator.
 ///
 /// [connected] switches the connection graphic between its "off" and "on"
 /// states; the rest of the body is shared by both empty Projects states.
@@ -101,27 +115,62 @@ class _OnboardingChecklist extends StatelessWidget {
           style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: PregoSpacing.lg),
-        // Wrapped so the parent Column's stretch alignment doesn't force the
-        // button full-width; fullWidth: false then sizes it to its content.
-        // TODO(daniil): add the button back
-        /* Center(
-          child: PregoButtonsSolid(
-            fullWidth: false,
-            leadingIcon: TablerRegular.info_circle,
-            label: loc.projectsOnboardingPcStatusWhy,
-            hierarchy: PregoButtonsSolidHierarchy.secondary,
-            size: PregoButtonsSolidSize.sm,
-            onPressed: () {
-              // TODO(daniil): show the new bottom sheet
-            },
-          ),
-        ),*/
         // 40px gap from the header group to the install boxes (Figma gap-5xl).
         const SizedBox(height: PregoSpacing.x5l),
         const Padding(
           padding: EdgeInsetsDirectional.fromSTEB(PregoSpacing.xl, 0, PregoSpacing.xl, PregoSpacing.x3l),
           child: _InstallCommandBoxes(),
+        ),
+        // Bottom breathing room so the last install box can be scrolled clear of
+        // the "Need help?" button pinned in the bottom-right corner.
+        const SizedBox(height: PregoSpacing.x6l),
+      ],
+    );
+  }
+}
+
+/// The onboarding support menu: a flat "Need help?" pill that opens a flat
+/// anchored menu of support channels (email, Discord, X), each launching an
+/// external link. Forced flat on every platform ([PregoAnchorMenu.flat]) so the
+/// popup matches its solid pill trigger instead of morphing in as glass.
+class _NeedHelpMenu extends StatelessWidget {
+  const _NeedHelpMenu();
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    return PregoAnchorMenu(
+      flat: true,
+      menuWidth: 200,
+      triggerBuilder: (context, toggle) => PregoButtonsSolid(
+        leadingIcon: TablerRegular.help,
+        label: loc.projectsOnboardingNeedHelp,
+        hierarchy: PregoButtonsSolidHierarchy.secondary,
+        size: PregoButtonsSolidSize.xl,
+        onPressed: toggle,
+      ),
+      entries: [
+        PregoMenuItem(
+          leadingIcon: TablerRegular.mail,
+          title: loc.projectsOnboardingNeedHelpEmail,
+          subtitle: null,
+          isSelected: false,
+          onTap: () => unawaited(_openSupportLink(SupportLinks.email)),
+        ),
+        PregoMenuItem(
+          leadingIcon: TablerRegular.brand_discord,
+          title: loc.projectsOnboardingNeedHelpDiscord,
+          subtitle: null,
+          isSelected: false,
+          onTap: () => unawaited(_openSupportLink(SupportLinks.discord)),
+        ),
+        PregoMenuItem(
+          // Tabler's pinned set ships the legacy bird glyph, not the X mark.
+          leadingIcon: TablerRegular.brand_twitter,
+          title: loc.projectsOnboardingNeedHelpX,
+          subtitle: null,
+          isSelected: false,
+          onTap: () => unawaited(_openSupportLink(SupportLinks.x)),
         ),
       ],
     );

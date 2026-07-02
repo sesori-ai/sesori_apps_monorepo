@@ -205,11 +205,29 @@ abstract class AppLocalizations {
   /// **'Run Sesori on your PC'**
   String get projectsOnboardingPcStatusRun;
 
-  /// Label for the secondary info button below the PC status line that explains why running Sesori on the PC is required.
+  /// Label for the glass pill button below the PC status line that opens a menu of support channels.
   ///
   /// In en, this message translates to:
-  /// **'Why is this needed?'**
-  String get projectsOnboardingPcStatusWhy;
+  /// **'Need help?'**
+  String get projectsOnboardingNeedHelp;
+
+  /// Need-help menu item that opens the user's mail app to contact support.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get projectsOnboardingNeedHelpEmail;
+
+  /// Need-help menu item that opens the Sesori Discord. 'Discord' is a brand name; do not translate.
+  ///
+  /// In en, this message translates to:
+  /// **'Discord'**
+  String get projectsOnboardingNeedHelpDiscord;
+
+  /// Need-help menu item that opens a direct message on X (formerly Twitter). 'X' is a brand name; do not translate.
+  ///
+  /// In en, this message translates to:
+  /// **'DM on X'**
+  String get projectsOnboardingNeedHelpX;
 
   /// Group label above the macOS/Linux/WSL install command box in the onboarding.
   ///

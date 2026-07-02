@@ -1,7 +1,6 @@
 import "dart:async";
 
 import "package:flutter/material.dart";
-import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart" show ModelPickerSection, ModelPickerSectionBuilder;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -10,8 +9,9 @@ import "../extensions/build_context_x.dart";
 import "model_picker_sheet.dart";
 
 /// Composer header exposing the agent / model / variant selection as three
-/// liquid-glass pill buttons. Tapping a pill morphs it into a [GlassMenu]
-/// popup listing the pickable values (instead of a modal bottom sheet).
+/// glass pill buttons ([PregoButtonsGlass]). Tapping a pill opens its
+/// [PregoAnchorMenu] popup listing the pickable values (instead of a modal
+/// bottom sheet).
 ///
 /// The widget owns the menu contents, so it receives the selectable data and
 /// the selection callbacks directly rather than a "open picker" callback.
@@ -158,10 +158,10 @@ class _AgentMenu extends StatelessWidget {
     return PregoAnchorMenu(
       menuWidth: 240,
       menuHeight: agents.length > 6 ? 320 : null,
-      triggerBuilder: (context, toggle) => _Trigger(
-        icon: Icons.smart_toy_outlined,
+      triggerBuilder: (context, toggle) => PregoButtonsGlass(
+        leadingIcon: Icons.smart_toy_outlined,
         label: selectedAgent,
-        onTap: toggle,
+        onPressed: toggle,
       ),
       entries: [
         PregoMenuLabel(text: loc.sessionDetailPickerAgent),
@@ -232,10 +232,10 @@ class _ModelMenu extends StatelessWidget {
     return PregoAnchorMenu(
       menuWidth: 320,
       menuHeight: _modelMenuHeight(modelRows: modelRows, headerRows: headerRows),
-      triggerBuilder: (context, toggle) => _Trigger(
-        icon: Icons.memory_outlined,
+      triggerBuilder: (context, toggle) => PregoButtonsGlass(
+        leadingIcon: Icons.memory_outlined,
         label: _resolveModelName(context, providers: providers, selected: selected),
-        onTap: toggle,
+        onPressed: toggle,
       ),
       entries: entries,
     );
@@ -260,10 +260,10 @@ class _VariantMenu extends StatelessWidget {
     return PregoAnchorMenu(
       menuWidth: 220,
       menuHeight: availableVariants.length > 6 ? 320 : null,
-      triggerBuilder: (context, toggle) => _Trigger(
-        icon: Icons.speed_outlined,
+      triggerBuilder: (context, toggle) => PregoButtonsGlass(
+        leadingIcon: Icons.speed_outlined,
         label: selectedVariant ?? loc.sessionDetailVariantDefault,
-        onTap: toggle,
+        onPressed: toggle,
       ),
       entries: [
         PregoMenuLabel(text: loc.sessionDetailPickerVariant),
@@ -355,47 +355,4 @@ String _resolveModelName(
     }
   }
   return modelID.isNotEmpty ? modelID : fallback;
-}
-
-/// A single glass pill that triggers one of the menus. Fills its [Expanded]
-/// slot (so long labels ellipsize) and shows a caret to signal it opens a menu.
-class _Trigger extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _Trigger({required this.icon, required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final prego = context.prego;
-    final foreground = prego.colors.textSecondary;
-    return GlassButton.custom(
-      onTap: onTap,
-      width: double.infinity,
-      height: 36,
-      shape: const LiquidRoundedRectangle(borderRadius: 18),
-      useOwnLayer: true,
-      settings: LiquidGlassSettings(glassColor: prego.colors.buttonGlassPrimaryBackground),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Row(
-          children: [
-            Icon(icon, size: 14, color: foreground),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: prego.textTheme.textXs.medium.copyWith(color: foreground),
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(Icons.unfold_more, size: 14, color: foreground),
-          ],
-        ),
-      ),
-    );
-  }
 }
