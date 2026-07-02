@@ -7,12 +7,24 @@
 > invariant #1). All PRs target the bridge workspace and can proceed in parallel
 > with Phase 0/2 prep.
 
-**Per-PR template:** Goal · Scope · Risk · Review-size · Acceptance · DoD ·
-Aristotle verdicts · Findings log · Plan-deltas.
+**Per-PR template:** Goal · Scope · Risk · Review-size · **Regression guide** ·
+Acceptance · DoD (incl. PLAN.md §9 row + pointer advanced) · Aristotle verdicts ·
+Findings log · Plan-deltas.
+
+> **Regression guide** = the blast radius of the PR: which existing behaviours
+> could break, and the quick checks that prove they didn't. Required on every
+> not-yet-merged PR; re-verify it before opening the PR and extend it when the
+> implementation touches more than planned. (Merged PRs 1.1–1.6 are not
+> retrofitted; their Findings logs already record what was verified.)
 
 **Standing acceptance (all Phase 1 PRs):** standalone behaviour byte-identical
 (asserted by test) · relay protocol untouched · `--control-url` absent ⇒ exact
 current behaviour.
+
+> **Exception — PR 1.14** deliberately changes standalone behaviour for the
+> relay `"replaced"` close (today's behaviour is an unbounded reconnect war —
+> ADR A22); its entry states the change explicitly and everything else stays
+> byte-identical.
 
 > **Exception — PR 1.2** writes shared wire DTOs into `sesori_shared`, which is
 > consumed by **both** the bridge and the mobile/client. That PR additionally
@@ -257,7 +269,7 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   shared cache regardless of any in-flight pull ordering. After a null
   `token_response` (signed out / mid-login), a relay reconnect does **not**
   re-authenticate from the stale cached token.
-- **Aristotle:** plan ☑ · impl ☐. **Findings:** Live re-auth subscription lives
+- **Aristotle:** plan ☑ · impl ☑. **Findings:** Live re-auth subscription lives
   in the Orchestrator (it already owns the relay reconnect/backoff loop and the
   `CompositeSubscription`); `RelayClient` stays a dumb transport. The
   `token_update→re-auth` path funnels into the **same** reconnect block the
@@ -308,6 +320,15 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   of reconnecting. Not reachable by any shipping path pre-GUI (Phase 2), but
   this PR must ensure supervised restart never calls `spawnSuccessor()`.
 - **Risk:** Med. **Size:** S-M.
+- **Regression guide:** touches the shared restart path (`handleRestartHandoff`
+  in the orchestrator + the runner seam), which standalone relies on. Check: (1)
+  standalone `POST /global/restart` still spawns a successor, the phone gets
+  `{restarting:true}`, and the successor takes over (existing tests +
+  `orchestrator` restart tests green); (2) the response flush still happens
+  BEFORE exit in supervised mode (phone must not see a dropped socket without
+  the reply); (3) the single-flight `_restartHandoffStarted` guard still resets
+  on failure; (4) post-update restart env handling (`sesoriPostUpdateRestartEnvVar`)
+  unaffected; (5) `DebugServer` restart route drives the same path in both modes.
 - **Acceptance:** phone-triggered restart → exit 86 in supervised mode; standalone
   successor handoff unchanged; **supervised mode never calls `spawnSuccessor()`**
   (closes the PR-1.1 `--control-url`-replay gap — asserted by test).
@@ -317,25 +338,76 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 - **Goal:** Pass `SESORI_NO_UPDATE`/skip policy; assert reconcile is skipped so a
   bundled bridge never rewrites itself.
 - **Risk:** Low. **Size:** S.
+- **Regression guide:** touches `shouldSkipUpdates` / runner update wiring used
+  by every standalone install. Check: (1) standalone managed installs still
+  reconcile at startup and re-reconcile after predecessor exit; (2) the
+  background update cadence still runs standalone (`updateLifecycle.start()`);
+  (3) explicit `sesori-bridge update` (ManualUpdateService) still overrides the
+  background suppressors; (4) npm/CI/non-managed suppression (`isNpmInstall`,
+  `isCiEnvironment`, `!isManagedInstall`) unchanged.
 - **Acceptance:** no update/reconcile attempt in supervised mode; standalone
   self-update intact.
 - **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
 
-## PR 1.9 — Re-home prompts/Console → control events
-- **Goal:** Replace-bridge prompt + login-needed + essential `Console` output
-  become structured control events in supervised mode.
-- **Risk:** Med. **Size:** M.
+## PR 1.9 — `BridgeControlMessageDispatcher` + prompts/Console → control events + auth-required exit `87`
+- **Goal:** Three tightly-coupled pieces of the inbound/prompt seam:
+  1. **Create `BridgeControlMessageDispatcher`** (Layer 4 `control/`, per §6): the
+     **single** inbound subscriber/decoder for GUI→helper control messages.
+     `ControlChannelTokenService` stops subscribing to `ControlChannelClient.inbound`
+     directly — the dispatcher decodes each frame once and calls typed delegate
+     methods on the token service (`token_response`/`token_update`); the service
+     keeps its request-correlation state and its `token_request` send path. This
+     resolves the otherwise-asymmetric "token service subscribes itself, other
+     variants routed elsewhere" split before PR 1.11 adds more inbound handling.
+     (GUI-side `ControlMessageDispatcher` already uses this exact shape — ADR A14.)
+  2. **Re-home prompts/Console:** replace-bridge prompt + login-needed + essential
+     `Console` output become structured control events (`prompt_request`/
+     `prompt_response` correlation via the dispatcher) in supervised mode.
+  3. **Auth-required exit sentinel (ADR A23):** when the bootstrap token pull
+     fails because the GUI is signed out / cannot supply a token
+     (`ControlTokenUnavailableException`), the supervised bridge emits a
+     best-effort `loginNeeded` prompt and exits **`87`** instead of the generic
+     exit `1` — so PR 2.7's state machine can distinguish "needs login" from a
+     crash and not backoff-respawn-thrash. `restart` remains helper→GUI outbound
+     only; the dispatcher must NOT treat it as an inbound command.
+- **Risk:** Med. **Size:** M (split the dispatcher refactor into a precursor PR if
+  it grows past the cap).
+- **Regression guide:** re-plumbs the PR 1.3–1.5 token paths — the highest-value
+  re-checks in this phase. Check: (1) token pull round-trip, force-refresh, push
+  adoption, null-response cache invalidation, and dispose-fails-in-flight all
+  stay green (existing `control_channel_token_service` + orchestrator re-auth
+  tests must pass **unmodified in behaviour**, only re-wired); (2)
+  `ControlChannelLossListener` still sees `connectionState` (its subscription is
+  separate from `inbound` — don't disturb it); (3) undecodable-frame warn+skip
+  behaviour preserved at the single decode point; (4) standalone `Console`
+  output **byte-identical** (login URL/code, prompts — asserted by test); (5)
+  supervised exit codes: token-unavailable at bootstrap = 87, control-loss = 1
+  (unchanged), normal shutdown = 0.
 - **Acceptance:** standalone Console output **byte-identical**; supervised emits
-  structured events.
+  structured prompt/login events; the dispatcher is the only `inbound` subscriber
+  (asserted by test); bootstrap token-unavailable exits `87` after a best-effort
+  `loginNeeded` prompt; PR 2.7's mapping consumes `87`.
 - **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
 
-## PR 1.10 — Status push (incl. registered `bridgeId`)
+## PR 1.10 — Status push (incl. registered `bridgeId`) via `ControlStatusNotifier`
 - **Goal:** Bridge pushes `status` (relay connection state, plugin health,
   active-session summary) over the channel, **and emits the `registered` event
   with its `bridgeId` as soon as registration succeeds** — so the GUI persists a
   readable copy *before* any crash/stop and can run the offline-unregister
-  fallback (ADR A13, pairs with PR 2.13).
+  fallback (ADR A13, pairs with PR 2.13). Owner: a new **`ControlStatusNotifier`**
+  (Layer 4 `control/`, per §6) that observes the Layer-0/state streams (relay
+  connection state, plugin health, active-session summary, registration success
+  exposed as a stream from the auth-subsystem seam) and owns **all** outbound
+  status-class sends over the injected `ControlChannelClient`. The Orchestrator
+  never calls `ControlChannelClient.send` directly.
 - **Risk:** Low. **Size:** S-M.
+- **Regression guide:** touches the orchestrator's registration/reconnect path
+  (`ensureRegistered` runs at startup, on every reconnect, and after a 4006
+  revocation). Check: (1) registration remains memoized (no duplicate POSTs per
+  process); (2) the 4006 → `handleBridgeRevoked` → fresh-id re-registration flow
+  still works and emits an updated `registered` event; (3) status emission is
+  driven by existing streams (plugin health, relay state) — no new timers
+  (reactive-vs-polling rule); (4) standalone: zero control sends attempted.
 - **Acceptance:** status events received by a fake server; the `registered`
   event carries `bridgeId` and is emitted right after registration; reflects
   live changes (reactive, no polling).
@@ -343,8 +415,16 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 
 ## PR 1.11 — `unregister-and-exit` control command
 - **Goal:** Handle a control command that unregisters the `bridgeId` (current
-  token) then exits 0, for GUI logout ordering.
+  token) then exits 0, for GUI logout ordering. Routed via the PR-1.9
+  `BridgeControlMessageDispatcher`.
 - **Risk:** Low. **Size:** S-M.
+- **Regression guide:** exercises `BridgeRegistrationService.unregister()` and
+  the ordered shutdown. Check: (1) unregister's 404-is-success semantics
+  preserved (an already-revoked bridge still exits 0); (2) the `bridge_id` file
+  is cleared exactly once and shutdown goes through `shutdownCoordinator` (plugin
+  stopped, no orphaned managed runtime); (3) an unregister network failure still
+  exits (logged, non-zero or per plan-review decision) rather than hanging the
+  GUI's logout; (4) standalone logout (`bridge logout` CLI path) untouched.
 - **Acceptance:** command unregisters then exits 0; routed via
   `BridgeControlMessageDispatcher`.
 - **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
@@ -353,8 +433,17 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 - **Goal:** Define/implement contention behaviour when no stdin: a supervised
   bridge surfaces replace-prompt via the control channel; define precedence vs a
   standalone terminal bridge on the same machine (avoid `nonInteractive` abort
-  surprises). `ensureRuntime` already runs under the mutex.
+  surprises). `ensureRuntime` already runs under the mutex. Note this is
+  **same-machine** contention only; cross-machine contention is PR 1.14.
 - **Risk:** Med. **Size:** M.
+- **Regression guide:** touches the startup mutex / single-live enforcement that
+  every standalone bridge runs through. Check: (1) two standalone terminal
+  bridges on one machine still behave exactly as today (interactive replace
+  prompt; `nonInteractive` abort path unchanged); (2) the startup mutex still
+  serializes `ensureRuntime` (no concurrent managed-runtime installs); (3) a
+  supervised bridge contending with a standalone one resolves per the documented
+  precedence without either silently exiting; (4) replace-prompt timeout
+  behaviour doesn't hang GUI boot.
 - **Acceptance:** documented + tested precedence; no silent abort.
 - **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
 
@@ -364,6 +453,113 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   DTOs) so the GUI can render first-run progress; keep stderr rendering for
   standalone.
 - **Risk:** Low. **Size:** S-M.
+- **Regression guide:** the provisioning stream is single-subscription and its
+  error/terminal semantics are load-bearing. Check: (1) teeing does not break the
+  runner's own consumption — `ProvisionReady.binaryPath` still lands on
+  `PluginHost.provisionedRuntimePath` and `ProvisionFailed` still degrades (never
+  exits); (2) a cooperative abort (`PluginStartAbortedException`) still surfaces
+  as "aborted as requested"; (3) standalone `RuntimeProvisionFormatter` stderr
+  output byte-identical; (4) a slow/blocked control channel must not stall
+  provisioning (send is fire-and-forget/buffered).
 - **Acceptance:** provision events reach a fake server; `ProvisionReady`/`Failed`
   terminal events conveyed; standalone formatter output unchanged.
 - **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+
+## PR 1.14 — Relay `"replaced"` close → takeover state, no reconnect war (ADR A22)
+- **Goal:** The relay keeps a single bridge slot per account and closes a
+  displaced bridge with **1000 + reason `"replaced"`** (`handler.go`
+  new-bridge-connect path). Today the bridge treats that as a generic drop and
+  reconnects on a backoff that **resets to 1s on success** — so two always-on
+  bridges (two desktops; desktop + forgotten systemd bridge) kick each other
+  forever while phones see `bridge_connected` flapping. This PR makes losing the
+  slot graceful:
+  - Expose `closeReason` alongside `closeCode` on the bridge `RelayClient`
+    (Layer-0 dumb accessor), and surface the replaced-close condition on the
+    relay connection-state stream the `ControlStatusNotifier` (PR 1.10) already
+    observes.
+  - In the orchestrator reconnect loop, detect 1000/`"replaced"` (the relay only
+    uses it when a live socket is displaced; the bridge's own clean close is
+    guarded by `_cancelled`): **standalone** → loud `Console.warning` ("another
+    bridge for this account took over") + retry only on a **long capped backoff**
+    (order minutes, with jitter — exact numbers at plan review; long-backoff
+    rather than stop keeps headless/VM failover semantics without a tight war).
+    The Orchestrator owns ONLY this backoff policy change.
+  - **Supervised push ownership:** the takeover state reaches the GUI through
+    the PR-1.10 `ControlStatusNotifier` (Layer 4 `control/`), which maps the
+    replaced-close condition from the relay state stream into a `status`/prompt
+    per PR-1.2 DTO shapes (additive `@Default` field if needed). The
+    Orchestrator never calls `ControlChannelClient` directly (no Layer-5→Layer-0
+    send). The GUI's "Take over" action is a plain helper respawn (kill+spawn),
+    NOT a new inbound control command.
+  - A dedicated relay close code (e.g. 4007) is optional later hardening in the
+    relay repo; do not block on it.
+- **Standing-acceptance exception (explicit):** this PR intentionally changes
+  standalone behaviour for the replaced-close case only. All other close codes
+  (incl. 4006 revoked → re-register) keep today's behaviour, asserted by test.
+- **Risk:** Med (touches every bridge's reconnect loop). **Size:** S-M.
+- **Regression guide:** the reconnect loop is shared by all drop causes — the
+  key risk is over-matching. Check: (1) a plain network drop / relay restart
+  (abnormal close, no code) still reconnects on the existing 1s-reset backoff;
+  (2) 4006 `bridgeRevoked` still re-registers with a fresh id and reconnects;
+  (3) the bridge's own `cancel()`/dispose still never triggers a reconnect;
+  (4) token-refresh-deferral reconnect gating (PR 1.5) unchanged; (5) SSE orphan
+  handling (`orphanAll`) still runs on every drop; (6) a same-machine restart
+  (exit 86 → respawn, successor handoff) is not misclassified as takeover.
+- **Acceptance:** with two bridges alternately connecting for one account
+  (fake relay), the displaced bridge does not reconnect within the war window
+  and surfaces the takeover state (Console standalone / control channel
+  supervised); normal drop reconnection unchanged; covered by connection-level
+  tests.
+- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+
+## PR 1.15 — Dev control-host harness for manual supervised testing
+- **Goal:** A small dev-only tool (`bridge/app/tool/dev_control_host.dart`,
+  ~100 lines, never shipped) that lets a human drive supervised mode without the
+  GUI (which doesn't exist until Phase 2): hosts a loopback WS control server,
+  spawns the bridge with `--control-url`, writes a random per-spawn secret to the
+  child's stdin, answers `token_request` with a token read from the developer's
+  own `token.json` (or a `--token` flag), prints every inbound control message
+  (status, registered, prompts, provision progress) to stdout, and offers
+  keyboard commands to push a `token_update`, send `unregister_and_exit`, reply
+  to prompts, and kill itself (to observe the helper's grace-period exit).
+  Enables MT-1. Tool-only: no production wiring, no new deps in `lib/`.
+- **Risk:** Low. **Size:** S.
+- **Regression guide:** none to production code (tool/ only). Check the tool is
+  excluded from the shipped binary and `make analyze`/`make test` stay green.
+- **Acceptance:** a developer can run the harness + a locally-built bridge and
+  observe: secret handshake, token pull/push, status/registered/provision
+  events, prompt round-trip, unregister-and-exit, and grace-period exit on
+  harness kill.
+- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+
+---
+
+## MT-1 — Manual checkpoint: bridge supervised mode end-to-end (user-run)
+
+> Run after PR 1.15 (harness) — items are marked with the PR that enables them,
+> so the already-enabled subset can be run any time. Goal: a human confirms the
+> whole Phase-1 surface actually works on a real machine before any GUI exists.
+> Check the §9 box only when every item passes.
+
+**Setup:** build the bridge locally (`cd bridge/app && make build-host`); have a
+logged-in `token.json` (run the standalone bridge once); run the PR-1.15 harness.
+
+| # | Check (enabled by) | How | Pass looks like |
+|---|---|---|---|
+| 1 | Standalone regression (all PRs) | run `sesori-bridge` in a terminal; connect the phone | login/startup output unchanged; phone browses sessions; `bridge_id` file exists; `token.json` has no `bridgeId` field |
+| 2 | Secret handshake (1.1) | start via harness; then try `ps aux \| grep bridge` | helper connects; secret NOT visible in argv; `Authorization` only on the WS upgrade |
+| 3 | Token pull (1.3/1.4) | harness answers `token_request` | helper authenticates to the relay with the harness-supplied token; phone connects through it |
+| 4 | Token push + live re-auth (1.5) | push `token_update` with a fresh token while connected | relay session survives; no reconnect loop; helper uses the new token on next reconnect |
+| 5 | Signed-out behaviour (1.4/1.5) | harness replies null `token_response` | helper defers relay reconnect (no stale-token re-auth); recovers after a valid push |
+| 6 | Grace-period exit (1.1) | kill the harness process | helper exits (~5s grace), exit code 1, managed runtime shut down (no orphaned `opencode serve`) |
+| 7 | Restart sentinel (1.7) | trigger restart from the phone | helper flushes `{restarting:true}`, exits **86**, does NOT spawn a successor |
+| 8 | Auth-required sentinel (1.9) | harness replies null at bootstrap | helper emits `loginNeeded` prompt, exits **87** |
+| 9 | Prompts (1.9) | start a second bridge to trigger replace-prompt | prompt arrives as a control event in the harness; reply drives the helper |
+| 10 | Status + registered (1.10) | watch harness output | `registered{bridgeId}` right after registration; status reflects relay/plugin changes live (no periodic spam) |
+| 11 | Unregister-and-exit (1.11) | send the command from the harness | helper unregisters (check the account's bridge list), clears `bridge_id`, exits 0 |
+| 12 | Provision tee (1.13) | wipe the managed runtime dir; start via harness | download/extract/ready progress events stream to the harness; standalone run still renders stderr progress |
+| 13 | No takeover war (1.14) | run a second bridge for the same account on another machine/VM (same-machine is blocked by the single-live mutex) | displaced bridge logs takeover + goes quiet (long backoff); no 1s flip-flop; phone stays usable on the winner |
+| 14 | Self-update suppressed (1.8) | run supervised from a managed install | no reconcile/update attempt in logs; standalone still reconciles |
+
+- **Aristotle:** n/a (no code). **Findings:** — (record surprises here; file
+  §8 risks or plan-deltas for anything that fails) **Deltas:** —

@@ -8,14 +8,17 @@
 
 ## Current pointer
 
-- **Last completed phase:** Phase 1 — PR 1.2 Control-protocol Freezed DTOs in `sesori_shared` (`ControlMessage` + `ControlProvisionProgress` mirror)
+- **Last completed phase:** Phase 1 — PR 1.6 Supervised registration + `bridgeId` out of `token.json` (`BridgeIdStorage` + one-time legacy adoption)
 - **Branch:** one feature branch per PR, cut from `main`
 
 > **Advance this pointer to the PR you just raised.** There is no separate
 > "in-flight" field: when you open a PR, set **Last completed phase** above to
 > that PR and mark its §9 row ☑. PRs squash-merge one at a time, so the pointer
 > (and the §9 index) read true the moment that PR merges. Do this for every PR
-> as you progress.
+> as you progress. **This is part of every PR's DoD** (the per-PR template in
+> each phase doc lists it) — it is not optional bookkeeping: PRs 1.3–1.5 shipped
+> without advancing the pointer/index, which broke the resume rule below until a
+> plan audit caught it.
 >
 > **How to resume (derive the next action — do NOT ask first).** When told to
 > "continue with the next phase/PR", resolve it deterministically:
@@ -31,6 +34,12 @@
 > 4. **Default scope = one PR per session** (matches "one feature branch per
 >    PR"). Implement the single next PR, run both Aristotle gates (§5), open it,
 >    then stop unless the user says otherwise.
+> 5. **MT rows are user-run manual checkpoints, not PRs.** When the first ☐ is an
+>    `MT-N` row, do not implement anything: present that checkpoint's checklist
+>    (in the phase doc) to the user and ask them to run it. Only the user checks
+>    an MT box. If the user explicitly says to continue while an MT stays open,
+>    later PRs may proceed — but never silently skip past an MT row, and an open
+>    MT must be resolved before its phase is called done.
 >
 > **Keep the plan true.** If a PR reveals that an assumption here was wrong — a
 > locked decision (§3), release-safety invariant (§4), component design (§6),
@@ -55,6 +64,12 @@ the terminal/npm install for desktop users. The same app eventually bakes in the
 accessory UI (projects/sessions/chat). The headless/VM path (standalone CLI +
 systemd) is preserved unchanged.
 
+**v1 non-goal (explicit):** the supervised bridge runs with **default
+configuration** — default relay, default plugin selection, default ports/log
+level. Custom bridge flags (`--relay`, plugin choice, `--opencode-port`, …) stay
+CLI-only until Phase 5.3 (richer settings). Power users who need custom config
+keep the terminal path in v1; that is a decision, not an oversight.
+
 ## 2. Architecture
 
 One installable app per OS contains **two binaries** built from the monorepo at
@@ -70,10 +85,12 @@ Sesori.app (.dmg) / Sesori installer (.exe) / Sesori.AppImage
   library: **standalone** (terminal/systemd, unchanged) and **supervised**
   (launched by the GUI; supervised mode is selected by a `--control-url` flag).
 - **GUI ↔ helper** talk over a **GUI-hosted loopback WebSocket control channel**.
-  The channel carries ONLY: fresh-token requests, token-stream pushes, status
-  pushes, runtime-provisioning progress, and prompts (replace-bridge,
-  unregister-and-exit). **No project data.** Status summaries are health/counts
-  only; session/project names and message content stay off this channel.
+  The channel carries ONLY: fresh-token requests/responses, token pushes, status
+  pushes, runtime-provisioning progress, prompts (replace-bridge, login-needed),
+  the `registered` event (bridgeId, ADR A13/A17), the intentional-restart
+  heads-up, and the `unregister-and-exit` command. **No project data.** Status
+  summaries are health/counts only; session/project names and message content
+  stay off this channel.
 - **Control-channel secret is NOT passed in argv.** Command-line arguments are
   inspectable by any other local process/user, and this channel issues bearer
   tokens — so a leaked secret = token theft. The per-spawn secret is delivered
@@ -82,7 +99,11 @@ Sesori.app (.dmg) / Sesori installer (.exe) / Sesori.AppImage
 - **Project data** flows phone-style over the relay (`relay.sesori.com`). The
   desktop accessory UI (v1.x) is a relay client like the phone, reusing
   `module_core` transport unchanged. Lean v1 control/status uses the control
-  channel only and does not resolve `ConnectionService`.
+  channel only and does not resolve `ConnectionService`. Two consequences are
+  accepted for v1.x: the desktop UI needs internet to reach the bridge running
+  on the **same machine**, and each desktop client adds relay traffic like
+  another phone. The loopback project-data path remains a later optimization
+  (Decision #2) — nothing in this plan forecloses it.
 - This mirrors Tailscale (`Tailscale.app` supervises `tailscaled`; the same
   daemon also runs headless on a server).
 
@@ -207,6 +228,14 @@ mobile release.**
 - **Every implementation PR** runs through `aristotle-plan-review` before coding
   **and** `aristotle-impl-review` before opening — the architecture gate is
   per-PR, never per-phase (a later PR in a phase must not bypass it).
+- **Every pending PR carries a Regression guide** (see the per-PR template in the
+  phase docs): the blast radius of the change — which existing behaviours could
+  break and the quick checks that prove they didn't. Write it at planning time,
+  re-verify it before opening the PR, and extend it when implementation touches
+  more than planned.
+- **Every PR's DoD includes advancing the plan state**: the §9 row flipped to ☑
+  and the Current pointer moved. A PR that ships without this breaks the resume
+  rule for the next session.
 
 ## 6. Component design (Aristotle-aligned)
 
@@ -218,9 +247,10 @@ mobile release.**
 | `ControlSecretApi` | Layer 1 `api/` | reads the per-spawn secret off-argv (first stdin line); sent as the control-channel WS `Authorization: Bearer` upgrade header (PR 1.1) |
 | `ControlChannelLossListener` | Layer 4 `control/` | ADR A9 grace-period process exit on sustained control-channel loss; injected `exitProcess` (PR 1.1). `control/` is part of the core layered bridge app, not a self-contained subsystem. |
 | Control-protocol Freezed DTOs | `shared/sesori_shared` | pure wire types (incl. provision-progress mirror) |
-| `ControlChannelTokenService` | Layer 3 `services/` | implements `auth/` `AccessTokenProvider`/`TokenRefresher`; pull + push token stream over injected `ControlChannelClient`. Kept out of the self-contained `auth/` subsystem so `auth/` does not import core `foundation/`. |
-| `BridgeControlMessageDispatcher` | Layer 4 | routes inbound control msgs (token push → token service, restart → handoff, logout → unregister-and-exit) |
-| `BridgeIdentityStorage` (file API + reader) | **inside the `auth/` subsystem** | persist `bridgeId` separately from `token.json`; kept within `auth/` (which is self-contained, outside the core layer hierarchy) so auth code doesn't depend back on top-level `repositories/`. Injected from the composition root. |
+| `ControlChannelTokenService` | Layer 3 `services/` | implements `auth/` `AccessTokenProvider`/`TokenRefresher`; pull + push token stream over injected `ControlChannelClient`. Kept out of the self-contained `auth/` subsystem so `auth/` does not import core `foundation/`. PR 1.9 re-homes its **inbound** subscription behind `BridgeControlMessageDispatcher` (typed delegate calls); request-correlation state and the `token_request` send path stay inside the service. |
+| `BridgeControlMessageDispatcher` | Layer 4 `control/` | owns the **single** inbound subscription + decode of GUI→helper control messages (created in PR 1.9). Routes: `token_response`/`token_update` → token-service delegate, `prompt_response` → prompt correlation, `unregister_and_exit` → unregister flow (PR 1.11). `restart` is **helper→GUI only** and is never an inbound command — the GUI restarts the helper by kill+respawn, not by message. |
+| `ControlStatusNotifier` | Layer 4 `control/` | owns **all outbound** status-class control sends (created in PR 1.10): observes Layer-0 state streams (relay connection state incl. close code/reason, plugin health, active-session summary, registration events) and maps them to `status`/`registered`/takeover pushes over the injected `ControlChannelClient`. Higher layers (Orchestrator) never call `ControlChannelClient.send` directly. |
+| `BridgeIdStorage` (file API + reader) | **inside the `auth/` subsystem** | persist `bridgeId` separately from `token.json`; kept within `auth/` (which is self-contained, outside the core layer hierarchy) so auth code doesn't depend back on top-level `repositories/`. Injected from the composition root. |
 | supervised auth bootstrap | composition root | short-circuit `BridgeRuntimeAuthService.ensureAuthenticated` (no stdin); keep an equivalent `logAuthenticatedUser` |
 | restart change | `orchestrator`/runner seam | `handleRestartHandoff()` → `exit(86)` instead of `spawnSuccessor()` |
 
@@ -236,8 +266,9 @@ internal `new`).
 |---|---|---|
 | `ControlChannelServer` | `module_desktop_core` Layer 0 | GUI-hosted loopback WS host + per-spawn secret; inbound-as-stream + `send`; loopback-only, bad secrets rejected, one authenticated helper per spawn |
 | process API (mirrors `HostProcessCommandExecutor`) | `module_desktop_core` Layer 1 | spawn/kill/monitor a long-lived child |
-| `BridgeProcessRepository` | `module_desktop_core` Layer 2 | wraps the process API and owns the expected-exit marker / atomic expected-stop operation used by process and update services |
+| `BridgeProcessRepository` | `module_desktop_core` Layer 2 | wraps the process API and owns the expected-exit marker / atomic expected-stop operation used by process and update services — nothing else (log capture is the tracker's job) |
 | `BridgeStatusTracker` / `BridgePromptTracker` | `module_desktop_core` Layer 2 | hold status/pending-prompt state as stream/snapshot; written by the dispatcher, read by the cubit/service |
+| `BridgeProcessLogTracker` | `module_desktop_core` Layer 2 `trackers/` | owns helper output state: subscribes to the raw stdout/stderr streams the Layer-1 process API exposes, drains them (undrained pipes block the child), writes the rotating GUI-owned log file, and keeps the last-N ring buffer exposed as snapshot/stream for the give-up UI (PR 2.7) and `FailureReporter` (PR 2.14). Attached to the child's streams by `BridgeProcessService` after spawn. |
 | `BridgeProcessService` | `module_desktop_core` Layer 3 | bridge child lifecycle: authenticated spawn gating, repository calls, exit-code/backoff decisions, and respawn/stop side effects. It reads expected-exit state from `BridgeProcessRepository`; it does not own that marker. |
 | `DesktopInstanceRepository` | `module_desktop_core` Layer 2 | wraps the single-instance lock API/storage boundary |
 | `DesktopInstanceService` | `module_desktop_core` Layer 3 | GUI single-instance lock orchestration, persisted on/off + last-state, focus-first behavior; it does not start the bridge directly |
@@ -281,12 +312,18 @@ seams through `module_core` interfaces, not `AuthManager` internals.
 | A19 | Desktop offline/onboarding uses a **desktop seam** that starts the supervised helper, not mobile `reconnectBridge()`/`BridgeInstall` CLI prompts | on desktop the app *is* the bridge; the shared mobile actions don't start the helper |
 | A20 | Desktop business logic lives in **`module_desktop_core`** | keeps `client/desktop` a Flutter shell and prevents `module_core` from inheriting tray/process/bundled-helper concerns |
 | A21 | Desktop relay-client connection is deferred until accessory UI | lean v1 needs login/control/status only; resolving relay transport early adds platform prerequisites and test surface without user-visible v1 value |
+| A22 | A bridge displaced by the relay (close 1000 + reason `"replaced"`) does **NOT** tight-loop reconnect: standalone logs a loud takeover warning and retries only on a long capped backoff; supervised additionally surfaces a takeover state over the control channel and the GUI's "Take over" action is a plain helper respawn | the relay holds a single bridge slot per account and closes the displaced bridge on contact; with today's 1s-reset backoff two always-on bridges (two desktops, or desktop + forgotten systemd bridge) mutually kick each other forever while phones see `bridge_connected` flapping. Desktop autostart (Decision #7) makes this mainstream. A dedicated relay close code (e.g. 4007) is optional later hardening; Stage C multi-bridge is the real fix — this keeps losing the slot graceful until then |
+| A23 | Supervised auth-required exit uses a **dedicated exit-code sentinel `87`** (alongside restart `86`): when the GUI cannot supply a token at bootstrap, the helper emits a `loginNeeded` prompt (best-effort) and exits `87` | the GUI's exit-code state machine (PR 2.7) must distinguish "needs login" from a crash, or it backoff-respawns a helper that can never start; inferring auth-required from a prompt seen shortly before a generic exit is racy — the exit code is the authoritative signal, the prompt is advisory |
+| A24 | If the OS tray is unavailable (stock GNOME hides AppIndicators without an extension), the GUI falls back to **windowed mode** and never boots `--hidden` | a tray-only hidden app with no tray icon is running but unreachable; hidden autostart is only safe when a tray icon is actually visible |
 
 ## 8. Open risks & lead-time register
 
 | Item | Status | Owner | Notes |
 |---|---|---|---|
-| Windows code-signing cert | **OPEN — lead time** | TBD | blocks PR 3.4 (signed Windows); EV clears SmartScreen faster |
+| Windows code-signing cert | **OPEN — lead time, START PROCUREMENT NOW** | TBD | blocks PR 3.4 (signed Windows); EV clears SmartScreen faster. Non-code and parallelizable — do not serialize behind Phase 2; if it slips, ship macOS-first (phase-3 preamble allows per-OS v1). |
+| Relay single-slot replace war (cross-machine) | **OPEN → PR 1.14** | TBD | Relay keeps ONE bridge slot per account and closes the displaced bridge with 1000/`"replaced"`; the bridge treats that as a generic drop and reconnects on a backoff that resets to 1s — two always-on bridges mutually kick forever, phones see flapping. PR 1.12's mutex only covers same-machine. PR 1.14 (ADR A22) adds the takeover policy; verified in MT-1/MT-3. Stage C multi-bridge dissolves the problem properly. |
+| Linux tray availability (GNOME) | OPEN | TBD | `tray_manager` needs AppIndicator; stock GNOME hides tray icons without an extension → tray-only `--hidden` boot = running but unreachable app. PR 2.9 adds windowed fallback, PR 2.11 refuses hidden boot without a tray (ADR A24); verified on GNOME in MT-3/MT-4. |
+| GUI crash → helper self-exits (A9) → bridge silently down | OPEN — accepted for v1 | TBD | Login items don't relaunch crashed apps (macOS `SMAppService`, Windows run keys), so a 2am GUI crash kills the bridge until the user notices a missing tray icon. Deliberate v1 trade against orphaned helpers; revisit post-v1 (watchdog / `KeepAlive`-style relaunch) if telemetry (PR 2.14) shows it matters. |
 | Control-channel secret bootstrap (off-argv) | OPEN | TBD | ADR A8; designed in PR 1.1 / PR 2.6 |
 | Orphaned helper on GUI crash | OPEN | TBD | ADR A9; parent-loss policy in PR 1.1 |
 | Supervised restart replays `--control-url` (no stdin secret) | OPEN — until PR 1.7 | TBD | PR 1.1 gap; PR 1.7 makes supervised restart `exit(86)` not `spawnSuccessor()`. Unreachable pre-GUI; successor fails closed (`ControlSecretApi` timeout → exit 1) |
@@ -305,42 +342,51 @@ seams through `module_core` interfaces, not `AuthManager` internals.
 
 Legend: ☐ pending · ◐ in-progress · ☑ done. Sizes: **S** ≤150 LOC · **M** 150–350 · **L** (rename only, mechanical).
 
+`MT-N` rows are **manual-testing checkpoints** — user-run verification passes, not
+PRs (checklists live in the phase docs; resume rule 5 in the preamble governs
+them). Only the user checks an MT box.
+
 ### Phase 0 — Rename → `phase-0-rename.md`
 - ☑ 0.1 `mobile/`→`client/` everywhere (atomic) — **Med-High / L**
 
 ### Phase 1 — Bridge supervised mode → `phase-1-bridge-supervised.md`
 - ☑ 1.1 `--control-url` + off-argv secret bootstrap + `ControlChannelClient` skeleton — Low-Med / M
 - ☑ 1.2 Control-protocol Freezed DTOs (incl. provision-progress mirror) — Low / S-M
-- ☐ 1.3 Supervised auth bootstrap (short-circuit `ensureAuthenticated`) — Med / M
-- ☐ 1.4 Token provider **pull** over channel (+ timeout/GUI-down) — Med / M
-- ☐ 1.5 Token-stream **push** → relay client — Med / S-M
+- ☑ 1.3 Supervised auth bootstrap (short-circuit `ensureAuthenticated`) — Med / M
+- ☑ 1.4 Token provider **pull** over channel (+ timeout/GUI-down) — Med / M
+- ☑ 1.5 Token-stream **push** → relay client — Med / S-M
 - ☑ 1.6 Supervised registration + `bridgeId` out of `token.json` — Med / M
 - ☐ 1.7 Exit-code restart (`86`) + bypass successor-spawn — Med / S-M
 - ☐ 1.8 Disable self-update + reconcile when supervised — Low / S
-- ☐ 1.9 Re-home prompts/Console → control events — Med / M
+- ☐ 1.9 `BridgeControlMessageDispatcher` + prompts/Console → control events + auth-required exit `87` — Med / M
 - ☐ 1.10 Status push (relay/plugin/active sessions) — Low / S-M
 - ☐ 1.11 `unregister-and-exit` control command — Low / S-M
 - ☐ 1.12 Single-live precedence under supervised `--hidden` — Med / M
 - ☐ 1.13 Tee `RuntimeProvisionProgress` → control channel — Low / S-M
+- ☐ 1.14 Relay `"replaced"` close → takeover state, no reconnect war (ADR A22) — Med / S-M
+- ☐ 1.15 Dev control-host harness for manual supervised testing (`tool/`) — Low / S
+- ☐ MT-1 Manual checkpoint: bridge supervised mode end-to-end (see phase doc) — user-run
 
 ### Phase 2 — Desktop shell + supervisor → `phase-2-desktop-shell.md`
-- ☐ 2.1 `client/module_desktop_core` + `client/desktop` packages + builds on 3 OSes — Med / M
+- ☐ 2.1 `client/module_desktop_core` + `client/desktop` packages + desktop PR CI + builds on 3 OSes — Med / M
 - ☐ 2.2 Desktop platform adapters (module_core + module_desktop_core prerequisites) — Low-Med / S-M
 - ☐ 2.3 Login reuse (`AuthManager` browser-poll OAuth) — Med / M
 - ☐ 2.4 Control status/prompt trackers baseline (no relay client yet) — Low-Med / S-M
 - ☐ 2.5a Re-export `AuthTokenProvider` from `module_core` (seam) — Low / S
 - ☐ 2.5 `ControlChannelServer` + `ControlMessageDispatcher` + token responder — Med / M
-- ☐ 2.6 `BridgeProcessService`: spawn/kill/path + expected-stop boundary — High / M
-- ☐ 2.7 Exit-code state machine (86/0/other + backoff) — High / M
+- ☐ 2.6 `BridgeProcessService`: spawn/kill/path + expected-stop boundary + helper log capture — High / M
+- ☐ 2.7 Exit-code state machine (86/87/0/other + backoff) — High / M
+- ☐ MT-2 Manual checkpoint: first real GUI supervision (see phase doc) — user-run
 - ☐ 2.8 Spike: bundled bridge runtime-ownership + `--hidden` contention — Med / S-M
-- ☐ 2.9 Tray menu + reusable control cubit — Med / M
+- ☐ 2.9 Tray menu + reusable control cubit + tray-unavailable fallback — Med / M
 - ☐ 2.10 `WindowHost` single window + v1 window contents — Med / M
 - ☐ 2.11 Autostart + `--hidden` boot + macOS login-item detection — Med / M
 - ☐ 2.12 GUI single-instance + persist on/off & last-state — Low-Med / S-M
-- ☐ 2.13 Logout coordination (GUI: unregister→kill→invalidate) — Med / S-M
+- ☐ 2.13 Logout coordination (GUI: unregister→kill→invalidate locally) — Med / S-M
 - ☐ 2.14 Desktop `FailureReporter` impl — Low-Med / S-M
 - ☐ 2.15 E2E integration (spawn→handshake→token→helper relay auth→restart→logout; local fakes) — Med / M
 - ☐ 2.16 First-run provisioning progress UI + degraded state — Med / M
+- ☐ MT-3 Manual checkpoint: full internal MVP on 3 OSes (see phase doc) — user-run
 
 ### Phase 3 — Packaging / signing / self-update (= v1) → `phase-3-packaging.md`
 - ☐ 3.0a macOS no-sandbox + hardened-runtime + spawn-child entitlements — Med / S-M
@@ -355,7 +401,8 @@ Legend: ☐ pending · ◐ in-progress · ☑ done. Sizes: **S** ≤150 LOC · *
 - ☐ 3.8 Windows self-update (WinSparkle) + appcast — High / M
 - ☐ 3.9 Linux self-update (zsync/AppImageUpdate) — Med-High / M
 - ☐ 3.10 Release-pipeline integration (non-blocking) + `make bump-version` + changelog — Med / M
-- ☐ 3.11 Uninstall + login-item/token cleanup — Low-Med / S-M
+- ☐ 3.11 Uninstall/reset + login-item cleanup (per-OS trigger reality) — Low-Med / S-M
+- ☐ MT-4 Manual checkpoint: signed install / self-update / uninstall per OS (see phase doc; per-OS subsets unlock as each OS chain lands) — user-run
 
 ### Phase 4 — Accessory UI (v1.x) → `phase-4-accessory-ui.md`
 - ☐ 4.1 Create `client/module_app_ui` + move shared widgets/extensions/l10n — Med / M
@@ -365,6 +412,7 @@ Legend: ☐ pending · ◐ in-progress · ☑ done. Sizes: **S** ≤150 LOC · *
 - ☐ 4.5 Move session_detail + session_diffs + new_session (split if needed) — Med / M
 - ☐ 4.6 Move settings — Low-Med / S-M
 - ☐ 4.7 Desktop router composition + wire accessory UI into window — Med / M
+- ☐ MT-5 Manual checkpoint: desktop accessory UI parity + mobile regression pass (see phase doc) — user-run
 
 ### Phase 5 — Polish (v2) → `phase-5-polish.md`
 - ☐ 5.1 Multi-window spike (throwaway) — Med / S-M
