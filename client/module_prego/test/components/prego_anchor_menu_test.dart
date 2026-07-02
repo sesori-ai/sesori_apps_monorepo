@@ -3,13 +3,14 @@ import "package:flutter_test/flutter_test.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:theme_prego/module_prego.dart";
 
-Widget _harness(List<PregoMenuEntry> entries) {
+Widget _harness(List<PregoMenuEntry> entries, {bool flat = false}) {
   return MaterialApp(
     theme: ThemeData(extensions: [PregoDesignSystem.light]),
     home: Scaffold(
       body: Center(
         child: PregoAnchorMenu(
           menuWidth: 240,
+          flat: flat,
           entries: entries,
           triggerBuilder: (context, toggle) => ElevatedButton(
             onPressed: toggle,
@@ -28,7 +29,13 @@ void main() {
       await tester.pumpWidget(
         _harness([
           const PregoMenuLabel(text: "Section"),
-          PregoMenuItem(title: "Alpha", subtitle: "first", isSelected: false, onTap: () => taps++),
+          PregoMenuItem(
+            title: "Alpha",
+            subtitle: "first",
+            isSelected: false,
+            leadingIcon: Icons.mail_outline,
+            onTap: () => taps++,
+          ),
           const PregoMenuDivider(),
           PregoMenuItem(title: "Beta", subtitle: null, isSelected: true, onTap: () {}),
         ]),
@@ -45,6 +52,8 @@ void main() {
       expect(find.text("SECTION"), findsOneWidget);
       expect(find.widgetWithText(InkWell, "Alpha"), findsOneWidget);
       expect(find.widgetWithText(InkWell, "Beta"), findsOneWidget);
+      // The optional leading icon renders on the flat row.
+      expect(find.widgetWithIcon(InkWell, Icons.mail_outline), findsOneWidget);
 
       await tester.tap(find.widgetWithText(InkWell, "Alpha"));
       await tester.pumpAndSettle();
@@ -118,7 +127,13 @@ void main() {
       await tester.pumpWidget(
         _harness([
           const PregoMenuLabel(text: "Section"),
-          PregoMenuItem(title: "Alpha", subtitle: "first", isSelected: false, onTap: () => taps++),
+          PregoMenuItem(
+            title: "Alpha",
+            subtitle: "first",
+            isSelected: false,
+            leadingIcon: Icons.mail_outline,
+            onTap: () => taps++,
+          ),
         ]),
       );
 
@@ -129,11 +144,47 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.widgetWithText(GlassMenuItem, "Alpha"), findsOneWidget);
+      // The optional leading icon renders on the glass item.
+      expect(find.widgetWithIcon(GlassMenuItem, Icons.mail_outline), findsOneWidget);
 
       await tester.tap(find.widgetWithText(GlassMenuItem, "Alpha"));
       await tester.pumpAndSettle();
 
       expect(taps, 1);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+    testWidgets("flat: true forces the flat path even on Apple", (tester) async {
+      var taps = 0;
+      await tester.pumpWidget(
+        _harness(
+          flat: true,
+          [
+            PregoMenuItem(
+              title: "Alpha",
+              subtitle: null,
+              isSelected: false,
+              leadingIcon: Icons.mail_outline,
+              onTap: () => taps++,
+            ),
+          ],
+        ),
+      );
+
+      // With the flat override the glass popup is never built, even on iOS.
+      expect(find.byType(GlassMenu), findsNothing);
+
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      // Flat (InkWell) row with its leading icon, and taps still route.
+      expect(find.widgetWithText(InkWell, "Alpha"), findsOneWidget);
+      expect(find.widgetWithIcon(InkWell, Icons.mail_outline), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(InkWell, "Alpha"));
+      await tester.pumpAndSettle();
+
+      expect(taps, 1);
+      expect(find.text("Alpha"), findsNothing);
     }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
   });
 }
