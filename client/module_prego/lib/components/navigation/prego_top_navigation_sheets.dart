@@ -93,7 +93,7 @@ class PregoTopNavigationSheets extends StatelessWidget implements PreferredSizeW
   static const double _titleLineHeight = 1.2;
 
   @override
-  Size get preferredSize => const Size.fromHeight(headerHeight);
+  Size get preferredSize => Size.fromHeight(showGrabber ? headerHeight : controlsRowHeight);
 
   @override
   Widget build(BuildContext context) {

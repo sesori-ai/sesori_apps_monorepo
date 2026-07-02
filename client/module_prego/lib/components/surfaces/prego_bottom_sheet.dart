@@ -39,7 +39,6 @@ class PregoBottomSheet extends StatelessWidget {
     this.surfaceColor,
     this.contentPadding = const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.xl),
     this.handleBottomSafeArea = true,
-    this.controller,
     this.topInset,
   });
 
@@ -82,9 +81,6 @@ class PregoBottomSheet extends StatelessWidget {
   /// the keyboard is hidden. Set `false` for content that scrolls to the very
   /// bottom edge. The keyboard inset is always applied.
   final bool handleBottomSafeArea;
-
-  /// Optional controller for the body scroll view.
-  final ScrollController? controller;
 
   /// The top inset (status bar / notch) the sheet keeps clear when it grows to
   /// full height.
@@ -137,11 +133,13 @@ class PregoBottomSheet extends StatelessWidget {
             // thus the sheet) sizes to it: it wraps its content when short and
             // caps at [maxHeight], scrolling, when tall.
             CustomScrollView(
-              controller: controller,
               shrinkWrap: true,
               slivers: [
+                // Clear the header plus the fade below it, so resting content
+                // starts fully legible and only dissolves once it scrolls up
+                // under the bar.
                 const SliverToBoxAdapter(
-                  child: SizedBox(height: PregoTopNavigationSheets.headerHeight),
+                  child: SizedBox(height: PregoTopNavigationSheets.headerHeight + _fadeExtent),
                 ),
                 SliverToBoxAdapter(
                   child: Padding(padding: contentPadding, child: child),
@@ -212,7 +210,8 @@ class PregoBottomSheet extends StatelessWidget {
 ///
 /// The sheet is scroll-controlled (so it can grow to the status bar) over a
 /// transparent route background — [PregoBottomSheet] paints its own rounded
-/// surface — with drag-to-dismiss enabled. The close button pops this route.
+/// surface. Scrim-tap and drag-to-dismiss both follow [isDismissible]. The
+/// close button pops this route.
 // ignore: no_slop_linter/prefer_required_named_parameters, contentPadding/handleBottomSafeArea keep sheet-chrome defaults
 Future<T?> showPregoBottomSheet<T>({
   required BuildContext context,
@@ -242,6 +241,9 @@ Future<T?> showPregoBottomSheet<T>({
     // The sheet caps itself just below the status bar, so no route SafeArea.
     useSafeArea: false,
     isDismissible: isDismissible,
+    // Keep swipe-down consistent with the scrim: a non-dismissible sheet must
+    // not be drag-dismissable either (enableDrag defaults to true otherwise).
+    enableDrag: isDismissible,
     builder: (sheetContext) => PregoBottomSheet(
       title: title,
       subtitle: subtitle,

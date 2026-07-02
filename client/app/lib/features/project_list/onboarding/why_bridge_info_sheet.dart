@@ -228,6 +228,9 @@ class _WhyFaqItemState extends State<_WhyFaqItem> {
                       style: prego.textTheme.textXs.regular.copyWith(color: colors.textSecondary),
                     ),
                   )
+                // Collapsed placeholder keeps full width so AnimatedSize only
+                // animates height; a 0x0 child would sweep the width open too
+                // if the parent ever stopped stretching its children.
                 : const SizedBox(width: double.infinity),
           ),
         ],
