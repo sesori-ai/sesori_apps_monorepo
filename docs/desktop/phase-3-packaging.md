@@ -223,9 +223,17 @@ Findings log · Plan-deltas.
   (mobile/bridge jobs on mobile/bridge paths, desktop jobs on desktop-consumed
   paths, `finalize` gated accordingly), or split a **separate desktop release
   workflow** that reuses the bridge-build artifacts — chosen at this PR's plan
-  review. The desktop-relevant set must also include the **release tooling
-  inputs themselves** — `release-all-platforms.yml`, `submit-release.yml`, the
-  reusable desktop build workflow, `.github/actions/setup-flutter/**`, and the
+  review. **A desktop-only release still needs the helper:** the desktop bundle
+  ships the same-commit bridge (PR 3.1 downloads the bridge-build artifacts),
+  so with the detection-gating option the desktop paths must ALSO trigger the
+  **bridge artifact build as an input job** (without publishing or gating the
+  CLI release), or the separate desktop workflow must build the helper itself —
+  gating bridge jobs purely on bridge/mobile paths would leave the desktop leg
+  with nothing to bundle. The desktop-relevant set must also include the
+  **release tooling inputs themselves** — `release-all-platforms.yml`,
+  `submit-release.yml`, the reusable desktop build workflow,
+  **`_reusable-bridge-build.yml`** (the desktop bundle consumes its artifact
+  names/layout/signing), `.github/actions/setup-flutter/**`, and the
   root `.tool-versions` — so a workflow/action/toolchain-only change cannot
   merge without the desktop release legs exercising it (same self-inputs rule
   as PR 2.1's desktop CI). The desktop jobs stay **non-blocking** for the

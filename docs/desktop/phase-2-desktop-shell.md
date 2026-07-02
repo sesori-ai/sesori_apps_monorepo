@@ -44,12 +44,20 @@ Findings log · Plan-deltas.
     (pubspec/lock/analysis/Makefile), **and the CI's own inputs** —
     `.github/workflows/desktop-ci.yml` itself, any composite actions it uses
     (`.github/actions/setup-flutter/**`), the root `.tool-versions` (SDK
-    selection), and `shared/no_slop_linter/**` (analyzer plugin loaded by
-    `client/analysis_options.yaml`) — so a workflow/toolchain/linter change can
+    selection), `shared/no_slop_linter/**` (analyzer plugin loaded by
+    `client/analysis_options.yaml`), and `client/app/all_lint_rules.yaml` (the
+    lint-rule file that same config `include:`s, so it shapes analysis for
+    every client package) — so a workflow/toolchain/linter change can
     never merge with the desktop jobs skipped. The desktop jobs run behind
     `if:` guards on those outputs. The shared-package paths matter because a
     shared change can break the desktop build while mobile CI stays green
-    (desktop-only API paths).
+    (desktop-only API paths). **Scope boundary:** when a shared package (e.g.
+    `client/module_prego/**`) opens the gate, desktop CI runs its own
+    desktop-package analyze/test + build matrix — that catches desktop
+    *consumption* breakage; it deliberately does NOT run the shared package's
+    own package-local analyze/tests (that is client/mobile CI's
+    responsibility — a pre-existing coverage gap for `module_prego` that this
+    workflow neither owns nor masks; don't assume desktop CI covers it).
   - **The terminal status job aggregates, not just runs:** it executes with
     `if: always()`, **inspects its `needs` results, and fails on any
     failed/cancelled desktop job** — succeeding only when all desktop jobs
