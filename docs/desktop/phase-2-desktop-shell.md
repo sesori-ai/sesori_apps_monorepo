@@ -30,19 +30,34 @@ Findings log · Plan-deltas.
 - **Goal:** New pure-Dart `module_desktop_core` package plus new Flutter
   `client/desktop` package; `main_desktop.dart`; empty window; DI bootstrap
   reusing `module_core`/`module_auth` (platform → auth → core → desktop-core
-  order). Builds on macOS/Windows/Linux. **Also creates `desktop-ci.yml`**:
-  PR-triggered on desktop paths **and every desktop-consumed dependency** —
-  `client/desktop/**`, `client/module_desktop_core/**`, the shared packages the
-  desktop build depends on (`client/module_core/**`, `client/module_auth/**`,
-  `client/module_prego/**`, `shared/sesori_shared/**`, later
-  `client/module_app_ui/**`), and the client workspace root files
-  (pubspec/lock/analysis/Makefile). A shared-package change can break the
-  desktop build while mobile CI stays green (desktop-only API paths), so
-  triggering on the two desktop packages alone would leave exactly the gap this
-  workflow exists to close. Runs analyze + test for both desktop packages and at
-  least one `flutter build` smoke leg (macOS or Linux runner). Non-blocking for
-  CLI/mobile releases (invariant #3) but a required check on desktop PRs — this
-  is what makes the standing acceptance enforceable rather than aspirational.
+  order). Builds on macOS/Windows/Linux. **Also creates `desktop-ci.yml`**,
+  with two GitHub-mechanics constraints designed in from the start:
+  - **Required-check-safe triggering:** a workflow-level `paths:` filter cannot
+    be a required check — GitHub leaves skipped-required workflows "pending",
+    blocking every non-desktop PR. So the workflow triggers on all PRs
+    **without** a workflow-level path filter; its first job computes
+    changed-path outputs (e.g. `dorny/paths-filter`) for the desktop-relevant
+    set — `client/desktop/**`, `client/module_desktop_core/**`, the shared
+    packages the desktop build depends on (`client/module_core/**`,
+    `client/module_auth/**`, `client/module_prego/**`, `shared/sesori_shared/**`,
+    later `client/module_app_ui/**`), and the client workspace root files
+    (pubspec/lock/analysis/Makefile) — and the desktop jobs run behind `if:`
+    guards on those outputs. A terminal status job always runs (succeeding when
+    the desktop jobs were skipped) so the check can be branch-protection
+    required without ever blocking a mobile/bridge PR. The shared-package paths
+    matter because a shared change can break the desktop build while mobile CI
+    stays green (desktop-only API paths).
+  - **All three OSes in the PR build matrix:** analyze + `dart test` run once
+    (ubuntu; pure Dart), but the `flutter build` leg runs on a
+    macos/windows/ubuntu **matrix** — the acceptance "builds on 3 OSes" is only
+    real if CI enforces it per PR; a single-OS smoke leg would let Windows/
+    Linux-only compile or plugin failures merge unseen until MT-3. Runner cost
+    is bounded by the `if:` path gating (only desktop-relevant PRs spin the
+    matrix).
+
+  Non-blocking for CLI/mobile releases (invariant #3) but a required check on
+  PRs (safe per the wrapper above) — this is what makes the standing acceptance
+  enforceable rather than aspirational.
 - **Risk:** Med. **Size:** M.
 - **Regression guide:** touches the client pub workspace root (`client/pubspec.yaml`
   membership) and CI path filters — the two ways to silently break mobile. Check:
@@ -54,8 +69,10 @@ Findings log · Plan-deltas.
 - **Acceptance:** `module_desktop_core` analyzes/tests as an empty module;
   `flutter build macos/windows/linux` succeeds; app launches to a placeholder;
   mobile build unaffected; no bridge process business logic lands in
-  `client/desktop`; `desktop-ci.yml` runs analyze/test/build-smoke on a desktop
-  PR and does not gate CLI/mobile releases.
+  `client/desktop`; `desktop-ci.yml` runs analyze/test + the 3-OS build matrix
+  on a desktop-relevant PR, reports success (skipped-internally) on a
+  non-desktop PR so it is safe as a required check, and does not gate
+  CLI/mobile releases.
 
 ## PR 2.2 — Desktop platform adapters (module_core + module_desktop_core prerequisites)
 - **Goal:** Register desktop implementations before any DI slice resolves the

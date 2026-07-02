@@ -199,16 +199,25 @@ Findings log · Plan-deltas.
   feed publishing when they land (WinSparkle appcast leg in PR 3.8, zsync feed
   leg in PR 3.9) — do not block the macOS ship gate on platforms that haven't
   been built yet.
-- **Trigger paths:** PR 0.1 excluded `client/desktop/**` from the (mobile-product)
-  release triggers, so this PR must **add `client/desktop/**`,
-  `bridge/**`, `client/module_desktop_core/**`, `client/module_app_ui/**`, shared
-  desktop-consumed paths (`client/module_core/**`, `client/module_auth/**`,
-  `client/module_prego/**`, workspace client pubspec/lock/config files,
-  `shared/sesori_shared/**`), and any other desktop-consumed UI package paths to
-  the desktop release jobs' triggers** — otherwise a desktop-only,
-  shared-client, or shared-protocol fix never starts the internal release /
-  appcast-zsync publish and the self-update channel silently misses releases.
-  The desktop jobs stay **non-blocking** for the CLI/mobile legs (invariant #3).
+- **Trigger paths — job-level gating is MANDATORY, not a workflow-level
+  `paths:` edit.** PR 0.1 excluded `client/desktop/**` from the (mobile-product)
+  release triggers, and a desktop-only, shared-client, or shared-protocol fix
+  must start the desktop release / feed publish — but GitHub Actions has **no
+  job-level `paths:` trigger**, and in the existing
+  `release-all-platforms.yml` the iOS/Android/bridge/finalize jobs run
+  unconditionally once the workflow starts. Naively adding `client/desktop/**`
+  (+ `bridge/**`, `client/module_desktop_core/**`, `client/module_app_ui/**`,
+  `client/module_core/**`, `client/module_auth/**`, `client/module_prego/**`,
+  workspace client pubspec/lock/config files, `shared/sesori_shared/**`) to the
+  workflow-level `on.push.paths` would make a desktop-only merge run the
+  CLI/mobile release pipeline and possibly roll an internal prerelease —
+  contradicting this PR's own "vice versa" acceptance. So: either add a
+  **changed-paths detection job whose outputs gate every job group with `if:`**
+  (mobile/bridge jobs on mobile/bridge paths, desktop jobs on desktop-consumed
+  paths, `finalize` gated accordingly), or split a **separate desktop release
+  workflow** that reuses the bridge-build artifacts — chosen at this PR's plan
+  review. The desktop jobs stay **non-blocking** for the CLI/mobile legs
+  (invariant #3) either way.
 - **Risk:** Med. **Size:** M.
 - **Regression guide:** this PR touches the **live CLI/mobile release pipeline**
   — the highest-blast-radius change in the phase. Check: (1) a full release
