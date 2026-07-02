@@ -237,6 +237,8 @@
   "sessionListEmptyArchived": "No archived sessions",
   "sessionListArchive": "Archive",
   "sessionListUnarchive": "Unarchive",
+  "sessionListMarkRead": "Mark as read",
+  "sessionListMarkUnread": "Mark as unread",
   "sessionListDelete": "Delete",
   "sessionListArchived": "Session archived",
   "sessionListUnarchived": "Session unarchived",

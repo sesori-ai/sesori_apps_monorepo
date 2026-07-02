@@ -16,6 +16,22 @@ class SessionArchiveConflictException implements Exception {
   SessionArchiveConflictException({required this.rejection});
 }
 
+/// Result of an archive-status update: the resulting [session] and whether the
+/// archive state actually changed (false for a no-op transition, e.g.
+/// archiving an already-archived session).
+class ArchiveStatusUpdate {
+  final Session session;
+  final bool changed;
+
+  /// The STORED project id the session row is keyed by. For dedicated-worktree
+  /// sessions this can differ from `session.projectID` (the enriched plugin
+  /// session may report the worktree directory), so unseen emits must use this
+  /// to update the correct project's tracker bucket.
+  final String projectId;
+
+  ArchiveStatusUpdate({required this.session, required this.changed, required this.projectId});
+}
+
 class SessionNotFoundException implements Exception {}
 
 class SessionInitializationException implements Exception {}
@@ -33,7 +49,7 @@ class SessionArchiveService {
        _sessionRepository = sessionRepository,
        _sessionPersistenceService = sessionPersistenceService;
 
-  Future<Session> updateArchiveStatus({
+  Future<ArchiveStatusUpdate> updateArchiveStatus({
     required String sessionId,
     required bool archived,
     required bool deleteWorktree,
@@ -41,14 +57,16 @@ class SessionArchiveService {
     required bool force,
   }) async {
     final sessionDto = await _getSessionDto(sessionId: sessionId);
-    return archived
-        ? _doArchive(
+    final wasArchived = sessionDto.archivedAt != null;
+    final session = archived
+        ? await _doArchive(
             sessionDto: sessionDto,
             deleteWorktree: deleteWorktree,
             deleteBranch: deleteBranch,
             force: force,
           )
-        : _doUnarchive(sessionDto: sessionDto);
+        : await _doUnarchive(sessionDto: sessionDto);
+    return ArchiveStatusUpdate(session: session, changed: wasArchived != archived, projectId: sessionDto.projectId);
   }
 
   Future<SessionDto> _getSessionDto({required String sessionId}) async {

@@ -492,6 +492,8 @@ SessionDetailCubit _buildCubit({
     loadService: loadService,
     promptDispatcher: promptDispatcher,
     permissionRepository: permissionRepository,
+    sessionViewingService: stubbedSessionViewingService(),
+    lifecycleSource: FakeLifecycleSource(),
     sessionId: sessionId,
     projectId: projectId,
     notificationCanceller: notificationCanceller,

@@ -21,6 +21,7 @@ import 'package:sesori_dart_core/src/api/notification_preferences_api.dart'
 import 'package:sesori_dart_core/src/api/permission_api.dart' as _i231;
 import 'package:sesori_dart_core/src/api/project_api.dart' as _i733;
 import 'package:sesori_dart_core/src/api/session_api.dart' as _i603;
+import 'package:sesori_dart_core/src/api/session_view_api.dart' as _i157;
 import 'package:sesori_dart_core/src/capabilities/project/project_service.dart'
     as _i680;
 import 'package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart'
@@ -53,6 +54,8 @@ import 'package:sesori_dart_core/src/repositories/registered_bridges_store.dart'
     as _i217;
 import 'package:sesori_dart_core/src/repositories/session_repository.dart'
     as _i7;
+import 'package:sesori_dart_core/src/repositories/session_view_repository.dart'
+    as _i150;
 import 'package:sesori_dart_core/src/routing/notification_open_dispatcher.dart'
     as _i516;
 import 'package:sesori_dart_core/src/services/draft_store.dart' as _i1002;
@@ -66,6 +69,10 @@ import 'package:sesori_dart_core/src/services/registered_bridges_service.dart'
     as _i699;
 import 'package:sesori_dart_core/src/services/session_detail_load_service.dart'
     as _i709;
+import 'package:sesori_dart_core/src/services/session_unseen_tracker.dart'
+    as _i28;
+import 'package:sesori_dart_core/src/services/session_viewing_service.dart'
+    as _i18;
 import 'package:sesori_shared/sesori_shared.dart' as _i553;
 
 extension GetItInjectableX on _i174.GetIt {
@@ -162,6 +169,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i680.ProjectService>(
       () => _i680.ProjectService(gh<_i857.RelayHttpApiClient>()),
     );
+    gh.lazySingleton<_i157.SessionViewApi>(
+      () => _i157.SessionViewApi(
+        connectionService: gh<_i369.ConnectionService>(),
+      ),
+    );
     gh.lazySingleton<_i7.SessionRepository>(
       () => _i7.SessionRepository(api: gh<_i603.SessionApi>()),
     );
@@ -188,6 +200,12 @@ extension GetItInjectableX on _i174.GetIt {
         failureReporter: gh<_i553.FailureReporter>(),
       ),
     );
+    gh.lazySingleton<_i28.SessionUnseenTracker>(
+      () => _i28.SessionUnseenTracker(
+        gh<_i369.ConnectionService>(),
+        failureReporter: gh<_i553.FailureReporter>(),
+      ),
+    );
     gh.lazySingleton<_i80.ProjectRepository>(
       () => _i80.ProjectRepository(api: gh<_i733.ProjectApi>()),
     );
@@ -197,11 +215,20 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i679.PermissionRepository>(
       () => _i679.PermissionRepository(api: gh<_i231.PermissionApi>()),
     );
+    gh.lazySingleton<_i150.SessionViewRepository>(
+      () => _i150.SessionViewRepository(api: gh<_i157.SessionViewApi>()),
+    );
     gh.lazySingleton<_i709.SessionDetailLoadService>(
       () => _i709.SessionDetailLoadService(
         repository: gh<_i7.SessionRepository>(),
         projectRepository: gh<_i80.ProjectRepository>(),
         connectionService: gh<_i369.ConnectionService>(),
+      ),
+    );
+    gh.lazySingleton<_i18.SessionViewingService>(
+      () => _i18.SessionViewingService(
+        viewRepository: gh<_i150.SessionViewRepository>(),
+        lifecycleSource: gh<_i903.LifecycleSource>(),
       ),
     );
     return this;

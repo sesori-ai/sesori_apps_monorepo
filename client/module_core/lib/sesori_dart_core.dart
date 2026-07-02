@@ -107,6 +107,8 @@ export "src/services/new_session_selection_tracker.dart";
 export "src/services/notification_registration_service.dart";
 export "src/services/registered_bridges_service.dart";
 export "src/services/session_detail_load_service.dart";
+export "src/services/session_unseen_tracker.dart";
+export "src/services/session_viewing_service.dart";
 // Utils
 export "src/utils/command_filter/command_picker_entry_builder.dart";
 export "src/utils/diff/diff_engine.dart";

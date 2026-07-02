@@ -10,6 +10,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_e
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
+import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
@@ -111,6 +112,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: MockLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -145,6 +148,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          lifecycleSource: MockLifecycleSource(),
           sessionId: sessionId,
           projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
@@ -163,6 +168,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: MockLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -196,6 +203,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: MockLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -230,6 +239,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: MockLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -264,6 +275,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: MockLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -313,6 +326,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: MockLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -339,6 +354,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: MockLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -392,6 +409,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          lifecycleSource: MockLifecycleSource(),
           sessionId: sessionId,
           projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
@@ -450,6 +469,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          lifecycleSource: MockLifecycleSource(),
           sessionId: sessionId,
           projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
@@ -487,6 +508,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: MockLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -516,6 +539,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          lifecycleSource: MockLifecycleSource(),
           sessionId: sessionId,
           projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
@@ -564,6 +589,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          lifecycleSource: MockLifecycleSource(),
           sessionId: sessionId,
           projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
@@ -593,6 +620,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: MockLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -624,6 +653,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          lifecycleSource: MockLifecycleSource(),
           sessionId: sessionId,
           projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
@@ -655,6 +686,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: MockLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -686,6 +719,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: MockLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -715,6 +750,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          lifecycleSource: MockLifecycleSource(),
           sessionId: sessionId,
           projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
@@ -744,6 +781,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: MockLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -787,6 +826,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          lifecycleSource: MockLifecycleSource(),
           sessionId: sessionId,
           projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
@@ -816,6 +857,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          lifecycleSource: MockLifecycleSource(),
           sessionId: sessionId,
           projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
@@ -864,6 +907,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          lifecycleSource: MockLifecycleSource(),
           sessionId: sessionId,
           projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
@@ -933,6 +978,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: MockLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -976,6 +1023,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          lifecycleSource: MockLifecycleSource(),
           sessionId: sessionId,
           projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
@@ -1013,6 +1062,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: MockLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -1039,6 +1090,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: MockLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -1083,6 +1136,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: MockLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -1140,6 +1195,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          lifecycleSource: MockLifecycleSource(),
           sessionId: sessionId,
           projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
@@ -1192,6 +1249,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          lifecycleSource: MockLifecycleSource(),
           sessionId: sessionId,
           projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
@@ -1257,6 +1316,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: MockLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -1327,6 +1388,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: MockLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -1401,6 +1464,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: MockLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -1483,6 +1548,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: MockLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -1534,6 +1601,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: MockLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -1618,6 +1687,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          lifecycleSource: MockLifecycleSource(),
           sessionId: sessionId,
           projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
@@ -1688,6 +1759,134 @@ void main() {
         ).called(1);
       },
     );
+
+    group("viewing declaration", () {
+      test("declares the view once the transcript loads and clears it on close", () async {
+        final viewingService = stubbedSessionViewingService();
+        final cubit = SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionViewingService: viewingService,
+          lifecycleSource: MockLifecycleSource(),
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
+        );
+        await _awaitLoaded(cubit);
+
+        verify(() => viewingService.setViewingSession(sessionId)).called(1);
+
+        await cubit.close();
+        verify(() => viewingService.clearViewingSession(sessionId)).called(1);
+      });
+
+      test("a failed load never declares the view", () async {
+        when(
+          () => mockSessionService.getMessages(sessionId: sessionId),
+        ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+        final viewingService = stubbedSessionViewingService();
+        final cubit = SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionViewingService: viewingService,
+          lifecycleSource: MockLifecycleSource(),
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
+        );
+        addTearDown(cubit.close);
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+
+        verifyNever(() => viewingService.setViewingSession(any()));
+      });
+
+      test("a stale reconnect refreshes AND re-asserts the view", () async {
+        final viewingService = stubbedSessionViewingService();
+        when(() => mockConnectionService.currentStatus).thenReturn(
+          const ConnectionStatus.connectionLost(
+            config: ServerConnectionConfig(relayHost: "fake.example.com"),
+          ),
+        );
+        final cubit = SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionViewingService: viewingService,
+          lifecycleSource: MockLifecycleSource(),
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
+        );
+        addTearDown(cubit.close);
+        await _awaitLoaded(cubit);
+        clearInteractions(viewingService);
+
+        // Stale signal arrives while disconnected — the refresh is deferred.
+        mockConnectionService.emitDataMayBeStale();
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        verifyNever(() => viewingService.setViewingSession(any()));
+
+        // Reconnect: the bridge released this connection's view on the drop,
+        // so the deferred refresh must re-declare it once it renders.
+        when(() => mockConnectionService.currentStatus).thenReturn(
+          const ConnectionStatus.connected(
+            config: ServerConnectionConfig(relayHost: "fake.example.com"),
+            health: HealthResponse(healthy: true, version: "1", filesystemAccessDegraded: null),
+          ),
+        );
+        connectionStatus.add(
+          const ConnectionStatus.connected(
+            config: ServerConnectionConfig(relayHost: "fake.example.com"),
+            health: HealthResponse(healthy: true, version: "1", filesystemAccessDegraded: null),
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        verify(() => viewingService.setViewingSession(sessionId)).called(1);
+      });
+
+      test("resume refreshes and re-asserts the view only after the refresh renders", () async {
+        final viewingService = stubbedSessionViewingService();
+        final lifecycle = MockLifecycleSource();
+        when(() => mockConnectionService.currentStatus).thenReturn(
+          const ConnectionStatus.connected(
+            config: ServerConnectionConfig(relayHost: "fake.example.com"),
+            health: HealthResponse(healthy: true, version: "1", filesystemAccessDegraded: null),
+          ),
+        );
+        final cubit = SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionViewingService: viewingService,
+          lifecycleSource: lifecycle,
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
+        );
+        addTearDown(cubit.close);
+        await _awaitLoaded(cubit);
+        clearInteractions(viewingService);
+
+        lifecycle.emitState(LifecycleState.paused);
+        lifecycle.emitState(LifecycleState.resumed);
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        // The post-resume silent refresh completed and re-declared the view.
+        verify(() => viewingService.setViewingSession(sessionId)).called(1);
+        verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(greaterThanOrEqualTo(1));
+      });
+    });
   });
 }
 

@@ -17,6 +17,7 @@ import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
 import "../../routing/app_routes.dart";
+import "../../services/session_unseen_tracker.dart";
 import "session_list_state.dart";
 
 class SessionListCubit extends Cubit<SessionListState> {
@@ -26,6 +27,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   final ProjectService _projectService;
   final ConnectionService _connectionService;
   final SseEventRepository _sseEventRepository;
+  final SessionUnseenTracker _sessionUnseenTracker;
   final RouteSource _routeSource;
   final String _projectId;
   final FailureReporter _failureReporter;
@@ -44,6 +46,7 @@ class SessionListCubit extends Cubit<SessionListState> {
     required ProjectService projectService,
     required ConnectionService connectionService,
     required SseEventRepository sseEventRepository,
+    required SessionUnseenTracker sessionUnseenTracker,
     required RouteSource routeSource,
     required String projectId,
     required FailureReporter failureReporter,
@@ -51,6 +54,7 @@ class SessionListCubit extends Cubit<SessionListState> {
        _projectService = projectService,
        _connectionService = connectionService,
        _sseEventRepository = sseEventRepository,
+       _sessionUnseenTracker = sessionUnseenTracker,
        _routeSource = routeSource,
        _projectId = projectId,
        _failureReporter = failureReporter,
@@ -75,6 +79,9 @@ class SessionListCubit extends Cubit<SessionListState> {
     _subscriptions.add(_connectionService.status.skip(1).listen(_onConnectionStatusChanged));
     _subscriptions.add(
       _sseEventRepository.sessionActivity.listen(_onSessionActivityUpdated),
+    );
+    _subscriptions.add(
+      _sessionUnseenTracker.sessionUnseen.listen((_) => _onUnseenUpdated()),
     );
     _subscriptions.add(
       _connectionService.dataMayBeStale.listen((_) => _onStaleReconnect()),
@@ -138,7 +145,9 @@ class SessionListCubit extends Cubit<SessionListState> {
             SesoriWorkspaceFailed() ||
             SesoriTuiToastShow() ||
             SesoriWorktreeReady() ||
-            SesoriWorktreeFailed():
+            SesoriWorktreeFailed() ||
+            // Unseen changes are consumed via the SessionUnseenTracker stream.
+            SesoriSessionUnseenChanged():
           break;
         case SesoriSessionsUpdated(:final projectID):
           if (projectID == _projectId) {
@@ -168,14 +177,60 @@ class SessionListCubit extends Cubit<SessionListState> {
     if (current is! SessionListLoaded) return;
     final loaded = current;
     final projectActivity = activityByProjectId[_projectId] ?? <String, SessionActivityInfo>{};
-    emit(
-      SessionListState.loaded(
-        sessions: loaded.sessions,
-        showArchived: loaded.showArchived,
-        activeSessionIds: projectActivity,
-        baseBranch: loaded.baseBranch,
-      ),
+    emit(loaded.copyWith(activeSessionIds: projectActivity));
+  }
+
+  void _onUnseenUpdated() {
+    if (isClosed) return;
+    final current = state;
+    if (current is! SessionListLoaded) return;
+    emit(current.copyWith(unseenBySessionId: _unseenBySessionId(current.sessions)));
+  }
+
+  /// Merges the REST-loaded `Session.unseen` with the live tracker map (the
+  /// tracker takes precedence once it has an entry).
+  Map<String, bool> _unseenBySessionId(List<Session> sessions) {
+    final live = _sessionUnseenTracker.currentSessionUnseen[_projectId] ?? const <String, bool>{};
+    return {
+      for (final session in sessions) session.id: live[session.id] ?? session.unseen,
+    };
+  }
+
+  /// Marks a session read (clears its bold) or unread (forces bold). Applied
+  /// optimistically to the tracker so the row updates immediately; the bridge
+  /// echo delivers the authoritative state (including the project aggregate)
+  /// within the round trip. On failure, a silent refetch re-seeds the
+  /// authoritative flags instead of local rollback bookkeeping.
+  Future<void> markSessionSeen({required String sessionId, required bool read}) async {
+    _sessionUnseenTracker.applyLocalSessionUnseen(
+      projectId: _projectId,
+      sessionId: sessionId,
+      unseen: !read,
     );
+    _onUnseenUpdated();
+    try {
+      final response = await _sessionService.markSessionSeen(sessionId: sessionId, read: read);
+      if (response case ErrorResponse(:final error)) {
+        loge("Failed to mark session ${read ? "read" : "unread"}", error);
+        if (!isClosed) await _fetchSessions(silent: true);
+      }
+    } catch (e, st) {
+      unawaited(
+        _failureReporter
+            .recordFailure(
+              error: e,
+              stackTrace: st,
+              uniqueIdentifier: "session_list_mark_seen",
+              fatal: false,
+              reason: "Failed to mark session seen",
+              information: [sessionId, "read=$read"],
+            )
+            .catchError((Object error, StackTrace stackTrace) {
+              loge("Failed to report mark-seen error", error, stackTrace);
+            }),
+      );
+      if (!isClosed) await _fetchSessions(silent: true);
+    }
   }
 
   void _onSessionCreated(Session session) {
@@ -519,6 +574,7 @@ class SessionListCubit extends Cubit<SessionListState> {
         sessions: sorted,
         showArchived: _showArchived,
         activeSessionIds: projectActivity,
+        unseenBySessionId: _unseenBySessionId(sorted),
         isRefreshing: isRefreshing,
         baseBranch: _baseBranch,
       ),
@@ -585,6 +641,9 @@ class SessionListCubit extends Cubit<SessionListState> {
   }
 
   Future<bool> _fetchSessions({bool silent = false, bool waitForPrData = false}) async {
+    // Captured BEFORE the fetch so the seed can't overwrite a live update that
+    // arrives while the (possibly PR-data-delayed) request is in flight.
+    final unseenTick = _sessionUnseenTracker.tick;
     final (sessionsResponse, baseBranchResponse) = await (
       _projectService.listSessions(
         projectId: _projectId,
@@ -603,6 +662,14 @@ class SessionListCubit extends Cubit<SessionListState> {
     switch (sessionsResponse) {
       case SuccessResponse(:final data):
         _allSessions = data.items;
+        // The REST flags are authoritative at fetch time — seed the tracker so
+        // a stale live `true` can't keep a row bold after a clear was missed
+        // (e.g. the session was read on another phone while reconnecting).
+        _sessionUnseenTracker.seedSessions(
+          projectId: _projectId,
+          unseenBySessionId: {for (final s in data.items) s.id: s.unseen},
+          sinceTick: unseenTick,
+        );
         _emitFiltered();
         return true;
 
