@@ -35,8 +35,14 @@ class _BridgeOnboardingView extends StatelessWidget {
 }
 
 /// Opens one of the "Need help?" contact links ([SupportLinks]) through the
-/// shared [openExternalLink] helper.
-Future<void> _openSupportLink({required String url}) => openExternalLink(url: Uri.parse(url));
+/// shared [openExternalLink] helper. Reports the tapped [channel] to analytics
+/// before launching, so the tap is counted even when the launch itself fails.
+Future<void> _openSupportLink({required String url, required SupportChannel channel}) {
+  unawaited(
+    getIt<AnalyticsReporter>().logEvent(event: AnalyticsEvent.supportLinkOpened(channel: channel)),
+  );
+  return openExternalLink(url: Uri.parse(url));
+}
 
 /// The shared onboarding body: the phone/PC connection status lines, the
 /// connection graphic, and the per-platform install command boxes. The
@@ -139,7 +145,14 @@ class _NeedHelpMenu extends StatelessWidget {
         label: loc.projectsOnboardingNeedHelp,
         hierarchy: PregoButtonsSolidHierarchy.secondary,
         size: PregoButtonsSolidSize.xl,
-        onPressed: toggle,
+        onPressed: () {
+          // While the popup is up its barrier covers the trigger, so a pill
+          // tap can only ever open the menu — safe to count as an open.
+          unawaited(
+            getIt<AnalyticsReporter>().logEvent(event: const AnalyticsEvent.needHelpMenuOpened()),
+          );
+          toggle();
+        },
       ),
       entries: [
         PregoMenuItem(
@@ -147,14 +160,18 @@ class _NeedHelpMenu extends StatelessWidget {
           title: loc.projectsOnboardingNeedHelpEmail,
           subtitle: null,
           isSelected: false,
-          onTap: () => unawaited(_openSupportLink(url: SupportLinks.email)),
+          onTap: () => unawaited(
+            _openSupportLink(url: SupportLinks.email, channel: SupportChannel.email),
+          ),
         ),
         PregoMenuItem(
           leadingIcon: TablerRegular.brand_discord,
           title: loc.projectsOnboardingNeedHelpDiscord,
           subtitle: null,
           isSelected: false,
-          onTap: () => unawaited(_openSupportLink(url: SupportLinks.discord)),
+          onTap: () => unawaited(
+            _openSupportLink(url: SupportLinks.discord, channel: SupportChannel.discord),
+          ),
         ),
         PregoMenuItem(
           // Tabler's pinned set ships the legacy bird glyph, not the X mark.
@@ -162,7 +179,9 @@ class _NeedHelpMenu extends StatelessWidget {
           title: loc.projectsOnboardingNeedHelpX,
           subtitle: null,
           isSelected: false,
-          onTap: () => unawaited(_openSupportLink(url: SupportLinks.x)),
+          onTap: () => unawaited(
+            _openSupportLink(url: SupportLinks.x, channel: SupportChannel.x),
+          ),
         ),
       ],
     );

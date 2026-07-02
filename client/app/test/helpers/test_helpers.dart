@@ -24,6 +24,7 @@ import "package:sesori_dart_core/src/capabilities/voice/voice_api.dart";
 import "package:sesori_dart_core/src/platform/deep_link_source.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/notification_canceller.dart";
+import "package:sesori_dart_core/src/platform/url_launcher.dart";
 import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
@@ -32,6 +33,8 @@ import "package:sesori_dart_core/src/services/registered_bridges_service.dart";
 import "package:sesori_mobile/capabilities/voice/audio_format_config.dart";
 import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
 import "package:sesori_mobile/capabilities/voice/wake_lock_service.dart";
+import "package:sesori_mobile/core/analytics/analytics_event.dart";
+import "package:sesori_mobile/core/analytics/analytics_reporter.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 // ---------------------------------------------------------------------------
@@ -107,6 +110,10 @@ class MockLifecycleSource extends Mock implements LifecycleSource {
 }
 
 class MockNotificationCanceller extends Mock implements NotificationCanceller {}
+
+class MockUrlLauncher extends Mock implements UrlLauncher {}
+
+class MockAnalyticsReporter extends Mock implements AnalyticsReporter {}
 
 class MockRouteSource extends Mock implements RouteSource {
   final BehaviorSubject<AppRouteDef?> _currentRoute;
@@ -265,6 +272,7 @@ void registerAllFallbackValues() {
   registerFallbackValue(http.MultipartFile.fromString("audio", ""));
   registerFallbackValue(AuthProvider.github);
   registerFallbackValue(StackTrace.empty);
+  registerFallbackValue(const AnalyticsEvent.needHelpMenuOpened());
 }
 
 // ---------------------------------------------------------------------------
