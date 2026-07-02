@@ -285,6 +285,14 @@ Findings log · Plan-deltas.
 - **Acceptance:** each exit class drives the correct action; give-up after N rapid
   crashes surfaces an error with recent helper log lines; exit policy does not
   live in a Layer-2 tracker.
+- **Carried from PR 1.7 (deferral):** a supervised restart that requests exit 86 but
+  then **hangs** in session teardown never emits any exit code (PR 1.7 covers a
+  clean return, a teardown throw, and a throwing coordinator shutdown, but not a
+  hang — see §8 risk register). The GUI must not wait forever: if a helper that was
+  asked to restart does not exit within a grace window, kill and respawn it (a
+  hung helper is indistinguishable from a crashed one from the GUI's side). Cover
+  this in the exit-code/backoff policy here (and/or a bridge-side teardown
+  watchdog).
 
 ## PR 2.8 — Spike: bundled bridge runtime-ownership + `--hidden` contention
 - **Goal:** Run the bridge from a **fake bundle layout**; confirm it does NOT trip
