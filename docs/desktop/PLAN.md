@@ -22,9 +22,15 @@
 >
 > **How to resume (derive the next action — do NOT ask first).** When told to
 > "continue with the next phase/PR", resolve it deterministically:
-> 1. The next action is the **first ☐ in the PR status index (§9)**, read
->    top-to-bottom. Phases and the PRs within them are strictly ordered and are
->    completed in order (a later phase depends on earlier phases existing).
+> 1. The next action is the **first ☐ in the PR status index (§9) whose
+>    prerequisites are not blocked**, read top-to-bottom. Phases and the PRs
+>    within them are strictly ordered and are completed in order (a later phase
+>    depends on earlier phases existing). A row marked ◐ for an external
+>    dependency (e.g. the Windows cert on 3.4) **implicitly blocks every row
+>    that depends on it** — skip the blocked row AND its dependents, per that
+>    phase's §9 section note (Phase 3's chain-skip rule names the dependent
+>    rows), and take the next ☐ outside the blocked set. Never start a row
+>    whose dependency is ◐.
 > 2. **Read the prior Findings logs / Plan-deltas first** — this file plus the
 >    relevant `phase-N-*.md` — an earlier PR may have recorded a decision, delta,
 >    naming choice, or gotcha that affects the next PR.
