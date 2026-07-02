@@ -1,4 +1,5 @@
 import "package:device_info_plus/device_info_plus.dart";
+import "package:firebase_analytics/firebase_analytics.dart";
 import "package:firebase_crashlytics/firebase_crashlytics.dart";
 import "package:flutter_local_notifications/flutter_local_notifications.dart";
 import "package:flutter_secure_storage/flutter_secure_storage.dart";
@@ -37,4 +38,7 @@ abstract class RegisterModule {
 
   @lazySingleton
   FirebaseCrashlytics get firebaseCrashlytics => FirebaseCrashlytics.instance;
+
+  @lazySingleton
+  FirebaseAnalytics get firebaseAnalytics => FirebaseAnalytics.instance;
 }

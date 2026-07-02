@@ -9,6 +9,8 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:share_plus/share_plus.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
+import "../../core/analytics/analytics_events.dart";
+import "../../core/analytics/analytics_reporter.dart";
 import "../../core/bridge_install.dart";
 import "../../core/constants.dart";
 import "../../core/di/injection.dart";
