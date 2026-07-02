@@ -22,12 +22,14 @@ _Project _$ProjectFromJson(Map json) => _Project(
   time: json['time'] == null
       ? null
       : ProjectTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
+  hasUnseenChanges: json['hasUnseenChanges'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$ProjectToJson(_Project instance) => <String, dynamic>{
   'id': instance.id,
   'name': ?instance.name,
   'time': ?instance.time?.toJson(),
+  'hasUnseenChanges': instance.hasUnseenChanges,
 };
 
 _ProjectTime _$ProjectTimeFromJson(Map json) => _ProjectTime(

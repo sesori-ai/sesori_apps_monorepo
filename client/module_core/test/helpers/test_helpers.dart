@@ -11,6 +11,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/capabilities/session/session_service.dart";
 import "package:sesori_dart_core/src/capabilities/sse/session_activity_info.dart";
 import "package:sesori_dart_core/src/capabilities/sse/sse_event_repository.dart";
+import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/route_source.dart";
 import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
@@ -18,7 +19,22 @@ import "package:sesori_dart_core/src/repositories/registered_bridges_store.dart"
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/routing/app_routes.dart";
 import "package:sesori_dart_core/src/services/registered_bridges_service.dart";
+import "package:sesori_dart_core/src/services/session_unseen_tracker.dart";
+import "package:sesori_dart_core/src/services/session_viewing_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
+
+/// A [LifecycleSource] seeded as resumed, for cubits that subscribe to
+/// lifecycle. Call [emitState] to drive transitions in tests.
+class FakeLifecycleSource implements LifecycleSource {
+  final BehaviorSubject<LifecycleState> _state = BehaviorSubject.seeded(LifecycleState.resumed);
+
+  @override
+  ValueStream<LifecycleState> get lifecycleStateStream => _state.stream;
+
+  void emitState(LifecycleState state) => _state.add(state);
+
+  void close() => _state.close();
+}
 
 class MockProjectService extends Mock implements ProjectService {}
 
@@ -83,6 +99,129 @@ class MockSseEventRepository extends Mock implements SseEventRepository {
   void emitProjectActivity(Map<String, int> activity) => _projectActivity.add(activity);
 
   void emitSessionActivity(Map<String, Map<String, SessionActivityInfo>> activity) => _sessionActivity.add(activity);
+}
+
+class MockSessionViewingService extends Mock implements SessionViewingService {}
+
+/// A [MockSessionViewingService] with its void methods pre-stubbed, for cubits
+/// that declare a viewing session on construction/close.
+MockSessionViewingService stubbedSessionViewingService() {
+  final mock = MockSessionViewingService();
+  when(() => mock.setViewingSession(any())).thenReturn(null);
+  when(() => mock.clearViewingSession(any())).thenReturn(null);
+  return mock;
+}
+
+class FakeSessionUnseenTracker extends Mock implements SessionUnseenTracker {
+  final BehaviorSubject<Map<String, bool>> _projectUnseen = BehaviorSubject.seeded(const {});
+  final BehaviorSubject<Map<String, Map<String, bool>>> _sessionUnseen = BehaviorSubject.seeded(const {});
+
+  @override
+  ValueStream<Map<String, bool>> get projectUnseen => _projectUnseen.stream;
+
+  @override
+  Map<String, bool> get currentProjectUnseen => _projectUnseen.value;
+
+  @override
+  ValueStream<Map<String, Map<String, bool>>> get sessionUnseen => _sessionUnseen.stream;
+
+  @override
+  Map<String, Map<String, bool>> get currentSessionUnseen => _sessionUnseen.value;
+
+  @override
+  int get generation => 0;
+
+  @override
+  void reconcileProjectUnseen(Map<String, bool> unseenByProjectId, {required int sinceGeneration}) {}
+
+  @override
+  void reconcileSessionUnseen({
+    required String projectId,
+    required Map<String, bool> unseenBySessionId,
+    required int sinceGeneration,
+    Map<String, bool> archivedUnseenBySessionId = const {},
+  }) {}
+
+  int _fakeGeneration = 0;
+
+  @override
+  int applyLocalSessionUnseen({
+    required String projectId,
+    required String sessionId,
+    required bool unseen,
+  }) {
+    final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
+    final projectSessions = Map<String, bool>.from(sessions[projectId] ?? const {});
+    projectSessions[sessionId] = unseen;
+    sessions[projectId] = projectSessions;
+    _sessionUnseen.add(sessions);
+
+    final projects = Map<String, bool>.from(_projectUnseen.value);
+    projects[projectId] = projectSessions.values.any((u) => u);
+    _projectUnseen.add(projects);
+    return ++_fakeGeneration;
+  }
+
+  @override
+  void revertLocalSessionUnseen({
+    required String projectId,
+    required String sessionId,
+    required bool unseen,
+    required bool projectUnseen,
+    required int ifGeneration,
+  }) {
+    if (ifGeneration != _fakeGeneration) return;
+    applyLocalSessionUnseen(projectId: projectId, sessionId: sessionId, unseen: unseen);
+    final projects = Map<String, bool>.from(_projectUnseen.value);
+    projects[projectId] = projectUnseen;
+    _projectUnseen.add(projects);
+  }
+
+  @override
+  void removeSession({required String projectId, required String sessionId}) {
+    final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
+    final projectSessions = Map<String, bool>.from(sessions[projectId] ?? const {});
+    projectSessions.remove(sessionId);
+    sessions[projectId] = projectSessions;
+    _sessionUnseen.add(sessions);
+    final projects = Map<String, bool>.from(_projectUnseen.value);
+    projects[projectId] = projectSessions.values.any((u) => u);
+    _projectUnseen.add(projects);
+  }
+
+  final Set<String> _excluded = {};
+
+  @override
+  void settleArchiveState({
+    required String projectId,
+    required String sessionId,
+    required bool archived,
+    required bool? unseen,
+  }) {
+    final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
+    final projectSessions = Map<String, bool>.from(sessions[projectId] ?? const {});
+    if (unseen != null) projectSessions[sessionId] = unseen;
+    sessions[projectId] = projectSessions;
+    _sessionUnseen.add(sessions);
+
+    final key = "$projectId|$sessionId";
+    if (archived) {
+      _excluded.add(key);
+    } else {
+      _excluded.remove(key);
+    }
+
+    final projects = Map<String, bool>.from(_projectUnseen.value);
+    projects[projectId] = projectSessions.entries.any(
+      (e) => e.value && !_excluded.contains("$projectId|${e.key}"),
+    );
+    _projectUnseen.add(projects);
+    ++_fakeGeneration;
+  }
+
+  void emitProjectUnseen(Map<String, bool> unseen) => _projectUnseen.add(unseen);
+
+  void emitSessionUnseen(Map<String, Map<String, bool>> unseen) => _sessionUnseen.add(unseen);
 }
 
 class FakeUri extends Fake implements Uri {}
@@ -201,7 +340,7 @@ Project testProject({String? id, String? path, String? name}) {
   });
 }
 
-Session testSession({String? id, String? title, DateTime? archivedAt}) {
+Session testSession({String? id, String? title, DateTime? archivedAt, bool unseen = false}) {
   return Session(
     id: id ?? "session-1",
     projectID: "project-1",
@@ -216,6 +355,7 @@ Session testSession({String? id, String? title, DateTime? archivedAt}) {
       archived: archivedAt?.millisecondsSinceEpoch,
     ),
     promptDefaults: null,
+    unseen: unseen,
   );
 }
 

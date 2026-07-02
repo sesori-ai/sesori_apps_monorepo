@@ -53,11 +53,32 @@ class SessionPersistenceService {
     await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
   }
 
-  Future<void> persistSessionsForProject({
+  /// Persists [sessions] for [projectId]. New rows are inserted (placeholders);
+  /// existing rows are left intact.
+  ///
+  /// Note: archive state is NOT reconciled from [sessions] here. The list comes
+  /// from `SessionRepository.getSessionsForProject`, which enriches each session
+  /// by overwriting `time.archived` with the stored DB value — so it carries no
+  /// new archive information. Archive is a bridge-local, DB-authoritative
+  /// operation (`UpdateSessionArchiveStatusHandler`), so there is nothing to
+  /// reconcile from the plugin list.
+  ///
+  /// When [isCompleteList] is true (the caller fetched the whole project, not a
+  /// page), rows for sessions that are no longer in [sessions] are deleted —
+  /// reconciling sessions that vanished while the bridge was offline or were
+  /// deleted directly in the backend without a `session.deleted` event.
+  ///
+  /// Returns the ids of any sessions whose rows were deleted by that
+  /// reconciliation (empty otherwise). The caller is responsible for emitting an
+  /// unseen change for them, since removing a row can flip the project aggregate
+  /// for other connected clients.
+  Future<List<String>> persistSessionsForProject({
     required String projectId,
     required List<Session> sessions,
+    bool isCompleteList = false,
+    int? fetchStartedAt,
   }) async {
-    await _db.transaction(() async {
+    return _db.transaction(() async {
       await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
       await _sessionDao.insertSessionsIfMissing(
         sessions: [
@@ -69,6 +90,18 @@ class SessionPersistenceService {
               archivedAt: s.time?.archived,
             ),
         ],
+      );
+      // Only delete rows created before this fetch started, so a session created
+      // concurrently (its row inserted after the snapshot was taken) is not
+      // wrongly removed just because it is absent from the stale snapshot. The
+      // reconcile-delete is therefore skipped entirely without a pre-fetch
+      // timestamp — falling back to "now" would defeat that guard and could
+      // delete a session created during the fetch window.
+      if (!isCompleteList || fetchStartedAt == null) return const <String>[];
+      return _sessionDao.deleteSessionsForProjectNotIn(
+        projectId: projectId,
+        keepSessionIds: [for (final s in sessions) s.id],
+        createdBefore: fetchStartedAt,
       );
     });
   }

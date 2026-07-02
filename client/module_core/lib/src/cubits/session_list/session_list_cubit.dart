@@ -17,6 +17,7 @@ import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
 import "../../routing/app_routes.dart";
+import "../../services/session_unseen_tracker.dart";
 import "session_list_state.dart";
 
 class SessionListCubit extends Cubit<SessionListState> {
@@ -26,6 +27,7 @@ class SessionListCubit extends Cubit<SessionListState> {
   final ProjectService _projectService;
   final ConnectionService _connectionService;
   final SseEventRepository _sseEventRepository;
+  final SessionUnseenTracker _sessionUnseenTracker;
   final RouteSource _routeSource;
   final String _projectId;
   final FailureReporter _failureReporter;
@@ -44,6 +46,7 @@ class SessionListCubit extends Cubit<SessionListState> {
     required ProjectService projectService,
     required ConnectionService connectionService,
     required SseEventRepository sseEventRepository,
+    required SessionUnseenTracker sessionUnseenTracker,
     required RouteSource routeSource,
     required String projectId,
     required FailureReporter failureReporter,
@@ -51,6 +54,7 @@ class SessionListCubit extends Cubit<SessionListState> {
        _projectService = projectService,
        _connectionService = connectionService,
        _sseEventRepository = sseEventRepository,
+       _sessionUnseenTracker = sessionUnseenTracker,
        _routeSource = routeSource,
        _projectId = projectId,
        _failureReporter = failureReporter,
@@ -75,6 +79,9 @@ class SessionListCubit extends Cubit<SessionListState> {
     _subscriptions.add(_connectionService.status.skip(1).listen(_onConnectionStatusChanged));
     _subscriptions.add(
       _sseEventRepository.sessionActivity.listen(_onSessionActivityUpdated),
+    );
+    _subscriptions.add(
+      _sessionUnseenTracker.sessionUnseen.listen((_) => _onUnseenUpdated()),
     );
     _subscriptions.add(
       _connectionService.dataMayBeStale.listen((_) => _onStaleReconnect()),
@@ -138,7 +145,9 @@ class SessionListCubit extends Cubit<SessionListState> {
             SesoriWorkspaceFailed() ||
             SesoriTuiToastShow() ||
             SesoriWorktreeReady() ||
-            SesoriWorktreeFailed():
+            SesoriWorktreeFailed() ||
+            // Unseen changes are consumed via the SessionUnseenTracker stream.
+            SesoriSessionUnseenChanged():
           break;
         case SesoriSessionsUpdated(:final projectID):
           if (projectID == _projectId) {
@@ -169,13 +178,27 @@ class SessionListCubit extends Cubit<SessionListState> {
     final loaded = current;
     final projectActivity = activityByProjectId[_projectId] ?? <String, SessionActivityInfo>{};
     emit(
-      SessionListState.loaded(
-        sessions: loaded.sessions,
-        showArchived: loaded.showArchived,
+      loaded.copyWith(
         activeSessionIds: projectActivity,
-        baseBranch: loaded.baseBranch,
+        unseenBySessionId: _unseenBySessionId(loaded.sessions),
       ),
     );
+  }
+
+  void _onUnseenUpdated() {
+    if (isClosed) return;
+    final current = state;
+    if (current is! SessionListLoaded) return;
+    emit(current.copyWith(unseenBySessionId: _unseenBySessionId(current.sessions)));
+  }
+
+  /// Merges the REST-seeded `Session.unseen` with the live tracker map (the
+  /// tracker takes precedence once it has an entry).
+  Map<String, bool> _unseenBySessionId(List<Session> sessions) {
+    final live = _sessionUnseenTracker.currentSessionUnseen[_projectId] ?? const <String, bool>{};
+    return {
+      for (final session in sessions) session.id: live[session.id] ?? session.unseen,
+    };
   }
 
   void _onSessionCreated(Session session) {
@@ -327,6 +350,22 @@ class SessionListCubit extends Cubit<SessionListState> {
       return false;
     }
 
+    if (response is SuccessResponse) {
+      // Settle the project aggregate locally so archiving the last unseen
+      // session un-bolds its project immediately (the bridge omits archived rows
+      // from the aggregate), without depending on the fire-and-forget unseen
+      // echo, which can be missed across a reconnect after the 2xx. The tracker
+      // is app-scoped and outlives this cubit, so the settle runs even if it
+      // closed mid-flight; only the UI emit is gated on isClosed.
+      _sessionUnseenTracker.settleArchiveState(
+        projectId: _projectId,
+        sessionId: sessionId,
+        archived: true,
+        unseen: null,
+      );
+      if (!isClosed) _onUnseenUpdated();
+    }
+
     if (isClosed) return false;
 
     return switch (response) {
@@ -358,6 +397,21 @@ class SessionListCubit extends Cubit<SessionListState> {
     _emitFiltered();
 
     final response = await _sessionService.unarchiveSession(sessionId: sessionId);
+
+    if (response is SuccessResponse<Session>) {
+      // Re-include the row in the project aggregate locally so unarchiving an
+      // unseen session re-bolds its project immediately, instead of staying
+      // excluded/un-bold until a REST refresh if the unseen echo is missed.
+      // App-scoped tracker, so this runs even if the cubit closed mid-flight.
+      _sessionUnseenTracker.settleArchiveState(
+        projectId: _projectId,
+        sessionId: sessionId,
+        archived: false,
+        unseen: response.data.unseen,
+      );
+      if (!isClosed) _onUnseenUpdated();
+    }
+
     if (isClosed) return false;
 
     return switch (response) {
@@ -423,6 +477,84 @@ class SessionListCubit extends Cubit<SessionListState> {
     }
   }
 
+  /// Marks a session read (clears its bold) or unread (forces bold). The change
+  /// is applied optimistically to the [SessionUnseenTracker] — the source of
+  /// truth both list cubits recompute from — so the row/project update
+  /// immediately AND survive a delayed or missed `session.unseen_changed` echo
+  /// (e.g. across a reconnect). The bridge's echo, when it arrives, overwrites
+  /// this with the authoritative aggregate. On failure the prior value is
+  /// restored.
+  Future<void> markSessionSeen({required String sessionId, required bool read}) async {
+    final current = state;
+    final priorUnseen = current is SessionListLoaded ? (current.unseenBySessionId[sessionId] ?? false) : false;
+    final priorProjectUnseen = _sessionUnseenTracker.currentProjectUnseen[_projectId] ?? false;
+    final optimisticGeneration = _sessionUnseenTracker.applyLocalSessionUnseen(
+      projectId: _projectId,
+      sessionId: sessionId,
+      unseen: !read,
+    );
+    _onUnseenUpdated();
+    try {
+      final response = await _sessionService.markSessionSeen(sessionId: sessionId, read: read, projectId: _projectId);
+      // The optimistic change was written into the app-scoped tracker, which
+      // outlives this cubit, so a failed request must still roll it back even if
+      // the user navigated away — otherwise a stale row/project stays bold with
+      // no authoritative echo to settle it. Only the UI emit is gated on
+      // isClosed (inside _revertLocalUnseen); the tracker revert always runs.
+      if (response is ErrorResponse) {
+        _revertLocalUnseen(
+          sessionId: sessionId,
+          priorUnseen: priorUnseen,
+          priorProjectUnseen: priorProjectUnseen,
+          optimisticGeneration: optimisticGeneration,
+        );
+      }
+    } catch (e, st) {
+      unawaited(
+        _failureReporter
+            .recordFailure(
+              error: e,
+              stackTrace: st,
+              uniqueIdentifier: "session_list_mark_seen",
+              fatal: false,
+              reason: "Failed to mark session seen",
+              information: [sessionId, "read=$read"],
+            )
+            .catchError((_) {}),
+      );
+      _revertLocalUnseen(
+        sessionId: sessionId,
+        priorUnseen: priorUnseen,
+        priorProjectUnseen: priorProjectUnseen,
+        optimisticGeneration: optimisticGeneration,
+      );
+    }
+  }
+
+  /// Restores the pre-action unseen value AND the prior project aggregate in the
+  /// tracker after a failed mark-read/unread — but only if no newer update for
+  /// this session landed since (e.g. genuine live activity arrived while the
+  /// request was in flight), so the rollback can't clobber fresher state. The
+  /// aggregate restore prevents an optimistic mark-unread that bolded the
+  /// project from leaving it stuck bold when the request fails (no bridge echo).
+  void _revertLocalUnseen({
+    required String sessionId,
+    required bool priorUnseen,
+    required bool priorProjectUnseen,
+    required int optimisticGeneration,
+  }) {
+    // The tracker is app-scoped and outlives this cubit, so the revert must run
+    // even when the cubit has closed; _onUnseenUpdated self-gates on isClosed.
+    _sessionUnseenTracker.revertLocalSessionUnseen(
+      projectId: _projectId,
+      sessionId: sessionId,
+      unseen: priorUnseen,
+      projectUnseen: priorProjectUnseen,
+      ifGeneration: optimisticGeneration,
+    );
+    _onUnseenUpdated();
+  }
+
   /// Deletes a session permanently.
   Future<bool> deleteSession({
     required String sessionId,
@@ -458,11 +590,20 @@ class SessionListCubit extends Cubit<SessionListState> {
       return false;
     }
 
-    if (isClosed) return false;
-
     return switch (response) {
-      SuccessResponse() => true,
+      SuccessResponse() => () {
+        // Settle the project aggregate locally so a deleted last-unseen session
+        // un-bolds its project immediately, without depending on the bridge's
+        // fire-and-forget unseen echo (which can be missed across a reconnect
+        // after the 2xx delete response). The tracker is app-scoped and outlives
+        // this cubit, so the mutation must run even if the cubit closed before
+        // the response arrived; only the UI emit is gated on isClosed.
+        _sessionUnseenTracker.removeSession(projectId: _projectId, sessionId: sessionId);
+        if (!isClosed) _onUnseenUpdated();
+        return true;
+      }(),
       ErrorResponse(:final error) => () {
+        if (isClosed) return false;
         loge("Failed to delete session: ${error.toString()}");
         _reinsertSession(originalSession);
         return false;
@@ -519,6 +660,7 @@ class SessionListCubit extends Cubit<SessionListState> {
         sessions: sorted,
         showArchived: _showArchived,
         activeSessionIds: projectActivity,
+        unseenBySessionId: _unseenBySessionId(sorted),
         isRefreshing: isRefreshing,
         baseBranch: _baseBranch,
       ),
@@ -585,6 +727,9 @@ class SessionListCubit extends Cubit<SessionListState> {
   }
 
   Future<bool> _fetchSessions({bool silent = false, bool waitForPrData = false}) async {
+    // Capture the tracker generation BEFORE the fetch so a live update that
+    // arrives while it's in flight isn't overwritten by this (older) snapshot.
+    final unseenGeneration = _sessionUnseenTracker.generation;
     final (sessionsResponse, baseBranchResponse) = await (
       _projectService.listSessions(
         projectId: _projectId,
@@ -603,6 +748,30 @@ class SessionListCubit extends Cubit<SessionListState> {
     switch (sessionsResponse) {
       case SuccessResponse(:final data):
         _allSessions = data.items;
+        // The REST list is authoritative at fetch time — push it into the
+        // tracker so a stale live `true` can't keep a row bold after a clear
+        // event was missed (e.g. seen on another phone while reconnecting).
+        // Exclude archived sessions: the bridge sets Session.unseen from
+        // timestamps even on archived rows, but they don't contribute to the
+        // project aggregate (ProjectRepository excludes them), so including them
+        // here could keep a project bold after its last unseen session was
+        // archived.
+        _sessionUnseenTracker.reconcileSessionUnseen(
+          projectId: _projectId,
+          unseenBySessionId: {
+            for (final s in data.items)
+              if (s.time?.archived == null) s.id: s.unseen,
+          },
+          // Pass archived rows' unseen values too, so the tracker reconciles
+          // their per-session state (the archived-list display reflects a live
+          // read echo instead of the stale REST value) while keeping them
+          // excluded from the project aggregate.
+          archivedUnseenBySessionId: {
+            for (final s in data.items)
+              if (s.time?.archived != null) s.id: s.unseen,
+          },
+          sinceGeneration: unseenGeneration,
+        );
         _emitFiltered();
         return true;
 

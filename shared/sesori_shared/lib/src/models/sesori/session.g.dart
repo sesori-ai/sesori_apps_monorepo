@@ -58,6 +58,7 @@ _Session _$SessionFromJson(Map json) => _Session(
           Map<String, dynamic>.from(json['promptDefaults'] as Map),
         ),
   hasWorktree: json['hasWorktree'] as bool? ?? false,
+  unseen: json['unseen'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
@@ -71,6 +72,7 @@ Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
   'pullRequest': ?instance.pullRequest?.toJson(),
   'promptDefaults': ?instance.promptDefaults?.toJson(),
   'hasWorktree': instance.hasWorktree,
+  'unseen': instance.unseen,
 };
 
 _SessionPromptDefaults _$SessionPromptDefaultsFromJson(Map json) =>

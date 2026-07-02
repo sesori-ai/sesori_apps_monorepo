@@ -28,6 +28,8 @@ import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/services/registered_bridges_service.dart";
+import "package:sesori_dart_core/src/services/session_unseen_tracker.dart";
+import "package:sesori_dart_core/src/services/session_viewing_service.dart";
 
 import "package:sesori_mobile/capabilities/voice/audio_format_config.dart";
 import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
@@ -142,6 +144,98 @@ class MockSseEventRepository extends Mock implements SseEventRepository {
   void emitProjectActivity(Map<String, int> activity) => _projectActivity.add(activity);
 
   void emitSessionActivity(Map<String, Map<String, SessionActivityInfo>> activity) => _sessionActivity.add(activity);
+}
+
+class FakeSessionUnseenTracker extends Mock implements SessionUnseenTracker {
+  final BehaviorSubject<Map<String, bool>> _projectUnseen = BehaviorSubject.seeded(const {});
+  final BehaviorSubject<Map<String, Map<String, bool>>> _sessionUnseen = BehaviorSubject.seeded(const {});
+
+  @override
+  ValueStream<Map<String, bool>> get projectUnseen => _projectUnseen.stream;
+
+  @override
+  Map<String, bool> get currentProjectUnseen => _projectUnseen.value;
+
+  @override
+  ValueStream<Map<String, Map<String, bool>>> get sessionUnseen => _sessionUnseen.stream;
+
+  @override
+  Map<String, Map<String, bool>> get currentSessionUnseen => _sessionUnseen.value;
+
+  @override
+  int get generation => 0;
+
+  @override
+  void reconcileProjectUnseen(Map<String, bool> unseenByProjectId, {required int sinceGeneration}) {}
+
+  @override
+  void reconcileSessionUnseen({
+    required String projectId,
+    required Map<String, bool> unseenBySessionId,
+    required int sinceGeneration,
+    Map<String, bool> archivedUnseenBySessionId = const {},
+  }) {}
+
+  int _fakeGeneration = 0;
+
+  @override
+  int applyLocalSessionUnseen({
+    required String projectId,
+    required String sessionId,
+    required bool unseen,
+  }) {
+    final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
+    final projectSessions = Map<String, bool>.from(sessions[projectId] ?? const {});
+    projectSessions[sessionId] = unseen;
+    sessions[projectId] = projectSessions;
+    _sessionUnseen.add(sessions);
+
+    final projects = Map<String, bool>.from(_projectUnseen.value);
+    projects[projectId] = projectSessions.values.any((u) => u);
+    _projectUnseen.add(projects);
+    return ++_fakeGeneration;
+  }
+
+  @override
+  void revertLocalSessionUnseen({
+    required String projectId,
+    required String sessionId,
+    required bool unseen,
+    required bool projectUnseen,
+    required int ifGeneration,
+  }) {
+    if (ifGeneration != _fakeGeneration) return;
+    applyLocalSessionUnseen(projectId: projectId, sessionId: sessionId, unseen: unseen);
+    final projects = Map<String, bool>.from(_projectUnseen.value);
+    projects[projectId] = projectUnseen;
+    _projectUnseen.add(projects);
+  }
+
+  @override
+  void removeSession({required String projectId, required String sessionId}) {
+    final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
+    final projectSessions = Map<String, bool>.from(sessions[projectId] ?? const {});
+    projectSessions.remove(sessionId);
+    sessions[projectId] = projectSessions;
+    _sessionUnseen.add(sessions);
+    final projects = Map<String, bool>.from(_projectUnseen.value);
+    projects[projectId] = projectSessions.values.any((u) => u);
+    _projectUnseen.add(projects);
+  }
+
+  void emitProjectUnseen(Map<String, bool> unseen) => _projectUnseen.add(unseen);
+
+  void emitSessionUnseen(Map<String, Map<String, bool>> unseen) => _sessionUnseen.add(unseen);
+}
+
+class MockSessionViewingService extends Mock implements SessionViewingService {}
+
+/// A [MockSessionViewingService] with its void methods pre-stubbed.
+MockSessionViewingService stubbedSessionViewingService() {
+  final mock = MockSessionViewingService();
+  when(() => mock.setViewingSession(any())).thenReturn(null);
+  when(() => mock.clearViewingSession(any())).thenReturn(null);
+  return mock;
 }
 
 class MockFailureReporter extends Mock implements FailureReporter {}

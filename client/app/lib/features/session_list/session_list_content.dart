@@ -55,7 +55,7 @@ class SessionListContent extends StatelessWidget {
         hasScrollBody: false,
         child: Center(child: CircularProgressIndicator()),
       ),
-      SessionListLoaded(:final sessions, :final showArchived, :final activeSessionIds) =>
+      SessionListLoaded(:final sessions, :final showArchived, :final activeSessionIds, :final unseenBySessionId) =>
         sessions.isEmpty
             ? SliverFillRemaining(
                 hasScrollBody: false,
@@ -76,6 +76,7 @@ class SessionListContent extends StatelessWidget {
                       session: session,
                       isArchived: isArchived,
                       isActive: activityInfo != null,
+                      unseen: unseenBySessionId[session.id] ?? session.unseen,
                       selected: selectedSessionId == session.id,
                       awaitingInput: activityInfo?.awaitingInput ?? false,
                       isRetrying: activityInfo?.isRetrying ?? false,

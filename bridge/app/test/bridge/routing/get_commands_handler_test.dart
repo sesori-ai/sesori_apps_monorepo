@@ -1,6 +1,7 @@
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/get_commands_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -26,6 +27,7 @@ void main() {
             pullRequestDao: db.pullRequestDao,
             projectsDao: db.projectsDao,
           ),
+          unseenCalculator: const SessionUnseenCalculator(),
         ),
       );
     });

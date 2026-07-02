@@ -31,6 +31,7 @@ import "repositories/session_repository.dart";
 import "routing/abort_session_handler.dart";
 import "routing/get_commands_handler.dart";
 import "routing/get_session_diffs_handler.dart";
+import "routing/handlers/mark_session_seen_handler.dart";
 import "routing/request_router.dart";
 import "routing/send_prompt_handler.dart";
 import "services/pr_sync_service.dart";
@@ -41,6 +42,8 @@ import "services/session_creation_service.dart";
 import "services/session_event_enrichment_service.dart";
 import "services/session_persistence_service.dart";
 import "services/session_prompt_service.dart";
+import "services/session_unseen_service.dart";
+import "services/session_view_tracker.dart";
 import "services/worktree_service.dart";
 import "sse/bridge_event_mapper.dart";
 import "sse/sse_manager.dart";
@@ -62,6 +65,8 @@ class Orchestrator {
   final PrSyncService _prSyncService;
   final SessionRepository _sessionRepository;
   final ProjectRepository _projectRepository;
+  final SessionUnseenService _sessionUnseenService;
+  final SessionViewTracker _sessionViewTracker;
   final FilesystemRepository _filesystemRepository;
   final ProjectInitializationService _projectInitializationService;
   final HealthRepository _healthRepository;
@@ -89,6 +94,8 @@ class Orchestrator {
     required PrSyncService prSyncService,
     required SessionRepository sessionRepository,
     required ProjectRepository projectRepository,
+    required SessionUnseenService sessionUnseenService,
+    required SessionViewTracker sessionViewTracker,
     required FilesystemRepository filesystemRepository,
     required ProjectInitializationService projectInitializationService,
     required HealthRepository healthRepository,
@@ -113,6 +120,8 @@ class Orchestrator {
        _sessionRepository = sessionRepository,
        _prSyncService = prSyncService,
        _projectRepository = projectRepository,
+       _sessionUnseenService = sessionUnseenService,
+       _sessionViewTracker = sessionViewTracker,
        _filesystemRepository = filesystemRepository,
        _projectInitializationService = projectInitializationService,
        _healthRepository = healthRepository,
@@ -164,6 +173,8 @@ class Orchestrator {
       sessionRepository: _sessionRepository,
       prSyncService: _prSyncService,
       projectRepository: _projectRepository,
+      sessionUnseenService: _sessionUnseenService,
+      sessionViewTracker: _sessionViewTracker,
       filesystemRepository: _filesystemRepository,
       projectInitializationService: _projectInitializationService,
       healthRepository: _healthRepository,
@@ -210,6 +221,8 @@ class OrchestratorSession {
   final StreamController<int> _bytesSentController;
   final FailureReporter _failureReporter;
   final PrSyncService _prSyncService;
+  final SessionUnseenService _sessionUnseenService;
+  final SessionViewTracker _sessionViewTracker;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final SessionAbortService _sessionAbortService;
   final BridgeRestartService _restartService;
@@ -252,6 +265,8 @@ class OrchestratorSession {
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
     required ProjectRepository projectRepository,
+    required SessionUnseenService sessionUnseenService,
+    required SessionViewTracker sessionViewTracker,
     required FilesystemRepository filesystemRepository,
     required ProjectInitializationService projectInitializationService,
     required HealthRepository healthRepository,
@@ -279,6 +294,8 @@ class OrchestratorSession {
        _bytesSentController = bytesSentController,
        _failureReporter = failureReporter,
        _prSyncService = prSyncService,
+       _sessionUnseenService = sessionUnseenService,
+       _sessionViewTracker = sessionViewTracker,
        _sessionAbortService = sessionAbortService,
        _restartService = restartService,
        _router = RequestRouter(
@@ -296,14 +313,16 @@ class OrchestratorSession {
              sseManager: sseManager,
            ),
          ),
-          prSyncService: prSyncService,
-          projectRepository: projectRepository,
-          filesystemRepository: filesystemRepository,
-          projectInitializationService: projectInitializationService,
-          healthRepository: healthRepository,
-          providerRepository: providerRepository,
-          agentRepository: agentRepository,
-          permissionRepository: permissionRepository,
+         prSyncService: prSyncService,
+         projectRepository: projectRepository,
+         filesystemRepository: filesystemRepository,
+         projectInitializationService: projectInitializationService,
+         healthRepository: healthRepository,
+         providerRepository: providerRepository,
+         agentRepository: agentRepository,
+         markSessionSeenHandler: MarkSessionSeenHandler(sessionUnseenService: sessionUnseenService),
+         sessionUnseenService: sessionUnseenService,
+         permissionRepository: permissionRepository,
          questionRepository: questionRepository,
          sessionPersistenceService: sessionPersistenceService,
          worktreeService: worktreeService,
@@ -383,6 +402,18 @@ class OrchestratorSession {
             _sseManager.enqueueEvent(SesoriSseEvent.sessionsUpdated(projectID: projectId));
           })
           .addTo(_subscriptions);
+      _sessionUnseenService.unseenChanges
+          .listen((change) {
+            _sseManager.enqueueEvent(
+              SesoriSseEvent.sessionUnseenChanged(
+                projectID: change.projectId,
+                sessionId: change.sessionId,
+                unseen: change.unseen,
+                projectHasUnseenChanges: change.projectHasUnseenChanges,
+              ),
+            );
+          })
+          .addTo(_subscriptions);
 
       // Live re-auth: when the token provider emits a token that differs from the
       // one the relay socket is actually authenticated with (supervised mode, the
@@ -427,6 +458,7 @@ class OrchestratorSession {
         Log.w("Relay connection lost. Reconnecting...");
         _sseManager.orphanAll();
         activePhones.clear();
+        _sessionViewTracker.clearAll();
 
         if (_client.closeCode == RelayCloseCodes.bridgeRevoked) {
           Log.w("Relay reports this bridge as revoked — re-registering with a fresh bridge id");
@@ -483,6 +515,10 @@ class OrchestratorSession {
       Log.v("[shutdown] completion listener disposed (+${teardownSw.elapsedMilliseconds}ms)");
       _maintenanceListener.dispose();
       _prSyncService.dispose();
+      // SessionUnseenService and SessionViewTracker are global singletons owned
+      // by BridgeRuntime (the composition root); it disposes them on close().
+      // They intentionally outlive this session so a restart/reconnect can reuse
+      // them without hitting closed stream controllers.
       Log.v("[shutdown] maintenance + pr-sync listeners disposed (+${teardownSw.elapsedMilliseconds}ms)");
       // Plugin teardown is owned by BridgePlugin.shutdown(), run as the
       // shutdown coordinator's ordered step — the deprecated direct
@@ -580,6 +616,11 @@ class OrchestratorSession {
         );
         _completionListener.handleSseEvent(sesoriEvent);
         _sseManager.enqueueEvent(sesoriEvent);
+        unawaited(
+          Future.sync(() => _routeUnseenActivity(sesoriEvent)).catchError((Object e, StackTrace st) {
+            Log.w("failed to route unseen activity for ${sesoriEvent.runtimeType}", e, st);
+          }),
+        );
       } else {
         Log.v("[sse] mapping returned null — event dropped");
       }
@@ -597,6 +638,91 @@ class OrchestratorSession {
             )
             .catchError((_) {}),
       );
+    }
+  }
+
+  /// Remembers the author role of recently-seen messages so streamed part
+  /// events (which only carry `messageID`, not the role) can be attributed to
+  /// the right author — a user's own message + its parts must not bold the
+  /// session. Bounded to avoid unbounded growth (oldest evicted first).
+  static const int _maxTrackedMessageRoles = 2048;
+  final Map<String, bool> _userMessageIds = <String, bool>{};
+
+  void _rememberMessageRole(String messageId, {required bool isUser}) {
+    if (_userMessageIds.length >= _maxTrackedMessageRoles) {
+      _userMessageIds.remove(_userMessageIds.keys.first);
+    }
+    _userMessageIds[messageId] = isUser;
+  }
+
+  /// Feeds an already-mapped [SesoriSseEvent] into the unseen-changes tracker.
+  /// Only message activity and pending input requests advance unseen state;
+  /// everything else is ignored. A user-authored message (or reply) advances the
+  /// "last user message" timestamp in addition to general activity.
+  Future<void> _routeUnseenActivity(SesoriSseEvent event) async {
+    switch (event) {
+      case SesoriSessionCreated(:final info):
+        await _sessionUnseenService.recordSessionCreated(
+          sessionId: info.id,
+          projectId: info.projectID,
+          parentId: info.parentID,
+        );
+      case SesoriSessionDeleted(:final info):
+        await _sessionUnseenService.recordSessionDeleted(sessionId: info.id);
+      case SesoriMessageUpdated(:final info):
+        final isUser = info is MessageUser;
+        _rememberMessageRole(info.id, isUser: isUser);
+        await _sessionUnseenService.recordActivity(
+          sessionId: info.sessionID,
+          isUserMessage: isUser,
+        );
+      // Streamed output changes the visible transcript, so it's activity. Parts
+      // carry only messageID, so use the remembered parent role: a user's own
+      // message parts must not bold the session.
+      case SesoriMessagePartUpdated(:final part):
+        await _sessionUnseenService.recordActivity(
+          sessionId: part.sessionID,
+          isUserMessage: _userMessageIds[part.messageID] ?? false,
+        );
+      case SesoriMessagePartDelta(:final sessionID, :final messageID):
+        await _sessionUnseenService.recordActivity(
+          sessionId: sessionID,
+          isUserMessage: _userMessageIds[messageID] ?? false,
+        );
+      // For child/subagent requests, `displaySessionId` is the root session the
+      // UI surfaces the request under; the child has no persisted row, so route
+      // to the displayed root so it becomes unseen for pending input.
+      case SesoriQuestionAsked(:final sessionID, :final displaySessionId):
+        await _sessionUnseenService.recordActivity(
+          sessionId: displaySessionId ?? sessionID,
+          isUserMessage: false,
+        );
+      case SesoriPermissionAsked(:final sessionID, :final displaySessionId):
+        await _sessionUnseenService.recordActivity(
+          sessionId: displaySessionId ?? sessionID,
+          isUserMessage: false,
+        );
+      // Question replied/rejected and permission replied are all user responses
+      // to a pending prompt, so they advance the user-interaction timestamp and
+      // clear the unseen state.
+      case SesoriQuestionReplied(:final sessionID, :final displaySessionId):
+        await _sessionUnseenService.recordActivity(
+          sessionId: displaySessionId ?? sessionID,
+          isUserMessage: true,
+        );
+      case SesoriQuestionRejected(:final sessionID, :final displaySessionId):
+        await _sessionUnseenService.recordActivity(
+          sessionId: displaySessionId ?? sessionID,
+          isUserMessage: true,
+        );
+      case SesoriPermissionReplied(:final sessionID, :final displaySessionId):
+        await _sessionUnseenService.recordActivity(
+          sessionId: displaySessionId ?? sessionID,
+          isUserMessage: true,
+        );
+      default:
+        // Not an unseen-relevant event.
+        break;
     }
   }
 
@@ -712,6 +838,7 @@ class OrchestratorSession {
             kxManager.removeExchange(connID);
             activePhones.remove(connID);
             _sseManager.removeSubscriber(connID);
+            _sessionViewTracker.releaseConnection(connID: connID);
         }
         continue;
       }
@@ -941,6 +1068,9 @@ class OrchestratorSession {
       case RelaySseUnsubscribe():
         Log.v("SseUnsubscribe connID=$connID");
         _sseManager.unsubscribe(connID);
+      case RelaySessionView(:final sessionId):
+        Log.v("SessionView connID=$connID sessionId=$sessionId");
+        _sessionViewTracker.setViewing(connID: connID, sessionId: sessionId);
       default:
         Log.v("unhandled msg type: ${msg.runtimeType}");
     }

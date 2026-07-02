@@ -22,10 +22,14 @@ import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/completion_push_listener.dart";
@@ -284,6 +288,24 @@ class _ReauthHarness {
       plugin: plugin,
       sessionDao: database.sessionDao,
       pullRequestRepository: pullRequestRepository,
+      unseenCalculator: const SessionUnseenCalculator(),
+    );
+    final sessionViewTracker = SessionViewTracker();
+    final sessionUnseenService = SessionUnseenService(
+      unseenRepository: SessionUnseenRepository(
+        sessionDao: database.sessionDao,
+        projectsDao: database.projectsDao,
+        db: database,
+        calculator: const SessionUnseenCalculator(),
+      ),
+      projectRepository: ProjectRepository(
+        plugin: plugin,
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      ),
+      sessionRepository: sessionRepository,
+      viewTracker: sessionViewTracker,
     );
     final pushSubsystem = _createPushSubsystem();
     // One registration service feeds both the orchestrator and the relay client's
@@ -314,7 +336,14 @@ class _ReauthHarness {
       failureReporter: FakeFailureReporter(),
       prSyncService: FakePrSyncService(),
       sessionRepository: sessionRepository,
-      projectRepository: ProjectRepository(plugin: plugin, projectsDao: database.projectsDao),
+      projectRepository: ProjectRepository(
+        plugin: plugin,
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      ),
+      sessionUnseenService: sessionUnseenService,
+      sessionViewTracker: sessionViewTracker,
       filesystemRepository: FilesystemRepository(
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),

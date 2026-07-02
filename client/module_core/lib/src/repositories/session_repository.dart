@@ -53,6 +53,14 @@ class SessionRepository {
     return _api.abortSession(sessionId: sessionId);
   }
 
+  Future<ApiResponse<void>> markSessionSeen({
+    required String sessionId,
+    required bool read,
+    required String? projectId,
+  }) {
+    return _api.markSessionSeen(sessionId: sessionId, read: read, projectId: projectId);
+  }
+
   Future<ApiResponse<void>> replyToQuestion({
     required String requestId,
     required String sessionId,

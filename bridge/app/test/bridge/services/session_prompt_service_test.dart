@@ -3,6 +3,7 @@ import "dart:async";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -27,6 +28,7 @@ void main() {
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
         ),
+        unseenCalculator: const SessionUnseenCalculator(),
       );
       service = SessionPromptService(
         sessionRepository: sessionRepository,

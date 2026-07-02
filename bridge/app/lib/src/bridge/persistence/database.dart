@@ -26,7 +26,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -112,6 +112,15 @@ class AppDatabase extends _$AppDatabase {
       from5To6: (m, schema) async {
         await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastAgent);
         await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastAgentModel);
+      },
+      from6To7: (m, schema) async {
+        // Unseen-changes tracking. All three columns are nullable and default
+        // to NULL, which the unseen calculator treats as 0 — so every existing
+        // session is baseline-"seen" (unseen = activity > max(userMessage,
+        // seen) == 0 > 0 == false) until new activity arrives.
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastActivityAt);
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastSeenAt);
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastUserMessageAt);
       },
     ),
     beforeOpen: (details) async {

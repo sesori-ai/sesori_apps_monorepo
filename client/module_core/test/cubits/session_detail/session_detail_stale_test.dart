@@ -8,6 +8,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_e
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
+import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/notification_canceller.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
@@ -110,6 +111,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          lifecycleSource: FakeLifecycleSource(),
           sessionId: sessionId,
           projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
@@ -162,6 +165,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -200,12 +205,516 @@ void main() {
       );
     });
 
+    test("silent refresh re-asserts the viewing session once fresh content renders", () async {
+      final viewingService = stubbedSessionViewingService();
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: viewingService,
+        lifecycleSource: FakeLifecycleSource(),
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      // Initial load declares the view exactly once.
+      verify(() => viewingService.setViewingSession(sessionId)).called(1);
+
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer(
+        (_) async =>
+            ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-refreshed")])),
+      );
+
+      // A resume/reconnect-driven stale refresh while connected.
+      mockConnectionService.emitDataMayBeStale();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      // The refresh rendered fresh content, so the view is re-asserted.
+      verify(() => viewingService.setViewingSession(sessionId)).called(1);
+    });
+
+    test("resume drives a refresh that re-asserts the viewing session", () async {
+      final viewingService = stubbedSessionViewingService();
+      final lifecycle = FakeLifecycleSource();
+      addTearDown(lifecycle.close);
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: viewingService,
+        lifecycleSource: lifecycle,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      verify(() => viewingService.setViewingSession(sessionId)).called(1);
+      clearInteractions(mockSessionService);
+      clearInteractions(viewingService);
+
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer(
+        (_) async =>
+            ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-resumed")])),
+      );
+
+      // A short background then resume WITHOUT any dataMayBeStale signal: the
+      // cubit must still refresh and re-assert so the bridge has an active
+      // viewer for subsequent in-view activity.
+      lifecycle.emitState(LifecycleState.paused);
+      lifecycle.emitState(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(1);
+      verify(() => viewingService.setViewingSession(sessionId)).called(1);
+    });
+
+    test("a pre-background refresh does not reassert the view while a forced refresh is pending", () async {
+      final viewingService = stubbedSessionViewingService();
+      final lifecycle = FakeLifecycleSource();
+      addTearDown(lifecycle.close);
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: viewingService,
+        lifecycleSource: lifecycle,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      clearInteractions(mockSessionService);
+      clearInteractions(viewingService);
+
+      // Gate the first (pre-background) refresh so it is still in flight when the
+      // app backgrounds and resumes.
+      final gate = Completer<void>();
+      var firstGet = true;
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer((_) async {
+        if (firstGet) {
+          firstGet = false;
+          await gate.future;
+        }
+        return ApiResponse.success(
+          MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg")]),
+        );
+      });
+
+      // Start the pre-background refresh (in flight, gated).
+      mockConnectionService.emitDataMayBeStale();
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      // Background then resume → queues a forced post-resume refresh.
+      lifecycle.emitState(LifecycleState.paused);
+      lifecycle.emitState(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      // Release the gated pre-background refresh; let everything settle.
+      gate.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+
+      // The view is re-asserted by the forced post-resume refresh — exactly once,
+      // NOT additionally by the stale pre-background refresh whose snapshot could
+      // predate hidden activity.
+      verify(() => viewingService.setViewingSession(sessionId)).called(1);
+    });
+
+    test("resume forces a fresh refresh rather than coalescing onto a pre-background one", () async {
+      final viewingService = stubbedSessionViewingService();
+      final lifecycle = FakeLifecycleSource();
+      addTearDown(lifecycle.close);
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: viewingService,
+        lifecycleSource: lifecycle,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      clearInteractions(mockSessionService);
+      clearInteractions(viewingService);
+
+      // Gate the first refresh's getMessages so it is still in flight when the
+      // app backgrounds (simulating a refresh that began before backgrounding).
+      final gate = Completer<void>();
+      var firstGet = true;
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer((_) async {
+        if (firstGet) {
+          firstGet = false;
+          await gate.future;
+        }
+        return ApiResponse.success(
+          MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-resumed")]),
+        );
+      });
+
+      // Start a refresh (in flight, gated).
+      mockConnectionService.emitDataMayBeStale();
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      // Background, then resume while the first refresh is still gated.
+      lifecycle.emitState(LifecycleState.paused);
+      lifecycle.emitState(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      // Release the first refresh; the forced post-resume refresh must run too.
+      gate.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      // Two getMessages: the pre-background one and the forced post-resume one
+      // (it did NOT coalesce onto the older request).
+      verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(2);
+      // The view is re-asserted after the (fresh) refresh renders.
+      verify(() => viewingService.setViewingSession(sessionId)).called(greaterThanOrEqualTo(1));
+    });
+
+    test("rapid resumes during an in-flight refresh do not start overlapping refreshes", () async {
+      final viewingService = stubbedSessionViewingService();
+      final lifecycle = FakeLifecycleSource();
+      addTearDown(lifecycle.close);
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: viewingService,
+        lifecycleSource: lifecycle,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      clearInteractions(mockSessionService);
+
+      // Track concurrency of getMessages: it must never run two at once
+      // (single-flight). Gate the first call so it stays in flight across the
+      // rapid resume cycles.
+      var concurrent = 0;
+      var maxConcurrent = 0;
+      final gate = Completer<void>();
+      var firstGet = true;
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer((_) async {
+        concurrent++;
+        if (concurrent > maxConcurrent) maxConcurrent = concurrent;
+        try {
+          if (firstGet) {
+            firstGet = false;
+            await gate.future;
+          }
+          return ApiResponse.success(
+            MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-resumed")]),
+          );
+        } finally {
+          concurrent--;
+        }
+      });
+
+      // Start an in-flight refresh.
+      mockConnectionService.emitDataMayBeStale();
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      // Two rapid pause/resume cycles while the first refresh is gated.
+      lifecycle.emitState(LifecycleState.paused);
+      lifecycle.emitState(LifecycleState.resumed);
+      lifecycle.emitState(LifecycleState.paused);
+      lifecycle.emitState(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      gate.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+
+      // Never two refreshes at once.
+      expect(maxConcurrent, equals(1));
+      // The rapid resumes coalesce into a single appended forced refresh, so at
+      // most the in-flight one plus one more ran.
+      verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(lessThanOrEqualTo(2));
+    });
+
+    test("an initial load that spans a background/resume refreshes before declaring the view", () async {
+      final viewingService = stubbedSessionViewingService();
+      final lifecycle = FakeLifecycleSource();
+      addTearDown(lifecycle.close);
+
+      // Gate the initial load's getMessages so it is still in flight while the
+      // app backgrounds and resumes.
+      final gate = Completer<void>();
+      var firstGet = true;
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer((_) async {
+        if (firstGet) {
+          firstGet = false;
+          await gate.future;
+        }
+        return ApiResponse.success(
+          MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-initial")]),
+        );
+      });
+
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: viewingService,
+        lifecycleSource: lifecycle,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      // Initial load is in flight (gated). Background then resume.
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      lifecycle.emitState(LifecycleState.paused);
+      lifecycle.emitState(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      // Let the initial load finish; it must NOT declare the view on its
+      // possibly-stale snapshot — it triggers a fresh refresh first.
+      gate.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+
+      // A second getMessages (the forced refresh) ran, and the view was declared
+      // only after it.
+      verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(2);
+      verify(() => viewingService.setViewingSession(sessionId)).called(greaterThanOrEqualTo(1));
+    });
+
+    test("a load that fails after a resume clears the defer so the next fresh load declares the view", () async {
+      final viewingService = stubbedSessionViewingService();
+      final lifecycle = FakeLifecycleSource();
+      addTearDown(lifecycle.close);
+
+      // Call 1 (initial load): gated, then fails. Call 2 (the user's retry):
+      // succeeds. Call 3+ (a forced refresh — only reached on the buggy sticky-
+      // flag path): fails, so if the retry wrongly defers instead of declaring
+      // the view, the view is never asserted.
+      final gate = Completer<void>();
+      var call = 0;
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer((_) async {
+        call++;
+        if (call == 1) {
+          await gate.future;
+          return ApiResponse.error(ApiError.generic());
+        }
+        if (call == 2) {
+          return ApiResponse.success(
+            MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-retry")]),
+          );
+        }
+        return ApiResponse.error(ApiError.generic());
+      });
+
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: viewingService,
+        lifecycleSource: lifecycle,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      // Background + resume while the initial load is still in flight.
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      lifecycle.emitState(LifecycleState.paused);
+      lifecycle.emitState(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      // The initial load now FAILS. The resume-defer flag must be cleared even
+      // on this non-loaded outcome, so it can't leak into the next load.
+      gate.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      // The user retries; this fresh load started after the resume, so it must
+      // declare the view directly instead of inheriting the stale defer (which
+      // would force an extra refresh that, here, fails — leaving the view never
+      // declared).
+      await cubit.reload();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      verify(() => viewingService.setViewingSession(sessionId)).called(greaterThanOrEqualTo(1));
+    });
+
+    test("a resume during two overlapping loads defers BOTH (neither declares the view on a stale snapshot)", () async {
+      final viewingService = stubbedSessionViewingService();
+      final lifecycle = FakeLifecycleSource();
+      addTearDown(lifecycle.close);
+
+      // Call 1 (initial load) and call 2 (an overlapping reload) are each gated
+      // so both are in flight when the app resumes. Call 3+ (the forced refresh
+      // each deferred load triggers) fails, so if either load wrongly declares
+      // the view on its possibly-stale snapshot instead of deferring, the test
+      // catches it via setViewingSession.
+      final gateA = Completer<void>();
+      final gateB = Completer<void>();
+      var call = 0;
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer((_) async {
+        call++;
+        if (call == 1) {
+          await gateA.future;
+          return ApiResponse.success(
+            MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-a")]),
+          );
+        }
+        if (call == 2) {
+          await gateB.future;
+          return ApiResponse.success(
+            MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-b")]),
+          );
+        }
+        return ApiResponse.error(ApiError.generic());
+      });
+
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: viewingService,
+        lifecycleSource: lifecycle,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      // Initial load A in flight; start an overlapping reload B.
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      unawaited(cubit.reload());
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      // Resume while BOTH A and B are in flight: each must be deferred.
+      lifecycle.emitState(LifecycleState.paused);
+      lifecycle.emitState(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      // Release both loads. Each is resumed-during, so each forces a fresh
+      // refresh (which fails) rather than declaring the view on its stale
+      // snapshot — so the view is never declared.
+      gateA.complete();
+      gateB.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+
+      verifyNever(() => viewingService.setViewingSession(sessionId));
+    });
+
+    test("foreground relay reconnect re-asserts the view without a stale signal", () async {
+      final viewingService = stubbedSessionViewingService();
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: viewingService,
+        lifecycleSource: FakeLifecycleSource(),
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      clearInteractions(mockSessionService);
+      clearInteractions(viewingService);
+
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer(
+        (_) async =>
+            ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-reconnected")])),
+      );
+
+      // A foreground relay drop + reconnect: no lifecycle resume, no
+      // dataMayBeStale. The bridge released the old viewer, so the cubit must
+      // refresh and re-declare the view on the reconnect transition.
+      connectionStatus.add(connectionLostStatus);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      connectionStatus.add(connectedStatus);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(1);
+      verify(() => viewingService.setViewingSession(sessionId)).called(greaterThanOrEqualTo(1));
+    });
+
+    test("resume while disconnected forces a fresh refresh on reconnect", () async {
+      final viewingService = stubbedSessionViewingService();
+      final lifecycle = FakeLifecycleSource();
+      addTearDown(lifecycle.close);
+      final cubit = SessionDetailCubit(
+        mockConnectionService,
+        loadService: loadService,
+        promptDispatcher: promptDispatcher,
+        permissionRepository: mockPermissionRepository,
+        sessionViewingService: viewingService,
+        lifecycleSource: lifecycle,
+        sessionId: sessionId,
+        projectId: "project-1",
+        notificationCanceller: mockNotificationCanceller,
+        failureReporter: MockFailureReporter(),
+      );
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      clearInteractions(mockSessionService);
+      clearInteractions(viewingService);
+
+      when(() => mockSessionService.getMessages(sessionId: sessionId)).thenAnswer(
+        (_) async =>
+            ApiResponse.success(MessageWithPartsResponse(messages: [_messageWithParts(messageId: "msg-resumed")])),
+      );
+
+      // Disconnect, background, resume — all while disconnected: the refresh is
+      // deferred to the reconnect path.
+      connectionStatus.add(connectionLostStatus);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      lifecycle.emitState(LifecycleState.paused);
+      lifecycle.emitState(LifecycleState.resumed);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      verifyNever(() => mockSessionService.getMessages(sessionId: sessionId));
+
+      // Reconnect: the deferred resume refresh runs and re-asserts the view.
+      connectionStatus.add(connectedStatus);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      verify(() => mockSessionService.getMessages(sessionId: sessionId)).called(1);
+      verify(() => viewingService.setViewingSession(sessionId)).called(greaterThanOrEqualTo(1));
+    });
+
     test("silent refresh preserves selectedAgent and selectedAgentModel", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -281,6 +790,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -311,6 +822,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -376,6 +889,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -412,6 +927,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -444,6 +961,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
@@ -467,6 +986,8 @@ void main() {
           loadService: loadService,
           promptDispatcher: promptDispatcher,
           permissionRepository: mockPermissionRepository,
+          sessionViewingService: stubbedSessionViewingService(),
+          lifecycleSource: FakeLifecycleSource(),
           sessionId: sessionId,
           projectId: "project-1",
           notificationCanceller: mockNotificationCanceller,
@@ -504,6 +1025,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,

@@ -1,5 +1,6 @@
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/get_base_branch_handler.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -20,6 +21,8 @@ void main() {
       projectRepository = ProjectRepository(
         plugin: plugin,
         projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
       );
       handler = GetBaseBranchHandler(projectRepository: projectRepository);
     });

@@ -10,10 +10,12 @@ import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
+import "../../platform/lifecycle_source.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
 import "../../services/session_detail_load_service.dart";
+import "../../services/session_viewing_service.dart";
 import "../../utils/model_filter/default_model_selector.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
@@ -25,6 +27,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final SessionRepository _sessionRepository;
   final ConnectionService _connectionService;
   final PermissionRepository _permissionRepository;
+  final SessionViewingService _sessionViewingService;
+  final LifecycleSource _lifecycleSource;
   static const _defaultModelSelector = DefaultModelSelector();
   final String _sessionId;
   final String _projectId;
@@ -37,9 +41,28 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   late final StreamSubscription<SseEvent> _globalEventSubscription;
   late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
   late final StreamSubscription<void> _staleSubscription;
+  late final StreamSubscription<LifecycleState> _lifecycleSubscription;
+  bool _wasPaused = false;
+  int _nextLoadId = 0;
+  // Ids of _loadMessages calls currently executing. A set (not a counter) so
+  // overlapping loads stay individually identifiable for the resume-defer logic
+  // below; non-empty means at least one load is in flight.
+  final Set<int> _activeLoadIds = <int>{};
+  bool get _loadInFlight => _activeLoadIds.isNotEmpty;
+  // Ids of loads that were in flight when the app resumed from background. Such a
+  // load's snapshot may predate activity that arrived while hidden, so it must
+  // refresh before declaring the view instead of acting on a possibly-stale
+  // result. Tracked per-load (not a single bool) so a resume during overlapping
+  // loads defers EACH in-flight load, and the defer can't leak into a later
+  // fresh load that started after the resume.
+  final Set<int> _resumedLoadIds = <int>{};
   late final StreamingTextBuffer _streamingBuffer;
   Future<void>? _activeRefresh;
+  int _refreshGeneration = 0;
+  bool _pendingForcedRefresh = false;
   bool _needsStaleRefresh = false;
+  bool _needsFreshRefreshOnReconnect = false;
+  bool _wasConnected = false;
   bool _waitingForConnection = false;
 
   /// Pending session-scoped SSE events that arrived while the cubit was in
@@ -68,6 +91,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required SessionDetailLoadService loadService,
     required SessionRepository promptDispatcher,
     required PermissionRepository permissionRepository,
+    required SessionViewingService sessionViewingService,
+    required LifecycleSource lifecycleSource,
     required String sessionId,
     required String projectId,
     required NotificationCanceller notificationCanceller,
@@ -76,16 +101,22 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
        _sessionRepository = promptDispatcher,
        _connectionService = connectionService,
        _permissionRepository = permissionRepository,
+       _sessionViewingService = sessionViewingService,
+       _lifecycleSource = lifecycleSource,
        _sessionId = sessionId,
        _projectId = projectId,
        _notificationCanceller = notificationCanceller,
        _failureReporter = failureReporter,
        super(const SessionDetailState.loading()) {
     _streamingBuffer = StreamingTextBuffer(onFlush: _emitStreamingSnapshot);
+    // Seed the connection state so the BehaviorSubject's immediate replay isn't
+    // treated as a reconnect transition.
+    _wasConnected = _connectionService.currentStatus is ConnectionConnected;
     _eventSubscription = _connectionService.sessionEvents(_sessionId).listen(_handleEvent);
     _globalEventSubscription = _connectionService.events.listen(_handleGlobalEvent);
     _connectionStatusSubscription = _connectionService.status.listen(_onConnectionStatusChanged);
     _staleSubscription = _connectionService.dataMayBeStale.listen((_) => _onDataMayBeStale());
+    _lifecycleSubscription = _lifecycleSource.lifecycleStateStream.listen(_onLifecycleChanged);
     _loadMessages(isReload: false);
   }
 
@@ -95,15 +126,51 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   Future<void> _loadMessages({required bool isReload}) async {
     emit(const SessionDetailState.loading());
-    final result = isReload
-        ? await _loadService.reload(sessionId: _sessionId, projectId: _projectId)
-        : await _loadService.load(sessionId: _sessionId, projectId: _projectId);
+    final loadId = _nextLoadId++;
+    _activeLoadIds.add(loadId);
+    final SessionDetailLoadResult result;
+    try {
+      result = isReload
+          ? await _loadService.reload(sessionId: _sessionId, projectId: _projectId)
+          : await _loadService.load(sessionId: _sessionId, projectId: _projectId);
+    } finally {
+      _activeLoadIds.remove(loadId);
+    }
     if (isClosed) return;
+
+    // Did the app resume while THIS specific load was in flight? If so its
+    // snapshot may predate activity that arrived while hidden, so refresh before
+    // declaring the view. Scoped to this load's id (not a shared bool) so an
+    // overlapping load carries its own defer and a Failed/WaitingForConnection
+    // outcome can't leak the defer into a later fresh load. The
+    // WaitingForConnection branch intentionally does NOT read this: it produced
+    // no snapshot, and the retry it starts begins after the resume, so that
+    // retry is genuinely fresh and declares the view normally.
+    final resumedDuringThisLoad = _resumedLoadIds.remove(loadId);
 
     switch (result) {
       case SessionDetailLoadResultLoaded(:final snapshot):
         _waitingForConnection = false;
         emit(_buildLoadedState(snapshot: snapshot));
+        if (resumedDuringThisLoad) {
+          // The app was backgrounded/resumed while this load was in flight, so
+          // the response may predate activity that arrived while hidden. Don't
+          // declare the view on this possibly-stale snapshot; refresh first and
+          // let the refresh re-assert the view once fresh content renders (or
+          // defer to the reconnect path when offline).
+          if (_isConnected) {
+            _forceFreshRefresh();
+          } else {
+            _needsStaleRefresh = true;
+            _needsFreshRefreshOnReconnect = true;
+          }
+        } else {
+          // Declare that the user is now viewing this session only after the
+          // transcript has actually loaded — otherwise a load that fails or stays
+          // in the waiting-for-connection path would mark the session read (and
+          // clear its bold globally) while the user only saw a loading/error state.
+          _sessionViewingService.setViewingSession(_sessionId);
+        }
         _drainPendingEvents();
         _tryDrainQueue();
       case SessionDetailLoadResultWaitingForConnection():
@@ -129,7 +196,45 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   void _silentRefresh() {
     if (state is! SessionDetailLoaded) return;
-    _activeRefresh ??= _doSilentRefresh().whenComplete(() => _activeRefresh = null);
+    if (_activeRefresh != null) return;
+    _startRefreshChain(Future<void>.value());
+  }
+
+  /// Like [_silentRefresh] but guarantees a refresh that started *after* this
+  /// call — it will not coalesce onto an already-in-flight request that may have
+  /// begun before the app was backgrounded (and thus would render a snapshot
+  /// missing activity that arrived while hidden). Used on resume so the view is
+  /// only re-asserted after genuinely fresh content. If called repeatedly while
+  /// a chain is in flight, exactly one additional refresh is appended (a pending
+  /// flag), so rapid pause/resume can't stack many redundant refreshes.
+  void _forceFreshRefresh() {
+    if (state is! SessionDetailLoaded) return;
+    final inFlight = _activeRefresh;
+    if (inFlight == null) {
+      _startRefreshChain(Future<void>.value());
+      return;
+    }
+    // A chain is already running; request exactly one fresh refresh after it.
+    _pendingForcedRefresh = true;
+  }
+
+  /// Starts a refresh chain after [precursor] completes and takes ownership of
+  /// [_activeRefresh]. A generation token ensures only the chain that currently
+  /// owns [_activeRefresh] clears it on completion — a superseding chain won't
+  /// be nulled out from under by an older chain's completion (which would let
+  /// [_silentRefresh] start a concurrent refresh and break single-flight).
+  void _startRefreshChain(Future<void> precursor) {
+    final token = ++_refreshGeneration;
+    _activeRefresh = precursor.then((_) => _doSilentRefresh()).whenComplete(() {
+      if (_refreshGeneration != token) return; // superseded by a newer chain
+      _activeRefresh = null;
+      if (_pendingForcedRefresh && !isClosed && state is SessionDetailLoaded) {
+        _pendingForcedRefresh = false;
+        _startRefreshChain(Future<void>.value());
+      } else {
+        _pendingForcedRefresh = false;
+      }
+    });
   }
 
   Future<void> _doSilentRefresh() async {
@@ -220,6 +325,21 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               availableVariants: availableVariants,
             ),
           );
+          // Re-assert that the user is viewing this session now that the
+          // refreshed transcript has rendered. After a resume/reconnect the
+          // viewing service intentionally does not auto-re-assert (that would
+          // mark the session seen on the bridge before fresh content is shown,
+          // clearing its bold while the user still sees the stale snapshot), so
+          // the cubit drives it here once the refresh has landed.
+          //
+          // BUT skip the reassert when a forced fresh refresh is still pending:
+          // this refresh may have started before the app was backgrounded, so
+          // its snapshot can predate hidden activity. Re-asserting now would mark
+          // that activity seen before it's loaded. The queued post-resume forced
+          // refresh will re-assert once it renders genuinely-fresh content.
+          if (!_pendingForcedRefresh) {
+            _sessionViewingService.setViewingSession(_sessionId);
+          }
           _drainPendingEvents();
         case SessionDetailLoadResultWaitingForConnection():
           _waitingForConnection = true;
@@ -413,6 +533,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       SesoriWorktreeReady() ||
       SesoriWorktreeFailed() ||
       SesoriSessionPromptDefaultsChanged() ||
+      // Unseen-state changes are list-level concerns handled by the trackers;
+      // the detail screen does not react to them.
+      SesoriSessionUnseenChanged() ||
       // Intentionally excluded: triggers a silent refresh, but during loading
       // we are already fetching the latest snapshot, so replaying it would
       // cause a redundant refresh immediately after load.
@@ -491,6 +614,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriTuiToastShow() ||
             SesoriWorktreeReady() ||
             SesoriWorktreeFailed() ||
+            SesoriSessionUnseenChanged() ||
             SesoriSessionPromptDefaultsChanged():
           break;
         case SesoriSessionsUpdated(:final projectID):
@@ -758,9 +882,58 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     }
   }
 
+  void _onLifecycleChanged(LifecycleState state) {
+    switch (state) {
+      case LifecycleState.paused:
+      case LifecycleState.hidden:
+        _wasPaused = true;
+      case LifecycleState.resumed:
+        if (!_wasPaused) return;
+        _wasPaused = false;
+        // If any load is actually IN FLIGHT, its response may predate hidden
+        // activity. Flag EVERY in-flight load so each refreshes before declaring
+        // the view instead of acting on a possibly-stale snapshot. Only in-flight
+        // loads matter: a failed/waiting state with no load running (e.g. the
+        // user will retry after resume) should NOT be deferred, or its fresh load
+        // would render loaded-but-not-declared and miss in-view activity until a
+        // second forced refresh.
+        if (_loadInFlight) {
+          _resumedLoadIds.addAll(_activeLoadIds);
+          return;
+        }
+        // Not loaded and not loading (failed/waiting): nothing to re-assert yet;
+        // the next load/retry declares the view on completion.
+        if (this.state is! SessionDetailLoaded) return;
+        // On every resume, refresh so the transcript is current, then the
+        // refresh re-asserts the viewing session once fresh content renders.
+        // This covers short resumes that don't emit dataMayBeStale: the
+        // viewing service cleared the view on background and does not
+        // auto-re-assert, so without this the bridge would have no active
+        // viewer and later in-view activity would be persisted as unseen.
+        // Force a fresh refresh (don't coalesce onto a request that may have
+        // started before backgrounding and would miss hidden activity).
+        if (_isConnected) {
+          _forceFreshRefresh();
+        } else {
+          // Disconnected: defer to the reconnect path, which refreshes (and
+          // thus re-asserts) once the connection returns. Flag that this deferred
+          // refresh must be a FORCED-fresh one (resume guarantee), not a
+          // coalescing _silentRefresh.
+          _needsStaleRefresh = true;
+          _needsFreshRefreshOnReconnect = true;
+        }
+      case LifecycleState.inactive:
+      case LifecycleState.detached:
+        break;
+    }
+  }
+
   void _onConnectionStatusChanged(ConnectionStatus status) {
     if (isClosed) return;
-    if (status is ConnectionConnected) {
+    final isConnected = status is ConnectionConnected;
+    final reconnected = isConnected && !_wasConnected;
+    _wasConnected = isConnected;
+    if (isConnected) {
       if (_waitingForConnection) {
         _waitingForConnection = false;
         unawaited(_loadMessages(isReload: true));
@@ -769,7 +942,20 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       _tryDrainQueue();
       if (_needsStaleRefresh) {
         _needsStaleRefresh = false;
-        _silentRefresh();
+        // A refresh deferred from a resume must be forced-fresh to keep the
+        // post-resume guarantee; an ordinary stale signal can coalesce.
+        if (_needsFreshRefreshOnReconnect) {
+          _needsFreshRefreshOnReconnect = false;
+          _forceFreshRefresh();
+        } else {
+          _silentRefresh();
+        }
+      } else if (reconnected && state is SessionDetailLoaded) {
+        // A foreground relay reconnect (no lifecycle resume, no stale signal):
+        // the bridge released the old connection's viewer, so re-establish a
+        // current transcript and re-declare the view. Forced-fresh so the
+        // re-assert only happens after content that reflects the reconnect.
+        _forceFreshRefresh();
       }
     }
   }
@@ -1310,12 +1496,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   @override
   Future<void> close() {
+    _sessionViewingService.clearViewingSession(_sessionId);
     _pendingSessionEvents.clear();
     _pendingGlobalEvents.clear();
     _eventSubscription.cancel();
     _globalEventSubscription.cancel();
     _connectionStatusSubscription.cancel();
     _staleSubscription.cancel();
+    _lifecycleSubscription.cancel();
     _streamingBuffer.dispose();
     _questionStream.close();
     _permissionStream.close();

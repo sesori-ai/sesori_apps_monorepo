@@ -86,6 +86,8 @@ void main() {
         loadService: loadService,
         promptDispatcher: mockSessionRepository,
         permissionRepository: mockPermissionRepository,
+        sessionViewingService: stubbedSessionViewingService(),
+        lifecycleSource: FakeLifecycleSource(),
         sessionId: _sessionId,
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
