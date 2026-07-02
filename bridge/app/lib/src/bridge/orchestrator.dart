@@ -536,10 +536,13 @@ class OrchestratorSession {
   }
 
   /// Performs the restart handoff after the `{restarting:true}` reply has been
-  /// enqueued: spawns the successor, then drives the normal graceful shutdown
-  /// ([cancel]) — which flushes the queued reply by closing the relay and lets
-  /// this process exit. The successor waits for this pid to exit before it
-  /// enforces single-live-bridge, so the handoff is clean.
+  /// enqueued: delegates the run-mode strategy to [BridgeRestartService]
+  /// (standalone spawns a successor; supervised records the GUI-respawn intent),
+  /// then drives the normal graceful shutdown ([cancel]) — which flushes the
+  /// queued reply by closing the relay and lets this process exit. A standalone
+  /// successor waits for this pid to exit before it enforces single-live-bridge,
+  /// so the handoff is clean; the supervised exit code is applied by the
+  /// composition root once the session ends.
   ///
   /// Public because both restart triggers drive the same handoff: the relay
   /// request loop (below) and the local [DebugServer], which reuses this
@@ -556,9 +559,13 @@ class OrchestratorSession {
       return;
     }
     _restartHandoffStarted = true;
-    Log.i("[restart] restart requested; spawning successor bridge");
-    final bool spawned = await _restartService.spawnSuccessor();
-    if (!spawned) {
+    Log.i("[restart] restart requested");
+    // The restart service owns the run-mode strategy: standalone spawns a
+    // successor process; supervised records the intent so the composition root
+    // exits with the GUI-respawn sentinel (no successor spawn). A `false` return
+    // means the standalone successor could not be started, so we keep running.
+    final bool proceed = await _restartService.performRestartHandoff();
+    if (!proceed) {
       _restartHandoffStarted = false;
       Console.error(
         "Restart requested but a new bridge could not be started; continuing to run. "
@@ -566,7 +573,7 @@ class OrchestratorSession {
       );
       return;
     }
-    Log.i("[restart] successor spawned; shutting down for handoff");
+    Log.i("[restart] handing off; shutting down");
     await cancel();
   }
 

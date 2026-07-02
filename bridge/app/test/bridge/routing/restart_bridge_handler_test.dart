@@ -62,6 +62,7 @@ void main() {
       binaryPath: binaryPath,
       cliArgs: const ['run'],
       currentPid: 1234,
+      isSupervised: false,
     );
   }
 
