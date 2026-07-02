@@ -31,12 +31,18 @@ Findings log · Plan-deltas.
   `client/desktop` package; `main_desktop.dart`; empty window; DI bootstrap
   reusing `module_core`/`module_auth` (platform → auth → core → desktop-core
   order). Builds on macOS/Windows/Linux. **Also creates `desktop-ci.yml`**:
-  PR-triggered on desktop paths (`client/desktop/**`,
-  `client/module_desktop_core/**`, plus the shared client workspace files),
-  running analyze + test for both packages and at least one `flutter build`
-  smoke leg (macOS or Linux runner). Non-blocking for CLI/mobile releases
-  (invariant #3) but a required check on desktop PRs — this is what makes the
-  standing acceptance enforceable rather than aspirational.
+  PR-triggered on desktop paths **and every desktop-consumed dependency** —
+  `client/desktop/**`, `client/module_desktop_core/**`, the shared packages the
+  desktop build depends on (`client/module_core/**`, `client/module_auth/**`,
+  `client/module_prego/**`, `shared/sesori_shared/**`, later
+  `client/module_app_ui/**`), and the client workspace root files
+  (pubspec/lock/analysis/Makefile). A shared-package change can break the
+  desktop build while mobile CI stays green (desktop-only API paths), so
+  triggering on the two desktop packages alone would leave exactly the gap this
+  workflow exists to close. Runs analyze + test for both desktop packages and at
+  least one `flutter build` smoke leg (macOS or Linux runner). Non-blocking for
+  CLI/mobile releases (invariant #3) but a required check on desktop PRs — this
+  is what makes the standing acceptance enforceable rather than aspirational.
 - **Risk:** Med. **Size:** M.
 - **Regression guide:** touches the client pub workspace root (`client/pubspec.yaml`
   membership) and CI path filters — the two ways to silently break mobile. Check:

@@ -196,7 +196,12 @@ mobile release.**
 1. **Bridge/CLI stays releasable** — all supervised-mode work is **additive and
    gated by `--control-url`**, and **never touches the relay protocol or
    standalone defaults**. Each Phase 1 PR asserts standalone behaviour is
-   unchanged.
+   unchanged. **Single tracked exception (ADR A22):** PR 1.14 adds one additive
+   relay close code (`4007 bridgeReplaced`) and deliberately changes the
+   replaced-close reconnect policy; the `sesori_relay_server` change is a
+   tracked prerequisite **deployed to production before** the bridge half
+   merges, and the bridge keeps a rollout fallback so an older relay never
+   breaks it.
 2. **Mobile stays releasable** — Phase 0 (rename) acceptance includes a **mobile
    release-pipeline dry-run**. After the rename the mobile app lives at
    `client/app`, so every later gate is phrased against the **mobile product**
@@ -389,16 +394,23 @@ them). Only the user checks an MT box.
 - ☐ MT-3 Manual checkpoint: full internal MVP on 3 OSes (see phase doc) — user-run
 
 ### Phase 3 — Packaging / signing / self-update (= v1) → `phase-3-packaging.md`
+
+> Rows are ordered as **per-OS chains, macOS first** (matches the phase-3
+> preamble's macOS-first shipping allowance), so the top-to-bottom resume rule
+> naturally completes macOS before Windows/Linux. If an external dependency
+> blocks a row (e.g. the Windows cert for 3.4), mark it ◐ with a note in §8 and
+> continue with the next row — do not stall the later chains on it.
+
 - ☐ 3.0a macOS no-sandbox + hardened-runtime + spawn-child entitlements — Med / S-M
 - ☐ 3.0b CI secrets provisioning (config + docs) — Low / S
 - ☐ 3.1 `_reusable-desktop-build.yml` macOS leg (unsigned) — High / M
 - ☐ 3.2 macOS codesign + notarize + staple — High / M
-- ☐ 3.3 Windows leg: build + bundle + installer (unsigned) — High / M
-- ☐ 3.4 Windows code signing (needs cert) — Med / S-M
-- ☐ 3.5 Linux AppImage + bundle + **mandatory** GPG signing — Med-High / M
 - ☐ 3.6 Update-apply policy (stop helper first) + rollback + update UX — Med / M
-- ☐ 3.7 macOS self-update (Sparkle) + EdDSA + appcast — High / M
+- ☐ 3.7 macOS self-update (Sparkle) + EdDSA + appcast — High / M *(macOS chain complete — MT-4 macOS column unlocks)*
+- ☐ 3.3 Windows leg: build + bundle + installer (unsigned) — High / M
+- ☐ 3.4 Windows code signing (needs cert — may be ◐-blocked; see note above) — Med / S-M
 - ☐ 3.8 Windows self-update (WinSparkle) + appcast — High / M
+- ☐ 3.5 Linux AppImage + bundle + **mandatory** GPG signing — Med-High / M
 - ☐ 3.9 Linux self-update (zsync/AppImageUpdate) — Med-High / M
 - ☐ 3.10 Release-pipeline integration (non-blocking) + `make bump-version` + changelog — Med / M
 - ☐ 3.11 Uninstall/reset + login-item cleanup (per-OS trigger reality) — Low-Med / S-M

@@ -501,6 +501,14 @@ runs **under the startup mutex**, which reinforces PR 1.12.
     Orchestrator never calls `ControlChannelClient` directly (no Layer-5→Layer-0
     send). The GUI's "Take over" action is a plain helper respawn (kill+spawn),
     NOT a new inbound control command.
+- **Prerequisite (tracked — relay deploy gate):** the `sesori_relay_server`
+  change (close the displaced bridge with `4007` instead of `1000/"replaced"`)
+  is a separate small PR in that repo and must be **merged AND deployed to the
+  production relay before this bridge PR merges**. Record the relay PR link and
+  deploy confirmation in this entry's Findings log. The bridge half keeps the
+  `1000/"replaced"` fallback so the ordering can never strand an old relay —
+  but the fallback is a safety net, not a licence to skip the relay deploy.
+  This is the single tracked exception to release-safety invariant #1 (see §4).
 - **Standing-acceptance exception (explicit):** this PR intentionally changes
   standalone behaviour for the replaced-close case only. All other close codes
   (incl. 4006 revoked → re-register) keep today's behaviour, asserted by test.
@@ -550,8 +558,11 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 > whole Phase-1 surface actually works on a real machine before any GUI exists.
 > Check the §9 box only when every item passes.
 
-**Setup:** build the bridge locally (`cd bridge/app && make build-host`); have a
-logged-in `token.json` (run the standalone bridge once); run the PR-1.15 harness.
+**Setup:** build the bridge locally — from `bridge/app/` run
+`dart build cli -o build/cli` and use `build/cli/bundle/bin/bridge` (don't use
+`make build-host`: it resolves Dart via an asdf path from `bridge/.tool-versions`,
+which is not in the repo, so it fails on a fresh checkout); have a logged-in
+`token.json` (run the standalone bridge once); run the PR-1.15 harness.
 
 | # | Check (enabled by) | How | Pass looks like |
 |---|---|---|---|

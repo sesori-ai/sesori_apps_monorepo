@@ -10,11 +10,14 @@ gate on desktop — a desktop failure can never abort a CLI/mobile release
 (invariant #3). Folding desktop into the gate is a later, deliberate decision.
 
 **Per-OS shipping is allowed (macOS-first).** The OS legs are deliberately
-separate PR chains (macOS 3.1→3.2→3.7, Windows 3.3→3.4→3.8, Linux 3.5→3.9), so
-v1 may ship on macOS while the Windows cert (§8 lead-time risk) clears —
-"fully signed on all three OSes" (Decision #13) binds each *shipped* platform,
-it does not force all three to ship simultaneously. Never ship an unsigned
-platform to route around it.
+separate PR chains — macOS 3.1→3.2→3.6→3.7, Windows 3.3→3.4→3.8, Linux
+3.5→3.9 — and the **§9 index lists them in exactly that chain order** so the
+top-to-bottom resume rule completes macOS first while the Windows cert (§8
+lead-time risk) clears. v1 may ship on macOS alone — "fully signed on all three
+OSes" (Decision #13) binds each *shipped* platform, it does not force all three
+to ship simultaneously. Never ship an unsigned platform to route around it. If
+the cert blocks 3.4, mark it ◐ in §9 with a §8 note and continue the later
+chains.
 
 **Per-PR template:** Goal · Scope · Risk · Review-size · **Regression guide** ·
 Acceptance · DoD (incl. PLAN.md §9 row + pointer advanced) · Aristotle verdicts ·
