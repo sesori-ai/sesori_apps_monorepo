@@ -146,7 +146,7 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
         toggle();
         _alignGlassMenuToTrigger(context);
       }),
-      items: [for (final entry in widget.entries) _glassEntry(context, entry)],
+      items: [for (final entry in widget.entries) _glassEntry(context, entry: entry)],
     );
   }
 
@@ -169,7 +169,7 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
     _glassController.setFollowOffset(-overlayBox.localToGlobal(Offset.zero));
   }
 
-  Widget _glassEntry(BuildContext context, PregoMenuEntry entry) {
+  Widget _glassEntry(BuildContext context, {required PregoMenuEntry entry}) {
     final prego = context.prego;
     switch (entry) {
       case PregoMenuLabel(:final text):
@@ -254,8 +254,12 @@ class _FlatAnchoredMenu extends StatelessWidget {
         screen.height - keyboard - safe.bottom - screenPadding.bottom - triggerRect.bottom - _gap;
     final expandUp = spaceAbove >= spaceBelow;
     final available = math.max(0.0, expandUp ? spaceAbove : spaceBelow);
-    final maxHeight = menuHeight != null ? math.min(menuHeight!, available) : available;
+    final menuHeight = this.menuHeight;
+    final maxHeight = menuHeight != null ? math.min(menuHeight, available) : available;
 
+    // module_prego is a GoRouter-agnostic design module (no go_router dep);
+    // this pops the modal route CueModalTransition pushed for the menu.
+    // ignore: no_slop_linter/avoid_navigator_of, design module has no go_router dep; pops the modal route CueModalTransition pushed
     void close() => Navigator.of(context).pop();
 
     final panel = DecoratedBox(
@@ -275,7 +279,7 @@ class _FlatAnchoredMenu extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [for (final entry in entries) _flatEntry(context, entry, close)],
+            children: [for (final entry in entries) _flatEntry(context, entry: entry, close: close)],
           ),
         ),
       ),
@@ -303,7 +307,7 @@ class _FlatAnchoredMenu extends StatelessWidget {
     );
   }
 
-  Widget _flatEntry(BuildContext context, PregoMenuEntry entry, VoidCallback close) {
+  Widget _flatEntry(BuildContext context, {required PregoMenuEntry entry, required VoidCallback close}) {
     final prego = context.prego;
     switch (entry) {
       case PregoMenuLabel(:final text):

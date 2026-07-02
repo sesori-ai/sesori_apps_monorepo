@@ -107,6 +107,23 @@ class _OnboardingChecklist extends StatelessWidget {
           style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
           textAlign: TextAlign.center,
         ),
+        const SizedBox(height: PregoSpacing.lg),
+        // Wrapped so the parent Column's stretch alignment doesn't force the
+        // button full-width; fullWidth: false then sizes it to its content.
+        Center(
+          child: PregoButtonsSolid(
+            fullWidth: false,
+            leadingIcon: TablerRegular.info_circle,
+            label: loc.projectsOnboardingPcStatusWhy,
+            hierarchy: PregoButtonsSolidHierarchy.secondary,
+            size: PregoButtonsSolidSize.sm,
+            onPressed: () => showPregoBottomSheet<void>(
+              context: context,
+              title: loc.projectsOnboardingPcStatusWhy,
+              builder: (_) => const _WhyBridgeInfoSheet(),
+            ),
+          ),
+        ),
         // 40px gap from the header group to the install boxes (Figma gap-5xl).
         const SizedBox(height: PregoSpacing.x5l),
         const Padding(

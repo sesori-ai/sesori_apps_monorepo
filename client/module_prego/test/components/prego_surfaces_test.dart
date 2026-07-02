@@ -33,7 +33,7 @@ void main() {
                   subtitle: const Text("first"),
                   onTap: () => taps++,
                 ),
-                PregoListTile(title: const Text("Beta"), isLast: true),
+                const PregoListTile(title: Text("Beta"), isLast: true),
               ],
             ),
           ),
