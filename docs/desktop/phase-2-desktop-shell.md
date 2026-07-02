@@ -40,20 +40,32 @@ Findings log · Plan-deltas.
     set — `client/desktop/**`, `client/module_desktop_core/**`, the shared
     packages the desktop build depends on (`client/module_core/**`,
     `client/module_auth/**`, `client/module_prego/**`, `shared/sesori_shared/**`,
-    later `client/module_app_ui/**`), and the client workspace root files
-    (pubspec/lock/analysis/Makefile) — and the desktop jobs run behind `if:`
-    guards on those outputs. A terminal status job always runs (succeeding when
-    the desktop jobs were skipped) so the check can be branch-protection
-    required without ever blocking a mobile/bridge PR. The shared-package paths
-    matter because a shared change can break the desktop build while mobile CI
-    stays green (desktop-only API paths).
-  - **All three OSes in the PR build matrix:** analyze + `dart test` run once
-    (ubuntu; pure Dart), but the `flutter build` leg runs on a
-    macos/windows/ubuntu **matrix** — the acceptance "builds on 3 OSes" is only
-    real if CI enforces it per PR; a single-OS smoke leg would let Windows/
-    Linux-only compile or plugin failures merge unseen until MT-3. Runner cost
-    is bounded by the `if:` path gating (only desktop-relevant PRs spin the
-    matrix).
+    later `client/module_app_ui/**`), the client workspace root files
+    (pubspec/lock/analysis/Makefile), **and the CI's own inputs** —
+    `.github/workflows/desktop-ci.yml` itself, any composite actions it uses
+    (`.github/actions/setup-flutter/**`), the root `.tool-versions` (SDK
+    selection), and `shared/no_slop_linter/**` (analyzer plugin loaded by
+    `client/analysis_options.yaml`) — so a workflow/toolchain/linter change can
+    never merge with the desktop jobs skipped. The desktop jobs run behind
+    `if:` guards on those outputs. The shared-package paths matter because a
+    shared change can break the desktop build while mobile CI stays green
+    (desktop-only API paths).
+  - **The terminal status job aggregates, not just runs:** it executes with
+    `if: always()`, **inspects its `needs` results, and fails on any
+    failed/cancelled desktop job** — succeeding only when all desktop jobs
+    passed or were skipped by the path gate. A naive always-green status job
+    would report success after a matrix failure (skipped dependents don't
+    propagate failure), silently defeating the required check.
+  - **All three OSes in the PR build matrix:** analyze runs for both packages,
+    `dart test` covers `module_desktop_core` (pure Dart, ubuntu), and
+    **`flutter test` covers `client/desktop`** (it is a Flutter shell — mirror
+    the existing `client/Makefile` split of `flutter test` for shells vs
+    `dart test` for modules, so future widget/platform tests actually run). The
+    `flutter build` leg runs on a macos/windows/ubuntu **matrix** — the
+    acceptance "builds on 3 OSes" is only real if CI enforces it per PR; a
+    single-OS smoke leg would let Windows/Linux-only compile or plugin failures
+    merge unseen until MT-3. Runner cost is bounded by the `if:` path gating
+    (only desktop-relevant PRs spin the matrix).
 
   Non-blocking for CLI/mobile releases (invariant #3) but a required check on
   PRs (safe per the wrapper above) — this is what makes the standing acceptance
