@@ -223,7 +223,7 @@ abstract class AppLocalizations {
   /// **'Discord'**
   String get projectsOnboardingNeedHelpDiscord;
 
-  /// Need-help menu item that opens a direct message on X (formerly Twitter). 'X' is a brand name; do not translate.
+  /// Need-help menu item that opens the Sesori profile on X (formerly Twitter), where users can send a direct message. 'X' is a brand name; do not translate.
   ///
   /// In en, this message translates to:
   /// **'DM on X'**

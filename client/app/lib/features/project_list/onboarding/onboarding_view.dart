@@ -37,7 +37,7 @@ class _BridgeOnboardingView extends StatelessWidget {
 /// Opens an external "Need help?" contact link via the DI-registered
 /// [UrlLauncher], logging (rather than crashing) when the platform reports it
 /// could not be handled.
-Future<void> _openSupportLink(String url) async {
+Future<void> _openSupportLink({required String url}) async {
   try {
     final launched = await getIt<UrlLauncher>().launch(Uri.parse(url));
     if (!launched) logw("Could not open support link: $url");
@@ -155,14 +155,14 @@ class _NeedHelpMenu extends StatelessWidget {
           title: loc.projectsOnboardingNeedHelpEmail,
           subtitle: null,
           isSelected: false,
-          onTap: () => unawaited(_openSupportLink(SupportLinks.email)),
+          onTap: () => unawaited(_openSupportLink(url: SupportLinks.email)),
         ),
         PregoMenuItem(
           leadingIcon: TablerRegular.brand_discord,
           title: loc.projectsOnboardingNeedHelpDiscord,
           subtitle: null,
           isSelected: false,
-          onTap: () => unawaited(_openSupportLink(SupportLinks.discord)),
+          onTap: () => unawaited(_openSupportLink(url: SupportLinks.discord)),
         ),
         PregoMenuItem(
           // Tabler's pinned set ships the legacy bird glyph, not the X mark.
@@ -170,7 +170,7 @@ class _NeedHelpMenu extends StatelessWidget {
           title: loc.projectsOnboardingNeedHelpX,
           subtitle: null,
           isSelected: false,
-          onTap: () => unawaited(_openSupportLink(SupportLinks.x)),
+          onTap: () => unawaited(_openSupportLink(url: SupportLinks.x)),
         ),
       ],
     );
