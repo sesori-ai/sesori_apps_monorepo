@@ -22,8 +22,10 @@ Findings log · Plan-deltas.
 current behaviour.
 
 > **Exception — PR 1.14** deliberately changes standalone behaviour for the
-> relay `"replaced"` close (today's behaviour is an unbounded reconnect war —
-> ADR A22); its entry states the change explicitly and everything else stays
+> relay replaced-close (today's behaviour is an unbounded reconnect war — ADR
+> A22), and adds one **additive** shared constant (`RelayCloseCodes.bridgeReplaced
+> = 4007`, deployed relay-side first) — so like PR 1.2 it also requires shared
+> tests + a `client/app` compatibility check. Everything else stays
 > byte-identical.
 
 > **Exception — PR 1.2** writes shared wire DTOs into `sesori_shared`, which is
@@ -465,7 +467,7 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   terminal events conveyed; standalone formatter output unchanged.
 - **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
 
-## PR 1.14 — Relay `"replaced"` close → takeover state, no reconnect war (ADR A22)
+## PR 1.14 — Relay replaced-close (`4007`) → takeover state, no reconnect war (ADR A22)
 - **Goal:** The relay keeps a single bridge slot per account and closes a
   displaced bridge with **1000 + reason `"replaced"`** (`handler.go`
   new-bridge-connect path). Today the bridge treats that as a generic drop and
@@ -473,17 +475,25 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   bridges (two desktops; desktop + forgotten systemd bridge) kick each other
   forever while phones see `bridge_connected` flapping. This PR makes losing the
   slot graceful:
+  - **Primary detection = a dedicated relay close code `4007 bridgeReplaced`**
+    (small `sesori_relay_server` change, deployed before/with the bridge
+    change, plus the constant in `RelayCloseCodes` — it is NOT added to
+    `noReconnectCodes`; the policy is long-backoff, not never-reconnect). Close
+    **reason strings are fragile** — intermediaries/proxies may strip or rewrite
+    them — and the codebase already keys every close semantic on codes
+    (`bridgeRevoked = 4006` precedent). Keep `1000 + reason "replaced"` only as
+    a **fallback match** for the relay-deploy window; the code is authoritative.
   - Expose `closeReason` alongside `closeCode` on the bridge `RelayClient`
-    (Layer-0 dumb accessor), and surface the replaced-close condition on the
-    relay connection-state stream the `ControlStatusNotifier` (PR 1.10) already
-    observes.
-  - In the orchestrator reconnect loop, detect 1000/`"replaced"` (the relay only
-    uses it when a live socket is displaced; the bridge's own clean close is
-    guarded by `_cancelled`): **standalone** → loud `Console.warning` ("another
-    bridge for this account took over") + retry only on a **long capped backoff**
-    (order minutes, with jitter — exact numbers at plan review; long-backoff
-    rather than stop keeps headless/VM failover semantics without a tight war).
-    The Orchestrator owns ONLY this backoff policy change.
+    (Layer-0 dumb accessor, needed for the fallback match), and surface the
+    replaced-close condition on the relay connection-state stream the
+    `ControlStatusNotifier` (PR 1.10) already observes.
+  - In the orchestrator reconnect loop, detect the replaced-close (4007, or the
+    rollout fallback; the bridge's own clean close is guarded by `_cancelled`):
+    **standalone** → loud `Console.warning` ("another bridge for this account
+    took over") + retry only on a **long capped backoff** (order minutes, with
+    jitter — exact numbers at plan review; long-backoff rather than stop keeps
+    headless/VM failover semantics without a tight war). The Orchestrator owns
+    ONLY this backoff policy change.
   - **Supervised push ownership:** the takeover state reaches the GUI through
     the PR-1.10 `ControlStatusNotifier` (Layer 4 `control/`), which maps the
     replaced-close condition from the relay state stream into a `status`/prompt
@@ -491,8 +501,6 @@ runs **under the startup mutex**, which reinforces PR 1.12.
     Orchestrator never calls `ControlChannelClient` directly (no Layer-5→Layer-0
     send). The GUI's "Take over" action is a plain helper respawn (kill+spawn),
     NOT a new inbound control command.
-  - A dedicated relay close code (e.g. 4007) is optional later hardening in the
-    relay repo; do not block on it.
 - **Standing-acceptance exception (explicit):** this PR intentionally changes
   standalone behaviour for the replaced-close case only. All other close codes
   (incl. 4006 revoked → re-register) keep today's behaviour, asserted by test.
@@ -508,8 +516,9 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 - **Acceptance:** with two bridges alternately connecting for one account
   (fake relay), the displaced bridge does not reconnect within the war window
   and surfaces the takeover state (Console standalone / control channel
-  supervised); normal drop reconnection unchanged; covered by connection-level
-  tests.
+  supervised); detection works on close code `4007` alone (no reason string)
+  AND on the `1000/"replaced"` rollout fallback; normal drop reconnection
+  unchanged; covered by connection-level tests.
 - **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
 
 ## PR 1.15 — Dev control-host harness for manual supervised testing

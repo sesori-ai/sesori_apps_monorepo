@@ -187,6 +187,12 @@ Findings log · Plan-deltas.
   attaches the tracker to the child's streams after spawn; the process API stays
   a dumb stream provider and `BridgeProcessRepository` keeps ONLY the
   expected-exit marker. The window gets an "open logs" affordance in PR 2.10.
+  **File-write failures must not stop the drain:** a throwing log write (disk
+  full, permissions, rotation error) inside the tracker is caught and logged
+  (rate-limited, per the swallow-and-continue rule) while pipe draining and the
+  ring buffer keep working — an uncaught write error would kill the stream
+  subscription and recreate the exact blocked-pipe deadlock this tracker exists
+  to prevent.
 - **Scope note:** guard against invalid/non-positive PIDs (`pid <= 0`) at the
   process-API entry point so platform tools (e.g. Windows `tasklist` PID filter)
   don't throw on bad input — consistent cross-platform behaviour.
@@ -205,8 +211,10 @@ Findings log · Plan-deltas.
   unauthenticated start yields login-required without spawning; clean kill; secret
   not visible in `ps`/argv; non-positive PIDs handled gracefully;
   `BridgeProcessLogTracker` captures helper output to a rotating GUI-owned log
-  file with a last-N ring buffer, a chatty helper cannot block on full pipes, and
-  neither the process API nor `BridgeProcessRepository` owns log state.
+  file with a last-N ring buffer, a chatty helper cannot block on full pipes,
+  an injected log-file write failure leaves draining + ring buffer alive
+  (asserted by test), and neither the process API nor `BridgeProcessRepository`
+  owns log state.
 
 ## PR 2.7 — Exit-code state machine
 - **Goal:** Keep exit-code/backoff decisions in `BridgeProcessService`, because
@@ -370,6 +378,14 @@ Findings log · Plan-deltas.
   `/auth/revoke`, which revokes **all** the user's bridges including a laptop
   CLI bridge. Desktop logout = targeted `deleteBridge(bridgeId)` + local token
   clear, nothing account-wide.
+- **Offline logout must always complete.** Every network step in the logout
+  flow — the live-helper `unregister-and-exit` wait AND the GUI-side
+  `deleteBridge` fallback — is **best-effort with a bounded timeout**:
+  failures/timeouts are caught and logged, then the flow proceeds to
+  `logoutCurrentDevice()` unconditionally (same best-effort posture as the
+  PR 3.11 uninstall unregister). A user with no internet, a dead auth server,
+  or a wedged helper can still log out; the orphaned server-side registration
+  is removable later from the account UI.
 - **Risk:** Med. **Size:** M.
 - **Regression guide:** the blast radius is **other devices on the account**.
   Check: (1) after desktop logout, the user's phone is still logged in and
@@ -383,7 +399,9 @@ Findings log · Plan-deltas.
   in **both** the live-helper and helper-absent/crashed paths; the GUI calls the
   `module_core` `BridgeRepository.deleteBridge` seam (no direct auth-API/HTTP
   import in app code); logout is device-local (phone/other devices unaffected —
-  no `tokenVersion` bump); no leaked registration; mobile build stays green.
+  no `tokenVersion` bump); logout completes **offline** (unreachable auth
+  server / timed-out unregister is logged and bypassed — asserted by test); no
+  leaked registration in the online paths; mobile build stays green.
 
 ## PR 2.14 — Desktop `FailureReporter` impl
 - **Goal:** Crash/error reporting for the tray app (decide Crashlytics vs other
