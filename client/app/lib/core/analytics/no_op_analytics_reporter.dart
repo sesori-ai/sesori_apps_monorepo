@@ -1,3 +1,4 @@
+import "analytics_event.dart";
 import "analytics_reporter.dart";
 
 /// Discards analytics events on builds where Firebase is not initialized
@@ -5,5 +6,5 @@ import "analytics_reporter.dart";
 /// during DI setup so call sites never have to care.
 class NoOpAnalyticsReporter implements AnalyticsReporter {
   @override
-  Future<void> logEvent({required String name, required Map<String, Object>? parameters}) async {}
+  Future<void> logEvent({required AnalyticsEvent event}) async {}
 }

@@ -37,12 +37,9 @@ class _BridgeOnboardingView extends StatelessWidget {
 /// Opens one of the "Need help?" contact links ([SupportLinks]) through the
 /// shared [openExternalLink] helper. Reports the tapped [channel] to analytics
 /// before launching, so the tap is counted even when the launch itself fails.
-Future<void> _openSupportLink({required String url, required String channel}) {
+Future<void> _openSupportLink({required String url, required SupportChannel channel}) {
   unawaited(
-    getIt<AnalyticsReporter>().logEvent(
-      name: AnalyticsEvents.supportLinkOpened,
-      parameters: {AnalyticsEvents.channelParam: channel},
-    ),
+    getIt<AnalyticsReporter>().logEvent(event: AnalyticsEvent.supportLinkOpened(channel: channel)),
   );
   return openExternalLink(url: Uri.parse(url));
 }
@@ -152,10 +149,7 @@ class _NeedHelpMenu extends StatelessWidget {
           // While the popup is up its barrier covers the trigger, so a pill
           // tap can only ever open the menu — safe to count as an open.
           unawaited(
-            getIt<AnalyticsReporter>().logEvent(
-              name: AnalyticsEvents.needHelpMenuOpened,
-              parameters: null,
-            ),
+            getIt<AnalyticsReporter>().logEvent(event: const AnalyticsEvent.needHelpMenuOpened()),
           );
           toggle();
         },
@@ -167,7 +161,7 @@ class _NeedHelpMenu extends StatelessWidget {
           subtitle: null,
           isSelected: false,
           onTap: () => unawaited(
-            _openSupportLink(url: SupportLinks.email, channel: AnalyticsEvents.channelEmail),
+            _openSupportLink(url: SupportLinks.email, channel: SupportChannel.email),
           ),
         ),
         PregoMenuItem(
@@ -176,7 +170,7 @@ class _NeedHelpMenu extends StatelessWidget {
           subtitle: null,
           isSelected: false,
           onTap: () => unawaited(
-            _openSupportLink(url: SupportLinks.discord, channel: AnalyticsEvents.channelDiscord),
+            _openSupportLink(url: SupportLinks.discord, channel: SupportChannel.discord),
           ),
         ),
         PregoMenuItem(
@@ -186,7 +180,7 @@ class _NeedHelpMenu extends StatelessWidget {
           subtitle: null,
           isSelected: false,
           onTap: () => unawaited(
-            _openSupportLink(url: SupportLinks.x, channel: AnalyticsEvents.channelX),
+            _openSupportLink(url: SupportLinks.x, channel: SupportChannel.x),
           ),
         ),
       ],

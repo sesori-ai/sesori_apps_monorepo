@@ -13,7 +13,7 @@ import "package:sesori_dart_core/src/capabilities/sse/sse_event_repository.dart"
 import "package:sesori_dart_core/src/platform/route_source.dart";
 import "package:sesori_dart_core/src/platform/url_launcher.dart";
 import "package:sesori_dart_core/src/services/registered_bridges_service.dart";
-import "package:sesori_mobile/core/analytics/analytics_events.dart";
+import "package:sesori_mobile/core/analytics/analytics_event.dart";
 import "package:sesori_mobile/core/analytics/analytics_reporter.dart";
 import "package:sesori_mobile/core/support_links.dart";
 import "package:sesori_mobile/features/project_list/project_list_screen.dart";
@@ -105,10 +105,7 @@ void main() {
     when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => true);
     when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => true);
     when(
-      () => mockAnalyticsReporter.logEvent(
-        name: any(named: "name"),
-        parameters: any(named: "parameters"),
-      ),
+      () => mockAnalyticsReporter.logEvent(event: any(named: "event")),
     ).thenAnswer((_) async {});
 
     register<ProjectService>(mockProjectService);
@@ -122,14 +119,7 @@ void main() {
   });
 
   tearDown(() async {
-    getIt.unregister<ProjectService>();
-    getIt.unregister<ConnectionService>();
-    getIt.unregister<SseEventRepository>();
-    getIt.unregister<RouteSource>();
-    getIt.unregister<RegisteredBridgesService>();
-    getIt.unregister<FailureReporter>();
-    getIt.unregister<UrlLauncher>();
-    getIt.unregister<AnalyticsReporter>();
+    await getIt.reset();
     await statusController.close();
   });
 
@@ -151,10 +141,7 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(
-      () => mockAnalyticsReporter.logEvent(
-        name: AnalyticsEvents.needHelpMenuOpened,
-        parameters: null,
-      ),
+      () => mockAnalyticsReporter.logEvent(event: const AnalyticsEvent.needHelpMenuOpened()),
     ).called(1);
     // The popup actually opened alongside the event.
     expect(find.text("Email"), findsOneWidget);
@@ -171,8 +158,7 @@ void main() {
 
     verify(
       () => mockAnalyticsReporter.logEvent(
-        name: AnalyticsEvents.supportLinkOpened,
-        parameters: {AnalyticsEvents.channelParam: AnalyticsEvents.channelEmail},
+        event: const AnalyticsEvent.supportLinkOpened(channel: SupportChannel.email),
       ),
     ).called(1);
     final launched = verify(() => mockUrlLauncher.launch(captureAny())).captured.single as Uri;
@@ -183,8 +169,8 @@ void main() {
     await pumpOnboarding(tester);
 
     const channelByLabel = {
-      "Discord": AnalyticsEvents.channelDiscord,
-      "DM on X": AnalyticsEvents.channelX,
+      "Discord": SupportChannel.discord,
+      "DM on X": SupportChannel.x,
     };
     for (final entry in channelByLabel.entries) {
       await tester.tap(find.text("Need help?"));
@@ -194,8 +180,7 @@ void main() {
 
       verify(
         () => mockAnalyticsReporter.logEvent(
-          name: AnalyticsEvents.supportLinkOpened,
-          parameters: {AnalyticsEvents.channelParam: entry.value},
+          event: AnalyticsEvent.supportLinkOpened(channel: entry.value),
         ),
       ).called(1);
     }

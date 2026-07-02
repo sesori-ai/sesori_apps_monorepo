@@ -33,6 +33,7 @@ import "package:sesori_dart_core/src/services/registered_bridges_service.dart";
 import "package:sesori_mobile/capabilities/voice/audio_format_config.dart";
 import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
 import "package:sesori_mobile/capabilities/voice/wake_lock_service.dart";
+import "package:sesori_mobile/core/analytics/analytics_event.dart";
 import "package:sesori_mobile/core/analytics/analytics_reporter.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -271,6 +272,7 @@ void registerAllFallbackValues() {
   registerFallbackValue(http.MultipartFile.fromString("audio", ""));
   registerFallbackValue(AuthProvider.github);
   registerFallbackValue(StackTrace.empty);
+  registerFallbackValue(const AnalyticsEvent.needHelpMenuOpened());
 }
 
 // ---------------------------------------------------------------------------
