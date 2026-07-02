@@ -119,6 +119,10 @@ class SessionUnseenTracker with Disposable {
             :final unseen,
             :final projectHasUnseenChanges,
           )) {
+        // A late event can race disposal (the subscription cancel is not
+        // awaited); adding to a closed subject would throw and be reported as
+        // a false-positive failure.
+        if (_projectUnseen.isClosed || _sessionUnseen.isClosed) return;
         _projectTick[projectID] = ++_tick;
 
         final projects = Map<String, bool>.from(_projectUnseen.value);

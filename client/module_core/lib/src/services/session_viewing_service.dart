@@ -4,6 +4,7 @@ import "package:get_it/get_it.dart";
 import "package:injectable/injectable.dart";
 import "package:meta/meta.dart";
 
+import "../logging/logging.dart";
 import "../platform/lifecycle_source.dart";
 import "../repositories/session_view_repository.dart";
 
@@ -59,9 +60,14 @@ class SessionViewingService with Disposable {
   }
 
   void _enqueueSend() {
-    _sendTail = _sendTail.then(
-      (_) => _viewRepository.sendSessionView(sessionId: _isPaused ? null : _currentSessionId),
-    );
+    _sendTail = _sendTail
+        .then((_) => _viewRepository.sendSessionView(sessionId: _isPaused ? null : _currentSessionId))
+        .catchError((Object error, StackTrace stackTrace) {
+          // The transport layer already swallows expected disconnect races;
+          // this guards unexpected failures so one broken send can't leave the
+          // tail errored and kill every future declaration.
+          logw("session view declaration failed", error, stackTrace);
+        });
     unawaited(_sendTail);
   }
 

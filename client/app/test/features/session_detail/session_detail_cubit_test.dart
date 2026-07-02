@@ -1806,6 +1806,53 @@ void main() {
         verifyNever(() => viewingService.setViewingSession(any()));
       });
 
+      test("a stale reconnect refreshes AND re-asserts the view", () async {
+        final viewingService = stubbedSessionViewingService();
+        when(() => mockConnectionService.currentStatus).thenReturn(
+          const ConnectionStatus.connectionLost(
+            config: ServerConnectionConfig(relayHost: "fake.example.com"),
+          ),
+        );
+        final cubit = SessionDetailCubit(
+          mockConnectionService,
+          loadService: loadService,
+          promptDispatcher: promptDispatcher,
+          permissionRepository: mockPermissionRepository,
+          sessionViewingService: viewingService,
+          lifecycleSource: MockLifecycleSource(),
+          sessionId: sessionId,
+          projectId: "project-1",
+          notificationCanceller: mockNotificationCanceller,
+          failureReporter: mockFailureReporter,
+        );
+        addTearDown(cubit.close);
+        await _awaitLoaded(cubit);
+        clearInteractions(viewingService);
+
+        // Stale signal arrives while disconnected — the refresh is deferred.
+        mockConnectionService.emitDataMayBeStale();
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        verifyNever(() => viewingService.setViewingSession(any()));
+
+        // Reconnect: the bridge released this connection's view on the drop,
+        // so the deferred refresh must re-declare it once it renders.
+        when(() => mockConnectionService.currentStatus).thenReturn(
+          const ConnectionStatus.connected(
+            config: ServerConnectionConfig(relayHost: "fake.example.com"),
+            health: HealthResponse(healthy: true, version: "1", filesystemAccessDegraded: null),
+          ),
+        );
+        connectionStatus.add(
+          const ConnectionStatus.connected(
+            config: ServerConnectionConfig(relayHost: "fake.example.com"),
+            health: HealthResponse(healthy: true, version: "1", filesystemAccessDegraded: null),
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        verify(() => viewingService.setViewingSession(sessionId)).called(1);
+      });
+
       test("resume refreshes and re-asserts the view only after the refresh renders", () async {
         final viewingService = stubbedSessionViewingService();
         final lifecycle = MockLifecycleSource();

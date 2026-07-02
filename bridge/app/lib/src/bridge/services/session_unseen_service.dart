@@ -172,11 +172,17 @@ class SessionUnseenService {
   /// Records that a session was deleted (observed live via `session.deleted`,
   /// whether the delete originated on a phone or on the laptop). Removes the
   /// persisted row so a stale unseen row can't keep its project's aggregate
-  /// bold, and always emits the cleared state — [projectId] comes from the
-  /// event payload, so even a row-less delete settles other clients' bold.
+  /// bold, and always emits the cleared state.
+  ///
+  /// The STORED row's project id is preferred over the event's [projectId]:
+  /// for dedicated-worktree sessions the event payload can carry the worktree
+  /// directory instead of the canonical project, which would recompute the
+  /// wrong aggregate and leave the real project bold on other clients. The
+  /// event id is only the fallback for a row-less delete.
   Future<void> recordSessionDeleted({required String sessionId, required String projectId}) {
     return _serialize(sessionId, () async {
-      await _deleteRowAndEmit(sessionId: sessionId, projectId: projectId);
+      final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
+      await _deleteRowAndEmit(sessionId: sessionId, projectId: row?.projectId ?? projectId);
     });
   }
 

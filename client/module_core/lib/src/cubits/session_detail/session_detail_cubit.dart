@@ -838,6 +838,10 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       _tryDrainQueue();
       if (_needsStaleRefresh) {
         _needsStaleRefresh = false;
+        // The disconnect that queued this refresh also released this
+        // connection's view on the bridge, so re-assert it once the refresh
+        // renders — same as the plain reconnect branch below.
+        if (state is SessionDetailLoaded) _reassertViewAfterRefresh = true;
         _silentRefresh();
       } else if (reconnected && state is SessionDetailLoaded) {
         // A foreground relay reconnect: the bridge released the old

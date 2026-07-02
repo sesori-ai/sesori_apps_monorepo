@@ -185,6 +185,23 @@ void main() {
       expect(await projectRepository().projectHasUnseenChanges(projectId: "p1"), isFalse);
     });
 
+    test("recordSessionDeleted emits against the STORED project id, not the event's", () async {
+      // Row persisted under the canonical project p1.
+      await service.recordSessionCreated(sessionId: "s1", projectId: "p1", parentId: null);
+
+      final events = <UnseenChange>[];
+      final sub = service.unseenChanges.listen(events.add);
+
+      // The delete event for a dedicated-worktree session can carry the
+      // worktree directory instead of the canonical project id.
+      await service.recordSessionDeleted(sessionId: "s1", projectId: "/tmp/worktree-dir");
+      await Future<void>.delayed(Duration.zero);
+
+      expect(events.single.projectId, "p1");
+      expect(events.single.unseen, isFalse);
+      await sub.cancel();
+    });
+
     test("recordSessionDeleted for a row-less session still emits the cleared state", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
 
