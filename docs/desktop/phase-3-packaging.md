@@ -10,14 +10,20 @@ gate on desktop — a desktop failure can never abort a CLI/mobile release
 (invariant #3). Folding desktop into the gate is a later, deliberate decision.
 
 **Per-OS shipping is allowed (macOS-first).** The OS legs are deliberately
-separate PR chains — macOS 3.1→3.2→3.6→3.7, Windows 3.3→3.4→3.8, Linux
-3.5→3.9 — and the **§9 index lists them in exactly that chain order** so the
-top-to-bottom resume rule completes macOS first while the Windows cert (§8
-lead-time risk) clears. v1 may ship on macOS alone — "fully signed on all three
-OSes" (Decision #13) binds each *shipped* platform, it does not force all three
-to ship simultaneously. Never ship an unsigned platform to route around it. If
-the cert blocks 3.4, mark it ◐ in §9 with a §8 note and continue the later
-chains.
+separate PR chains — macOS 3.1→3.2→3.6→3.7→3.10→3.11a→**MT-4a**, Windows
+3.3→3.4→3.8→3.11b→**MT-4b**, Linux 3.5→3.9→**MT-4c** — and the **§9 index
+lists them in exactly that chain order** so the top-to-bottom resume rule
+completes macOS, including its ship gate, while the Windows cert (§8 lead-time
+risk) clears. The shared ship-gate work (3.10 release-pipeline integration,
+3.11a in-app reset) sits **inside the macOS chain, before MT-4a**, because the
+first shipped platform needs it; 3.10 is **leg-additive** (it integrates the
+legs that exist when it lands — macOS — and the Windows/Linux chains extend
+the same workflow/feeds in 3.8/3.9). v1 may ship on macOS alone — "fully
+signed on all three OSes" (Decision #13) binds each *shipped* platform, it does
+not force all three to ship simultaneously. Never ship an unsigned platform to
+route around it. If the cert blocks 3.4, mark it ◐ in §9 with a §8 note and
+skip the **whole dependent Windows chain** (3.8, 3.11b, MT-4b) to the Linux
+chain — never start a row whose dependency is blocked.
 
 **Per-PR template:** Goal · Scope · Risk · Review-size · **Regression guide** ·
 Acceptance · DoD (incl. PLAN.md §9 row + pointer advanced) · Aristotle verdicts ·
@@ -181,12 +187,18 @@ Findings log · Plan-deltas.
   location (e.g. AppImage on a mounted dir) fails gracefully.
 - **Acceptance:** vN→vN+1 update succeeds on Linux with the bridge on and off.
 
-## PR 3.10 — Release-pipeline integration (non-blocking) + versioning
+## PR 3.10 — Release-pipeline integration (non-blocking, leg-additive) + versioning
 - **Goal:** Hook the desktop build into `release-all-platforms.yml` +
   `submit-release.yml` as **non-blocking** legs; extend `make bump-version` to
   bump the desktop package; add a **Desktop** section to `CHANGELOG.md`; update
   `tool/generate_release_notes.dart` so desktop-owned paths classify as Desktop
-  instead of App; publish appcast/zsync to releases keyed to the shared version.
+  instead of App; publish update feeds to releases keyed to the shared version.
+  **Leg-additive:** this PR lands at the end of the macOS chain (before MT-4a)
+  and integrates the legs that exist at that point — the macOS build/sign +
+  Sparkle appcast. The Windows and Linux chains extend the same workflow and
+  feed publishing when they land (WinSparkle appcast leg in PR 3.8, zsync feed
+  leg in PR 3.9) — do not block the macOS ship gate on platforms that haven't
+  been built yet.
 - **Trigger paths:** PR 0.1 excluded `client/desktop/**` from the (mobile-product)
   release triggers, so this PR must **add `client/desktop/**`,
   `bridge/**`, `client/module_desktop_core/**`, `client/module_app_ui/**`, shared
@@ -217,33 +229,31 @@ Findings log · Plan-deltas.
   and `shared/sesori_shared/**` under Shared/Protocol or all affected consumer
   sections rather than App-only or Desktop-only.
 
-## PR 3.11 — Uninstall/reset + login-item cleanup (desktop-owned state only; per-OS trigger reality)
-- **Goal:** Clean removal of **GUI-owned** state (login item, GUI secure
-  storage, desktop-namespaced helper state, helper logs). It must
-  **NOT** delete `token.json` or the managed bridge runtime: those live under the
+## PR 3.11a — In-app "Disconnect & reset" (macOS/Linux mechanism; desktop-owned state only)
+- **Goal:** The reusable cleanup flow + the trigger for the two OSes that have
+  **no uninstall hook** (macOS drag-to-trash, Linux AppImage). An in-app
+  **"Disconnect & reset…"** action (window/settings) runs the flow then quits.
+  The flow removes **GUI-owned** state only (login item/XDG autostart entry, GUI
+  secure storage, desktop-namespaced helper state, helper logs). It must **NOT**
+  delete `token.json` or the managed bridge runtime: those live under the
   **shared** Sesori data root (`tokenPath()`, `ManagedRuntimePathService`) used by
   the standalone CLI, and removing them would log out / break the terminal bridge
   the master plan preserves (ADR A10). If shared helper state must be cleaned,
-  namespace/migrate it to a desktop-owned location first.
-- **Per-OS trigger reality (be honest about where this can run):**
-  - **Windows** — the installer's uninstaller is the only real uninstall hook;
-    it runs the full flow below.
-  - **macOS** — there is **no uninstall hook** (drag-to-trash); macOS ≥13
-    auto-disables login items of deleted apps, but GUI state and the server
-    registration survive. Provide an in-app **"Disconnect & reset…"** action
-    (window/settings) that runs the same flow then quits; document trash-only
-    removal as leaving an orphan the account UI can delete.
-  - **Linux (AppImage)** — same as macOS: no hook; the in-app action + docs are
-    the mechanism (also remove the XDG autostart entry).
-- **Best-effort server unregister first:** for users who uninstall **without**
-  going through logout, do a best-effort `BridgeRepository.deleteBridge` (the
-  module_core seam from PR 2.13) using the still-available token + GUI-persisted
-  `bridgeId` **before** clearing GUI-owned credentials/state — otherwise a stale
-  offline bridge is orphaned on the account and deleting the local copy first
-  makes later cleanup impossible. This step is **best-effort and exempt from the
-  capture-and-rethrow policy below**: its failure is logged and swallowed (the
-  server record can also be removed from the account UI), so a network/unregister
-  error never aborts the uninstall or gets rethrown.
+  namespace/migrate it to a desktop-owned location first. macOS ≥13
+  auto-disables login items of deleted apps, but GUI state and the server
+  registration survive trash-only removal — document that path as leaving an
+  orphan the account UI can delete. Lands **before MT-4a** (the macOS ship gate
+  verifies it).
+- **Best-effort server unregister first:** for users who reset/uninstall
+  **without** going through logout, do a best-effort
+  `BridgeRepository.deleteBridge` (the module_core seam from PR 2.13) using the
+  still-available token + GUI-persisted `bridgeId` **before** clearing GUI-owned
+  credentials/state — otherwise a stale offline bridge is orphaned on the
+  account and deleting the local copy first makes later cleanup impossible. This
+  step is **best-effort and exempt from the capture-and-rethrow policy below**:
+  its failure is logged and swallowed (the server record can also be removed
+  from the account UI), so a network/unregister error never aborts the flow or
+  gets rethrown.
 - **Scope note:** wrap each cleanup step in its own `on Object catch` so one
   failure (permissions/missing file) doesn't block the rest; capture the first
   meaningful error and rethrow after all steps run — **except** the best-effort
@@ -251,39 +261,53 @@ Findings log · Plan-deltas.
   contributes to the rethrown error.
 - **Risk:** Low-Med. **Size:** S-M.
 - **Regression guide:** the one thing this must never do is touch shared CLI
-  state. Check: (1) after uninstall/reset, a co-installed standalone CLI still
-  starts, is still logged in (`token.json` intact), and its managed runtime
-  still exists; (2) the helper is stopped before state removal (no running
-  process whose files vanish); (3) running "Disconnect & reset" while already
-  logged out / offline still completes local cleanup; (4) Windows uninstaller
-  works when invoked while the app is running (stops it first or instructs).
-- **Acceptance:** Windows uninstall and the macOS/Linux in-app reset remove the
-  login item/autostart + GUI state; a co-installed standalone CLI remains logged
-  in and runnable; a forced mid-step failure still runs remaining steps; the
+  state. Check: (1) after a reset, a co-installed standalone CLI still starts,
+  is still logged in (`token.json` intact), and its managed runtime still
+  exists; (2) the helper is stopped before state removal (no running process
+  whose files vanish); (3) running "Disconnect & reset" while already logged
+  out / offline still completes local cleanup.
+- **Acceptance:** the in-app reset removes the login item/autostart + GUI state
+  on macOS and Linux; a co-installed standalone CLI remains logged in and
+  runnable; a forced mid-step failure still runs remaining steps; the
   trash-only macOS path is documented (orphan removable from the account UI).
+
+## PR 3.11b — Windows uninstaller cleanup flow
+- **Goal:** Wire the PR-3.11a cleanup flow into the Windows **uninstaller**
+  (the only real uninstall hook; created by PR 3.3's installer): stop the app +
+  helper if running (or instruct the user), then run the same best-effort
+  unregister → login-item/state cleanup. Lands in the Windows chain before
+  MT-4b.
+- **Risk:** Low. **Size:** S.
+- **Regression guide:** as PR 3.11a (shared CLI state untouched), plus: the
+  uninstaller must handle the app-running case, and an uninstall→reinstall
+  round-trip yields a working app with no duplicated login items.
+- **Acceptance:** Windows uninstall removes the login item + GUI state while a
+  co-installed standalone CLI remains logged in and runnable; works when
+  invoked while the app is running.
 
 ---
 
-## MT-4 — Manual checkpoint: signed install / self-update / uninstall per OS (user-run)
+## MT-4a / MT-4b / MT-4c — Manual checkpoints: per-OS ship gates (user-run)
 
-> This is the **v1 ship gate**. Each OS column can run as soon as that OS's
-> chain lands (macOS after 3.2+3.7 · Windows after 3.4+3.8 · Linux after
-> 3.5+3.9); items 8–10 need PR 3.10/3.11. Use **clean machines/VMs** (no dev
-> toolchain, no prior Sesori state) — that is the whole point. If shipping
-> macOS-first (preamble), the macOS column alone gates the macOS release; check
-> the §9 box when every column for the platforms you ship has passed.
+> **One gate per shipped platform**, placed at the end of that platform's §9
+> chain: **MT-4a = macOS** (after 3.11a — this alone gates a macOS-first v1),
+> **MT-4b = Windows** (after 3.11b), **MT-4c = Linux** (after 3.9). Each gate
+> runs the shared checklist below **for that OS** on **clean machines/VMs** (no
+> dev toolchain, no prior Sesori state) — that is the whole point. Item
+> applicability is marked per gate; item 8 runs fully at MT-4a and re-verifies
+> only the new leg at MT-4b/c.
 
-| # | Check | How | Pass looks like |
-|---|---|---|---|
-| 1 | Cold install | download the artifact like a user would (browser) | macOS: Gatekeeper-clean open; Windows: no SmartScreen warning; Linux: AppImage runs on GNOME + KDE |
-| 2 | First-run flow | login → bridge on | provisioning progress → healthy; phone connects; helper survives token expiry |
-| 3 | Reboot behaviour | enable autostart; reboot | hidden tray boot (or A24 windowed fallback); last-on bridge respawns |
-| 4 | Self-update | install vN, publish vN+1 internally, update with bridge ON and again with bridge OFF | helper stopped cleanly (no respawn thrash), app relaunches at vN+1, last-on restored, control channel + phone work after |
-| 5 | Failed update | corrupt/block the update feed artifact | app stays at vN and runnable; failure reported; retry works later |
-| 6 | Update signature | tamper with the appcast/zsync entry (bad signature) in a test feed | update is refused loudly; nothing applied |
-| 7 | Version coherence | after update, check GUI about + helper version + phone-visible bridge version | all report the same unified version (Decision #12) |
-| 8 | Release pipeline | run the internal release dry-run end-to-end | CLI + mobile legs unaffected; desktop legs non-blocking; appcast/zsync published to the release |
-| 9 | Uninstall / reset | Windows: uninstaller; macOS/Linux: in-app "Disconnect & reset" | login item/autostart gone; GUI state gone; bridge gone from account list; co-installed CLI still logged in + runnable (A10) |
-| 10 | Trash-only macOS | drag the app to Trash without reset | login item auto-disabled (macOS ≥13); orphaned bridge removable from account UI (documented) |
+| # | Check | How | Pass looks like | Gates |
+|---|---|---|---|---|
+| 1 | Cold install | download the artifact like a user would (browser) | macOS: Gatekeeper-clean open; Windows: no SmartScreen warning; Linux: AppImage runs on GNOME + KDE | all |
+| 2 | First-run flow | login → bridge on | provisioning progress → healthy; phone connects; helper survives token expiry | all |
+| 3 | Reboot behaviour | enable autostart; reboot | hidden tray boot (or A24 windowed fallback); last-on bridge respawns | all |
+| 4 | Self-update | install vN, publish vN+1 internally, update with bridge ON and again with bridge OFF | helper stopped cleanly (no respawn thrash), app relaunches at vN+1, last-on restored, control channel + phone work after | all |
+| 5 | Failed update | corrupt/block the update feed artifact | app stays at vN and runnable; failure reported; retry works later | all |
+| 6 | Update signature | tamper with the appcast/zsync entry (bad signature) in a test feed | update is refused loudly; nothing applied | all |
+| 7 | Version coherence | after update, check GUI about + helper version + phone-visible bridge version | all report the same unified version (Decision #12) | all |
+| 8 | Release pipeline | run the internal release dry-run end-to-end | CLI + mobile legs unaffected; desktop legs non-blocking; the platform's update feed published to the release | full at MT-4a; new-leg-only at MT-4b/c |
+| 9 | Uninstall / reset | Windows: uninstaller (3.11b); macOS/Linux: in-app "Disconnect & reset" (3.11a) | login item/autostart gone; GUI state gone; bridge gone from account list; co-installed CLI still logged in + runnable (A10) | all |
+| 10 | Trash-only removal | drag the app to Trash without reset | login item auto-disabled (macOS ≥13); orphaned bridge removable from account UI (documented) | MT-4a only |
 
-- **Aristotle:** n/a (no code). **Findings:** — **Deltas:** —
+- **Aristotle:** n/a (no code). **Findings:** — (log per gate) **Deltas:** —

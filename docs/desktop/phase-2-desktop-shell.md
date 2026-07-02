@@ -180,25 +180,29 @@ Findings log · Plan-deltas.
   exit-code state machine yet.
   The service refuses to spawn while the GUI is unauthenticated; the cubit/window
   surfaces login-required instead of starting a helper that will immediately fail.
-- **Scope note — helper stdout/stderr MUST be drained, owned by a Tracker.** The
-  bridge writes `Console`/`Log` output to its pipes; an undrained pipe buffer
-  eventually **blocks the child** (classic supervised-process deadlock), and
-  discarded output leaves the crash/give-up states (PR 2.7) and `FailureReporter`
-  (PR 2.14) with nothing to show. Ownership (per §6): a dedicated Layer-2
-  **`BridgeProcessLogTracker`** in `module_desktop_core/lib/src/trackers/`
-  subscribes to the raw stdout/stderr streams the Layer-1 process API exposes,
-  drains them, writes a **rotating log file** under GUI-owned app data
-  (desktop-namespaced; never the shared Sesori data root, ADR A10), and keeps an
-  in-memory last-N ring buffer exposed as snapshot/stream. `BridgeProcessService`
-  attaches the tracker to the child's streams after spawn; the process API stays
-  a dumb stream provider and `BridgeProcessRepository` keeps ONLY the
-  expected-exit marker. The window gets an "open logs" affordance in PR 2.10.
-  **File-write failures must not stop the drain:** a throwing log write (disk
-  full, permissions, rotation error) inside the tracker is caught and logged
-  (rate-limited, per the swallow-and-continue rule) while pipe draining and the
-  ring buffer keep working — an uncaught write error would kill the stream
-  subscription and recreate the exact blocked-pipe deadlock this tracker exists
-  to prevent.
+- **Scope note — helper stdout/stderr MUST be drained, owned by a Tracker over a
+  Layer-1 Storage.** The bridge writes `Console`/`Log` output to its pipes; an
+  undrained pipe buffer eventually **blocks the child** (classic
+  supervised-process deadlock), and discarded output leaves the crash/give-up
+  states (PR 2.7) and `FailureReporter` (PR 2.14) with nothing to show.
+  Ownership (per §6): a dedicated Layer-2 **`BridgeProcessLogTracker`** in
+  `module_desktop_core/lib/src/trackers/` subscribes to the raw stdout/stderr
+  streams the Layer-1 process API exposes, drains them, and keeps an in-memory
+  last-N ring buffer exposed as snapshot/stream; **file persistence lives below
+  it** in a dumb Layer-1 **`BridgeProcessLogStorage`** (`api/`) that appends
+  lines and rotates at a size cap under GUI-owned app data (desktop-namespaced;
+  never the shared Sesori data root, ADR A10) — the tracker owns derived state,
+  the storage owns the file, mirroring the module's Layer-1 `Storage` boundary.
+  `BridgeProcessService` attaches the tracker to the child's streams after
+  spawn; the process API stays a dumb stream provider and
+  `BridgeProcessRepository` keeps ONLY the expected-exit marker. The window gets
+  an "open logs" affordance in PR 2.10 (path exposed by the storage).
+  **Storage-write failures must not stop the drain:** a throwing append/rotate
+  in `BridgeProcessLogStorage` (disk full, permissions) propagates to the
+  tracker, which catches and logs it (rate-limited, per the
+  swallow-and-continue rule) while pipe draining and the ring buffer keep
+  working — an uncaught write error would kill the stream subscription and
+  recreate the exact blocked-pipe deadlock this component exists to prevent.
 - **Scope note:** guard against invalid/non-positive PIDs (`pid <= 0`) at the
   process-API entry point so platform tools (e.g. Windows `tasklist` PID filter)
   don't throw on bad input — consistent cross-platform behaviour.
@@ -216,9 +220,9 @@ Findings log · Plan-deltas.
 - **Acceptance:** authenticated start spawns + connects to the control server;
   unauthenticated start yields login-required without spawning; clean kill; secret
   not visible in `ps`/argv; non-positive PIDs handled gracefully;
-  `BridgeProcessLogTracker` captures helper output to a rotating GUI-owned log
-  file with a last-N ring buffer, a chatty helper cannot block on full pipes,
-  an injected log-file write failure leaves draining + ring buffer alive
+  `BridgeProcessLogTracker` (ring buffer, drain) over `BridgeProcessLogStorage`
+  (rotating file) captures helper output, a chatty helper cannot block on full
+  pipes, an injected storage write failure leaves draining + ring buffer alive
   (asserted by test), and neither the process API nor `BridgeProcessRepository`
   owns log state.
 

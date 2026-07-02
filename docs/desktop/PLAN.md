@@ -273,7 +273,8 @@ internal `new`).
 | process API (mirrors `HostProcessCommandExecutor`) | `module_desktop_core` Layer 1 | spawn/kill/monitor a long-lived child |
 | `BridgeProcessRepository` | `module_desktop_core` Layer 2 | wraps the process API and owns the expected-exit marker / atomic expected-stop operation used by process and update services — nothing else (log capture is the tracker's job) |
 | `BridgeStatusTracker` / `BridgePromptTracker` | `module_desktop_core` Layer 2 | hold status/pending-prompt state as stream/snapshot; written by the dispatcher, read by the cubit/service |
-| `BridgeProcessLogTracker` | `module_desktop_core` Layer 2 `trackers/` | owns helper output state: subscribes to the raw stdout/stderr streams the Layer-1 process API exposes, drains them (undrained pipes block the child), writes the rotating GUI-owned log file, and keeps the last-N ring buffer exposed as snapshot/stream for the give-up UI (PR 2.7) and `FailureReporter` (PR 2.14). Attached to the child's streams by `BridgeProcessService` after spawn. |
+| `BridgeProcessLogTracker` | `module_desktop_core` Layer 2 `trackers/` | owns helper output state: subscribes to the raw stdout/stderr streams the Layer-1 process API exposes, drains them (undrained pipes block the child), keeps the last-N ring buffer exposed as snapshot/stream for the give-up UI (PR 2.7) and `FailureReporter` (PR 2.14), and forwards lines to the injected `BridgeProcessLogStorage` for persistence. Attached to the child's streams by `BridgeProcessService` after spawn. |
+| `BridgeProcessLogStorage` | `module_desktop_core` Layer 1 `api/` | dumb file-persistence boundary for the helper log dataset: append lines, rotate at size cap, expose the log directory path (for the PR-2.10 "open logs" action). No decisions, no derived state — a write failure throws to the tracker, which isolates it. |
 | `BridgeProcessService` | `module_desktop_core` Layer 3 | bridge child lifecycle: authenticated spawn gating, repository calls, exit-code/backoff decisions, and respawn/stop side effects. It reads expected-exit state from `BridgeProcessRepository`; it does not own that marker. |
 | `DesktopInstanceRepository` | `module_desktop_core` Layer 2 | wraps the single-instance lock API/storage boundary |
 | `DesktopInstanceService` | `module_desktop_core` Layer 3 | GUI single-instance lock orchestration, persisted on/off + last-state, focus-first behavior; it does not start the bridge directly |
@@ -397,24 +398,30 @@ them). Only the user checks an MT box.
 
 > Rows are ordered as **per-OS chains, macOS first** (matches the phase-3
 > preamble's macOS-first shipping allowance), so the top-to-bottom resume rule
-> naturally completes macOS before Windows/Linux. If an external dependency
-> blocks a row (e.g. the Windows cert for 3.4), mark it ◐ with a note in §8 and
-> continue with the next row — do not stall the later chains on it.
+> naturally completes macOS — including its ship gate — before Windows/Linux.
+> **Blocked rows skip as a chain, not a row:** if an external dependency blocks
+> a row (e.g. the Windows cert for 3.4), mark it ◐ with a §8 note and skip to
+> the **next unblocked chain** — every row that depends on the blocked one
+> (3.8, 3.11b, MT-4b behind 3.4) is implicitly blocked with it; never start a
+> dependent row to "continue".
 
 - ☐ 3.0a macOS no-sandbox + hardened-runtime + spawn-child entitlements — Med / S-M
 - ☐ 3.0b CI secrets provisioning (config + docs) — Low / S
 - ☐ 3.1 `_reusable-desktop-build.yml` macOS leg (unsigned) — High / M
 - ☐ 3.2 macOS codesign + notarize + staple — High / M
 - ☐ 3.6 Update-apply policy (stop helper first) + rollback + update UX — Med / M
-- ☐ 3.7 macOS self-update (Sparkle) + EdDSA + appcast — High / M *(macOS chain complete — MT-4 macOS column unlocks)*
+- ☐ 3.7 macOS self-update (Sparkle) + EdDSA + appcast — High / M
+- ☐ 3.10 Release-pipeline integration (non-blocking, **leg-additive**) + `make bump-version` + changelog — Med / M
+- ☐ 3.11a In-app "Disconnect & reset" (macOS/Linux mechanism) + best-effort unregister — Low-Med / S-M
+- ☐ MT-4a Manual checkpoint: **macOS ship gate** (see phase doc) — user-run
 - ☐ 3.3 Windows leg: build + bundle + installer (unsigned) — High / M
-- ☐ 3.4 Windows code signing (needs cert — may be ◐-blocked; see note above) — Med / S-M
-- ☐ 3.8 Windows self-update (WinSparkle) + appcast — High / M
+- ☐ 3.4 Windows code signing (needs cert — may be ◐-blocked; blocks 3.8/3.11b/MT-4b, skip to Linux chain) — Med / S-M
+- ☐ 3.8 Windows self-update (WinSparkle) + appcast leg — High / M
+- ☐ 3.11b Windows uninstaller cleanup flow — Low / S
+- ☐ MT-4b Manual checkpoint: **Windows ship gate** (see phase doc) — user-run
 - ☐ 3.5 Linux AppImage + bundle + **mandatory** GPG signing — Med-High / M
-- ☐ 3.9 Linux self-update (zsync/AppImageUpdate) — Med-High / M
-- ☐ 3.10 Release-pipeline integration (non-blocking) + `make bump-version` + changelog — Med / M
-- ☐ 3.11 Uninstall/reset + login-item cleanup (per-OS trigger reality) — Low-Med / S-M
-- ☐ MT-4 Manual checkpoint: signed install / self-update / uninstall per OS (see phase doc; per-OS subsets unlock as each OS chain lands) — user-run
+- ☐ 3.9 Linux self-update (zsync/AppImageUpdate) + feed leg — Med-High / M
+- ☐ MT-4c Manual checkpoint: **Linux ship gate** (see phase doc) — user-run
 
 ### Phase 4 — Accessory UI (v1.x) → `phase-4-accessory-ui.md`
 - ☐ 4.1 Create `client/module_app_ui` + move shared widgets/extensions/l10n — Med / M
