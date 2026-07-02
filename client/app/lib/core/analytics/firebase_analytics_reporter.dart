@@ -29,9 +29,16 @@ class FirebaseAnalyticsReporter implements AnalyticsReporter {
         logw("Analytics event missing its wire name: ${event.toString()}");
         return;
       }
+      // Drop null-valued fields instead of crashing on them: GA4 has no null
+      // parameters (absence is the null representation) and Firebase's
+      // Map<String, Object> signature rejects null values.
+      final parameters = <String, Object>{};
+      for (final MapEntry(:key, :value) in json.entries) {
+        if (value is Object) parameters[key] = value;
+      }
       await _analytics.logEvent(
         name: name,
-        parameters: json.isEmpty ? null : Map<String, Object>.from(json),
+        parameters: parameters.isEmpty ? null : parameters,
       );
     } on Object catch (error, stackTrace) {
       // Best-effort: a failed analytics write must never reach the user.
