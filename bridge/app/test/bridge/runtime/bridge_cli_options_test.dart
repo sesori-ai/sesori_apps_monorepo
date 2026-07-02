@@ -3,7 +3,13 @@ import "package:sesori_bridge/src/bridge/runtime/bridge_cli_options.dart";
 import "package:test/test.dart";
 
 void main() {
-  test("relay URL is read from the flag", () {
+  test("relay falls back to the parser default", () {
+    final options = _parseOptions(args: const []);
+
+    expect(options.relayUrl, "wss://relay.sesori.com");
+  });
+
+  test("explicit relay is preserved", () {
     final options = _parseOptions(args: ["--relay", "wss://relay.sesori.test"]);
 
     expect(options.relayUrl, "wss://relay.sesori.test");
@@ -60,9 +66,12 @@ void main() {
 }
 
 BridgeCliOptions _parseOptions({required List<String> args}) {
-  // Mirrors the bridge-core options that [BridgeCliOptions.fromArgResults]
-  // reads. Notably there is NO `--control-secret` option — the per-spawn secret
-  // is delivered off-argv (ADR A8), never on the command line.
+  // Only the core options the RunCommand parser registers. Plugin-owned
+  // options (e.g. opencode's --port/--password) are intentionally absent:
+  // BridgeCliOptions must not read them, or selecting a plugin that doesn't
+  // declare them (e.g. cursor) would crash at parse time. There is also NO
+  // `--control-secret` option — the per-spawn secret is delivered off-argv
+  // (ADR A8), never on the command line.
   final parser = ArgParser()
     ..addOption("relay", defaultsTo: "wss://relay.sesori.com")
     ..addOption("auth-backend", defaultsTo: "")
