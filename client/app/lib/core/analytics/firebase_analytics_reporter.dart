@@ -22,10 +22,16 @@ class FirebaseAnalyticsReporter implements AnalyticsReporter {
       // The union discriminator is the GA4 event name; the case's remaining
       // fields are the event's parameters.
       final json = event.toJson();
-      final name = json.remove(analyticsEventNameKey) as String;
+      final name = json.remove(analyticsEventNameKey);
+      if (name is! String) {
+        // Unreachable while every union case pins a string wire name; guards
+        // against the generated serialization contract changing shape.
+        logw("Analytics event missing its wire name: ${event.toString()}");
+        return;
+      }
       await _analytics.logEvent(
         name: name,
-        parameters: json.isEmpty ? null : json.map((key, value) => MapEntry(key, value as Object)),
+        parameters: json.isEmpty ? null : Map<String, Object>.from(json),
       );
     } on Object catch (error, stackTrace) {
       // Best-effort: a failed analytics write must never reach the user.
