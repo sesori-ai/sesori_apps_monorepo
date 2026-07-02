@@ -31,6 +31,14 @@ sealed class RelayMessage with _$RelayMessage {
   @FreezedUnionValue("sse_unsubscribe")
   const factory RelayMessage.sseUnsubscribe() = RelaySseUnsubscribe;
 
+  /// Connection-scoped declaration of which session the phone is currently
+  /// viewing (the session detail screen). [sessionId] is null when the phone
+  /// is not viewing any session. Fire-and-forget control message (no response),
+  /// analogous to [RelaySseSubscribe]; the bridge tracks it per-connection and
+  /// auto-releases it on disconnect.
+  @FreezedUnionValue("session_view")
+  const factory RelayMessage.sessionView({required String? sessionId}) = RelaySessionView;
+
   @FreezedUnionValue("key_exchange")
   const factory RelayMessage.keyExchange({required String publicKey}) = RelayKeyExchange;
 

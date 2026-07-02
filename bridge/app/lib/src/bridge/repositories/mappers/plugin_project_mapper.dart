@@ -3,7 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 /// Maps a [PluginProject] to the shared [Project] type used in relay responses.
 extension PluginProjectMapper on PluginProject {
-  Project toSharedProject() {
+  Project toSharedProject({required bool hasUnseenChanges}) {
     return Project(
       id: id,
       name: name,
@@ -15,6 +15,7 @@ extension PluginProjectMapper on PluginProject {
         ),
         null => null,
       },
+      hasUnseenChanges: hasUnseenChanges,
     );
   }
 }

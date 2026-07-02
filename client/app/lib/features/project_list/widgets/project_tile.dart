@@ -4,11 +4,13 @@ part of "../project_list_screen.dart";
 class _ProjectTile extends StatelessWidget {
   final Project project;
   final int activeSessions;
+  final bool unseen;
   final VoidCallback? onLongPress;
 
   const _ProjectTile({
     required this.project,
     required this.activeSessions,
+    this.unseen = false,
     this.onLongPress,
   });
 
@@ -29,7 +31,10 @@ class _ProjectTile extends StatelessWidget {
           color: prego.colors.fgWhite,
         ),
       ),
-      title: Text(displayName),
+      title: Text(
+        displayName,
+        style: unseen ? prego.textTheme.textMd.bold : null,
+      ),
       subtitle: Column(
         crossAxisAlignment: .start,
         children: [

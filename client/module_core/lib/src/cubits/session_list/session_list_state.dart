@@ -21,6 +21,11 @@ sealed class SessionListState with _$SessionListState {
     @Default({}) Map<String, SessionActivityInfo> activeSessionIds,
     @Default(false) bool isRefreshing,
 
+    /// Map of session ID -> whether it has unseen changes (bold title). Merges
+    /// the REST-seeded `Session.unseen` with live `SesoriSessionUnseenChanged`
+    /// updates, the latter taking precedence.
+    @Default({}) Map<String, bool> unseenBySessionId,
+
     /// The base branch of the project (e.g. "main", "develop"), if available.
     required String? baseBranch,
   }) = SessionListLoaded;

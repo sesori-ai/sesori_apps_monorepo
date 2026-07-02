@@ -15,6 +15,7 @@ import "../services/project_initialization_service.dart";
 import "../services/session_archive_service.dart";
 import "../services/session_creation_service.dart";
 import "../services/session_persistence_service.dart";
+import "../services/session_unseen_service.dart";
 import "../services/worktree_service.dart";
 import "abort_session_handler.dart";
 import "create_project_handler.dart";
@@ -36,6 +37,7 @@ import "get_session_permissions_handler.dart";
 import "get_session_questions_handler.dart";
 import "get_session_statuses_handler.dart";
 import "get_sessions_handler.dart";
+import "handlers/mark_session_seen_handler.dart";
 import "health_check_handler.dart";
 import "hide_project_handler.dart";
 import "open_project_handler.dart";
@@ -79,6 +81,7 @@ class RequestRouter {
     required PermissionRepository permissionRepository,
     required QuestionRepository questionRepository,
     required SessionPersistenceService sessionPersistenceService,
+    required SessionUnseenService sessionUnseenService,
     required WorktreeService worktreeService,
     required GetSessionDiffsHandler sessionDiffsHandler,
     required BridgeRestartService restartService,
@@ -100,6 +103,7 @@ class RequestRouter {
          permissionRepository: permissionRepository,
          questionRepository: questionRepository,
          sessionPersistenceService: sessionPersistenceService,
+         sessionUnseenService: sessionUnseenService,
          worktreeService: worktreeService,
          sessionDiffsHandler: sessionDiffsHandler,
          restartService: restartService,
@@ -123,6 +127,7 @@ class RequestRouter {
     required PermissionRepository permissionRepository,
     required QuestionRepository questionRepository,
     required SessionPersistenceService sessionPersistenceService,
+    required SessionUnseenService sessionUnseenService,
     required WorktreeService worktreeService,
     required GetSessionDiffsHandler sessionDiffsHandler,
     required BridgeRestartService restartService,
@@ -141,10 +146,15 @@ class RequestRouter {
         sessionRepository: sessionRepository,
         prSyncService: prSyncService,
         sessionPersistenceService: sessionPersistenceService,
+        sessionUnseenService: sessionUnseenService,
       ),
       CreateSessionHandler(sessionCreationService: sessionCreationService),
       RenameSessionHandler(sessionRepository: sessionRepository),
-      UpdateSessionArchiveStatusHandler(sessionArchiveService: sessionArchiveService),
+      MarkSessionSeenHandler(sessionUnseenService: sessionUnseenService),
+      UpdateSessionArchiveStatusHandler(
+        sessionArchiveService: sessionArchiveService,
+        sessionUnseenService: sessionUnseenService,
+      ),
       DeleteSessionHandler(
         plugin: plugin,
         worktreeService: worktreeService,
@@ -162,7 +172,7 @@ class RequestRouter {
       ReplyToQuestionHandler(questionRepository: questionRepository),
       RejectQuestionHandler(questionRepository: questionRepository),
       ReplyToPermissionHandler(permissionRepository: permissionRepository),
-      RenameProjectHandler(plugin),
+      RenameProjectHandler(plugin, projectRepository: projectRepository),
       CreateProjectHandler(
         projectInitializationService: projectInitializationService,
         projectRepository: projectRepository,

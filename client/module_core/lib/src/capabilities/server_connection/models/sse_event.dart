@@ -44,6 +44,7 @@ class SseEvent {
     SesoriProjectUpdated() ||
     SesoriVcsBranchUpdated() ||
     SesoriSessionsUpdated() ||
+    SesoriSessionUnseenChanged() ||
     SesoriFileEdited() ||
     SesoriFileWatcherUpdated() ||
     SesoriLspUpdated() ||

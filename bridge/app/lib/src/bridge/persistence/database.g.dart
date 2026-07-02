@@ -246,6 +246,9 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
   String? get lastAgent;
   AgentModel? get lastAgentModel;
   int get createdAt;
+  int? get lastActivityAt;
+  int? get lastSeenAt;
+  int? get lastUserMessageAt;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -276,6 +279,15 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
       );
     }
     map['created_at'] = Variable<int>(createdAt);
+    if (!nullToAbsent || lastActivityAt != null) {
+      map['last_activity_at'] = Variable<int>(lastActivityAt);
+    }
+    if (!nullToAbsent || lastSeenAt != null) {
+      map['last_seen_at'] = Variable<int>(lastSeenAt);
+    }
+    if (!nullToAbsent || lastUserMessageAt != null) {
+      map['last_user_message_at'] = Variable<int>(lastUserMessageAt);
+    }
     return map;
   }
 }
@@ -411,6 +423,39 @@ class $SessionTableTable extends SessionTable
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _lastActivityAtMeta = const VerificationMeta(
+    'lastActivityAt',
+  );
+  @override
+  late final GeneratedColumn<int> lastActivityAt = GeneratedColumn<int>(
+    'last_activity_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastSeenAtMeta = const VerificationMeta(
+    'lastSeenAt',
+  );
+  @override
+  late final GeneratedColumn<int> lastSeenAt = GeneratedColumn<int>(
+    'last_seen_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastUserMessageAtMeta = const VerificationMeta(
+    'lastUserMessageAt',
+  );
+  @override
+  late final GeneratedColumn<int> lastUserMessageAt = GeneratedColumn<int>(
+    'last_user_message_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     sessionId,
@@ -424,6 +469,9 @@ class $SessionTableTable extends SessionTable
     lastAgent,
     lastAgentModel,
     createdAt,
+    lastActivityAt,
+    lastSeenAt,
+    lastUserMessageAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -511,6 +559,33 @@ class $SessionTableTable extends SessionTable
     } else if (isInserting) {
       context.missing(_createdAtMeta);
     }
+    if (data.containsKey('last_activity_at')) {
+      context.handle(
+        _lastActivityAtMeta,
+        lastActivityAt.isAcceptableOrUnknown(
+          data['last_activity_at']!,
+          _lastActivityAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_seen_at')) {
+      context.handle(
+        _lastSeenAtMeta,
+        lastSeenAt.isAcceptableOrUnknown(
+          data['last_seen_at']!,
+          _lastSeenAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_user_message_at')) {
+      context.handle(
+        _lastUserMessageAtMeta,
+        lastUserMessageAt.isAcceptableOrUnknown(
+          data['last_user_message_at']!,
+          _lastUserMessageAtMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -566,6 +641,18 @@ class $SessionTableTable extends SessionTable
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
       )!,
+      lastActivityAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_activity_at'],
+      ),
+      lastSeenAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_seen_at'],
+      ),
+      lastUserMessageAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_user_message_at'],
+      ),
     );
   }
 
@@ -594,6 +681,9 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
   final Value<String?> lastAgent;
   final Value<AgentModel?> lastAgentModel;
   final Value<int> createdAt;
+  final Value<int?> lastActivityAt;
+  final Value<int?> lastSeenAt;
+  final Value<int?> lastUserMessageAt;
   const SessionTableCompanion({
     this.sessionId = const Value.absent(),
     this.projectId = const Value.absent(),
@@ -606,6 +696,9 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.lastAgent = const Value.absent(),
     this.lastAgentModel = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.lastActivityAt = const Value.absent(),
+    this.lastSeenAt = const Value.absent(),
+    this.lastUserMessageAt = const Value.absent(),
   });
   SessionTableCompanion.insert({
     required String sessionId,
@@ -619,6 +712,9 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.lastAgent = const Value.absent(),
     this.lastAgentModel = const Value.absent(),
     required int createdAt,
+    this.lastActivityAt = const Value.absent(),
+    this.lastSeenAt = const Value.absent(),
+    this.lastUserMessageAt = const Value.absent(),
   }) : sessionId = Value(sessionId),
        projectId = Value(projectId),
        isDedicated = Value(isDedicated),
@@ -635,6 +731,9 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Expression<String>? lastAgent,
     Expression<String>? lastAgentModel,
     Expression<int>? createdAt,
+    Expression<int>? lastActivityAt,
+    Expression<int>? lastSeenAt,
+    Expression<int>? lastUserMessageAt,
   }) {
     return RawValuesInsertable({
       if (sessionId != null) 'session_id': sessionId,
@@ -648,6 +747,9 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       if (lastAgent != null) 'last_agent': lastAgent,
       if (lastAgentModel != null) 'last_agent_model': lastAgentModel,
       if (createdAt != null) 'created_at': createdAt,
+      if (lastActivityAt != null) 'last_activity_at': lastActivityAt,
+      if (lastSeenAt != null) 'last_seen_at': lastSeenAt,
+      if (lastUserMessageAt != null) 'last_user_message_at': lastUserMessageAt,
     });
   }
 
@@ -663,6 +765,9 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Value<String?>? lastAgent,
     Value<AgentModel?>? lastAgentModel,
     Value<int>? createdAt,
+    Value<int?>? lastActivityAt,
+    Value<int?>? lastSeenAt,
+    Value<int?>? lastUserMessageAt,
   }) {
     return SessionTableCompanion(
       sessionId: sessionId ?? this.sessionId,
@@ -676,6 +781,9 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       lastAgent: lastAgent ?? this.lastAgent,
       lastAgentModel: lastAgentModel ?? this.lastAgentModel,
       createdAt: createdAt ?? this.createdAt,
+      lastActivityAt: lastActivityAt ?? this.lastActivityAt,
+      lastSeenAt: lastSeenAt ?? this.lastSeenAt,
+      lastUserMessageAt: lastUserMessageAt ?? this.lastUserMessageAt,
     );
   }
 
@@ -719,6 +827,15 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
+    if (lastActivityAt.present) {
+      map['last_activity_at'] = Variable<int>(lastActivityAt.value);
+    }
+    if (lastSeenAt.present) {
+      map['last_seen_at'] = Variable<int>(lastSeenAt.value);
+    }
+    if (lastUserMessageAt.present) {
+      map['last_user_message_at'] = Variable<int>(lastUserMessageAt.value);
+    }
     return map;
   }
 
@@ -735,7 +852,10 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
           ..write('baseCommit: $baseCommit, ')
           ..write('lastAgent: $lastAgent, ')
           ..write('lastAgentModel: $lastAgentModel, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastActivityAt: $lastActivityAt, ')
+          ..write('lastSeenAt: $lastSeenAt, ')
+          ..write('lastUserMessageAt: $lastUserMessageAt')
           ..write(')'))
         .toString();
   }
@@ -1710,6 +1830,9 @@ typedef $$SessionTableTableCreateCompanionBuilder =
       Value<String?> lastAgent,
       Value<AgentModel?> lastAgentModel,
       required int createdAt,
+      Value<int?> lastActivityAt,
+      Value<int?> lastSeenAt,
+      Value<int?> lastUserMessageAt,
     });
 typedef $$SessionTableTableUpdateCompanionBuilder =
     SessionTableCompanion Function({
@@ -1724,6 +1847,9 @@ typedef $$SessionTableTableUpdateCompanionBuilder =
       Value<String?> lastAgent,
       Value<AgentModel?> lastAgentModel,
       Value<int> createdAt,
+      Value<int?> lastActivityAt,
+      Value<int?> lastSeenAt,
+      Value<int?> lastUserMessageAt,
     });
 
 final class $$SessionTableTableReferences
@@ -1806,6 +1932,21 @@ class $$SessionTableTableFilterComposer
 
   ColumnFilters<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastActivityAt => $composableBuilder(
+    column: $table.lastActivityAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastUserMessageAt => $composableBuilder(
+    column: $table.lastUserMessageAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1892,6 +2033,21 @@ class $$SessionTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get lastActivityAt => $composableBuilder(
+    column: $table.lastActivityAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastUserMessageAt => $composableBuilder(
+    column: $table.lastUserMessageAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$ProjectsTableTableOrderingComposer get projectId {
     final $$ProjectsTableTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -1970,6 +2126,21 @@ class $$SessionTableTableAnnotationComposer
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
+  GeneratedColumn<int> get lastActivityAt => $composableBuilder(
+    column: $table.lastActivityAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastSeenAt => $composableBuilder(
+    column: $table.lastSeenAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get lastUserMessageAt => $composableBuilder(
+    column: $table.lastUserMessageAt,
+    builder: (column) => column,
+  );
+
   $$ProjectsTableTableAnnotationComposer get projectId {
     final $$ProjectsTableTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -2033,6 +2204,9 @@ class $$SessionTableTableTableManager
                 Value<String?> lastAgent = const Value.absent(),
                 Value<AgentModel?> lastAgentModel = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
+                Value<int?> lastActivityAt = const Value.absent(),
+                Value<int?> lastSeenAt = const Value.absent(),
+                Value<int?> lastUserMessageAt = const Value.absent(),
               }) => SessionTableCompanion(
                 sessionId: sessionId,
                 projectId: projectId,
@@ -2045,6 +2219,9 @@ class $$SessionTableTableTableManager
                 lastAgent: lastAgent,
                 lastAgentModel: lastAgentModel,
                 createdAt: createdAt,
+                lastActivityAt: lastActivityAt,
+                lastSeenAt: lastSeenAt,
+                lastUserMessageAt: lastUserMessageAt,
               ),
           createCompanionCallback:
               ({
@@ -2059,6 +2236,9 @@ class $$SessionTableTableTableManager
                 Value<String?> lastAgent = const Value.absent(),
                 Value<AgentModel?> lastAgentModel = const Value.absent(),
                 required int createdAt,
+                Value<int?> lastActivityAt = const Value.absent(),
+                Value<int?> lastSeenAt = const Value.absent(),
+                Value<int?> lastUserMessageAt = const Value.absent(),
               }) => SessionTableCompanion.insert(
                 sessionId: sessionId,
                 projectId: projectId,
@@ -2071,6 +2251,9 @@ class $$SessionTableTableTableManager
                 lastAgent: lastAgent,
                 lastAgentModel: lastAgentModel,
                 createdAt: createdAt,
+                lastActivityAt: lastActivityAt,
+                lastSeenAt: lastSeenAt,
+                lastUserMessageAt: lastUserMessageAt,
               ),
           withReferenceMapper: (p0) => p0
               .map(

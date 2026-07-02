@@ -269,6 +269,19 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     required String projectID,
   }) = SesoriSessionsUpdated;
 
+  /// Real-time change to a session's unseen (new-changes) state. Carries both
+  /// the per-session [unseen] flag and the recomputed project-level
+  /// [projectHasUnseenChanges] aggregate so the session list and project list
+  /// can both update without a re-fetch. Cross-cutting list event (NOT a
+  /// [SesoriSessionEvent]).
+  @FreezedUnionValue("session.unseen_changed")
+  const factory SesoriSseEvent.sessionUnseenChanged({
+    required String projectID,
+    required String sessionId,
+    required bool unseen,
+    required bool projectHasUnseenChanges,
+  }) = SesoriSessionUnseenChanged;
+
   // ---------------------------------------------------------------------------
   // File
   // ---------------------------------------------------------------------------

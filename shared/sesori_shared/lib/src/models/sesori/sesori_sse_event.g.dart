@@ -411,6 +411,25 @@ Map<String, dynamic> _$SesoriSessionsUpdatedToJson(
   SesoriSessionsUpdated instance,
 ) => <String, dynamic>{'projectID': instance.projectID, 'type': instance.$type};
 
+SesoriSessionUnseenChanged _$SesoriSessionUnseenChangedFromJson(Map json) =>
+    SesoriSessionUnseenChanged(
+      projectID: json['projectID'] as String,
+      sessionId: json['sessionId'] as String,
+      unseen: json['unseen'] as bool,
+      projectHasUnseenChanges: json['projectHasUnseenChanges'] as bool,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$SesoriSessionUnseenChangedToJson(
+  SesoriSessionUnseenChanged instance,
+) => <String, dynamic>{
+  'projectID': instance.projectID,
+  'sessionId': instance.sessionId,
+  'unseen': instance.unseen,
+  'projectHasUnseenChanges': instance.projectHasUnseenChanges,
+  'type': instance.$type,
+};
+
 SesoriFileEdited _$SesoriFileEditedFromJson(Map json) => SesoriFileEdited(
   file: json['file'] as String?,
   $type: json['type'] as String?,

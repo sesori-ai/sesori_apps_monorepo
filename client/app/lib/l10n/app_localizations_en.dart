@@ -378,6 +378,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListUnarchive => 'Unarchive';
 
   @override
+  String get sessionListMarkRead => 'Mark as read';
+
+  @override
+  String get sessionListMarkUnread => 'Mark as unread';
+
+  @override
   String get sessionListDelete => 'Delete';
 
   @override

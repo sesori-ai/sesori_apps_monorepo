@@ -155,7 +155,10 @@ as List<Project>,
 /// @nodoc
 mixin _$Project {
 
- String get id; String? get name; ProjectTime? get time;
+ String get id; String? get name; ProjectTime? get time;// Whether this project has at least one non-archived session with unseen
+// activity. Backend-derived from its sessions. Defaults to false so older
+// payloads (and the baseline) deserialize as "seen".
+ bool get hasUnseenChanges;
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -168,16 +171,16 @@ $ProjectCopyWith<Project> get copyWith => _$ProjectCopyWithImpl<Project>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Project&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.time, time) || other.time == time));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Project&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,time);
+int get hashCode => Object.hash(runtimeType,id,name,time,hasUnseenChanges);
 
 @override
 String toString() {
-  return 'Project(id: $id, name: $name, time: $time)';
+  return 'Project(id: $id, name: $name, time: $time, hasUnseenChanges: $hasUnseenChanges)';
 }
 
 
@@ -188,7 +191,7 @@ abstract mixin class $ProjectCopyWith<$Res>  {
   factory $ProjectCopyWith(Project value, $Res Function(Project) _then) = _$ProjectCopyWithImpl;
 @useResult
 $Res call({
- String id, String? name, ProjectTime? time
+ String id, String? name, ProjectTime? time, bool hasUnseenChanges
 });
 
 
@@ -205,12 +208,13 @@ class _$ProjectCopyWithImpl<$Res>
 
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = freezed,Object? time = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = freezed,Object? time = freezed,Object? hasUnseenChanges = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
-as ProjectTime?,
+as ProjectTime?,hasUnseenChanges: null == hasUnseenChanges ? _self.hasUnseenChanges : hasUnseenChanges // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 /// Create a copy of Project
@@ -234,12 +238,16 @@ $ProjectTimeCopyWith<$Res>? get time {
 @JsonSerializable()
 
 class _Project implements Project {
-  const _Project({required this.id, required this.name, required this.time});
+  const _Project({required this.id, required this.name, required this.time, this.hasUnseenChanges = false});
   factory _Project.fromJson(Map<String, dynamic> json) => _$ProjectFromJson(json);
 
 @override final  String id;
 @override final  String? name;
 @override final  ProjectTime? time;
+// Whether this project has at least one non-archived session with unseen
+// activity. Backend-derived from its sessions. Defaults to false so older
+// payloads (and the baseline) deserialize as "seen".
+@override@JsonKey() final  bool hasUnseenChanges;
 
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.
@@ -254,16 +262,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Project&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.time, time) || other.time == time));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Project&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,time);
+int get hashCode => Object.hash(runtimeType,id,name,time,hasUnseenChanges);
 
 @override
 String toString() {
-  return 'Project(id: $id, name: $name, time: $time)';
+  return 'Project(id: $id, name: $name, time: $time, hasUnseenChanges: $hasUnseenChanges)';
 }
 
 
@@ -274,7 +282,7 @@ abstract mixin class _$ProjectCopyWith<$Res> implements $ProjectCopyWith<$Res> {
   factory _$ProjectCopyWith(_Project value, $Res Function(_Project) _then) = __$ProjectCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String? name, ProjectTime? time
+ String id, String? name, ProjectTime? time, bool hasUnseenChanges
 });
 
 
@@ -291,12 +299,13 @@ class __$ProjectCopyWithImpl<$Res>
 
 /// Create a copy of Project
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = freezed,Object? time = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = freezed,Object? time = freezed,Object? hasUnseenChanges = null,}) {
   return _then(_Project(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String?,time: freezed == time ? _self.time : time // ignore: cast_nullable_to_non_nullable
-as ProjectTime?,
+as ProjectTime?,hasUnseenChanges: null == hasUnseenChanges ? _self.hasUnseenChanges : hasUnseenChanges // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
