@@ -24,20 +24,26 @@ class PregoMenuLabel extends PregoMenuEntry {
   final String text;
 }
 
-/// A tappable menu row with a [title], optional [subtitle], and an optional
-/// selected check mark. Tapping runs [onTap] and dismisses the menu.
+/// A tappable menu row with a [title], optional [subtitle], an optional
+/// [leadingIcon], and an optional selected check mark. Tapping runs [onTap] and
+/// dismisses the menu.
 class PregoMenuItem extends PregoMenuEntry {
   const PregoMenuItem({
     required this.title,
     required this.subtitle,
     required this.isSelected,
     required this.onTap,
+    this.leadingIcon,
   });
 
   final String title;
   final String? subtitle;
   final bool isSelected;
   final VoidCallback onTap;
+
+  /// Optional glyph shown before the title. Rendered identically on the glass
+  /// and flat paths (muted to the secondary text colour).
+  final IconData? leadingIcon;
 }
 
 /// A thin separator line between entries.
@@ -69,7 +75,9 @@ typedef PregoMenuTriggerBuilder = Widget Function(BuildContext context, VoidCall
 /// (a [CueModalTransition]) — same anchored-popup behaviour, zero shader cost.
 ///
 /// The same [entries] and [triggerBuilder] drive both paths; only the rendering
-/// differs. See [glassEffectsEnabled] for the platform switch.
+/// differs. See [glassEffectsEnabled] for the platform switch. Set [flat] to
+/// force the flat/`cue` path on every platform (including Apple) — for a menu
+/// paired with a flat trigger, where a glass popup would look out of place.
 class PregoAnchorMenu extends StatefulWidget {
   const PregoAnchorMenu({
     super.key,
@@ -79,6 +87,7 @@ class PregoAnchorMenu extends StatefulWidget {
     this.menuHeight,
     this.menuBorderRadius = 24,
     this.menuScreenPadding = const EdgeInsets.all(12),
+    this.flat = false,
   });
 
   /// Builds the tappable trigger. The provided callback opens the menu.
@@ -101,6 +110,11 @@ class PregoAnchorMenu extends StatefulWidget {
   /// Minimum gap kept between the menu and the screen edges.
   final EdgeInsets menuScreenPadding;
 
+  /// Forces the flat/`cue` path on every platform when `true`. When `false`
+  /// (the default) the path follows [glassEffectsEnabled] — glass on Apple,
+  /// flat on Android.
+  final bool flat;
+
   @override
   State<PregoAnchorMenu> createState() => _PregoAnchorMenuState();
 }
@@ -113,7 +127,8 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
 
   @override
   Widget build(BuildContext context) {
-    return glassEffectsEnabled() ? _buildGlass(context) : _buildFlat(context);
+    final useGlass = !widget.flat && glassEffectsEnabled();
+    return useGlass ? _buildGlass(context) : _buildFlat(context);
   }
 
   // ── Glass path (Apple) ─────────────────────────────────────────────────────
@@ -160,11 +175,12 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
       case PregoMenuLabel(:final text):
         // GlassMenuLabel uppercases the title itself; we only supply the style.
         return GlassMenuLabel(title: text, style: _labelStyle(prego));
-      case PregoMenuItem(:final title, :final subtitle, :final isSelected, :final onTap):
+      case PregoMenuItem(:final title, :final subtitle, :final isSelected, :final onTap, :final leadingIcon):
         return GlassMenuItem(
           title: title,
           subtitle: subtitle,
           isSelected: isSelected,
+          icon: leadingIcon == null ? null : Icon(leadingIcon, size: 20, color: prego.colors.textSecondary),
           titleStyle: _titleStyle(prego),
           subtitleStyle: _subtitleStyle(prego),
           trailing: isSelected ? _selectedCheck(prego) : null,
@@ -296,11 +312,12 @@ class _FlatAnchoredMenu extends StatelessWidget {
           // Uppercased to match GlassMenuLabel on the glass path.
           child: Text(text.toUpperCase(), style: _labelStyle(prego)),
         );
-      case PregoMenuItem(:final title, :final subtitle, :final isSelected, :final onTap):
+      case PregoMenuItem(:final title, :final subtitle, :final isSelected, :final onTap, :final leadingIcon):
         return _FlatMenuTile(
           title: title,
           subtitle: subtitle,
           isSelected: isSelected,
+          leadingIcon: leadingIcon,
           onTap: () {
             close();
             onTap();
@@ -328,17 +345,20 @@ class _FlatMenuTile extends StatelessWidget {
     required this.subtitle,
     required this.isSelected,
     required this.onTap,
+    this.leadingIcon,
   });
 
   final String title;
   final String? subtitle;
   final bool isSelected;
   final VoidCallback onTap;
+  final IconData? leadingIcon;
 
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final subtitle = this.subtitle;
+    final leadingIcon = this.leadingIcon;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -349,6 +369,10 @@ class _FlatMenuTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
             children: [
+              if (leadingIcon != null) ...[
+                Icon(leadingIcon, size: 20, color: prego.colors.textSecondary),
+                const SizedBox(width: 12),
+              ],
               Expanded(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
