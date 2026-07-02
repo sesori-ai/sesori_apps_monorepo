@@ -72,9 +72,23 @@ class BridgeRestartService {
     return requested;
   }
 
-  /// Whether the managed binary exists and is executable, so the handler only
-  /// promises a restart it can actually deliver (an unspawnable bridge fails
-  /// fast with an error response instead of a dropped session).
+  /// Whether an explicit restart can be delivered right now, so the handler only
+  /// promises a restart it can actually carry out.
+  ///
+  /// Supervised bridges are always restartable — the desktop GUI respawns the
+  /// process, so no managed successor binary is required (a bundled helper is a
+  /// child process, not necessarily installed at the managed CLI path). Standalone
+  /// requires a spawnable managed successor binary ([canSpawnSuccessor]).
+  Future<bool> canRestart() async {
+    if (_isSupervised) {
+      return true;
+    }
+    return canSpawnSuccessor();
+  }
+
+  /// Whether the managed binary exists and is executable, so the standalone
+  /// handoff only promises a restart it can actually deliver (an unspawnable
+  /// bridge fails fast with an error response instead of a dropped session).
   Future<bool> canSpawnSuccessor() async {
     // Sync dart:io checks satisfy the project's `avoid_slow_async_io` lint.
     final File file = File(_binaryPath);

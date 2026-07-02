@@ -160,4 +160,24 @@ void main() {
     // would replay --control-url with no off-argv secret and fail closed.
     expect(runner.detachedCalls, isEmpty);
   });
+
+  test('canRestart is always true in supervised mode, even without a managed binary', () async {
+    // A bundled desktop helper is a child process, not necessarily installed at
+    // the managed CLI path — supervised restart must still be deliverable (the
+    // GUI respawns it), so the missing binary must not block it.
+    final service = buildService(binaryPath: p.join(tempDir.path, 'missing'), isSupervised: true);
+
+    expect(await service.canRestart(), isTrue);
+  });
+
+  test('canRestart delegates to canSpawnSuccessor in standalone mode', () async {
+    final existing = p.join(tempDir.path, 'sesori-bridge');
+    File(existing).writeAsStringSync('binary');
+    if (!Platform.isWindows) {
+      await Process.run('chmod', ['+x', existing]);
+    }
+
+    expect(await buildService(binaryPath: existing).canRestart(), isTrue);
+    expect(await buildService(binaryPath: p.join(tempDir.path, 'missing')).canRestart(), isFalse);
+  });
 }

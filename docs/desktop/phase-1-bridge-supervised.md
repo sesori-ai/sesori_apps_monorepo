@@ -364,7 +364,17 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   callback for the supervised signal; `aristotle-plan-review` rejected it under
   the bridge "Streams Over Callbacks" rule, so it was replaced with the
   synchronous `supervisedRestartRequested` state getter (the `failureLatch`
-  precedent) before implementation. **Deltas:** —
+  precedent) before implementation. **Review round 2** (Codex, 2 P2s): (a) the
+  runner only read the flag after a clean `run()` return, so a teardown throw
+  after the handoff would fall to the error path and return `1` (crash) not `86` —
+  now `run()` is wrapped in an inner `try/finally` that resolves the sentinel into
+  the outer-scoped local even on throw, and the outer `catch` honors it; (b) the
+  restart handler's `canSpawnSuccessor()` preflight checked the managed CLI path,
+  which a bundled desktop helper need not have, so a supervised `/global/restart`
+  would 503 and never reach the exit-86 handoff — added a mode-aware
+  `BridgeRestartService.canRestart()` (supervised ⇒ always restartable, GUI
+  respawns; standalone ⇒ `canSpawnSuccessor()`) and the handler now calls it.
+  **Deltas:** —
 
 ## PR 1.8 — Disable self-update + reconcile when supervised
 - **Goal:** Pass `SESORI_NO_UPDATE`/skip policy; assert reconcile is skipped so a

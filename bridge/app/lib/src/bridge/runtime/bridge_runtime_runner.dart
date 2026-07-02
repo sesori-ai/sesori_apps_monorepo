@@ -523,19 +523,33 @@ class BridgeRuntimeRunner {
         unawaited(runtime.session.cancel());
       });
 
-      await runtime.session.run();
-      // A supervised phone-triggered restart handed the session off by exiting
-      // rather than spawning a successor; return the GUI-respawn sentinel so the
-      // desktop supervisor respawns us. Assigned before the `finally` runs so a
-      // hung-shutdown backstop reports the same code.
-      if (restartService.supervisedRestartRequested) {
-        requestedSupervisedRestartExitCode = supervisedRestartExitCode;
+      try {
+        await runtime.session.run();
+      } finally {
+        // A supervised phone-triggered restart handed the session off by exiting
+        // rather than spawning a successor; resolve the GUI-respawn sentinel here
+        // (in a finally) so it survives even if a teardown await in run()/cancel()
+        // throws — otherwise the error path below would return a crash code and
+        // the GUI would back off instead of respawning. `restartService` is only
+        // in scope inside this try, hence resolving into the outer-scoped local.
+        // Assigned before the outer `finally`'s shutdown runs, so a hung-shutdown
+        // backstop reports the same code too.
+        if (restartService.supervisedRestartRequested) {
+          requestedSupervisedRestartExitCode = supervisedRestartExitCode;
+        }
       }
       return requestedSupervisedRestartExitCode ?? (failureLatch.failure == null ? 0 : 1);
     } on PluginStartAbortedException {
       Log.i("Plugin start aborted as requested.");
       return 0;
-    } catch (error) {
+    } catch (error, stackTrace) {
+      // Honor an already-completed supervised restart handoff: a teardown error
+      // after the handoff is still an intentional restart, so return the sentinel
+      // (GUI respawns) rather than the crash code.
+      if (requestedSupervisedRestartExitCode != null) {
+        Log.w("Session teardown failed after a supervised restart handoff", error, stackTrace);
+        return requestedSupervisedRestartExitCode;
+      }
       Log.e("$error");
       return 1;
     } finally {
