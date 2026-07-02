@@ -80,6 +80,42 @@ void main() {
       expect((turnStartParams["input"] as List).first["text"], equals("hello codex"));
     });
 
+    test("renameSession keeps a fresh non-launch session on its own project before the rollout is flushed", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {
+              "id": "t-sub",
+              "cwd": "/work/sample/packages/core",
+              "createdAt": 1700000000,
+              "updatedAt": 1700000000,
+              "name": null,
+            },
+          },
+        ),
+        const _Response(result: {}),
+      ]);
+
+      final created = await plugin.createSession(
+        directory: "/work/sample/packages/core",
+        parentSessionId: null,
+        parts: const [],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      expect(created.projectID, equals("/work/sample/packages/core"));
+
+      // codexHome is empty — no rollout has been flushed — yet the rename
+      // response must still attribute the session to its real project rather
+      // than the launch cwd, proving the in-memory thread→directory map is
+      // consulted before the disk rollout.
+      final renamed = await plugin.renameSession(sessionId: "t-sub", title: "Renamed");
+      expect(renamed.projectID, equals("/work/sample/packages/core"));
+      expect(renamed.directory, equals("/work/sample/packages/core"));
+    });
+
     test("sendPrompt resumes a thread from a prior run before the turn", () async {
       // `t-existing` was never started in this plugin instance, so the
       // app-server has not loaded it — the plugin must resume it on demand

@@ -18,6 +18,7 @@ import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/derived_project_builder.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/health_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
@@ -71,12 +72,16 @@ void main() {
     final projectRepository = ProjectRepository(
       plugin: plugin,
       projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      trackingMode: ProjectTrackingMode.nativeBackend,
+      derivedProjectBuilder: const DerivedProjectBuilder(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       db: database,
+      pluginId: "opencode",
     );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(
@@ -146,7 +151,7 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin),
       agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -235,12 +240,19 @@ void main() {
       sessionRepository: sessionRepository,
       failureReporter: FakeFailureReporter(),
     );
-    final projectRepository = ProjectRepository(plugin: plugin, projectsDao: database.projectsDao);
+    final projectRepository = ProjectRepository(
+      plugin: plugin,
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      trackingMode: ProjectTrackingMode.nativeBackend,
+      derivedProjectBuilder: const DerivedProjectBuilder(),
+    );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       db: database,
+      pluginId: "opencode",
     );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(
@@ -301,7 +313,7 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin),
       agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -378,12 +390,16 @@ void main() {
     final projectRepository = ProjectRepository(
       plugin: plugin,
       projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      trackingMode: ProjectTrackingMode.nativeBackend,
+      derivedProjectBuilder: const DerivedProjectBuilder(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       db: database,
+      pluginId: "opencode",
     );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(
@@ -484,7 +500,7 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin),
       agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -563,12 +579,16 @@ void main() {
     final projectRepository = ProjectRepository(
       plugin: plugin,
       projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      trackingMode: ProjectTrackingMode.nativeBackend,
+      derivedProjectBuilder: const DerivedProjectBuilder(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       db: database,
+      pluginId: "opencode",
     );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(
@@ -638,7 +658,7 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin),
       agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -688,12 +708,16 @@ void main() {
     final projectRepository = ProjectRepository(
       plugin: plugin,
       projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      trackingMode: ProjectTrackingMode.nativeBackend,
+      derivedProjectBuilder: const DerivedProjectBuilder(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       db: database,
+      pluginId: "opencode",
     );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(
@@ -763,7 +787,7 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin),
       agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -838,12 +862,16 @@ void main() {
     final projectRepository = ProjectRepository(
       plugin: plugin,
       projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      trackingMode: ProjectTrackingMode.nativeBackend,
+      derivedProjectBuilder: const DerivedProjectBuilder(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       db: database,
+      pluginId: "opencode",
     );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(
@@ -913,7 +941,7 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin),
       agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,

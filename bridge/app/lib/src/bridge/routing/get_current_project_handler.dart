@@ -1,14 +1,15 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/project_repository.dart";
 import "request_handler.dart";
 
 /// Handles `POST /project/current` — returns project for a given project id.
 class GetCurrentProjectHandler extends BodyRequestHandler<ProjectIdRequest, Project> {
-  final BridgePluginApi _plugin;
+  final ProjectRepository _projectRepository;
 
-  GetCurrentProjectHandler(this._plugin)
-    : super(
+  GetCurrentProjectHandler({required ProjectRepository projectRepository})
+    : _projectRepository = projectRepository,
+      super(
         HttpMethod.post,
         "/project/current",
         fromJson: ProjectIdRequest.fromJson,
@@ -27,20 +28,9 @@ class GetCurrentProjectHandler extends BodyRequestHandler<ProjectIdRequest, Proj
       throw buildErrorResponse(request, 400, "empty project id");
     }
 
-    final pluginProject = await _plugin.getProject(projectId);
-    final project = Project(
-      id: pluginProject.id,
-      name: pluginProject.name,
-      time: switch (pluginProject.time) {
-        PluginProjectTime(:final created, :final updated) => ProjectTime(
-          created: created,
-          updated: updated,
-          initialized: null,
-        ),
-        null => null,
-      },
-    );
-
-    return project;
+    // Route through the repository so a bridge-derived plugin (whose
+    // `getProject` is a guarded no-op) resolves via the derived project set
+    // instead of throwing a 502.
+    return _projectRepository.getProject(projectId: projectId);
   }
 }

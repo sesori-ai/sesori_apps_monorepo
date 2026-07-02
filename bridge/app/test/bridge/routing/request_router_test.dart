@@ -6,6 +6,7 @@ import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/derived_project_builder.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/health_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
@@ -52,7 +53,13 @@ void main() {
         sessionDao: db.sessionDao,
         pullRequestRepository: PullRequestRepository(pullRequestDao: db.pullRequestDao, projectsDao: db.projectsDao),
       );
-      final projectRepository = ProjectRepository(plugin: plugin, projectsDao: db.projectsDao);
+      final projectRepository = ProjectRepository(
+        plugin: plugin,
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        trackingMode: ProjectTrackingMode.nativeBackend,
+        derivedProjectBuilder: const DerivedProjectBuilder(),
+      );
       final filesystemRepository = FilesystemRepository(
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
@@ -77,11 +84,12 @@ void main() {
       final agentRepository = AgentRepository(plugin: plugin);
       final providerRepository = ProviderRepository(plugin: plugin);
       final permissionRepository = PermissionRepository(plugin: plugin);
-      final questionRepository = QuestionRepository(plugin: plugin);
+      final questionRepository = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao);
       final sessionPersistenceService = SessionPersistenceService(
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         db: db,
+        pluginId: "opencode",
       );
       final worktreeService = WorktreeService(
         worktreeRepository: WorktreeRepository(
@@ -409,7 +417,13 @@ void main() {
         pullRequestRepository: fakePullRequestRepository,
       );
 
-      final projectRepository = ProjectRepository(plugin: plugin, projectsDao: db.projectsDao);
+      final projectRepository = ProjectRepository(
+        plugin: plugin,
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        trackingMode: ProjectTrackingMode.nativeBackend,
+        derivedProjectBuilder: const DerivedProjectBuilder(),
+      );
       final filesystemRepository = FilesystemRepository(
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
@@ -438,6 +452,7 @@ void main() {
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         db: db,
+        pluginId: "opencode",
       );
       final worktreeService = WorktreeService(
         worktreeRepository: WorktreeRepository(
@@ -495,7 +510,7 @@ void main() {
         providerRepository: providerRepository,
         agentRepository: agentRepository,
         permissionRepository: permissionRepository,
-        questionRepository: QuestionRepository(plugin: plugin),
+        questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao),
         sessionPersistenceService: sessionPersistenceService,
         worktreeService: worktreeService,
         sessionDiffsHandler: sessionDiffsHandler,

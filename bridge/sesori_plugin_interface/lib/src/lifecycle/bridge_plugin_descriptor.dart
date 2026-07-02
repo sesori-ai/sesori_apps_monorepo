@@ -6,6 +6,7 @@ import "bridge_plugin.dart";
 import "plugin_availability.dart";
 import "plugin_config.dart";
 import "plugin_option.dart";
+import "project_tracking_mode.dart";
 import "runtime_provision_progress.dart";
 
 /// The registration unit for a bridge plugin.
@@ -27,6 +28,17 @@ abstract class BridgePluginDescriptor {
 
   /// CLI options this plugin contributes when selected.
   List<PluginOption> get options;
+
+  /// Declares whether this plugin's projects are owned by its backend natively
+  /// or derived by the bridge from the plugin's sessions.
+  ///
+  /// Defaults to [ProjectTrackingMode.nativeBackend], so backend-native plugins
+  /// (e.g. OpenCode) need no change. Derive-style plugins with no native
+  /// project concept (Codex and every ACP backend) override this to
+  /// [ProjectTrackingMode.bridgeDerived]. Read once at wiring time to pick the
+  /// bridge's project-tracking path; const and side-effect-free like [id] and
+  /// [options].
+  ProjectTrackingMode get projectTrackingMode => ProjectTrackingMode.nativeBackend;
 
   /// Validates [config] before the bridge takes any irreversible step.
   ///

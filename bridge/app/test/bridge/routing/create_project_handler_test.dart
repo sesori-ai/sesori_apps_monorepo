@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/derived_project_builder.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
@@ -45,7 +46,13 @@ void main() {
           ),
           filesystemRepository: filesystemRepository,
         ),
-        projectRepository: ProjectRepository(plugin: plugin, projectsDao: db.projectsDao),
+        projectRepository: ProjectRepository(
+          plugin: plugin,
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+          trackingMode: ProjectTrackingMode.nativeBackend,
+          derivedProjectBuilder: const DerivedProjectBuilder(),
+        ),
       );
       tempDir = await Directory.systemTemp.createTemp("create-project-handler-test-");
     });

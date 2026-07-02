@@ -13,6 +13,7 @@ import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
 import 'generated/schema_v5.dart' as v5;
 import 'generated/schema_v6.dart' as v6;
+import 'generated/schema_v7.dart' as v7;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -667,6 +668,96 @@ void main() {
       expect(await db.select(db.projectsTable).get(), isEmpty);
       expect(await db.select(db.sessionTable).get(), isEmpty);
       expect(await db.select(db.pullRequestsTable).get(), isEmpty);
+    },
+  );
+
+  test('migration v6 → v7 structural validation', () async {
+    final connection = await verifier.startAt(6);
+    final db = AppDatabase(connection);
+
+    await verifier.migrateAndValidate(db, 7);
+    await db.close();
+  });
+
+  test(
+    'migration v6 → v7 backfills pluginId to opencode and defaults project metadata to null',
+    () async {
+      const oldProjectsTableData = [
+        v6.ProjectsTableData(
+          projectId: 'project-1',
+          hidden: 0,
+          baseBranch: 'main',
+          worktreeCounter: 2,
+        ),
+      ];
+      const oldSessionsTableData = [
+        v6.SessionsTableData(
+          sessionId: 'session-1',
+          projectId: 'project-1',
+          worktreePath: '/tmp/worktrees/session-1',
+          branchName: 'feat/one',
+          isDedicated: 1,
+          archivedAt: null,
+          baseBranch: 'main',
+          baseCommit: 'abc123',
+          lastAgent: null,
+          lastAgentModel: null,
+          createdAt: 1700000000000,
+        ),
+      ];
+
+      await verifier.testWithDataIntegrity(
+        oldVersion: 6,
+        newVersion: 7,
+        createOld: v6.DatabaseAtV6.new,
+        createNew: v7.DatabaseAtV7.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, oldDb) {
+          batch.insertAll(oldDb.projectsTable, oldProjectsTableData);
+          batch.insertAll(oldDb.sessionsTable, oldSessionsTableData);
+        },
+        validateItems: (newDb) async {
+          // New project columns default to null; prior columns are preserved.
+          expect(
+            await newDb.select(newDb.projectsTable).get(),
+            const [
+              v7.ProjectsTableData(
+                projectId: 'project-1',
+                hidden: 0,
+                baseBranch: 'main',
+                worktreeCounter: 2,
+                displayName: null,
+                openedAt: null,
+              ),
+            ],
+          );
+          // The pre-existing session is backfilled to the opencode plugin.
+          expect(
+            await newDb.select(newDb.sessionsTable).get(),
+            const [
+              v7.SessionsTableData(
+                sessionId: 'session-1',
+                projectId: 'project-1',
+                worktreePath: '/tmp/worktrees/session-1',
+                branchName: 'feat/one',
+                isDedicated: 1,
+                archivedAt: null,
+                baseBranch: 'main',
+                baseCommit: 'abc123',
+                lastAgent: null,
+                lastAgentModel: null,
+                createdAt: 1700000000000,
+                pluginId: 'opencode',
+              ),
+            ],
+          );
+          // The session→project FK survives the column additions.
+          expect(
+            await newDb.customSelect('PRAGMA foreign_key_check').get(),
+            isEmpty,
+          );
+        },
+      );
     },
   );
 }

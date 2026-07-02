@@ -35,6 +35,16 @@ void main() {
 
       expect(availability, isA<PluginAvailable>());
     });
+
+    test('projectTrackingMode defaults to nativeBackend', () {
+      const descriptor = _MinimalDescriptor();
+      expect(descriptor.projectTrackingMode, ProjectTrackingMode.nativeBackend);
+    });
+
+    test('a descriptor can declare bridge-derived project tracking', () {
+      const descriptor = _BridgeDerivedDescriptor();
+      expect(descriptor.projectTrackingMode, ProjectTrackingMode.bridgeDerived);
+    });
   });
 
   group('PluginOption', () {
@@ -241,6 +251,27 @@ class _ValidatingDescriptor extends BridgePluginDescriptor {
       throw const PluginConfigException('The --no-auto-start flag requires --port to be set.');
     }
   }
+
+  @override
+  Future<BridgePlugin> start(PluginHost host) {
+    throw UnsupportedError('start is not exercised in this test');
+  }
+}
+
+class _BridgeDerivedDescriptor extends BridgePluginDescriptor {
+  const _BridgeDerivedDescriptor();
+
+  @override
+  String get id => 'derived';
+
+  @override
+  String get displayName => 'Bridge-derived plugin';
+
+  @override
+  List<PluginOption> get options => const [];
+
+  @override
+  ProjectTrackingMode get projectTrackingMode => ProjectTrackingMode.bridgeDerived;
 
   @override
   Future<BridgePlugin> start(PluginHost host) {

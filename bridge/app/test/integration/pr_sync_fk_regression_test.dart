@@ -25,6 +25,7 @@
 library;
 
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
+import "package:sesori_bridge/src/bridge/repositories/derived_project_builder.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
@@ -59,6 +60,9 @@ void main() {
         final projectRepo = ProjectRepository(
           plugin: plugin,
           projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+          trackingMode: ProjectTrackingMode.nativeBackend,
+          derivedProjectBuilder: const DerivedProjectBuilder(),
         );
         final prRepo = PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
@@ -154,6 +158,7 @@ void main() {
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
           db: db,
+          pluginId: "opencode",
         );
 
         // Verify projects_table is empty before the call.

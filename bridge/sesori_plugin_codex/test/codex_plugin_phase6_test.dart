@@ -65,14 +65,12 @@ void main() {
       await plugin.dispose();
     });
 
-    test("renameProject returns the synthesised project with the new name", () async {
+    test("renameProject throws — bridge-derived renames persist bridge-side", () async {
       final plugin = newPlugin();
-      final renamed = await plugin.renameProject(
-        projectId: projectCwd.path,
-        name: "My Codex Project",
+      await expectLater(
+        () => plugin.renameProject(projectId: projectCwd.path, name: "My Codex Project"),
+        throwsA(isA<UnsupportedError>()),
       );
-      expect(renamed.id, equals(projectCwd.path));
-      expect(renamed.name, equals("My Codex Project"));
       await plugin.dispose();
     });
 

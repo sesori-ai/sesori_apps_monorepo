@@ -1,15 +1,18 @@
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show BridgePluginApi, Log, PluginSession, PluginSessionVariant;
+    show BridgeDerivedProjectSource, BridgePluginApi, Log, PluginSession, PluginSessionVariant;
 import "package:sesori_shared/sesori_shared.dart"
     show AgentModel, CommandListResponse, PrState, PromptModel, PromptPart, PullRequestInfo, Session, SessionVariant;
 
 import "../api/database/tables/pull_requests_table.dart";
 import "../persistence/daos/session_dao.dart";
 import "../persistence/tables/session_table.dart";
+import "derived_session_scope.dart";
 import "mappers/plugin_command_mapper.dart";
 import "mappers/plugin_session_mapper.dart";
 import "mappers/prompt_part_mapper.dart";
 import "mappers/pull_request_mapper.dart";
+import "mappers/worktree_project_mapper.dart";
 import "models/stored_session.dart";
 import "pull_request_repository.dart";
 
@@ -31,13 +34,44 @@ class SessionRepository {
     required int? start,
     required int? limit,
   }) async {
-    final pluginSessions = await _plugin.getSessions(
-      projectId,
+    final pluginSessions = await _pluginSessionsForProject(
+      projectId: projectId,
       start: start,
       limit: limit,
     );
 
     return enrichSessions(sessions: pluginSessions.toSharedSessions());
+  }
+
+  /// The plugin sessions that belong to [projectId].
+  ///
+  /// A native-tracking plugin owns its own project→session grouping, so we
+  /// delegate straight to it. A bridge-derived plugin only knows each session's
+  /// own cwd — which, for a session started in a dedicated worktree, is the
+  /// worktree path rather than the project the user opened. The bridge owns that
+  /// worktree→project mapping, so for derived plugins we scope via
+  /// [DerivedSessionScope] and paginate here, keeping a worktree session under
+  /// its project.
+  Future<List<PluginSession>> _pluginSessionsForProject({
+    required String projectId,
+    required int? start,
+    required int? limit,
+  }) async {
+    final plugin = _plugin;
+    if (plugin is! BridgeDerivedProjectSource) {
+      return plugin.getSessions(projectId, start: start, limit: limit);
+    }
+
+    final scoped = await DerivedSessionScope(
+      source: plugin as BridgeDerivedProjectSource,
+      sessionDao: _sessionDao,
+      pluginId: plugin.id,
+    ).sessionsForProject(projectId);
+
+    final from = start ?? 0;
+    if (from >= scoped.length) return const [];
+    final until = limit == null ? scoped.length : (from + limit).clamp(0, scoped.length);
+    return scoped.sublist(from, until);
   }
 
   Future<Session> enrichSession({required Session session}) async {
@@ -151,6 +185,25 @@ class SessionRepository {
       return storedSession.projectId;
     }
 
+    // Bridge-derived plugins return [] from getProjects(), so resolve via the
+    // session enumeration and return the canonical project directory — folding a
+    // worktree session's cwd back to its parent through the same
+    // [WorktreeProjectMapper] used by [DerivedSessionScope], so this fallback
+    // agrees with both the persisted-row path above and project→session scoping.
+    final plugin = _plugin;
+    if (plugin is BridgeDerivedProjectSource) {
+      final source = plugin as BridgeDerivedProjectSource;
+      final mapper = WorktreeProjectMapper(
+        worktreeProjectPaths: await _sessionDao.getWorktreeProjectPaths(pluginId: plugin.id),
+      );
+      for (final session in await source.listAllSessions()) {
+        if (session.id == sessionId) {
+          return mapper.canonicalDirectory(session.directory);
+        }
+      }
+      return null;
+    }
+
     final projects = await _plugin.getProjects();
     for (final project in projects) {
       final projectId = project.id;
@@ -248,6 +301,12 @@ class SessionRepository {
   }
 
   Future<String?> getProjectPath({required String projectId}) async {
+    // For a bridge-derived plugin the project id IS the canonical directory, and
+    // plugin.getProject is a guarded no-op — resolve the path directly.
+    if (_plugin is BridgeDerivedProjectSource) {
+      final trimmed = projectId.trim();
+      return trimmed.isEmpty ? null : normalizeProjectDirectory(directory: trimmed);
+    }
     try {
       final project = await _plugin.getProject(projectId);
       if (project.id.trim().isEmpty) {
@@ -290,6 +349,7 @@ class SessionRepository {
         baseCommit: baseCommit,
         lastAgent: agent,
         lastAgentModel: agentModel,
+        pluginId: _plugin.id,
       );
     });
   }
@@ -307,7 +367,7 @@ class SessionRepository {
   }
 
   Future<PluginSession?> _getPluginSession({required String projectId, required String sessionId}) async {
-    final sessions = await _plugin.getSessions(projectId);
+    final sessions = await _pluginSessionsForProject(projectId: projectId, start: null, limit: null);
     for (final session in sessions) {
       if (session.id == sessionId) {
         return session;

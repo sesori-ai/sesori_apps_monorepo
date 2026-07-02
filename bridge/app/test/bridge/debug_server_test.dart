@@ -48,6 +48,7 @@ _DebugServerHarness _createDebugServerHarness({
     failureReporter: FakeFailureReporter(),
     restartService: restartService ?? buildTestRestartService(),
     filesystemAccessOk: true,
+    projectTrackingMode: ProjectTrackingMode.nativeBackend,
   );
   final debugServer = runtime.createDebugServer(port: port);
   return _DebugServerHarness(

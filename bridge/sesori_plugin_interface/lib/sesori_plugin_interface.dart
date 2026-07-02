@@ -1,3 +1,5 @@
+export "src/bridge_derived_project_source.dart";
+export "src/bridge_derived_projects_mixin.dart";
 export "src/bridge_plugin.dart";
 export "src/bridge_sse_event.dart";
 export "src/buffered_stream.dart";
@@ -16,6 +18,7 @@ export "src/lifecycle/plugin_option.dart";
 export "src/lifecycle/plugin_start_exception.dart";
 export "src/lifecycle/plugin_status.dart";
 export "src/lifecycle/plugin_status_controller.dart";
+export "src/lifecycle/project_tracking_mode.dart";
 export "src/lifecycle/runtime_provision_progress.dart";
 export "src/lifecycle/start_abort_signal.dart";
 export "src/lifecycle/steady_plugin_lifecycle.dart";

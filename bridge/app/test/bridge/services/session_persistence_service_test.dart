@@ -22,6 +22,7 @@ void main() {
         projectsDao: projectsDao,
         sessionDao: sessionDao,
         db: db,
+        pluginId: "opencode",
       );
     });
 
@@ -161,6 +162,7 @@ void main() {
         projectsDao: projectsDao,
         sessionDao: failingDao,
         db: db,
+        pluginId: "opencode",
       );
 
       await expectLater(
@@ -274,11 +276,12 @@ class _ThrowingSessionDao extends SessionDao {
   @override
   Future<void> insertSessionsIfMissing({
     required List<({String sessionId, String projectId, int createdAt, int? archivedAt})> sessions,
+    String pluginId = "opencode",
   }) async {
     _calls++;
     if (_calls == throwOnCall) {
       throw StateError("boom");
     }
-    await super.insertSessionsIfMissing(sessions: sessions);
+    await super.insertSessionsIfMissing(sessions: sessions, pluginId: pluginId);
   }
 }

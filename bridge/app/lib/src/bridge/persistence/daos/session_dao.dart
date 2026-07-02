@@ -21,6 +21,9 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     required String? baseCommit,
     required String? lastAgent,
     required AgentModel? lastAgentModel,
+    // Mirrors the column's DB default; production callers (SessionRepository,
+    // SessionPersistenceService) pass the active plugin id explicitly.
+    String pluginId = "opencode",
   }) async {
     await into(sessionTable).insert(
       SessionTableCompanion(
@@ -35,6 +38,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
         lastAgent: Value(lastAgent),
         lastAgentModel: Value(lastAgentModel),
         createdAt: Value(createdAt),
+        pluginId: Value(pluginId),
       ),
     );
   }
@@ -70,6 +74,32 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
 
   Future<List<SessionDto>> getSessionsByProject({required String projectId}) async {
     return (select(sessionTable)..where((t) => t.projectId.equals(projectId))).get();
+  }
+
+  /// The worktree→project links the bridge recorded for [pluginId]: every
+  /// session created inside a dedicated worktree, as its worktree directory and
+  /// the project the user actually opened. A bridge-derived plugin reports each
+  /// session under its own cwd (the worktree path), so the derivation uses these
+  /// rows to fold a worktree's sessions back under their parent project instead
+  /// of spawning a project per worktree.
+  Future<List<({String worktreePath, String projectId})>> getWorktreeProjectPaths({
+    required String pluginId,
+  }) async {
+    // Newest first, then keep one row per worktree path, so the mapping is
+    // deterministic if a worktree path was ever reused across projects (the
+    // most recent owner wins). Archived sessions are intentionally kept: their
+    // worktree still exists on disk and must fold to its parent, otherwise an
+    // archived worktree session would re-derive as its own project.
+    final rows = await (select(sessionTable)
+          ..where((t) => t.worktreePath.isNotNull() & t.pluginId.equals(pluginId))
+          ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
+        .get();
+    final seen = <String>{};
+    return [
+      for (final row in rows)
+        if (row.worktreePath case final worktreePath?)
+          if (seen.add(worktreePath)) (worktreePath: worktreePath, projectId: row.projectId),
+    ];
   }
 
   Future<Map<String, SessionDto>> getSessionsByIds({required List<String> sessionIds}) async {
@@ -113,6 +143,8 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   /// archive state is preserved on first insert. Existing rows are never updated.
   Future<void> insertSessionsIfMissing({
     required List<({String sessionId, String projectId, int createdAt, int? archivedAt})> sessions,
+    // Mirrors the column's DB default; production callers pass the active id.
+    String pluginId = "opencode",
   }) async {
     if (sessions.isEmpty) return;
     await batch((b) {
@@ -128,6 +160,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
               isDedicated: const Value(false),
               createdAt: Value(s.createdAt),
               archivedAt: Value(s.archivedAt),
+              pluginId: Value(pluginId),
               // worktreePath, branchName, baseBranch, baseCommit intentionally
               // omitted — they default to absent (null) via SessionTableCompanion
             ),

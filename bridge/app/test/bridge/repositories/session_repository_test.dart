@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
+import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -536,6 +537,122 @@ void main() {
       }
     });
   });
+
+  group("SessionRepository (bridge-derived)", () {
+    PluginSession pluginSession(String directory, {required String id}) => PluginSession(
+      id: id,
+      projectID: directory,
+      directory: directory,
+      parentID: null,
+      title: null,
+      time: const PluginSessionTime(created: 1, updated: 1, archived: null),
+      summary: null,
+    );
+
+    Future<void> recordWorktreeSession(
+      AppDatabase db, {
+      required String parent,
+      required String worktree,
+      required String sessionId,
+    }) async {
+      // Mirror what SessionCreationService persists: the session's owning
+      // project plus the worktree the bridge created for it.
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
+      await db.sessionDao.insertSession(
+        sessionId: sessionId,
+        projectId: parent,
+        isDedicated: true,
+        createdAt: 1,
+        worktreePath: worktree,
+        branchName: "session-001",
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+        pluginId: "codex",
+      );
+    }
+
+    test("getSessionsForProject lists a worktree session under its parent project", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      const parent = "/tmp/proj/alpha";
+      const worktree = "/tmp/proj/alpha/.worktrees/session-001";
+      final plugin = _FakeDerivedPlugin(
+        launchDirectory: parent,
+        allSessions: [pluginSession(parent, id: "s1"), pluginSession(worktree, id: "w1")],
+      );
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+      await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "w1");
+
+      final sessions = await repository.getSessionsForProject(projectId: parent, start: null, limit: null);
+
+      // The in-project session AND the worktree session both list under parent.
+      expect(sessions.map((s) => s.id).toSet(), {"s1", "w1"});
+    });
+
+    test("findProjectIdForSession folds a rowless worktree session to its parent via the worktree mapper", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      const parent = "/tmp/proj/alpha";
+      const worktree = "/tmp/proj/alpha/.worktrees/session-001";
+      // Session a1 recorded the worktree→parent mapping. Session b1 also runs in
+      // that worktree but has no row of its own, so it hits the derived
+      // fallback — which must still fold it to the parent, matching how the
+      // persisted-row path and DerivedSessionScope canonicalize it.
+      final plugin = _FakeDerivedPlugin(
+        launchDirectory: parent,
+        allSessions: [pluginSession(worktree, id: "b1")],
+      );
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+      await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "a1");
+
+      final result = await repository.findProjectIdForSession(sessionId: "b1");
+
+      expect(result, equals(parent));
+    });
+
+    test("getSessionsForProject scoped to the worktree path returns nothing — it belongs to its parent", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      const parent = "/tmp/proj/alpha";
+      const worktree = "/tmp/proj/alpha/.worktrees/session-001";
+      final plugin = _FakeDerivedPlugin(
+        launchDirectory: parent,
+        allSessions: [pluginSession(worktree, id: "w1")],
+      );
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+      await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "w1");
+
+      final underWorktree = await repository.getSessionsForProject(projectId: worktree, start: null, limit: null);
+
+      expect(underWorktree, isEmpty);
+    });
+  });
 }
 
 class _FakeBridgePlugin implements BridgePluginApi {
@@ -623,4 +740,25 @@ class _FakeBridgePlugin implements BridgePluginApi {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// A derive-style plugin (Codex/ACP shaped): reports every session through
+/// [BridgeDerivedProjectSource.listAllSessions] and mixes in the bridge-derived
+/// no-ops. `id` is "codex" so the repository's worktree lookup
+/// (`getWorktreeProjectPaths(pluginId: ...)`) matches the seeded session rows.
+class _FakeDerivedPlugin extends _FakeBridgePlugin
+    with BridgeDerivedProjectsMixin
+    implements BridgeDerivedProjectSource {
+  _FakeDerivedPlugin({required this.launchDirectory, required this.allSessions});
+
+  @override
+  final String launchDirectory;
+
+  List<PluginSession> allSessions;
+
+  @override
+  String get id => "codex";
+
+  @override
+  Future<List<PluginSession>> listAllSessions() async => allSessions;
 }
