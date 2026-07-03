@@ -319,5 +319,5 @@ User: "Address the comments on PR 42"
    - Thread 1: `[Sesori reply] Addressed (in commit a1b2c3d)\n\nChanged the loop boundary from i <= n to i < n in src/utils.ts to fix the off-by-one error.]`
    - Thread 2: `[Sesori reply] Not addressed\n\nThe current imperative approach is intentional and more readable here.]`
    - Thread 3: `[Sesori reply] Addressed (in commit a1b2c3d)\n\nAdded null check in src/services/user_service.dart before accessing user.email.`
-7. Resolve threads 1 and 3 (`resolve.sh 42 <thread_id>`). Thread 2 stays
-   unresolved for the reviewer to accept or reject the decision.
+7. Resolve threads 1 and 3 (`./scripts/resolve.sh 42 <thread_id>`). Thread 2
+   stays unresolved for the reviewer to accept or reject the decision.
