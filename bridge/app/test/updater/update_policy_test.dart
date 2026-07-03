@@ -45,6 +45,7 @@ void main() {
           environment: const <String, String>{},
           executablePath: managed,
           managedExecutablePath: managed,
+          isSupervised: false,
         ),
         isFalse,
       );
@@ -56,6 +57,7 @@ void main() {
           environment: const <String, String>{},
           executablePath: '/tmp/custom/sesori-bridge',
           managedExecutablePath: managed,
+          isSupervised: false,
         ),
         isTrue,
       );
@@ -67,6 +69,19 @@ void main() {
           environment: const <String, String>{},
           executablePath: '/tmp/project/node_modules/@sesori/bridge-linux-x64/lib/runtime/bin/sesori-bridge',
           managedExecutablePath: managed,
+          isSupervised: false,
+        ),
+        isTrue,
+      );
+    });
+
+    test('true when supervised, even for the managed binary in a clean environment', () {
+      expect(
+        shouldSkipUpdates(
+          environment: const <String, String>{},
+          executablePath: managed,
+          managedExecutablePath: managed,
+          isSupervised: true,
         ),
         isTrue,
       );
@@ -78,6 +93,7 @@ void main() {
           environment: const <String, String>{'SESORI_NO_UPDATE': '1'},
           executablePath: managed,
           managedExecutablePath: managed,
+          isSupervised: false,
         ),
         isTrue,
       );
@@ -86,6 +102,7 @@ void main() {
           environment: const <String, String>{'CI': 'true'},
           executablePath: managed,
           managedExecutablePath: managed,
+          isSupervised: false,
         ),
         isTrue,
       );

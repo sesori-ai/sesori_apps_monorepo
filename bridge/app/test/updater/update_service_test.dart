@@ -86,6 +86,7 @@ void main() {
   UpdateService buildService({
     String executablePath = _managedPath,
     Map<String, String> environment = const {},
+    bool isSupervised = false,
   }) {
     final service = UpdateService(
       releaseRepository: release,
@@ -97,6 +98,7 @@ void main() {
       executablePath: executablePath,
       managedExecutablePath: _managedPath,
       environment: environment,
+      isSupervised: isSupervised,
     );
     service.emitMessage = infoMessages.add;
     service.emitError = errors.add;
@@ -239,6 +241,14 @@ void main() {
 
     test('SESORI_NO_UPDATE disables the pipeline', () {
       runStarted(buildService(environment: const {'SESORI_NO_UPDATE': '1'}), (async) {
+        expect(release.checkCount, 0);
+      });
+    });
+
+    test('supervised mode disables the pipeline', () {
+      runStarted(buildService(isSupervised: true), (async) {
+        async.elapse(const Duration(hours: 8));
+        async.flushMicrotasks();
         expect(release.checkCount, 0);
       });
     });

@@ -404,7 +404,24 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   `isCiEnvironment`, `!isManagedInstall`) unchanged.
 - **Acceptance:** no update/reconcile attempt in supervised mode; standalone
   self-update intact.
-- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch `next-desktop-implementation`).
+- **Findings:** No new env var was needed: supervised suppression is enforced
+  in-process by the existing skip policy rather than relying on the GUI to set
+  `SESORI_NO_UPDATE` at spawn (the bridge must not rewrite itself even if a
+  future spawner forgets the env). `shouldSkipUpdates` gained a
+  `required bool isSupervised` parameter (first check in the OR-chain), wired
+  from `BridgeCliOptions.isSupervised` at the composition root into (a) the
+  runner's `updatesEnabledForThisInstall` gate — covering the startup reconcile
+  AND the post-predecessor-exit re-reconcile — and (b) a new stored
+  `UpdateService` constructor field used by its internal `start()` gate, so the
+  4h background cadence never begins. `ManualUpdateService` (explicit
+  `sesori-bridge update`) deliberately untouched: it keys on `isManagedInstall`
+  only and is a separate CLI command that never runs supervised. Standalone
+  byte-identical (`isSupervised: false` leaves every existing OR-condition
+  unchanged — asserted by the updated policy/service tests plus a new
+  supervised-skips case in each). `make analyze` + `dart analyze --fatal-infos`
+  clean; `make test` all pass (app 1611).
+- **Deltas:** —
 
 ## PR 1.9 — `BridgeControlMessageDispatcher` + prompts/Console → control events + auth-required exit `87`
 - **Goal:** Three tightly-coupled pieces of the inbound/prompt seam:

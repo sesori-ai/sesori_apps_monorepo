@@ -48,16 +48,24 @@ bool isUpdateDisabled({required Map<String, String> environment}) {
   return environment.containsKey('SESORI_NO_UPDATE');
 }
 
-/// Whether the updater must not run for this install: explicitly disabled, a CI
-/// environment, an npm-owned payload, or simply not the managed binary. Gates
-/// BOTH the periodic update cycle and startup reconciliation so neither touches
-/// the managed install's state when this process is not the managed runtime.
+/// Whether the updater must not run for this install: supervised by the
+/// desktop GUI, explicitly disabled, a CI environment, an npm-owned payload,
+/// or simply not the managed binary. Gates BOTH the periodic update cycle and
+/// startup reconciliation so neither touches the managed install's state when
+/// this process is not the managed runtime.
+///
+/// A supervised (GUI-spawned) bridge never rewrites its own install: the
+/// desktop app owns update delivery for the whole bundle, so in-place
+/// self-update or reconciliation from the helper would fight the bundle's
+/// updater and could corrupt a signed install.
 bool shouldSkipUpdates({
   required Map<String, String> environment,
   required String executablePath,
   required String managedExecutablePath,
+  required bool isSupervised,
 }) {
-  return isUpdateDisabled(environment: environment) ||
+  return isSupervised ||
+      isUpdateDisabled(environment: environment) ||
       isCiEnvironment(environment: environment) ||
       isNpmInstall(executablePath: executablePath) ||
       !isManagedInstall(
