@@ -8,6 +8,7 @@ import "approval_registry.dart";
 import "codex_app_server_client.dart";
 import "codex_config_reader.dart";
 import "codex_event_mapper.dart";
+import "codex_metadata_repository.dart";
 import "codex_skill_reader.dart";
 import "runtime/codex_managed_api.dart";
 import "session_rollout_reader.dart";
@@ -41,7 +42,7 @@ class CodexPlugin implements CodexManagedApi {
   final CodexAppServerClient Function()? _clientFactory;
   final SessionRolloutReader _rolloutReader;
   final CodexConfigReader _configReader;
-  final CodexSkillReader _skillReader;
+  final CodexMetadataRepository _metadataRepository;
   final CodexEventMapper _eventMapper;
   final String _projectCwd;
   final Duration _keepaliveInterval;
@@ -101,7 +102,7 @@ class CodexPlugin implements CodexManagedApi {
     CodexAppServerClient Function()? clientFactory,
     SessionRolloutReader? rolloutReader,
     CodexConfigReader? configReader,
-    CodexSkillReader? skillReader,
+    CodexMetadataRepository? metadataRepository,
     CodexEventMapper? eventMapper,
     String? projectCwd,
     void Function()? onConnected,
@@ -110,16 +111,25 @@ class CodexPlugin implements CodexManagedApi {
   }) {
     final resolvedProjectCwd = projectCwd ?? Directory.current.path;
     final resolvedConfigReader = configReader ?? CodexConfigReader();
+    final resolvedRolloutReader = rolloutReader ?? SessionRolloutReader();
     return CodexPlugin._(
       serverUrl: serverUrl,
       capabilityToken: capabilityToken,
       // When null, [_ensureConnected] builds the default client so it can wire
       // the client's `onDisconnected` through [_handleClientDisconnected].
       clientFactory: clientFactory,
-      rolloutReader: rolloutReader ?? SessionRolloutReader(),
+      rolloutReader: resolvedRolloutReader,
       configReader: resolvedConfigReader,
-      skillReader:
-          skillReader ?? CodexSkillReader(projectCwd: resolvedProjectCwd),
+      // Shares the plugin's own rollout/config readers so both resolve project
+      // metadata from the same codex home.
+      metadataRepository:
+          metadataRepository ??
+          CodexMetadataRepository(
+            skillReader: CodexSkillReader(),
+            rolloutReader: resolvedRolloutReader,
+            configReader: resolvedConfigReader,
+            launchDirectory: resolvedProjectCwd,
+          ),
       eventMapper:
           eventMapper ??
           CodexEventMapper(
@@ -139,7 +149,7 @@ class CodexPlugin implements CodexManagedApi {
     required CodexAppServerClient Function()? clientFactory,
     required SessionRolloutReader rolloutReader,
     required CodexConfigReader configReader,
-    required CodexSkillReader skillReader,
+    required CodexMetadataRepository metadataRepository,
     required CodexEventMapper eventMapper,
     required String projectCwd,
     void Function()? onConnected,
@@ -151,7 +161,7 @@ class CodexPlugin implements CodexManagedApi {
        _clientFactory = clientFactory,
        _rolloutReader = rolloutReader,
        _configReader = configReader,
-       _skillReader = skillReader,
+       _metadataRepository = metadataRepository,
        _eventMapper = eventMapper,
        _projectCwd = projectCwd,
        _onConnected = onConnected,
@@ -394,18 +404,8 @@ class CodexPlugin implements CodexManagedApi {
   @override
   Future<List<PluginCommand>> getCommands({
     required String? projectId,
-  }) async {
-    final skills = _skillReader.list();
-    return [
-      for (final skill in skills)
-        PluginCommand(
-          name: skill.name,
-          description: skill.description.isEmpty ? null : skill.description,
-          source: PluginCommandSource.skill,
-          provider: null,
-        ),
-    ];
-  }
+  }) async =>
+      _metadataRepository.getCommands(projectId: projectId);
 
   @override
   Future<PluginSession> createSession({
@@ -773,7 +773,8 @@ class CodexPlugin implements CodexManagedApi {
 
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async {
-    final (:modelID, :providerID) = _resolveModelDefaults();
+    final (:modelID, :providerID) =
+        _metadataRepository.resolveModelDefaults(projectId: projectId);
     return [
       PluginAgent(
         name: "codex",
@@ -789,21 +790,6 @@ class CodexPlugin implements CodexManagedApi {
         hidden: false,
       ),
     ];
-  }
-
-  /// Resolves the configured model/provider for codex.
-  ///
-  /// Codex exposes no agent/provider API, so we derive it from local state:
-  /// the most recent session's rollout (per-session accurate) wins, then the
-  /// global `config.toml`, then `openai` as a last-resort provider.
-  ({String? modelID, String providerID}) _resolveModelDefaults() {
-    final config = _configReader.readDefaults();
-    final sessions = _rolloutReader.listSessions();
-    final latest = sessions.isEmpty ? null : sessions.first;
-    return (
-      modelID: latest?.model ?? config.model,
-      providerID: latest?.modelProvider ?? config.modelProvider ?? "openai",
-    );
   }
 
   static String _providerDisplayName(String providerId) {
@@ -882,7 +868,8 @@ class CodexPlugin implements CodexManagedApi {
 
   @override
   Future<PluginProvidersResult> getProviders({required String projectId}) async {
-    final (:modelID, :providerID) = _resolveModelDefaults();
+    final (:modelID, :providerID) =
+        _metadataRepository.resolveModelDefaults(projectId: projectId);
 
     // Prefer codex's live catalog (`model/list`) so the mobile picker shows
     // every model the user can switch to, not just the configured default.
