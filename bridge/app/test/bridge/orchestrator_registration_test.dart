@@ -310,6 +310,7 @@ class _RegistrationHarness {
         failureReporter: FakeFailureReporter(),
       ),
       restartService: buildTestRestartService(),
+      statusNotifier: null,
     );
 
     final session = orchestrator.create();

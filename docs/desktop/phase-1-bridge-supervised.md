@@ -538,7 +538,52 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 - **Acceptance:** status events received by a fake server; the `registered`
   event carries `bridgeId` and is emitted right after registration; reflects
   live changes (reactive, no polling).
-- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch `desktop-implementation-stage`).
+- **Findings:** Shipped as four units, no shared-package changes (the PR-1.2
+  DTOs already carried the status/registered shapes). (1) `RelayClient`
+  (Layer 0) gained a broadcast `Stream<RelayConnectionState>` — a new sealed
+  type (`RelayConnecting`/`RelayConnected`/`RelayDisconnected{closeCode}`) —
+  the stream PLAN §6 and PR 1.14 already assumed exists. Emissions:
+  `connect()` → connecting, then connected on success / disconnected(null) on
+  failure; a remote drop emits disconnected with the socket's close code via a
+  `sink.done` watcher armed per installed channel; a deliberate `close()`
+  emits nothing (clean shutdown ≠ outage — the `ControlChannelClient`
+  contract). Note: `dart:io` only processes the close handshake while the
+  inbound stream is consumed — always true on a live connection (the relay
+  loop drains `read()`); documented on the getter. (2)
+  `BridgeRegistrationService` gained a broadcast `Stream<String> registrations`
+  emitting the assigned id once per real registration round-trip (fresh + post-
+  4006 re-registration; memoized reconnect calls do NOT emit) plus a `dispose()`
+  registered with the shutdown coordinator. (3) `ControlStatusNotifier`
+  (Layer 4 `control/`): subscribes (one `CompositeSubscription`) to plugin
+  status, relay state, registrations, and the control channel's own
+  `connectionState` — on control reconnect it re-sends `registered` + the
+  current status snapshot (bypassing dedupe), since sends throw while the
+  channel is down and status is edge-triggered. Consecutive identical statuses
+  are deduped (no spam); sends are best-effort (`Log.d` on
+  not-connected, `Log.w` catch-all — never throws into a stream callback).
+  Health mapping: Starting→unknown, Ready→healthy, Degraded/Restarting→degraded,
+  Failed/Stopping/Stopped→unavailable. (4) Composition: `RelayClient`
+  construction lifted from `BridgeRuntime.create` into the runner (so the
+  notifier can observe its state stream before the runtime composes);
+  `BridgeRuntime.create` gains `required RelayClient relayClient` and
+  `required ControlStatusNotifier? statusNotifier` (null in standalone);
+  the notifier is constructed+started only inside the supervised gate, after
+  `startPlugin` and the registration service, before `session.run()` — so the
+  first registration/connect are never missed and standalone constructs zero
+  control senders. Tests: 15 new notifier tests, 5 relay connectionState
+  tests, 5 registrations-stream tests, 1 orchestrator end-to-end feed test
+  (startup + live summary through a real notifier). `make analyze` +
+  `dart analyze --fatal-infos` clean; `make test` all pass (app 1692).
+- **Deltas:** the active-session summary is NOT an observed stream: it reaches
+  the notifier as a typed delegate feed (`handleProjectsSummary`) from the
+  Orchestrator's existing SSE pipeline — the count lives only in the plugin
+  (Layer 1), and the summary event is already built there for phones, so the
+  delegate reuses it instead of adding a Layer-4→Layer-1 access or a duplicate
+  derivation (the `CompletionPushListener.handleSseEvent` precedent; §6
+  amended). `Orchestrator`/`OrchestratorSession` carry a
+  `required ControlStatusNotifier?` (nullable = standalone), mirroring how the
+  runner gates every other supervised component.
 
 ## PR 1.11 — `unregister-and-exit` control command
 - **Goal:** Handle a control command that unregisters the `bridgeId` (current

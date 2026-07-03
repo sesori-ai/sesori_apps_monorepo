@@ -173,6 +173,7 @@ void main() {
           failureReporter: FakeFailureReporter(),
         ),
         restartService: buildTestRestartService(),
+        statusNotifier: null,
       );
 
       final session = orchestrator.create();
@@ -384,6 +385,7 @@ class _TestHarness {
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
       restartService: buildTestRestartService(),
+      statusNotifier: null,
     );
 
     final session = orchestrator.create();

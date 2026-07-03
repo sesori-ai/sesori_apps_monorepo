@@ -3,6 +3,7 @@ import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/auth/token_refresher.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
+import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/completion_push_listener.dart";
@@ -49,6 +50,11 @@ void main() {
         sseReplayWindow: Duration(minutes: 5),
       ),
       plugin: plugin,
+      relayClient: RelayClient(
+        relayURL: "ws://127.0.0.1:9999",
+        accessTokenProvider: FakeAccessTokenProvider(),
+        bridgeIdProvider: FakeBridgeIdProvider(),
+      ),
       httpClient: httpClient,
       accessTokenProvider: FakeAccessTokenProvider(),
       tokenRefresher: _FakeTokenRefresher(),
@@ -58,6 +64,7 @@ void main() {
       failureReporter: FakeFailureReporter(),
       restartService: buildTestRestartService(),
       filesystemAccessOk: true,
+      statusNotifier: null,
     );
     final debugServer = runtime.createDebugServer(port: 0);
 

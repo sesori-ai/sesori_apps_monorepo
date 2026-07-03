@@ -38,6 +38,8 @@ import "package:sesori_bridge/src/bridge/services/session_persistence_service.da
 import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
+import "package:sesori_bridge/src/control/control_status_notifier.dart";
+import "package:sesori_bridge/src/foundation/control_channel_client.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/completion_push_listener.dart";
 import "package:sesori_bridge/src/push/maintenance_push_listener.dart";
@@ -176,6 +178,7 @@ void main() {
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
       restartService: buildTestRestartService(),
+      statusNotifier: null,
     );
 
     final session = orchestrator.create();
@@ -355,6 +358,7 @@ void main() {
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
       restartService: buildTestRestartService(),
+      statusNotifier: null,
     );
 
     final session = orchestrator.create();
@@ -393,6 +397,178 @@ void main() {
 
     await session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));
+    await plugin.close();
+    await database.close();
+    await relayServer.close();
+  });
+
+  test("feeds startup and live projects summaries to the control status notifier", () async {
+    final relayServer = await TestRelayServer.start();
+    final database = createTestDatabase();
+    final pushSubsystem = _createPushSubsystem();
+    final plugin = _MutableSummaryPlugin();
+    plugin.summaries = const <PluginProjectActivitySummary>[
+      PluginProjectActivitySummary(
+        id: "project-1",
+        activeSessions: <PluginActiveSession>[PluginActiveSession(id: "session-1")],
+      ),
+    ];
+    final fakePrSyncService = _FakePrSyncService();
+    final pullRequestRepository = PullRequestRepository(
+      pullRequestDao: database.pullRequestDao,
+      projectsDao: database.projectsDao,
+    );
+    final sessionRepository = SessionRepository(
+      plugin: plugin,
+      sessionDao: database.sessionDao,
+      pullRequestRepository: pullRequestRepository,
+      unseenCalculator: const SessionUnseenCalculator(),
+    );
+    final projectRepository = ProjectRepository(
+      plugin: plugin,
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      unseenCalculator: const SessionUnseenCalculator(),
+    );
+    final permissionRepository = PermissionRepository(plugin: plugin);
+    final sessionPersistenceService = SessionPersistenceService(
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      db: database,
+      pluginId: "opencode",
+    );
+    final worktreeService = WorktreeService(
+      worktreeRepository: WorktreeRepository(
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        gitApi: GitCliApi(
+          processRunner: FakeProcessRunner(),
+          gitPathExists: ({required String gitPath}) => true,
+        ),
+        plugin: plugin,
+      ),
+    );
+    final relayClient = RelayClient(
+      relayURL: "ws://127.0.0.1:${relayServer.port}",
+      accessTokenProvider: FakeAccessTokenProvider(),
+      bridgeIdProvider: FakeBridgeIdProvider(),
+    );
+    final sessionEventEnrichmentService = SessionEventEnrichmentService(
+      sessionRepository: sessionRepository,
+      failureReporter: FakeFailureReporter(),
+    );
+    // Wired exactly like the supervised composition root: the notifier
+    // observes the relay client's real connection-state stream and owns the
+    // control-channel sends; the orchestrator only feeds it summaries.
+    final controlClient = _RecordingControlChannelClient();
+    final statusNotifier = ControlStatusNotifier(
+      client: controlClient,
+      pluginStatus: const Stream<PluginStatus>.empty(),
+      relayConnectionState: relayClient.connectionState,
+      registrations: const Stream<String>.empty(),
+    );
+    statusNotifier.start();
+
+    final orchestrator = Orchestrator(
+      config: BridgeConfig(
+        relayURL: "ws://127.0.0.1:${relayServer.port}",
+        pluginEndpoint: "http://127.0.0.1:4096",
+        authBackendURL: "http://127.0.0.1:8080",
+        sseReplayWindow: const Duration(minutes: 1),
+      ),
+      client: relayClient,
+      plugin: plugin,
+      metadataService: _FakeMetadataService(),
+      pushDispatcher: pushSubsystem.dispatcher,
+      completionListener: pushSubsystem.completionListener,
+      maintenanceListener: pushSubsystem.maintenanceListener,
+      accessTokenProvider: FakeAccessTokenProvider(),
+      tokenRefresher: _FakeTokenRefresher(),
+      bridgeRegistrationService: createFakeBridgeRegistrationService(),
+      failureReporter: FakeFailureReporter(),
+      prSyncService: fakePrSyncService,
+      sessionRepository: sessionRepository,
+      projectRepository: projectRepository,
+      sessionUnseenService: SessionUnseenService(
+        unseenRepository: SessionUnseenRepository(
+          pluginId: "opencode",
+          sessionDao: database.sessionDao,
+          projectsDao: database.projectsDao,
+          db: database,
+          calculator: const SessionUnseenCalculator(),
+        ),
+        projectRepository: projectRepository,
+        viewTracker: SessionViewTracker(),
+      ),
+      sessionViewTracker: SessionViewTracker(),
+      filesystemRepository: FilesystemRepository(
+        filesystemApi: const FilesystemApi(),
+        permissionValidator: const FilesystemPermissionValidator(),
+      ),
+      projectInitializationService: ProjectInitializationService(
+        worktreeRepository: WorktreeRepository(
+          projectsDao: database.projectsDao,
+          sessionDao: database.sessionDao,
+          plugin: plugin,
+          gitApi: GitCliApi(
+            processRunner: ProcessRunner(),
+            gitPathExists: ({required String gitPath}) => false,
+          ),
+        ),
+        filesystemRepository: FilesystemRepository(
+          filesystemApi: const FilesystemApi(),
+          permissionValidator: const FilesystemPermissionValidator(),
+        ),
+      ),
+      healthRepository: HealthRepository(
+        plugin: plugin,
+        bridgeVersion: "0.0.0-test",
+        filesystemAccessOk: true,
+      ),
+      providerRepository: ProviderRepository(plugin: plugin),
+      agentRepository: AgentRepository(plugin: plugin),
+      permissionRepository: permissionRepository,
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
+      sessionPersistenceService: sessionPersistenceService,
+      worktreeService: worktreeService,
+      sessionEventEnrichmentService: sessionEventEnrichmentService,
+      restartService: buildTestRestartService(),
+      statusNotifier: statusNotifier,
+    );
+
+    final session = orchestrator.create();
+    final runFuture = session.run();
+
+    await relayServer.nextClient();
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    // The startup summary reaches the notifier: the last status combines the
+    // live relay state (connected) with the pre-seeded active-session count.
+    final startupStatuses = controlClient.sentMessages.whereType<ControlStatus>().toList();
+    expect(startupStatuses, isNotEmpty);
+    expect(startupStatuses.last.activeSessionCount, 1);
+    expect(startupStatuses.last.relay, ControlRelayConnectionState.connected);
+
+    // A live project-updated event re-derives the summary and pushes the
+    // changed count.
+    plugin.summaries = const <PluginProjectActivitySummary>[
+      PluginProjectActivitySummary(
+        id: "project-1",
+        activeSessions: <PluginActiveSession>[
+          PluginActiveSession(id: "session-1"),
+          PluginActiveSession(id: "session-2"),
+        ],
+      ),
+    ];
+    plugin.emitProjectUpdated();
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    final statuses = controlClient.sentMessages.whereType<ControlStatus>().toList();
+    expect(statuses.last.activeSessionCount, 2);
+
+    await session.cancel();
+    await runFuture.timeout(const Duration(seconds: 5));
+    await statusNotifier.dispose();
     await plugin.close();
     await database.close();
     await relayServer.close();
@@ -560,6 +736,7 @@ void main() {
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
       restartService: buildTestRestartService(),
+      statusNotifier: null,
     );
 
     final session = orchestrator.create();
@@ -735,6 +912,7 @@ void main() {
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
       restartService: buildTestRestartService(),
+      statusNotifier: null,
     );
 
     final session = orchestrator.create();
@@ -881,6 +1059,7 @@ void main() {
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
       restartService: buildTestRestartService(),
+      statusNotifier: null,
     );
 
     final session = orchestrator.create();
@@ -1052,6 +1231,7 @@ void main() {
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
       restartService: buildTestRestartService(),
+      statusNotifier: null,
     );
 
     final session = orchestrator.create();
@@ -1479,6 +1659,44 @@ class _SummaryPlugin implements NativeProjectsPluginApi {
   Future<void> dispose() async {}
 
   Future<void> close() => _controller.close();
+}
+
+/// A [_SummaryPlugin] whose active-session summary can be swapped mid-test and
+/// that can emit a project-updated SSE event to trigger a live re-derivation.
+class _MutableSummaryPlugin extends _SummaryPlugin {
+  List<PluginProjectActivitySummary> summaries = const <PluginProjectActivitySummary>[];
+
+  _MutableSummaryPlugin() : super(onSubscribe: () {});
+
+  @override
+  List<PluginProjectActivitySummary> getActiveSessionsSummary() => summaries;
+
+  void emitProjectUpdated() => _controller.add(const BridgeSseProjectUpdated());
+}
+
+/// Records the control frames the status notifier sends, decoded back into
+/// [ControlMessage]s for assertions.
+class _RecordingControlChannelClient implements ControlChannelClient {
+  final List<String> sentFrames = <String>[];
+
+  List<ControlMessage> get sentMessages =>
+      sentFrames.map((frame) => ControlMessage.fromJson(jsonDecodeMap(frame))).toList();
+
+  @override
+  Stream<String> get inbound => const Stream<String>.empty();
+
+  @override
+  Stream<ControlChannelConnectionState> get connectionState =>
+      const Stream<ControlChannelConnectionState>.empty();
+
+  @override
+  void send(String frame) => sentFrames.add(frame);
+
+  @override
+  Future<void> connect() async {}
+
+  @override
+  Future<void> dispose() async {}
 }
 
 class _NoopPlugin implements NativeProjectsPluginApi {

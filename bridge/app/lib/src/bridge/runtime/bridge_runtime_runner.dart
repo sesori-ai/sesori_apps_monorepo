@@ -44,6 +44,7 @@ import "../../auth/token_manager.dart";
 import "../../auth/token_refresher.dart";
 import "../../control/bridge_control_message_dispatcher.dart";
 import "../../control/control_channel_loss_listener.dart";
+import "../../control/control_status_notifier.dart";
 import "../../foundation/control_channel_client.dart";
 import "../../repositories/bridge_settings_repository.dart";
 import "../../server/api/loopback_port_api.dart";
@@ -98,6 +99,7 @@ import "../log_failure_reporter.dart";
 import "../models/bridge_config.dart";
 import "../persistence/bridge_diagnostics.dart";
 import "../persistence/database.dart";
+import "../relay_client.dart";
 import "../sse/sse_manager.dart";
 import "bridge_cli_options.dart";
 import "bridge_runtime.dart";
@@ -242,8 +244,11 @@ class BridgeRuntimeRunner {
       // step here is gated by `--control-url`; standalone startup is unchanged.
       ControlChannelTokenService? controlChannelTokenService;
       ControlPromptService? controlPromptService;
+      // Kept in scope past this block: the ControlStatusNotifier (built later,
+      // once the plugin and registration service exist) shares this client.
+      ControlChannelClient? controlChannelClient;
       if (options.isSupervised) {
-        final controlChannelClient = await _connectSupervisedControlChannel(
+        controlChannelClient = await _connectSupervisedControlChannel(
           options: options,
           shutdownCoordinator: shutdownCoordinator,
           requestAbnormalExit: (code) => supervisedLossExitCode = code,
@@ -501,6 +506,32 @@ class BridgeRuntimeRunner {
         hostName: io.Platform.localHostname,
         platform: BridgeRegistrationService.currentPlatformName(),
       );
+      shutdownCoordinator.add(disposable: bridgeRegistrationService.dispose);
+
+      // Constructed here (not inside BridgeRuntime.create) so supervised mode
+      // can observe its connectionState stream below.
+      final relayClient = RelayClient(
+        relayURL: options.relayUrl,
+        accessTokenProvider: accessTokenProvider,
+        bridgeIdProvider: bridgeRegistrationService,
+      );
+
+      // Supervised status pushes: the notifier owns every outbound
+      // status-class send (status + registered) over the control channel,
+      // observing the plugin's lifecycle stream, the relay's connection-state
+      // stream, and registration successes. Started before the session runs so
+      // the initial registration and relay connect are never missed.
+      ControlStatusNotifier? controlStatusNotifier;
+      if (controlChannelClient != null) {
+        controlStatusNotifier = ControlStatusNotifier(
+          client: controlChannelClient,
+          pluginStatus: plugin.status,
+          relayConnectionState: relayClient.connectionState,
+          registrations: bridgeRegistrationService.registrations,
+        );
+        controlStatusNotifier.start();
+        shutdownCoordinator.add(disposable: controlStatusNotifier.dispose);
+      }
 
       final restartService = BridgeRestartService(
         processRepository: processRepository,
@@ -536,6 +567,7 @@ class BridgeRuntimeRunner {
           sseReplayWindow: SSEManager.defaultReplayWindow,
         ),
         plugin: plugin.api,
+        relayClient: relayClient,
         httpClient: httpClient,
         accessTokenProvider: accessTokenProvider,
         tokenRefresher: tokenRefresher,
@@ -545,6 +577,7 @@ class BridgeRuntimeRunner {
         failureReporter: LogFailureReporter(),
         restartService: restartService,
         filesystemAccessOk: filesystemAccessOk,
+        statusNotifier: controlStatusNotifier,
       );
       shutdownCoordinator.add(disposable: runtime.close);
       // Defined stop semantics: stopping the active plugin cancels the

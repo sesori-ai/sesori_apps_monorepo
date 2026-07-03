@@ -9,6 +9,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../auth/access_token_provider.dart";
 import "../../auth/bridge_registration_service.dart";
 import "../../auth/token_refresher.dart";
+import "../../control/control_status_notifier.dart";
 import "../../push/completion_notifier.dart";
 import "../../push/completion_push_listener.dart";
 import "../../push/maintenance_push_listener.dart";
@@ -86,6 +87,9 @@ class BridgeRuntime {
   static BridgeRuntime create({
     required BridgeConfig config,
     required BridgePluginApi plugin,
+    // Constructed at the composition root (not here) so supervised mode can
+    // wire its connectionState stream into the ControlStatusNotifier.
+    required RelayClient relayClient,
     required http.Client httpClient,
     required AccessTokenProvider accessTokenProvider,
     required TokenRefresher tokenRefresher,
@@ -95,6 +99,8 @@ class BridgeRuntime {
     required FailureReporter failureReporter,
     required BridgeRestartService restartService,
     required bool filesystemAccessOk,
+    // Supervised mode only; null in standalone (no control channel).
+    required ControlStatusNotifier? statusNotifier,
   }) {
     final pullRequestRepository = PullRequestRepository(
       pullRequestDao: database.pullRequestDao,
@@ -185,11 +191,7 @@ class BridgeRuntime {
       sessionViewTracker: sessionViewTracker,
       session: Orchestrator(
         config: config,
-        client: RelayClient(
-          relayURL: config.relayURL,
-          accessTokenProvider: accessTokenProvider,
-          bridgeIdProvider: bridgeRegistrationService,
-        ),
+        client: relayClient,
         plugin: plugin,
         metadataService: MetadataService(
           client: httpClient,
@@ -248,6 +250,7 @@ class BridgeRuntime {
         ),
         sessionEventEnrichmentService: sessionEventEnrichmentService,
         restartService: restartService,
+        statusNotifier: statusNotifier,
       ).create(),
     );
   }
