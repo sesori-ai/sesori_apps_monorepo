@@ -77,6 +77,25 @@ For AI/bot comments:
 - Check if the suggestion aligns with existing codebase patterns
 - Do not implement blindly — apply the same critical thinking you would use on your own code
 
+#### Avoid the bot-review spiral
+
+Every pushed commit can trigger a fresh round of AI-reviewer comments about new
+edge cases, and fixing those spawns the next round. Do not loop indefinitely:
+
+- **Raise the bar with each round.** A bot-reported edge case earns a code
+  change only when it is plausible in a real user flow AND has a meaningful
+  consequence (data loss, wrong routing, stuck UI). Contrived scenarios,
+  cosmetic transients, and pre-existing behavior merely exposed by the PR get
+  a `Not addressed` reply with the rationale — that is a fully valid
+  resolution, not a failure.
+- **Repeated findings in one seam are a signal, not a to-do list.** If several
+  rounds of comments cluster around the same structural seam, stop patching
+  point-by-point: fix the seam once at its root, or surface the pattern to the
+  user as a possible design problem before writing more code.
+- **Check comments against product direction.** A bot may flag intended
+  behavior as a bug (it cannot know the roadmap). When a "fix" would move the
+  code away from the stated direction, decline and say why.
+
 #### Acknowledgment-only bot follow-ups
 
 Some bots post a short acknowledgment after the `[Sesori reply]` instead of resolving the thread. Treat the thread as already addressed when every comment after the most recent `[Sesori reply]` is acknowledgment-only, such as "Acknowledged", "Thanks", "Looks good", "Accepted", or equivalent non-actionable wording.
