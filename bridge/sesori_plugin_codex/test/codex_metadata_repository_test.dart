@@ -127,6 +127,47 @@ void main() {
         expect(otherDefaults.providerID, equals("anthropic"));
       });
 
+      test("a newer dedicated-worktree session inside the project tree wins the parent project's defaults", () {
+        _writeRollout(
+          codexHome,
+          id: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
+          timestamp: "2026-06-01T10:00:00Z",
+          cwd: launchProject.path,
+          modelProvider: "openai",
+          model: "gpt-5.4-codex",
+        );
+        // The bridge runs dedicated-worktree sessions in a subdirectory of the
+        // project while attributing them to the parent project.
+        _writeRollout(
+          codexHome,
+          id: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
+          timestamp: "2026-06-02T10:00:00Z",
+          cwd: p.join(launchProject.path, ".worktrees", "feature-x"),
+          modelProvider: "openai",
+          model: "gpt-5.5",
+        );
+
+        final defaults = newRepository()
+            .resolveModelDefaults(projectId: launchProject.path);
+        expect(defaults.modelID, equals("gpt-5.5"));
+      });
+
+      test("a worktree session does not leak into an unrelated project's defaults", () {
+        _writeRollout(
+          codexHome,
+          id: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
+          timestamp: "2026-06-02T10:00:00Z",
+          cwd: p.join(launchProject.path, ".worktrees", "feature-x"),
+          modelProvider: "openai",
+          model: "gpt-5.5",
+        );
+
+        final defaults = newRepository()
+            .resolveModelDefaults(projectId: otherProject.path);
+        expect(defaults.modelID, isNull);
+        expect(defaults.providerID, equals("openai"));
+      });
+
       test("a rollout without a cwd groups under the launch directory", () {
         _writeRollout(
           codexHome,

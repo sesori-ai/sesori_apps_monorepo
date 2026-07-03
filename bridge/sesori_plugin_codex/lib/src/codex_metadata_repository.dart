@@ -1,3 +1,4 @@
+import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginCommand, PluginCommandSource;
 
@@ -55,7 +56,14 @@ class CodexMetadataRepository {
   /// then the global `config.toml`, then `openai` as a last-resort provider.
   /// Sessions are matched to the project by their normalized cwd — a record
   /// with no cwd falls back to the launch directory, the same grouping rule
-  /// the session listing uses.
+  /// the session listing uses. A session running in a subdirectory of the
+  /// project also counts as the project's: the bridge runs dedicated-worktree
+  /// sessions inside the project tree (`<project>/.worktrees/<name>`) while
+  /// attributing them to the parent project, so a strict-equality match would
+  /// skip the project's newest sessions and hand back stale defaults. The
+  /// within-tree rule intentionally avoids coupling to the bridge's worktree
+  /// naming; a nested distinct project matching its outer project too is an
+  /// accepted trade-off for a "most recent model in this project" heuristic.
   ({String? modelID, String providerID}) resolveModelDefaults({
     required String projectId,
   }) {
@@ -66,7 +74,7 @@ class CodexMetadataRepository {
     // project's most recent session.
     for (final record in _rolloutReader.listSessions()) {
       final directory = normalizeProjectDirectory(directory: record.cwd ?? _launchDirectory);
-      if (directory == target) {
+      if (directory == target || p.isWithin(target, directory)) {
         latest = record;
         break;
       }
