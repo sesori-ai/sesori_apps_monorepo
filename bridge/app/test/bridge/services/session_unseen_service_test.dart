@@ -245,6 +245,25 @@ void main() {
       await sub.cancel();
     });
 
+    test("reconcile keeps a session created live during the fetch, even with a skewed backend clock", () async {
+      await service.recordSessionCreated(sessionId: "s1", projectId: "p1", parentId: null);
+      // A live session.created lands DURING an in-flight /sessions fetch
+      // (fetch started at local 8000; we process the event at local 9000). The
+      // backend's clock is behind, so the session's own creation time (7000)
+      // predates the fetch start — the row-creation guard must use the local
+      // clock, not the backend time, or this fresh row would be deleted.
+      clock = 9000;
+      await service.recordSessionCreated(sessionId: "fresh", projectId: "p1", parentId: null, occurredAt: 7000);
+
+      await service.reconcileVanishedSessions(
+        projectId: "p1",
+        keepSessionIds: ["s1"],
+        fetchStartedAt: 8000,
+      );
+
+      expect(await unseen("fresh"), isTrue);
+    });
+
     test("reconcileVanishedSessions keeps rows created after the fetch started", () async {
       await service.recordSessionCreated(sessionId: "s1", projectId: "p1", parentId: null);
       // A session created AFTER the (stale) snapshot was taken: its row's

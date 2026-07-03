@@ -94,10 +94,18 @@ class SessionUnseenRepository {
   /// the seen timestamp is advanced too so it does not bold under the watcher.
   /// When [isUserMessage] is true, the user-message marker is stamped so the
   /// user's own first message doesn't bold the session.
+  ///
+  /// [createdAt] is the row-creation guard timestamp and MUST be bridge-local:
+  /// the vanished-session reconcile compares it against a locally-captured
+  /// fetch-start time to protect rows created during an in-flight fetch, so a
+  /// backend-domain value here (skewed behind the local clock) could get a
+  /// freshly-created session's row wrongly reconcile-deleted. [activityAt] may
+  /// live in the backend's clock domain.
   /// Wrapped in a transaction so the project FK cannot fire.
   Future<void> ensureRootSessionActivity({
     required String sessionId,
     required String projectId,
+    required int createdAt,
     required int activityAt,
     required bool advanceSeen,
     required bool isUserMessage,
@@ -105,7 +113,7 @@ class SessionUnseenRepository {
     await _db.transaction(() async {
       await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
       await _sessionDao.insertSessionsIfMissing(
-        sessions: [(sessionId: sessionId, projectId: projectId, createdAt: activityAt, archivedAt: null)],
+        sessions: [(sessionId: sessionId, projectId: projectId, createdAt: createdAt, archivedAt: null)],
       );
       await _sessionDao.setActivityTimestamps(
         sessionId: sessionId,

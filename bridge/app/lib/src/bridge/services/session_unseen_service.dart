@@ -215,6 +215,9 @@ class SessionUnseenService {
       await _unseenRepository.ensureRootSessionActivity(
         sessionId: sessionId,
         projectId: projectId,
+        // Local-domain guard timestamp (see [ensureRootSessionActivity]); only
+        // the activity marker uses the session's own creation time.
+        createdAt: _wallClock(),
         activityAt: occurredAt ?? _nextTimestamp(),
         advanceSeen: viewedAtSubmit,
         isUserMessage: false,
