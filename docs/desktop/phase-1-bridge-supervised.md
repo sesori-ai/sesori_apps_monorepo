@@ -285,7 +285,16 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   `_latestCachedSeq` pull-ordering heuristic is retired: the GUI `token_update`
   push is the authoritative cache writer (last-write-wins); a pull only seeds the
   cache for bootstrap, so the deferred PR-1.4 force/non-force masking edge is
-  gone. **Deltas:** —
+  gone. **Deltas:** post-merge fix — the original trigger re-authed on any token
+  *string* change, which dropped the relay (and every phone) on each routine
+  same-user rotation: standalone `TokenManager` emits every refresh, so a
+  near-expiry pull (e.g. session-metadata generation) flapped the connection and
+  spammed SSE send failures. The relay validates the JWT once at connect and
+  never re-checks it, so the gate is now **identity-based**: re-auth only when
+  the `userId` claim differs from the token the socket authed with (or the
+  identity can't be parsed — conservative fallback). Manual check 4's "relay
+  session survives; no reconnect loop" on a same-user push is the authoritative
+  expectation; a cross-user push still drops and re-authenticates.
 
 ## PR 1.6 — Supervised registration + `bridgeId` out of `token.json`
 - **Goal:** Persist `bridgeId` separately from `token.json` in a small
