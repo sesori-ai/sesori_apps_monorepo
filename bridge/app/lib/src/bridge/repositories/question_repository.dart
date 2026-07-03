@@ -35,6 +35,13 @@ class QuestionRepository {
   /// session→project attribution, so we resolve the project's sessions via
   /// [DerivedSessionBuilder] and aggregate each session's pending questions —
   /// equivalent to the plugin's own project scoping, but worktree-aware.
+  ///
+  /// The plugin's own project-scoped result is merged in as well: a derived
+  /// backend can hold a freshly-created session only in memory (codex before
+  /// the rollout is flushed to disk), in which case the session is missing
+  /// from `listAllSessions()` and only the plugin's live scoping can surface
+  /// its questions. Merging is by question id, so a question seen by both
+  /// paths appears once.
   Future<List<PendingQuestion>> getProjectQuestions({required String projectId}) async {
     switch (_plugin) {
       case final NativeProjectsPluginApi plugin:
@@ -42,9 +49,10 @@ class QuestionRepository {
         return pluginQuestions.map((q) => q.toSharedPendingQuestion()).toList();
 
       case final BridgeDerivedProjectsPluginApi plugin:
-        final (allSessions, sessionProjectPaths) = await (
+        final (allSessions, sessionProjectPaths, ownScopedQuestions) = await (
           plugin.listAllSessions(),
           _sessionDao.getSessionProjectPaths(pluginId: plugin.id),
+          plugin.getProjectQuestions(projectId: projectId),
         ).wait;
         final sessions = _derivedSessionBuilder.build(
           projectId: projectId,
@@ -54,12 +62,16 @@ class QuestionRepository {
           },
         );
 
-        final questions = <PendingQuestion>[];
+        final questionsById = <String, PendingQuestion>{
+          for (final question in ownScopedQuestions) question.id: question.toSharedPendingQuestion(),
+        };
         for (final session in sessions) {
           final pluginQuestions = await plugin.getPendingQuestions(sessionId: session.id);
-          questions.addAll(pluginQuestions.map((q) => q.toSharedPendingQuestion()));
+          for (final question in pluginQuestions) {
+            questionsById[question.id] = question.toSharedPendingQuestion();
+          }
         }
-        return questions;
+        return questionsById.values.toList();
     }
   }
 

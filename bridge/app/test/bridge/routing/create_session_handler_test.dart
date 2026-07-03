@@ -418,7 +418,10 @@ void main() {
       );
 
       expect(result.id, equals("s1"));
-      expect(result.projectID, equals("p1"));
+      // Enrichment adopts the stored row's attribution — the project the
+      // session was created under — over the plugin-reported projectID, so
+      // the response matches the project id the phone is tracking.
+      expect(result.projectID, equals("/repo"));
       expect(result.directory, equals("/repo"));
       expect(result.parentID, equals("parent-1"));
       expect(result.title, equals("Created"));

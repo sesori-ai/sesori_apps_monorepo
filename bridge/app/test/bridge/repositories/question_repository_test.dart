@@ -77,6 +77,36 @@ void main() {
       expect(plugin.queriedSessionIds, contains("w1"));
     });
 
+    test("getProjectQuestions surfaces a question from a session only the plugin's live scoping knows", () async {
+      const parent = "/tmp/proj/alpha";
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
+
+      // A freshly-created session may exist only in the backend's memory (not
+      // yet flushed to disk), so it is absent from listAllSessions — only the
+      // plugin's own project-scoped query can surface its question.
+      final plugin = _FakeDerivedQuestionPlugin(
+        launchDirectory: parent,
+        allSessions: [_session(parent, id: "s1")],
+        questionsBySession: {
+          "s1": const [
+            PluginPendingQuestion(id: "q-s1", sessionID: "s1", displaySessionId: null, questions: []),
+          ],
+        },
+        ownProjectQuestions: const [
+          // Duplicated with the per-session aggregation — must appear once.
+          PluginPendingQuestion(id: "q-s1", sessionID: "s1", displaySessionId: null, questions: []),
+          // Known only to the plugin's live in-memory scoping.
+          PluginPendingQuestion(id: "q-fresh", sessionID: "s-fresh", displaySessionId: null, questions: []),
+        ],
+      );
+      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao);
+
+      final questions = await repo.getProjectQuestions(projectId: parent);
+
+      expect(questions.map((q) => q.id).toSet(), {"q-s1", "q-fresh"});
+      expect(questions, hasLength(2));
+    });
+
     test("getProjectQuestions does not surface questions from a session in another project", () async {
       const parent = "/tmp/proj/alpha";
       const other = "/tmp/proj/beta";
@@ -121,6 +151,7 @@ class _FakeDerivedQuestionPlugin implements BridgeDerivedProjectsPluginApi {
     required this.launchDirectory,
     required this.allSessions,
     required this.questionsBySession,
+    this.ownProjectQuestions = const [],
   });
 
   @override
@@ -128,6 +159,10 @@ class _FakeDerivedQuestionPlugin implements BridgeDerivedProjectsPluginApi {
 
   final List<PluginSession> allSessions;
   final Map<String, List<PluginPendingQuestion>> questionsBySession;
+
+  /// What the plugin's own project-scoped query returns — its live in-memory
+  /// view, which can know sessions that `listAllSessions` (disk) does not yet.
+  final List<PluginPendingQuestion> ownProjectQuestions;
   final List<String> queriedSessionIds = [];
 
   @override
@@ -141,6 +176,10 @@ class _FakeDerivedQuestionPlugin implements BridgeDerivedProjectsPluginApi {
     queriedSessionIds.add(sessionId);
     return questionsBySession[sessionId] ?? const [];
   }
+
+  @override
+  Future<List<PluginPendingQuestion>> getProjectQuestions({required String projectId}) async =>
+      ownProjectQuestions;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

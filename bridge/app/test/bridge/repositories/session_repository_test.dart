@@ -614,6 +614,13 @@ void main() {
 
       // The in-project session AND the worktree session both list under parent.
       expect(sessions.map((s) => s.id).toSet(), {"s1", "w1"});
+      // Enrichment adopts the stored attribution as projectID (the plugin
+      // reported the worktree cwd), so live created/updated events for this
+      // session are not dropped by the parent project's session list. The
+      // directory stays the session's real cwd.
+      final worktreeSession = sessions.singleWhere((s) => s.id == "w1");
+      expect(worktreeSession.projectID, parent);
+      expect(worktreeSession.directory, worktree);
     });
 
     test("findProjectIdForSession resolves a recorded worktree session to its parent via its stored row", () async {

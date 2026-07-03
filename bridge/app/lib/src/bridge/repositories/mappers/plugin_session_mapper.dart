@@ -59,6 +59,14 @@ Session enrichSharedSession({
             archived: storedSession.archivedAt,
           );
     result = result.copyWith(
+      // The stored row is the bridge's authoritative session→project
+      // attribution (the same rule DerivedSessionBuilder scopes lists by): a
+      // bridge-derived plugin reports a worktree session under its own cwd,
+      // so without this rewrite its live created/updated events would carry
+      // the worktree as projectID and the parent project's session list would
+      // drop them as a project mismatch. The directory intentionally stays
+      // the session's real cwd.
+      projectID: storedSession.projectId,
       time: mergedTime,
       hasWorktree: storedSession.worktreePath != null,
       promptDefaults: _promptDefaultsFromStoredSession(storedSession),
