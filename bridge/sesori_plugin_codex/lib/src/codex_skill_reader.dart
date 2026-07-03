@@ -24,16 +24,16 @@ enum CodexSkillSource { user, project }
 /// Codex stores skills as `<dir>/<slug>/SKILL.md` with a YAML frontmatter
 /// block carrying `name:` and `description:`. Two locations are scanned:
 ///   - User-level: `$CODEX_HOME/skills` (defaults to `~/.codex/skills`).
-///   - Project-local: `<projectCwd>/.codex/skills`.
+///   - Project-local: `<projectCwd>/.codex/skills`, where the caller supplies
+///     the project directory per call — skills are project-scoped, so the
+///     reader must not bake in any single project.
 ///
 /// Project-local skills win when names collide.
 class CodexSkillReader {
-  CodexSkillReader({Map<String, String>? environment, String? projectCwd})
-    : _environment = environment ?? Platform.environment,
-      _projectCwd = projectCwd;
+  CodexSkillReader({Map<String, String>? environment})
+    : _environment = environment ?? Platform.environment;
 
   final Map<String, String> _environment;
-  final String? _projectCwd;
 
   String? get _codexHome {
     final explicit = _environment["CODEX_HOME"];
@@ -43,13 +43,12 @@ class CodexSkillReader {
     return p.join(home, ".codex");
   }
 
-  List<CodexSkill> list() {
+  List<CodexSkill> list({required String? projectCwd}) {
     final out = <String, CodexSkill>{};
     final userRoot = _codexHome;
     if (userRoot != null) {
       _scan(p.join(userRoot, "skills"), CodexSkillSource.user, out);
     }
-    final projectCwd = _projectCwd;
     if (projectCwd != null) {
       _scan(
         p.join(projectCwd, ".codex", "skills"),

@@ -133,6 +133,33 @@ void main() {
       expect(loaded.snapshot.canonicalSessionTitle, isNull);
     });
 
+    test("blank route projectId scopes providers to the session's resolved project", () async {
+      connectionStatus.add(connectedStatus);
+      _stubRepositorySnapshot(repository: repository, projectRepository: projectRepository);
+
+      final result = await service.load(sessionId: "session-1", projectId: "");
+
+      expect(result, isA<SessionDetailLoadResultLoaded>());
+      // Providers must be requested with the project resolved from the session
+      // context — never the raw blank route id, which backends would normalize
+      // to the bridge process CWD (the wrong project).
+      verify(() => repository.listProviders(projectId: "project-1")).called(1);
+      verifyNever(() => repository.listProviders(projectId: ""));
+    });
+
+    test("no route project and no session context loads empty providers without a request", () async {
+      connectionStatus.add(connectedStatus);
+      _stubRepositorySnapshot(repository: repository, projectRepository: projectRepository);
+      when(() => projectRepository.findSessionContext(sessionId: "session-1")).thenAnswer((_) async => null);
+
+      final result = await service.load(sessionId: "session-1", projectId: "");
+
+      expect(result, isA<SessionDetailLoadResultLoaded>());
+      final loaded = result as SessionDetailLoadResultLoaded;
+      expect(loaded.snapshot.providerData?.items, isEmpty);
+      verifyNever(() => repository.listProviders(projectId: any(named: "projectId")));
+    });
+
     test("project session context lookup failure is non-fatal when required reads succeed", () async {
       connectionStatus.add(connectedStatus);
       _stubRepositorySnapshot(repository: repository, projectRepository: projectRepository);
