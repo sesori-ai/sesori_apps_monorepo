@@ -68,6 +68,14 @@ class SessionUnseenRepository {
     );
   }
 
+  /// Advances ONLY the user-message marker for [sessionId] (UPDATE-only).
+  /// Used for user messages carrying their own creation time: engagement is
+  /// recorded without touching the activity/seen timeline, so a re-emitted
+  /// (old) user message can never clear unseen activity.
+  Future<void> recordUserMessage({required String sessionId, required int at}) {
+    return _sessionDao.setUserMessageAt(sessionId: sessionId, userMessageAt: at);
+  }
+
   /// Marks [sessionId] seen as of [at] ("Mark as Read" / viewing).
   Future<void> markSessionSeen({required String sessionId, required int at}) {
     return _sessionDao.setSeenAt(sessionId: sessionId, seenAt: at);

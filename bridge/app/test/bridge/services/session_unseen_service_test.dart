@@ -367,20 +367,46 @@ void main() {
       await db.sessionDao.insertSessionsIfMissing(
         sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
       );
-      // A reconnect backlog: a user message created at 2000 is only processed
-      // at local time 9000. The marker must record its creation time, not the
-      // (much later) processing time.
+      // A reconnect backlog processed late (local clock 9000+): user message
+      // created at 2000, assistant reply created at 2500, user reply created
+      // at 3000. All stamps come from the messages' own creation times, so the
+      // late processing time is irrelevant.
       clock = 9000;
       await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 2000);
       clock = 9001;
-      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      await service.recordActivity(sessionId: "s1", isUserMessage: false, occurredAt: 2500);
       expect(await unseen("s1"), isTrue);
 
-      // The user's next reply was created at 3000 — after the first message,
-      // but before the delayed processing time. It is a genuine interaction
-      // and must clear the unseen state, not be mistaken for a re-emission.
+      // The user's reply (created 3000, after the assistant's 2500) is a
+      // genuine interaction: not mistaken for a re-emission, clears the state.
       clock = 9002;
       await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 3000);
+      expect(await unseen("s1"), isFalse);
+    });
+
+    test("an old user re-emission cannot clear unseen state on a row with no user marker", () async {
+      // A row learned via a /sessions placeholder (all markers null): the
+      // original user message was processed before this bridge ever ran, so
+      // the re-emission guard has no marker to compare against.
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSessionsIfMissing(
+        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+      );
+      // Assistant activity bolds the session.
+      clock = 5000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: false, occurredAt: 5000);
+      expect(await unseen("s1"), isTrue);
+
+      // The backend re-emits an OLD user message (diff bookkeeping) created
+      // long before the assistant activity. It bootstraps the marker but must
+      // not clear the unseen state — it only proves engagement as of 1000.
+      clock = 6000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 1000);
+      expect(await unseen("s1"), isTrue);
+
+      // A genuine reply (created after the assistant activity) clears it.
+      clock = 7000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 7000);
       expect(await unseen("s1"), isFalse);
     });
 
