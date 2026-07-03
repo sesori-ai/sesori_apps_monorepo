@@ -338,6 +338,52 @@ void main() {
       expect(await unseen("s1"), isFalse);
     });
 
+    test("re-emission guard holds when the bridge clock is BEHIND the server clock", () async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSessionsIfMissing(
+        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+      );
+      // Server creation time (5000) is ahead of the bridge's local clock
+      // (1000). The marker is stamped from the creation time, so the domains
+      // stay comparable.
+      clock = 1000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 5000);
+      expect(await unseen("s1"), isFalse);
+
+      // Assistant activity clamps strictly past the (locally-future) marker
+      // and still bolds despite the skew.
+      clock = 1500;
+      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      expect(await unseen("s1"), isTrue);
+
+      // The re-emission (original creation time) must still be skipped.
+      clock = 2000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 5000);
+      expect(await unseen("s1"), isTrue);
+    });
+
+    test("a delayed first user message does not swallow a genuinely newer reply (backlog replay)", () async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSessionsIfMissing(
+        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+      );
+      // A reconnect backlog: a user message created at 2000 is only processed
+      // at local time 9000. The marker must record its creation time, not the
+      // (much later) processing time.
+      clock = 9000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 2000);
+      clock = 9001;
+      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      expect(await unseen("s1"), isTrue);
+
+      // The user's next reply was created at 3000 — after the first message,
+      // but before the delayed processing time. It is a genuine interaction
+      // and must clear the unseen state, not be mistaken for a re-emission.
+      clock = 9002;
+      await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 3000);
+      expect(await unseen("s1"), isFalse);
+    });
+
     test("a user message after the session is unseen is NOT coalesced (updates user-message marker)", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(

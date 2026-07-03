@@ -124,10 +124,10 @@ class SessionUnseenService {
       // OpenCode updates its diff summary mid- and post-response); treating a
       // re-emission as a fresh interaction would stamp `last_user_message_at`
       // past the assistant's activity and permanently clear the unseen state.
-      // A re-emission carries the message's ORIGINAL creation time, which is
-      // never newer than the stamp recorded when it was first processed, so it
-      // is skipped entirely (its content change is bookkeeping, not unseen-
-      // worthy transcript activity).
+      // A re-emission carries the message's ORIGINAL creation time — never
+      // newer than the marker stored when it was first processed (stamped from
+      // that same creation time, see below) — so it is skipped entirely (its
+      // content change is bookkeeping, not unseen-worthy transcript activity).
       if (isUserMessage && occurredAt != null && (row.userMessageAt ?? 0) >= occurredAt) {
         return;
       }
@@ -139,9 +139,21 @@ class SessionUnseenService {
       if (!isUserMessage && !viewedAtSubmit && _unseenRepository.unseenForRow(row)) {
         return;
       }
+      // A user message with a known creation time is stamped AT that creation
+      // time, keeping the stored marker in the same clock domain as the
+      // re-emission guard above — a locally-clocked stamp would drift from it
+      // under clock skew (remote `--opencode-host`) or delayed processing
+      // (reconnect backlog), either resurrecting re-emission clears or
+      // swallowing genuine replies. Storing a foreign-domain value is safe: a
+      // user message always leaves the session seen (activity == userMessage),
+      // and every later write clamps strictly past stored markers whatever
+      // their domain ([_activityTimestamp], markRead's max(now, activity)).
+      final at = isUserMessage && occurredAt != null
+          ? occurredAt
+          : _activityTimestamp(userMessageAt: row.userMessageAt, seenAt: row.seenAt);
       await _unseenRepository.recordActivity(
         sessionId: sessionId,
-        at: _activityTimestamp(userMessageAt: row.userMessageAt, seenAt: row.seenAt),
+        at: at,
         isUserMessage: isUserMessage,
         advanceSeen: viewedAtSubmit,
       );
