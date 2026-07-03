@@ -25,7 +25,7 @@ void main() {
       clock = _FakeServerClock();
       service = BridgeInstanceService(
         bridgeInstanceRepository: bridgeInstanceRepository,
-        terminalPromptRepository: terminalPromptRepository,
+        replacePrompt: terminalPromptRepository,
         processRepository: processRepository,
         clock: clock,
       );

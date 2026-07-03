@@ -470,7 +470,51 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   structured prompt/login events; the dispatcher is the only `inbound` subscriber
   (asserted by test); bootstrap token-unavailable exits `87` after a best-effort
   `loginNeeded` prompt; PR 2.7's mapping consumes `87`.
-- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch `next-desktop-implementation`).
+- **Findings:** Shipped as four units. (1) `BridgeControlMessageDispatcher`
+  (Layer 4 `control/`): the single `inbound` subscriber; decodes each frame once
+  (warn+skip on undecodable, preserved from the token service's old decode
+  point) and routes via an exhaustive switch — `token_response`/`token_update` →
+  token-service typed delegates, `prompt_response` → prompt-service delegate;
+  every other variant (incl. `restart` and, until its route lands,
+  `unregister_and_exit`) is `Log.d`-ignored, never a command. Single-subscriber
+  property asserted by a listen-counting fake client. (2)
+  `ControlChannelTokenService` no longer subscribes/decodes: it gained
+  `handleTokenResponse`/`handleTokenUpdate` delegates; correlation map, seq
+  ordering, `token_request` send path, timeout and dispose semantics unchanged —
+  all 19 existing behaviour tests kept their expectations, re-wired through a
+  dispatcher over the same fake client. (3) Prompts: new `ControlPromptService`
+  (Layer 3 `services/`, same blessed `ControlChannelClient` seam) owns
+  prompt-class correlation + sends and implements the new
+  `BridgeReplacePrompt` interface (`server/foundation/`, two production impls —
+  `TerminalPromptRepository` gained `implements`); `BridgeInstanceService` now
+  takes `BridgeReplacePrompt replacePrompt`, so supervised replace-bridge
+  questions go to the GUI (accepted→replace, rejected→decline; channel-down /
+  2-min timeout / teardown → `nonInteractive`, logged — mirroring the
+  terminal's "couldn't ask"). The logout CLI keeps the terminal impl (never
+  supervised). (4) ADR A23: `supervisedAuthRequiredExitCode = 87` beside 86;
+  the supervised bootstrap pull catches `ControlTokenUnavailableException`,
+  logs once, sends a best-effort `announceLoginNeeded()` (fire-and-forget,
+  swallow+log when the channel is down) and returns 87; the sentinel is wired
+  into the shutdown backstop chain and the outer-finally shutdown-error guard,
+  so a hung or throwing shutdown still reports 87 (same robustness 86 has).
+  Composition: prompt service + dispatcher are built with the token service in
+  the supervised block, dispatcher started **before** the bootstrap pull;
+  `BridgeInstanceService` construction moved after that block to receive
+  `controlPromptService ?? terminalPromptRepository`. Standalone byte-identical
+  (no Console call-site changes; nothing supervised is constructed). `make
+  analyze` + `dart analyze --fatal-infos` clean; `make test` all pass (app
+  1627; +16 new dispatcher/prompt tests).
+- **Deltas:** §6 gained two rows that PR planning had not pre-specified as
+  components: `ControlPromptService` (Layer 3 `services/`) as the owner of the
+  prompt correlation the PR text placed only vaguely "via the dispatcher", and
+  the `BridgeReplacePrompt` interface (`server/foundation/`) that lets
+  `BridgeInstanceService` stay inside the self-contained `server/` subsystem
+  (PR-1.4 auth-interface precedent). "Essential `Console` output" re-homing was
+  realized as the prompt-class events only: the PR-1.2 DTO surface deliberately
+  has no generic console/log variant (status is health/counts only), and the
+  GUI captures stdout/stderr as logs (PR 2.6) — so non-prompt Console output
+  intentionally stays on stdio in supervised mode.
 
 ## PR 1.10 — Status push (incl. registered `bridgeId`) via `ControlStatusNotifier`
 - **Goal:** Bridge pushes `status` (relay connection state, plugin health,

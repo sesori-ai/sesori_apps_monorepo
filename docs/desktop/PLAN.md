@@ -8,8 +8,8 @@
 
 ## Current pointer
 
-- **Last completed phase:** Phase 1 — PR 1.8 Disable self-update + reconcile when supervised (PR raised on branch `next-desktop-implementation-stage`)
-- **Next up:** Phase 1 — PR 1.9 `BridgeControlMessageDispatcher` + prompts/Console → control events + auth-required exit `87`
+- **Last completed phase:** Phase 1 — PR 1.9 `BridgeControlMessageDispatcher` + prompts → control events + auth-required exit `87` (PR raised on branch `next-desktop-implementation`)
+- **Next up:** Phase 1 — PR 1.10 Status push (relay/plugin/active sessions)
 - **Branch:** one feature branch per PR, cut from `main`
 
 > **Tracking lives in four places that MUST move together in the same PR.**
@@ -278,7 +278,9 @@ mobile release.**
 | `ControlChannelLossListener` | Layer 4 `control/` | ADR A9 grace-period process exit on sustained control-channel loss; injected `exitProcess` (PR 1.1). `control/` is part of the core layered bridge app, not a self-contained subsystem. |
 | Control-protocol Freezed DTOs | `shared/sesori_shared` | pure wire types (incl. provision-progress mirror) |
 | `ControlChannelTokenService` | Layer 3 `services/` | implements `auth/` `AccessTokenProvider`/`TokenRefresher`; pull + push token stream over injected `ControlChannelClient`. Kept out of the self-contained `auth/` subsystem so `auth/` does not import core `foundation/`. PR 1.9 re-homes its **inbound** subscription behind `BridgeControlMessageDispatcher` (typed delegate calls); request-correlation state and the `token_request` send path stay inside the service. |
-| `BridgeControlMessageDispatcher` | Layer 4 `control/` | owns the **single** inbound subscription + decode of GUI→helper control messages (created in PR 1.9). Routes: `token_response`/`token_update` → token-service delegate, `prompt_response` → prompt correlation, `unregister_and_exit` → unregister flow (PR 1.11). `restart` is **helper→GUI only** and is never an inbound command — the GUI restarts the helper by kill+respawn, not by message. |
+| `BridgeControlMessageDispatcher` | Layer 4 `control/` | owns the **single** inbound subscription + decode of GUI→helper control messages (created in PR 1.9). Routes: `token_response`/`token_update` → token-service delegate, `prompt_response` → prompt-service delegate, `unregister_and_exit` → unregister flow (PR 1.11). `restart` is **helper→GUI only** and is never an inbound command — the GUI restarts the helper by kill+respawn, not by message. |
+| `ControlPromptService` | Layer 3 `services/` | supervised-mode user prompts over the injected `ControlChannelClient` (same blessed seam as the token service): owns prompt-class correlation state + ALL prompt-class outbound sends (`prompt_request`); implements the `server/foundation/` `BridgeReplacePrompt` interface so `BridgeInstanceService` asks the GUI instead of a terminal; `announceLoginNeeded()` is the best-effort advisory before the exit-87 sentinel (ADR A23). Unanswerable asks (channel down / timeout / teardown) degrade to `nonInteractive`. |
+| `BridgeReplacePrompt` | interface in `server/foundation/` | the replace-bridge ask contract with two production implementations: `TerminalPromptRepository` (standalone) and `ControlPromptService` (supervised); keeps the `server/` subsystem free of core-layer imports (mirrors the auth-interface precedent from PR 1.4). |
 | `ControlStatusNotifier` | Layer 4 `control/` | owns **all outbound** status-class control sends (created in PR 1.10): observes Layer-0 state streams (relay connection state incl. close code/reason, plugin health, active-session summary, registration events) and maps them to `status`/`registered`/takeover pushes over the injected `ControlChannelClient`. Higher layers (Orchestrator) never call `ControlChannelClient.send` directly. |
 | `BridgeIdStorage` (file API + reader) | **inside the `auth/` subsystem** | persist `bridgeId` separately from `token.json`; kept within `auth/` (which is self-contained, outside the core layer hierarchy) so auth code doesn't depend back on top-level `repositories/`. Injected from the composition root. |
 | supervised auth bootstrap | composition root | short-circuit `BridgeRuntimeAuthService.ensureAuthenticated` (no stdin); keep an equivalent `logAuthenticatedUser` |
@@ -390,7 +392,7 @@ them). Only the user checks an MT box.
 - ☑ 1.6 Supervised registration + `bridgeId` out of `token.json` — Med / M
 - ☑ 1.7 Exit-code restart (`86`) + bypass successor-spawn — Med / S-M
 - ☑ 1.8 Disable self-update + reconcile when supervised — Low / S
-- ☐ 1.9 `BridgeControlMessageDispatcher` + prompts/Console → control events + auth-required exit `87` — Med / M
+- ☑ 1.9 `BridgeControlMessageDispatcher` + prompts/Console → control events + auth-required exit `87` — Med / M
 - ☐ 1.10 Status push (relay/plugin/active sessions) — Low / S-M
 - ☐ 1.11 `unregister-and-exit` control command — Low / S-M
 - ☐ 1.12 Single-live precedence under supervised `--hidden` — Med / M

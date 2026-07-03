@@ -42,6 +42,7 @@ import "../../auth/login_oauth_service.dart";
 import "../../auth/token.dart";
 import "../../auth/token_manager.dart";
 import "../../auth/token_refresher.dart";
+import "../../control/bridge_control_message_dispatcher.dart";
 import "../../control/control_channel_loss_listener.dart";
 import "../../foundation/control_channel_client.dart";
 import "../../repositories/bridge_settings_repository.dart";
@@ -49,6 +50,7 @@ import "../../server/api/loopback_port_api.dart";
 import "../../server/api/runtime_file_api.dart";
 import "../../server/api/system_process_api.dart";
 import "../../server/api/terminal_prompt_api.dart";
+import "../../server/foundation/bridge_replace_prompt.dart";
 import "../../server/foundation/bridge_restart_command_builder.dart";
 import "../../server/foundation/bridge_restart_env.dart";
 import "../../server/host/bridge_host_info_impl.dart";
@@ -63,6 +65,7 @@ import "../../server/repositories/terminal_prompt_repository.dart";
 import "../../server/services/bridge_instance_service.dart";
 import "../../server/services/bridge_restart_service.dart";
 import "../../services/control_channel_token_service.dart";
+import "../../services/control_prompt_service.dart";
 import "../../updater/api/checksum_manifest_api.dart";
 import "../../updater/api/github_releases_api.dart";
 import "../../updater/api/managed_runtime_manifest_api.dart";
@@ -112,6 +115,14 @@ import "runtime_provision_formatter.dart";
 /// an intentional restart apart and respawn rather than treat it as a crash.
 const int supervisedRestartExitCode = 86;
 
+/// Exit code a supervised bridge returns when the desktop GUI cannot supply an
+/// access token at bootstrap (signed out / mid-login / unreachable). Distinct
+/// from a crash so the GUI supervisor surfaces a login prompt instead of
+/// backoff-respawning a helper that can never start. The exit code is the
+/// authoritative signal; the best-effort `loginNeeded` prompt sent just before
+/// exiting is advisory.
+const int supervisedAuthRequiredExitCode = 87;
+
 Future<int> runBridgeApp({
   required BridgeCliOptions options,
   required PluginConfig pluginConfig,
@@ -149,9 +160,18 @@ class BridgeRuntimeRunner {
     // bridge instead of treating the exit as a crash or clean stop. Read by the
     // backstop too, so a hung restart-shutdown still reports the sentinel.
     int? requestedSupervisedRestartExitCode;
+    // Set when the supervised bootstrap token pull fails because the GUI cannot
+    // supply a token: the runner returns the auth-required sentinel (87) so the
+    // GUI prompts for login instead of backoff-respawning. Read by the backstop
+    // and the shutdown-error path too, so the sentinel survives a hung or
+    // throwing shutdown.
+    int? requestedSupervisedAuthRequiredExitCode;
     final shutdownCoordinator = BridgeShutdownCoordinator(
       backstopExitCode: () =>
-          requestedSupervisedRestartExitCode ?? supervisedLossExitCode ?? (failureLatch.failure == null ? 0 : 1),
+          requestedSupervisedRestartExitCode ??
+          requestedSupervisedAuthRequiredExitCode ??
+          supervisedLossExitCode ??
+          (failureLatch.failure == null ? 0 : 1),
     );
     final subscriptions = CompositeSubscription();
     shutdownCoordinator.add(disposable: subscriptions.cancel);
@@ -193,15 +213,6 @@ class BridgeRuntimeRunner {
     final terminalPromptRepository = TerminalPromptRepository(
       api: terminalPromptApi,
     );
-    final bridgeInstanceService = BridgeInstanceService(
-      bridgeInstanceRepository: BridgeInstanceRepository(
-        api: systemProcessApi,
-        currentUser: currentUser,
-      ),
-      terminalPromptRepository: terminalPromptRepository,
-      processRepository: processRepository,
-      clock: serverClock,
-    );
     shutdownCoordinator.add(disposable: httpClient.close);
 
     final runtimeAuthService = BridgeRuntimeAuthService(
@@ -230,6 +241,7 @@ class BridgeRuntimeRunner {
       // before anything else so the GUI sees the helper connect promptly. Every
       // step here is gated by `--control-url`; standalone startup is unchanged.
       ControlChannelTokenService? controlChannelTokenService;
+      ControlPromptService? controlPromptService;
       if (options.isSupervised) {
         final controlChannelClient = await _connectSupervisedControlChannel(
           options: options,
@@ -241,7 +253,32 @@ class BridgeRuntimeRunner {
         // terminal login. Shares the same client the loss listener observes.
         controlChannelTokenService = ControlChannelTokenService(client: controlChannelClient);
         shutdownCoordinator.add(disposable: controlChannelTokenService.dispose);
+        // User prompts (replace-bridge, login-needed) go to the GUI instead of
+        // a terminal the helper doesn't have.
+        controlPromptService = ControlPromptService(client: controlChannelClient);
+        shutdownCoordinator.add(disposable: controlPromptService.dispose);
+        // The single inbound subscriber: decodes GUI→helper frames once and
+        // routes them to the owning service. Started before the bootstrap token
+        // pull below so its response is never missed.
+        final controlMessageDispatcher = BridgeControlMessageDispatcher(
+          client: controlChannelClient,
+          tokenService: controlChannelTokenService,
+          promptService: controlPromptService,
+        );
+        controlMessageDispatcher.start();
+        shutdownCoordinator.add(disposable: controlMessageDispatcher.dispose);
       }
+
+      final BridgeReplacePrompt replacePrompt = controlPromptService ?? terminalPromptRepository;
+      final bridgeInstanceService = BridgeInstanceService(
+        bridgeInstanceRepository: BridgeInstanceRepository(
+          api: systemProcessApi,
+          currentUser: currentUser,
+        ),
+        replacePrompt: replacePrompt,
+        processRepository: processRepository,
+        clock: serverClock,
+      );
 
       final runtimeOwnershipError = unsupportedPackageRuntimeMessage(
         executablePath: io.Platform.resolvedExecutable,
@@ -317,7 +354,18 @@ class BridgeRuntimeRunner {
       final String authAccessToken;
       final supervisedTokenService = controlChannelTokenService;
       if (supervisedTokenService != null) {
-        authAccessToken = await supervisedTokenService.getAccessToken();
+        try {
+          authAccessToken = await supervisedTokenService.getAccessToken();
+        } on ControlTokenUnavailableException catch (error) {
+          // The GUI cannot supply a token (signed out / mid-login / down). Exit
+          // with the auth-required sentinel so the GUI prompts for login instead
+          // of backoff-respawning a helper that can never start. The prompt is
+          // advisory (best-effort); the exit code is the authoritative signal.
+          Log.e("Cannot start supervised: $error");
+          controlPromptService?.announceLoginNeeded();
+          requestedSupervisedAuthRequiredExitCode = supervisedAuthRequiredExitCode;
+          return supervisedAuthRequiredExitCode;
+        }
       } else {
         final authTokens = await runtimeAuthService.ensureAuthenticated(options: options);
         authAccessToken = authTokens.accessToken;
@@ -562,14 +610,14 @@ class BridgeRuntimeRunner {
         // `shutdownCoordinator.shutdown()` rethrows a failed ordered/parallel
         // step (by design — a failed plugin stop must surface as a non-zero
         // exit). Thrown from this `finally`, that would override the return
-        // value. For a supervised restart that must NOT happen: the exit must
-        // stay the sentinel so the GUI respawns rather than treating an
-        // intentional restart as a crash. For every other exit, preserve the
-        // loud-failure behaviour by rethrowing.
-        if (requestedSupervisedRestartExitCode == null) {
+        // value. For a supervised restart or auth-required exit that must NOT
+        // happen: the exit must stay the sentinel so the GUI respawns (86) or
+        // prompts for login (87) rather than treating it as a crash. For every
+        // other exit, preserve the loud-failure behaviour by rethrowing.
+        if (requestedSupervisedRestartExitCode == null && requestedSupervisedAuthRequiredExitCode == null) {
           rethrow;
         }
-        Log.w("Shutdown error during a supervised restart; preserving the sentinel exit code", error, stackTrace);
+        Log.w("Shutdown error during a supervised sentinel exit; preserving the sentinel exit code", error, stackTrace);
       }
     }
   }
