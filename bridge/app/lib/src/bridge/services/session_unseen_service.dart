@@ -182,10 +182,18 @@ class SessionUnseenService {
   /// sessions ([parentId] != null) are ignored. The new root is stamped with
   /// activity so it is immediately unseen — unless a phone is already viewing
   /// it, in which case it stays seen.
+  ///
+  /// [occurredAt] is the session's own creation time, preferred for the stamp
+  /// so it lives in the same clock domain as the message-derived stamps: the
+  /// creator's first message (created at/after the session itself) then
+  /// reliably clears this creation bold, which a locally-clocked stamp could
+  /// prevent (SSE latency puts local processing time past the first message's
+  /// creation time even without skew).
   Future<void> recordSessionCreated({
     required String sessionId,
     required String projectId,
     required String? parentId,
+    int? occurredAt,
   }) {
     if (parentId != null) return Future<void>.value();
     final viewedAtSubmit = _viewTracker.isViewed(sessionId: sessionId);
@@ -207,7 +215,7 @@ class SessionUnseenService {
       await _unseenRepository.ensureRootSessionActivity(
         sessionId: sessionId,
         projectId: projectId,
-        activityAt: _nextTimestamp(),
+        activityAt: occurredAt ?? _nextTimestamp(),
         advanceSeen: viewedAtSubmit,
         isUserMessage: false,
       );

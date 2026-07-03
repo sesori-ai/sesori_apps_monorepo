@@ -384,6 +384,26 @@ void main() {
       expect(await unseen("s1"), isFalse);
     });
 
+    test("the creator's first message clears the creation bold (same-domain creation stamp)", () async {
+      // Live session.created processed late (local clock far past the
+      // session's actual creation) — the stamp comes from the session's own
+      // creation time, not the processing time.
+      clock = 9000;
+      await service.recordSessionCreated(sessionId: "s1", projectId: "p1", parentId: null, occurredAt: 2000);
+      expect(await unseen("s1"), isTrue);
+
+      // The creator's first message (created just after the session) must
+      // clear the creation bold even though the local clock is way ahead.
+      clock = 9001;
+      await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 2005);
+      expect(await unseen("s1"), isFalse);
+
+      // And the assistant's reply re-bolds it.
+      clock = 9002;
+      await service.recordActivity(sessionId: "s1", isUserMessage: false, occurredAt: 2500);
+      expect(await unseen("s1"), isTrue);
+    });
+
     test("an old user re-emission cannot clear unseen state on a row with no user marker", () async {
       // A row learned via a /sessions placeholder (all markers null): the
       // original user message was processed before this bridge ever ran, so

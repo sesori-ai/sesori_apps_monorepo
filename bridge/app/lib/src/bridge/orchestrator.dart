@@ -655,6 +655,7 @@ class OrchestratorSession {
           sessionId: info.id,
           projectId: info.projectID,
           parentId: info.parentID,
+          occurredAt: info.time?.created,
         );
       case SesoriSessionDeleted(:final info):
         await _sessionUnseenService.recordSessionDeleted(sessionId: info.id, projectId: info.projectID);
