@@ -14,6 +14,7 @@ import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/abort_session_handler.dart";
 import "package:sesori_bridge/src/bridge/routing/get_commands_handler.dart";
@@ -51,11 +52,13 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         pullRequestRepository: PullRequestRepository(pullRequestDao: db.pullRequestDao, projectsDao: db.projectsDao),
+        unseenCalculator: const SessionUnseenCalculator(),
       );
       final projectRepository = ProjectRepository(
         plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
       );
       final filesystemRepository = FilesystemRepository(
         filesystemApi: const FilesystemApi(),
@@ -137,6 +140,7 @@ void main() {
         healthRepository: healthRepository,
         providerRepository: providerRepository,
         agentRepository: agentRepository,
+        sessionUnseenService: buildTestSessionUnseenService(db, plugin),
         permissionRepository: permissionRepository,
         questionRepository: questionRepository,
         sessionPersistenceService: sessionPersistenceService,
@@ -418,6 +422,7 @@ void main() {
         plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
       );
       final filesystemRepository = FilesystemRepository(
         filesystemApi: const FilesystemApi(),
@@ -468,6 +473,7 @@ void main() {
             pullRequestDao: db.pullRequestDao,
             projectsDao: db.projectsDao,
           ),
+          unseenCalculator: const SessionUnseenCalculator(),
         ),
         processRunner: FakeProcessRunner(),
       );
@@ -504,6 +510,7 @@ void main() {
         healthRepository: healthRepository,
         providerRepository: providerRepository,
         agentRepository: agentRepository,
+        sessionUnseenService: buildTestSessionUnseenService(db, plugin),
         permissionRepository: permissionRepository,
         questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao),
         sessionPersistenceService: sessionPersistenceService,

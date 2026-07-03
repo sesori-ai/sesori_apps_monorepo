@@ -41,6 +41,8 @@ import "services/session_creation_service.dart";
 import "services/session_event_enrichment_service.dart";
 import "services/session_persistence_service.dart";
 import "services/session_prompt_service.dart";
+import "services/session_unseen_service.dart";
+import "services/session_view_tracker.dart";
 import "services/worktree_service.dart";
 import "sse/bridge_event_mapper.dart";
 import "sse/sse_manager.dart";
@@ -62,6 +64,8 @@ class Orchestrator {
   final PrSyncService _prSyncService;
   final SessionRepository _sessionRepository;
   final ProjectRepository _projectRepository;
+  final SessionUnseenService _sessionUnseenService;
+  final SessionViewTracker _sessionViewTracker;
   final FilesystemRepository _filesystemRepository;
   final ProjectInitializationService _projectInitializationService;
   final HealthRepository _healthRepository;
@@ -89,6 +93,8 @@ class Orchestrator {
     required PrSyncService prSyncService,
     required SessionRepository sessionRepository,
     required ProjectRepository projectRepository,
+    required SessionUnseenService sessionUnseenService,
+    required SessionViewTracker sessionViewTracker,
     required FilesystemRepository filesystemRepository,
     required ProjectInitializationService projectInitializationService,
     required HealthRepository healthRepository,
@@ -113,6 +119,8 @@ class Orchestrator {
        _sessionRepository = sessionRepository,
        _prSyncService = prSyncService,
        _projectRepository = projectRepository,
+       _sessionUnseenService = sessionUnseenService,
+       _sessionViewTracker = sessionViewTracker,
        _filesystemRepository = filesystemRepository,
        _projectInitializationService = projectInitializationService,
        _healthRepository = healthRepository,
@@ -164,6 +172,8 @@ class Orchestrator {
       sessionRepository: _sessionRepository,
       prSyncService: _prSyncService,
       projectRepository: _projectRepository,
+      sessionUnseenService: _sessionUnseenService,
+      sessionViewTracker: _sessionViewTracker,
       filesystemRepository: _filesystemRepository,
       projectInitializationService: _projectInitializationService,
       healthRepository: _healthRepository,
@@ -210,6 +220,8 @@ class OrchestratorSession {
   final StreamController<int> _bytesSentController;
   final FailureReporter _failureReporter;
   final PrSyncService _prSyncService;
+  final SessionUnseenService _sessionUnseenService;
+  final SessionViewTracker _sessionViewTracker;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final SessionAbortService _sessionAbortService;
   final BridgeRestartService _restartService;
@@ -252,6 +264,8 @@ class OrchestratorSession {
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
     required ProjectRepository projectRepository,
+    required SessionUnseenService sessionUnseenService,
+    required SessionViewTracker sessionViewTracker,
     required FilesystemRepository filesystemRepository,
     required ProjectInitializationService projectInitializationService,
     required HealthRepository healthRepository,
@@ -279,6 +293,8 @@ class OrchestratorSession {
        _bytesSentController = bytesSentController,
        _failureReporter = failureReporter,
        _prSyncService = prSyncService,
+       _sessionUnseenService = sessionUnseenService,
+       _sessionViewTracker = sessionViewTracker,
        _sessionAbortService = sessionAbortService,
        _restartService = restartService,
        _router = RequestRouter(
@@ -306,6 +322,7 @@ class OrchestratorSession {
           permissionRepository: permissionRepository,
          questionRepository: questionRepository,
          sessionPersistenceService: sessionPersistenceService,
+         sessionUnseenService: sessionUnseenService,
          worktreeService: worktreeService,
          sessionDiffsHandler: GetSessionDiffsHandler(
            sessionRepository: sessionRepository,
@@ -383,6 +400,18 @@ class OrchestratorSession {
             _sseManager.enqueueEvent(SesoriSseEvent.sessionsUpdated(projectID: projectId));
           })
           .addTo(_subscriptions);
+      _sessionUnseenService.unseenChanges
+          .listen((change) {
+            _sseManager.enqueueEvent(
+              SesoriSseEvent.sessionUnseenChanged(
+                projectID: change.projectId,
+                sessionId: change.sessionId,
+                unseen: change.unseen,
+                projectHasUnseenChanges: change.projectHasUnseenChanges,
+              ),
+            );
+          })
+          .addTo(_subscriptions);
 
       // Live re-auth: when the token provider emits a token that differs from the
       // one the relay socket is actually authenticated with (supervised mode, the
@@ -427,6 +456,10 @@ class OrchestratorSession {
         Log.w("Relay connection lost. Reconnecting...");
         _sseManager.orphanAll();
         activePhones.clear();
+        // Every phone connection died with the relay link; drop their view
+        // declarations so no session stays "watched" by a ghost connection.
+        // Phones re-assert their current view on reconnect.
+        _sessionViewTracker.clearAll();
 
         if (_client.closeCode == RelayCloseCodes.bridgeRevoked) {
           Log.w("Relay reports this bridge as revoked — re-registering with a fresh bridge id");
@@ -580,6 +613,11 @@ class OrchestratorSession {
         );
         _completionListener.handleSseEvent(sesoriEvent);
         _sseManager.enqueueEvent(sesoriEvent);
+        unawaited(
+          _routeUnseenActivity(sesoriEvent).catchError((Object e, StackTrace st) {
+            Log.w("failed to route unseen activity for ${sesoriEvent.runtimeType}", e, st);
+          }),
+        );
       } else {
         Log.v("[sse] mapping returned null — event dropped");
       }
@@ -597,6 +635,68 @@ class OrchestratorSession {
             )
             .catchError((_) {}),
       );
+    }
+  }
+
+  /// Feeds an already-mapped [SesoriSseEvent] into the unseen-changes tracking.
+  /// Only message activity, pending input requests, and session lifecycle
+  /// events matter; everything else is ignored. A user-authored message (or a
+  /// question/permission reply) advances the "last user message" timestamp in
+  /// addition to general activity.
+  ///
+  /// Streamed part/delta events are deliberately NOT activity: `message.updated`
+  /// fires when a message is created and when it completes, which is sufficient
+  /// granularity for a bold indicator and keeps per-token deltas out of the
+  /// write path.
+  Future<void> _routeUnseenActivity(SesoriSseEvent event) async {
+    switch (event) {
+      case SesoriSessionCreated(:final info):
+        await _sessionUnseenService.recordSessionCreated(
+          sessionId: info.id,
+          projectId: info.projectID,
+          parentId: info.parentID,
+        );
+      case SesoriSessionDeleted(:final info):
+        await _sessionUnseenService.recordSessionDeleted(sessionId: info.id, projectId: info.projectID);
+      case SesoriMessageUpdated(:final info):
+        await _sessionUnseenService.recordActivity(
+          sessionId: info.sessionID,
+          isUserMessage: info is MessageUser,
+        );
+      // For child/subagent requests, `displaySessionId` is the root session the
+      // UI surfaces the request under; the child has no persisted row, so route
+      // to the displayed root so it becomes unseen for pending input.
+      case SesoriQuestionAsked(:final sessionID, :final displaySessionId):
+        await _sessionUnseenService.recordActivity(
+          sessionId: displaySessionId ?? sessionID,
+          isUserMessage: false,
+        );
+      case SesoriPermissionAsked(:final sessionID, :final displaySessionId):
+        await _sessionUnseenService.recordActivity(
+          sessionId: displaySessionId ?? sessionID,
+          isUserMessage: false,
+        );
+      // Question replied/rejected and permission replied are all user responses
+      // to a pending prompt, so they advance the user-interaction timestamp and
+      // clear the unseen state.
+      case SesoriQuestionReplied(:final sessionID, :final displaySessionId):
+        await _sessionUnseenService.recordActivity(
+          sessionId: displaySessionId ?? sessionID,
+          isUserMessage: true,
+        );
+      case SesoriQuestionRejected(:final sessionID, :final displaySessionId):
+        await _sessionUnseenService.recordActivity(
+          sessionId: displaySessionId ?? sessionID,
+          isUserMessage: true,
+        );
+      case SesoriPermissionReplied(:final sessionID, :final displaySessionId):
+        await _sessionUnseenService.recordActivity(
+          sessionId: displaySessionId ?? sessionID,
+          isUserMessage: true,
+        );
+      default:
+        // Not an unseen-relevant event.
+        break;
     }
   }
 
@@ -712,6 +812,7 @@ class OrchestratorSession {
             kxManager.removeExchange(connID);
             activePhones.remove(connID);
             _sseManager.removeSubscriber(connID);
+            _sessionViewTracker.releaseConnection(connID: connID);
         }
         continue;
       }
@@ -941,6 +1042,9 @@ class OrchestratorSession {
       case RelaySseUnsubscribe():
         Log.v("SseUnsubscribe connID=$connID");
         _sseManager.unsubscribe(connID);
+      case RelaySessionView(:final sessionId):
+        Log.v("SessionView connID=$connID sessionId=$sessionId");
+        _sessionViewTracker.setViewing(connID: connID, sessionId: sessionId);
       default:
         Log.v("unhandled msg type: ${msg.runtimeType}");
     }

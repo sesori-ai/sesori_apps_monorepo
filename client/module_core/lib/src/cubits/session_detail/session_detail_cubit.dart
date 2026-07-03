@@ -10,10 +10,12 @@ import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
+import "../../platform/lifecycle_source.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
 import "../../services/session_detail_load_service.dart";
+import "../../services/session_viewing_service.dart";
 import "../../utils/model_filter/default_model_selector.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
@@ -25,6 +27,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   final SessionRepository _sessionRepository;
   final ConnectionService _connectionService;
   final PermissionRepository _permissionRepository;
+  final SessionViewingService _sessionViewingService;
+  final LifecycleSource _lifecycleSource;
   static const _defaultModelSelector = DefaultModelSelector();
   final String _sessionId;
   final String _projectId;
@@ -37,10 +41,23 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
   late final StreamSubscription<SseEvent> _globalEventSubscription;
   late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
   late final StreamSubscription<void> _staleSubscription;
+  late final StreamSubscription<LifecycleState> _lifecycleSubscription;
   late final StreamingTextBuffer _streamingBuffer;
   Future<void>? _activeRefresh;
   bool _needsStaleRefresh = false;
   bool _waitingForConnection = false;
+  bool _wasPaused = false;
+  bool _wasConnected = false;
+
+  /// Set when a resume/reconnect requires the next successful silent refresh
+  /// to re-declare "the user is viewing this session". The viewing service
+  /// clears the declaration on background (and the bridge drops it on
+  /// disconnect), and deliberately never re-asserts on its own: declaring a
+  /// view marks the session seen globally, so it should follow content the
+  /// user can actually see. Re-asserting after the refresh keeps that honest;
+  /// any interleaving gap is covered by the live SSE events the open screen
+  /// applies anyway.
+  bool _reassertViewAfterRefresh = false;
 
   /// Pending session-scoped SSE events that arrived while the cubit was in
   /// [SessionDetailLoading] or [SessionDetailFailed] state. Replayed once the
@@ -68,6 +85,8 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     required SessionDetailLoadService loadService,
     required SessionRepository promptDispatcher,
     required PermissionRepository permissionRepository,
+    required SessionViewingService sessionViewingService,
+    required LifecycleSource lifecycleSource,
     required String sessionId,
     required String projectId,
     required NotificationCanceller notificationCanceller,
@@ -76,16 +95,22 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
        _sessionRepository = promptDispatcher,
        _connectionService = connectionService,
        _permissionRepository = permissionRepository,
+       _sessionViewingService = sessionViewingService,
+       _lifecycleSource = lifecycleSource,
        _sessionId = sessionId,
        _projectId = projectId,
        _notificationCanceller = notificationCanceller,
        _failureReporter = failureReporter,
        super(const SessionDetailState.loading()) {
     _streamingBuffer = StreamingTextBuffer(onFlush: _emitStreamingSnapshot);
+    // Seed the connection state so the BehaviorSubject's immediate replay isn't
+    // treated as a reconnect transition.
+    _wasConnected = _connectionService.currentStatus is ConnectionConnected;
     _eventSubscription = _connectionService.sessionEvents(_sessionId).listen(_handleEvent);
     _globalEventSubscription = _connectionService.events.listen(_handleGlobalEvent);
     _connectionStatusSubscription = _connectionService.status.listen(_onConnectionStatusChanged);
     _staleSubscription = _connectionService.dataMayBeStale.listen((_) => _onDataMayBeStale());
+    _lifecycleSubscription = _lifecycleSource.lifecycleStateStream.listen(_onLifecycleChanged);
     _loadMessages(isReload: false);
   }
 
@@ -104,6 +129,11 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       case SessionDetailLoadResultLoaded(:final snapshot):
         _waitingForConnection = false;
         emit(_buildLoadedState(snapshot: snapshot));
+        // Declare the view only now that the transcript has actually loaded —
+        // a load that fails or waits for connection must not mark the session
+        // read (clearing its bold globally) while the user only saw a
+        // loading/error state.
+        _sessionViewingService.setViewingSession(_sessionId);
         _drainPendingEvents();
         _tryDrainQueue();
       case SessionDetailLoadResultWaitingForConnection():
@@ -220,6 +250,13 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
               availableVariants: availableVariants,
             ),
           );
+          if (_reassertViewAfterRefresh) {
+            // A resume/reconnect requested this refresh; the refreshed
+            // transcript has rendered, so it is safe to re-declare the view
+            // (which marks the session seen on the bridge).
+            _reassertViewAfterRefresh = false;
+            _sessionViewingService.setViewingSession(_sessionId);
+          }
           _drainPendingEvents();
         case SessionDetailLoadResultWaitingForConnection():
           _waitingForConnection = true;
@@ -413,6 +450,9 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       SesoriWorktreeReady() ||
       SesoriWorktreeFailed() ||
       SesoriSessionPromptDefaultsChanged() ||
+      // Unseen-state changes are list-level concerns handled by the tracker;
+      // the detail screen does not react to them.
+      SesoriSessionUnseenChanged() ||
       // Intentionally excluded: triggers a silent refresh, but during loading
       // we are already fetching the latest snapshot, so replaying it would
       // cause a redundant refresh immediately after load.
@@ -491,6 +531,7 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
             SesoriTuiToastShow() ||
             SesoriWorktreeReady() ||
             SesoriWorktreeFailed() ||
+            SesoriSessionUnseenChanged() ||
             SesoriSessionPromptDefaultsChanged():
           break;
         case SesoriSessionsUpdated(:final projectID):
@@ -758,9 +799,37 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
     }
   }
 
+  void _onLifecycleChanged(LifecycleState lifecycleState) {
+    switch (lifecycleState) {
+      case LifecycleState.paused:
+      case LifecycleState.hidden:
+        _wasPaused = true;
+      case LifecycleState.resumed:
+        if (!_wasPaused) return;
+        _wasPaused = false;
+        if (state is! SessionDetailLoaded) return;
+        // The viewing service cleared the view on background and does not
+        // re-assert on its own; refresh so the transcript reflects activity
+        // that arrived while hidden, then re-declare the view once the refresh
+        // renders. When disconnected, defer to the reconnect path below.
+        _reassertViewAfterRefresh = true;
+        if (_isConnected) {
+          _silentRefresh();
+        } else {
+          _needsStaleRefresh = true;
+        }
+      case LifecycleState.inactive:
+      case LifecycleState.detached:
+        break;
+    }
+  }
+
   void _onConnectionStatusChanged(ConnectionStatus status) {
     if (isClosed) return;
-    if (status is ConnectionConnected) {
+    final isConnected = status is ConnectionConnected;
+    final reconnected = isConnected && !_wasConnected;
+    _wasConnected = isConnected;
+    if (isConnected) {
       if (_waitingForConnection) {
         _waitingForConnection = false;
         unawaited(_loadMessages(isReload: true));
@@ -769,6 +838,15 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
       _tryDrainQueue();
       if (_needsStaleRefresh) {
         _needsStaleRefresh = false;
+        // The disconnect that queued this refresh also released this
+        // connection's view on the bridge, so re-assert it once the refresh
+        // renders — same as the plain reconnect branch below.
+        if (state is SessionDetailLoaded) _reassertViewAfterRefresh = true;
+        _silentRefresh();
+      } else if (reconnected && state is SessionDetailLoaded) {
+        // A foreground relay reconnect: the bridge released the old
+        // connection's view declaration, so refresh and re-assert it.
+        _reassertViewAfterRefresh = true;
         _silentRefresh();
       }
     }
@@ -1310,12 +1388,14 @@ class SessionDetailCubit extends Cubit<SessionDetailState> {
 
   @override
   Future<void> close() {
+    _sessionViewingService.clearViewingSession(_sessionId);
     _pendingSessionEvents.clear();
     _pendingGlobalEvents.clear();
     _eventSubscription.cancel();
     _globalEventSubscription.cancel();
     _connectionStatusSubscription.cancel();
     _staleSubscription.cancel();
+    _lifecycleSubscription.cancel();
     _streamingBuffer.dispose();
     _questionStream.close();
     _permissionStream.close();

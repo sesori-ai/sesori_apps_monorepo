@@ -4,6 +4,7 @@ import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -29,6 +30,7 @@ void main() {
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
         ),
+        unseenCalculator: const SessionUnseenCalculator(),
       );
 
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
@@ -133,6 +135,7 @@ void main() {
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
         ),
+        unseenCalculator: const SessionUnseenCalculator(),
       );
 
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
@@ -180,6 +183,7 @@ void main() {
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
         ),
+        unseenCalculator: const SessionUnseenCalculator(),
       );
 
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
@@ -264,6 +268,7 @@ void main() {
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
         ),
+        unseenCalculator: const SessionUnseenCalculator(),
       );
 
       await repository.insertStoredSession(
@@ -306,6 +311,7 @@ void main() {
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
         ),
+        unseenCalculator: const SessionUnseenCalculator(),
       );
 
       await repository.insertStoredSession(
@@ -354,6 +360,7 @@ void main() {
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
         ),
+        unseenCalculator: const SessionUnseenCalculator(),
       );
 
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
@@ -416,6 +423,7 @@ void main() {
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
         ),
+        unseenCalculator: const SessionUnseenCalculator(),
       );
 
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p-stored"]);
@@ -450,6 +458,7 @@ void main() {
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
         ),
+        unseenCalculator: const SessionUnseenCalculator(),
       );
 
       plugin.projectsResult = const [
@@ -487,6 +496,7 @@ void main() {
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
         ),
+        unseenCalculator: const SessionUnseenCalculator(),
       );
 
       final cases = <SessionVariant?>[const SessionVariant(id: "low"), const SessionVariant(id: "xhigh"), null];
@@ -516,6 +526,7 @@ void main() {
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
         ),
+        unseenCalculator: const SessionUnseenCalculator(),
       );
 
       final cases = <SessionVariant?>[const SessionVariant(id: "low"), const SessionVariant(id: "xhigh"), null];
@@ -595,6 +606,7 @@ void main() {
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
         ),
+        unseenCalculator: const SessionUnseenCalculator(),
       );
       await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "w1");
 
@@ -618,6 +630,7 @@ void main() {
         allSessions: [pluginSession(worktree, id: "a1")],
       );
       final repository = SessionRepository(
+        unseenCalculator: const SessionUnseenCalculator(),
         plugin: plugin,
         sessionDao: db.sessionDao,
         pullRequestRepository: PullRequestRepository(
@@ -650,6 +663,7 @@ void main() {
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
         ),
+        unseenCalculator: const SessionUnseenCalculator(),
       );
 
       final result = await repository.findProjectIdForSession(sessionId: "b1");
@@ -668,6 +682,7 @@ void main() {
         allSessions: [pluginSession(worktree, id: "w1")],
       );
       final repository = SessionRepository(
+        unseenCalculator: const SessionUnseenCalculator(),
         plugin: plugin,
         sessionDao: db.sessionDao,
         pullRequestRepository: PullRequestRepository(

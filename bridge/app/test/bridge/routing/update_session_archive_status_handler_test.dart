@@ -7,10 +7,12 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/update_session_archive_status_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_archive_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -24,6 +26,7 @@ void main() {
     late AppDatabase db;
     late FakeBridgePlugin plugin;
     late _FakeWorktreeService worktreeService;
+    late SessionUnseenService unseenService;
     late UpdateSessionArchiveStatusHandler handler;
 
     setUp(() {
@@ -37,6 +40,7 @@ void main() {
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
         ),
+        unseenCalculator: const SessionUnseenCalculator(),
       );
       handler = UpdateSessionArchiveStatusHandler(
         sessionArchiveService: SessionArchiveService(
@@ -49,6 +53,7 @@ void main() {
             pluginId: "opencode",
           ),
         ),
+        sessionUnseenService: unseenService = buildTestSessionUnseenService(db, plugin),
       );
     });
 
@@ -145,6 +150,53 @@ void main() {
       expect(result.id, equals("s1"));
       expect(result.time?.archived, equals(persisted?.archivedAt));
       expect(result.pullRequest?.number, equals(21));
+    });
+
+    test("archiving an already-archived session emits no unseen change", () async {
+      await _insertSession(
+        db: db,
+        sessionId: "s1",
+        projectId: "/repo",
+        isDedicated: true,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        archivedAt: 12345,
+        baseCommit: null,
+      );
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "/repo",
+          directory: "/repo",
+          parentID: null,
+          title: "Session 1",
+          time: PluginSessionTime(created: 10, updated: 20, archived: 12345),
+          summary: null,
+        ),
+      ];
+
+      final emitted = <UnseenChange>[];
+      final sub = unseenService.unseenChanges.listen(emitted.add);
+
+      await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s1",
+          archived: true,
+          deleteWorktree: false,
+          deleteBranch: false,
+          force: false,
+        ),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+      // Allow any fire-and-forget notify to run.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await sub.cancel();
+
+      expect(emitted, isEmpty);
     });
 
     test("archive with cleanup on clean worktree removes worktree", () async {

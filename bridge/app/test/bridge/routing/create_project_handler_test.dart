@@ -7,6 +7,7 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/create_project_handler.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
@@ -49,6 +50,7 @@ void main() {
           plugin: plugin,
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
+          unseenCalculator: const SessionUnseenCalculator(),
         ),
       );
       tempDir = await Directory.systemTemp.createTemp("create-project-handler-test-");

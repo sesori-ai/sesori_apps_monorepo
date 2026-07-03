@@ -26,7 +26,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -114,6 +114,15 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastAgentModel);
       },
       from6To7: (m, schema) async {
+        // Unseen-changes tracking. All three columns are nullable and default
+        // to NULL, which the unseen calculator treats as 0 — so every existing
+        // session is baseline-"seen" (unseen = activity > max(userMessage,
+        // seen) == 0 > 0 == false) until new activity arrives.
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastActivityAt);
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastSeenAt);
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastUserMessageAt);
+      },
+      from7To8: (m, schema) async {
         // Bridge-owned project metadata for derive-style plugins. Every project
         // id ever persisted has been the project's directory path, so `path`
         // backfills straight from it; `openedAt` is backfilled with the

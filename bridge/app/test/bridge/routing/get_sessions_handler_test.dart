@@ -3,8 +3,10 @@ import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/get_sessions_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -21,6 +23,7 @@ void main() {
     late FakeSessionRepository sessionRepository;
     late AppDatabase db;
     late SessionPersistenceService sessionPersistenceService;
+    late SessionUnseenService unseenService;
     late GetSessionsHandler handler;
 
     setUp(() {
@@ -40,10 +43,12 @@ void main() {
         db: db,
         pluginId: "opencode",
       );
+      unseenService = buildTestSessionUnseenService(db, plugin);
       handler = GetSessionsHandler(
         sessionRepository: sessionRepository,
         prSyncService: prSyncService,
         sessionPersistenceService: sessionPersistenceService,
+        sessionUnseenService: unseenService,
       );
     });
 
@@ -145,6 +150,53 @@ void main() {
       expect(sessionRepository.getSessionsCallCount, equals(1));
       expect(sessionRepository.lastGetSessionsArgs, equals((projectId: "project-1", start: 2, limit: 3)));
       expect(result.items.map((session) => session.id), equals(["s1", "s2", "s3"]));
+    });
+
+    test("emits an unseen change for rows deleted by a complete-list refresh", () async {
+      // A stale row exists in the DB for a session the backend no longer has.
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]);
+      await db.sessionDao.insertSession(
+        pluginId: "opencode",
+        sessionId: "gone",
+        projectId: "project-1",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+      // The authoritative (unpaginated) fetch returns only s1.
+      plugin.sessionsResult = const [
+        PluginSession(
+          id: "s1",
+          projectID: "project-1",
+          directory: "/tmp/project-1",
+          parentID: null,
+          title: null,
+          time: PluginSessionTime(created: 10, updated: 10, archived: null),
+          summary: null,
+        ),
+      ];
+
+      final emitted = <UnseenChange>[];
+      final sub = unseenService.unseenChanges.listen(emitted.add);
+
+      await handler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+      // Allow the fire-and-forget notify to run.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await sub.cancel();
+
+      expect(emitted.map((e) => e.sessionId), contains("gone"));
+      expect(emitted.where((e) => e.sessionId == "gone").single.unseen, isFalse);
     });
 
     test("persists sessions after successful fetch", () async {
@@ -348,6 +400,9 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
           createdAt: 100,
+          lastActivityAt: null,
+          lastSeenAt: null,
+          lastUserMessageAt: null,
         ),
       );
 
@@ -419,6 +474,9 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
           createdAt: 100,
+          lastActivityAt: null,
+          lastSeenAt: null,
+          lastUserMessageAt: null,
         ),
       );
 
@@ -481,6 +539,9 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
           createdAt: 100,
+          lastActivityAt: null,
+          lastSeenAt: null,
+          lastUserMessageAt: null,
         ),
       );
       sessionDao.setSession(
@@ -497,6 +558,9 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
           createdAt: 100,
+          lastActivityAt: null,
+          lastSeenAt: null,
+          lastUserMessageAt: null,
         ),
       );
 
@@ -541,6 +605,9 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
           createdAt: 100,
+          lastActivityAt: null,
+          lastSeenAt: null,
+          lastUserMessageAt: null,
         ),
       );
 
@@ -582,6 +649,9 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
           createdAt: 100,
+          lastActivityAt: null,
+          lastSeenAt: null,
+          lastUserMessageAt: null,
         ),
       );
 
@@ -677,9 +747,11 @@ void main() {
             pullRequestDao: db.pullRequestDao,
             projectsDao: db.projectsDao,
           ),
+          unseenCalculator: const SessionUnseenCalculator(),
         ),
         prSyncService: prSyncService,
         sessionPersistenceService: sessionPersistenceService,
+        sessionUnseenService: buildTestSessionUnseenService(db, plugin),
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
@@ -887,6 +959,7 @@ void main() {
         sessionRepository: sessionRepository,
         prSyncService: slowPrSyncService,
         sessionPersistenceService: sessionPersistenceService,
+        sessionUnseenService: buildTestSessionUnseenService(db, plugin),
         prRefreshTimeout: const Duration(milliseconds: 50),
       );
 
@@ -936,6 +1009,7 @@ void main() {
         sessionRepository: sessionRepository,
         prSyncService: fastPrSyncService,
         sessionPersistenceService: sessionPersistenceService,
+        sessionUnseenService: buildTestSessionUnseenService(db, plugin),
       );
 
       final result = await enrichedHandler.handle(

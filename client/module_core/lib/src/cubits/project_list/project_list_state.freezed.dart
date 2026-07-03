@@ -78,7 +78,7 @@ String toString() {
 
 
 class ProjectListLoaded implements ProjectListState {
-  const ProjectListLoaded({required final  List<Project> projects, required final  Map<String, int> activityById, this.isRefreshing = false}): _projects = projects,_activityById = activityById;
+  const ProjectListLoaded({required final  List<Project> projects, required final  Map<String, int> activityById, final  Map<String, bool> unseenByProjectId = const {}, this.isRefreshing = false}): _projects = projects,_activityById = activityById,_unseenByProjectId = unseenByProjectId;
   
 
  final  List<Project> _projects;
@@ -95,6 +95,19 @@ class ProjectListLoaded implements ProjectListState {
   return EqualUnmodifiableMapView(_activityById);
 }
 
+/// Map of project ID -> whether it has unseen changes (bold title). Merges
+/// the REST-seeded `Project.hasUnseenChanges` with live
+/// `SesoriSessionUnseenChanged` updates, the latter taking precedence.
+ final  Map<String, bool> _unseenByProjectId;
+/// Map of project ID -> whether it has unseen changes (bold title). Merges
+/// the REST-seeded `Project.hasUnseenChanges` with live
+/// `SesoriSessionUnseenChanged` updates, the latter taking precedence.
+@JsonKey() Map<String, bool> get unseenByProjectId {
+  if (_unseenByProjectId is EqualUnmodifiableMapView) return _unseenByProjectId;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(_unseenByProjectId);
+}
+
 @JsonKey() final  bool isRefreshing;
 
 /// Create a copy of ProjectListState
@@ -107,16 +120,16 @@ $ProjectListLoadedCopyWith<ProjectListLoaded> get copyWith => _$ProjectListLoade
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListLoaded&&const DeepCollectionEquality().equals(other._projects, _projects)&&const DeepCollectionEquality().equals(other._activityById, _activityById)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListLoaded&&const DeepCollectionEquality().equals(other._projects, _projects)&&const DeepCollectionEquality().equals(other._activityById, _activityById)&&const DeepCollectionEquality().equals(other._unseenByProjectId, _unseenByProjectId)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_projects),const DeepCollectionEquality().hash(_activityById),isRefreshing);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_projects),const DeepCollectionEquality().hash(_activityById),const DeepCollectionEquality().hash(_unseenByProjectId),isRefreshing);
 
 @override
 String toString() {
-  return 'ProjectListState.loaded(projects: $projects, activityById: $activityById, isRefreshing: $isRefreshing)';
+  return 'ProjectListState.loaded(projects: $projects, activityById: $activityById, unseenByProjectId: $unseenByProjectId, isRefreshing: $isRefreshing)';
 }
 
 
@@ -127,7 +140,7 @@ abstract mixin class $ProjectListLoadedCopyWith<$Res> implements $ProjectListSta
   factory $ProjectListLoadedCopyWith(ProjectListLoaded value, $Res Function(ProjectListLoaded) _then) = _$ProjectListLoadedCopyWithImpl;
 @useResult
 $Res call({
- List<Project> projects, Map<String, int> activityById, bool isRefreshing
+ List<Project> projects, Map<String, int> activityById, Map<String, bool> unseenByProjectId, bool isRefreshing
 });
 
 
@@ -144,11 +157,12 @@ class _$ProjectListLoadedCopyWithImpl<$Res>
 
 /// Create a copy of ProjectListState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? projects = null,Object? activityById = null,Object? isRefreshing = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? projects = null,Object? activityById = null,Object? unseenByProjectId = null,Object? isRefreshing = null,}) {
   return _then(ProjectListLoaded(
 projects: null == projects ? _self._projects : projects // ignore: cast_nullable_to_non_nullable
 as List<Project>,activityById: null == activityById ? _self._activityById : activityById // ignore: cast_nullable_to_non_nullable
-as Map<String, int>,isRefreshing: null == isRefreshing ? _self.isRefreshing : isRefreshing // ignore: cast_nullable_to_non_nullable
+as Map<String, int>,unseenByProjectId: null == unseenByProjectId ? _self._unseenByProjectId : unseenByProjectId // ignore: cast_nullable_to_non_nullable
+as Map<String, bool>,isRefreshing: null == isRefreshing ? _self.isRefreshing : isRefreshing // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }

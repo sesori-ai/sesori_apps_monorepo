@@ -14,6 +14,7 @@ import 'generated/schema_v4.dart' as v4;
 import 'generated/schema_v5.dart' as v5;
 import 'generated/schema_v6.dart' as v6;
 import 'generated/schema_v7.dart' as v7;
+import 'generated/schema_v8.dart' as v8;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -596,6 +597,107 @@ void main() {
     },
   );
 
+  test('migration v6 → v7 structural validation', () async {
+    final connection = await verifier.startAt(6);
+    final db = AppDatabase(connection);
+
+    await verifier.migrateAndValidate(db, 7);
+    await db.close();
+  });
+
+  test(
+    'migration v6 → v7 preserves sessions and defaults unseen fields to null',
+    () async {
+      const oldProjectsTableData = [
+        v6.ProjectsTableData(
+          projectId: 'project-1',
+          hidden: 0,
+          baseBranch: 'main',
+          worktreeCounter: 2,
+        ),
+      ];
+      const oldSessionsTableData = [
+        v6.SessionsTableData(
+          sessionId: 'session-1',
+          projectId: 'project-1',
+          worktreePath: '/tmp/worktrees/session-1',
+          branchName: 'feat/one',
+          isDedicated: 1,
+          archivedAt: null,
+          baseBranch: 'main',
+          baseCommit: 'abc123',
+          lastAgent: 'build',
+          lastAgentModel: 'anthropic|claude',
+          createdAt: 1700000000000,
+        ),
+        v6.SessionsTableData(
+          sessionId: 'session-2',
+          projectId: 'project-1',
+          worktreePath: null,
+          branchName: null,
+          isDedicated: 0,
+          archivedAt: 1700000001000,
+          baseBranch: null,
+          baseCommit: null,
+          lastAgent: null,
+          lastAgentModel: null,
+          createdAt: 1700000002000,
+        ),
+      ];
+
+      await verifier.testWithDataIntegrity(
+        oldVersion: 6,
+        newVersion: 7,
+        createOld: v6.DatabaseAtV6.new,
+        createNew: v7.DatabaseAtV7.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, oldDb) {
+          batch.insertAll(oldDb.projectsTable, oldProjectsTableData);
+          batch.insertAll(oldDb.sessionsTable, oldSessionsTableData);
+        },
+        validateItems: (newDb) async {
+          expect(
+            await newDb.select(newDb.sessionsTable).get(),
+            unorderedEquals(const [
+              v7.SessionsTableData(
+                sessionId: 'session-1',
+                projectId: 'project-1',
+                worktreePath: '/tmp/worktrees/session-1',
+                branchName: 'feat/one',
+                isDedicated: 1,
+                archivedAt: null,
+                baseBranch: 'main',
+                baseCommit: 'abc123',
+                lastAgent: 'build',
+                lastAgentModel: 'anthropic|claude',
+                createdAt: 1700000000000,
+                lastActivityAt: null,
+                lastSeenAt: null,
+                lastUserMessageAt: null,
+              ),
+              v7.SessionsTableData(
+                sessionId: 'session-2',
+                projectId: 'project-1',
+                worktreePath: null,
+                branchName: null,
+                isDedicated: 0,
+                archivedAt: 1700000001000,
+                baseBranch: null,
+                baseCommit: null,
+                lastAgent: null,
+                lastAgentModel: null,
+                createdAt: 1700000002000,
+                lastActivityAt: null,
+                lastSeenAt: null,
+                lastUserMessageAt: null,
+              ),
+            ]),
+          );
+        },
+      );
+    },
+  );
+
   test(
     'deleting a project on the current schema cascades to sessions and PRs',
     () async {
@@ -674,19 +776,19 @@ void main() {
     },
   );
 
-  test('migration v6 → v7 structural validation', () async {
-    final connection = await verifier.startAt(6);
+  test('migration v7 → v8 structural validation', () async {
+    final connection = await verifier.startAt(7);
     final db = AppDatabase(connection);
 
-    await verifier.migrateAndValidate(db, 7);
+    await verifier.migrateAndValidate(db, 8);
     await db.close();
   });
 
   test(
-    'migration v6 → v7 backfills path from projectId, openedAt with now, and pluginId with opencode',
+    'migration v7 → v8 backfills path from projectId, openedAt with now, and pluginId with opencode',
     () async {
       const oldProjectsTableData = [
-        v6.ProjectsTableData(
+        v7.ProjectsTableData(
           projectId: 'project-1',
           hidden: 0,
           baseBranch: 'main',
@@ -694,7 +796,7 @@ void main() {
         ),
       ];
       const oldSessionsTableData = [
-        v6.SessionsTableData(
+        v7.SessionsTableData(
           sessionId: 'session-1',
           projectId: 'project-1',
           worktreePath: '/tmp/worktrees/session-1',
@@ -706,15 +808,18 @@ void main() {
           lastAgent: null,
           lastAgentModel: null,
           createdAt: 1700000000000,
+          lastActivityAt: 1700000005000,
+          lastSeenAt: 1700000006000,
+          lastUserMessageAt: 1700000004000,
         ),
       ];
       final beforeMigrationMs = DateTime.now().millisecondsSinceEpoch;
 
       await verifier.testWithDataIntegrity(
-        oldVersion: 6,
-        newVersion: 7,
-        createOld: v6.DatabaseAtV6.new,
-        createNew: v7.DatabaseAtV7.new,
+        oldVersion: 7,
+        newVersion: 8,
+        createOld: v7.DatabaseAtV7.new,
+        createNew: v8.DatabaseAtV8.new,
         openTestedDatabase: AppDatabase.new,
         createItems: (batch, oldDb) {
           batch.insertAll(oldDb.projectsTable, oldProjectsTableData);
@@ -738,11 +843,12 @@ void main() {
             project.openedAt,
             lessThanOrEqualTo(DateTime.now().millisecondsSinceEpoch),
           );
-          // The pre-existing session is backfilled to the opencode plugin.
+          // The pre-existing session is backfilled to the opencode plugin; the
+          // unseen-tracking timestamps survive the table rebuild.
           expect(
             await newDb.select(newDb.sessionsTable).get(),
             const [
-              v7.SessionsTableData(
+              v8.SessionsTableData(
                 sessionId: 'session-1',
                 projectId: 'project-1',
                 worktreePath: '/tmp/worktrees/session-1',
@@ -754,6 +860,9 @@ void main() {
                 lastAgent: null,
                 lastAgentModel: null,
                 createdAt: 1700000000000,
+                lastActivityAt: 1700000005000,
+                lastSeenAt: 1700000006000,
+                lastUserMessageAt: 1700000004000,
                 pluginId: 'opencode',
               ),
             ],
@@ -777,7 +886,7 @@ Future<AppDatabase> _migrateFromV4({required SchemaVerifier verifier}) async {
   final db = AppDatabase(connection);
   await verifier.migrateAndValidate(
     db,
-    7,
+    8,
     options: const ValidationOptions(validateDropped: true),
   );
   return db;

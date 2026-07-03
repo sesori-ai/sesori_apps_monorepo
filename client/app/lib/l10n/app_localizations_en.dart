@@ -76,7 +76,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsOnboardingPcStatusRun => 'Run Sesori on your PC';
 
   @override
-  String get projectsOnboardingPcStatusWhy => 'Why is this needed?';
+  String get projectsOnboardingNeedHelp => 'Need help?';
+
+  @override
+  String get projectsOnboardingNeedHelpEmail => 'Email';
+
+  @override
+  String get projectsOnboardingNeedHelpDiscord => 'Discord';
+
+  @override
+  String get projectsOnboardingNeedHelpX => 'DM on X';
 
   @override
   String get projectsOnboardingInstallUnixLabel => 'macOS, Linux, WSL';
@@ -376,6 +385,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionListUnarchive => 'Unarchive';
+
+  @override
+  String get sessionListMarkRead => 'Mark as read';
+
+  @override
+  String get sessionListMarkUnread => 'Mark as unread';
 
   @override
   String get sessionListDelete => 'Delete';

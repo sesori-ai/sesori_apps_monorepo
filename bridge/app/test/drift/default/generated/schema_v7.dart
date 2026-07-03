@@ -6,26 +6,18 @@ import 'package:drift/drift.dart';
 
 mixin ProjectsTableToColumns implements Insertable<ProjectsTableData> {
   String get projectId;
-  String get path;
   int get hidden;
   String? get baseBranch;
   int get worktreeCounter;
-  String? get displayName;
-  int get openedAt;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['project_id'] = Variable<String>(projectId);
-    map['path'] = Variable<String>(path);
     map['hidden'] = Variable<int>(hidden);
     if (!nullToAbsent || baseBranch != null) {
       map['base_branch'] = Variable<String>(baseBranch);
     }
     map['worktree_counter'] = Variable<int>(worktreeCounter);
-    if (!nullToAbsent || displayName != null) {
-      map['display_name'] = Variable<String>(displayName);
-    }
-    map['opened_at'] = Variable<int>(openedAt);
     return map;
   }
 }
@@ -38,14 +30,6 @@ class ProjectsTable extends Table
   ProjectsTable(this.attachedDatabase, [this._alias]);
   late final GeneratedColumn<String> projectId = GeneratedColumn<String>(
     'project_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-    $customConstraints: 'NOT NULL',
-  );
-  late final GeneratedColumn<String> path = GeneratedColumn<String>(
-    'path',
     aliasedName,
     false,
     type: DriftSqlType.string,
@@ -78,31 +62,12 @@ class ProjectsTable extends Table
     $customConstraints: 'NOT NULL DEFAULT 0',
     defaultValue: const CustomExpression('0'),
   );
-  late final GeneratedColumn<String> displayName = GeneratedColumn<String>(
-    'display_name',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    $customConstraints: 'NULL',
-  );
-  late final GeneratedColumn<int> openedAt = GeneratedColumn<int>(
-    'opened_at',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-    $customConstraints: 'NOT NULL',
-  );
   @override
   List<GeneratedColumn> get $columns => [
     projectId,
-    path,
     hidden,
     baseBranch,
     worktreeCounter,
-    displayName,
-    openedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -119,10 +84,6 @@ class ProjectsTable extends Table
         DriftSqlType.string,
         data['${effectivePrefix}project_id'],
       )!,
-      path: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}path'],
-      )!,
       hidden: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}hidden'],
@@ -134,14 +95,6 @@ class ProjectsTable extends Table
       worktreeCounter: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}worktree_counter'],
-      )!,
-      displayName: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}display_name'],
-      ),
-      openedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}opened_at'],
       )!,
     );
   }
@@ -163,39 +116,25 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
   @override
   final String projectId;
   @override
-  final String path;
-  @override
   final int hidden;
   @override
   final String? baseBranch;
   @override
   final int worktreeCounter;
-  @override
-  final String? displayName;
-  @override
-  final int openedAt;
   const ProjectsTableData({
     required this.projectId,
-    required this.path,
     required this.hidden,
     this.baseBranch,
     required this.worktreeCounter,
-    this.displayName,
-    required this.openedAt,
   });
   ProjectsTableCompanion toCompanion(bool nullToAbsent) {
     return ProjectsTableCompanion(
       projectId: Value(projectId),
-      path: Value(path),
       hidden: Value(hidden),
       baseBranch: baseBranch == null && nullToAbsent
           ? const Value.absent()
           : Value(baseBranch),
       worktreeCounter: Value(worktreeCounter),
-      displayName: displayName == null && nullToAbsent
-          ? const Value.absent()
-          : Value(displayName),
-      openedAt: Value(openedAt),
     );
   }
 
@@ -206,12 +145,9 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return ProjectsTableData(
       projectId: serializer.fromJson<String>(json['projectId']),
-      path: serializer.fromJson<String>(json['path']),
       hidden: serializer.fromJson<int>(json['hidden']),
       baseBranch: serializer.fromJson<String?>(json['baseBranch']),
       worktreeCounter: serializer.fromJson<int>(json['worktreeCounter']),
-      displayName: serializer.fromJson<String?>(json['displayName']),
-      openedAt: serializer.fromJson<int>(json['openedAt']),
     );
   }
   @override
@@ -219,36 +155,26 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'projectId': serializer.toJson<String>(projectId),
-      'path': serializer.toJson<String>(path),
       'hidden': serializer.toJson<int>(hidden),
       'baseBranch': serializer.toJson<String?>(baseBranch),
       'worktreeCounter': serializer.toJson<int>(worktreeCounter),
-      'displayName': serializer.toJson<String?>(displayName),
-      'openedAt': serializer.toJson<int>(openedAt),
     };
   }
 
   ProjectsTableData copyWith({
     String? projectId,
-    String? path,
     int? hidden,
     Value<String?> baseBranch = const Value.absent(),
     int? worktreeCounter,
-    Value<String?> displayName = const Value.absent(),
-    int? openedAt,
   }) => ProjectsTableData(
     projectId: projectId ?? this.projectId,
-    path: path ?? this.path,
     hidden: hidden ?? this.hidden,
     baseBranch: baseBranch.present ? baseBranch.value : this.baseBranch,
     worktreeCounter: worktreeCounter ?? this.worktreeCounter,
-    displayName: displayName.present ? displayName.value : this.displayName,
-    openedAt: openedAt ?? this.openedAt,
   );
   ProjectsTableData copyWithCompanion(ProjectsTableCompanion data) {
     return ProjectsTableData(
       projectId: data.projectId.present ? data.projectId.value : this.projectId,
-      path: data.path.present ? data.path.value : this.path,
       hidden: data.hidden.present ? data.hidden.value : this.hidden,
       baseBranch: data.baseBranch.present
           ? data.baseBranch.value
@@ -256,10 +182,6 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
       worktreeCounter: data.worktreeCounter.present
           ? data.worktreeCounter.value
           : this.worktreeCounter,
-      displayName: data.displayName.present
-          ? data.displayName.value
-          : this.displayName,
-      openedAt: data.openedAt.present ? data.openedAt.value : this.openedAt,
     );
   }
 
@@ -267,104 +189,68 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
   String toString() {
     return (StringBuffer('ProjectsTableData(')
           ..write('projectId: $projectId, ')
-          ..write('path: $path, ')
           ..write('hidden: $hidden, ')
           ..write('baseBranch: $baseBranch, ')
-          ..write('worktreeCounter: $worktreeCounter, ')
-          ..write('displayName: $displayName, ')
-          ..write('openedAt: $openedAt')
+          ..write('worktreeCounter: $worktreeCounter')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-    projectId,
-    path,
-    hidden,
-    baseBranch,
-    worktreeCounter,
-    displayName,
-    openedAt,
-  );
+  int get hashCode =>
+      Object.hash(projectId, hidden, baseBranch, worktreeCounter);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is ProjectsTableData &&
           other.projectId == this.projectId &&
-          other.path == this.path &&
           other.hidden == this.hidden &&
           other.baseBranch == this.baseBranch &&
-          other.worktreeCounter == this.worktreeCounter &&
-          other.displayName == this.displayName &&
-          other.openedAt == this.openedAt);
+          other.worktreeCounter == this.worktreeCounter);
 }
 
 class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
   final Value<String> projectId;
-  final Value<String> path;
   final Value<int> hidden;
   final Value<String?> baseBranch;
   final Value<int> worktreeCounter;
-  final Value<String?> displayName;
-  final Value<int> openedAt;
   const ProjectsTableCompanion({
     this.projectId = const Value.absent(),
-    this.path = const Value.absent(),
     this.hidden = const Value.absent(),
     this.baseBranch = const Value.absent(),
     this.worktreeCounter = const Value.absent(),
-    this.displayName = const Value.absent(),
-    this.openedAt = const Value.absent(),
   });
   ProjectsTableCompanion.insert({
     required String projectId,
-    required String path,
     this.hidden = const Value.absent(),
     this.baseBranch = const Value.absent(),
     this.worktreeCounter = const Value.absent(),
-    this.displayName = const Value.absent(),
-    required int openedAt,
-  }) : projectId = Value(projectId),
-       path = Value(path),
-       openedAt = Value(openedAt);
+  }) : projectId = Value(projectId);
   static Insertable<ProjectsTableData> custom({
     Expression<String>? projectId,
-    Expression<String>? path,
     Expression<int>? hidden,
     Expression<String>? baseBranch,
     Expression<int>? worktreeCounter,
-    Expression<String>? displayName,
-    Expression<int>? openedAt,
   }) {
     return RawValuesInsertable({
       if (projectId != null) 'project_id': projectId,
-      if (path != null) 'path': path,
       if (hidden != null) 'hidden': hidden,
       if (baseBranch != null) 'base_branch': baseBranch,
       if (worktreeCounter != null) 'worktree_counter': worktreeCounter,
-      if (displayName != null) 'display_name': displayName,
-      if (openedAt != null) 'opened_at': openedAt,
     });
   }
 
   ProjectsTableCompanion copyWith({
     Value<String>? projectId,
-    Value<String>? path,
     Value<int>? hidden,
     Value<String?>? baseBranch,
     Value<int>? worktreeCounter,
-    Value<String?>? displayName,
-    Value<int>? openedAt,
   }) {
     return ProjectsTableCompanion(
       projectId: projectId ?? this.projectId,
-      path: path ?? this.path,
       hidden: hidden ?? this.hidden,
       baseBranch: baseBranch ?? this.baseBranch,
       worktreeCounter: worktreeCounter ?? this.worktreeCounter,
-      displayName: displayName ?? this.displayName,
-      openedAt: openedAt ?? this.openedAt,
     );
   }
 
@@ -373,9 +259,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
     final map = <String, Expression>{};
     if (projectId.present) {
       map['project_id'] = Variable<String>(projectId.value);
-    }
-    if (path.present) {
-      map['path'] = Variable<String>(path.value);
     }
     if (hidden.present) {
       map['hidden'] = Variable<int>(hidden.value);
@@ -386,12 +269,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
     if (worktreeCounter.present) {
       map['worktree_counter'] = Variable<int>(worktreeCounter.value);
     }
-    if (displayName.present) {
-      map['display_name'] = Variable<String>(displayName.value);
-    }
-    if (openedAt.present) {
-      map['opened_at'] = Variable<int>(openedAt.value);
-    }
     return map;
   }
 
@@ -399,12 +276,9 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
   String toString() {
     return (StringBuffer('ProjectsTableCompanion(')
           ..write('projectId: $projectId, ')
-          ..write('path: $path, ')
           ..write('hidden: $hidden, ')
           ..write('baseBranch: $baseBranch, ')
-          ..write('worktreeCounter: $worktreeCounter, ')
-          ..write('displayName: $displayName, ')
-          ..write('openedAt: $openedAt')
+          ..write('worktreeCounter: $worktreeCounter')
           ..write(')'))
         .toString();
   }
@@ -422,7 +296,9 @@ mixin SessionsTableToColumns implements Insertable<SessionsTableData> {
   String? get lastAgent;
   String? get lastAgentModel;
   int get createdAt;
-  String get pluginId;
+  int? get lastActivityAt;
+  int? get lastSeenAt;
+  int? get lastUserMessageAt;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -451,7 +327,15 @@ mixin SessionsTableToColumns implements Insertable<SessionsTableData> {
       map['last_agent_model'] = Variable<String>(lastAgentModel);
     }
     map['created_at'] = Variable<int>(createdAt);
-    map['plugin_id'] = Variable<String>(pluginId);
+    if (!nullToAbsent || lastActivityAt != null) {
+      map['last_activity_at'] = Variable<int>(lastActivityAt);
+    }
+    if (!nullToAbsent || lastSeenAt != null) {
+      map['last_seen_at'] = Variable<int>(lastSeenAt);
+    }
+    if (!nullToAbsent || lastUserMessageAt != null) {
+      map['last_user_message_at'] = Variable<int>(lastUserMessageAt);
+    }
     return map;
   }
 }
@@ -551,13 +435,29 @@ class SessionsTable extends Table
     requiredDuringInsert: true,
     $customConstraints: 'NOT NULL',
   );
-  late final GeneratedColumn<String> pluginId = GeneratedColumn<String>(
-    'plugin_id',
+  late final GeneratedColumn<int> lastActivityAt = GeneratedColumn<int>(
+    'last_activity_at',
     aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-    $customConstraints: 'NOT NULL',
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: 'NULL',
+  );
+  late final GeneratedColumn<int> lastSeenAt = GeneratedColumn<int>(
+    'last_seen_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: 'NULL',
+  );
+  late final GeneratedColumn<int> lastUserMessageAt = GeneratedColumn<int>(
+    'last_user_message_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: 'NULL',
   );
   @override
   List<GeneratedColumn> get $columns => [
@@ -572,7 +472,9 @@ class SessionsTable extends Table
     lastAgent,
     lastAgentModel,
     createdAt,
-    pluginId,
+    lastActivityAt,
+    lastSeenAt,
+    lastUserMessageAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -629,10 +531,18 @@ class SessionsTable extends Table
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
       )!,
-      pluginId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}plugin_id'],
-      )!,
+      lastActivityAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_activity_at'],
+      ),
+      lastSeenAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_seen_at'],
+      ),
+      lastUserMessageAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_user_message_at'],
+      ),
     );
   }
 
@@ -673,7 +583,11 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
   @override
   final int createdAt;
   @override
-  final String pluginId;
+  final int? lastActivityAt;
+  @override
+  final int? lastSeenAt;
+  @override
+  final int? lastUserMessageAt;
   const SessionsTableData({
     required this.sessionId,
     required this.projectId,
@@ -686,7 +600,9 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
     this.lastAgent,
     this.lastAgentModel,
     required this.createdAt,
-    required this.pluginId,
+    this.lastActivityAt,
+    this.lastSeenAt,
+    this.lastUserMessageAt,
   });
   SessionsTableCompanion toCompanion(bool nullToAbsent) {
     return SessionsTableCompanion(
@@ -715,7 +631,15 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
           ? const Value.absent()
           : Value(lastAgentModel),
       createdAt: Value(createdAt),
-      pluginId: Value(pluginId),
+      lastActivityAt: lastActivityAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastActivityAt),
+      lastSeenAt: lastSeenAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSeenAt),
+      lastUserMessageAt: lastUserMessageAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastUserMessageAt),
     );
   }
 
@@ -736,7 +660,9 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
       lastAgent: serializer.fromJson<String?>(json['lastAgent']),
       lastAgentModel: serializer.fromJson<String?>(json['lastAgentModel']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
-      pluginId: serializer.fromJson<String>(json['pluginId']),
+      lastActivityAt: serializer.fromJson<int?>(json['lastActivityAt']),
+      lastSeenAt: serializer.fromJson<int?>(json['lastSeenAt']),
+      lastUserMessageAt: serializer.fromJson<int?>(json['lastUserMessageAt']),
     );
   }
   @override
@@ -754,7 +680,9 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
       'lastAgent': serializer.toJson<String?>(lastAgent),
       'lastAgentModel': serializer.toJson<String?>(lastAgentModel),
       'createdAt': serializer.toJson<int>(createdAt),
-      'pluginId': serializer.toJson<String>(pluginId),
+      'lastActivityAt': serializer.toJson<int?>(lastActivityAt),
+      'lastSeenAt': serializer.toJson<int?>(lastSeenAt),
+      'lastUserMessageAt': serializer.toJson<int?>(lastUserMessageAt),
     };
   }
 
@@ -770,7 +698,9 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
     Value<String?> lastAgent = const Value.absent(),
     Value<String?> lastAgentModel = const Value.absent(),
     int? createdAt,
-    String? pluginId,
+    Value<int?> lastActivityAt = const Value.absent(),
+    Value<int?> lastSeenAt = const Value.absent(),
+    Value<int?> lastUserMessageAt = const Value.absent(),
   }) => SessionsTableData(
     sessionId: sessionId ?? this.sessionId,
     projectId: projectId ?? this.projectId,
@@ -785,7 +715,13 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
         ? lastAgentModel.value
         : this.lastAgentModel,
     createdAt: createdAt ?? this.createdAt,
-    pluginId: pluginId ?? this.pluginId,
+    lastActivityAt: lastActivityAt.present
+        ? lastActivityAt.value
+        : this.lastActivityAt,
+    lastSeenAt: lastSeenAt.present ? lastSeenAt.value : this.lastSeenAt,
+    lastUserMessageAt: lastUserMessageAt.present
+        ? lastUserMessageAt.value
+        : this.lastUserMessageAt,
   );
   SessionsTableData copyWithCompanion(SessionsTableCompanion data) {
     return SessionsTableData(
@@ -814,7 +750,15 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
           ? data.lastAgentModel.value
           : this.lastAgentModel,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
-      pluginId: data.pluginId.present ? data.pluginId.value : this.pluginId,
+      lastActivityAt: data.lastActivityAt.present
+          ? data.lastActivityAt.value
+          : this.lastActivityAt,
+      lastSeenAt: data.lastSeenAt.present
+          ? data.lastSeenAt.value
+          : this.lastSeenAt,
+      lastUserMessageAt: data.lastUserMessageAt.present
+          ? data.lastUserMessageAt.value
+          : this.lastUserMessageAt,
     );
   }
 
@@ -832,7 +776,9 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
           ..write('lastAgent: $lastAgent, ')
           ..write('lastAgentModel: $lastAgentModel, ')
           ..write('createdAt: $createdAt, ')
-          ..write('pluginId: $pluginId')
+          ..write('lastActivityAt: $lastActivityAt, ')
+          ..write('lastSeenAt: $lastSeenAt, ')
+          ..write('lastUserMessageAt: $lastUserMessageAt')
           ..write(')'))
         .toString();
   }
@@ -850,7 +796,9 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
     lastAgent,
     lastAgentModel,
     createdAt,
-    pluginId,
+    lastActivityAt,
+    lastSeenAt,
+    lastUserMessageAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -867,7 +815,9 @@ class SessionsTableData extends DataClass with SessionsTableToColumns {
           other.lastAgent == this.lastAgent &&
           other.lastAgentModel == this.lastAgentModel &&
           other.createdAt == this.createdAt &&
-          other.pluginId == this.pluginId);
+          other.lastActivityAt == this.lastActivityAt &&
+          other.lastSeenAt == this.lastSeenAt &&
+          other.lastUserMessageAt == this.lastUserMessageAt);
 }
 
 class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
@@ -882,7 +832,9 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
   final Value<String?> lastAgent;
   final Value<String?> lastAgentModel;
   final Value<int> createdAt;
-  final Value<String> pluginId;
+  final Value<int?> lastActivityAt;
+  final Value<int?> lastSeenAt;
+  final Value<int?> lastUserMessageAt;
   const SessionsTableCompanion({
     this.sessionId = const Value.absent(),
     this.projectId = const Value.absent(),
@@ -895,7 +847,9 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     this.lastAgent = const Value.absent(),
     this.lastAgentModel = const Value.absent(),
     this.createdAt = const Value.absent(),
-    this.pluginId = const Value.absent(),
+    this.lastActivityAt = const Value.absent(),
+    this.lastSeenAt = const Value.absent(),
+    this.lastUserMessageAt = const Value.absent(),
   });
   SessionsTableCompanion.insert({
     required String sessionId,
@@ -909,12 +863,13 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     this.lastAgent = const Value.absent(),
     this.lastAgentModel = const Value.absent(),
     required int createdAt,
-    required String pluginId,
+    this.lastActivityAt = const Value.absent(),
+    this.lastSeenAt = const Value.absent(),
+    this.lastUserMessageAt = const Value.absent(),
   }) : sessionId = Value(sessionId),
        projectId = Value(projectId),
        isDedicated = Value(isDedicated),
-       createdAt = Value(createdAt),
-       pluginId = Value(pluginId);
+       createdAt = Value(createdAt);
   static Insertable<SessionsTableData> custom({
     Expression<String>? sessionId,
     Expression<String>? projectId,
@@ -927,7 +882,9 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     Expression<String>? lastAgent,
     Expression<String>? lastAgentModel,
     Expression<int>? createdAt,
-    Expression<String>? pluginId,
+    Expression<int>? lastActivityAt,
+    Expression<int>? lastSeenAt,
+    Expression<int>? lastUserMessageAt,
   }) {
     return RawValuesInsertable({
       if (sessionId != null) 'session_id': sessionId,
@@ -941,7 +898,9 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
       if (lastAgent != null) 'last_agent': lastAgent,
       if (lastAgentModel != null) 'last_agent_model': lastAgentModel,
       if (createdAt != null) 'created_at': createdAt,
-      if (pluginId != null) 'plugin_id': pluginId,
+      if (lastActivityAt != null) 'last_activity_at': lastActivityAt,
+      if (lastSeenAt != null) 'last_seen_at': lastSeenAt,
+      if (lastUserMessageAt != null) 'last_user_message_at': lastUserMessageAt,
     });
   }
 
@@ -957,7 +916,9 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     Value<String?>? lastAgent,
     Value<String?>? lastAgentModel,
     Value<int>? createdAt,
-    Value<String>? pluginId,
+    Value<int?>? lastActivityAt,
+    Value<int?>? lastSeenAt,
+    Value<int?>? lastUserMessageAt,
   }) {
     return SessionsTableCompanion(
       sessionId: sessionId ?? this.sessionId,
@@ -971,7 +932,9 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
       lastAgent: lastAgent ?? this.lastAgent,
       lastAgentModel: lastAgentModel ?? this.lastAgentModel,
       createdAt: createdAt ?? this.createdAt,
-      pluginId: pluginId ?? this.pluginId,
+      lastActivityAt: lastActivityAt ?? this.lastActivityAt,
+      lastSeenAt: lastSeenAt ?? this.lastSeenAt,
+      lastUserMessageAt: lastUserMessageAt ?? this.lastUserMessageAt,
     );
   }
 
@@ -1011,8 +974,14 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
-    if (pluginId.present) {
-      map['plugin_id'] = Variable<String>(pluginId.value);
+    if (lastActivityAt.present) {
+      map['last_activity_at'] = Variable<int>(lastActivityAt.value);
+    }
+    if (lastSeenAt.present) {
+      map['last_seen_at'] = Variable<int>(lastSeenAt.value);
+    }
+    if (lastUserMessageAt.present) {
+      map['last_user_message_at'] = Variable<int>(lastUserMessageAt.value);
     }
     return map;
   }
@@ -1031,7 +1000,9 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
           ..write('lastAgent: $lastAgent, ')
           ..write('lastAgentModel: $lastAgentModel, ')
           ..write('createdAt: $createdAt, ')
-          ..write('pluginId: $pluginId')
+          ..write('lastActivityAt: $lastActivityAt, ')
+          ..write('lastSeenAt: $lastSeenAt, ')
+          ..write('lastUserMessageAt: $lastUserMessageAt')
           ..write(')'))
         .toString();
   }

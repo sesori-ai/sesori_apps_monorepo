@@ -45,9 +45,21 @@
   "@projectsOnboardingPcStatusRun": {
     "description": "Secondary portion of the PC status line, rendered in the secondary text color."
   },
-  "projectsOnboardingPcStatusWhy": "Why is this needed?",
-  "@projectsOnboardingPcStatusWhy": {
-    "description": "Label for the secondary info button below the PC status line that explains why running Sesori on the PC is required."
+  "projectsOnboardingNeedHelp": "Need help?",
+  "@projectsOnboardingNeedHelp": {
+    "description": "Label for the glass pill button below the PC status line that opens a menu of support channels."
+  },
+  "projectsOnboardingNeedHelpEmail": "Email",
+  "@projectsOnboardingNeedHelpEmail": {
+    "description": "Need-help menu item that opens the user's mail app to contact support."
+  },
+  "projectsOnboardingNeedHelpDiscord": "Discord",
+  "@projectsOnboardingNeedHelpDiscord": {
+    "description": "Need-help menu item that opens the Sesori Discord. 'Discord' is a brand name; do not translate."
+  },
+  "projectsOnboardingNeedHelpX": "DM on X",
+  "@projectsOnboardingNeedHelpX": {
+    "description": "Need-help menu item that opens the Sesori profile on X (formerly Twitter), where users can send a direct message. 'X' is a brand name; do not translate."
   },
   "projectsOnboardingInstallUnixLabel": "macOS, Linux, WSL",
   "@projectsOnboardingInstallUnixLabel": {
@@ -225,6 +237,8 @@
   "sessionListEmptyArchived": "No archived sessions",
   "sessionListArchive": "Archive",
   "sessionListUnarchive": "Unarchive",
+  "sessionListMarkRead": "Mark as read",
+  "sessionListMarkUnread": "Mark as unread",
   "sessionListDelete": "Delete",
   "sessionListArchived": "Session archived",
   "sessionListUnarchived": "Session unarchived",

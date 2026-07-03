@@ -14,6 +14,7 @@ import "mappers/prompt_part_mapper.dart";
 import "mappers/pull_request_mapper.dart";
 import "models/stored_session.dart";
 import "pull_request_repository.dart";
+import "session_unseen_calculator.dart";
 
 class SessionRepository {
   static const DerivedSessionBuilder _derivedSessionBuilder = DerivedSessionBuilder();
@@ -21,14 +22,17 @@ class SessionRepository {
   final BridgePluginApi _plugin;
   final SessionDao _sessionDao;
   final PullRequestRepository _pullRequestRepository;
+  final SessionUnseenCalculator _unseenCalculator;
 
   SessionRepository({
     required BridgePluginApi plugin,
     required SessionDao sessionDao,
     required PullRequestRepository pullRequestRepository,
+    required SessionUnseenCalculator unseenCalculator,
   }) : _plugin = plugin,
        _sessionDao = sessionDao,
-       _pullRequestRepository = pullRequestRepository;
+       _pullRequestRepository = pullRequestRepository,
+       _unseenCalculator = unseenCalculator;
 
   Future<List<Session>> getSessionsForProject({
     required String projectId,
@@ -246,6 +250,7 @@ class SessionRepository {
       sessions: sessions,
       storedSessionsById: dbSessions,
       pullRequestsBySessionId: pullRequestsBySessionId,
+      unseenCalculator: _unseenCalculator,
     );
   }
 

@@ -7,6 +7,10 @@ class SessionListActionDispatcher {
     final loc = context.loc;
     final cubit = context.read<SessionListCubit>();
     final isArchived = session.time?.archived != null;
+    final state = cubit.state;
+    final isUnseen = state is SessionListLoaded
+        ? (state.unseenBySessionId[session.id] ?? session.unseen)
+        : session.unseen;
 
     showAppModalBottomSheet<void>(
       context: context,
@@ -24,6 +28,14 @@ class SessionListActionDispatcher {
                   session: session,
                   cubit: cubit,
                 );
+              },
+            ),
+            ListTile(
+              leading: Icon(isUnseen ? Icons.mark_email_read_outlined : Icons.mark_email_unread_outlined),
+              title: Text(isUnseen ? loc.sessionListMarkRead : loc.sessionListMarkUnread),
+              onTap: () {
+                sheetContext.pop();
+                unawaited(cubit.markSessionSeen(sessionId: session.id, read: isUnseen));
               },
             ),
             ListTile(

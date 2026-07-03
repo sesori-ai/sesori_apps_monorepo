@@ -7,7 +7,8 @@ import "request_handler.dart";
 ///
 /// Routes through [ProjectRepository] (not the plugin) so the bridge-derived
 /// path can persist a display-name override while the native path still
-/// delegates the rename to the backend.
+/// delegates the rename to the backend; the repository also stamps the
+/// project's unseen state on the returned model.
 class RenameProjectHandler extends BodyRequestHandler<RenameProjectRequest, Project> {
   final ProjectRepository _projectRepository;
 

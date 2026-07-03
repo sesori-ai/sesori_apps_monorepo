@@ -15,6 +15,7 @@ import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
 import "../../routing/app_routes.dart";
 import "../../services/registered_bridges_service.dart";
+import "../../services/session_unseen_tracker.dart";
 import "add_project_outcome.dart";
 import "project_list_state.dart";
 
@@ -30,6 +31,7 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   final ProjectService _projectService;
   final ConnectionService _connectionService;
   final SseEventRepository _sseEventRepository;
+  final SessionUnseenTracker _sessionUnseenTracker;
   final RegisteredBridgesService _registeredBridgesService;
   final FailureReporter _failureReporter;
   final CompositeSubscription _subscriptions = CompositeSubscription();
@@ -40,11 +42,13 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     ConnectionService connectionService,
     SseEventRepository sseEventRepository,
     RouteSource routeSource, {
+    required SessionUnseenTracker sessionUnseenTracker,
     required RegisteredBridgesService registeredBridgesService,
     required FailureReporter failureReporter,
   }) : _projectService = projectService,
        _connectionService = connectionService,
        _sseEventRepository = sseEventRepository,
+       _sessionUnseenTracker = sessionUnseenTracker,
        _registeredBridgesService = registeredBridgesService,
        _failureReporter = failureReporter,
        super(const ProjectListState.loading()) {
@@ -53,6 +57,11 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     // 1. Immediate activity badge updates (no API call).
     _subscriptions.add(
       _sseEventRepository.projectActivity.listen(_onActivityUpdated),
+    );
+
+    // 1b. Immediate unseen (bold) updates (no API call).
+    _subscriptions.add(
+      _sessionUnseenTracker.projectUnseen.listen((_) => _onUnseenUpdated()),
     );
 
     // 2. Auto-refresh: throttled project data fetch, active only while the
@@ -105,16 +114,27 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     _connectionService.setActiveDirectory(project.id);
   }
 
+  void _onUnseenUpdated() {
+    if (isClosed) return;
+    if (state case final ProjectListLoaded loaded) {
+      emit(loaded.copyWith(unseenByProjectId: _unseenByProjectId(loaded.projects)));
+    }
+  }
+
+  /// Merges the REST-loaded `Project.hasUnseenChanges` with the live tracker
+  /// map (the tracker takes precedence once it has an entry).
+  Map<String, bool> _unseenByProjectId(List<Project> projects) {
+    final live = _sessionUnseenTracker.currentProjectUnseen;
+    return {
+      for (final project in projects) project.id: live[project.id] ?? project.hasUnseenChanges,
+    };
+  }
+
   void _onActivityUpdated(Map<String, int> activityById) {
     try {
       if (state case final ProjectListLoaded loaded) {
         if (isClosed) return;
-        emit(
-          ProjectListState.loaded(
-            projects: loaded.projects,
-            activityById: activityById,
-          ),
-        );
+        emit(loaded.copyWith(activityById: activityById));
       }
     } catch (e, st) {
       loge("Activity update handler error", e, st);
@@ -353,10 +373,11 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     if (isClosed) return;
     if (response is! SuccessResponse) return;
     if (state case final ProjectListLoaded loaded) {
+      final remaining = loaded.projects.where((p) => p.id != projectId).toList();
       emit(
-        ProjectListState.loaded(
-          projects: loaded.projects.where((p) => p.id != projectId).toList(),
-          activityById: loaded.activityById,
+        loaded.copyWith(
+          projects: remaining,
+          unseenByProjectId: _unseenByProjectId(remaining),
         ),
       );
     }
@@ -437,15 +458,26 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   }
 
   Future<bool> _fetchProjects({bool silent = false}) async {
+    // Captured BEFORE the fetch so the seed can't overwrite a live update that
+    // arrives while the request is in flight.
+    final unseenTick = _sessionUnseenTracker.tick;
     final projectResponse = await _projectService.listProjects();
     if (isClosed) return false;
 
     switch (projectResponse) {
       case SuccessResponse(data: Projects(data: final projects)):
+        // The REST aggregate is authoritative at fetch time — seed the tracker
+        // so a stale live `true` can't keep a project bold after its last
+        // unseen session was archived/deleted while an echo was missed.
+        _sessionUnseenTracker.seedProjects(
+          {for (final p in projects) p.id: p.hasUnseenChanges},
+          sinceTick: unseenTick,
+        );
         emit(
           ProjectListState.loaded(
             projects: projects,
             activityById: _sseEventRepository.currentProjectActivity,
+            unseenByProjectId: _unseenByProjectId(projects),
           ),
         );
         return true;

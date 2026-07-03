@@ -15,7 +15,9 @@ import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/extensions/remote_failure_x.dart";
 import "../../core/extensions/text_style_x.dart";
+import "../../core/external_link.dart";
 import "../../core/routing/app_router.dart";
+import "../../core/support_links.dart";
 import "../../core/widgets/connection_graphic.dart";
 import "add_project_dialog.dart";
 import "rename_project_dialog.dart";
@@ -36,6 +38,7 @@ class ProjectListScreen extends StatelessWidget {
         getIt<ConnectionService>(),
         getIt<SseEventRepository>(),
         getIt<RouteSource>(),
+        sessionUnseenTracker: getIt<SessionUnseenTracker>(),
         registeredBridgesService: getIt<RegisteredBridgesService>(),
         failureReporter: getIt<FailureReporter>(),
       ),
@@ -114,6 +117,25 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
     );
   }
 
+  /// The scaffold's bottom-right floating action for the current [state]: the
+  /// add-project FAB once projects exist, the onboarding "Need help?" support
+  /// menu in the two empty states (never-registered setup and connected-but-
+  /// empty), and nothing otherwise.
+  Widget? _floatingAction({required BuildContext context, required ProjectListState state}) {
+    if (state is ProjectListLoaded && state.projects.isNotEmpty) {
+      return PregoButtonsIconGlass(
+        icon: TablerRegular.folder_plus,
+        size: PregoButtonsIconGlassSize.xl,
+        iconSize: 22,
+        onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
+      );
+    }
+    final isOnboarding =
+        (state is ProjectListBridgeDisconnected && !state.hasRegisteredBridges) ||
+        (state is ProjectListLoaded && state.projects.isEmpty);
+    return isOnboarding ? const _NeedHelpMenu() : null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -129,18 +151,10 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
           onPressed: () => context.pushRoute(const AppRoute.settings()),
         ),
       ],
-      // The FAB only makes sense once the bridge is connected with a non-empty
-      // project list. It is absent from the not-connected onboarding and from
-      // the connected-but-empty state, where the inline Step 3 folder button is
-      // the add-project affordance.
-      floatingActionButton: state is ProjectListLoaded && state.projects.isNotEmpty
-          ? PregoButtonsIconGlass(
-              icon: TablerRegular.folder_plus,
-              size: PregoButtonsIconGlassSize.xl,
-              iconSize: 22,
-              onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
-            )
-          : null,
+      // Bottom-right floating action, resolved per state: the add-project FAB
+      // once projects exist, the onboarding "Need help?" support menu in the two
+      // empty states, and nothing while loading/offline/errored.
+      floatingActionButton: _floatingAction(context: context, state: state),
       // Pull-to-refresh re-fetches the project list once connected; the
       // disconnected states keep their own inner reconnect-on-pull.
       onRefresh: state is ProjectListLoaded ? () => _refreshProjects(context) : null,
@@ -167,7 +181,7 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
           child: hasRegisteredBridges ? const _BridgeOfflineView() : const _BridgeOnboardingView(),
         ),
       ],
-      ProjectListLoaded(:final projects, :final activityById) => [
+      ProjectListLoaded(:final projects, :final activityById, :final unseenByProjectId) => [
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
         if (projects.isEmpty)
           // Render the shared onboarding body directly (not its own scroll
@@ -191,6 +205,7 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
                 return _ProjectTile(
                   project: project,
                   activeSessions: activityById[project.id] ?? 0,
+                  unseen: unseenByProjectId[project.id] ?? project.hasUnseenChanges,
                   onLongPress: () => _showProjectMenu(context: context, project: project),
                 );
               },
