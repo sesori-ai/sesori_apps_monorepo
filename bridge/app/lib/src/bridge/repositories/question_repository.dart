@@ -55,7 +55,12 @@ class QuestionRepository {
           _sessionDao.getSessionProjectPaths(pluginId: plugin.id),
           plugin.getProjectQuestions(projectId: projectId),
         ).wait;
-        final sessions = _derivedSessionBuilder.build(
+        // Id-level scoping: includes stored-row attributions missing from the
+        // plugin enumeration, so a question raised in a fresh worktree session
+        // (attributed to this project by its row, but not yet in the backend's
+        // on-disk enumeration and scoped to its worktree cwd by the plugin's
+        // own query) still surfaces here.
+        final sessionIds = _derivedSessionBuilder.buildSessionIds(
           projectId: projectId,
           sessions: allSessions,
           projectPathBySessionId: {
@@ -67,8 +72,8 @@ class QuestionRepository {
           for (final question in ownScopedQuestions)
             "${question.sessionID}:${question.id}": question.toSharedPendingQuestion(),
         };
-        for (final session in sessions) {
-          final pluginQuestions = await plugin.getPendingQuestions(sessionId: session.id);
+        for (final sessionId in sessionIds) {
+          final pluginQuestions = await plugin.getPendingQuestions(sessionId: sessionId);
           for (final question in pluginQuestions) {
             questionsByKey["${question.sessionID}:${question.id}"] = question.toSharedPendingQuestion();
           }

@@ -19,6 +19,11 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
     return select(projectsTable).get();
   }
 
+  /// Returns the stored row for [projectId], or null when none exists.
+  Future<ProjectDto?> getProject({required String projectId}) async {
+    return (select(projectsTable)..where((t) => t.projectId.equals(projectId))).getSingleOrNull();
+  }
+
   /// Records [projectId] as an explicitly-opened folder by stamping [openedAt],
   /// creating the row if missing. Updates only openedAt on conflict, preserving
   /// hidden/baseBranch/displayName/worktreeCounter. Lets a folder with no

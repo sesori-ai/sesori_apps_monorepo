@@ -371,13 +371,20 @@ class SessionRepository {
       // a placeholder keyed to the plugin-reported cwd — for a dedicated
       // worktree session that's the throwaway worktree path, along with a
       // project row for it. The upsert above re-attributed the session to the
-      // canonical project; drop the now-orphaned placeholder project row (only
-      // when nothing else references it) so it can't surface as an empty
-      // derived project card.
+      // canonical project; drop the now-orphaned placeholder project row so it
+      // can't surface as an empty derived project card. Guarded twice: only
+      // when nothing else references the row, and only when the row carries no
+      // user-set state (hidden/rename/base-branch/worktree counter) — a row
+      // the user touched is a real project, not placeholder junk.
       final placeholderProjectId = placeholder?.projectId;
       if (placeholderProjectId != null && placeholderProjectId != projectId) {
-        final remaining = await _sessionDao.getSessionsByProject(projectId: placeholderProjectId);
-        if (remaining.isEmpty) {
+        final (row, remaining) = await (
+          db.projectsDao.getProject(projectId: placeholderProjectId),
+          _sessionDao.getSessionsByProject(projectId: placeholderProjectId),
+        ).wait;
+        final untouched =
+            row != null && !row.hidden && row.displayName == null && row.baseBranch == null && row.worktreeCounter == 0;
+        if (untouched && remaining.isEmpty) {
           await db.projectsDao.deleteProject(projectId: placeholderProjectId);
         }
       }

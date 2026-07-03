@@ -154,9 +154,11 @@ void main() {
 
     test("emits an unseen change for rows deleted by a complete-list refresh", () async {
       // A stale row exists in the DB for a session the backend no longer has.
+      // Recorded by the ACTIVE plugin — reconciliation is plugin-scoped, so
+      // only the active plugin's rows are eligible for deletion.
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]);
       await db.sessionDao.insertSession(
-        pluginId: "opencode",
+        pluginId: "fake",
         sessionId: "gone",
         projectId: "project-1",
         isDedicated: false,

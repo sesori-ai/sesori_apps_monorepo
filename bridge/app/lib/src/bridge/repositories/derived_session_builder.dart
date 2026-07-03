@@ -32,6 +32,30 @@ class DerivedSessionBuilder {
     ];
   }
 
+  /// Every session id attributed to [projectId]: the ids of [build]'s result
+  /// plus the stored-row attributions with no matching entry in [sessions].
+  /// A derived backend can know a freshly-created session only in memory
+  /// (codex before its rollout is flushed to disk), so the bridge's stored row
+  /// is temporarily the only trace of it — id-level consumers (e.g. pending
+  /// question aggregation) must still reach such a session.
+  Set<String> buildSessionIds({
+    required String projectId,
+    required List<PluginSession> sessions,
+    required Map<String, String> projectPathBySessionId,
+  }) {
+    final target = normalizeProjectDirectory(directory: projectId);
+    return {
+      for (final session in build(
+        projectId: projectId,
+        sessions: sessions,
+        projectPathBySessionId: projectPathBySessionId,
+      ))
+        session.id,
+      for (final entry in projectPathBySessionId.entries)
+        if (normalizeProjectDirectory(directory: entry.value) == target) entry.key,
+    };
+  }
+
   String _canonicalDirectory({
     required PluginSession session,
     required Map<String, String> projectPathBySessionId,

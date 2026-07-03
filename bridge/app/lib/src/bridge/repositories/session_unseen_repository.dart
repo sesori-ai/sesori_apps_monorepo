@@ -127,6 +127,9 @@ class SessionUnseenRepository {
   /// offline / backend-side without a `session.deleted` event), returning the
   /// deleted ids. Rows created at/after [createdBefore] (the time the fetch
   /// started) are kept — they are legitimately absent from the stale snapshot.
+  /// Scoped to the active plugin: the list is only authoritative for the
+  /// plugin that produced it, so rows another plugin recorded for the same
+  /// project are never reconciled away.
   Future<List<String>> deleteSessionsNotIn({
     required String projectId,
     required List<String> keepSessionIds,
@@ -136,6 +139,7 @@ class SessionUnseenRepository {
       projectId: projectId,
       keepSessionIds: keepSessionIds,
       createdBefore: createdBefore,
+      pluginId: _pluginId,
     );
   }
 

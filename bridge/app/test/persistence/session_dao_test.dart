@@ -734,6 +734,38 @@ void main() {
       });
     });
 
+    group("deleteSessionsForProjectNotIn", () {
+      test("only reconciles rows of the given plugin", () async {
+        // The authoritative session list comes from the active plugin, so
+        // another plugin's rows for the same project are legitimately absent
+        // from it and must survive the reconciliation.
+        await dao.insertSessionsIfMissing(
+          pluginId: "codex",
+          sessions: [
+            (sessionId: "c-gone", projectId: "proj-1", createdAt: 100, archivedAt: null),
+            (sessionId: "c-kept", projectId: "proj-1", createdAt: 100, archivedAt: null),
+          ],
+        );
+        await dao.insertSessionsIfMissing(
+          pluginId: "opencode",
+          sessions: [
+            (sessionId: "o-kept", projectId: "proj-1", createdAt: 100, archivedAt: null),
+          ],
+        );
+
+        final deleted = await dao.deleteSessionsForProjectNotIn(
+          projectId: "proj-1",
+          keepSessionIds: ["c-kept"],
+          createdBefore: 500,
+          pluginId: "codex",
+        );
+
+        expect(deleted, equals(["c-gone"]));
+        expect(await dao.getSession(sessionId: "c-kept"), isNotNull);
+        expect(await dao.getSession(sessionId: "o-kept"), isNotNull);
+      });
+    });
+
     group("getSessionProjectPaths", () {
       test("joins each session to its project's stored path, filtered by plugin id", () async {
         await dao.insertSessionsIfMissing(

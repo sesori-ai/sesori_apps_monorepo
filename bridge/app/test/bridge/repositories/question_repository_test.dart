@@ -107,6 +107,32 @@ void main() {
       expect(questions, hasLength(2));
     });
 
+    test("getProjectQuestions asks a stored-row session missing from listAllSessions", () async {
+      const parent = "/tmp/proj/alpha";
+      const worktree = "/tmp/proj/alpha/.worktrees/session-001";
+      // A fresh worktree session the bridge recorded under its parent, whose
+      // rollout has not been flushed yet: the plugin cannot enumerate it and
+      // its own project scoping keys it to the worktree cwd, so only the
+      // stored attribution can reach its pending questions.
+      await recordWorktreeSession(parent: parent, worktree: worktree, sessionId: "w-fresh");
+
+      final plugin = _FakeDerivedQuestionPlugin(
+        launchDirectory: parent,
+        allSessions: const [],
+        questionsBySession: {
+          "w-fresh": const [
+            PluginPendingQuestion(id: "q-fresh", sessionID: "w-fresh", displaySessionId: null, questions: []),
+          ],
+        },
+      );
+      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao);
+
+      final questions = await repo.getProjectQuestions(projectId: parent);
+
+      expect(questions.map((q) => q.id), contains("q-fresh"));
+      expect(plugin.queriedSessionIds, contains("w-fresh"));
+    });
+
     test("getProjectQuestions keeps distinct questions that reuse an id across sessions", () async {
       const parent = "/tmp/proj/alpha";
       await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);

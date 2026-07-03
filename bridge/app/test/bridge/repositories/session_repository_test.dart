@@ -346,6 +346,47 @@ void main() {
       expect(projects.map((project) => project.projectId), equals(["/repo"]));
     });
 
+    test("insertStoredSession keeps a project row that carries user-set state", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      // The placeholder happens to be keyed to a path the user renamed — a
+      // real project, not junk. It must survive the cleanup even once its
+      // last session is re-attributed away.
+      const touched = "/repo/renamed";
+      await db.projectsDao.setDisplayName(projectId: touched, displayName: "My Project");
+      await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "fake",
+        sessions: [(sessionId: "s1", projectId: touched, createdAt: 100, archivedAt: null)],
+      );
+
+      await repository.insertStoredSession(
+        sessionId: "s1",
+        projectId: "/repo",
+        isDedicated: false,
+        createdAt: 200,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+
+      final projects = await db.select(db.projectsTable).get();
+      expect(projects.map((project) => project.projectId).toSet(), equals({"/repo", touched}));
+    });
+
     test("insertStoredSession keeps a placeholder project row that other sessions still reference", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
