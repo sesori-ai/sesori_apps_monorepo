@@ -68,7 +68,16 @@ class _ProjectTile extends StatelessWidget {
         ],
       ),
       isThreeLine: updatedAt != null || isActive,
-      trailing: const Icon(Icons.chevron_right),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (unseen) ...[
+            Icon(Icons.circle, size: 10, color: prego.colors.bgBrandSolid),
+            const SizedBox(width: 8),
+          ],
+          const Icon(Icons.chevron_right),
+        ],
+      ),
       onTap: () {
         context.read<ProjectListCubit>().setActiveProject(project);
         context.pushRoute(
