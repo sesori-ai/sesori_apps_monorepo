@@ -104,7 +104,17 @@ class SessionTile extends StatelessWidget {
           session.pullRequest != null,
           isActive,
         ].where((v) => v).length >= 2,
-        trailing: const Icon(Icons.chevron_right),
+        trailing: switch (unseen) {
+          true => Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.circle, size: 10, color: context.prego.colors.bgBrandSolid),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+          false => const Icon(Icons.chevron_right),
+        },
         onTap: onTap,
         onLongPress: onLongPress,
       ),
