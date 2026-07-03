@@ -807,6 +807,33 @@ void main() {
       expect(result, equals(directory));
     });
 
+    test("sessionListIsAuthoritative is false for a derived plugin and true for a native one", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final pullRequestRepository = PullRequestRepository(
+        pullRequestDao: db.pullRequestDao,
+        projectsDao: db.projectsDao,
+      );
+
+      final derived = SessionRepository(
+        plugin: _FakeDerivedPlugin(launchDirectory: "/tmp/proj/alpha", allSessions: const []),
+        sessionDao: db.sessionDao,
+        pullRequestRepository: pullRequestRepository,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      final native = SessionRepository(
+        plugin: _FakeBridgePlugin(),
+        sessionDao: db.sessionDao,
+        pullRequestRepository: pullRequestRepository,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      // A derived enumeration is eventually-complete (rollout flush window),
+      // so it must never be used to reconcile stored rows away.
+      expect(derived.sessionListIsAuthoritative, isFalse);
+      expect(native.sessionListIsAuthoritative, isTrue);
+    });
+
     test("getSessionsForProject scoped to the worktree path returns nothing — it belongs to its parent", () async {
       final db = createTestDatabase();
       addTearDown(db.close);

@@ -1769,6 +1769,9 @@ class _NoopPullRequestRepository implements PullRequestRepository {
 
 class _NoopSessionRepository implements SessionRepository {
   @override
+  bool get sessionListIsAuthoritative => true;
+
+  @override
   Future<Session> createSession({
     required String directory,
     required String? parentSessionId,
@@ -1888,6 +1891,9 @@ class _NoopSessionRepository implements SessionRepository {
 }
 
 class _DelayingSessionRepository implements SessionRepository {
+  @override
+  bool get sessionListIsAuthoritative => true;
+
   final SessionRepository _base;
   final Map<String, Future<void>> _delaySessionIds;
 

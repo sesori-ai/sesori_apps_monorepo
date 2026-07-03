@@ -703,6 +703,9 @@ class _NoopPullRequestRepository implements PullRequestRepository {
 
 class _NoopSessionRepository implements SessionRepository {
   @override
+  bool get sessionListIsAuthoritative => true;
+
+  @override
   Future<Session> createSession({
     required String directory,
     required String? parentSessionId,
@@ -830,6 +833,11 @@ class FakeSessionRepository implements SessionRepository {
   final FakePullRequestRepository _pullRequestRepository;
   int getSessionsCallCount = 0;
   ({String projectId, int? start, int? limit})? lastGetSessionsArgs;
+
+  /// Settable so handler tests can exercise the non-authoritative
+  /// (bridge-derived) reconcile gating.
+  @override
+  bool sessionListIsAuthoritative = true;
 
   FakeSessionRepository({
     required FakeBridgePlugin plugin,

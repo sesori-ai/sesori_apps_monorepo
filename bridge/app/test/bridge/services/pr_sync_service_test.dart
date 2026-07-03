@@ -398,6 +398,9 @@ class _FakePullRequestRepository implements PullRequestRepository {
 }
 
 class _FakeSessionRepository implements SessionRepository {
+  @override
+  bool get sessionListIsAuthoritative => true;
+
   final Map<String, List<StoredSession>> sessionsByProject;
 
   _FakeSessionRepository({required this.sessionsByProject});

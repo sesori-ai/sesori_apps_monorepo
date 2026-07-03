@@ -438,6 +438,14 @@ class CodexPlugin implements CodexManagedApi {
       threadId,
       (result is Map ? result["model"] as String? : null) ?? model?.modelID,
     );
+    final resolvedDirectory = normalizeProjectDirectory(directory: (thread?["cwd"] as String?) ?? directory);
+    // Record the thread's directory BEFORE the first turn: turn/start can emit
+    // notifications (e.g. a cwd-less thread/name/updated) while the rollout is
+    // still unwritten, and without this the mapper would attribute those
+    // events to the launch cwd — making a non-launch project's client drop
+    // them as a project mismatch. Also covers lookups before the rollout is
+    // flushed (rename response, live rename event).
+    _recordThreadDirectory(threadId, resolvedDirectory);
     if (parts.isNotEmpty) {
       // thread/start has no `effort` field, so the chosen reasoning effort is
       // applied on this first turn (and sticks for subsequent ones).
@@ -448,11 +456,6 @@ class CodexPlugin implements CodexManagedApi {
         variant: variant,
       );
     }
-    final resolvedDirectory = normalizeProjectDirectory(directory: (thread?["cwd"] as String?) ?? directory);
-    // Record the thread's directory now so a lookup before the rollout is
-    // flushed to disk (rename response, live rename event) attributes it to its
-    // real project instead of falling back to the launch cwd.
-    _recordThreadDirectory(threadId, resolvedDirectory);
     return PluginSession(
       id: threadId,
       projectID: resolvedDirectory,

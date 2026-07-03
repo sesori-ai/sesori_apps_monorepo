@@ -201,6 +201,42 @@ void main() {
       expect(emitted.where((e) => e.sessionId == "gone").single.unseen, isFalse);
     });
 
+    test("does not reconcile vanished rows when the session list is not authoritative", () async {
+      // A bridge-derived plugin's enumeration is only eventually-complete: a
+      // freshly-created session can exist solely as a stored row until the
+      // backend flushes it to disk. The row must survive an unpaginated
+      // refresh that cannot see the session yet.
+      sessionRepository.sessionListIsAuthoritative = false;
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]);
+      await db.sessionDao.insertSession(
+        pluginId: "fake",
+        sessionId: "fresh",
+        projectId: "project-1",
+        isDedicated: true,
+        createdAt: 1,
+        worktreePath: "/tmp/project-1/.worktrees/fresh",
+        branchName: "fresh",
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+      );
+      // The fetch returns an empty list — the backend hasn't flushed yet.
+      plugin.sessionsResult = const [];
+
+      await handler.handle(
+        makeRequest("POST", "/sessions"),
+        body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
+        pathParams: {},
+        queryParams: {},
+        fragment: null,
+      );
+      // Allow any (wrongly-fired) reconcile to run before asserting.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(await db.sessionDao.getSession(sessionId: "fresh"), isNotNull);
+    });
+
     test("persists sessions after successful fetch", () async {
       plugin.sessionsResult = [
         const PluginSession(
