@@ -100,7 +100,7 @@ $AgentModelCopyWith<$Res>? get lastAgentModel {
 
 
 class _SessionDto extends SessionDto {
-  const _SessionDto({required this.sessionId, required this.projectId, required this.worktreePath, required this.branchName, required this.isDedicated, required this.archivedAt, required this.baseBranch, required this.baseCommit, required this.lastAgent, required this.lastAgentModel, required this.createdAt, this.pluginId = "opencode"}): super._();
+  const _SessionDto({required this.sessionId, required this.projectId, required this.worktreePath, required this.branchName, required this.isDedicated, required this.archivedAt, required this.baseBranch, required this.baseCommit, required this.lastAgent, required this.lastAgentModel, required this.createdAt, required this.pluginId}): super._();
   
 
 @override final  String sessionId;
@@ -114,7 +114,7 @@ class _SessionDto extends SessionDto {
 @override final  String? lastAgent;
 @override final  AgentModel? lastAgentModel;
 @override final  int createdAt;
-@override@JsonKey() final  String pluginId;
+@override final  String pluginId;
 
 /// Create a copy of SessionDto
 /// with the given fields replaced by the non-null parameter values.

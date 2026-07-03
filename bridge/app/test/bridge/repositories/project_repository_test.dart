@@ -1,5 +1,4 @@
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/derived_project_builder.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -19,8 +18,6 @@ void main() {
         plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
-        trackingMode: ProjectTrackingMode.nativeBackend,
-        derivedProjectBuilder: const DerivedProjectBuilder(),
       );
     });
 
@@ -139,8 +136,6 @@ void main() {
         plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
-        trackingMode: ProjectTrackingMode.bridgeDerived,
-        derivedProjectBuilder: const DerivedProjectBuilder(),
       );
     });
 
@@ -268,7 +263,7 @@ PluginSession _session(
 
 /// Minimal [BridgePluginApi] fake that only implements the surface touched by
 /// [ProjectRepository]. Every other member throws so accidental use is loud.
-class _FakeBridgePlugin implements BridgePluginApi {
+class _FakeBridgePlugin implements NativeProjectsPluginApi {
   List<PluginProject> projectsResult = const [];
   Object? getProjectsError;
   PluginProject projectResult = const PluginProject(id: "project-id");
@@ -400,13 +395,11 @@ class _FakeBridgePlugin implements BridgePluginApi {
   Future<void> dispose() => throw UnimplementedError();
 }
 
-/// A derive-style plugin: mixes in the bridge-derived no-ops and exposes its
-/// sessions through [BridgeDerivedProjectSource], mirroring how Codex/ACP
-/// plugins are shaped. The mixin's getProjects/getProject/renameProject win over
-/// the base fake's, so the bridge derivation path is what's exercised.
-class _FakeDerivedPlugin extends _FakeBridgePlugin
-    with BridgeDerivedProjectsMixin
-    implements BridgeDerivedProjectSource {
+/// A derive-style plugin: exposes its sessions through
+/// [BridgeDerivedProjectsPluginApi.listAllSessions], mirroring how Codex/ACP
+/// plugins are shaped — it has no project members at all, so the bridge
+/// derivation path is what's exercised.
+class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
   _FakeDerivedPlugin(this.sessions);
 
   List<PluginSession> sessions;
@@ -423,4 +416,7 @@ class _FakeDerivedPlugin extends _FakeBridgePlugin
 
   @override
   String get launchDirectory => launchDir;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

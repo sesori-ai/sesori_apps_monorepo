@@ -30,6 +30,7 @@ void main() {
       required String branchName,
     }) {
       return db.sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: sessionId,
         projectId: projectId,
         isDedicated: true,

@@ -20,11 +20,11 @@ void main() {
       expect(plugin.id, equals("codex"));
     });
 
-    test("is bridge-derived: getProjects is empty and launchDirectory is the launch CWD", () async {
-      // codex declares ProjectTrackingMode.bridgeDerived, so the bridge derives
-      // the project list from listAllSessions/launchDirectory — the plugin's own
-      // getProjects is an empty no-op from BridgeDerivedProjectsMixin. Pin
-      // CODEX_HOME away from the user's real history so the test is hermetic.
+    test("is bridge-derived: launchDirectory is the launch CWD and sessions enumerate from disk", () async {
+      // codex is a BridgeDerivedProjectsPluginApi, so the bridge derives the
+      // project list from listAllSessions/launchDirectory — the plugin has no
+      // project members at all. Pin CODEX_HOME away from the user's real
+      // history so the test is hermetic.
       final tempHome = Directory.systemTemp.createTempSync("codex-home-stub-");
       try {
         final plugin = CodexPlugin(
@@ -34,7 +34,6 @@ void main() {
           ),
           projectCwd: "/repo/example",
         );
-        expect(await plugin.getProjects(), isEmpty);
         expect(plugin.launchDirectory, equals("/repo/example"));
         expect(await plugin.listAllSessions(), isEmpty);
         await plugin.dispose();
@@ -145,38 +144,6 @@ void main() {
         } catch (_) {}
       }
     });
-
-    test(
-      "renameProject throws — bridge-derived renames persist bridge-side",
-      () async {
-        // codex is bridge-derived: renames are persisted by the bridge in its
-        // project store, so the plugin's renameProject (from
-        // BridgeDerivedProjectsMixin) throws to surface any misrouting.
-        final tempHome = Directory.systemTemp.createTempSync("codex-home-rn-");
-        try {
-          final plugin = CodexPlugin(
-            serverUrl: "ws://127.0.0.1:0",
-            rolloutReader: SessionRolloutReader(
-              environment: {"CODEX_HOME": tempHome.path},
-            ),
-            skillReader: CodexSkillReader(
-              environment: {"CODEX_HOME": tempHome.path},
-              projectCwd: tempHome.path,
-            ),
-            projectCwd: "/repo/example",
-          );
-          await expectLater(
-            () => plugin.renameProject(projectId: "/repo/example", name: "X"),
-            throwsA(isA<UnsupportedError>()),
-          );
-          await plugin.dispose();
-        } finally {
-          try {
-            tempHome.deleteSync(recursive: true);
-          } catch (_) {}
-        }
-      },
-    );
 
     test("healthCheck returns true after a successful initialize handshake", () async {
       final fake = _FakeWebSocket();

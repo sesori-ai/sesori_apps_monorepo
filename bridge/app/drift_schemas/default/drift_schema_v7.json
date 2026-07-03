@@ -26,6 +26,16 @@
             "dsl_features": []
           },
           {
+            "name": "path",
+            "getter_name": "path",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
             "name": "hidden",
             "getter_name": "hidden",
             "moor_type": "bool",
@@ -73,10 +83,10 @@
             "name": "opened_at",
             "getter_name": "openedAt",
             "moor_type": "int",
-            "nullable": true,
+            "nullable": false,
             "customConstraints": null,
             "default_dart": null,
-            "default_client_dart": null,
+            "default_client_dart": "() => DateTime.now().millisecondsSinceEpoch",
             "dsl_features": []
           }
         ],
@@ -238,7 +248,7 @@
             "moor_type": "string",
             "nullable": false,
             "customConstraints": null,
-            "default_dart": "const CustomExpression('\\'opencode\\'')",
+            "default_dart": null,
             "default_client_dart": null,
             "dsl_features": []
           }
@@ -420,7 +430,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"projects_table\" (\"project_id\" TEXT NOT NULL, \"hidden\" INTEGER NOT NULL DEFAULT 0 CHECK (\"hidden\" IN (0, 1)), \"base_branch\" TEXT NULL, \"worktree_counter\" INTEGER NOT NULL DEFAULT 0, \"display_name\" TEXT NULL, \"opened_at\" INTEGER NULL, PRIMARY KEY (\"project_id\")) WITHOUT ROWID;"
+          "sql": "CREATE TABLE IF NOT EXISTS \"projects_table\" (\"project_id\" TEXT NOT NULL, \"path\" TEXT NOT NULL, \"hidden\" INTEGER NOT NULL DEFAULT 0 CHECK (\"hidden\" IN (0, 1)), \"base_branch\" TEXT NULL, \"worktree_counter\" INTEGER NOT NULL DEFAULT 0, \"display_name\" TEXT NULL, \"opened_at\" INTEGER NOT NULL, PRIMARY KEY (\"project_id\")) WITHOUT ROWID;"
         }
       ]
     },
@@ -429,7 +439,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"sessions_table\" (\"session_id\" TEXT NOT NULL, \"project_id\" TEXT NOT NULL REFERENCES projects_table (project_id) ON DELETE CASCADE, \"worktree_path\" TEXT NULL, \"branch_name\" TEXT NULL, \"is_dedicated\" INTEGER NOT NULL CHECK (\"is_dedicated\" IN (0, 1)), \"archived_at\" INTEGER NULL, \"base_branch\" TEXT NULL, \"base_commit\" TEXT NULL, \"last_agent\" TEXT NULL, \"last_agent_model\" TEXT NULL, \"created_at\" INTEGER NOT NULL, \"plugin_id\" TEXT NOT NULL DEFAULT 'opencode', PRIMARY KEY (\"session_id\")) WITHOUT ROWID;"
+          "sql": "CREATE TABLE IF NOT EXISTS \"sessions_table\" (\"session_id\" TEXT NOT NULL, \"project_id\" TEXT NOT NULL REFERENCES projects_table (project_id) ON DELETE CASCADE, \"worktree_path\" TEXT NULL, \"branch_name\" TEXT NULL, \"is_dedicated\" INTEGER NOT NULL CHECK (\"is_dedicated\" IN (0, 1)), \"archived_at\" INTEGER NULL, \"base_branch\" TEXT NULL, \"base_commit\" TEXT NULL, \"last_agent\" TEXT NULL, \"last_agent_model\" TEXT NULL, \"created_at\" INTEGER NOT NULL, \"plugin_id\" TEXT NOT NULL, PRIMARY KEY (\"session_id\")) WITHOUT ROWID;"
         }
       ]
     },

@@ -48,7 +48,6 @@ _DebugServerHarness _createDebugServerHarness({
     failureReporter: FakeFailureReporter(),
     restartService: restartService ?? buildTestRestartService(),
     filesystemAccessOk: true,
-    projectTrackingMode: ProjectTrackingMode.nativeBackend,
   );
   final debugServer = runtime.createDebugServer(port: port);
   return _DebugServerHarness(
@@ -113,6 +112,7 @@ void main() {
     test("async-mapped session events preserve order for SSE clients", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "s1",
         projectId: "p1",
         isDedicated: true,
@@ -543,7 +543,7 @@ class _FakeTokenRefresher implements TokenRefresher {
 // Fake plugin implementations
 // ---------------------------------------------------------------------------
 
-class _FakeBridgePlugin implements BridgePluginApi {
+class _FakeBridgePlugin implements NativeProjectsPluginApi {
   final _controller = StreamController<BridgeSseEvent>.broadcast();
 
   List<PluginProject> projectsResult = [];
@@ -701,7 +701,7 @@ class _FakeBridgePlugin implements BridgePluginApi {
 }
 
 /// Plugin that tracks subscribe/unsubscribe counts via a wrapping stream.
-class _TrackingBridgePlugin implements BridgePluginApi {
+class _TrackingBridgePlugin implements NativeProjectsPluginApi {
   final _eventController = StreamController<BridgeSseEvent>.broadcast();
   int subscribeCount = 0;
   int unsubscribeCount = 0;

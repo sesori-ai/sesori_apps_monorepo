@@ -14,7 +14,6 @@ import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/derived_project_builder.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/health_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
@@ -37,7 +36,6 @@ import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_content_builder.dart";
 import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 import "package:test/test.dart";
 
@@ -320,8 +318,6 @@ class _ReauthHarness {
         plugin: plugin,
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
-        trackingMode: ProjectTrackingMode.nativeBackend,
-        derivedProjectBuilder: const DerivedProjectBuilder(),
       ),
       filesystemRepository: FilesystemRepository(
         filesystemApi: const FilesystemApi(),

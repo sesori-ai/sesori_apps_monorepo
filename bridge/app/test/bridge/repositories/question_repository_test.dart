@@ -116,9 +116,7 @@ PluginSession _session(String directory, {required String id}) => PluginSession(
 
 /// A derive-style plugin whose pending questions are keyed per session, so the
 /// repository must resolve the project's sessions (worktree-aware) and ask each.
-class _FakeDerivedQuestionPlugin
-    with BridgeDerivedProjectsMixin
-    implements BridgePluginApi, BridgeDerivedProjectSource {
+class _FakeDerivedQuestionPlugin implements BridgeDerivedProjectsPluginApi {
   _FakeDerivedQuestionPlugin({
     required this.launchDirectory,
     required this.allSessions,

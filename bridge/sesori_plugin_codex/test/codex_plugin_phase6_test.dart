@@ -65,15 +65,6 @@ void main() {
       await plugin.dispose();
     });
 
-    test("renameProject throws — bridge-derived renames persist bridge-side", () async {
-      final plugin = newPlugin();
-      await expectLater(
-        () => plugin.renameProject(projectId: projectCwd.path, name: "My Codex Project"),
-        throwsA(isA<UnsupportedError>()),
-      );
-      await plugin.dispose();
-    });
-
     test("deleteSession removes the rollout JSONL and the index entry", () async {
       // Set up: one session in the index and on disk, one extra session
       // that must be preserved.

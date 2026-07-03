@@ -25,7 +25,6 @@
 library;
 
 import "package:sesori_bridge/src/bridge/api/gh_pull_request.dart";
-import "package:sesori_bridge/src/bridge/repositories/derived_project_builder.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
@@ -61,8 +60,6 @@ void main() {
           plugin: plugin,
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
-          trackingMode: ProjectTrackingMode.nativeBackend,
-          derivedProjectBuilder: const DerivedProjectBuilder(),
         );
         final prRepo = PullRequestRepository(
           pullRequestDao: db.pullRequestDao,
@@ -244,7 +241,7 @@ Session _session({
 
 /// Minimal [BridgePluginApi] fake that only implements [getProjects].
 /// Every other member throws [UnimplementedError] so accidental use is loud.
-class _FakeBridgePlugin implements BridgePluginApi {
+class _FakeBridgePlugin implements NativeProjectsPluginApi {
   final List<PluginProject> _projects;
 
   _FakeBridgePlugin({required List<PluginProject> projects}) : _projects = projects;

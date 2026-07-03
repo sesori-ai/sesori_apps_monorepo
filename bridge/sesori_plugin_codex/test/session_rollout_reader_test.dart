@@ -294,9 +294,6 @@ void main() {
         projectCwd: "/work/sample-app",
       );
 
-      // The plugin exposes no projects itself — the bridge derives them.
-      expect(await plugin.getProjects(), isEmpty);
-
       // Each session carries its own rollout cwd (never the launch CWD), so the
       // bridge groups it under the right project.
       final byId = {for (final session in await plugin.listAllSessions()) session.id: session};

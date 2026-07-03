@@ -485,7 +485,7 @@ void main() {
     },
   );
 
-  test('migration v4 → v5 enforces FK on subsequent inserts', () async {
+  test('the v5 session→project FK stays enforced on the current schema', () async {
     final db = await _migrateFromV4(verifier: verifier);
     addTearDown(db.close);
 
@@ -498,6 +498,7 @@ void main() {
               projectId: 'nonexistent',
               isDedicated: false,
               createdAt: 0,
+              pluginId: 'opencode',
             ),
           ),
       throwsA(_isForeignKeyViolation),
@@ -596,7 +597,7 @@ void main() {
   );
 
   test(
-    'migration v4 → v5 deleting a project cascades to sessions and PRs',
+    'deleting a project on the current schema cascades to sessions and PRs',
     () async {
       final db = await _migrateFromV4(verifier: verifier);
       addTearDown(db.close);
@@ -604,7 +605,7 @@ void main() {
       await db
           .into(db.projectsTable)
           .insert(
-            ProjectsTableCompanion.insert(projectId: 'p1'),
+            ProjectsTableCompanion.insert(projectId: 'p1', path: 'p1'),
           );
       await db
           .into(db.sessionTable)
@@ -614,6 +615,7 @@ void main() {
               projectId: 'p1',
               isDedicated: false,
               createdAt: 1000,
+              pluginId: 'opencode',
             ),
           );
       await db
@@ -624,6 +626,7 @@ void main() {
               projectId: 'p1',
               isDedicated: true,
               createdAt: 2000,
+              pluginId: 'opencode',
             ),
           );
       await db
@@ -680,7 +683,7 @@ void main() {
   });
 
   test(
-    'migration v6 → v7 backfills pluginId to opencode and defaults project metadata to null',
+    'migration v6 → v7 backfills path from projectId, openedAt with now, and pluginId with opencode',
     () async {
       const oldProjectsTableData = [
         v6.ProjectsTableData(
@@ -705,6 +708,7 @@ void main() {
           createdAt: 1700000000000,
         ),
       ];
+      final beforeMigrationMs = DateTime.now().millisecondsSinceEpoch;
 
       await verifier.testWithDataIntegrity(
         oldVersion: 6,
@@ -717,19 +721,22 @@ void main() {
           batch.insertAll(oldDb.sessionsTable, oldSessionsTableData);
         },
         validateItems: (newDb) async {
-          // New project columns default to null; prior columns are preserved.
+          // Prior columns are preserved; path backfills from the project id
+          // (ids have always been directory paths), displayName defaults to
+          // null, and openedAt backfills with the migration wall-clock time.
+          final projects = await newDb.select(newDb.projectsTable).get();
+          expect(projects, hasLength(1));
+          final project = projects.single;
+          expect(project.projectId, 'project-1');
+          expect(project.path, 'project-1');
+          expect(project.hidden, 0);
+          expect(project.baseBranch, 'main');
+          expect(project.worktreeCounter, 2);
+          expect(project.displayName, isNull);
+          expect(project.openedAt, greaterThanOrEqualTo(beforeMigrationMs));
           expect(
-            await newDb.select(newDb.projectsTable).get(),
-            const [
-              v7.ProjectsTableData(
-                projectId: 'project-1',
-                hidden: 0,
-                baseBranch: 'main',
-                worktreeCounter: 2,
-                displayName: null,
-                openedAt: null,
-              ),
-            ],
+            project.openedAt,
+            lessThanOrEqualTo(DateTime.now().millisecondsSinceEpoch),
           );
           // The pre-existing session is backfilled to the opencode plugin.
           expect(
@@ -751,7 +758,7 @@ void main() {
               ),
             ],
           );
-          // The session→project FK survives the column additions.
+          // The session→project FK survives the table rebuilds.
           expect(
             await newDb.customSelect('PRAGMA foreign_key_check').get(),
             isEmpty,
@@ -762,12 +769,15 @@ void main() {
   );
 }
 
+/// Migrates a v4 database to the current schema, so tests can insert rows with
+/// the current companions and prove the FK graph introduced in v5 survives the
+/// later table rebuilds.
 Future<AppDatabase> _migrateFromV4({required SchemaVerifier verifier}) async {
   final connection = await verifier.startAt(4);
   final db = AppDatabase(connection);
   await verifier.migrateAndValidate(
     db,
-    5,
+    7,
     options: const ValidationOptions(validateDropped: true),
   );
   return db;

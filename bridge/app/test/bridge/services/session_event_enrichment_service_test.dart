@@ -53,6 +53,7 @@ void main() {
     test("returns enriched session event when repository lookup succeeds", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "s1",
         projectId: "p1",
         isDedicated: true,

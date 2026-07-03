@@ -6,7 +6,6 @@ import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/derived_project_builder.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/health_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/permission_repository.dart";
@@ -57,8 +56,6 @@ void main() {
         plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
-        trackingMode: ProjectTrackingMode.nativeBackend,
-        derivedProjectBuilder: const DerivedProjectBuilder(),
       );
       final filesystemRepository = FilesystemRepository(
         filesystemApi: const FilesystemApi(),
@@ -421,8 +418,6 @@ void main() {
         plugin: plugin,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
-        trackingMode: ProjectTrackingMode.nativeBackend,
-        derivedProjectBuilder: const DerivedProjectBuilder(),
       );
       final filesystemRepository = FilesystemRepository(
         filesystemApi: const FilesystemApi(),

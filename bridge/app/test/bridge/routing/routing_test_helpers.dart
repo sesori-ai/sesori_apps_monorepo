@@ -39,7 +39,7 @@ RelayRequest makeRequest(
         as RelayRequest;
 
 /// Hand-written fake [BridgePluginApi] used across routing handler tests.
-class FakeBridgePlugin implements BridgePluginApi {
+class FakeBridgePlugin implements NativeProjectsPluginApi {
   final _controller = StreamController<BridgeSseEvent>.broadcast();
 
   // ── Configurable return values ───────────────────────────────────────────
@@ -407,6 +407,7 @@ class FakeSessionDao {
     required String? baseCommit,
     required String? lastAgent,
     required AgentModel? lastAgentModel,
+    required String pluginId,
   }) async {
     _sessions[sessionId] = SessionDto(
       sessionId: sessionId,
@@ -420,6 +421,7 @@ class FakeSessionDao {
       lastAgent: lastAgent,
       lastAgentModel: lastAgentModel,
       createdAt: createdAt,
+      pluginId: pluginId,
     );
   }
 
@@ -980,6 +982,7 @@ class FakeSessionRepository implements SessionRepository {
       baseCommit: baseCommit,
       lastAgent: agent,
       lastAgentModel: agentModel,
+      pluginId: "opencode",
     );
   }
 

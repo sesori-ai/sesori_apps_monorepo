@@ -13,7 +13,6 @@ import "package:sesori_bridge/src/push/push_notification_client.dart";
 import "package:sesori_bridge/src/push/push_notification_content_builder.dart";
 import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 import "../../helpers/restart_test_support.dart";
@@ -59,7 +58,6 @@ void main() {
       failureReporter: FakeFailureReporter(),
       restartService: buildTestRestartService(),
       filesystemAccessOk: true,
-      projectTrackingMode: ProjectTrackingMode.nativeBackend,
     );
     final debugServer = runtime.createDebugServer(port: 0);
 

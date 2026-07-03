@@ -2,11 +2,12 @@ import "package:drift/drift.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../database.dart";
+import "../tables/projects_table.dart";
 import "../tables/session_table.dart";
 
 part "session_dao.g.dart";
 
-@DriftAccessor(tables: [SessionTable])
+@DriftAccessor(tables: [SessionTable, ProjectsTable])
 class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   SessionDao(super.attachedDatabase);
 
@@ -21,9 +22,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     required String? baseCommit,
     required String? lastAgent,
     required AgentModel? lastAgentModel,
-    // Mirrors the column's DB default; production callers (SessionRepository,
-    // SessionPersistenceService) pass the active plugin id explicitly.
-    String pluginId = "opencode",
+    required String pluginId,
   }) async {
     await into(sessionTable).insert(
       SessionTableCompanion(
@@ -76,29 +75,26 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     return (select(sessionTable)..where((t) => t.projectId.equals(projectId))).get();
   }
 
-  /// The worktree→project links the bridge recorded for [pluginId]: every
-  /// session created inside a dedicated worktree, as its worktree directory and
-  /// the project the user actually opened. A bridge-derived plugin reports each
-  /// session under its own cwd (the worktree path), so the derivation uses these
-  /// rows to fold a worktree's sessions back under their parent project instead
-  /// of spawning a project per worktree.
-  Future<List<({String worktreePath, String projectId})>> getWorktreeProjectPaths({
+  /// The stored project path for every session recorded for [pluginId], via a
+  /// join from each session's projectId to its project row. This is how the
+  /// bridge attributes a derive-style plugin's sessions to projects: the row
+  /// the bridge wrote at creation is authoritative, so a session running in a
+  /// dedicated worktree maps to the project the user opened — not to its own
+  /// worktree cwd. The join keeps call sites working if project ids ever stop
+  /// being the project path.
+  Future<List<({String sessionId, String projectPath})>> getSessionProjectPaths({
     required String pluginId,
   }) async {
-    // Newest first, then keep one row per worktree path, so the mapping is
-    // deterministic if a worktree path was ever reused across projects (the
-    // most recent owner wins). Archived sessions are intentionally kept: their
-    // worktree still exists on disk and must fold to its parent, otherwise an
-    // archived worktree session would re-derive as its own project.
-    final rows = await (select(sessionTable)
-          ..where((t) => t.worktreePath.isNotNull() & t.pluginId.equals(pluginId))
-          ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
-        .get();
-    final seen = <String>{};
+    final query = select(sessionTable).join([
+      innerJoin(projectsTable, projectsTable.projectId.equalsExp(sessionTable.projectId)),
+    ])..where(sessionTable.pluginId.equals(pluginId));
+    final rows = await query.get();
     return [
       for (final row in rows)
-        if (row.worktreePath case final worktreePath?)
-          if (seen.add(worktreePath)) (worktreePath: worktreePath, projectId: row.projectId),
+        (
+          sessionId: row.readTable(sessionTable).sessionId,
+          projectPath: row.readTable(projectsTable).path,
+        ),
     ];
   }
 
@@ -143,8 +139,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   /// archive state is preserved on first insert. Existing rows are never updated.
   Future<void> insertSessionsIfMissing({
     required List<({String sessionId, String projectId, int createdAt, int? archivedAt})> sessions,
-    // Mirrors the column's DB default; production callers pass the active id.
-    String pluginId = "opencode",
+    required String pluginId,
   }) async {
     if (sessions.isEmpty) return;
     await batch((b) {

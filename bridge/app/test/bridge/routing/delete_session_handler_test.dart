@@ -431,6 +431,7 @@ Future<void> _insertSession({
 }) async {
   await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]); // satisfy v5 FK constraint
   await db.sessionDao.insertSession(
+    pluginId: "opencode",
     sessionId: sessionId,
     projectId: projectId,
     isDedicated: true,

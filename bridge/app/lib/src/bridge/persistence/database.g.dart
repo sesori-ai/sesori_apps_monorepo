@@ -5,6 +5,11 @@ part of 'database.dart';
 // ignore_for_file: type=lint
 mixin $ProjectsTableTableToColumns implements Insertable<ProjectDto> {
   String get projectId;
+
+  /// The project's directory on disk. Every shipped plugin uses the directory
+  /// path as the project id today, so inserts stamp the id here too; keeping
+  /// it as its own column lets ids stop being paths without a schema change.
+  String get path;
   bool get hidden;
   String? get baseBranch;
   int get worktreeCounter;
@@ -14,15 +19,16 @@ mixin $ProjectsTableTableToColumns implements Insertable<ProjectDto> {
   /// null means fall back to the directory basename.
   String? get displayName;
 
-  /// Wall-clock ms when the user explicitly opened this folder. Lets a folder
-  /// with no sessions yet survive a refresh, and doubles as the project's time
-  /// until a session supplies one. Null for projects discovered purely from
-  /// sessions.
-  int? get openedAt;
+  /// Wall-clock ms when this project row was recorded — the folder was opened
+  /// or the project was first discovered. Lets a folder with no sessions yet
+  /// survive a refresh, and doubles as the project's time until a session
+  /// supplies one. Stamped at insert time; re-opening a folder bumps it.
+  int get openedAt;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['project_id'] = Variable<String>(projectId);
+    map['path'] = Variable<String>(path);
     map['hidden'] = Variable<bool>(hidden);
     if (!nullToAbsent || baseBranch != null) {
       map['base_branch'] = Variable<String>(baseBranch);
@@ -31,9 +37,7 @@ mixin $ProjectsTableTableToColumns implements Insertable<ProjectDto> {
     if (!nullToAbsent || displayName != null) {
       map['display_name'] = Variable<String>(displayName);
     }
-    if (!nullToAbsent || openedAt != null) {
-      map['opened_at'] = Variable<int>(openedAt);
-    }
+    map['opened_at'] = Variable<int>(openedAt);
     return map;
   }
 }
@@ -50,6 +54,15 @@ class $ProjectsTableTable extends ProjectsTable
   @override
   late final GeneratedColumn<String> projectId = GeneratedColumn<String>(
     'project_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _pathMeta = const VerificationMeta('path');
+  @override
+  late final GeneratedColumn<String> path = GeneratedColumn<String>(
+    'path',
     aliasedName,
     false,
     type: DriftSqlType.string,
@@ -109,13 +122,15 @@ class $ProjectsTableTable extends ProjectsTable
   late final GeneratedColumn<int> openedAt = GeneratedColumn<int>(
     'opened_at',
     aliasedName,
-    true,
+    false,
     type: DriftSqlType.int,
     requiredDuringInsert: false,
+    clientDefault: () => DateTime.now().millisecondsSinceEpoch,
   );
   @override
   List<GeneratedColumn> get $columns => [
     projectId,
+    path,
     hidden,
     baseBranch,
     worktreeCounter,
@@ -141,6 +156,14 @@ class $ProjectsTableTable extends ProjectsTable
       );
     } else if (isInserting) {
       context.missing(_projectIdMeta);
+    }
+    if (data.containsKey('path')) {
+      context.handle(
+        _pathMeta,
+        path.isAcceptableOrUnknown(data['path']!, _pathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pathMeta);
     }
     if (data.containsKey('hidden')) {
       context.handle(
@@ -191,6 +214,10 @@ class $ProjectsTableTable extends ProjectsTable
         DriftSqlType.string,
         data['${effectivePrefix}project_id'],
       )!,
+      path: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}path'],
+      )!,
       hidden: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}hidden'],
@@ -210,7 +237,7 @@ class $ProjectsTableTable extends ProjectsTable
       openedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}opened_at'],
-      ),
+      )!,
     );
   }
 
@@ -225,13 +252,15 @@ class $ProjectsTableTable extends ProjectsTable
 
 class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
   final Value<String> projectId;
+  final Value<String> path;
   final Value<bool> hidden;
   final Value<String?> baseBranch;
   final Value<int> worktreeCounter;
   final Value<String?> displayName;
-  final Value<int?> openedAt;
+  final Value<int> openedAt;
   const ProjectsTableCompanion({
     this.projectId = const Value.absent(),
+    this.path = const Value.absent(),
     this.hidden = const Value.absent(),
     this.baseBranch = const Value.absent(),
     this.worktreeCounter = const Value.absent(),
@@ -240,14 +269,17 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
   });
   ProjectsTableCompanion.insert({
     required String projectId,
+    required String path,
     this.hidden = const Value.absent(),
     this.baseBranch = const Value.absent(),
     this.worktreeCounter = const Value.absent(),
     this.displayName = const Value.absent(),
     this.openedAt = const Value.absent(),
-  }) : projectId = Value(projectId);
+  }) : projectId = Value(projectId),
+       path = Value(path);
   static Insertable<ProjectDto> custom({
     Expression<String>? projectId,
+    Expression<String>? path,
     Expression<bool>? hidden,
     Expression<String>? baseBranch,
     Expression<int>? worktreeCounter,
@@ -256,6 +288,7 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
   }) {
     return RawValuesInsertable({
       if (projectId != null) 'project_id': projectId,
+      if (path != null) 'path': path,
       if (hidden != null) 'hidden': hidden,
       if (baseBranch != null) 'base_branch': baseBranch,
       if (worktreeCounter != null) 'worktree_counter': worktreeCounter,
@@ -266,14 +299,16 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
 
   ProjectsTableCompanion copyWith({
     Value<String>? projectId,
+    Value<String>? path,
     Value<bool>? hidden,
     Value<String?>? baseBranch,
     Value<int>? worktreeCounter,
     Value<String?>? displayName,
-    Value<int?>? openedAt,
+    Value<int>? openedAt,
   }) {
     return ProjectsTableCompanion(
       projectId: projectId ?? this.projectId,
+      path: path ?? this.path,
       hidden: hidden ?? this.hidden,
       baseBranch: baseBranch ?? this.baseBranch,
       worktreeCounter: worktreeCounter ?? this.worktreeCounter,
@@ -287,6 +322,9 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
     final map = <String, Expression>{};
     if (projectId.present) {
       map['project_id'] = Variable<String>(projectId.value);
+    }
+    if (path.present) {
+      map['path'] = Variable<String>(path.value);
     }
     if (hidden.present) {
       map['hidden'] = Variable<bool>(hidden.value);
@@ -310,6 +348,7 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
   String toString() {
     return (StringBuffer('ProjectsTableCompanion(')
           ..write('projectId: $projectId, ')
+          ..write('path: $path, ')
           ..write('hidden: $hidden, ')
           ..write('baseBranch: $baseBranch, ')
           ..write('worktreeCounter: $worktreeCounter, ')
@@ -334,9 +373,8 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
   int get createdAt;
 
   /// The id of the plugin that owns this session (e.g. "opencode", "codex").
-  /// Defaults to "opencode" so the v6→v7 migration backfills every pre-existing
-  /// row — opencode was the only shipped plugin. New sessions are stamped with
-  /// the active plugin's id at insert.
+  /// No default — every insert stamps the active plugin's id explicitly; the
+  /// v6→v7 migration backfills pre-existing rows itself.
   String get pluginId;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -513,8 +551,7 @@ class $SessionTableTable extends SessionTable
     aliasedName,
     false,
     type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultValue: const Constant("opencode"),
+    requiredDuringInsert: true,
   );
   @override
   List<GeneratedColumn> get $columns => [
@@ -622,6 +659,8 @@ class $SessionTableTable extends SessionTable
         _pluginIdMeta,
         pluginId.isAcceptableOrUnknown(data['plugin_id']!, _pluginIdMeta),
       );
+    } else if (isInserting) {
+      context.missing(_pluginIdMeta);
     }
     return context;
   }
@@ -737,11 +776,12 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.lastAgent = const Value.absent(),
     this.lastAgentModel = const Value.absent(),
     required int createdAt,
-    this.pluginId = const Value.absent(),
+    required String pluginId,
   }) : sessionId = Value(sessionId),
        projectId = Value(projectId),
        isDedicated = Value(isDedicated),
-       createdAt = Value(createdAt);
+       createdAt = Value(createdAt),
+       pluginId = Value(pluginId);
   static Insertable<SessionDto> custom({
     Expression<String>? sessionId,
     Expression<String>? projectId,
@@ -1430,20 +1470,22 @@ abstract class _$AppDatabase extends GeneratedDatabase {
 typedef $$ProjectsTableTableCreateCompanionBuilder =
     ProjectsTableCompanion Function({
       required String projectId,
+      required String path,
       Value<bool> hidden,
       Value<String?> baseBranch,
       Value<int> worktreeCounter,
       Value<String?> displayName,
-      Value<int?> openedAt,
+      Value<int> openedAt,
     });
 typedef $$ProjectsTableTableUpdateCompanionBuilder =
     ProjectsTableCompanion Function({
       Value<String> projectId,
+      Value<String> path,
       Value<bool> hidden,
       Value<String?> baseBranch,
       Value<int> worktreeCounter,
       Value<String?> displayName,
-      Value<int?> openedAt,
+      Value<int> openedAt,
     });
 
 final class $$ProjectsTableTableReferences
@@ -1513,6 +1555,11 @@ class $$ProjectsTableTableFilterComposer
   });
   ColumnFilters<String> get projectId => $composableBuilder(
     column: $table.projectId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get path => $composableBuilder(
+    column: $table.path,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1606,6 +1653,11 @@ class $$ProjectsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get hidden => $composableBuilder(
     column: $table.hidden,
     builder: (column) => ColumnOrderings(column),
@@ -1643,6 +1695,9 @@ class $$ProjectsTableTableAnnotationComposer
   });
   GeneratedColumn<String> get projectId =>
       $composableBuilder(column: $table.projectId, builder: (column) => column);
+
+  GeneratedColumn<String> get path =>
+      $composableBuilder(column: $table.path, builder: (column) => column);
 
   GeneratedColumn<bool> get hidden =>
       $composableBuilder(column: $table.hidden, builder: (column) => column);
@@ -1749,13 +1804,15 @@ class $$ProjectsTableTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> projectId = const Value.absent(),
+                Value<String> path = const Value.absent(),
                 Value<bool> hidden = const Value.absent(),
                 Value<String?> baseBranch = const Value.absent(),
                 Value<int> worktreeCounter = const Value.absent(),
                 Value<String?> displayName = const Value.absent(),
-                Value<int?> openedAt = const Value.absent(),
+                Value<int> openedAt = const Value.absent(),
               }) => ProjectsTableCompanion(
                 projectId: projectId,
+                path: path,
                 hidden: hidden,
                 baseBranch: baseBranch,
                 worktreeCounter: worktreeCounter,
@@ -1765,13 +1822,15 @@ class $$ProjectsTableTableTableManager
           createCompanionCallback:
               ({
                 required String projectId,
+                required String path,
                 Value<bool> hidden = const Value.absent(),
                 Value<String?> baseBranch = const Value.absent(),
                 Value<int> worktreeCounter = const Value.absent(),
                 Value<String?> displayName = const Value.absent(),
-                Value<int?> openedAt = const Value.absent(),
+                Value<int> openedAt = const Value.absent(),
               }) => ProjectsTableCompanion.insert(
                 projectId: projectId,
+                path: path,
                 hidden: hidden,
                 baseBranch: baseBranch,
                 worktreeCounter: worktreeCounter,
@@ -1877,7 +1936,7 @@ typedef $$SessionTableTableCreateCompanionBuilder =
       Value<String?> lastAgent,
       Value<AgentModel?> lastAgentModel,
       required int createdAt,
-      Value<String> pluginId,
+      required String pluginId,
     });
 typedef $$SessionTableTableUpdateCompanionBuilder =
     SessionTableCompanion Function({
@@ -2243,7 +2302,7 @@ class $$SessionTableTableTableManager
                 Value<String?> lastAgent = const Value.absent(),
                 Value<AgentModel?> lastAgentModel = const Value.absent(),
                 required int createdAt,
-                Value<String> pluginId = const Value.absent(),
+                required String pluginId,
               }) => SessionTableCompanion.insert(
                 sessionId: sessionId,
                 projectId: projectId,

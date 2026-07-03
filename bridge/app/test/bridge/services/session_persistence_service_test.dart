@@ -73,6 +73,7 @@ void main() {
     test("persistSessionsForProject is idempotent and preserves worktree state", () async {
       await projectsDao.insertProjectsIfMissing(projectIds: ["X"]);
       await sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "s1",
         projectId: "X",
         isDedicated: true,
@@ -185,6 +186,7 @@ void main() {
     test("deleteSession removes an existing stored session", () async {
       await projectsDao.insertProjectsIfMissing(projectIds: ["proj-delete"]);
       await sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "sess-delete",
         projectId: "proj-delete",
         isDedicated: true,
@@ -206,6 +208,7 @@ void main() {
     test("archiveSession sets archivedAt on an existing stored session", () async {
       await projectsDao.insertProjectsIfMissing(projectIds: ["proj-archive"]);
       await sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "sess-archive",
         projectId: "proj-archive",
         isDedicated: true,
@@ -227,6 +230,7 @@ void main() {
     test("unarchiveSession clears archivedAt on an existing stored session", () async {
       await projectsDao.insertProjectsIfMissing(projectIds: ["proj-unarchive"]);
       await sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "sess-unarchive",
         projectId: "proj-unarchive",
         isDedicated: true,

@@ -336,6 +336,7 @@ void main() {
 
       sessionDao.setSession(
         const SessionDto(
+          pluginId: "opencode",
           sessionId: "s1",
           projectId: "p1",
           worktreePath: null,
@@ -406,6 +407,7 @@ void main() {
 
       sessionDao.setSession(
         const SessionDto(
+          pluginId: "opencode",
           sessionId: "s1",
           projectId: "p1",
           worktreePath: null,
@@ -467,6 +469,7 @@ void main() {
 
       sessionDao.setSession(
         const SessionDto(
+          pluginId: "opencode",
           sessionId: "s1",
           projectId: "p1",
           worktreePath: null,
@@ -482,6 +485,7 @@ void main() {
       );
       sessionDao.setSession(
         const SessionDto(
+          pluginId: "opencode",
           sessionId: "s2",
           projectId: "p1",
           worktreePath: null,
@@ -525,6 +529,7 @@ void main() {
 
       sessionDao.setSession(
         const SessionDto(
+          pluginId: "opencode",
           sessionId: "s1",
           projectId: "p1",
           worktreePath: "/repo/.worktrees/session-001",
@@ -565,6 +570,7 @@ void main() {
 
       sessionDao.setSession(
         const SessionDto(
+          pluginId: "opencode",
           sessionId: "s1",
           projectId: "p1",
           worktreePath: null,
@@ -677,6 +683,7 @@ void main() {
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "s1",
         projectId: "p1",
         isDedicated: true,

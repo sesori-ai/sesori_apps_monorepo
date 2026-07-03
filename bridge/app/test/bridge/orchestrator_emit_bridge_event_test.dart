@@ -18,7 +18,6 @@ import "package:sesori_bridge/src/bridge/orchestrator.dart";
 import "package:sesori_bridge/src/bridge/persistence/tables/session_table.dart";
 import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/repositories/agent_repository.dart";
-import "package:sesori_bridge/src/bridge/repositories/derived_project_builder.dart";
 import "package:sesori_bridge/src/bridge/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/health_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/models/stored_session.dart";
@@ -73,8 +72,6 @@ void main() {
       plugin: plugin,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
-      trackingMode: ProjectTrackingMode.nativeBackend,
-      derivedProjectBuilder: const DerivedProjectBuilder(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
@@ -244,8 +241,6 @@ void main() {
       plugin: plugin,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
-      trackingMode: ProjectTrackingMode.nativeBackend,
-      derivedProjectBuilder: const DerivedProjectBuilder(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
@@ -391,8 +386,6 @@ void main() {
       plugin: plugin,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
-      trackingMode: ProjectTrackingMode.nativeBackend,
-      derivedProjectBuilder: const DerivedProjectBuilder(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
@@ -420,6 +413,7 @@ void main() {
 
     await database.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
     await database.sessionDao.insertSession(
+      pluginId: "opencode",
       sessionId: "s1",
       projectId: "p1",
       isDedicated: true,
@@ -580,8 +574,6 @@ void main() {
       plugin: plugin,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
-      trackingMode: ProjectTrackingMode.nativeBackend,
-      derivedProjectBuilder: const DerivedProjectBuilder(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
@@ -709,8 +701,6 @@ void main() {
       plugin: plugin,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
-      trackingMode: ProjectTrackingMode.nativeBackend,
-      derivedProjectBuilder: const DerivedProjectBuilder(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
@@ -863,8 +853,6 @@ void main() {
       plugin: plugin,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
-      trackingMode: ProjectTrackingMode.nativeBackend,
-      derivedProjectBuilder: const DerivedProjectBuilder(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
@@ -1213,7 +1201,7 @@ class _AbortEventPlugin extends _EventPlugin {
   }
 }
 
-class _SummaryPlugin implements BridgePluginApi {
+class _SummaryPlugin implements NativeProjectsPluginApi {
   final void Function() onSubscribe;
   final StreamController<BridgeSseEvent> _controller = StreamController<BridgeSseEvent>.broadcast();
 
@@ -1375,7 +1363,7 @@ class _SummaryPlugin implements BridgePluginApi {
   Future<void> close() => _controller.close();
 }
 
-class _NoopPlugin implements BridgePluginApi {
+class _NoopPlugin implements NativeProjectsPluginApi {
   final StreamController<BridgeSseEvent> _controller = StreamController<BridgeSseEvent>.broadcast();
 
   @override

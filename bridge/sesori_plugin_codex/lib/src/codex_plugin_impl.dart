@@ -29,7 +29,7 @@ import "session_rollout_reader.dart";
 ///     non-empty data while sessions are alive.
 ///
 /// Approval/permission flows still throw — those land in Phase 5.
-class CodexPlugin with BridgeDerivedProjectsMixin implements CodexManagedApi, BridgeDerivedProjectSource {
+class CodexPlugin implements CodexManagedApi {
   final String _serverUrl;
   // Passed to the default client built in [_createClient]; retained for future
   // non-loopback (`--ws-auth`) support.
@@ -331,11 +331,9 @@ class CodexPlugin with BridgeDerivedProjectsMixin implements CodexManagedApi, Br
     }
   }
 
-  /// codex declares `ProjectTrackingMode.bridgeDerived`, so getProjects/
-  /// getProject/renameProject come from [BridgeDerivedProjectsMixin] and the
-  /// bridge derives the project list from these sessions. Each carries its real
-  /// rollout cwd as its directory so the bridge groups it under the right
-  /// project.
+  /// codex is a [BridgeDerivedProjectsPluginApi], so the bridge derives the
+  /// project list from these sessions. Each carries its real rollout cwd as its
+  /// directory so the bridge groups it under the right project.
   @override
   Future<List<PluginSession>> listAllSessions() async =>
       _rolloutReader.listSessions().map(_toPluginSession).toList(growable: false);

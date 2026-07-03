@@ -6,15 +6,17 @@ import 'package:drift/drift.dart';
 
 mixin ProjectsTableToColumns implements Insertable<ProjectsTableData> {
   String get projectId;
+  String get path;
   int get hidden;
   String? get baseBranch;
   int get worktreeCounter;
   String? get displayName;
-  int? get openedAt;
+  int get openedAt;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['project_id'] = Variable<String>(projectId);
+    map['path'] = Variable<String>(path);
     map['hidden'] = Variable<int>(hidden);
     if (!nullToAbsent || baseBranch != null) {
       map['base_branch'] = Variable<String>(baseBranch);
@@ -23,9 +25,7 @@ mixin ProjectsTableToColumns implements Insertable<ProjectsTableData> {
     if (!nullToAbsent || displayName != null) {
       map['display_name'] = Variable<String>(displayName);
     }
-    if (!nullToAbsent || openedAt != null) {
-      map['opened_at'] = Variable<int>(openedAt);
-    }
+    map['opened_at'] = Variable<int>(openedAt);
     return map;
   }
 }
@@ -38,6 +38,14 @@ class ProjectsTable extends Table
   ProjectsTable(this.attachedDatabase, [this._alias]);
   late final GeneratedColumn<String> projectId = GeneratedColumn<String>(
     'project_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  late final GeneratedColumn<String> path = GeneratedColumn<String>(
+    'path',
     aliasedName,
     false,
     type: DriftSqlType.string,
@@ -81,14 +89,15 @@ class ProjectsTable extends Table
   late final GeneratedColumn<int> openedAt = GeneratedColumn<int>(
     'opened_at',
     aliasedName,
-    true,
+    false,
     type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    $customConstraints: 'NULL',
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
   );
   @override
   List<GeneratedColumn> get $columns => [
     projectId,
+    path,
     hidden,
     baseBranch,
     worktreeCounter,
@@ -110,6 +119,10 @@ class ProjectsTable extends Table
         DriftSqlType.string,
         data['${effectivePrefix}project_id'],
       )!,
+      path: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}path'],
+      )!,
       hidden: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}hidden'],
@@ -129,7 +142,7 @@ class ProjectsTable extends Table
       openedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}opened_at'],
-      ),
+      )!,
     );
   }
 
@@ -150,6 +163,8 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
   @override
   final String projectId;
   @override
+  final String path;
+  @override
   final int hidden;
   @override
   final String? baseBranch;
@@ -158,18 +173,20 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
   @override
   final String? displayName;
   @override
-  final int? openedAt;
+  final int openedAt;
   const ProjectsTableData({
     required this.projectId,
+    required this.path,
     required this.hidden,
     this.baseBranch,
     required this.worktreeCounter,
     this.displayName,
-    this.openedAt,
+    required this.openedAt,
   });
   ProjectsTableCompanion toCompanion(bool nullToAbsent) {
     return ProjectsTableCompanion(
       projectId: Value(projectId),
+      path: Value(path),
       hidden: Value(hidden),
       baseBranch: baseBranch == null && nullToAbsent
           ? const Value.absent()
@@ -178,9 +195,7 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
       displayName: displayName == null && nullToAbsent
           ? const Value.absent()
           : Value(displayName),
-      openedAt: openedAt == null && nullToAbsent
-          ? const Value.absent()
-          : Value(openedAt),
+      openedAt: Value(openedAt),
     );
   }
 
@@ -191,11 +206,12 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return ProjectsTableData(
       projectId: serializer.fromJson<String>(json['projectId']),
+      path: serializer.fromJson<String>(json['path']),
       hidden: serializer.fromJson<int>(json['hidden']),
       baseBranch: serializer.fromJson<String?>(json['baseBranch']),
       worktreeCounter: serializer.fromJson<int>(json['worktreeCounter']),
       displayName: serializer.fromJson<String?>(json['displayName']),
-      openedAt: serializer.fromJson<int?>(json['openedAt']),
+      openedAt: serializer.fromJson<int>(json['openedAt']),
     );
   }
   @override
@@ -203,32 +219,36 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'projectId': serializer.toJson<String>(projectId),
+      'path': serializer.toJson<String>(path),
       'hidden': serializer.toJson<int>(hidden),
       'baseBranch': serializer.toJson<String?>(baseBranch),
       'worktreeCounter': serializer.toJson<int>(worktreeCounter),
       'displayName': serializer.toJson<String?>(displayName),
-      'openedAt': serializer.toJson<int?>(openedAt),
+      'openedAt': serializer.toJson<int>(openedAt),
     };
   }
 
   ProjectsTableData copyWith({
     String? projectId,
+    String? path,
     int? hidden,
     Value<String?> baseBranch = const Value.absent(),
     int? worktreeCounter,
     Value<String?> displayName = const Value.absent(),
-    Value<int?> openedAt = const Value.absent(),
+    int? openedAt,
   }) => ProjectsTableData(
     projectId: projectId ?? this.projectId,
+    path: path ?? this.path,
     hidden: hidden ?? this.hidden,
     baseBranch: baseBranch.present ? baseBranch.value : this.baseBranch,
     worktreeCounter: worktreeCounter ?? this.worktreeCounter,
     displayName: displayName.present ? displayName.value : this.displayName,
-    openedAt: openedAt.present ? openedAt.value : this.openedAt,
+    openedAt: openedAt ?? this.openedAt,
   );
   ProjectsTableData copyWithCompanion(ProjectsTableCompanion data) {
     return ProjectsTableData(
       projectId: data.projectId.present ? data.projectId.value : this.projectId,
+      path: data.path.present ? data.path.value : this.path,
       hidden: data.hidden.present ? data.hidden.value : this.hidden,
       baseBranch: data.baseBranch.present
           ? data.baseBranch.value
@@ -247,6 +267,7 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
   String toString() {
     return (StringBuffer('ProjectsTableData(')
           ..write('projectId: $projectId, ')
+          ..write('path: $path, ')
           ..write('hidden: $hidden, ')
           ..write('baseBranch: $baseBranch, ')
           ..write('worktreeCounter: $worktreeCounter, ')
@@ -259,6 +280,7 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
   @override
   int get hashCode => Object.hash(
     projectId,
+    path,
     hidden,
     baseBranch,
     worktreeCounter,
@@ -270,6 +292,7 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
       identical(this, other) ||
       (other is ProjectsTableData &&
           other.projectId == this.projectId &&
+          other.path == this.path &&
           other.hidden == this.hidden &&
           other.baseBranch == this.baseBranch &&
           other.worktreeCounter == this.worktreeCounter &&
@@ -279,13 +302,15 @@ class ProjectsTableData extends DataClass with ProjectsTableToColumns {
 
 class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
   final Value<String> projectId;
+  final Value<String> path;
   final Value<int> hidden;
   final Value<String?> baseBranch;
   final Value<int> worktreeCounter;
   final Value<String?> displayName;
-  final Value<int?> openedAt;
+  final Value<int> openedAt;
   const ProjectsTableCompanion({
     this.projectId = const Value.absent(),
+    this.path = const Value.absent(),
     this.hidden = const Value.absent(),
     this.baseBranch = const Value.absent(),
     this.worktreeCounter = const Value.absent(),
@@ -294,14 +319,18 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
   });
   ProjectsTableCompanion.insert({
     required String projectId,
+    required String path,
     this.hidden = const Value.absent(),
     this.baseBranch = const Value.absent(),
     this.worktreeCounter = const Value.absent(),
     this.displayName = const Value.absent(),
-    this.openedAt = const Value.absent(),
-  }) : projectId = Value(projectId);
+    required int openedAt,
+  }) : projectId = Value(projectId),
+       path = Value(path),
+       openedAt = Value(openedAt);
   static Insertable<ProjectsTableData> custom({
     Expression<String>? projectId,
+    Expression<String>? path,
     Expression<int>? hidden,
     Expression<String>? baseBranch,
     Expression<int>? worktreeCounter,
@@ -310,6 +339,7 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
   }) {
     return RawValuesInsertable({
       if (projectId != null) 'project_id': projectId,
+      if (path != null) 'path': path,
       if (hidden != null) 'hidden': hidden,
       if (baseBranch != null) 'base_branch': baseBranch,
       if (worktreeCounter != null) 'worktree_counter': worktreeCounter,
@@ -320,14 +350,16 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
 
   ProjectsTableCompanion copyWith({
     Value<String>? projectId,
+    Value<String>? path,
     Value<int>? hidden,
     Value<String?>? baseBranch,
     Value<int>? worktreeCounter,
     Value<String?>? displayName,
-    Value<int?>? openedAt,
+    Value<int>? openedAt,
   }) {
     return ProjectsTableCompanion(
       projectId: projectId ?? this.projectId,
+      path: path ?? this.path,
       hidden: hidden ?? this.hidden,
       baseBranch: baseBranch ?? this.baseBranch,
       worktreeCounter: worktreeCounter ?? this.worktreeCounter,
@@ -341,6 +373,9 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
     final map = <String, Expression>{};
     if (projectId.present) {
       map['project_id'] = Variable<String>(projectId.value);
+    }
+    if (path.present) {
+      map['path'] = Variable<String>(path.value);
     }
     if (hidden.present) {
       map['hidden'] = Variable<int>(hidden.value);
@@ -364,6 +399,7 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectsTableData> {
   String toString() {
     return (StringBuffer('ProjectsTableCompanion(')
           ..write('projectId: $projectId, ')
+          ..write('path: $path, ')
           ..write('hidden: $hidden, ')
           ..write('baseBranch: $baseBranch, ')
           ..write('worktreeCounter: $worktreeCounter, ')
@@ -520,9 +556,8 @@ class SessionsTable extends Table
     aliasedName,
     false,
     type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    $customConstraints: 'NOT NULL DEFAULT \'opencode\'',
-    defaultValue: const CustomExpression('\'opencode\''),
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
   );
   @override
   List<GeneratedColumn> get $columns => [
@@ -874,11 +909,12 @@ class SessionsTableCompanion extends UpdateCompanion<SessionsTableData> {
     this.lastAgent = const Value.absent(),
     this.lastAgentModel = const Value.absent(),
     required int createdAt,
-    this.pluginId = const Value.absent(),
+    required String pluginId,
   }) : sessionId = Value(sessionId),
        projectId = Value(projectId),
        isDedicated = Value(isDedicated),
-       createdAt = Value(createdAt);
+       createdAt = Value(createdAt),
+       pluginId = Value(pluginId);
   static Insertable<SessionsTableData> custom({
     Expression<String>? sessionId,
     Expression<String>? projectId,

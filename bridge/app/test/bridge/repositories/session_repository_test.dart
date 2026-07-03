@@ -34,6 +34,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
 
       await db.sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "s1",
         projectId: "p1",
         isDedicated: true,
@@ -136,6 +137,7 @@ void main() {
 
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "s1",
         projectId: "p1",
         isDedicated: false,
@@ -183,6 +185,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
 
       await db.sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "s1",
         projectId: "p1",
         isDedicated: false,
@@ -355,6 +358,7 @@ void main() {
 
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "s1",
         projectId: "p1",
         isDedicated: true,
@@ -416,6 +420,7 @@ void main() {
 
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p-stored"]);
       await db.sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "s-target",
         projectId: "p-stored",
         isDedicated: true,
@@ -599,19 +604,18 @@ void main() {
       expect(sessions.map((s) => s.id).toSet(), {"s1", "w1"});
     });
 
-    test("findProjectIdForSession folds a rowless worktree session to its parent via the worktree mapper", () async {
+    test("findProjectIdForSession resolves a recorded worktree session to its parent via its stored row", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
 
       const parent = "/tmp/proj/alpha";
       const worktree = "/tmp/proj/alpha/.worktrees/session-001";
-      // Session a1 recorded the worktree→parent mapping. Session b1 also runs in
-      // that worktree but has no row of its own, so it hits the derived
-      // fallback — which must still fold it to the parent, matching how the
-      // persisted-row path and DerivedSessionScope canonicalize it.
+      // The bridge recorded a1 under its parent project at creation; the stored
+      // row is authoritative even though the plugin reports the session under
+      // its worktree cwd.
       final plugin = _FakeDerivedPlugin(
         launchDirectory: parent,
-        allSessions: [pluginSession(worktree, id: "b1")],
+        allSessions: [pluginSession(worktree, id: "a1")],
       );
       final repository = SessionRepository(
         plugin: plugin,
@@ -623,9 +627,34 @@ void main() {
       );
       await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "a1");
 
-      final result = await repository.findProjectIdForSession(sessionId: "b1");
+      final result = await repository.findProjectIdForSession(sessionId: "a1");
 
       expect(result, equals(parent));
+    });
+
+    test("findProjectIdForSession resolves a rowless session to its own directory", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      const directory = "/tmp/proj/beta";
+      // No stored row: the bridge did not create this session, so its own cwd
+      // IS its project.
+      final plugin = _FakeDerivedPlugin(
+        launchDirectory: "/tmp/proj/alpha",
+        allSessions: [pluginSession(directory, id: "b1")],
+      );
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+
+      final result = await repository.findProjectIdForSession(sessionId: "b1");
+
+      expect(result, equals(directory));
     });
 
     test("getSessionsForProject scoped to the worktree path returns nothing — it belongs to its parent", () async {
@@ -655,7 +684,7 @@ void main() {
   });
 }
 
-class _FakeBridgePlugin implements BridgePluginApi {
+class _FakeBridgePlugin implements NativeProjectsPluginApi {
   List<PluginProject> projectsResult = const [];
   List<PluginSession> sessionsResult = const [];
   Map<String, List<PluginSession>> sessionsByWorktree = const {};
@@ -743,12 +772,10 @@ class _FakeBridgePlugin implements BridgePluginApi {
 }
 
 /// A derive-style plugin (Codex/ACP shaped): reports every session through
-/// [BridgeDerivedProjectSource.listAllSessions] and mixes in the bridge-derived
-/// no-ops. `id` is "codex" so the repository's worktree lookup
-/// (`getWorktreeProjectPaths(pluginId: ...)`) matches the seeded session rows.
-class _FakeDerivedPlugin extends _FakeBridgePlugin
-    with BridgeDerivedProjectsMixin
-    implements BridgeDerivedProjectSource {
+/// [BridgeDerivedProjectsPluginApi.listAllSessions]. `id` is "codex" so the
+/// repository's stored-attribution lookup
+/// (`getSessionProjectPaths(pluginId: ...)`) matches the seeded session rows.
+class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
   _FakeDerivedPlugin({required this.launchDirectory, required this.allSessions});
 
   @override
@@ -761,4 +788,7 @@ class _FakeDerivedPlugin extends _FakeBridgePlugin
 
   @override
   Future<List<PluginSession>> listAllSessions() async => allSessions;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

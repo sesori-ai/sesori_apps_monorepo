@@ -588,11 +588,12 @@ final class Schema7 extends i0.VersionedSchema {
       tableConstraints: ['PRIMARY KEY(project_id)'],
       columns: [
         _column_0,
+        _column_24,
         _column_1,
         _column_2,
         _column_3,
-        _column_24,
         _column_25,
+        _column_26,
       ],
       attachedDatabase: database,
     ),
@@ -616,7 +617,7 @@ final class Schema7 extends i0.VersionedSchema {
         _column_22,
         _column_23,
         _column_12,
-        _column_26,
+        _column_27,
       ],
       attachedDatabase: database,
     ),
@@ -651,6 +652,8 @@ class Shape5 extends i0.VersionedTable {
   Shape5({required super.source, required super.alias}) : super.aliased();
   i1.GeneratedColumn<String> get projectId =>
       columnsByName['project_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get path =>
+      columnsByName['path']! as i1.GeneratedColumn<String>;
   i1.GeneratedColumn<int> get hidden =>
       columnsByName['hidden']! as i1.GeneratedColumn<int>;
   i1.GeneratedColumn<String> get baseBranch =>
@@ -665,19 +668,27 @@ class Shape5 extends i0.VersionedTable {
 
 i1.GeneratedColumn<String> _column_24(String aliasedName) =>
     i1.GeneratedColumn<String>(
+      'path',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<String> _column_25(String aliasedName) =>
+    i1.GeneratedColumn<String>(
       'display_name',
       aliasedName,
       true,
       type: i1.DriftSqlType.string,
       $customConstraints: 'NULL',
     );
-i1.GeneratedColumn<int> _column_25(String aliasedName) =>
+i1.GeneratedColumn<int> _column_26(String aliasedName) =>
     i1.GeneratedColumn<int>(
       'opened_at',
       aliasedName,
-      true,
+      false,
       type: i1.DriftSqlType.int,
-      $customConstraints: 'NULL',
+      $customConstraints: 'NOT NULL',
     );
 
 class Shape6 extends i0.VersionedTable {
@@ -708,14 +719,13 @@ class Shape6 extends i0.VersionedTable {
       columnsByName['plugin_id']! as i1.GeneratedColumn<String>;
 }
 
-i1.GeneratedColumn<String> _column_26(String aliasedName) =>
+i1.GeneratedColumn<String> _column_27(String aliasedName) =>
     i1.GeneratedColumn<String>(
       'plugin_id',
       aliasedName,
       false,
       type: i1.DriftSqlType.string,
-      $customConstraints: 'NOT NULL DEFAULT \'opencode\'',
-      defaultValue: const i1.CustomExpression('\'opencode\''),
+      $customConstraints: 'NOT NULL',
     );
 i0.MigrationStepWithVersion migrationSteps({
   required Future<void> Function(i1.Migrator m, Schema2 schema) from1To2,

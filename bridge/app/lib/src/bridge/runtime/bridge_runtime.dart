@@ -3,7 +3,7 @@ import "dart:io";
 
 import "package:http/http.dart" as http;
 import "package:rxdart/rxdart.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginApi, Log, ProjectTrackingMode;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show BridgePluginApi, Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../auth/access_token_provider.dart";
@@ -33,7 +33,6 @@ import "../orchestrator.dart";
 import "../persistence/database.dart";
 import "../relay_client.dart";
 import "../repositories/agent_repository.dart";
-import "../repositories/derived_project_builder.dart";
 import "../repositories/filesystem_repository.dart";
 import "../repositories/health_repository.dart";
 import "../repositories/permission_repository.dart";
@@ -75,7 +74,6 @@ class BridgeRuntime {
   static BridgeRuntime create({
     required BridgeConfig config,
     required BridgePluginApi plugin,
-    required ProjectTrackingMode projectTrackingMode,
     required http.Client httpClient,
     required AccessTokenProvider accessTokenProvider,
     required TokenRefresher tokenRefresher,
@@ -126,8 +124,6 @@ class BridgeRuntime {
       plugin: plugin,
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
-      trackingMode: projectTrackingMode,
-      derivedProjectBuilder: const DerivedProjectBuilder(),
     );
     final filesystemRepository = FilesystemRepository(
       filesystemApi: const FilesystemApi(),

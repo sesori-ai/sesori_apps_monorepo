@@ -1,5 +1,4 @@
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
-import "package:sesori_bridge/src/bridge/repositories/derived_project_builder.dart";
 import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/get_current_project_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -23,8 +22,6 @@ void main() {
           plugin: plugin,
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
-          trackingMode: ProjectTrackingMode.nativeBackend,
-          derivedProjectBuilder: const DerivedProjectBuilder(),
         ),
       );
     });
