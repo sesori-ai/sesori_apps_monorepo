@@ -84,4 +84,22 @@ class CodexMetadataRepository {
       providerID: latest?.modelProvider ?? config.modelProvider ?? "openai",
     );
   }
+
+  /// Selects the picker's preselected model for a project given the live
+  /// catalog: the project's own most recent model (the [resolveModelDefaults]
+  /// result) wins when it is still in the catalog — keeping the provider
+  /// picker consistent with the project-scoped default the agent list
+  /// resolves — then codex's live default, then the first catalog model.
+  /// Returns null only for an empty catalog.
+  String? selectCatalogDefaultModel({
+    required String? scopedModelID,
+    required List<String> catalogModelIds,
+    required String? catalogDefaultId,
+  }) {
+    if (scopedModelID != null && catalogModelIds.contains(scopedModelID)) {
+      return scopedModelID;
+    }
+    if (catalogDefaultId != null) return catalogDefaultId;
+    return catalogModelIds.isEmpty ? null : catalogModelIds.first;
+  }
 }

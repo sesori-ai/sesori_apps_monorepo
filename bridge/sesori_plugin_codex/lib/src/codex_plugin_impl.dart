@@ -895,6 +895,11 @@ class CodexPlugin implements CodexManagedApi {
         );
       }
       if (pluginModels.isNotEmpty) {
+        final defaultModelID = _metadataRepository.selectCatalogDefaultModel(
+          scopedModelID: modelID,
+          catalogModelIds: [for (final model in pluginModels) model.id],
+          catalogDefaultId: defaultId,
+        );
         return PluginProvidersResult(
           providers: [
             PluginProvider.custom(
@@ -902,7 +907,9 @@ class CodexPlugin implements CodexManagedApi {
               name: _providerDisplayName(providerID),
               authType: PluginProviderAuthType.unknown,
               models: pluginModels,
-              defaultModelID: defaultId ?? modelID ?? pluginModels.first.id,
+              // Non-null: the catalog is non-empty here, so the repository
+              // always resolves at least the first catalog model.
+              defaultModelID: defaultModelID ?? pluginModels.first.id,
             ),
           ],
         );

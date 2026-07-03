@@ -209,6 +209,44 @@ void main() {
         expect(defaults.providerID, equals("openai"));
       });
     });
+
+    group("selectCatalogDefaultModel", () {
+      test("the project-scoped model wins over the catalog default when in the catalog", () {
+        final selected = newRepository().selectCatalogDefaultModel(
+          scopedModelID: "gpt-5.4-mini",
+          catalogModelIds: ["gpt-5.5", "gpt-5.4-mini"],
+          catalogDefaultId: "gpt-5.5",
+        );
+        expect(selected, equals("gpt-5.4-mini"));
+      });
+
+      test("a scoped model missing from the catalog falls back to the catalog default", () {
+        final selected = newRepository().selectCatalogDefaultModel(
+          scopedModelID: "retired-model",
+          catalogModelIds: ["gpt-5.5", "gpt-5.4-mini"],
+          catalogDefaultId: "gpt-5.5",
+        );
+        expect(selected, equals("gpt-5.5"));
+      });
+
+      test("no scoped model and no catalog default falls back to the first catalog model", () {
+        final selected = newRepository().selectCatalogDefaultModel(
+          scopedModelID: null,
+          catalogModelIds: ["gpt-5.5", "gpt-5.4-mini"],
+          catalogDefaultId: null,
+        );
+        expect(selected, equals("gpt-5.5"));
+      });
+
+      test("an empty catalog resolves to null", () {
+        final selected = newRepository().selectCatalogDefaultModel(
+          scopedModelID: "gpt-5.5",
+          catalogModelIds: const [],
+          catalogDefaultId: null,
+        );
+        expect(selected, isNull);
+      });
+    });
   });
 }
 

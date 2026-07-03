@@ -8,6 +8,7 @@ import "dart:convert";
 import "dart:io";
 
 import "package:codex_plugin/codex_plugin.dart";
+import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
@@ -418,6 +419,75 @@ void main() {
       // A model without supportedReasoningEfforts exposes no variants.
       expect(provider.models[1].variants, isEmpty);
       expect(fake.sentMethods, contains("model/list"));
+    });
+
+    test("getProviders preselects the project's own latest rollout model over codex's live default", () async {
+      // The selected project's newest rollout used gpt-5.4-mini, while codex's
+      // live catalog marks gpt-5.5 as the global default — the project-scoped
+      // model must win the picker preselection.
+      final rollout = File(
+        p.join(
+          codexHome.path,
+          "sessions/2026/06/01/rollout-2026-06-01T10-00-00-019a0000-1111-2222-3333-dddddddddddd.jsonl",
+        ),
+      )..createSync(recursive: true);
+      rollout.writeAsStringSync(
+        "${jsonEncode({
+          "type": "session_meta",
+          "payload": {
+            "id": "019a0000-1111-2222-3333-dddddddddddd",
+            "timestamp": "2026-06-01T10:00:00Z",
+            "cwd": "/work/sample",
+            "model_provider": "openai",
+          },
+        })}\n"
+        "${jsonEncode({
+          "type": "turn_context",
+          "payload": {"model": "gpt-5.4-mini"},
+        })}\n",
+      );
+      final scopedFake = _FakeAppServer();
+      final rolloutReader = SessionRolloutReader(
+        environment: {"CODEX_HOME": codexHome.path},
+      );
+      final configReader = CodexConfigReader(
+        environment: {"CODEX_HOME": codexHome.path},
+      );
+      final scopedPlugin = CodexPlugin(
+        serverUrl: "ws://127.0.0.1:0",
+        clientFactory: () => CodexAppServerClient(
+          serverUrl: "ws://127.0.0.1:0",
+          channelFactory: (_) => scopedFake.channel,
+        ),
+        rolloutReader: rolloutReader,
+        configReader: configReader,
+        metadataRepository: CodexMetadataRepository(
+          skillReader: CodexSkillReader(
+            environment: {"CODEX_HOME": codexHome.path},
+          ),
+          rolloutReader: rolloutReader,
+          configReader: configReader,
+          launchDirectory: "/work/sample",
+        ),
+        projectCwd: "/work/sample",
+      );
+      addTearDown(scopedPlugin.dispose);
+      scopedFake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "data": [
+              {"id": "gpt-5.5", "displayName": "GPT-5.5", "hidden": false, "isDefault": true},
+              {"id": "gpt-5.4-mini", "displayName": "GPT-5.4 mini", "hidden": false, "isDefault": false},
+            ],
+          },
+        ),
+      ]);
+
+      await scopedPlugin.healthCheck(); // connect so model/list can be called
+      final result = await scopedPlugin.getProviders(projectId: "/work/sample");
+
+      expect(result.providers.single.defaultModelID, equals("gpt-5.4-mini"));
     });
 
     test("sendPrompt forwards the selected variant as the turn/start effort", () async {
