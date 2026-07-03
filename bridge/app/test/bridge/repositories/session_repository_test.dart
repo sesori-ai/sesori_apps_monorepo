@@ -300,6 +300,94 @@ void main() {
       expect(row.worktreePath, equals("/tmp/wt"));
     });
 
+    test("insertStoredSession drops the orphaned placeholder project row after re-attribution", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      // A live session.created raced ahead of the create flow: the placeholder
+      // keyed the session (and a project row) to the plugin-reported worktree
+      // cwd instead of the project the user opened.
+      const worktree = "/repo/.worktrees/s1";
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [worktree]);
+      await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "fake",
+        sessions: [(sessionId: "s1", projectId: worktree, createdAt: 100, archivedAt: null)],
+      );
+
+      await repository.insertStoredSession(
+        sessionId: "s1",
+        projectId: "/repo",
+        isDedicated: true,
+        createdAt: 200,
+        worktreePath: worktree,
+        branchName: "s1",
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+
+      // The session is re-attributed to the canonical project and the stale
+      // worktree project row is gone — it must not surface as an empty
+      // derived project card.
+      final row = await db.sessionDao.getSession(sessionId: "s1");
+      expect(row?.projectId, "/repo");
+      final projects = await db.select(db.projectsTable).get();
+      expect(projects.map((project) => project.projectId), equals(["/repo"]));
+    });
+
+    test("insertStoredSession keeps a placeholder project row that other sessions still reference", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      const shared = "/repo/other";
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [shared]);
+      await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "fake",
+        sessions: [
+          (sessionId: "s1", projectId: shared, createdAt: 100, archivedAt: null),
+          (sessionId: "s-other", projectId: shared, createdAt: 100, archivedAt: null),
+        ],
+      );
+
+      await repository.insertStoredSession(
+        sessionId: "s1",
+        projectId: "/repo",
+        isDedicated: false,
+        createdAt: 200,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+
+      final projects = await db.select(db.projectsTable).get();
+      expect(projects.map((project) => project.projectId).toSet(), equals({"/repo", shared}));
+      expect((await db.sessionDao.getSession(sessionId: "s-other"))?.projectId, shared);
+    });
+
     test("updatePromptDefaults writes latest nullable prompt defaults", () async {
       final db = createTestDatabase();
       addTearDown(db.close);

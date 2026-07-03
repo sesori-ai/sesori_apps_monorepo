@@ -352,6 +352,7 @@ class SessionRepository {
   }) async {
     final db = _sessionDao.attachedDatabase;
     await db.transaction(() async {
+      final placeholder = await _sessionDao.getSession(sessionId: sessionId);
       await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
       await _sessionDao.insertSession(
         sessionId: sessionId,
@@ -366,6 +367,20 @@ class SessionRepository {
         lastAgentModel: agentModel,
         pluginId: _plugin.id,
       );
+      // A live `session.created` can race ahead of this create flow and insert
+      // a placeholder keyed to the plugin-reported cwd — for a dedicated
+      // worktree session that's the throwaway worktree path, along with a
+      // project row for it. The upsert above re-attributed the session to the
+      // canonical project; drop the now-orphaned placeholder project row (only
+      // when nothing else references it) so it can't surface as an empty
+      // derived project card.
+      final placeholderProjectId = placeholder?.projectId;
+      if (placeholderProjectId != null && placeholderProjectId != projectId) {
+        final remaining = await _sessionDao.getSessionsByProject(projectId: placeholderProjectId);
+        if (remaining.isEmpty) {
+          await db.projectsDao.deleteProject(projectId: placeholderProjectId);
+        }
+      }
     });
   }
 

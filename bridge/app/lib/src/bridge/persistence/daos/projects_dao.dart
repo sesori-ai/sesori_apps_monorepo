@@ -127,6 +127,12 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
     );
   }
 
+  /// Deletes the project row for [projectId]. The session/PR FKs cascade, so
+  /// callers must first ensure nothing still references the row.
+  Future<void> deleteProject({required String projectId}) async {
+    await (delete(projectsTable)..where((t) => t.projectId.equals(projectId))).go();
+  }
+
   /// Inserts a minimal project row if none exists for [projectId].
   /// Preserves all fields of existing rows — uses InsertMode.insertOrIgnore.
   /// Use this to satisfy FK constraints (and to seed a just-discovered or
