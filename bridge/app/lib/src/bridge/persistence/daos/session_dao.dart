@@ -165,6 +165,14 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     );
   }
 
+  /// Sets ONLY [lastUserMessageAt] for [sessionId], leaving the activity and
+  /// seen timestamps untouched.
+  Future<void> setUserMessageAt({required String sessionId, required int userMessageAt}) async {
+    await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
+      SessionTableCompanion(lastUserMessageAt: Value(userMessageAt)),
+    );
+  }
+
   /// Forces [sessionId] into an unseen state for an explicit "Mark as Unread":
   /// stamps activity at [activityAt] and seen just before it, so
   /// `activity > max(userMessage, seen)` holds regardless of prior state.

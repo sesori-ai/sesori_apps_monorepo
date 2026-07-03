@@ -60,7 +60,7 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 - **Acceptance:** standalone unchanged; with supervised bootstrap the client
   connects to a fake server in tests; reconnect on drop; the secret never
   appears in `ps`/argv; control-channel loss triggers grace-period exit.
-- **Aristotle:** plan ☑ · impl ☑.
+- **Aristotle:** plan ☑ · impl ☑ (merged #334).
 - **Findings:** Shipped as three gated units + the `--control-url` option.
   `ControlChannelClient` (Layer 0 `foundation/`) owns connect + its own
   exp-backoff auto-reconnect (the GUI may come/go while the bridge stays up, so
@@ -110,7 +110,7 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   the exception to the "Phase 1 = bridge only" standing text):** round-trip
   serialization tests; no logic in shared; **`sesori_shared` codegen + tests
   pass AND `client/app` (mobile product) still builds** (no consumer break).
-- **Aristotle:** plan ☑ · impl ☑.
+- **Aristotle:** plan ☑ · impl ☑ (merged #335).
 - **Findings:** Shipped as two pure-data Freezed sealed unions in
   `shared/sesori_shared/lib/src/protocol/` (alongside `messages.dart`/`RelayMessage`,
   the precedent), not under `models/` — these are protocol wire types.
@@ -148,7 +148,7 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   reads** (this is distinct from PR 1.1's optional one-shot secret-bootstrap
   stdin handshake, which is not an auth prompt); standalone interactive flow
   untouched.
-- **Aristotle:** plan ☑ · impl ☑.
+- **Aristotle:** plan ☑ · impl ☑ (merged #341).
 - **Findings:** Shipped `ControlChannelTokenService` in `control/` (beside
   `ControlChannelLossListener`), NOT `auth/`: the service depends on the Layer-0
   `ControlChannelClient`, and `auth/` is a self-contained subsystem that must not
@@ -193,7 +193,7 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 - **Risk:** Med. **Size:** M.
 - **Acceptance:** force-refresh requests a fresh token; timeout + GUI-down paths
   yield a typed failure (logged once at the surfacing point, not double-logged).
-- **Aristotle:** plan ☑ · impl ☑.
+- **Aristotle:** plan ☑ · impl ☑ (merged #345).
 - **Findings:** Promoted `ControlChannelTokenService` from `control/` (Layer 4) to
   `services/` (Layer 3) — the placement the PR-1.4 goal specifies. It now
   `implements AccessTokenProvider, TokenRefresher` while living in `services/`, so
@@ -271,7 +271,7 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   shared cache regardless of any in-flight pull ordering. After a null
   `token_response` (signed out / mid-login), a relay reconnect does **not**
   re-authenticate from the stale cached token.
-- **Aristotle:** plan ☑ · impl ☑. **Findings:** Live re-auth subscription lives
+- **Aristotle:** plan ☑ · impl ☑ (merged #347). **Findings:** Live re-auth subscription lives
   in the Orchestrator (it already owns the relay reconnect/backoff loop and the
   `CompositeSubscription`); `RelayClient` stays a dumb transport. The
   `token_update→re-auth` path funnels into the **same** reconnect block the
@@ -285,7 +285,16 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   `_latestCachedSeq` pull-ordering heuristic is retired: the GUI `token_update`
   push is the authoritative cache writer (last-write-wins); a pull only seeds the
   cache for bootstrap, so the deferred PR-1.4 force/non-force masking edge is
-  gone. **Deltas:** —
+  gone. **Deltas:** post-merge fix — the original trigger re-authed on any token
+  *string* change, which dropped the relay (and every phone) on each routine
+  same-user rotation: standalone `TokenManager` emits every refresh, so a
+  near-expiry pull (e.g. session-metadata generation) flapped the connection and
+  spammed SSE send failures. The relay validates the JWT once at connect and
+  never re-checks it, so the gate is now **identity-based**: re-auth only when
+  the `userId` claim differs from the token the socket authed with (or the
+  identity can't be parsed — conservative fallback). Manual check 4's "relay
+  session survives; no reconnect loop" on a same-user push is the authoritative
+  expectation; a cross-user push still drops and re-authenticates.
 
 ## PR 1.6 — Supervised registration + `bridgeId` out of `token.json`
 - **Goal:** Persist `bridgeId` separately from `token.json` in a small
@@ -297,7 +306,7 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 - **Risk:** Med (touches `TokenData` persistence). **Size:** M.
 - **Acceptance:** supervised registers + persists bridgeId; standalone token.json
   path unchanged (only the `bridgeId` field is removed).
-- **Aristotle:** plan ☑ · impl ☑. **Findings:** impl-review (3 rounds): (1)
+- **Aristotle:** plan ☑ · impl ☑ (merged #352). **Findings:** impl-review (3 rounds): (1)
   `readLegacyBridgeId()` initially swallowed `FileSystemException`/`FormatException`
   silently — now logs via `Log.w(message, error)` and treats `PathNotFoundException`
   as the expected no-legacy path; (2) `BridgeIdStorage.write` used a positional
@@ -334,7 +343,53 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 - **Acceptance:** phone-triggered restart → exit 86 in supervised mode; standalone
   successor handoff unchanged; **supervised mode never calls `spawnSuccessor()`**
   (closes the PR-1.1 `--control-url`-replay gap — asserted by test).
-- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+- **Aristotle:** plan ☑ · impl ☑. **Findings:** The run-mode restart strategy is
+  owned by `BridgeRestartService` (which already "owns the process side of an
+  explicit restart"), chosen once at the composition root via a new
+  `required bool isSupervised`. New `performRestartHandoff()` branches:
+  standalone → `spawnSuccessor()` (unchanged); supervised → sets a
+  `supervisedRestartRequested` flag and returns true **without spawning** (a
+  supervised successor would replay `--control-url` with no off-argv secret and
+  fail closed). `OrchestratorSession.handleRestartHandoff()` swaps its single
+  `spawnSuccessor()` call for `performRestartHandoff()`; the single-flight guard,
+  `Console.error`-on-false, and graceful `cancel()` (which flushes the queued
+  `{restarting:true}` reply) are unchanged and shared by both modes. The
+  composition root (`bridge_runtime_runner.dart`) reads
+  `restartService.supervisedRestartRequested` **after `run()` returns** — exactly
+  mirroring the existing `failureLatch.failure` terminal-state read — and returns
+  the new top-level `const supervisedRestartExitCode = 86`; the existing
+  `finally { shutdownCoordinator.shutdown() }` still performs the ordered plugin
+  stop first, so a supervised restart exits gracefully (no orphaned OpenCode
+  runtime) rather than via a hard `io.exit`. The coordinator backstop also reads
+  the restart code (`requestedSupervisedRestartExitCode ?? supervisedLossExitCode
+  ?? …`) so a hung restart-shutdown still reports 86. No `Orchestrator` /
+  `BridgeRuntime.create` signature changes (the service is pre-built in the
+  runner). Tests: 4 new `BridgeRestartService` unit tests (supervised handoff
+  sets the flag + never calls `startDetached`; standalone spawns + leaves the
+  flag false + returns false on spawn failure); 4 existing construction sites
+  updated with `isSupervised: false`; standalone debug-server restart tests stay
+  green. `make analyze` clean; `make test` 1558 pass.
+  **Plan-review note:** the first design used an injected `void Function()?`
+  callback for the supervised signal; `aristotle-plan-review` rejected it under
+  the bridge "Streams Over Callbacks" rule, so it was replaced with the
+  synchronous `supervisedRestartRequested` state getter (the `failureLatch`
+  precedent) before implementation. **Review round 2** (Codex, 2 P2s): (a) the
+  runner only read the flag after a clean `run()` return, so a teardown throw
+  after the handoff would fall to the error path and return `1` (crash) not `86` —
+  now `run()` is wrapped in an inner `try/finally` that resolves the sentinel into
+  the outer-scoped local even on throw, and the outer `catch` honors it; (b) the
+  restart handler's `canSpawnSuccessor()` preflight checked the managed CLI path,
+  which a bundled desktop helper need not have, so a supervised `/global/restart`
+  would 503 and never reach the exit-86 handoff — added a mode-aware
+  `BridgeRestartService.canRestart()` (supervised ⇒ always restartable, GUI
+  respawns; standalone ⇒ `canSpawnSuccessor()`) and the handler now calls it.
+  **Review round 3** (cubic, 1 P2): the outer `finally { shutdownCoordinator
+  .shutdown() }` rethrows a failed ordered/parallel step (by design — a failed
+  plugin stop must exit non-zero), which thrown from a `finally` would override
+  the `86` return and re-crash an intentional restart. Now shutdown errors are
+  swallowed-with-`Log.w` **only** when a supervised restart sentinel is set (the
+  restart must still exit 86 so the GUI respawns); every other exit still
+  rethrows to preserve the loud-failure behaviour. **Deltas:** —
 
 ## PR 1.8 — Disable self-update + reconcile when supervised
 - **Goal:** Pass `SESORI_NO_UPDATE`/skip policy; assert reconcile is skipped so a

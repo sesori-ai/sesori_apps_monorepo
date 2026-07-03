@@ -250,6 +250,25 @@ void main() {
       await sub.cancel();
     });
 
+    test("reconcile keeps a session created live during the fetch, even with a skewed backend clock", () async {
+      await service.recordSessionCreated(sessionId: "s1", projectId: "p1", parentId: null);
+      // A live session.created lands DURING an in-flight /sessions fetch
+      // (fetch started at local 8000; we process the event at local 9000). The
+      // backend's clock is behind, so the session's own creation time (7000)
+      // predates the fetch start — the row-creation guard must use the local
+      // clock, not the backend time, or this fresh row would be deleted.
+      clock = 9000;
+      await service.recordSessionCreated(sessionId: "fresh", projectId: "p1", parentId: null, occurredAt: 7000);
+
+      await service.reconcileVanishedSessions(
+        projectId: "p1",
+        keepSessionIds: ["s1"],
+        fetchStartedAt: 8000,
+      );
+
+      expect(await unseen("fresh"), isTrue);
+    });
+
     test("reconcileVanishedSessions keeps rows created after the fetch started", () async {
       await service.recordSessionCreated(sessionId: "s1", projectId: "p1", parentId: null);
       // A session created AFTER the (stale) snapshot was taken: its row's
@@ -315,6 +334,130 @@ void main() {
       expect(await unseen("s1"), isFalse);
 
       await sub.cancel();
+    });
+
+    test("a re-emitted user message does not clear unseen state (OpenCode re-sends the user record)", () async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "opencode",
+        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+      );
+      // The user sends a message (payload created at 2000, processed now).
+      clock = 2000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 2000);
+      expect(await unseen("s1"), isFalse);
+
+      // The assistant replies -> unseen.
+      clock = 3000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      expect(await unseen("s1"), isTrue);
+
+      // The backend re-emits the SAME user message (diff-summary bookkeeping,
+      // fired after the assistant completes) — original created time. This is
+      // not a user interaction and must not clear the unseen state.
+      clock = 4000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 2000);
+      expect(await unseen("s1"), isTrue);
+
+      // A genuinely NEW user message (newer created time) clears it.
+      clock = 5000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 5000);
+      expect(await unseen("s1"), isFalse);
+    });
+
+    test("re-emission guard holds when the bridge clock is BEHIND the server clock", () async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "opencode",
+        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+      );
+      // Server creation time (5000) is ahead of the bridge's local clock
+      // (1000). The marker is stamped from the creation time, so the domains
+      // stay comparable.
+      clock = 1000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 5000);
+      expect(await unseen("s1"), isFalse);
+
+      // Assistant activity clamps strictly past the (locally-future) marker
+      // and still bolds despite the skew.
+      clock = 1500;
+      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      expect(await unseen("s1"), isTrue);
+
+      // The re-emission (original creation time) must still be skipped.
+      clock = 2000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 5000);
+      expect(await unseen("s1"), isTrue);
+    });
+
+    test("a delayed first user message does not swallow a genuinely newer reply (backlog replay)", () async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "opencode",
+        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+      );
+      // A reconnect backlog processed late (local clock 9000+): user message
+      // created at 2000, assistant reply created at 2500, user reply created
+      // at 3000. All stamps come from the messages' own creation times, so the
+      // late processing time is irrelevant.
+      clock = 9000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 2000);
+      clock = 9001;
+      await service.recordActivity(sessionId: "s1", isUserMessage: false, occurredAt: 2500);
+      expect(await unseen("s1"), isTrue);
+
+      // The user's reply (created 3000, after the assistant's 2500) is a
+      // genuine interaction: not mistaken for a re-emission, clears the state.
+      clock = 9002;
+      await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 3000);
+      expect(await unseen("s1"), isFalse);
+    });
+
+    test("the creator's first message clears the creation bold (same-domain creation stamp)", () async {
+      // Live session.created processed late (local clock far past the
+      // session's actual creation) — the stamp comes from the session's own
+      // creation time, not the processing time.
+      clock = 9000;
+      await service.recordSessionCreated(sessionId: "s1", projectId: "p1", parentId: null, occurredAt: 2000);
+      expect(await unseen("s1"), isTrue);
+
+      // The creator's first message (created just after the session) must
+      // clear the creation bold even though the local clock is way ahead.
+      clock = 9001;
+      await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 2005);
+      expect(await unseen("s1"), isFalse);
+
+      // And the assistant's reply re-bolds it.
+      clock = 9002;
+      await service.recordActivity(sessionId: "s1", isUserMessage: false, occurredAt: 2500);
+      expect(await unseen("s1"), isTrue);
+    });
+
+    test("an old user re-emission cannot clear unseen state on a row with no user marker", () async {
+      // A row learned via a /sessions placeholder (all markers null): the
+      // original user message was processed before this bridge ever ran, so
+      // the re-emission guard has no marker to compare against.
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "opencode",
+        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+      );
+      // Assistant activity bolds the session.
+      clock = 5000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: false, occurredAt: 5000);
+      expect(await unseen("s1"), isTrue);
+
+      // The backend re-emits an OLD user message (diff bookkeeping) created
+      // long before the assistant activity. It bootstraps the marker but must
+      // not clear the unseen state — it only proves engagement as of 1000.
+      clock = 6000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 1000);
+      expect(await unseen("s1"), isTrue);
+
+      // A genuine reply (created after the assistant activity) clears it.
+      clock = 7000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 7000);
+      expect(await unseen("s1"), isFalse);
     });
 
     test("a user message after the session is unseen is NOT coalesced (updates user-message marker)", () async {

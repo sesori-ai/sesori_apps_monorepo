@@ -74,6 +74,14 @@ class SessionUnseenRepository {
     );
   }
 
+  /// Advances ONLY the user-message marker for [sessionId] (UPDATE-only).
+  /// Used for user messages carrying their own creation time: engagement is
+  /// recorded without touching the activity/seen timeline, so a re-emitted
+  /// (old) user message can never clear unseen activity.
+  Future<void> recordUserMessage({required String sessionId, required int at}) {
+    return _sessionDao.setUserMessageAt(sessionId: sessionId, userMessageAt: at);
+  }
+
   /// Marks [sessionId] seen as of [at] ("Mark as Read" / viewing).
   Future<void> markSessionSeen({required String sessionId, required int at}) {
     return _sessionDao.setSeenAt(sessionId: sessionId, seenAt: at);
@@ -92,10 +100,18 @@ class SessionUnseenRepository {
   /// the seen timestamp is advanced too so it does not bold under the watcher.
   /// When [isUserMessage] is true, the user-message marker is stamped so the
   /// user's own first message doesn't bold the session.
+  ///
+  /// [createdAt] is the row-creation guard timestamp and MUST be bridge-local:
+  /// the vanished-session reconcile compares it against a locally-captured
+  /// fetch-start time to protect rows created during an in-flight fetch, so a
+  /// backend-domain value here (skewed behind the local clock) could get a
+  /// freshly-created session's row wrongly reconcile-deleted. [activityAt] may
+  /// live in the backend's clock domain.
   /// Wrapped in a transaction so the project FK cannot fire.
   Future<void> ensureRootSessionActivity({
     required String sessionId,
     required String projectId,
+    required int createdAt,
     required int activityAt,
     required bool advanceSeen,
     required bool isUserMessage,
@@ -104,7 +120,7 @@ class SessionUnseenRepository {
       await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
       await _sessionDao.insertSessionsIfMissing(
         pluginId: _pluginId,
-        sessions: [(sessionId: sessionId, projectId: projectId, createdAt: activityAt, archivedAt: null)],
+        sessions: [(sessionId: sessionId, projectId: projectId, createdAt: createdAt, archivedAt: null)],
       );
       await _sessionDao.setActivityTimestamps(
         sessionId: sessionId,

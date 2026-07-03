@@ -413,23 +413,22 @@ class OrchestratorSession {
           })
           .addTo(_subscriptions);
 
-      // Live re-auth: when the token provider emits a token that differs from the
-      // one the relay socket is actually authenticated with (supervised mode, the
-      // GUI pushed a token_update), the open WebSocket is still on the previous
-      // JWT. Drop the relay so the reconnect loop below re-authenticates on the
-      // fresh token — the same path a relay-side disconnect drives, so both
-      // triggers stay symmetric.
+      // Live re-auth: when the token provider emits a token whose auth IDENTITY
+      // differs from the one the relay socket is actually authenticated with
+      // (supervised mode: the GUI pushed a token_update after an account switch;
+      // standalone: a re-login as another user picked up by the next refresh),
+      // drop the relay so the reconnect loop below re-authenticates on the fresh
+      // token — the same path a relay-side disconnect drives, so both triggers
+      // stay symmetric.
       //
-      // Compare against the token the socket actually used for auth
-      // ([RelayClient.lastAuthedToken]) rather than skipping the BehaviorSubject's
-      // replayed value. This (a) ignores routine unchanged pulls (e.g. metadata
-      // generation) so they don't needlessly drop a live connection, (b) breaks
-      // the feedback loop where the reconnect path's own force-pull re-emits the
-      // token it just authenticated with, and (c) still re-auths for a push that
-      // landed in the gap between connect() and this subscription, since that
-      // pushed token differs from the one connect() sent.
+      // Identity-gated on purpose: the relay validates the JWT once at connect
+      // and never re-checks it for the lifetime of the socket, so a routine
+      // same-user token rotation (TokenManager refreshing near expiry during
+      // metadata generation or push sends, or the GUI pushing a routine refresh)
+      // keeps the open socket fully valid. Dropping it would disconnect every
+      // phone mid-flight for nothing — see [_requiresRelayReauth].
       _accessTokenProvider.tokenStream
-          .where((token) => token != _client.lastAuthedToken)
+          .where(_requiresRelayReauth)
           .listen((token) => unawaited(_reauthenticateRelay()))
           .addTo(_subscriptions);
     } catch (e) {
@@ -569,10 +568,13 @@ class OrchestratorSession {
   }
 
   /// Performs the restart handoff after the `{restarting:true}` reply has been
-  /// enqueued: spawns the successor, then drives the normal graceful shutdown
-  /// ([cancel]) — which flushes the queued reply by closing the relay and lets
-  /// this process exit. The successor waits for this pid to exit before it
-  /// enforces single-live-bridge, so the handoff is clean.
+  /// enqueued: delegates the run-mode strategy to [BridgeRestartService]
+  /// (standalone spawns a successor; supervised records the GUI-respawn intent),
+  /// then drives the normal graceful shutdown ([cancel]) — which flushes the
+  /// queued reply by closing the relay and lets this process exit. A standalone
+  /// successor waits for this pid to exit before it enforces single-live-bridge,
+  /// so the handoff is clean; the supervised exit code is applied by the
+  /// composition root once the session ends.
   ///
   /// Public because both restart triggers drive the same handoff: the relay
   /// request loop (below) and the local [DebugServer], which reuses this
@@ -589,9 +591,13 @@ class OrchestratorSession {
       return;
     }
     _restartHandoffStarted = true;
-    Log.i("[restart] restart requested; spawning successor bridge");
-    final bool spawned = await _restartService.spawnSuccessor();
-    if (!spawned) {
+    Log.i("[restart] restart requested");
+    // The restart service owns the run-mode strategy: standalone spawns a
+    // successor process; supervised records the intent so the composition root
+    // exits with the GUI-respawn sentinel (no successor spawn). A `false` return
+    // means the standalone successor could not be started, so we keep running.
+    final bool proceed = await _restartService.performRestartHandoff();
+    if (!proceed) {
       _restartHandoffStarted = false;
       Console.error(
         "Restart requested but a new bridge could not be started; continuing to run. "
@@ -599,7 +605,7 @@ class OrchestratorSession {
       );
       return;
     }
-    Log.i("[restart] successor spawned; shutting down for handoff");
+    Log.i("[restart] handing off; shutting down");
     await cancel();
   }
 
@@ -655,6 +661,7 @@ class OrchestratorSession {
           sessionId: info.id,
           projectId: info.projectID,
           parentId: info.parentID,
+          occurredAt: info.time?.created,
         );
       case SesoriSessionDeleted(:final info):
         await _sessionUnseenService.recordSessionDeleted(sessionId: info.id, projectId: info.projectID);
@@ -662,6 +669,7 @@ class OrchestratorSession {
         await _sessionUnseenService.recordActivity(
           sessionId: info.sessionID,
           isUserMessage: info is MessageUser,
+          occurredAt: info.time?.created,
         );
       // For child/subagent requests, `displaySessionId` is the root session the
       // UI surfaces the request under; the child has no persisted row, so route
@@ -744,11 +752,42 @@ class OrchestratorSession {
     }
   }
 
-  /// Live re-auth trigger: the token provider emitted a fresh token while the
-  /// relay was connected, so the open socket is still on the old JWT. Closing the
-  /// relay ends the active read loop, after which [run]'s reconnect block force-
-  /// pulls the new token and reconnects — the same path a relay-side drop drives.
-  /// No-op once cancelled so a token emit during shutdown can't fight teardown.
+  /// Whether a freshly emitted [token] warrants dropping the live relay socket
+  /// to re-authenticate.
+  ///
+  /// The relay checks the JWT once at connect and never again, keyed on the
+  /// `userId` claim — so an open socket authenticated as the same user stays
+  /// fully valid no matter how many times the token rotates. Re-auth is needed
+  /// only when the socket's authenticated identity no longer matches the token
+  /// the provider now holds:
+  ///
+  /// - the last connect sent no auth at all ([RelayClient.lastAuthedToken] is
+  ///   null — also covers a push landing in the gap between connect() and this
+  ///   subscription on a never-authed socket);
+  /// - the `userId` claim differs (supervised account switch, standalone
+  ///   re-login as another user);
+  /// - either token's identity can't be parsed — we can't prove the rotation
+  ///   kept the same identity, so re-auth conservatively.
+  ///
+  /// An identical token (routine unchanged pull, or the reconnect path's own
+  /// force-pull re-emitting the token it just authenticated with) never
+  /// re-auths.
+  bool _requiresRelayReauth(String token) {
+    final String? lastAuthed = _client.lastAuthedToken;
+    if (lastAuthed == null) return true;
+    if (token == lastAuthed) return false;
+    final String? newUserId = parseJwtUserId(token);
+    final String? authedUserId = parseJwtUserId(lastAuthed);
+    if (newUserId == null || authedUserId == null) return true;
+    return newUserId != authedUserId;
+  }
+
+  /// Live re-auth trigger: the token provider emitted a token for a different
+  /// auth identity while the relay was connected, so the open socket is still
+  /// authenticated as the old identity. Closing the relay ends the active read
+  /// loop, after which [run]'s reconnect block force-pulls the new token and
+  /// reconnects — the same path a relay-side drop drives. No-op once cancelled
+  /// so a token emit during shutdown can't fight teardown.
   Future<void> _reauthenticateRelay() async {
     if (_cancelled) return;
     // If the socket has already closed (closeCode is set), the read loop is

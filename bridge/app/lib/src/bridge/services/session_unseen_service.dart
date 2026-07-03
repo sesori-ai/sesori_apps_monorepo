@@ -82,16 +82,23 @@ class SessionUnseenService {
     return _lastIssued = wall > _lastIssued ? wall : _lastIssued + 1;
   }
 
-  /// Activity timestamp clamped above the row's persisted markers. The
-  /// monotonic clock is process-local, so after a restart or a system-clock
-  /// rollback it can start below stored timestamps; without this clamp a new
-  /// assistant activity could write `last_activity_at` <= `max(userMessage,
-  /// seen)` and the session would never bold. Clamping keeps the monotonic
-  /// invariant intact for subsequent writes.
-  int _activityTimestamp({required int? userMessageAt, required int? seenAt}) {
+  /// Activity timestamp clamped above the row's persisted markers.
+  ///
+  /// [occurredAt] — the triggering message's own creation time — is preferred
+  /// when available so activity stamps live in the same clock domain as the
+  /// user-message markers (also stamped from creation times), keeping the
+  /// unseen comparison meaningful under clock skew (remote `--opencode-host`)
+  /// and delayed processing (reconnect backlog). The local monotonic clock is
+  /// the fallback for events without a payload time.
+  ///
+  /// Either source is clamped above `max(userMessage, seen)`: stored markers
+  /// can be ahead of the candidate (clock rollback, restart, cross-domain
+  /// drift), and without the clamp a new activity could write a value <= the
+  /// markers and the session would never bold.
+  int _activityTimestamp({required int? userMessageAt, required int? seenAt, int? occurredAt}) {
     final floor = (userMessageAt ?? 0) > (seenAt ?? 0) ? (userMessageAt ?? 0) : (seenAt ?? 0);
-    final next = _nextTimestamp();
-    if (next > floor) return next;
+    final candidate = occurredAt ?? _nextTimestamp();
+    if (candidate > floor) return candidate;
     final at = floor + 1;
     if (at > _lastIssued) _lastIssued = at;
     return at;
@@ -103,9 +110,17 @@ class SessionUnseenService {
   /// fetch inserts its row and later activity stamps it. While the session is
   /// being viewed, the seen timestamp is advanced too so it never bolds under
   /// the watcher.
+  ///
+  /// [occurredAt] is the triggering message's own creation time (ms epoch),
+  /// when the caller has one. It keeps the message timeline in a single clock
+  /// domain: user messages advance only their marker at that time (idempotent
+  /// across re-emissions — see the guard below), and assistant activity is
+  /// stamped from it so genuine replies compare correctly against prior
+  /// activity even under clock skew or delayed processing.
   Future<void> recordActivity({
     required String sessionId,
     required bool isUserMessage,
+    int? occurredAt,
   }) {
     // Capture the viewed state at submission time, not when the (possibly
     // delayed) serialized write executes — otherwise navigating away while
@@ -114,6 +129,18 @@ class SessionUnseenService {
     return _serialize(sessionId, () async {
       final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
       if (row == null) return;
+      // A user message may only count ONCE. Backends re-emit the user message
+      // record whenever server-side bookkeeping attached to it changes (e.g.
+      // OpenCode updates its diff summary mid- and post-response); treating a
+      // re-emission as a fresh interaction would stamp `last_user_message_at`
+      // past the assistant's activity and permanently clear the unseen state.
+      // A re-emission carries the message's ORIGINAL creation time — never
+      // newer than the marker stored when it was first processed (stamped from
+      // that same creation time, see below) — so it is skipped entirely (its
+      // content change is bookkeeping, not unseen-worthy transcript activity).
+      if (isUserMessage && occurredAt != null && (row.userMessageAt ?? 0) >= occurredAt) {
+        return;
+      }
       // Coalesce repeated assistant activity: once the session is already
       // unseen and no phone is viewing it, another non-user event changes
       // nothing observable — skip the redundant write + emit. (A later
@@ -122,9 +149,28 @@ class SessionUnseenService {
       if (!isUserMessage && !viewedAtSubmit && _unseenRepository.unseenForRow(row)) {
         return;
       }
+      // A user message with a known creation time advances ONLY the
+      // user-message marker, stamped at that creation time. A user message
+      // proves engagement as of when it was written; it must not rewrite the
+      // activity/seen timeline — otherwise a re-emission that slips past the
+      // guard above (a row whose marker was never stamped, e.g. learned via a
+      // `/sessions` placeholder) would drag `last_activity_at` down onto the
+      // old message and clear genuinely-unseen assistant activity. Whether the
+      // session is seen falls out of the formula: a fresh reply's creation
+      // time exceeds the (same-domain) activity stamp; an old re-emission's
+      // does not.
+      if (isUserMessage && occurredAt != null) {
+        await _unseenRepository.recordUserMessage(sessionId: sessionId, at: occurredAt);
+        await _emit(sessionId: sessionId, projectId: row.projectId);
+        return;
+      }
       await _unseenRepository.recordActivity(
         sessionId: sessionId,
-        at: _activityTimestamp(userMessageAt: row.userMessageAt, seenAt: row.seenAt),
+        at: _activityTimestamp(
+          userMessageAt: row.userMessageAt,
+          seenAt: row.seenAt,
+          occurredAt: isUserMessage ? null : occurredAt,
+        ),
         isUserMessage: isUserMessage,
         advanceSeen: viewedAtSubmit,
       );
@@ -136,10 +182,18 @@ class SessionUnseenService {
   /// sessions ([parentId] != null) are ignored. The new root is stamped with
   /// activity so it is immediately unseen — unless a phone is already viewing
   /// it, in which case it stays seen.
+  ///
+  /// [occurredAt] is the session's own creation time, preferred for the stamp
+  /// so it lives in the same clock domain as the message-derived stamps: the
+  /// creator's first message (created at/after the session itself) then
+  /// reliably clears this creation bold, which a locally-clocked stamp could
+  /// prevent (SSE latency puts local processing time past the first message's
+  /// creation time even without skew).
   Future<void> recordSessionCreated({
     required String sessionId,
     required String projectId,
     required String? parentId,
+    int? occurredAt,
   }) {
     if (parentId != null) return Future<void>.value();
     final viewedAtSubmit = _viewTracker.isViewed(sessionId: sessionId);
@@ -161,7 +215,10 @@ class SessionUnseenService {
       await _unseenRepository.ensureRootSessionActivity(
         sessionId: sessionId,
         projectId: projectId,
-        activityAt: _nextTimestamp(),
+        // Local-domain guard timestamp (see [ensureRootSessionActivity]); only
+        // the activity marker uses the session's own creation time.
+        createdAt: _wallClock(),
+        activityAt: occurredAt ?? _nextTimestamp(),
         advanceSeen: viewedAtSubmit,
         isUserMessage: false,
       );

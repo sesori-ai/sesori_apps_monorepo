@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:convert";
 import "dart:io";
 
 import "package:http/http.dart" as http;
@@ -50,7 +51,7 @@ import "routing/routing_test_helpers.dart";
 
 void main() {
   group("OrchestratorSession token re-auth", () {
-    test("a token update while connected re-authenticates the relay on the new token", () async {
+    test("a token update whose identity cannot be parsed re-authenticates the relay", () async {
       final authority = _ScriptedTokenAuthority("token-1");
       final harness = await _ReauthHarness.start(authority: authority);
       addTearDown(harness.close);
@@ -59,14 +60,56 @@ void main() {
       final firstAuth = await _firstTextMessage(firstSocket);
       expect(firstAuth["token"], equals("token-1"));
 
-      // The GUI pushes a refreshed token while the relay is connected. The
-      // service would adopt it into accessToken/tokenStream; here the scripted
-      // authority emits it directly. The orchestrator must drop and reconnect.
+      // A changed token that is not a parseable JWT (opaque test tokens here)
+      // cannot prove the rotation kept the same identity, so the orchestrator
+      // must conservatively drop and reconnect on the new token.
       authority.emit("token-2");
 
       final secondSocket = await harness.relayServer.nextClient();
       final secondAuth = await _firstTextMessage(secondSocket);
       expect(secondAuth["token"], equals("token-2"), reason: "relay re-authenticated on the new token");
+    });
+
+    test("a same-user token rotation does not drop the relay connection", () async {
+      final initialToken = _jwt(userId: "user-1", seq: 1);
+      final authority = _ScriptedTokenAuthority(initialToken);
+      final harness = await _ReauthHarness.start(authority: authority);
+      addTearDown(harness.close);
+
+      final firstSocket = await harness.relayServer.nextClient();
+      final firstAuth = await _firstTextMessage(firstSocket);
+      expect(firstAuth["token"], equals(initialToken));
+
+      // A routine refresh mints a DIFFERENT token for the SAME user (rotated
+      // exp/signature) — e.g. TokenManager refreshing near expiry during session
+      // metadata generation. The relay validates the JWT once at connect and
+      // never re-checks it, so the live socket must stay up.
+      authority.emit(_jwt(userId: "user-1", seq: 2));
+
+      await Future<void>.delayed(const Duration(seconds: 1));
+      expect(
+        harness.relayServer.acceptedClientCount,
+        equals(1),
+        reason: "same-identity rotation must not re-auth",
+      );
+    });
+
+    test("a token for a different user re-authenticates the relay", () async {
+      final authority = _ScriptedTokenAuthority(_jwt(userId: "user-1", seq: 1));
+      final harness = await _ReauthHarness.start(authority: authority);
+      addTearDown(harness.close);
+
+      final firstSocket = await harness.relayServer.nextClient();
+      await _firstTextMessage(firstSocket);
+
+      // Account switch: the pushed token belongs to a different user, so the
+      // socket's authenticated identity is stale — drop and reconnect.
+      final switchedToken = _jwt(userId: "user-2", seq: 2);
+      authority.emit(switchedToken);
+
+      final secondSocket = await harness.relayServer.nextClient();
+      final secondAuth = await _firstTextMessage(secondSocket);
+      expect(secondAuth["token"], equals(switchedToken), reason: "relay re-authenticated as the new user");
     });
 
     test("a routine pull re-emitting the same token does not drop the connection", () async {
@@ -198,6 +241,16 @@ void main() {
 Future<Map<String, dynamic>> _firstTextMessage(WebSocket socket) async {
   final message = await socket.firstWhere((dynamic data) => data is String).timeout(const Duration(seconds: 5));
   return jsonDecodeMap(message as String);
+}
+
+/// Crafts an unsigned JWT carrying a `userId` claim. [seq] varies the payload
+/// and signature placeholder so two tokens for the same user still compare
+/// unequal as strings — mirroring a real rotation where exp and signature
+/// change while the identity stays put. The identity gate only decodes the
+/// payload segment, so the fake header/signature are irrelevant.
+String _jwt({required String userId, required int seq}) {
+  final payload = base64Url.encode(utf8.encode(jsonEncode({"userId": userId, "seq": seq}))).replaceAll("=", "");
+  return "header.$payload.sig-$seq";
 }
 
 /// A controllable stand-in for [ControlChannelTokenService]: it is both the

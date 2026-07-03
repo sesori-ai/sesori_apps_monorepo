@@ -1,4 +1,4 @@
-export "src/auth/jwt_expiry.dart";
+export "src/auth/jwt_claims.dart";
 export "src/concurrency/concurrent_cache.dart";
 export "src/concurrency/event_queue.dart";
 export "src/concurrency/future_x.dart";

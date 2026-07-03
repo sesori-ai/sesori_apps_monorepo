@@ -106,6 +106,12 @@ import "plugin_manager.dart";
 import "plugin_registry.dart";
 import "runtime_provision_formatter.dart";
 
+/// Exit code a supervised bridge returns to ask the desktop GUI to respawn it
+/// after a phone-triggered restart. Distinct from a clean stop (0), a crash
+/// (other non-zero), and control-channel loss (1) so the GUI supervisor can tell
+/// an intentional restart apart and respawn rather than treat it as a crash.
+const int supervisedRestartExitCode = 86;
+
 Future<int> runBridgeApp({
   required BridgeCliOptions options,
   required PluginConfig pluginConfig,
@@ -138,8 +144,14 @@ class BridgeRuntimeRunner {
     // how many ordered steps are registered (none yet before the plugin
     // starts), so a fixed timeout race against it is not reliable.
     int? supervisedLossExitCode;
+    // Set after the session ends when a supervised phone-triggered restart handed
+    // off: the runner returns this sentinel so the desktop GUI respawns the
+    // bridge instead of treating the exit as a crash or clean stop. Read by the
+    // backstop too, so a hung restart-shutdown still reports the sentinel.
+    int? requestedSupervisedRestartExitCode;
     final shutdownCoordinator = BridgeShutdownCoordinator(
-      backstopExitCode: () => supervisedLossExitCode ?? (failureLatch.failure == null ? 0 : 1),
+      backstopExitCode: () =>
+          requestedSupervisedRestartExitCode ?? supervisedLossExitCode ?? (failureLatch.failure == null ? 0 : 1),
     );
     final subscriptions = CompositeSubscription();
     shutdownCoordinator.add(disposable: subscriptions.cancel);
@@ -445,6 +457,10 @@ class BridgeRuntimeRunner {
         binaryPath: managedRuntimePaths.binaryPath,
         cliArgs: options.cliArgs,
         currentPid: io.pid,
+        // Supervised: the GUI owns the lifecycle and respawns us, so a restart
+        // exits with the sentinel code instead of spawning a successor (which
+        // would replay --control-url with no off-argv secret and fail closed).
+        isSupervised: options.isSupervised,
       );
 
       // Run startup diagnostics before composing the runtime so the
@@ -507,16 +523,51 @@ class BridgeRuntimeRunner {
         unawaited(runtime.session.cancel());
       });
 
-      await runtime.session.run();
-      return failureLatch.failure == null ? 0 : 1;
+      try {
+        await runtime.session.run();
+      } finally {
+        // A supervised phone-triggered restart handed the session off by exiting
+        // rather than spawning a successor; resolve the GUI-respawn sentinel here
+        // (in a finally) so it survives even if a teardown await in run()/cancel()
+        // throws — otherwise the error path below would return a crash code and
+        // the GUI would back off instead of respawning. `restartService` is only
+        // in scope inside this try, hence resolving into the outer-scoped local.
+        // Assigned before the outer `finally`'s shutdown runs, so a hung-shutdown
+        // backstop reports the same code too.
+        if (restartService.supervisedRestartRequested) {
+          requestedSupervisedRestartExitCode = supervisedRestartExitCode;
+        }
+      }
+      return requestedSupervisedRestartExitCode ?? (failureLatch.failure == null ? 0 : 1);
     } on PluginStartAbortedException {
       Log.i("Plugin start aborted as requested.");
       return 0;
-    } catch (error) {
+    } catch (error, stackTrace) {
+      // Honor an already-completed supervised restart handoff: a teardown error
+      // after the handoff is still an intentional restart, so return the sentinel
+      // (GUI respawns) rather than the crash code.
+      if (requestedSupervisedRestartExitCode != null) {
+        Log.w("Session teardown failed after a supervised restart handoff", error, stackTrace);
+        return requestedSupervisedRestartExitCode;
+      }
       Log.e("$error");
       return 1;
     } finally {
-      await shutdownCoordinator.shutdown();
+      try {
+        await shutdownCoordinator.shutdown();
+      } catch (error, stackTrace) {
+        // `shutdownCoordinator.shutdown()` rethrows a failed ordered/parallel
+        // step (by design — a failed plugin stop must surface as a non-zero
+        // exit). Thrown from this `finally`, that would override the return
+        // value. For a supervised restart that must NOT happen: the exit must
+        // stay the sentinel so the GUI respawns rather than treating an
+        // intentional restart as a crash. For every other exit, preserve the
+        // loud-failure behaviour by rethrowing.
+        if (requestedSupervisedRestartExitCode == null) {
+          rethrow;
+        }
+        Log.w("Shutdown error during a supervised restart; preserving the sentinel exit code", error, stackTrace);
+      }
     }
   }
 
