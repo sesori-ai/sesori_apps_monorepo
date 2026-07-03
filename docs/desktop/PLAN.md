@@ -8,29 +8,48 @@
 
 ## Current pointer
 
-- **Last completed phase:** Phase 1 — PR 1.6 Supervised registration + `bridgeId` out of `token.json` (`BridgeIdStorage` + one-time legacy adoption)
+- **Last completed phase:** Phase 1 — PR 1.7 Exit-code restart (`86`) + bypass successor-spawn (PR raised on branch `implement-next-desktop-step`)
+- **Next up:** Phase 1 — PR 1.8 Disable self-update + reconcile when supervised
 - **Branch:** one feature branch per PR, cut from `main`
 
-> **Advance this pointer to the PR you just raised.** There is no separate
-> "in-flight" field: when you open a PR, set **Last completed phase** above to
-> that PR and mark its §9 row ☑. PRs squash-merge one at a time, so the pointer
-> (and the §9 index) read true the moment that PR merges. Do this for every PR
-> as you progress. **This is part of every PR's DoD** (the per-PR template in
-> each phase doc lists it) — it is not optional bookkeeping: PRs 1.3–1.5 shipped
-> without advancing the pointer/index, which broke the resume rule below until a
-> plan audit caught it.
+> **Tracking lives in four places that MUST move together in the same PR.**
+> When you open a PR, update ALL of these in that PR's own diff — never in a
+> later one, never only in chat/commit message:
+> 1. **Current pointer** (above): set **Last completed phase** to the PR you just
+>    raised and **Next up** to the following ☐.
+> 2. **§9 PR status index**: flip that PR's row ☐ → ☑.
+> 3. **Phase doc Aristotle line**: set `impl ☑` for that PR (with the merge ref,
+>    e.g. `impl ☑ (merged #352)` once known — a raised-but-unmerged PR may cite
+>    the PR number or be filled in on the reconciling pass).
+> 4. **Phase doc Findings log / Plan-deltas**: record what shipped and any deltas.
+>
+> These are not redundant — a reader may consult any one of them first, so if one
+> lags they disagree and the plan lies. Partial updates (e.g. Findings written
+> but the §9 checkbox and pointer left stale) are exactly how this plan drifted
+> before; treat "all four or none" as the rule. **This is part of every PR's DoD**
+> (the per-PR template in each phase doc lists it) — not optional bookkeeping: PRs
+> 1.3–1.5 shipped without advancing the pointer/index, which broke the resume rule
+> below until a plan audit caught it.
+>
+> **Git history is the ground truth for reconciliation.** If the four surfaces
+> ever disagree, the merged PR log wins — reconcile the docs to it, do NOT infer
+> progress from the docs alone. `git log --oneline origin/main` shows merged PRs
+> with their `(#NNN)` and `(Phase N, PR X.Y)` markers; a PR present there is
+> ☑ regardless of what a checkbox says. Before starting work, do this
+> reconciliation pass and fix any drift as the first commit.
 >
 > **How to resume (derive the next action — do NOT ask first).** When told to
 > "continue with the next phase/PR", resolve it deterministically:
 > 1. The next action is the **first ☐ in the PR status index (§9) whose
->    prerequisites are not blocked**, read top-to-bottom. Phases and the PRs
->    within them are strictly ordered and are completed in order (a later phase
->    depends on earlier phases existing). A row marked ◐ for an external
->    dependency (e.g. the Windows cert on 3.4) **implicitly blocks every row
->    that depends on it** — skip the blocked row AND its dependents, per that
->    phase's §9 section note (Phase 3's chain-skip rule names the dependent
->    rows), and take the next ☐ outside the blocked set. Never start a row
->    whose dependency is ◐.
+>    prerequisites are not blocked**, read top-to-bottom — but only **after** the
+>    git-reconciliation pass above, since a ☐ that is actually merged on `main` is
+>    done and must be flipped first. Phases and the PRs within them are strictly
+>    ordered and are completed in order (a later phase depends on earlier phases
+>    existing). A row marked ◐ for an external dependency (e.g. the Windows cert
+>    on 3.4) **implicitly blocks every row that depends on it** — skip the blocked
+>    row AND its dependents, per that phase's §9 section note (Phase 3's chain-skip
+>    rule names the dependent rows), and take the next ☐ outside the blocked set.
+>    Never start a row whose dependency is ◐.
 > 2. **Read the prior Findings logs / Plan-deltas first** — this file plus the
 >    relevant `phase-N-*.md` — an earlier PR may have recorded a decision, delta,
 >    naming choice, or gotcha that affects the next PR.
@@ -338,7 +357,8 @@ seams through `module_core` interfaces, not `AuthManager` internals.
 | GUI crash → helper self-exits (A9) → bridge silently down | OPEN — accepted for v1 | TBD | Login items don't relaunch crashed apps (macOS `SMAppService`, Windows run keys), so a 2am GUI crash kills the bridge until the user notices a missing tray icon. Deliberate v1 trade against orphaned helpers; revisit post-v1 (watchdog / `KeepAlive`-style relaunch) if telemetry (PR 2.14) shows it matters. |
 | Control-channel secret bootstrap (off-argv) | OPEN | TBD | ADR A8; designed in PR 1.1 / PR 2.6 |
 | Orphaned helper on GUI crash | OPEN | TBD | ADR A9; parent-loss policy in PR 1.1 |
-| Supervised restart replays `--control-url` (no stdin secret) | OPEN — until PR 1.7 | TBD | PR 1.1 gap; PR 1.7 makes supervised restart `exit(86)` not `spawnSuccessor()`. Unreachable pre-GUI; successor fails closed (`ControlSecretApi` timeout → exit 1) |
+| Supervised restart replays `--control-url` (no stdin secret) | RESOLVED in PR 1.7 | TBD | PR 1.1 gap closed: supervised restart now sets `BridgeRestartService.supervisedRestartRequested` and the runner returns `supervisedRestartExitCode` (86) instead of calling `spawnSuccessor()`, so no `--control-url`-replay successor is ever spawned. GUI-side mapping of 86 → respawn is PR 2.7. |
+| Supervised restart stalls if session teardown *hangs* | OPEN → PR 2.7 | TBD | PR 1.7 makes supervised restart return exit 86 on a clean return, a teardown *throw*, and a *throwing* coordinator shutdown. It does NOT cover a teardown await that **hangs** forever inside `OrchestratorSession.run()`/`cancel()`: the runner never reaches the exit path, and the shutdown-coordinator backstop only arms inside `shutdown()` (unreachable while `run()` is stuck), so the process would stall with no exit 86 and the GUI would never see the restart. This is a general session-teardown property (a hang stalls every shutdown path, not just restart; standalone masks it because the successor was already spawned). Fix belongs with Phase 2 process supervision: the GUI kills+respawns a helper that doesn't exit within a grace window after a restart (PR 2.7), and/or a bridge-side teardown watchdog. |
 | Uninstall vs shared CLI state | OPEN | TBD | ADR A10; scope cleanup in PR 3.11 |
 | RelayClient live re-auth on token push | RESOLVED in PR 1.5 (identity gate fixed post-merge) | TBD | ADR A12; Orchestrator subscribes to `AccessTokenProvider.tokenStream` and re-auths only when the emitted token's **auth identity** (JWT `userId` claim) differs from the one `RelayClient.lastAuthedToken` authenticated with (funnels into the existing reconnect path). PR 1.5's original string-inequality gate flapped the relay on every routine same-user rotation (standalone `TokenManager` emits each refresh; a near-expiry pull during session-metadata generation dropped all phones mid-flight) — the relay validates the JWT once at connect and never re-checks, so same-identity rotation keeps the socket. Unparseable tokens re-auth conservatively. Service cache writes are ordered by issue-sequence (newest-issued wins, push outranks in-flight pulls); a signed-out `token_response` invalidates the cache and defers reconnect, and a refresh failure with no safe cached token also defers. Connection-level tests added. |
 | Standalone `TokenManager` keeps in-memory token after logout deletes the store | OPEN | TBD | Pre-existing (predates PR 1.5): `TokenManager.accessToken` returns its seeded in-memory token even after the on-disk store is deleted, so a standalone relay reconnect can re-auth with it. Supervised mode is already safe (control-channel service invalidates on sign-out). Needs a storage-aware validity / logout-invalidation path inside `TokenManager` / the `auth/` subsystem. |
@@ -368,7 +388,7 @@ them). Only the user checks an MT box.
 - ☑ 1.4 Token provider **pull** over channel (+ timeout/GUI-down) — Med / M
 - ☑ 1.5 Token-stream **push** → relay client — Med / S-M
 - ☑ 1.6 Supervised registration + `bridgeId` out of `token.json` — Med / M
-- ☐ 1.7 Exit-code restart (`86`) + bypass successor-spawn — Med / S-M
+- ☑ 1.7 Exit-code restart (`86`) + bypass successor-spawn — Med / S-M
 - ☐ 1.8 Disable self-update + reconcile when supervised — Low / S
 - ☐ 1.9 `BridgeControlMessageDispatcher` + prompts/Console → control events + auth-required exit `87` — Med / M
 - ☐ 1.10 Status push (relay/plugin/active sessions) — Low / S-M

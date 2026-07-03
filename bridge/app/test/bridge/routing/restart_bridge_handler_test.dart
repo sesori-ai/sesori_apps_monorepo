@@ -47,7 +47,7 @@ void main() {
     }
   });
 
-  BridgeRestartService buildService({required String binaryPath}) {
+  BridgeRestartService buildService({required String binaryPath, bool isSupervised = false}) {
     return BridgeRestartService(
       processRepository: ProcessRepository(
         api: SystemProcessApi(
@@ -62,6 +62,7 @@ void main() {
       binaryPath: binaryPath,
       cliArgs: const ['run'],
       currentPid: 1234,
+      isSupervised: isSupervised,
     );
   }
 
@@ -108,5 +109,23 @@ void main() {
     expect(response.status, 503);
     expect(response.body, contains('sesori.com'));
     expect(service.consumeRestartRequest(), isFalse);
+  });
+
+  test('supervised restart proceeds even when the managed binary is unavailable', () async {
+    // The bundled desktop helper need not live at the managed CLI path; the GUI
+    // respawns it, so a missing binary must not block the exit-86 handoff.
+    final service = buildService(binaryPath: p.join(tempDir.path, 'missing'), isSupervised: true);
+    final handler = RestartBridgeHandler(restartService: service);
+
+    final response = await handler.handleInternal(
+      makeRequest('POST', '/global/restart'),
+      pathParams: const {},
+      queryParams: const {},
+      fragment: null,
+    );
+
+    expect(response.status, 200);
+    expect(response.body, contains('"restarting":true'));
+    expect(service.consumeRestartRequest(), isTrue);
   });
 }

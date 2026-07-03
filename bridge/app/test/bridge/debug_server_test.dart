@@ -479,6 +479,7 @@ BridgeRestartService _spawnableRestartService({
     binaryPath: binaryPath,
     cliArgs: const <String>[],
     currentPid: 4321,
+    isSupervised: false,
   );
 }
 
