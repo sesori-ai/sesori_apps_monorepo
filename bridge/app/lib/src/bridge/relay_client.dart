@@ -144,7 +144,7 @@ class RelayClient {
       channel.sink.done.then<void>(
         (_) => _handleChannelDone(channel),
         onError: (Object error) {
-          Log.d("relay socket closed with error: $error");
+          Log.w("relay socket closed with error", error);
           _handleChannelDone(channel);
         },
       ),
