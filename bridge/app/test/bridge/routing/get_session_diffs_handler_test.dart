@@ -76,6 +76,7 @@ void main() {
     test("returns empty diffs when session has null worktreePath", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "s1",
         projectId: "project-1",
         isDedicated: true,
@@ -108,6 +109,7 @@ void main() {
     test("returns empty diffs when session has null baseBranch", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "s1",
         projectId: "project-1",
         isDedicated: true,
@@ -140,6 +142,7 @@ void main() {
     test("returns empty diffs when worktree directory does not exist", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "s1",
         projectId: "project-1",
         isDedicated: true,
@@ -172,6 +175,7 @@ void main() {
     test("returns 422 when base branch is unreachable", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "s1",
         projectId: "project-1",
         isDedicated: true,
@@ -210,6 +214,7 @@ void main() {
     test("returns 422 when merge-base finds no common ancestor", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "s1",
         projectId: "project-1",
         isDedicated: true,
@@ -251,6 +256,7 @@ void main() {
     test("returns 500 when merge-base returns unexpected multi-line output", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "s1",
         projectId: "project-1",
         isDedicated: true,
@@ -292,6 +298,7 @@ void main() {
     test("returns 500 when git diff fails", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["project-1"]); // satisfy v5 FK constraint
       await db.sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "s1",
         projectId: "project-1",
         isDedicated: true,

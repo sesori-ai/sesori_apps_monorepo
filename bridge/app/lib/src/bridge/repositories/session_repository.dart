@@ -1,11 +1,13 @@
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show BridgePluginApi, Log, PluginSession, PluginSessionVariant;
+    show BridgeDerivedProjectsPluginApi, BridgePluginApi, Log, NativeProjectsPluginApi, PluginSession, PluginSessionVariant;
 import "package:sesori_shared/sesori_shared.dart"
     show AgentModel, CommandListResponse, PrState, PromptModel, PromptPart, PullRequestInfo, Session, SessionVariant;
 
 import "../api/database/tables/pull_requests_table.dart";
 import "../persistence/daos/session_dao.dart";
 import "../persistence/tables/session_table.dart";
+import "derived_session_builder.dart";
 import "mappers/plugin_command_mapper.dart";
 import "mappers/plugin_session_mapper.dart";
 import "mappers/prompt_part_mapper.dart";
@@ -15,6 +17,8 @@ import "pull_request_repository.dart";
 import "session_unseen_calculator.dart";
 
 class SessionRepository {
+  static const DerivedSessionBuilder _derivedSessionBuilder = DerivedSessionBuilder();
+
   final BridgePluginApi _plugin;
   final SessionDao _sessionDao;
   final PullRequestRepository _pullRequestRepository;
@@ -35,14 +39,67 @@ class SessionRepository {
     required int? start,
     required int? limit,
   }) async {
-    final pluginSessions = await _plugin.getSessions(
-      projectId,
+    final pluginSessions = await _pluginSessionsForProject(
+      projectId: projectId,
       start: start,
       limit: limit,
     );
 
     return enrichSessions(sessions: pluginSessions.toSharedSessions());
   }
+
+  /// The plugin sessions that belong to [projectId].
+  ///
+  /// A native plugin owns its own project→session grouping, so we delegate
+  /// straight to it. A bridge-derived plugin only knows each session's own cwd
+  /// — which, for a session started in a dedicated worktree, is the worktree
+  /// path rather than the project the user opened. The bridge owns that
+  /// session→project attribution (the row it wrote at creation), so for
+  /// derived plugins we scope via [DerivedSessionBuilder] and paginate here,
+  /// keeping a worktree session under its project.
+  Future<List<PluginSession>> _pluginSessionsForProject({
+    required String projectId,
+    required int? start,
+    required int? limit,
+  }) async {
+    switch (_plugin) {
+      case final NativeProjectsPluginApi plugin:
+        return plugin.getSessions(projectId, start: start, limit: limit);
+
+      case final BridgeDerivedProjectsPluginApi plugin:
+        final (allSessions, sessionProjectPaths) = await (
+          plugin.listAllSessions(),
+          _sessionDao.getSessionProjectPaths(pluginId: plugin.id),
+        ).wait;
+        final scoped = _derivedSessionBuilder.build(
+          projectId: projectId,
+          sessions: allSessions,
+          projectPathBySessionId: {
+            for (final row in sessionProjectPaths) row.sessionId: row.projectPath,
+          },
+        );
+
+        final from = start ?? 0;
+        if (from >= scoped.length) return const [];
+        final until = limit == null ? scoped.length : (from + limit).clamp(0, scoped.length);
+        return scoped.sublist(from, until);
+    }
+  }
+
+  /// Whether an unpaginated [getSessionsForProject] result is the complete
+  /// authoritative session list for a project — the precondition for
+  /// reconciling away stored rows missing from it.
+  ///
+  /// A native plugin owns its session list, so the fetched list is complete.
+  /// A bridge-derived plugin's enumeration is only eventually-complete: a
+  /// freshly-created session can exist solely as a stored row until the
+  /// backend flushes it to disk (codex rollouts), so treating that list as
+  /// complete would reconcile away the fresh row — and with it a worktree
+  /// session's parent-project attribution.
+  bool get sessionListIsAuthoritative => switch (_plugin) {
+    NativeProjectsPluginApi() => true,
+    BridgeDerivedProjectsPluginApi() => false,
+  };
 
   Future<Session> enrichSession({required Session session}) async {
     final enrichedSessions = await enrichSessions(sessions: [session]);
@@ -155,14 +212,29 @@ class SessionRepository {
       return storedSession.projectId;
     }
 
-    final projects = await _plugin.getProjects();
-    for (final project in projects) {
-      final projectId = project.id;
-      if (await _getPluginSession(projectId: projectId, sessionId: sessionId) != null) {
-        return projectId;
-      }
+    switch (_plugin) {
+      case final BridgeDerivedProjectsPluginApi plugin:
+        // No stored row means the bridge did not create this session (every
+        // bridge-created session — worktree ones included — is persisted with
+        // its owning project and was handled above), so its own cwd IS its
+        // project: resolve via the session enumeration.
+        for (final session in await plugin.listAllSessions()) {
+          if (session.id == sessionId) {
+            return normalizeProjectDirectory(directory: session.directory);
+          }
+        }
+        return null;
+
+      case final NativeProjectsPluginApi plugin:
+        final projects = await plugin.getProjects();
+        for (final project in projects) {
+          final projectId = project.id;
+          if (await _getPluginSession(projectId: projectId, sessionId: sessionId) != null) {
+            return projectId;
+          }
+        }
+        return null;
     }
-    return null;
   }
 
   Future<void> notifySessionArchived({required String sessionId}) {
@@ -194,6 +266,9 @@ class SessionRepository {
       storedSessionsById: dbSessions,
       pullRequestsBySessionId: pullRequestsBySessionId,
       unseenCalculator: _unseenCalculator,
+      // Only a bridge-derived plugin cedes project attribution to the stored
+      // row; a native backend's reported projectID is authoritative.
+      adoptStoredProjectId: _plugin is BridgeDerivedProjectsPluginApi,
     );
   }
 
@@ -253,15 +328,24 @@ class SessionRepository {
   }
 
   Future<String?> getProjectPath({required String projectId}) async {
-    try {
-      final project = await _plugin.getProject(projectId);
-      if (project.id.trim().isEmpty) {
-        return null;
-      }
-      return project.id;
-    } catch (e) {
-      Log.w("[SessionRepository] getProjectPath failed for $projectId: $e");
-      return null;
+    switch (_plugin) {
+      case BridgeDerivedProjectsPluginApi():
+        // The project id IS the canonical directory and the plugin has no
+        // getProject — resolve the path directly.
+        final trimmed = projectId.trim();
+        return trimmed.isEmpty ? null : normalizeProjectDirectory(directory: trimmed);
+
+      case final NativeProjectsPluginApi plugin:
+        try {
+          final project = await plugin.getProject(projectId);
+          if (project.id.trim().isEmpty) {
+            return null;
+          }
+          return project.id;
+        } catch (e) {
+          Log.w("[SessionRepository] getProjectPath failed for $projectId: $e");
+          return null;
+        }
     }
   }
 
@@ -283,6 +367,7 @@ class SessionRepository {
   }) async {
     final db = _sessionDao.attachedDatabase;
     await db.transaction(() async {
+      final placeholder = await _sessionDao.getSession(sessionId: sessionId);
       await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
       await _sessionDao.insertSession(
         sessionId: sessionId,
@@ -295,7 +380,29 @@ class SessionRepository {
         baseCommit: baseCommit,
         lastAgent: agent,
         lastAgentModel: agentModel,
+        pluginId: _plugin.id,
       );
+      // A live `session.created` can race ahead of this create flow and insert
+      // a placeholder keyed to the plugin-reported cwd — for a dedicated
+      // worktree session that's the throwaway worktree path, along with a
+      // project row for it. The upsert above re-attributed the session to the
+      // canonical project; drop the now-orphaned placeholder project row so it
+      // can't surface as an empty derived project card. Guarded twice: only
+      // when nothing else references the row, and only when the row carries no
+      // user-set state (hidden/rename/base-branch/worktree counter) — a row
+      // the user touched is a real project, not placeholder junk.
+      final placeholderProjectId = placeholder?.projectId;
+      if (placeholderProjectId != null && placeholderProjectId != projectId) {
+        final (row, remaining) = await (
+          db.projectsDao.getProject(projectId: placeholderProjectId),
+          _sessionDao.getSessionsByProject(projectId: placeholderProjectId),
+        ).wait;
+        final untouched =
+            row != null && !row.hidden && row.displayName == null && row.baseBranch == null && row.worktreeCounter == 0;
+        if (untouched && remaining.isEmpty) {
+          await db.projectsDao.deleteProject(projectId: placeholderProjectId);
+        }
+      }
     });
   }
 
@@ -312,7 +419,7 @@ class SessionRepository {
   }
 
   Future<PluginSession?> _getPluginSession({required String projectId, required String sessionId}) async {
-    final sessions = await _plugin.getSessions(projectId);
+    final sessions = await _pluginSessionsForProject(projectId: projectId, start: null, limit: null);
     for (final session in sessions) {
       if (session.id == sessionId) {
         return session;

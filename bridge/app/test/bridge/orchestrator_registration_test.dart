@@ -237,6 +237,7 @@ class _RegistrationHarness {
       ),
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
+          pluginId: "opencode",
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,
@@ -278,11 +279,12 @@ class _RegistrationHarness {
       providerRepository: ProviderRepository(plugin: plugin),
       agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: PermissionRepository(plugin: plugin),
-      questionRepository: QuestionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
       sessionPersistenceService: SessionPersistenceService(
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         db: database,
+        pluginId: "opencode",
       ),
       worktreeService: WorktreeService(
         worktreeRepository: WorktreeRepository(

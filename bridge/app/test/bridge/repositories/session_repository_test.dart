@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:sesori_bridge/src/bridge/api/database/tables/pull_requests_table.dart";
+import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
@@ -35,6 +36,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
 
       await db.sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "s1",
         projectId: "p1",
         isDedicated: true,
@@ -138,6 +140,7 @@ void main() {
 
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "s1",
         projectId: "p1",
         isDedicated: false,
@@ -186,6 +189,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
 
       await db.sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "s1",
         projectId: "p1",
         isDedicated: false,
@@ -296,6 +300,135 @@ void main() {
       expect(row.worktreePath, equals("/tmp/wt"));
     });
 
+    test("insertStoredSession drops the orphaned placeholder project row after re-attribution", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      // A live session.created raced ahead of the create flow: the placeholder
+      // keyed the session (and a project row) to the plugin-reported worktree
+      // cwd instead of the project the user opened.
+      const worktree = "/repo/.worktrees/s1";
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [worktree]);
+      await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "fake",
+        sessions: [(sessionId: "s1", projectId: worktree, createdAt: 100, archivedAt: null)],
+      );
+
+      await repository.insertStoredSession(
+        sessionId: "s1",
+        projectId: "/repo",
+        isDedicated: true,
+        createdAt: 200,
+        worktreePath: worktree,
+        branchName: "s1",
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+
+      // The session is re-attributed to the canonical project and the stale
+      // worktree project row is gone — it must not surface as an empty
+      // derived project card.
+      final row = await db.sessionDao.getSession(sessionId: "s1");
+      expect(row?.projectId, "/repo");
+      final projects = await db.select(db.projectsTable).get();
+      expect(projects.map((project) => project.projectId), equals(["/repo"]));
+    });
+
+    test("insertStoredSession keeps a project row that carries user-set state", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      // The placeholder happens to be keyed to a path the user renamed — a
+      // real project, not junk. It must survive the cleanup even once its
+      // last session is re-attributed away.
+      const touched = "/repo/renamed";
+      await db.projectsDao.setDisplayName(projectId: touched, displayName: "My Project");
+      await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "fake",
+        sessions: [(sessionId: "s1", projectId: touched, createdAt: 100, archivedAt: null)],
+      );
+
+      await repository.insertStoredSession(
+        sessionId: "s1",
+        projectId: "/repo",
+        isDedicated: false,
+        createdAt: 200,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+
+      final projects = await db.select(db.projectsTable).get();
+      expect(projects.map((project) => project.projectId).toSet(), equals({"/repo", touched}));
+    });
+
+    test("insertStoredSession keeps a placeholder project row that other sessions still reference", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      const shared = "/repo/other";
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [shared]);
+      await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "fake",
+        sessions: [
+          (sessionId: "s1", projectId: shared, createdAt: 100, archivedAt: null),
+          (sessionId: "s-other", projectId: shared, createdAt: 100, archivedAt: null),
+        ],
+      );
+
+      await repository.insertStoredSession(
+        sessionId: "s1",
+        projectId: "/repo",
+        isDedicated: false,
+        createdAt: 200,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+
+      final projects = await db.select(db.projectsTable).get();
+      expect(projects.map((project) => project.projectId).toSet(), equals({"/repo", shared}));
+      expect((await db.sessionDao.getSession(sessionId: "s-other"))?.projectId, shared);
+    });
+
     test("updatePromptDefaults writes latest nullable prompt defaults", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -361,6 +494,7 @@ void main() {
 
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "s1",
         projectId: "p1",
         isDedicated: true,
@@ -423,6 +557,7 @@ void main() {
 
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p-stored"]);
       await db.sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "s-target",
         projectId: "p-stored",
         isDedicated: true,
@@ -547,9 +682,187 @@ void main() {
       }
     });
   });
+
+  group("SessionRepository (bridge-derived)", () {
+    PluginSession pluginSession(String directory, {required String id}) => PluginSession(
+      id: id,
+      projectID: directory,
+      directory: directory,
+      parentID: null,
+      title: null,
+      time: const PluginSessionTime(created: 1, updated: 1, archived: null),
+      summary: null,
+    );
+
+    Future<void> recordWorktreeSession(
+      AppDatabase db, {
+      required String parent,
+      required String worktree,
+      required String sessionId,
+    }) async {
+      // Mirror what SessionCreationService persists: the session's owning
+      // project plus the worktree the bridge created for it.
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
+      await db.sessionDao.insertSession(
+        sessionId: sessionId,
+        projectId: parent,
+        isDedicated: true,
+        createdAt: 1,
+        worktreePath: worktree,
+        branchName: "session-001",
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+        pluginId: "codex",
+      );
+    }
+
+    test("getSessionsForProject lists a worktree session under its parent project", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      const parent = "/tmp/proj/alpha";
+      const worktree = "/tmp/proj/alpha/.worktrees/session-001";
+      final plugin = _FakeDerivedPlugin(
+        launchDirectory: parent,
+        allSessions: [pluginSession(parent, id: "s1"), pluginSession(worktree, id: "w1")],
+      );
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "w1");
+
+      final sessions = await repository.getSessionsForProject(projectId: parent, start: null, limit: null);
+
+      // The in-project session AND the worktree session both list under parent.
+      expect(sessions.map((s) => s.id).toSet(), {"s1", "w1"});
+      // Enrichment adopts the stored attribution as projectID (the plugin
+      // reported the worktree cwd), so live created/updated events for this
+      // session are not dropped by the parent project's session list. The
+      // directory stays the session's real cwd.
+      final worktreeSession = sessions.singleWhere((s) => s.id == "w1");
+      expect(worktreeSession.projectID, parent);
+      expect(worktreeSession.directory, worktree);
+    });
+
+    test("findProjectIdForSession resolves a recorded worktree session to its parent via its stored row", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      const parent = "/tmp/proj/alpha";
+      const worktree = "/tmp/proj/alpha/.worktrees/session-001";
+      // The bridge recorded a1 under its parent project at creation; the stored
+      // row is authoritative even though the plugin reports the session under
+      // its worktree cwd.
+      final plugin = _FakeDerivedPlugin(
+        launchDirectory: parent,
+        allSessions: [pluginSession(worktree, id: "a1")],
+      );
+      final repository = SessionRepository(
+        unseenCalculator: const SessionUnseenCalculator(),
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+      await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "a1");
+
+      final result = await repository.findProjectIdForSession(sessionId: "a1");
+
+      expect(result, equals(parent));
+    });
+
+    test("findProjectIdForSession resolves a rowless session to its own directory", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      const directory = "/tmp/proj/beta";
+      // No stored row: the bridge did not create this session, so its own cwd
+      // IS its project.
+      final plugin = _FakeDerivedPlugin(
+        launchDirectory: "/tmp/proj/alpha",
+        allSessions: [pluginSession(directory, id: "b1")],
+      );
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      final result = await repository.findProjectIdForSession(sessionId: "b1");
+
+      expect(result, equals(directory));
+    });
+
+    test("sessionListIsAuthoritative is false for a derived plugin and true for a native one", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final pullRequestRepository = PullRequestRepository(
+        pullRequestDao: db.pullRequestDao,
+        projectsDao: db.projectsDao,
+      );
+
+      final derived = SessionRepository(
+        plugin: _FakeDerivedPlugin(launchDirectory: "/tmp/proj/alpha", allSessions: const []),
+        sessionDao: db.sessionDao,
+        pullRequestRepository: pullRequestRepository,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      final native = SessionRepository(
+        plugin: _FakeBridgePlugin(),
+        sessionDao: db.sessionDao,
+        pullRequestRepository: pullRequestRepository,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      // A derived enumeration is eventually-complete (rollout flush window),
+      // so it must never be used to reconcile stored rows away.
+      expect(derived.sessionListIsAuthoritative, isFalse);
+      expect(native.sessionListIsAuthoritative, isTrue);
+    });
+
+    test("getSessionsForProject scoped to the worktree path returns nothing — it belongs to its parent", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      const parent = "/tmp/proj/alpha";
+      const worktree = "/tmp/proj/alpha/.worktrees/session-001";
+      final plugin = _FakeDerivedPlugin(
+        launchDirectory: parent,
+        allSessions: [pluginSession(worktree, id: "w1")],
+      );
+      final repository = SessionRepository(
+        unseenCalculator: const SessionUnseenCalculator(),
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+      );
+      await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "w1");
+
+      final underWorktree = await repository.getSessionsForProject(projectId: worktree, start: null, limit: null);
+
+      expect(underWorktree, isEmpty);
+    });
+  });
 }
 
-class _FakeBridgePlugin implements BridgePluginApi {
+class _FakeBridgePlugin implements NativeProjectsPluginApi {
   List<PluginProject> projectsResult = const [];
   List<PluginSession> sessionsResult = const [];
   Map<String, List<PluginSession>> sessionsByWorktree = const {};
@@ -631,6 +944,28 @@ class _FakeBridgePlugin implements BridgePluginApi {
     required String projectId,
     required String worktreePath,
   }) async {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// A derive-style plugin (Codex/ACP shaped): reports every session through
+/// [BridgeDerivedProjectsPluginApi.listAllSessions]. `id` is "codex" so the
+/// repository's stored-attribution lookup
+/// (`getSessionProjectPaths(pluginId: ...)`) matches the seeded session rows.
+class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
+  _FakeDerivedPlugin({required this.launchDirectory, required this.allSessions});
+
+  @override
+  final String launchDirectory;
+
+  List<PluginSession> allSessions;
+
+  @override
+  String get id => "codex";
+
+  @override
+  Future<List<PluginSession>> listAllSessions() async => allSessions;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

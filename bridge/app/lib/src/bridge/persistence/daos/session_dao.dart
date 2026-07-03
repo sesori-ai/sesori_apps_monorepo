@@ -2,6 +2,7 @@ import "package:drift/drift.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../database.dart";
+import "../tables/projects_table.dart";
 import "../tables/session_table.dart";
 
 part "session_dao.g.dart";
@@ -16,7 +17,7 @@ typedef SessionUnseenRow = ({
   int? userMessageAt,
 });
 
-@DriftAccessor(tables: [SessionTable])
+@DriftAccessor(tables: [SessionTable, ProjectsTable])
 class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   SessionDao(super.attachedDatabase);
 
@@ -38,6 +39,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     required String? baseCommit,
     required String? lastAgent,
     required AgentModel? lastAgentModel,
+    required String pluginId,
   }) async {
     await into(sessionTable).insert(
       SessionTableCompanion(
@@ -52,6 +54,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
         lastAgent: Value(lastAgent),
         lastAgentModel: Value(lastAgentModel),
         createdAt: Value(createdAt),
+        pluginId: Value(pluginId),
       ),
       onConflict: DoUpdate(
         (_) => SessionTableCompanion(
@@ -109,6 +112,29 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
 
   Future<List<SessionDto>> getSessionsByProject({required String projectId}) async {
     return (select(sessionTable)..where((t) => t.projectId.equals(projectId))).get();
+  }
+
+  /// The stored project path for every session recorded for [pluginId], via a
+  /// join from each session's projectId to its project row. This is how the
+  /// bridge attributes a derive-style plugin's sessions to projects: the row
+  /// the bridge wrote at creation is authoritative, so a session running in a
+  /// dedicated worktree maps to the project the user opened — not to its own
+  /// worktree cwd. The join keeps call sites working if project ids ever stop
+  /// being the project path.
+  Future<List<({String sessionId, String projectPath})>> getSessionProjectPaths({
+    required String pluginId,
+  }) async {
+    final query = select(sessionTable).join([
+      innerJoin(projectsTable, projectsTable.projectId.equalsExp(sessionTable.projectId)),
+    ])..where(sessionTable.pluginId.equals(pluginId));
+    final rows = await query.get();
+    return [
+      for (final row in rows)
+        (
+          sessionId: row.readTable(sessionTable).sessionId,
+          projectPath: row.readTable(projectsTable).path,
+        ),
+    ];
   }
 
   // ── Unseen-changes tracking ──────────────────────────────────────────────
@@ -231,6 +257,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   /// archive state is preserved on first insert. Existing rows are never updated.
   Future<void> insertSessionsIfMissing({
     required List<({String sessionId, String projectId, int createdAt, int? archivedAt})> sessions,
+    required String pluginId,
   }) async {
     if (sessions.isEmpty) return;
     await batch((b) {
@@ -246,6 +273,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
               isDedicated: const Value(false),
               createdAt: Value(s.createdAt),
               archivedAt: Value(s.archivedAt),
+              pluginId: Value(pluginId),
               // worktreePath, branchName, baseBranch, baseCommit intentionally
               // omitted — they default to absent (null) via SessionTableCompanion
             ),
@@ -259,12 +287,16 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     await (delete(sessionTable)..where((t) => t.sessionId.equals(sessionId))).go();
   }
 
-  /// Deletes every persisted row for [projectId] whose session id is NOT in
-  /// [keepSessionIds] and whose `created_at` is strictly before [createdBefore],
-  /// returning the ids of the rows that were deleted. Used to reconcile rows for
-  /// sessions that vanished from the authoritative list (deleted while offline /
-  /// backend-side). Only safe when [keepSessionIds] is the COMPLETE list for the
-  /// project.
+  /// Deletes every persisted row for [projectId] AND [pluginId] whose session
+  /// id is NOT in [keepSessionIds] and whose `created_at` is strictly before
+  /// [createdBefore], returning the ids of the rows that were deleted. Used to
+  /// reconcile rows for sessions that vanished from the authoritative list
+  /// (deleted while offline / backend-side). Only safe when [keepSessionIds]
+  /// is the COMPLETE list for the project.
+  ///
+  /// Scoped to [pluginId] because the authoritative list comes from the active
+  /// plugin: rows another plugin recorded for the same project are legitimately
+  /// absent from it and must never be reconciled away.
   ///
   /// [createdBefore] (the wall-clock time the `/sessions` fetch started) guards
   /// against deleting a session that was created AFTER the snapshot was taken
@@ -274,11 +306,13 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
     required String projectId,
     required List<String> keepSessionIds,
     required int createdBefore,
+    required String pluginId,
   }) async {
     final rows =
         await (delete(sessionTable)..where(
               (t) =>
                   t.projectId.equals(projectId) &
+                  t.pluginId.equals(pluginId) &
                   t.sessionId.isNotIn(keepSessionIds) &
                   t.createdAt.isSmallerThanValue(createdBefore),
             ))

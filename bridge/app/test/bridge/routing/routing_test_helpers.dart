@@ -32,6 +32,7 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
   const calculator = SessionUnseenCalculator();
   return SessionUnseenService(
     unseenRepository: SessionUnseenRepository(
+      pluginId: plugin.id,
       sessionDao: db.sessionDao,
       projectsDao: db.projectsDao,
       db: db,
@@ -64,7 +65,7 @@ RelayRequest makeRequest(
         as RelayRequest;
 
 /// Hand-written fake [BridgePluginApi] used across routing handler tests.
-class FakeBridgePlugin implements BridgePluginApi {
+class FakeBridgePlugin implements NativeProjectsPluginApi {
   final _controller = StreamController<BridgeSseEvent>.broadcast();
 
   // ── Configurable return values ───────────────────────────────────────────
@@ -432,6 +433,7 @@ class FakeSessionDao {
     required String? baseCommit,
     required String? lastAgent,
     required AgentModel? lastAgentModel,
+    required String pluginId,
   }) async {
     _sessions[sessionId] = SessionDto(
       sessionId: sessionId,
@@ -448,6 +450,7 @@ class FakeSessionDao {
       lastActivityAt: null,
       lastSeenAt: null,
       lastUserMessageAt: null,
+      pluginId: pluginId,
     );
   }
 
@@ -633,6 +636,7 @@ class FakeSessionPersistenceService extends SessionPersistenceService {
         projectsDao: _unsupportedProjectsDao(),
         sessionDao: _unsupportedSessionDao(),
         db: _unsupportedDatabase(),
+        pluginId: "opencode",
       );
 
   static ProjectsDao _unsupportedProjectsDao() => throw UnimplementedError();
@@ -698,6 +702,9 @@ class _NoopPullRequestRepository implements PullRequestRepository {
 }
 
 class _NoopSessionRepository implements SessionRepository {
+  @override
+  bool get sessionListIsAuthoritative => true;
+
   @override
   Future<Session> createSession({
     required String directory,
@@ -827,6 +834,11 @@ class FakeSessionRepository implements SessionRepository {
   int getSessionsCallCount = 0;
   ({String projectId, int? start, int? limit})? lastGetSessionsArgs;
 
+  /// Settable so handler tests can exercise the non-authoritative
+  /// (bridge-derived) reconcile gating.
+  @override
+  bool sessionListIsAuthoritative = true;
+
   FakeSessionRepository({
     required FakeBridgePlugin plugin,
     FakeSessionDao? sessionDao,
@@ -924,6 +936,7 @@ class FakeSessionRepository implements SessionRepository {
       storedSessionsById: dbSessions,
       pullRequestsBySessionId: pullRequestsBySessionId,
       unseenCalculator: const SessionUnseenCalculator(),
+      adoptStoredProjectId: false,
     );
   }
 
@@ -1008,6 +1021,7 @@ class FakeSessionRepository implements SessionRepository {
       baseCommit: baseCommit,
       lastAgent: agent,
       lastAgentModel: agentModel,
+      pluginId: "opencode",
     );
   }
 

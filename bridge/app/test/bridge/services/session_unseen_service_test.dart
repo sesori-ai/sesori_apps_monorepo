@@ -17,6 +17,7 @@ void main() {
     var clock = 1000;
 
     SessionUnseenRepository unseenRepository() => SessionUnseenRepository(
+      pluginId: "opencode",
       sessionDao: db.sessionDao,
       projectsDao: db.projectsDao,
       db: db,
@@ -64,6 +65,7 @@ void main() {
       // Pre-existing (baseline-seen) row.
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "opencode",
         sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
       );
       expect(await unseen("s1"), isFalse);
@@ -100,6 +102,7 @@ void main() {
     test("mark unread then mark read toggles bold", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "opencode",
         sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
       );
       // Some AI activity exists, but it's currently seen.
@@ -121,6 +124,7 @@ void main() {
     test("mark unread forces bold even when the user's own message is latest", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "opencode",
         sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
       );
       // Latest activity is the user's own message -> normally NOT bold.
@@ -158,6 +162,7 @@ void main() {
     test("activity timestamp is clamped above persisted markers (clock rollback)", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "opencode",
         sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
       );
       // Persist markers far in the future (e.g. stored before a clock rollback).
@@ -286,6 +291,7 @@ void main() {
       // the live session.created event is processed.
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "opencode",
         sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
       );
       expect(await unseen("s1"), isFalse);
@@ -297,6 +303,7 @@ void main() {
     test("coalesces repeated assistant activity once the session is already unseen", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "opencode",
         sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
       );
 
@@ -332,6 +339,7 @@ void main() {
     test("a re-emitted user message does not clear unseen state (OpenCode re-sends the user record)", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "opencode",
         sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
       );
       // The user sends a message (payload created at 2000, processed now).
@@ -360,6 +368,7 @@ void main() {
     test("re-emission guard holds when the bridge clock is BEHIND the server clock", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "opencode",
         sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
       );
       // Server creation time (5000) is ahead of the bridge's local clock
@@ -384,6 +393,7 @@ void main() {
     test("a delayed first user message does not swallow a genuinely newer reply (backlog replay)", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "opencode",
         sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
       );
       // A reconnect backlog processed late (local clock 9000+): user message
@@ -429,6 +439,7 @@ void main() {
       // the re-emission guard has no marker to compare against.
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "opencode",
         sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
       );
       // Assistant activity bolds the session.
@@ -452,6 +463,7 @@ void main() {
     test("a user message after the session is unseen is NOT coalesced (updates user-message marker)", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "opencode",
         sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
       );
       clock = 2000;
@@ -493,6 +505,7 @@ void main() {
     test("markRead on an EXISTING row succeeds even when the aggregate emit throws", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "opencode",
         sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
       );
       // Bold the row so mark-read has a real effect.
@@ -521,6 +534,7 @@ void main() {
     test("markUnread on an EXISTING row succeeds even when the aggregate emit throws", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(
+        pluginId: "opencode",
         sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
       );
       expect(await unseen("s1"), isFalse);
@@ -559,7 +573,7 @@ void main() {
   });
 }
 
-class _FakePlugin implements BridgePluginApi {
+class _FakePlugin implements NativeProjectsPluginApi {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

@@ -10,5 +10,6 @@ export "src/command_executor.dart";
 export "src/host_process_command_executor.dart";
 export "src/os_version_formatter.dart";
 export "src/platform_target.dart";
+export "src/project_directory.dart";
 export "src/semantic_version.dart";
 export "src/sesori_data_directory.dart";

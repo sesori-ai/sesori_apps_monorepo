@@ -50,6 +50,7 @@ void main() {
             projectsDao: db.projectsDao,
             sessionDao: db.sessionDao,
             db: db,
+            pluginId: "opencode",
           ),
         ),
         sessionUnseenService: unseenService = buildTestSessionUnseenService(db, plugin),
@@ -1046,6 +1047,7 @@ Future<void> _insertSession({
 }) async {
   await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]); // satisfy v5 FK constraint
   await db.sessionDao.insertSession(
+    pluginId: "opencode",
     sessionId: sessionId,
     projectId: projectId,
     isDedicated: isDedicated,
@@ -1165,7 +1167,7 @@ class _FakeWorktreeService extends WorktreeService {
   }
 }
 
-class _FakeBridgePlugin implements BridgePluginApi {
+class _FakeBridgePlugin implements NativeProjectsPluginApi {
   @override
   String get id => "fake";
 

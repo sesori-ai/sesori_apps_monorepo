@@ -32,6 +32,7 @@ void main() {
     test("insert dedicated session then retrieve by sessionId returns matching row", () async {
       final createdAt = DateTime.now().millisecondsSinceEpoch;
       await dao.insertSession(
+        pluginId: "opencode",
         sessionId: "ses-1",
         projectId: "proj-1",
         isDedicated: true,
@@ -62,6 +63,7 @@ void main() {
     test("insert simple session supports null worktree fields", () async {
       final createdAt = DateTime.now().millisecondsSinceEpoch;
       await dao.insertSession(
+        pluginId: "opencode",
         sessionId: "ses-simple",
         projectId: "proj-1",
         isDedicated: false,
@@ -91,6 +93,7 @@ void main() {
           .into(db.sessionTable)
           .insert(
             SessionTableCompanion.insert(
+              pluginId: "opencode",
               sessionId: "ses-defaults",
               projectId: "proj-1",
               isDedicated: false,
@@ -117,6 +120,7 @@ void main() {
 
     test("insertSession persists optional prompt defaults", () async {
       await dao.insertSession(
+        pluginId: "opencode",
         sessionId: "ses-insert-defaults",
         projectId: "proj-1",
         isDedicated: false,
@@ -144,6 +148,7 @@ void main() {
 
     test("updatePromptDefaults overwrites all prompt default fields", () async {
       await dao.insertSession(
+        pluginId: "opencode",
         sessionId: "ses-update-defaults",
         projectId: "proj-1",
         isDedicated: false,
@@ -187,6 +192,7 @@ void main() {
 
     test("delete session then get returns null", () async {
       await dao.insertSession(
+        pluginId: "opencode",
         sessionId: "ses-2",
         projectId: "proj-2",
         isDedicated: true,
@@ -208,6 +214,7 @@ void main() {
 
     test("deleteSession is no-op for unknown sessionId", () async {
       await dao.insertSession(
+        pluginId: "opencode",
         sessionId: "ses-3",
         projectId: "proj-3",
         isDedicated: true,
@@ -229,6 +236,7 @@ void main() {
 
     test("setArchived and clearArchived update archivedAt", () async {
       await dao.insertSession(
+        pluginId: "opencode",
         sessionId: "ses-4",
         projectId: "proj-4",
         isDedicated: false,
@@ -253,6 +261,7 @@ void main() {
 
     test("getSessionsByProject and getSessionsByIds return expected sessions", () async {
       await dao.insertSession(
+        pluginId: "opencode",
         sessionId: "ses-a",
         projectId: "proj-x",
         isDedicated: true,
@@ -266,6 +275,7 @@ void main() {
         lastAgentModel: null,
       );
       await dao.insertSession(
+        pluginId: "opencode",
         sessionId: "ses-b",
         projectId: "proj-x",
         isDedicated: false,
@@ -279,6 +289,7 @@ void main() {
         lastAgentModel: null,
       );
       await dao.insertSession(
+        pluginId: "opencode",
         sessionId: "ses-c",
         projectId: "proj-y",
         isDedicated: true,
@@ -306,6 +317,7 @@ void main() {
     group("getOtherActiveSessionsSharing", () {
       test("returns empty when both params are null", () async {
         await dao.insertSession(
+          pluginId: "opencode",
           sessionId: "ses-1",
           projectId: "proj-1",
           isDedicated: true,
@@ -331,6 +343,7 @@ void main() {
 
       test("finds other session sharing worktreePath", () async {
         await dao.insertSession(
+          pluginId: "opencode",
           sessionId: "ses-a",
           projectId: "proj-1",
           isDedicated: true,
@@ -344,6 +357,7 @@ void main() {
           lastAgentModel: null,
         );
         await dao.insertSession(
+          pluginId: "opencode",
           sessionId: "ses-b",
           projectId: "proj-1",
           isDedicated: true,
@@ -370,6 +384,7 @@ void main() {
 
       test("finds other session sharing branchName", () async {
         await dao.insertSession(
+          pluginId: "opencode",
           sessionId: "ses-a",
           projectId: "proj-1",
           isDedicated: true,
@@ -383,6 +398,7 @@ void main() {
           lastAgentModel: null,
         );
         await dao.insertSession(
+          pluginId: "opencode",
           sessionId: "ses-b",
           projectId: "proj-1",
           isDedicated: true,
@@ -409,6 +425,7 @@ void main() {
 
       test("excludes the current session from results", () async {
         await dao.insertSession(
+          pluginId: "opencode",
           sessionId: "ses-a",
           projectId: "proj-1",
           isDedicated: true,
@@ -434,6 +451,7 @@ void main() {
 
       test("excludes archived sessions", () async {
         await dao.insertSession(
+          pluginId: "opencode",
           sessionId: "ses-a",
           projectId: "proj-1",
           isDedicated: true,
@@ -447,6 +465,7 @@ void main() {
           lastAgentModel: null,
         );
         await dao.insertSession(
+          pluginId: "opencode",
           sessionId: "ses-b",
           projectId: "proj-1",
           isDedicated: true,
@@ -473,6 +492,7 @@ void main() {
 
       test("uses OR logic when both worktreePath and branchName provided", () async {
         await dao.insertSession(
+          pluginId: "opencode",
           sessionId: "ses-a",
           projectId: "proj-1",
           isDedicated: true,
@@ -486,6 +506,7 @@ void main() {
           lastAgentModel: null,
         );
         await dao.insertSession(
+          pluginId: "opencode",
           sessionId: "ses-b",
           projectId: "proj-1",
           isDedicated: true,
@@ -499,6 +520,7 @@ void main() {
           lastAgentModel: null,
         );
         await dao.insertSession(
+          pluginId: "opencode",
           sessionId: "ses-c",
           projectId: "proj-1",
           isDedicated: true,
@@ -527,6 +549,7 @@ void main() {
         // Two sessions in different projects accidentally share the same branch
         // name. Cleanup of one must not be blocked by the other.
         await dao.insertSession(
+          pluginId: "opencode",
           sessionId: "ses-a",
           projectId: "proj-1",
           isDedicated: true,
@@ -540,6 +563,7 @@ void main() {
           lastAgentModel: null,
         );
         await dao.insertSession(
+          pluginId: "opencode",
           sessionId: "ses-b",
           projectId: "proj-2",
           isDedicated: true,
@@ -569,6 +593,7 @@ void main() {
       () async {
         // proj-1 is seeded in setUp — FK constraint satisfied.
         await dao.insertSessionsIfMissing(
+          pluginId: "opencode",
           sessions: [
             (
               sessionId: "sess-1",
@@ -596,6 +621,7 @@ void main() {
 
     test("insertSessionsIfMissing persists archivedAt when provided", () async {
       await dao.insertSessionsIfMissing(
+        pluginId: "opencode",
         sessions: [
           (
             sessionId: "sess-archived",
@@ -614,6 +640,7 @@ void main() {
     test("insertSessionsIfMissing is no-op when session exists, preserving worktreePath and branchName", () async {
       // Pre-insert a full session with worktree state.
       await dao.insertSession(
+        pluginId: "opencode",
         sessionId: "sess-existing",
         projectId: "proj-1",
         isDedicated: true,
@@ -629,6 +656,7 @@ void main() {
 
       // insertSessionsIfMissing must be a no-op — must NOT clobber existing fields.
       await dao.insertSessionsIfMissing(
+        pluginId: "opencode",
         sessions: [
           (
             sessionId: "sess-existing",
@@ -657,6 +685,7 @@ void main() {
         // must reject this insert at the SQLite level.
         expect(
           () async => dao.insertSessionsIfMissing(
+            pluginId: "opencode",
             sessions: [
               (
                 sessionId: "s1",
@@ -674,6 +703,7 @@ void main() {
     group("insertSessionsIfMissing", () {
       test("insertSessionsIfMissing inserts all sessions in one batch", () async {
         await dao.insertSessionsIfMissing(
+          pluginId: "opencode",
           sessions: [
             (sessionId: "bulk-1", projectId: "proj-1", createdAt: 100, archivedAt: null),
             (sessionId: "bulk-2", projectId: "proj-1", createdAt: 200, archivedAt: 9999),
@@ -697,10 +727,71 @@ void main() {
       });
 
       test("insertSessionsIfMissing is no-op for empty list", () async {
-        await dao.insertSessionsIfMissing(sessions: []);
+        await dao.insertSessionsIfMissing(pluginId: "opencode", sessions: []);
 
         final rows = await db.select(db.sessionTable).get();
         expect(rows, isEmpty);
+      });
+    });
+
+    group("deleteSessionsForProjectNotIn", () {
+      test("only reconciles rows of the given plugin", () async {
+        // The authoritative session list comes from the active plugin, so
+        // another plugin's rows for the same project are legitimately absent
+        // from it and must survive the reconciliation.
+        await dao.insertSessionsIfMissing(
+          pluginId: "codex",
+          sessions: [
+            (sessionId: "c-gone", projectId: "proj-1", createdAt: 100, archivedAt: null),
+            (sessionId: "c-kept", projectId: "proj-1", createdAt: 100, archivedAt: null),
+          ],
+        );
+        await dao.insertSessionsIfMissing(
+          pluginId: "opencode",
+          sessions: [
+            (sessionId: "o-kept", projectId: "proj-1", createdAt: 100, archivedAt: null),
+          ],
+        );
+
+        final deleted = await dao.deleteSessionsForProjectNotIn(
+          projectId: "proj-1",
+          keepSessionIds: ["c-kept"],
+          createdBefore: 500,
+          pluginId: "codex",
+        );
+
+        expect(deleted, equals(["c-gone"]));
+        expect(await dao.getSession(sessionId: "c-kept"), isNotNull);
+        expect(await dao.getSession(sessionId: "o-kept"), isNotNull);
+      });
+    });
+
+    group("getSessionProjectPaths", () {
+      test("joins each session to its project's stored path, filtered by plugin id", () async {
+        await dao.insertSessionsIfMissing(
+          pluginId: "codex",
+          sessions: [
+            (sessionId: "c1", projectId: "proj-1", createdAt: 100, archivedAt: null),
+            (sessionId: "c2", projectId: "proj-2", createdAt: 200, archivedAt: null),
+          ],
+        );
+        await dao.insertSessionsIfMissing(
+          pluginId: "opencode",
+          sessions: [
+            (sessionId: "o1", projectId: "proj-1", createdAt: 300, archivedAt: null),
+          ],
+        );
+
+        final rows = await dao.getSessionProjectPaths(pluginId: "codex");
+
+        expect(
+          {for (final row in rows) row.sessionId: row.projectPath},
+          equals({"c1": "proj-1", "c2": "proj-2"}),
+        );
+      });
+
+      test("returns empty when the plugin has no recorded sessions", () async {
+        expect(await dao.getSessionProjectPaths(pluginId: "codex"), isEmpty);
       });
     });
 
@@ -711,6 +802,7 @@ void main() {
         // Proves the v5 FK constraint catches BOTH session insert paths.
         expect(
           () async => dao.insertSession(
+            pluginId: "opencode",
             sessionId: "s2",
             projectId: "nonexistent",
             isDedicated: false,

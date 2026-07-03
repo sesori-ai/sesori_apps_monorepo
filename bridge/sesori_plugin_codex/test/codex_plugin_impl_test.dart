@@ -20,10 +20,11 @@ void main() {
       expect(plugin.id, equals("codex"));
     });
 
-    test("getProjects synthesises a single project from launch CWD", () async {
-      // Phase 3: a single PluginProject is returned for the launch CWD.
-      // Pin both CODEX_HOME (away from the user's real history) and
-      // projectCwd so the test is hermetic.
+    test("is bridge-derived: launchDirectory is the launch CWD and sessions enumerate from disk", () async {
+      // codex is a BridgeDerivedProjectsPluginApi, so the bridge derives the
+      // project list from listAllSessions/launchDirectory — the plugin has no
+      // project members at all. Pin CODEX_HOME away from the user's real
+      // history so the test is hermetic.
       final tempHome = Directory.systemTemp.createTempSync("codex-home-stub-");
       try {
         final plugin = CodexPlugin(
@@ -33,9 +34,8 @@ void main() {
           ),
           projectCwd: "/repo/example",
         );
-        final projects = await plugin.getProjects();
-        expect(projects, hasLength(1));
-        expect(projects.single.id, equals("/repo/example"));
+        expect(plugin.launchDirectory, equals("/repo/example"));
+        expect(await plugin.listAllSessions(), isEmpty);
         await plugin.dispose();
       } finally {
         try {
@@ -144,38 +144,6 @@ void main() {
         } catch (_) {}
       }
     });
-
-    test(
-      "renameProject returns the synthesised project with the new name",
-      () async {
-        // Phase 6 dropped the last UnimplementedError. renameProject is a
-        // no-op against codex (single-project model) but echoes the new
-        // name so any caller's local cache stays consistent.
-        final tempHome = Directory.systemTemp.createTempSync("codex-home-rn-");
-        try {
-          final plugin = CodexPlugin(
-            serverUrl: "ws://127.0.0.1:0",
-            rolloutReader: SessionRolloutReader(
-              environment: {"CODEX_HOME": tempHome.path},
-            ),
-            skillReader: CodexSkillReader(
-              environment: {"CODEX_HOME": tempHome.path},
-              projectCwd: tempHome.path,
-            ),
-            projectCwd: "/repo/example",
-          );
-          final renamed =
-              await plugin.renameProject(projectId: "/repo/example", name: "X");
-          expect(renamed.id, equals("/repo/example"));
-          expect(renamed.name, equals("X"));
-          await plugin.dispose();
-        } finally {
-          try {
-            tempHome.deleteSync(recursive: true);
-          } catch (_) {}
-        }
-      },
-    );
 
     test("healthCheck returns true after a successful initialize handshake", () async {
       final fake = _FakeWebSocket();

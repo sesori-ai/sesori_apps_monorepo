@@ -84,11 +84,12 @@ void main() {
       final agentRepository = AgentRepository(plugin: plugin);
       final providerRepository = ProviderRepository(plugin: plugin);
       final permissionRepository = PermissionRepository(plugin: plugin);
-      final questionRepository = QuestionRepository(plugin: plugin);
+      final questionRepository = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao);
       final sessionPersistenceService = SessionPersistenceService(
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         db: db,
+        pluginId: "opencode",
       );
       final worktreeService = WorktreeService(
         worktreeRepository: WorktreeRepository(
@@ -451,6 +452,7 @@ void main() {
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         db: db,
+        pluginId: "opencode",
       );
       final worktreeService = WorktreeService(
         worktreeRepository: WorktreeRepository(
@@ -510,7 +512,7 @@ void main() {
         agentRepository: agentRepository,
         sessionUnseenService: buildTestSessionUnseenService(db, plugin),
         permissionRepository: permissionRepository,
-        questionRepository: QuestionRepository(plugin: plugin),
+        questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao),
         sessionPersistenceService: sessionPersistenceService,
         worktreeService: worktreeService,
         sessionDiffsHandler: sessionDiffsHandler,

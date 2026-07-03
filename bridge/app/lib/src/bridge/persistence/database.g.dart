@@ -5,18 +5,39 @@ part of 'database.dart';
 // ignore_for_file: type=lint
 mixin $ProjectsTableTableToColumns implements Insertable<ProjectDto> {
   String get projectId;
+
+  /// The project's directory on disk. Every shipped plugin uses the directory
+  /// path as the project id today, so inserts stamp the id here too; keeping
+  /// it as its own column lets ids stop being paths without a schema change.
+  String get path;
   bool get hidden;
   String? get baseBranch;
   int get worktreeCounter;
+
+  /// Bridge-persisted display-name override for a renamed project. Used by
+  /// bridge-derived plugins, which have no backend to store a project name;
+  /// null means fall back to the directory basename.
+  String? get displayName;
+
+  /// Wall-clock ms when this project row was recorded — the folder was opened
+  /// or the project was first discovered. Lets a folder with no sessions yet
+  /// survive a refresh, and doubles as the project's time until a session
+  /// supplies one. Stamped at insert time; re-opening a folder bumps it.
+  int get openedAt;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['project_id'] = Variable<String>(projectId);
+    map['path'] = Variable<String>(path);
     map['hidden'] = Variable<bool>(hidden);
     if (!nullToAbsent || baseBranch != null) {
       map['base_branch'] = Variable<String>(baseBranch);
     }
     map['worktree_counter'] = Variable<int>(worktreeCounter);
+    if (!nullToAbsent || displayName != null) {
+      map['display_name'] = Variable<String>(displayName);
+    }
+    map['opened_at'] = Variable<int>(openedAt);
     return map;
   }
 }
@@ -33,6 +54,15 @@ class $ProjectsTableTable extends ProjectsTable
   @override
   late final GeneratedColumn<String> projectId = GeneratedColumn<String>(
     'project_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _pathMeta = const VerificationMeta('path');
+  @override
+  late final GeneratedColumn<String> path = GeneratedColumn<String>(
+    'path',
     aliasedName,
     false,
     type: DriftSqlType.string,
@@ -74,12 +104,38 @@ class $ProjectsTableTable extends ProjectsTable
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _displayNameMeta = const VerificationMeta(
+    'displayName',
+  );
+  @override
+  late final GeneratedColumn<String> displayName = GeneratedColumn<String>(
+    'display_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _openedAtMeta = const VerificationMeta(
+    'openedAt',
+  );
+  @override
+  late final GeneratedColumn<int> openedAt = GeneratedColumn<int>(
+    'opened_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now().millisecondsSinceEpoch,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     projectId,
+    path,
     hidden,
     baseBranch,
     worktreeCounter,
+    displayName,
+    openedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -100,6 +156,14 @@ class $ProjectsTableTable extends ProjectsTable
       );
     } else if (isInserting) {
       context.missing(_projectIdMeta);
+    }
+    if (data.containsKey('path')) {
+      context.handle(
+        _pathMeta,
+        path.isAcceptableOrUnknown(data['path']!, _pathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pathMeta);
     }
     if (data.containsKey('hidden')) {
       context.handle(
@@ -122,6 +186,21 @@ class $ProjectsTableTable extends ProjectsTable
         ),
       );
     }
+    if (data.containsKey('display_name')) {
+      context.handle(
+        _displayNameMeta,
+        displayName.isAcceptableOrUnknown(
+          data['display_name']!,
+          _displayNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('opened_at')) {
+      context.handle(
+        _openedAtMeta,
+        openedAt.isAcceptableOrUnknown(data['opened_at']!, _openedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -135,6 +214,10 @@ class $ProjectsTableTable extends ProjectsTable
         DriftSqlType.string,
         data['${effectivePrefix}project_id'],
       )!,
+      path: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}path'],
+      )!,
       hidden: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}hidden'],
@@ -146,6 +229,14 @@ class $ProjectsTableTable extends ProjectsTable
       worktreeCounter: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}worktree_counter'],
+      )!,
+      displayName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}display_name'],
+      ),
+      openedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}opened_at'],
       )!,
     );
   }
@@ -161,46 +252,68 @@ class $ProjectsTableTable extends ProjectsTable
 
 class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
   final Value<String> projectId;
+  final Value<String> path;
   final Value<bool> hidden;
   final Value<String?> baseBranch;
   final Value<int> worktreeCounter;
+  final Value<String?> displayName;
+  final Value<int> openedAt;
   const ProjectsTableCompanion({
     this.projectId = const Value.absent(),
+    this.path = const Value.absent(),
     this.hidden = const Value.absent(),
     this.baseBranch = const Value.absent(),
     this.worktreeCounter = const Value.absent(),
+    this.displayName = const Value.absent(),
+    this.openedAt = const Value.absent(),
   });
   ProjectsTableCompanion.insert({
     required String projectId,
+    required String path,
     this.hidden = const Value.absent(),
     this.baseBranch = const Value.absent(),
     this.worktreeCounter = const Value.absent(),
-  }) : projectId = Value(projectId);
+    this.displayName = const Value.absent(),
+    this.openedAt = const Value.absent(),
+  }) : projectId = Value(projectId),
+       path = Value(path);
   static Insertable<ProjectDto> custom({
     Expression<String>? projectId,
+    Expression<String>? path,
     Expression<bool>? hidden,
     Expression<String>? baseBranch,
     Expression<int>? worktreeCounter,
+    Expression<String>? displayName,
+    Expression<int>? openedAt,
   }) {
     return RawValuesInsertable({
       if (projectId != null) 'project_id': projectId,
+      if (path != null) 'path': path,
       if (hidden != null) 'hidden': hidden,
       if (baseBranch != null) 'base_branch': baseBranch,
       if (worktreeCounter != null) 'worktree_counter': worktreeCounter,
+      if (displayName != null) 'display_name': displayName,
+      if (openedAt != null) 'opened_at': openedAt,
     });
   }
 
   ProjectsTableCompanion copyWith({
     Value<String>? projectId,
+    Value<String>? path,
     Value<bool>? hidden,
     Value<String?>? baseBranch,
     Value<int>? worktreeCounter,
+    Value<String?>? displayName,
+    Value<int>? openedAt,
   }) {
     return ProjectsTableCompanion(
       projectId: projectId ?? this.projectId,
+      path: path ?? this.path,
       hidden: hidden ?? this.hidden,
       baseBranch: baseBranch ?? this.baseBranch,
       worktreeCounter: worktreeCounter ?? this.worktreeCounter,
+      displayName: displayName ?? this.displayName,
+      openedAt: openedAt ?? this.openedAt,
     );
   }
 
@@ -209,6 +322,9 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
     final map = <String, Expression>{};
     if (projectId.present) {
       map['project_id'] = Variable<String>(projectId.value);
+    }
+    if (path.present) {
+      map['path'] = Variable<String>(path.value);
     }
     if (hidden.present) {
       map['hidden'] = Variable<bool>(hidden.value);
@@ -219,6 +335,12 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
     if (worktreeCounter.present) {
       map['worktree_counter'] = Variable<int>(worktreeCounter.value);
     }
+    if (displayName.present) {
+      map['display_name'] = Variable<String>(displayName.value);
+    }
+    if (openedAt.present) {
+      map['opened_at'] = Variable<int>(openedAt.value);
+    }
     return map;
   }
 
@@ -226,9 +348,12 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
   String toString() {
     return (StringBuffer('ProjectsTableCompanion(')
           ..write('projectId: $projectId, ')
+          ..write('path: $path, ')
           ..write('hidden: $hidden, ')
           ..write('baseBranch: $baseBranch, ')
-          ..write('worktreeCounter: $worktreeCounter')
+          ..write('worktreeCounter: $worktreeCounter, ')
+          ..write('displayName: $displayName, ')
+          ..write('openedAt: $openedAt')
           ..write(')'))
         .toString();
   }
@@ -249,6 +374,11 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
   int? get lastActivityAt;
   int? get lastSeenAt;
   int? get lastUserMessageAt;
+
+  /// The id of the plugin that owns this session (e.g. "opencode", "codex").
+  /// No default — every insert stamps the active plugin's id explicitly; the
+  /// v7→v8 migration backfills pre-existing rows itself.
+  String get pluginId;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -288,6 +418,7 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
     if (!nullToAbsent || lastUserMessageAt != null) {
       map['last_user_message_at'] = Variable<int>(lastUserMessageAt);
     }
+    map['plugin_id'] = Variable<String>(pluginId);
     return map;
   }
 }
@@ -456,6 +587,17 @@ class $SessionTableTable extends SessionTable
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _pluginIdMeta = const VerificationMeta(
+    'pluginId',
+  );
+  @override
+  late final GeneratedColumn<String> pluginId = GeneratedColumn<String>(
+    'plugin_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     sessionId,
@@ -472,6 +614,7 @@ class $SessionTableTable extends SessionTable
     lastActivityAt,
     lastSeenAt,
     lastUserMessageAt,
+    pluginId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -586,6 +729,14 @@ class $SessionTableTable extends SessionTable
         ),
       );
     }
+    if (data.containsKey('plugin_id')) {
+      context.handle(
+        _pluginIdMeta,
+        pluginId.isAcceptableOrUnknown(data['plugin_id']!, _pluginIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pluginIdMeta);
+    }
     return context;
   }
 
@@ -653,6 +804,10 @@ class $SessionTableTable extends SessionTable
         DriftSqlType.int,
         data['${effectivePrefix}last_user_message_at'],
       ),
+      pluginId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}plugin_id'],
+      )!,
     );
   }
 
@@ -684,6 +839,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
   final Value<int?> lastActivityAt;
   final Value<int?> lastSeenAt;
   final Value<int?> lastUserMessageAt;
+  final Value<String> pluginId;
   const SessionTableCompanion({
     this.sessionId = const Value.absent(),
     this.projectId = const Value.absent(),
@@ -699,6 +855,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.lastActivityAt = const Value.absent(),
     this.lastSeenAt = const Value.absent(),
     this.lastUserMessageAt = const Value.absent(),
+    this.pluginId = const Value.absent(),
   });
   SessionTableCompanion.insert({
     required String sessionId,
@@ -715,10 +872,12 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.lastActivityAt = const Value.absent(),
     this.lastSeenAt = const Value.absent(),
     this.lastUserMessageAt = const Value.absent(),
+    required String pluginId,
   }) : sessionId = Value(sessionId),
        projectId = Value(projectId),
        isDedicated = Value(isDedicated),
-       createdAt = Value(createdAt);
+       createdAt = Value(createdAt),
+       pluginId = Value(pluginId);
   static Insertable<SessionDto> custom({
     Expression<String>? sessionId,
     Expression<String>? projectId,
@@ -734,6 +893,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Expression<int>? lastActivityAt,
     Expression<int>? lastSeenAt,
     Expression<int>? lastUserMessageAt,
+    Expression<String>? pluginId,
   }) {
     return RawValuesInsertable({
       if (sessionId != null) 'session_id': sessionId,
@@ -750,6 +910,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       if (lastActivityAt != null) 'last_activity_at': lastActivityAt,
       if (lastSeenAt != null) 'last_seen_at': lastSeenAt,
       if (lastUserMessageAt != null) 'last_user_message_at': lastUserMessageAt,
+      if (pluginId != null) 'plugin_id': pluginId,
     });
   }
 
@@ -768,6 +929,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Value<int?>? lastActivityAt,
     Value<int?>? lastSeenAt,
     Value<int?>? lastUserMessageAt,
+    Value<String>? pluginId,
   }) {
     return SessionTableCompanion(
       sessionId: sessionId ?? this.sessionId,
@@ -784,6 +946,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       lastActivityAt: lastActivityAt ?? this.lastActivityAt,
       lastSeenAt: lastSeenAt ?? this.lastSeenAt,
       lastUserMessageAt: lastUserMessageAt ?? this.lastUserMessageAt,
+      pluginId: pluginId ?? this.pluginId,
     );
   }
 
@@ -836,6 +999,9 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     if (lastUserMessageAt.present) {
       map['last_user_message_at'] = Variable<int>(lastUserMessageAt.value);
     }
+    if (pluginId.present) {
+      map['plugin_id'] = Variable<String>(pluginId.value);
+    }
     return map;
   }
 
@@ -855,7 +1021,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
           ..write('createdAt: $createdAt, ')
           ..write('lastActivityAt: $lastActivityAt, ')
           ..write('lastSeenAt: $lastSeenAt, ')
-          ..write('lastUserMessageAt: $lastUserMessageAt')
+          ..write('lastUserMessageAt: $lastUserMessageAt, ')
+          ..write('pluginId: $pluginId')
           ..write(')'))
         .toString();
   }
@@ -1423,16 +1590,22 @@ abstract class _$AppDatabase extends GeneratedDatabase {
 typedef $$ProjectsTableTableCreateCompanionBuilder =
     ProjectsTableCompanion Function({
       required String projectId,
+      required String path,
       Value<bool> hidden,
       Value<String?> baseBranch,
       Value<int> worktreeCounter,
+      Value<String?> displayName,
+      Value<int> openedAt,
     });
 typedef $$ProjectsTableTableUpdateCompanionBuilder =
     ProjectsTableCompanion Function({
       Value<String> projectId,
+      Value<String> path,
       Value<bool> hidden,
       Value<String?> baseBranch,
       Value<int> worktreeCounter,
+      Value<String?> displayName,
+      Value<int> openedAt,
     });
 
 final class $$ProjectsTableTableReferences
@@ -1505,6 +1678,11 @@ class $$ProjectsTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<bool> get hidden => $composableBuilder(
     column: $table.hidden,
     builder: (column) => ColumnFilters(column),
@@ -1517,6 +1695,16 @@ class $$ProjectsTableTableFilterComposer
 
   ColumnFilters<int> get worktreeCounter => $composableBuilder(
     column: $table.worktreeCounter,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get openedAt => $composableBuilder(
+    column: $table.openedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1585,6 +1773,11 @@ class $$ProjectsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get hidden => $composableBuilder(
     column: $table.hidden,
     builder: (column) => ColumnOrderings(column),
@@ -1597,6 +1790,16 @@ class $$ProjectsTableTableOrderingComposer
 
   ColumnOrderings<int> get worktreeCounter => $composableBuilder(
     column: $table.worktreeCounter,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get openedAt => $composableBuilder(
+    column: $table.openedAt,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -1613,6 +1816,9 @@ class $$ProjectsTableTableAnnotationComposer
   GeneratedColumn<String> get projectId =>
       $composableBuilder(column: $table.projectId, builder: (column) => column);
 
+  GeneratedColumn<String> get path =>
+      $composableBuilder(column: $table.path, builder: (column) => column);
+
   GeneratedColumn<bool> get hidden =>
       $composableBuilder(column: $table.hidden, builder: (column) => column);
 
@@ -1625,6 +1831,14 @@ class $$ProjectsTableTableAnnotationComposer
     column: $table.worktreeCounter,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get openedAt =>
+      $composableBuilder(column: $table.openedAt, builder: (column) => column);
 
   Expression<T> sessionTableRefs<T extends Object>(
     Expression<T> Function($$SessionTableTableAnnotationComposer a) f,
@@ -1710,26 +1924,38 @@ class $$ProjectsTableTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> projectId = const Value.absent(),
+                Value<String> path = const Value.absent(),
                 Value<bool> hidden = const Value.absent(),
                 Value<String?> baseBranch = const Value.absent(),
                 Value<int> worktreeCounter = const Value.absent(),
+                Value<String?> displayName = const Value.absent(),
+                Value<int> openedAt = const Value.absent(),
               }) => ProjectsTableCompanion(
                 projectId: projectId,
+                path: path,
                 hidden: hidden,
                 baseBranch: baseBranch,
                 worktreeCounter: worktreeCounter,
+                displayName: displayName,
+                openedAt: openedAt,
               ),
           createCompanionCallback:
               ({
                 required String projectId,
+                required String path,
                 Value<bool> hidden = const Value.absent(),
                 Value<String?> baseBranch = const Value.absent(),
                 Value<int> worktreeCounter = const Value.absent(),
+                Value<String?> displayName = const Value.absent(),
+                Value<int> openedAt = const Value.absent(),
               }) => ProjectsTableCompanion.insert(
                 projectId: projectId,
+                path: path,
                 hidden: hidden,
                 baseBranch: baseBranch,
                 worktreeCounter: worktreeCounter,
+                displayName: displayName,
+                openedAt: openedAt,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -1833,6 +2059,7 @@ typedef $$SessionTableTableCreateCompanionBuilder =
       Value<int?> lastActivityAt,
       Value<int?> lastSeenAt,
       Value<int?> lastUserMessageAt,
+      required String pluginId,
     });
 typedef $$SessionTableTableUpdateCompanionBuilder =
     SessionTableCompanion Function({
@@ -1850,6 +2077,7 @@ typedef $$SessionTableTableUpdateCompanionBuilder =
       Value<int?> lastActivityAt,
       Value<int?> lastSeenAt,
       Value<int?> lastUserMessageAt,
+      Value<String> pluginId,
     });
 
 final class $$SessionTableTableReferences
@@ -1947,6 +2175,11 @@ class $$SessionTableTableFilterComposer
 
   ColumnFilters<int> get lastUserMessageAt => $composableBuilder(
     column: $table.lastUserMessageAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get pluginId => $composableBuilder(
+    column: $table.pluginId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2048,6 +2281,11 @@ class $$SessionTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get pluginId => $composableBuilder(
+    column: $table.pluginId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$ProjectsTableTableOrderingComposer get projectId {
     final $$ProjectsTableTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -2141,6 +2379,9 @@ class $$SessionTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get pluginId =>
+      $composableBuilder(column: $table.pluginId, builder: (column) => column);
+
   $$ProjectsTableTableAnnotationComposer get projectId {
     final $$ProjectsTableTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -2207,6 +2448,7 @@ class $$SessionTableTableTableManager
                 Value<int?> lastActivityAt = const Value.absent(),
                 Value<int?> lastSeenAt = const Value.absent(),
                 Value<int?> lastUserMessageAt = const Value.absent(),
+                Value<String> pluginId = const Value.absent(),
               }) => SessionTableCompanion(
                 sessionId: sessionId,
                 projectId: projectId,
@@ -2222,6 +2464,7 @@ class $$SessionTableTableTableManager
                 lastActivityAt: lastActivityAt,
                 lastSeenAt: lastSeenAt,
                 lastUserMessageAt: lastUserMessageAt,
+                pluginId: pluginId,
               ),
           createCompanionCallback:
               ({
@@ -2239,6 +2482,7 @@ class $$SessionTableTableTableManager
                 Value<int?> lastActivityAt = const Value.absent(),
                 Value<int?> lastSeenAt = const Value.absent(),
                 Value<int?> lastUserMessageAt = const Value.absent(),
+                required String pluginId,
               }) => SessionTableCompanion.insert(
                 sessionId: sessionId,
                 projectId: projectId,
@@ -2254,6 +2498,7 @@ class $$SessionTableTableTableManager
                 lastActivityAt: lastActivityAt,
                 lastSeenAt: lastSeenAt,
                 lastUserMessageAt: lastUserMessageAt,
+                pluginId: pluginId,
               ),
           withReferenceMapper: (p0) => p0
               .map(

@@ -65,17 +65,6 @@ void main() {
       await plugin.dispose();
     });
 
-    test("renameProject returns the synthesised project with the new name", () async {
-      final plugin = newPlugin();
-      final renamed = await plugin.renameProject(
-        projectId: projectCwd.path,
-        name: "My Codex Project",
-      );
-      expect(renamed.id, equals(projectCwd.path));
-      expect(renamed.name, equals("My Codex Project"));
-      await plugin.dispose();
-    });
-
     test("deleteSession removes the rollout JSONL and the index entry", () async {
       // Set up: one session in the index and on disk, one extra session
       // that must be preserved.

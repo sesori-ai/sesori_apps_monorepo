@@ -14,15 +14,20 @@ import "models/plugin_session_variant.dart";
 import "plugin_permission_reply.dart";
 
 // Note: as far as architecture goes, this MUST be treated as part of API layer
-abstract class BridgePluginApi {
+/// The backend contract every bridge plugin fulfils.
+///
+/// Sealed so that project ownership is expressed in the type system: a plugin
+/// is either a [NativeProjectsPluginApi] (its backend owns the project list)
+/// or a [BridgeDerivedProjectsPluginApi] (the bridge derives projects from the
+/// plugin's sessions). Bridge code switches over the two subtypes — there is
+/// no capability enum to keep in sync and no `UnsupportedError` stubs for
+/// members a plugin cannot honour.
+sealed class BridgePluginApi {
   /// Unique plugin identifier (e.g., "opencode", "codex")
   String get id;
 
   /// Stream of bridge SSE events. Buffered until first listener subscribes.
   Stream<BridgeSseEvent> get events;
-
-  /// Get the list of projects from the backend.
-  Future<List<PluginProject>> getProjects();
 
   /// Get sessions for a project directory.
   Future<List<PluginSession>> getSessions(String projectId, {int? start, int? limit});
@@ -48,9 +53,6 @@ abstract class BridgePluginApi {
 
   /// Rename a session's title.
   Future<PluginSession> renameSession({required String sessionId, required String title});
-
-  /// Rename a project.
-  Future<PluginProject> renameProject({required String projectId, required String name});
 
   Future<void> deleteSession(String sessionId);
 
@@ -153,9 +155,6 @@ abstract class BridgePluginApi {
     required PluginPermissionReply reply,
   });
 
-  /// Get a project by its ID.
-  Future<PluginProject> getProject(String projectId);
-
   /// Health check — returns `true` when the backend is healthy, `false`
   /// otherwise.
   ///
@@ -180,4 +179,35 @@ abstract class BridgePluginApi {
   /// after `shutdown()`, so implementations MUST be idempotent and safe in
   /// either order.
   Future<void> dispose();
+}
+
+/// A plugin whose backend owns the project list natively (e.g. OpenCode's
+/// `/project` API). The bridge calls [getProjects] and treats the result as
+/// authoritative.
+abstract class NativeProjectsPluginApi extends BridgePluginApi {
+  /// Get the list of projects from the backend.
+  Future<List<PluginProject>> getProjects();
+
+  /// Get a project by its ID.
+  Future<PluginProject> getProject(String projectId);
+
+  /// Rename a project.
+  Future<PluginProject> renameProject({required String projectId, required String name});
+}
+
+/// A plugin whose backend has no project concept (Codex and every ACP
+/// backend): the bridge derives the project list by grouping the plugin's
+/// sessions by directory, and owns opened-folder and rename-override
+/// persistence itself — so this subtype carries no project members at all.
+abstract class BridgeDerivedProjectsPluginApi extends BridgePluginApi {
+  /// Every session this plugin knows about, across all projects. The bridge
+  /// groups the result by [PluginSession.directory] to build the project list,
+  /// so each returned session must carry its real working directory.
+  Future<List<PluginSession>> listAllSessions();
+
+  /// The plugin's launch directory. The bridge seeds this as an opened folder so
+  /// it always surfaces as a project — even with no sessions yet — matching the
+  /// "there is always somewhere to start a session" behaviour derive-style
+  /// backends had before the bridge owned their project list.
+  String get launchDirectory;
 }

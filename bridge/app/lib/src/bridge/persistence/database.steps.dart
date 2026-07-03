@@ -698,6 +698,171 @@ i1.GeneratedColumn<int> _column_26(String aliasedName) =>
       type: i1.DriftSqlType.int,
       $customConstraints: 'NULL',
     );
+
+final class Schema8 extends i0.VersionedSchema {
+  Schema8({required super.database}) : super(version: 8);
+  @override
+  late final List<i1.DatabaseSchemaEntity> entities = [
+    projectsTable,
+    sessionsTable,
+    pullRequestsTable,
+  ];
+  late final Shape6 projectsTable = Shape6(
+    source: i0.VersionedTable(
+      entityName: 'projects_table',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(project_id)'],
+      columns: [
+        _column_0,
+        _column_27,
+        _column_1,
+        _column_2,
+        _column_3,
+        _column_28,
+        _column_29,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape7 sessionsTable = Shape7(
+    source: i0.VersionedTable(
+      entityName: 'sessions_table',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(session_id)'],
+      columns: [
+        _column_4,
+        _column_13,
+        _column_7,
+        _column_8,
+        _column_9,
+        _column_10,
+        _column_2,
+        _column_11,
+        _column_22,
+        _column_23,
+        _column_12,
+        _column_24,
+        _column_25,
+        _column_26,
+        _column_30,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape3 pullRequestsTable = Shape3(
+    source: i0.VersionedTable(
+      entityName: 'pull_requests_table',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(project_id, pr_number)'],
+      columns: [
+        _column_13,
+        _column_14,
+        _column_6,
+        _column_15,
+        _column_16,
+        _column_17,
+        _column_18,
+        _column_19,
+        _column_20,
+        _column_21,
+        _column_12,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+}
+
+class Shape6 extends i0.VersionedTable {
+  Shape6({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get projectId =>
+      columnsByName['project_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get path =>
+      columnsByName['path']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get hidden =>
+      columnsByName['hidden']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get baseBranch =>
+      columnsByName['base_branch']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get worktreeCounter =>
+      columnsByName['worktree_counter']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get displayName =>
+      columnsByName['display_name']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get openedAt =>
+      columnsByName['opened_at']! as i1.GeneratedColumn<int>;
+}
+
+i1.GeneratedColumn<String> _column_27(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'path',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<String> _column_28(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'display_name',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NULL',
+    );
+i1.GeneratedColumn<int> _column_29(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'opened_at',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NOT NULL',
+    );
+
+class Shape7 extends i0.VersionedTable {
+  Shape7({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get sessionId =>
+      columnsByName['session_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get projectId =>
+      columnsByName['project_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get worktreePath =>
+      columnsByName['worktree_path']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get branchName =>
+      columnsByName['branch_name']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get isDedicated =>
+      columnsByName['is_dedicated']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get archivedAt =>
+      columnsByName['archived_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get baseBranch =>
+      columnsByName['base_branch']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get baseCommit =>
+      columnsByName['base_commit']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get lastAgent =>
+      columnsByName['last_agent']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get lastAgentModel =>
+      columnsByName['last_agent_model']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get createdAt =>
+      columnsByName['created_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get lastActivityAt =>
+      columnsByName['last_activity_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get lastSeenAt =>
+      columnsByName['last_seen_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get lastUserMessageAt =>
+      columnsByName['last_user_message_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get pluginId =>
+      columnsByName['plugin_id']! as i1.GeneratedColumn<String>;
+}
+
+i1.GeneratedColumn<String> _column_30(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'plugin_id',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
 i0.MigrationStepWithVersion migrationSteps({
   required Future<void> Function(i1.Migrator m, Schema2 schema) from1To2,
   required Future<void> Function(i1.Migrator m, Schema3 schema) from2To3,
@@ -705,6 +870,7 @@ i0.MigrationStepWithVersion migrationSteps({
   required Future<void> Function(i1.Migrator m, Schema5 schema) from4To5,
   required Future<void> Function(i1.Migrator m, Schema6 schema) from5To6,
   required Future<void> Function(i1.Migrator m, Schema7 schema) from6To7,
+  required Future<void> Function(i1.Migrator m, Schema8 schema) from7To8,
 }) {
   return (currentVersion, database) async {
     switch (currentVersion) {
@@ -738,6 +904,11 @@ i0.MigrationStepWithVersion migrationSteps({
         final migrator = i1.Migrator(database, schema);
         await from6To7(migrator, schema);
         return 7;
+      case 7:
+        final schema = Schema8(database: database);
+        final migrator = i1.Migrator(database, schema);
+        await from7To8(migrator, schema);
+        return 8;
       default:
         throw ArgumentError.value('Unknown migration from $currentVersion');
     }
@@ -751,6 +922,7 @@ i1.OnUpgrade stepByStep({
   required Future<void> Function(i1.Migrator m, Schema5 schema) from4To5,
   required Future<void> Function(i1.Migrator m, Schema6 schema) from5To6,
   required Future<void> Function(i1.Migrator m, Schema7 schema) from6To7,
+  required Future<void> Function(i1.Migrator m, Schema8 schema) from7To8,
 }) => i0.VersionedSchema.stepByStepHelper(
   step: migrationSteps(
     from1To2: from1To2,
@@ -759,5 +931,6 @@ i1.OnUpgrade stepByStep({
     from4To5: from4To5,
     from5To6: from5To6,
     from6To7: from6To7,
+    from7To8: from7To8,
   ),
 );

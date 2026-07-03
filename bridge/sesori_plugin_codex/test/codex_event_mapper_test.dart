@@ -93,6 +93,42 @@ void main() {
       expect(parseAsSesori(updated), isA<shared.SesoriSessionUpdated>());
     });
 
+    test("thread/started for a non-launch cwd emits that cwd's derived project id", () {
+      // The bridge derives one project per cwd, so a session started outside the
+      // launch dir must carry its own cwd as the project id — otherwise the
+      // mobile session list (opened on the derived project) drops it as a
+      // project mismatch.
+      final events = mapper.map(
+        const CodexServerNotification(
+          method: "thread/started",
+          params: {
+            "thread": {"id": "t-2", "name": "Sub", "cwd": "/repo/app/packages/core"},
+          },
+        ),
+      );
+
+      final session = shared.Session.fromJson((events.single as BridgeSseSessionCreated).info);
+      expect(session.projectID, "/repo/app/packages/core");
+      expect(session.directory, "/repo/app/packages/core");
+    });
+
+    test("thread/name/updated uses the plugin-fed directory for its project id", () {
+      // A thread/name/updated notification carries no cwd, so the mapper relies
+      // on the directory the plugin learned when the thread was started/resumed.
+      final scopedMapper = CodexEventMapper(projectCwd: projectCwd)
+        ..setThreadDirectory("t-9", "/repo/app/packages/ui");
+
+      final events = scopedMapper.map(
+        const CodexServerNotification(
+          method: "thread/name/updated",
+          params: {"threadId": "t-9", "threadName": "Renamed"},
+        ),
+      );
+
+      final session = shared.Session.fromJson((events.single as BridgeSseSessionUpdated).info);
+      expect(session.projectID, "/repo/app/packages/ui");
+    });
+
     test("turn/started → SessionStatus(busy) parseable as SessionStatus", () {
       final events = mapper.map(
         const CodexServerNotification(

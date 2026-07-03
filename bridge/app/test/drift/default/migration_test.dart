@@ -14,6 +14,7 @@ import 'generated/schema_v4.dart' as v4;
 import 'generated/schema_v5.dart' as v5;
 import 'generated/schema_v6.dart' as v6;
 import 'generated/schema_v7.dart' as v7;
+import 'generated/schema_v8.dart' as v8;
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -485,7 +486,7 @@ void main() {
     },
   );
 
-  test('migration v4 → v5 enforces FK on subsequent inserts', () async {
+  test('the v5 session→project FK stays enforced on the current schema', () async {
     final db = await _migrateFromV4(verifier: verifier);
     addTearDown(db.close);
 
@@ -498,6 +499,7 @@ void main() {
               projectId: 'nonexistent',
               isDedicated: false,
               createdAt: 0,
+              pluginId: 'opencode',
             ),
           ),
       throwsA(_isForeignKeyViolation),
@@ -697,7 +699,7 @@ void main() {
   );
 
   test(
-    'migration v4 → v5 deleting a project cascades to sessions and PRs',
+    'deleting a project on the current schema cascades to sessions and PRs',
     () async {
       final db = await _migrateFromV4(verifier: verifier);
       addTearDown(db.close);
@@ -705,7 +707,7 @@ void main() {
       await db
           .into(db.projectsTable)
           .insert(
-            ProjectsTableCompanion.insert(projectId: 'p1'),
+            ProjectsTableCompanion.insert(projectId: 'p1', path: 'p1'),
           );
       await db
           .into(db.sessionTable)
@@ -715,6 +717,7 @@ void main() {
               projectId: 'p1',
               isDedicated: false,
               createdAt: 1000,
+              pluginId: 'opencode',
             ),
           );
       await db
@@ -725,6 +728,7 @@ void main() {
               projectId: 'p1',
               isDedicated: true,
               createdAt: 2000,
+              pluginId: 'opencode',
             ),
           );
       await db
@@ -771,14 +775,118 @@ void main() {
       expect(await db.select(db.pullRequestsTable).get(), isEmpty);
     },
   );
+
+  test('migration v7 → v8 structural validation', () async {
+    final connection = await verifier.startAt(7);
+    final db = AppDatabase(connection);
+
+    await verifier.migrateAndValidate(db, 8);
+    await db.close();
+  });
+
+  test(
+    'migration v7 → v8 backfills path from projectId, openedAt with now, and pluginId with opencode',
+    () async {
+      const oldProjectsTableData = [
+        v7.ProjectsTableData(
+          projectId: 'project-1',
+          hidden: 0,
+          baseBranch: 'main',
+          worktreeCounter: 2,
+        ),
+      ];
+      const oldSessionsTableData = [
+        v7.SessionsTableData(
+          sessionId: 'session-1',
+          projectId: 'project-1',
+          worktreePath: '/tmp/worktrees/session-1',
+          branchName: 'feat/one',
+          isDedicated: 1,
+          archivedAt: null,
+          baseBranch: 'main',
+          baseCommit: 'abc123',
+          lastAgent: null,
+          lastAgentModel: null,
+          createdAt: 1700000000000,
+          lastActivityAt: 1700000005000,
+          lastSeenAt: 1700000006000,
+          lastUserMessageAt: 1700000004000,
+        ),
+      ];
+      final beforeMigrationMs = DateTime.now().millisecondsSinceEpoch;
+
+      await verifier.testWithDataIntegrity(
+        oldVersion: 7,
+        newVersion: 8,
+        createOld: v7.DatabaseAtV7.new,
+        createNew: v8.DatabaseAtV8.new,
+        openTestedDatabase: AppDatabase.new,
+        createItems: (batch, oldDb) {
+          batch.insertAll(oldDb.projectsTable, oldProjectsTableData);
+          batch.insertAll(oldDb.sessionsTable, oldSessionsTableData);
+        },
+        validateItems: (newDb) async {
+          // Prior columns are preserved; path backfills from the project id
+          // (ids have always been directory paths), displayName defaults to
+          // null, and openedAt backfills with the migration wall-clock time.
+          final projects = await newDb.select(newDb.projectsTable).get();
+          expect(projects, hasLength(1));
+          final project = projects.single;
+          expect(project.projectId, 'project-1');
+          expect(project.path, 'project-1');
+          expect(project.hidden, 0);
+          expect(project.baseBranch, 'main');
+          expect(project.worktreeCounter, 2);
+          expect(project.displayName, isNull);
+          expect(project.openedAt, greaterThanOrEqualTo(beforeMigrationMs));
+          expect(
+            project.openedAt,
+            lessThanOrEqualTo(DateTime.now().millisecondsSinceEpoch),
+          );
+          // The pre-existing session is backfilled to the opencode plugin; the
+          // unseen-tracking timestamps survive the table rebuild.
+          expect(
+            await newDb.select(newDb.sessionsTable).get(),
+            const [
+              v8.SessionsTableData(
+                sessionId: 'session-1',
+                projectId: 'project-1',
+                worktreePath: '/tmp/worktrees/session-1',
+                branchName: 'feat/one',
+                isDedicated: 1,
+                archivedAt: null,
+                baseBranch: 'main',
+                baseCommit: 'abc123',
+                lastAgent: null,
+                lastAgentModel: null,
+                createdAt: 1700000000000,
+                lastActivityAt: 1700000005000,
+                lastSeenAt: 1700000006000,
+                lastUserMessageAt: 1700000004000,
+                pluginId: 'opencode',
+              ),
+            ],
+          );
+          // The session→project FK survives the table rebuilds.
+          expect(
+            await newDb.customSelect('PRAGMA foreign_key_check').get(),
+            isEmpty,
+          );
+        },
+      );
+    },
+  );
 }
 
+/// Migrates a v4 database to the current schema, so tests can insert rows with
+/// the current companions and prove the FK graph introduced in v5 survives the
+/// later table rebuilds.
 Future<AppDatabase> _migrateFromV4({required SchemaVerifier verifier}) async {
   final connection = await verifier.startAt(4);
   final db = AppDatabase(connection);
   await verifier.migrateAndValidate(
     db,
-    5,
+    8,
     options: const ValidationOptions(validateDropped: true),
   );
   return db;

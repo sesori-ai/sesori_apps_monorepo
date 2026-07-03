@@ -77,12 +77,15 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
       Log.w("GetSessionsHandler: persistSessionsForProject failed for projectId=$projectId: $e\n$st");
     }
 
-    if (start == null && limit == null) {
-      // Unpaginated ⇒ `sessions` is the complete authoritative list, so rows
+    if (start == null && limit == null && _sessionRepository.sessionListIsAuthoritative) {
+      // Unpaginated + authoritative ⇒ `sessions` is the complete list, so rows
       // for sessions that no longer exist (deleted while the bridge was
-      // offline) can be reconciled away. Fire-and-forget: the unseen service
-      // serializes, emits the aggregate updates for other clients, and logs
-      // failures; the requesting client already gets the fresh list below.
+      // offline) can be reconciled away. Skipped when the repository cannot
+      // vouch for completeness (bridge-derived plugins): deleting against an
+      // incomplete list would drop rows for sessions the backend simply hasn't
+      // flushed yet. Fire-and-forget: the unseen service serializes, emits the
+      // aggregate updates for other clients, and logs failures; the requesting
+      // client already gets the fresh list below.
       unawaited(
         _sessionUnseenService.reconcileVanishedSessions(
           projectId: projectId,

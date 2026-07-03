@@ -57,6 +57,11 @@ class SessionTable extends Table {
   // Kept pure (separate from viewing) for forward-looking features.
   IntColumn get lastUserMessageAt => integer().nullable()();
 
+  /// The id of the plugin that owns this session (e.g. "opencode", "codex").
+  /// No default — every insert stamps the active plugin's id explicitly; the
+  /// v7→v8 migration backfills pre-existing rows itself.
+  TextColumn get pluginId => text()();
+
   @override
   bool get withoutRowId => true;
 
@@ -81,6 +86,7 @@ sealed class SessionDto with _$SessionDto, $SessionTableTableToColumns {
     required int? lastActivityAt,
     required int? lastSeenAt,
     required int? lastUserMessageAt,
+    required String pluginId,
   }) = _SessionDto;
 
   const SessionDto._();

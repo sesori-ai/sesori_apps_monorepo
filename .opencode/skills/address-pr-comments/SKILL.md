@@ -5,7 +5,7 @@ description: Address unresolved inline PR review comments on a GitHub pull reque
 
 # address-pr-comments
 
-Addresses unresolved inline PR review comments by assessing their validity, implementing fixes, and leaving a reply on each comment thread. Every thread gets a response — either confirming the fix or explaining why the comment was not addressed.
+Addresses unresolved inline PR review comments by assessing their validity, implementing fixes, and leaving a reply on each comment thread. Every thread gets a response — either confirming the fix or explaining why the comment was not addressed. Threads whose fix has been implemented and pushed are then **resolved** by the agent; threads that were declined (or need human judgment) stay unresolved so the reviewer can accept or reject the decision.
 
 ## Core Rules
 
@@ -13,13 +13,14 @@ Addresses unresolved inline PR review comments by assessing their validity, impl
 2. **Every thread gets a reply**: After assessing and acting on a comment, you MUST post a reply to that comment thread. No thread should be left without a response.
 3. **Do not reply twice**: Before posting a reply, inspect the comments after the most recent `[Sesori reply]`. If the last comment is already a `[Sesori reply]` and there are no later reviewer comments, skip the thread. If the only later comments are acknowledgment-only bot comments (for example "Acknowledged", "Thanks", "Looks good", or "Accepted") with no new request, objection, question, or requested change, skip the thread. Do not skip if a later comment raises a follow-up, pushback, asks for clarification, or requests additional changes; handle that as a new actionable comment.
 4. **Reply prefix**: Every reply must start with `[Sesori reply]` so it is clear the response comes from the agent, not the human user.
-5. **All comments are assessed**: Every comment must be evaluated for validity. Do not automatically assume any comment is correct.
-6. **Extra scrutiny for AI/bot comments**: Comments from AI reviewers or bots require more careful assessment. They are more likely to be incorrect, irrelevant, or based on stale context.
-7. **Human comments are trusted by default**: Comments from actual humans should be assumed valid unless you have a strong reason to believe they are wrong, detrimental, or cause likely unintended side effects.
-8. **Single commit**: All fixes can be committed together in a single commit. The user squash-merges at the end.
-9. **Never amend**: Always create new commits when addressing feedback. Do not use `git commit --amend`, `git rebase` to rewrite published history, or any other history-rewriting operation. If you make a mistake in a commit, fix it with a follow-up commit rather than rewriting.
-10. **Never force push**: Do not use force push under any circumstances. If the remote branch has moved ahead of your local branch, pull/merge and continue with normal commits. History rewriting on a shared branch is forbidden.
-11. **Outdated comments**: If `is_outdated == true`, assess whether the comment is still relevant. If the issue still exists in the current code, address it. If not, reply explaining why it is no longer applicable.
+5. **Resolve what you fixed; leave what you declined**: After replying, RESOLVE the thread when its status is `Addressed` (fix implemented and pushed). Leave the thread UNRESOLVED when the status is `Not addressed`, `Partially addressed`, or `Question` — those carry a decision or an open point the human reviewer must be able to double-check and either accept (by resolving it themselves) or push back on.
+6. **All comments are assessed**: Every comment must be evaluated for validity. Do not automatically assume any comment is correct.
+7. **Extra scrutiny for AI/bot comments**: Comments from AI reviewers or bots require more careful assessment. They are more likely to be incorrect, irrelevant, or based on stale context.
+8. **Human comments are trusted by default**: Comments from actual humans should be assumed valid unless you have a strong reason to believe they are wrong, detrimental, or cause likely unintended side effects.
+9. **Single commit**: All fixes can be committed together in a single commit. The user squash-merges at the end.
+10. **Never amend**: Always create new commits when addressing feedback. Do not use `git commit --amend`, `git rebase` to rewrite published history, or any other history-rewriting operation. If you make a mistake in a commit, fix it with a follow-up commit rather than rewriting.
+11. **Never force push**: Do not use force push under any circumstances. If the remote branch has moved ahead of your local branch, pull/merge and continue with normal commits. History rewriting on a shared branch is forbidden.
+12. **Outdated comments**: If `is_outdated == true`, assess whether the comment is still relevant. If the issue still exists in the current code, address it. If not, reply explaining why it is no longer applicable.
 
 ## Workflow
 
@@ -76,6 +77,25 @@ For AI/bot comments:
 - Verify the claim by reading the actual code
 - Check if the suggestion aligns with existing codebase patterns
 - Do not implement blindly — apply the same critical thinking you would use on your own code
+
+#### Avoid the bot-review spiral
+
+Every pushed commit can trigger a fresh round of AI-reviewer comments about new
+edge cases, and fixing those spawns the next round. Do not loop indefinitely:
+
+- **Raise the bar with each round.** A bot-reported edge case earns a code
+  change only when it is plausible in a real user flow AND has a meaningful
+  consequence (data loss, wrong routing, stuck UI). Contrived scenarios,
+  cosmetic transients, and pre-existing behavior merely exposed by the PR get
+  a `Not addressed` reply with the rationale — that is a fully valid
+  resolution, not a failure.
+- **Repeated findings in one seam are a signal, not a to-do list.** If several
+  rounds of comments cluster around the same structural seam, stop patching
+  point-by-point: fix the seam once at its root, or surface the pattern to the
+  user as a possible design problem before writing more code.
+- **Check comments against product direction.** A bot may flag intended
+  behavior as a bug (it cannot know the roadmap). When a "fix" would move the
+  code away from the stated direction, decline and say why.
 
 #### Acknowledgment-only bot follow-ups
 
@@ -230,6 +250,22 @@ Use the included `reply.sh` helper script:
 
 The script automatically prefixes the body with `[Sesori reply]` if not already present.
 
+### Step 6: Resolve the Addressed Threads
+
+After the reply is posted, resolve every thread whose status is `Addressed`,
+using the included `resolve.sh` helper (thread resolution requires the GraphQL
+API; the script maps the comment id to its thread and is idempotent):
+
+```bash
+./scripts/resolve.sh <pr-number> <thread_id>
+```
+
+Do NOT resolve threads replied with `Not addressed`, `Partially addressed`, or
+`Question`. Those stay open on purpose: the human reviewer reads the rationale
+and either agrees (resolving the thread themselves) or pushes back — an
+unresolved thread is the review-queue signal for that decision. Resolving a
+declined thread would hide the disagreement.
+
 ## Edge Cases
 
 ### Comment on a file not in the working tree
@@ -283,3 +319,5 @@ User: "Address the comments on PR 42"
    - Thread 1: `[Sesori reply] Addressed (in commit a1b2c3d)\n\nChanged the loop boundary from i <= n to i < n in src/utils.ts to fix the off-by-one error.]`
    - Thread 2: `[Sesori reply] Not addressed\n\nThe current imperative approach is intentional and more readable here.]`
    - Thread 3: `[Sesori reply] Addressed (in commit a1b2c3d)\n\nAdded null check in src/services/user_service.dart before accessing user.email.`
+7. Resolve threads 1 and 3 (`./scripts/resolve.sh 42 <thread_id>`). Thread 2
+   stays unresolved for the reviewer to accept or reject the decision.

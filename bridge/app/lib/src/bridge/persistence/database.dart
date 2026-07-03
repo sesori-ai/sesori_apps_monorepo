@@ -26,7 +26,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -121,6 +121,41 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastActivityAt);
         await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastSeenAt);
         await m.addColumn(schema.sessionsTable, schema.sessionsTable.lastUserMessageAt);
+      },
+      from7To8: (m, schema) async {
+        // Bridge-owned project metadata for derive-style plugins. Every project
+        // id ever persisted has been the project's directory path, so `path`
+        // backfills straight from it; `openedAt` is backfilled with the
+        // migration wall-clock time (the best "recorded at" we have for rows
+        // that predate the column).
+        await m.alterTable(
+          TableMigration(
+            schema.projectsTable,
+            newColumns: [
+              schema.projectsTable.path,
+              schema.projectsTable.displayName,
+              schema.projectsTable.openedAt,
+            ],
+            columnTransformer: {
+              schema.projectsTable.path: schema.projectsTable.projectId,
+              schema.projectsTable.openedAt: Constant<int>(DateTime.now().millisecondsSinceEpoch),
+            },
+          ),
+        );
+        // Backfill every pre-existing session row to opencode — the only
+        // plugin shipped before pluginId existed. This migration is the single
+        // place the persistence layer is allowed to know opencode's id; the
+        // column itself has no default and every insert stamps the active
+        // plugin's id explicitly.
+        await m.alterTable(
+          TableMigration(
+            schema.sessionsTable,
+            newColumns: [schema.sessionsTable.pluginId],
+            columnTransformer: {
+              schema.sessionsTable.pluginId: const Constant<String>("opencode"),
+            },
+          ),
+        );
       },
     ),
     beforeOpen: (details) async {

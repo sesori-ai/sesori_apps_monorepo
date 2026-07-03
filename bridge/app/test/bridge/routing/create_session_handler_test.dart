@@ -418,6 +418,8 @@ void main() {
       );
 
       expect(result.id, equals("s1"));
+      // A native plugin's reported projectID is authoritative — enrichment
+      // adopts the stored row's attribution only for bridge-derived plugins.
       expect(result.projectID, equals("p1"));
       expect(result.directory, equals("/repo"));
       expect(result.parentID, equals("parent-1"));

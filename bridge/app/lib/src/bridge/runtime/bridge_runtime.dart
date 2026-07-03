@@ -118,6 +118,7 @@ class BridgeRuntime {
       projectsDao: database.projectsDao,
       db: database,
       calculator: unseenCalculator,
+      pluginId: plugin.id,
     );
     final sessionViewTracker = SessionViewTracker();
     final sessionUnseenService = SessionUnseenService(
@@ -151,6 +152,7 @@ class BridgeRuntime {
       rateLimiter: pushRateLimiter,
       rssBytesReader: readCurrentRssBytes,
     );
+
 
     final filesystemRepository = FilesystemRepository(
       filesystemApi: const FilesystemApi(),
@@ -229,11 +231,12 @@ class BridgeRuntime {
         providerRepository: providerRepository,
         agentRepository: agentRepository,
         permissionRepository: PermissionRepository(plugin: plugin),
-        questionRepository: QuestionRepository(plugin: plugin),
+        questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
         sessionPersistenceService: SessionPersistenceService(
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           db: database,
+          pluginId: plugin.id,
         ),
         worktreeService: WorktreeService(
           worktreeRepository: WorktreeRepository(

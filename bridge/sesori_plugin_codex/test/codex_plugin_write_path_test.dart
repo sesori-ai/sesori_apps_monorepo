@@ -80,6 +80,88 @@ void main() {
       expect((turnStartParams["input"] as List).first["text"], equals("hello codex"));
     });
 
+    test("a live event emitted during the first turn is scoped to the new session's directory", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {
+              "id": "t-live",
+              "cwd": "/other/proj",
+              "createdAt": 1700000000,
+              "updatedAt": 1700000000,
+              "name": null,
+            },
+          },
+        ),
+        const _Response(result: {"turnId": "u-1"}),
+      ]);
+      // codex can emit a cwd-less notification while turn/start is still in
+      // flight and before any rollout exists on disk — the thread directory
+      // must already be recorded so the event maps to the session's real
+      // project instead of the launch cwd.
+      fake.onRequest = (method) {
+        if (method == "turn/start") {
+          fake.pushNotification("thread/name/updated", {
+            "threadId": "t-live",
+            "threadName": "First title",
+          });
+        }
+      };
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+
+      await plugin.createSession(
+        directory: "/other/proj",
+        parentSessionId: null,
+        parts: const [PluginPromptPart.text(text: "go")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await Future<void>.delayed(Duration.zero);
+      await subscription.cancel();
+
+      final updated = events.whereType<BridgeSseSessionUpdated>().single;
+      expect(updated.info["projectID"], equals("/other/proj"));
+    });
+
+    test("renameSession keeps a fresh non-launch session on its own project before the rollout is flushed", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {
+              "id": "t-sub",
+              "cwd": "/work/sample/packages/core",
+              "createdAt": 1700000000,
+              "updatedAt": 1700000000,
+              "name": null,
+            },
+          },
+        ),
+        const _Response(result: {}),
+      ]);
+
+      final created = await plugin.createSession(
+        directory: "/work/sample/packages/core",
+        parentSessionId: null,
+        parts: const [],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      expect(created.projectID, equals("/work/sample/packages/core"));
+
+      // codexHome is empty — no rollout has been flushed — yet the rename
+      // response must still attribute the session to its real project rather
+      // than the launch cwd, proving the in-memory thread→directory map is
+      // consulted before the disk rollout.
+      final renamed = await plugin.renameSession(sessionId: "t-sub", title: "Renamed");
+      expect(renamed.projectID, equals("/work/sample/packages/core"));
+      expect(renamed.directory, equals("/work/sample/packages/core"));
+    });
+
     test("sendPrompt resumes a thread from a prior run before the turn", () async {
       // `t-existing` was never started in this plugin instance, so the
       // app-server has not loaded it — the plugin must resume it on demand
@@ -437,6 +519,11 @@ class _FakeAppServer {
   final List<_SentFrame> _sent = [];
   final List<_Response> _pending = [];
 
+  /// Invoked with each request method BEFORE the canned response is sent —
+  /// lets a test emit server notifications mid-request (e.g. codex pushing
+  /// `thread/name/updated` while `turn/start` is still in flight).
+  void Function(String method)? onRequest;
+
   List<String> get sentMethods =>
       _sent.map((f) => f.method).toList(growable: false);
 
@@ -466,6 +553,7 @@ class _FakeAppServer {
         params: (decoded["params"] as Map?)?.cast<String, dynamic>(),
       ),
     );
+    onRequest?.call(decoded["method"] as String);
     final id = decoded["id"];
     if (id == null) return; // notification from client (none today)
     if (_pending.isEmpty) {

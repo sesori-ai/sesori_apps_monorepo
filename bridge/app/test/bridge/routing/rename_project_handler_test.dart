@@ -12,15 +12,14 @@ import "routing_test_helpers.dart";
 void main() {
   group("RenameProjectHandler", () {
     late FakeBridgePlugin plugin;
-    late RenameProjectHandler handler;
     late AppDatabase db;
+    late RenameProjectHandler handler;
 
     setUp(() {
       plugin = FakeBridgePlugin();
       db = createTestDatabase();
       handler = RenameProjectHandler(
-        plugin,
-        projectRepository: ProjectRepository(
+        ProjectRepository(
           plugin: plugin,
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
@@ -29,9 +28,9 @@ void main() {
       );
     });
 
-    tearDown(() {
-      plugin.close();
-      db.close();
+    tearDown(() async {
+      await plugin.close();
+      await db.close();
     });
 
     test("canHandle PATCH /project/name", () {

@@ -157,6 +157,7 @@ void main() {
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
           db: db,
+          pluginId: "opencode",
         );
 
         // Verify projects_table is empty before the call.
@@ -242,7 +243,7 @@ Session _session({
 
 /// Minimal [BridgePluginApi] fake that only implements [getProjects].
 /// Every other member throws [UnimplementedError] so accidental use is loud.
-class _FakeBridgePlugin implements BridgePluginApi {
+class _FakeBridgePlugin implements NativeProjectsPluginApi {
   final List<PluginProject> _projects;
 
   _FakeBridgePlugin({required List<PluginProject> projects}) : _projects = projects;

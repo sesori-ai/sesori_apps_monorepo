@@ -100,6 +100,7 @@ void main() {
         ),
         sessionUnseenService: SessionUnseenService(
           unseenRepository: SessionUnseenRepository(
+            pluginId: "opencode",
             sessionDao: database.sessionDao,
             projectsDao: database.projectsDao,
             db: database,
@@ -141,11 +142,12 @@ void main() {
         providerRepository: ProviderRepository(plugin: plugin),
         agentRepository: AgentRepository(plugin: plugin),
         permissionRepository: PermissionRepository(plugin: plugin),
-        questionRepository: QuestionRepository(plugin: plugin),
+        questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
         sessionPersistenceService: SessionPersistenceService(
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           db: database,
+          pluginId: "opencode",
         ),
         worktreeService: WorktreeService(
           worktreeRepository: WorktreeRepository(
@@ -287,6 +289,7 @@ class _TestHarness {
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       db: database,
+      pluginId: "opencode",
     );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(
@@ -334,6 +337,7 @@ class _TestHarness {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
+          pluginId: "opencode",
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,
@@ -375,7 +379,7 @@ class _TestHarness {
       providerRepository: ProviderRepository(plugin: plugin),
       agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -465,7 +469,7 @@ _TestPushSubsystem _createPushSubsystem() {
   );
 }
 
-class _ThrowingSummaryPlugin implements BridgePluginApi {
+class _ThrowingSummaryPlugin implements NativeProjectsPluginApi {
   final _controller = StreamController<BridgeSseEvent>.broadcast();
 
   int subscribeCount = 0;

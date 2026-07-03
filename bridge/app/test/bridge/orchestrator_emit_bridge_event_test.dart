@@ -84,6 +84,7 @@ void main() {
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       db: database,
+      pluginId: "opencode",
     );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(
@@ -128,6 +129,7 @@ void main() {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
+          pluginId: "opencode",
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,
@@ -169,7 +171,7 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin),
       agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -270,6 +272,7 @@ void main() {
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       db: database,
+      pluginId: "opencode",
     );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(
@@ -305,6 +308,7 @@ void main() {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
+          pluginId: "opencode",
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,
@@ -346,7 +350,7 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin),
       agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -432,6 +436,7 @@ void main() {
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       db: database,
+      pluginId: "opencode",
     );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(
@@ -452,6 +457,7 @@ void main() {
 
     await database.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
     await database.sessionDao.insertSession(
+      pluginId: "opencode",
       sessionId: "s1",
       projectId: "p1",
       isDedicated: true,
@@ -507,6 +513,7 @@ void main() {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
+          pluginId: "opencode",
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,
@@ -548,7 +555,7 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin),
       agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -636,6 +643,7 @@ void main() {
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       db: database,
+      pluginId: "opencode",
     );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(
@@ -680,6 +688,7 @@ void main() {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
+          pluginId: "opencode",
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,
@@ -721,7 +730,7 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin),
       agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -780,6 +789,7 @@ void main() {
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       db: database,
+      pluginId: "opencode",
     );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(
@@ -824,6 +834,7 @@ void main() {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
+          pluginId: "opencode",
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,
@@ -865,7 +876,7 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin),
       agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -949,6 +960,7 @@ void main() {
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       db: database,
+      pluginId: "opencode",
     );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(
@@ -993,6 +1005,7 @@ void main() {
       projectRepository: projectRepository,
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
+          pluginId: "opencode",
           sessionDao: database.sessionDao,
           projectsDao: database.projectsDao,
           db: database,
@@ -1034,7 +1047,7 @@ void main() {
       providerRepository: ProviderRepository(plugin: plugin),
       agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
@@ -1306,7 +1319,7 @@ class _AbortEventPlugin extends _EventPlugin {
   }
 }
 
-class _SummaryPlugin implements BridgePluginApi {
+class _SummaryPlugin implements NativeProjectsPluginApi {
   final void Function() onSubscribe;
   final StreamController<BridgeSseEvent> _controller = StreamController<BridgeSseEvent>.broadcast();
 
@@ -1468,7 +1481,7 @@ class _SummaryPlugin implements BridgePluginApi {
   Future<void> close() => _controller.close();
 }
 
-class _NoopPlugin implements BridgePluginApi {
+class _NoopPlugin implements NativeProjectsPluginApi {
   final StreamController<BridgeSseEvent> _controller = StreamController<BridgeSseEvent>.broadcast();
 
   @override
@@ -1756,6 +1769,9 @@ class _NoopPullRequestRepository implements PullRequestRepository {
 
 class _NoopSessionRepository implements SessionRepository {
   @override
+  bool get sessionListIsAuthoritative => true;
+
+  @override
   Future<Session> createSession({
     required String directory,
     required String? parentSessionId,
@@ -1875,6 +1891,9 @@ class _NoopSessionRepository implements SessionRepository {
 }
 
 class _DelayingSessionRepository implements SessionRepository {
+  @override
+  bool get sessionListIsAuthoritative => true;
+
   final SessionRepository _base;
   final Map<String, Future<void>> _delaySessionIds;
 

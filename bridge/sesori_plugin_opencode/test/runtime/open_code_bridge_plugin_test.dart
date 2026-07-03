@@ -85,7 +85,7 @@ class _ImmediateClock implements ServerClock {
   Future<void> delay({required Duration duration}) async {}
 }
 
-class _FakeApi implements BridgePluginApi {
+class _FakeApi implements NativeProjectsPluginApi {
   int disposeCount = 0;
   Object? disposeError;
 

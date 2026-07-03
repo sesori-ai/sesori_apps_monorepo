@@ -3,6 +3,7 @@ import "package:sesori_bridge/src/bridge/routing/reject_question_handler.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
 void main() {
@@ -12,7 +13,11 @@ void main() {
 
     setUp(() {
       plugin = FakeBridgePlugin();
-      handler = RejectQuestionHandler(questionRepository: QuestionRepository(plugin: plugin));
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      handler = RejectQuestionHandler(
+        questionRepository: QuestionRepository(plugin: plugin, sessionDao: db.sessionDao),
+      );
     });
 
     tearDown(() => plugin.close());

@@ -24,6 +24,7 @@ void main() {
       // session.created before the create handler persists the row.
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo/.worktrees/s1"]);
       await dao.insertSessionsIfMissing(
+        pluginId: "opencode",
         sessions: [(sessionId: "s1", projectId: "/repo/.worktrees/s1", createdAt: 100, archivedAt: null)],
       );
 
@@ -31,6 +32,7 @@ void main() {
       // (its project row exists first, satisfying the FK).
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       await dao.insertSession(
+        pluginId: "opencode",
         sessionId: "s1",
         projectId: "/repo",
         isDedicated: true,
