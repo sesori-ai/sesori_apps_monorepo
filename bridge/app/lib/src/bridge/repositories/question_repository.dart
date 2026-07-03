@@ -40,8 +40,9 @@ class QuestionRepository {
   /// backend can hold a freshly-created session only in memory (codex before
   /// the rollout is flushed to disk), in which case the session is missing
   /// from `listAllSessions()` and only the plugin's live scoping can surface
-  /// its questions. Merging is by question id, so a question seen by both
-  /// paths appears once.
+  /// its questions. Merging is keyed by session id + question id — so a
+  /// question seen by both paths appears once, without assuming question ids
+  /// are globally unique across sessions.
   Future<List<PendingQuestion>> getProjectQuestions({required String projectId}) async {
     switch (_plugin) {
       case final NativeProjectsPluginApi plugin:
@@ -62,16 +63,17 @@ class QuestionRepository {
           },
         );
 
-        final questionsById = <String, PendingQuestion>{
-          for (final question in ownScopedQuestions) question.id: question.toSharedPendingQuestion(),
+        final questionsByKey = <String, PendingQuestion>{
+          for (final question in ownScopedQuestions)
+            "${question.sessionID}:${question.id}": question.toSharedPendingQuestion(),
         };
         for (final session in sessions) {
           final pluginQuestions = await plugin.getPendingQuestions(sessionId: session.id);
           for (final question in pluginQuestions) {
-            questionsById[question.id] = question.toSharedPendingQuestion();
+            questionsByKey["${question.sessionID}:${question.id}"] = question.toSharedPendingQuestion();
           }
         }
-        return questionsById.values.toList();
+        return questionsByKey.values.toList();
     }
   }
 

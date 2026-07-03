@@ -251,6 +251,9 @@ class SessionRepository {
       storedSessionsById: dbSessions,
       pullRequestsBySessionId: pullRequestsBySessionId,
       unseenCalculator: _unseenCalculator,
+      // Only a bridge-derived plugin cedes project attribution to the stored
+      // row; a native backend's reported projectID is authoritative.
+      adoptStoredProjectId: _plugin is BridgeDerivedProjectsPluginApi,
     );
   }
 

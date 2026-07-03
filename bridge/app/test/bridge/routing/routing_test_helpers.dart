@@ -928,6 +928,7 @@ class FakeSessionRepository implements SessionRepository {
       storedSessionsById: dbSessions,
       pullRequestsBySessionId: pullRequestsBySessionId,
       unseenCalculator: const SessionUnseenCalculator(),
+      adoptStoredProjectId: false,
     );
   }
 

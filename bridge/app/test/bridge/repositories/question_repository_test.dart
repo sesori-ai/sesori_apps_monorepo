@@ -107,6 +107,32 @@ void main() {
       expect(questions, hasLength(2));
     });
 
+    test("getProjectQuestions keeps distinct questions that reuse an id across sessions", () async {
+      const parent = "/tmp/proj/alpha";
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
+
+      // Question ids are only guaranteed unique within a session, so the merge
+      // must key by session id + question id rather than question id alone.
+      final plugin = _FakeDerivedQuestionPlugin(
+        launchDirectory: parent,
+        allSessions: [_session(parent, id: "s1"), _session(parent, id: "s2")],
+        questionsBySession: {
+          "s1": const [
+            PluginPendingQuestion(id: "q-1", sessionID: "s1", displaySessionId: null, questions: []),
+          ],
+          "s2": const [
+            PluginPendingQuestion(id: "q-1", sessionID: "s2", displaySessionId: null, questions: []),
+          ],
+        },
+      );
+      final repo = QuestionRepository(plugin: plugin, sessionDao: db.sessionDao);
+
+      final questions = await repo.getProjectQuestions(projectId: parent);
+
+      expect(questions.map((q) => q.sessionID).toSet(), {"s1", "s2"});
+      expect(questions, hasLength(2));
+    });
+
     test("getProjectQuestions does not surface questions from a session in another project", () async {
       const parent = "/tmp/proj/alpha";
       const other = "/tmp/proj/beta";
