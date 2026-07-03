@@ -97,8 +97,11 @@ class RelayClient {
   Stream<RelayConnectionState> get connectionState => _connectionState.stream;
 
   Future<void> connect() async {
-    _connectionState.add(const RelayConnecting());
+    // Build (and thereby validate) the URL before announcing the attempt: a
+    // throwing parse must not leave observers stuck on a connecting state
+    // that never resolves to a terminal one.
     final wsURL = _buildWebSocketURL(_relayURL);
+    _connectionState.add(const RelayConnecting());
     final channel = IOWebSocketChannel.connect(
       wsURL,
       pingInterval: _pingInterval,
