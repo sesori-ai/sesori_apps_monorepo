@@ -103,9 +103,14 @@ class SessionUnseenService {
   /// fetch inserts its row and later activity stamps it. While the session is
   /// being viewed, the seen timestamp is advanced too so it never bolds under
   /// the watcher.
+  ///
+  /// [occurredAt] is the triggering message's own creation time (ms epoch),
+  /// when the caller has one. It makes user-message stamping idempotent: see
+  /// the re-emission guard below.
   Future<void> recordActivity({
     required String sessionId,
     required bool isUserMessage,
+    int? occurredAt,
   }) {
     // Capture the viewed state at submission time, not when the (possibly
     // delayed) serialized write executes — otherwise navigating away while
@@ -114,6 +119,18 @@ class SessionUnseenService {
     return _serialize(sessionId, () async {
       final row = await _unseenRepository.getUnseenRow(sessionId: sessionId);
       if (row == null) return;
+      // A user message may only count ONCE. Backends re-emit the user message
+      // record whenever server-side bookkeeping attached to it changes (e.g.
+      // OpenCode updates its diff summary mid- and post-response); treating a
+      // re-emission as a fresh interaction would stamp `last_user_message_at`
+      // past the assistant's activity and permanently clear the unseen state.
+      // A re-emission carries the message's ORIGINAL creation time, which is
+      // never newer than the stamp recorded when it was first processed, so it
+      // is skipped entirely (its content change is bookkeeping, not unseen-
+      // worthy transcript activity).
+      if (isUserMessage && occurredAt != null && (row.userMessageAt ?? 0) >= occurredAt) {
+        return;
+      }
       // Coalesce repeated assistant activity: once the session is already
       // unseen and no phone is viewing it, another non-user event changes
       // nothing observable — skip the redundant write + emit. (A later

@@ -310,6 +310,34 @@ void main() {
       await sub.cancel();
     });
 
+    test("a re-emitted user message does not clear unseen state (OpenCode re-sends the user record)", () async {
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
+      await db.sessionDao.insertSessionsIfMissing(
+        sessions: [(sessionId: "s1", projectId: "p1", createdAt: 500, archivedAt: null)],
+      );
+      // The user sends a message (payload created at 2000, processed now).
+      clock = 2000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 2000);
+      expect(await unseen("s1"), isFalse);
+
+      // The assistant replies -> unseen.
+      clock = 3000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: false);
+      expect(await unseen("s1"), isTrue);
+
+      // The backend re-emits the SAME user message (diff-summary bookkeeping,
+      // fired after the assistant completes) — original created time. This is
+      // not a user interaction and must not clear the unseen state.
+      clock = 4000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 2000);
+      expect(await unseen("s1"), isTrue);
+
+      // A genuinely NEW user message (newer created time) clears it.
+      clock = 5000;
+      await service.recordActivity(sessionId: "s1", isUserMessage: true, occurredAt: 5000);
+      expect(await unseen("s1"), isFalse);
+    });
+
     test("a user message after the session is unseen is NOT coalesced (updates user-message marker)", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSessionsIfMissing(

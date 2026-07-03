@@ -662,6 +662,7 @@ class OrchestratorSession {
         await _sessionUnseenService.recordActivity(
           sessionId: info.sessionID,
           isUserMessage: info is MessageUser,
+          occurredAt: info.time?.created,
         );
       // For child/subagent requests, `displaySessionId` is the root session the
       // UI surfaces the request under; the child has no persisted row, so route
