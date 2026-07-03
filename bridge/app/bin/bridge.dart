@@ -239,7 +239,8 @@ class LogoutCommand extends cli.Command<void> {
       bridgeInstanceRepository: bridgeInstanceRepository,
       bridgeInstanceService: BridgeInstanceService(
         bridgeInstanceRepository: bridgeInstanceRepository,
-        terminalPromptRepository: terminalPromptRepository,
+        // The logout CLI always runs from a terminal, never supervised.
+        replacePrompt: terminalPromptRepository,
         processRepository: ProcessRepository(
           api: systemProcessApi,
           currentUser: currentUser,
