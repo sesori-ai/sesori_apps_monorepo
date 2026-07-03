@@ -69,5 +69,12 @@ void main() {
 
       expect(parseJwtExpiry(token), isNull);
     });
+
+    test("JWT with exp outside DateTime's supported range returns null", () {
+      // 1e14 seconds → 1e17 ms, beyond DateTime's ±8.64e15 ms bound.
+      final token = _jwtWithPayload({"exp": 100000000000000});
+
+      expect(parseJwtExpiry(token), isNull);
+    });
   });
 }

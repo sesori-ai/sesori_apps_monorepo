@@ -12,7 +12,13 @@ DateTime? parseJwtExpiry(String token) {
   final claims = _decodeJwtPayload(token);
   final exp = claims?["exp"];
   if (exp is! int) return null;
-  return DateTime.fromMillisecondsSinceEpoch(exp * 1000, isUtc: true);
+  try {
+    return DateTime.fromMillisecondsSinceEpoch(exp * 1000, isUtc: true);
+  } catch (_) {
+    // An exp outside DateTime's supported range (ArgumentError) is malformed
+    // input — same null contract as any other undecodable token.
+    return null;
+  }
 }
 
 /// Parses a JWT token and extracts the auth identity from the `userId` claim
