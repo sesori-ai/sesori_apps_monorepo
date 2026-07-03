@@ -10,6 +10,14 @@ import 'terminal_prompt_decision.dart';
 /// question could not be asked at all (no terminal / GUI unreachable), not that
 /// the user declined.
 abstract class BridgeReplacePrompt {
+  /// Shared question copy for both implementations, so the terminal and GUI
+  /// paths never drift apart (the terminal appends its own `[y/N]` hint).
+  static const String replaceExistingBridgeMessage = 'Another Sesori bridge is already running. Kill it and start fresh?';
+
+  /// See [replaceExistingBridgeMessage].
+  static String replaceStartingBridgeMessage({required int holderPid}) =>
+      'Another Sesori bridge is still starting up (pid $holderPid). Kill it and start fresh?';
+
   Future<TerminalPromptDecision> askReplaceExistingBridge({required int bridgeCount});
 
   Future<TerminalPromptDecision> askReplaceStartingBridge({required int holderPid});

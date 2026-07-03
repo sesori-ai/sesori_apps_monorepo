@@ -44,7 +44,7 @@ class ControlPromptService implements BridgeReplacePrompt {
   Future<TerminalPromptDecision> askReplaceExistingBridge({required int bridgeCount}) {
     return _ask(
       kind: ControlPromptKind.replaceBridge,
-      message: "Another Sesori bridge is already running. Kill it and start fresh?",
+      message: BridgeReplacePrompt.replaceExistingBridgeMessage,
     );
   }
 
@@ -52,7 +52,7 @@ class ControlPromptService implements BridgeReplacePrompt {
   Future<TerminalPromptDecision> askReplaceStartingBridge({required int holderPid}) {
     return _ask(
       kind: ControlPromptKind.replaceBridge,
-      message: "Another Sesori bridge is still starting up (pid $holderPid). Kill it and start fresh?",
+      message: BridgeReplacePrompt.replaceStartingBridgeMessage(holderPid: holderPid),
     );
   }
 
@@ -74,6 +74,11 @@ class ControlPromptService implements BridgeReplacePrompt {
       );
     } on ControlChannelNotConnectedException catch (error) {
       Log.w("[control][prompt] could not announce login-needed — control channel down", error);
+    } on Object catch (error, stackTrace) {
+      // Best-effort by contract: an unexpected transport failure (e.g. a
+      // mid-close sink) must never mask the authoritative auth-required exit
+      // code the caller is about to return.
+      Log.w("[control][prompt] could not announce login-needed", error, stackTrace);
     }
   }
 
@@ -122,6 +127,11 @@ class ControlPromptService implements BridgeReplacePrompt {
         // be asked. Degrade like a non-interactive terminal; logged because the
         // transport failure is otherwise swallowed into a decision.
         Log.w("[control][prompt] could not send prompt — control channel down", error);
+        return TerminalPromptDecision.nonInteractive;
+      } on Object catch (error, stackTrace) {
+        // Any other transport failure (e.g. a mid-close sink) equally means the
+        // question cannot be asked — degrade instead of crashing startup.
+        Log.w("[control][prompt] could not send prompt", error, stackTrace);
         return TerminalPromptDecision.nonInteractive;
       }
       final accepted = await completer.future.timeout(_responseTimeout);

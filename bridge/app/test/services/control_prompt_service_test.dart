@@ -80,6 +80,17 @@ void main() {
       );
     });
 
+    test("an unexpected transport failure degrades to nonInteractive instead of crashing", () async {
+      final client = _FakeControlChannelClient()..sendError = StateError("sink is closed");
+      final service = ControlPromptService(client: client);
+      addTearDown(service.dispose);
+
+      expect(
+        await service.askReplaceExistingBridge(bridgeCount: 1),
+        equals(TerminalPromptDecision.nonInteractive),
+      );
+    });
+
     test("dispose resolves an in-flight ask as nonInteractive", () async {
       final client = _FakeControlChannelClient();
       final service = ControlPromptService(client: client);
@@ -122,6 +133,15 @@ void main() {
       expect(service.announceLoginNeeded, returnsNormally);
       expect(client.sentFrames, isEmpty);
     });
+
+    test("announceLoginNeeded is best-effort — an unexpected transport failure does not throw", () {
+      final client = _FakeControlChannelClient()..sendError = StateError("sink is closed");
+      final service = ControlPromptService(client: client);
+      addTearDown(service.dispose);
+
+      expect(service.announceLoginNeeded, returnsNormally);
+      expect(client.sentFrames, isEmpty);
+    });
   });
 }
 
@@ -133,6 +153,9 @@ class _FakeControlChannelClient implements ControlChannelClient {
   /// Mimics [ControlChannelClient.send] throwing when the channel is down.
   bool throwOnSend = false;
 
+  /// Mimics an unexpected transport failure (e.g. a mid-close sink).
+  Object? sendError;
+
   @override
   Stream<String> get inbound => const Stream<String>.empty();
 
@@ -140,6 +163,10 @@ class _FakeControlChannelClient implements ControlChannelClient {
   void send(String frame) {
     if (throwOnSend) {
       throw const ControlChannelNotConnectedException("Control channel is not connected");
+    }
+    final error = sendError;
+    if (error != null) {
+      throw error;
     }
     sentFrames.add(frame);
   }
