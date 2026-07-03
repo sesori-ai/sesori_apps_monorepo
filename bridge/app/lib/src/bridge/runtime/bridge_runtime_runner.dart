@@ -275,6 +275,7 @@ class BridgeRuntimeRunner {
         processRunner: processRunner,
         managedRuntimePaths: managedRuntimePaths,
         releaseTrack: releaseTrack,
+        isSupervised: options.isSupervised,
       );
       // Reconcile a prior in-place update first (fast, local): confirm a
       // pending activation, surface a prior failure, sweep residue. Best-effort:
@@ -282,11 +283,13 @@ class BridgeRuntimeRunner {
       //
       // Gate it on the same skip check the periodic update path uses: a
       // non-managed binary (npm payload, dev build, CI, or updates disabled)
-      // must not touch the managed install's attempt/residue state.
+      // must not touch the managed install's attempt/residue state, and a
+      // supervised (GUI-bundled) bridge must never rewrite itself.
       final bool updatesEnabledForThisInstall = !shouldSkipUpdates(
         environment: environment,
         executablePath: io.Platform.resolvedExecutable,
         managedExecutablePath: managedRuntimePaths.binaryPath,
+        isSupervised: options.isSupervised,
       );
       if (updatesEnabledForThisInstall) {
         try {
@@ -796,6 +799,7 @@ class BridgeRuntimeRunner {
     required ProcessRunner processRunner,
     required ManagedRuntimePaths managedRuntimePaths,
     required ReleaseTrack releaseTrack,
+    required bool isSupervised,
   }) {
     const clock = Clock();
     const messageFormatter = UpdateMessageFormatter();
@@ -871,6 +875,7 @@ class BridgeRuntimeRunner {
       executablePath: io.Platform.resolvedExecutable,
       managedExecutablePath: managedRuntimePaths.binaryPath,
       environment: io.Platform.environment,
+      isSupervised: isSupervised,
     );
 
     final reconciliationService = UpdateReconciliationService(

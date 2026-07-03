@@ -8,8 +8,8 @@
 
 ## Current pointer
 
-- **Last completed phase:** Phase 1 — PR 1.7 Exit-code restart (`86`) + bypass successor-spawn (PR raised on branch `implement-next-desktop-step`)
-- **Next up:** Phase 1 — PR 1.8 Disable self-update + reconcile when supervised
+- **Last completed phase:** Phase 1 — PR 1.8 Disable self-update + reconcile when supervised (PR raised on branch `next-desktop-implementation-stage`)
+- **Next up:** Phase 1 — PR 1.9 `BridgeControlMessageDispatcher` + prompts/Console → control events + auth-required exit `87`
 - **Branch:** one feature branch per PR, cut from `main`
 
 > **Tracking lives in four places that MUST move together in the same PR.**
@@ -389,7 +389,7 @@ them). Only the user checks an MT box.
 - ☑ 1.5 Token-stream **push** → relay client — Med / S-M
 - ☑ 1.6 Supervised registration + `bridgeId` out of `token.json` — Med / M
 - ☑ 1.7 Exit-code restart (`86`) + bypass successor-spawn — Med / S-M
-- ☐ 1.8 Disable self-update + reconcile when supervised — Low / S
+- ☑ 1.8 Disable self-update + reconcile when supervised — Low / S
 - ☐ 1.9 `BridgeControlMessageDispatcher` + prompts/Console → control events + auth-required exit `87` — Med / M
 - ☐ 1.10 Status push (relay/plugin/active sessions) — Low / S-M
 - ☐ 1.11 `unregister-and-exit` control command — Low / S-M

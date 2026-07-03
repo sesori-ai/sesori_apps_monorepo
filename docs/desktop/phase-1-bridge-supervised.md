@@ -404,7 +404,33 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   `isCiEnvironment`, `!isManagedInstall`) unchanged.
 - **Acceptance:** no update/reconcile attempt in supervised mode; standalone
   self-update intact.
-- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+- **Aristotle:** plan ☑ · impl ☑. **Findings:** Implemented as a new
+  `required bool isSupervised` input to the single policy choke point
+  `shouldSkipUpdates` (`updater/foundation/update_policy.dart`) — supervised
+  joins the existing suppressor list (`SESORI_NO_UPDATE`, CI, npm,
+  non-managed) rather than adding a separate gate, so it automatically covers
+  BOTH surfaces the policy already gates: the runner's
+  `updatesEnabledForThisInstall` local (which guards the startup reconcile AND
+  the re-reconcile after restart-predecessor exit — one gate, both call
+  sites) and `UpdateService.start()`'s background 4h cadence (constructor
+  gains `required bool isSupervised`, stored and read by its
+  `_shouldSkipUpdates()`). The composition root passes
+  `options.isSupervised` at both wiring points
+  (`_buildUpdateLifecycleService` + the reconcile gate);
+  `updateLifecycle.start()` stays unconditional because the service
+  self-suppresses via the shared policy, exactly like the other suppressors
+  (symmetric handling). `ManualUpdateService` (explicit `sesori-bridge
+  update`) is untouched by design — it never runs with `--control-url` and
+  deliberately overrides background-only suppressors. No env-var plumbing was
+  needed: the bridge knows `isSupervised` from `--control-url` directly, which
+  is more robust than requiring the GUI to remember to set `SESORI_NO_UPDATE`
+  when spawning (the GUI may still set it as belt-and-suspenders). Tests:
+  policy matrix gains "supervised ⇒ skip even on a managed install";
+  `update_service_test` gating group gains "supervised disables the pipeline"
+  (checkCount stays 0 across an 8h fake-async window); all existing cases pass
+  `isSupervised: false` unchanged (standalone matrix asserted intact).
+  `make analyze` clean; `dart analyze --fatal-infos` clean; `make test`
+  1611 pass. **Deltas:** —
 
 ## PR 1.9 — `BridgeControlMessageDispatcher` + prompts/Console → control events + auth-required exit `87`
 - **Goal:** Three tightly-coupled pieces of the inbound/prompt seam:
