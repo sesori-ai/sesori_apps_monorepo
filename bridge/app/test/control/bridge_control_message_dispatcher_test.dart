@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/control/bridge_control_message_dispatcher.dart
 import "package:sesori_bridge/src/foundation/control_channel_client.dart";
 import "package:sesori_bridge/src/services/control_channel_token_service.dart";
 import "package:sesori_bridge/src/services/control_prompt_service.dart";
+import "package:sesori_bridge/src/services/control_unregister_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -13,16 +14,19 @@ void main() {
     late _FakeControlChannelClient client;
     late _RecordingTokenService tokenService;
     late _RecordingPromptService promptService;
+    late _RecordingUnregisterService unregisterService;
     late BridgeControlMessageDispatcher dispatcher;
 
     setUp(() {
       client = _FakeControlChannelClient();
       tokenService = _RecordingTokenService();
       promptService = _RecordingPromptService();
+      unregisterService = _RecordingUnregisterService();
       dispatcher = BridgeControlMessageDispatcher(
         client: client,
         tokenService: tokenService,
         promptService: promptService,
+        unregisterService: unregisterService,
       );
       addTearDown(dispatcher.dispose);
     });
@@ -57,6 +61,16 @@ void main() {
       expect(tokenService.responses, isEmpty);
     });
 
+    test("routes unregister_and_exit to the unregister service delegate", () async {
+      dispatcher.start();
+      client.emit(_encode(const ControlMessage.unregisterAndExit()));
+      await pumpEventQueue();
+
+      expect(unregisterService.calls, equals(1));
+      expect(tokenService.responses, isEmpty);
+      expect(promptService.responses, isEmpty);
+    });
+
     test("an undecodable frame is skipped and later frames are still routed", () async {
       dispatcher.start();
       client.emit("not valid json");
@@ -69,7 +83,6 @@ void main() {
     test("variants with no inbound meaning are ignored — restart is never an inbound command", () async {
       dispatcher.start();
       client.emit(_encode(const ControlMessage.restart()));
-      client.emit(_encode(const ControlMessage.unregisterAndExit()));
       client.emit(_encode(const ControlMessage.registered(bridgeId: "b-1")));
       client.emit(_encode(const ControlMessage.tokenRequest(id: "t-1")));
       client.emit(
@@ -85,6 +98,7 @@ void main() {
       expect(tokenService.responses, isEmpty);
       expect(tokenService.updates, isEmpty);
       expect(promptService.responses, isEmpty);
+      expect(unregisterService.calls, isZero);
     });
 
     test("the dispatcher is the only inbound subscriber — services never self-subscribe", () async {
@@ -99,6 +113,7 @@ void main() {
         client: client,
         tokenService: realTokenService,
         promptService: realPromptService,
+        unregisterService: _RecordingUnregisterService(),
       );
       addTearDown(wired.dispose);
       wired.start();
@@ -178,6 +193,16 @@ class _RecordingPromptService implements ControlPromptService {
 
   @override
   void handlePromptResponse({required String id, required bool accepted}) => responses.add((id, accepted));
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _RecordingUnregisterService implements ControlUnregisterService {
+  int calls = 0;
+
+  @override
+  Future<void> handleUnregisterAndExit() async => calls++;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

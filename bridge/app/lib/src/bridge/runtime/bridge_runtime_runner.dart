@@ -67,6 +67,7 @@ import "../../server/services/bridge_instance_service.dart";
 import "../../server/services/bridge_restart_service.dart";
 import "../../services/control_channel_token_service.dart";
 import "../../services/control_prompt_service.dart";
+import "../../services/control_unregister_service.dart";
 import "../../updater/api/checksum_manifest_api.dart";
 import "../../updater/api/github_releases_api.dart";
 import "../../updater/api/managed_runtime_manifest_api.dart";
@@ -238,6 +239,12 @@ class BridgeRuntimeRunner {
       clearTokens: clearTokens,
     );
 
+    // Persisted bridge-id storage (its own file, not token.json). Constructed
+    // here so the supervised registration service below can share it; the
+    // legacy-id migration that populates it still runs at its normal point
+    // before authentication.
+    final bridgeIdStorage = BridgeIdStorage(filePath: bridgeIdPath());
+
     try {
       // Supervised mode (desktop GUI): bring up the loopback control channel
       // before anything else so the GUI sees the helper connect promptly. Every
@@ -245,8 +252,13 @@ class BridgeRuntimeRunner {
       ControlChannelTokenService? controlChannelTokenService;
       ControlPromptService? controlPromptService;
       // Kept in scope past this block: the ControlStatusNotifier (built later,
-      // once the plugin and registration service exist) shares this client.
+      // once the plugin exists) shares this client.
       ControlChannelClient? controlChannelClient;
+      // Built early in supervised mode so the dispatcher can route the logout
+      // `unregister_and_exit` command; reused as THE registration service later.
+      // Standalone builds it after the interactive auth flow yields its token
+      // refresher.
+      BridgeRegistrationService? supervisedRegistrationService;
       if (options.isSupervised) {
         controlChannelClient = await _connectSupervisedControlChannel(
           options: options,
@@ -262,6 +274,24 @@ class BridgeRuntimeRunner {
         // a terminal the helper doesn't have.
         controlPromptService = ControlPromptService(client: controlChannelClient);
         shutdownCoordinator.add(disposable: controlPromptService.dispose);
+        // The GUI's supplied token is this bridge's authority, so the control
+        // token service is the refresher. Reads the persisted id only at
+        // runtime (unregister/register), after the migration below, so building
+        // it before that migration is safe.
+        supervisedRegistrationService = _buildRegistrationService(
+          httpClient: httpClient,
+          authBackendUrl: options.authBackendUrl,
+          tokenRefresher: controlChannelTokenService,
+          bridgeIdStorage: bridgeIdStorage,
+        );
+        shutdownCoordinator.add(disposable: supervisedRegistrationService.dispose);
+        // Handles the GUI's `unregister_and_exit` logout command: unregister the
+        // bridgeId, then gracefully shut down and exit 0 (a clean stop, so the
+        // GUI does not respawn us).
+        final controlUnregisterService = ControlUnregisterService(
+          registrationService: supervisedRegistrationService,
+          terminate: () => _shutdownThenExit(shutdownCoordinator: shutdownCoordinator, code: 0),
+        );
         // The single inbound subscriber: decodes GUI→helper frames once and
         // routes them to the owning service. Started before the bootstrap token
         // pull below so its response is never missed.
@@ -269,6 +299,7 @@ class BridgeRuntimeRunner {
           client: controlChannelClient,
           tokenService: controlChannelTokenService,
           promptService: controlPromptService,
+          unregisterService: controlUnregisterService,
         );
         controlMessageDispatcher.start();
         shutdownCoordinator.add(disposable: controlMessageDispatcher.dispose);
@@ -346,7 +377,6 @@ class BridgeRuntimeRunner {
       // it would otherwise erase the only copy and force a duplicate
       // registration. A failure here aborts startup so the next run retries the
       // copy with the legacy source still intact.
-      final bridgeIdStorage = BridgeIdStorage(filePath: bridgeIdPath());
       await BridgeIdMigrationService(
         bridgeIdStorage: bridgeIdStorage,
         readLegacyBridgeId: readLegacyBridgeId,
@@ -494,19 +524,21 @@ class BridgeRuntimeRunner {
         tokenRefresher = tokenManager;
       }
 
-      final bridgeRegistrationService = BridgeRegistrationService(
-        repository: BridgeRegistrationRepository(
-          api: BridgeRegistrationApi(
-            authBackendUrl: options.authBackendUrl,
-            client: httpClient,
-          ),
-        ),
-        tokenRefresher: tokenRefresher,
-        bridgeIdStorage: bridgeIdStorage,
-        hostName: io.Platform.localHostname,
-        platform: BridgeRegistrationService.currentPlatformName(),
-      );
-      shutdownCoordinator.add(disposable: bridgeRegistrationService.dispose);
+      // Supervised mode already built this early (so the dispatcher could route
+      // the logout command); reuse that instance. Standalone builds it here, now
+      // that the interactive auth flow has produced its token refresher.
+      final BridgeRegistrationService bridgeRegistrationService;
+      if (supervisedRegistrationService != null) {
+        bridgeRegistrationService = supervisedRegistrationService;
+      } else {
+        bridgeRegistrationService = _buildRegistrationService(
+          httpClient: httpClient,
+          authBackendUrl: options.authBackendUrl,
+          tokenRefresher: tokenRefresher,
+          bridgeIdStorage: bridgeIdStorage,
+        );
+        shutdownCoordinator.add(disposable: bridgeRegistrationService.dispose);
+      }
 
       // Constructed here (not inside BridgeRuntime.create) so supervised mode
       // can observe its connectionState stream below.
@@ -712,14 +744,38 @@ class BridgeRuntimeRunner {
     return controlChannelClient;
   }
 
-  /// Graceful termination for the control-channel parent-loss policy (ADR A9):
-  /// run the ordered shutdown (which stops the plugin and any owned runtime)
-  /// before exiting, so a hard exit from the loss timer cannot orphan the
-  /// backend process. If the stop hangs, the coordinator backstop fires — and
-  /// because the loss code was recorded via `requestAbnormalExit`, the backstop
-  /// reports that abnormal code, not the neutral 0, so a loss is never seen as a
-  /// clean exit regardless of the backstop's (step-count-dependent) timing. The
-  /// precise exit code the GUI observes is finalized in Phase 2 (PR 2.7).
+  /// Builds the bridge registration service. Extracted so supervised mode can
+  /// construct it early (sharing the control token service as its refresher) to
+  /// route the logout command, while standalone builds it after interactive auth
+  /// yields its refresher — both from one definition.
+  static BridgeRegistrationService _buildRegistrationService({
+    required http.Client httpClient,
+    required String authBackendUrl,
+    required TokenRefresher tokenRefresher,
+    required BridgeIdStorage bridgeIdStorage,
+  }) {
+    return BridgeRegistrationService(
+      repository: BridgeRegistrationRepository(
+        api: BridgeRegistrationApi(
+          authBackendUrl: authBackendUrl,
+          client: httpClient,
+        ),
+      ),
+      tokenRefresher: tokenRefresher,
+      bridgeIdStorage: bridgeIdStorage,
+      hostName: io.Platform.localHostname,
+      platform: BridgeRegistrationService.currentPlatformName(),
+    );
+  }
+
+  /// Runs the ordered shutdown (stopping the plugin and any owned runtime),
+  /// then exits with [code]. Two supervised paths use it: the control-channel
+  /// parent-loss policy (ADR A9) and the GUI logout `unregister_and_exit`
+  /// command. Running the ordered shutdown first means a hard exit can never
+  /// orphan the backend process. If the stop hangs, the coordinator backstop
+  /// fires; for the loss path the abnormal code recorded via
+  /// `requestAbnormalExit` is reported so a loss is never seen as a clean exit.
+  /// The precise exit code the GUI observes is finalized in Phase 2 (PR 2.7).
   static Future<void> _shutdownThenExit({
     required BridgeShutdownCoordinator shutdownCoordinator,
     required int code,
