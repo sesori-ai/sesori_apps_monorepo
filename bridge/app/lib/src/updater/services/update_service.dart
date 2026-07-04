@@ -1,13 +1,14 @@
 import 'dart:async';
-import 'dart:io' show HttpException, SocketException;
+import 'dart:io' show HttpException, SocketException, stderr, stdout;
 
 import 'package:http/http.dart' show ClientException;
 import 'package:meta/meta.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Console, Log;
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 
+import '../formatters/update_message_formatter.dart';
+import '../formatters/update_output_formatter.dart';
 import '../foundation/github_rate_limit_exception.dart';
-import '../foundation/update_message_formatter.dart';
 import '../foundation/update_policy.dart';
 import '../models/release_info.dart';
 import '../models/update_apply_outcome.dart';
@@ -24,7 +25,8 @@ import 'update_install_service.dart';
 /// It never relaunches — the swapped binary takes effect on the next launch
 /// (or an explicit phone-triggered restart). Benign conditions (no newer
 /// release, offline, rate-limited, disabled) stay quiet; genuine failures are
-/// surfaced via `Console.error` and the durable update log.
+/// surfaced on stderr (branded, not gated by `--log-level`) and the durable
+/// update log.
 class UpdateService {
   UpdateService({
     required ReleaseRepository releaseRepository,
@@ -62,11 +64,11 @@ class UpdateService {
   StreamSubscription<void>? _subscription;
   bool _disposed = false;
 
+  /// Sink for a fully-rendered output line. Defaults to writing to the
+  /// process streams directly (stdout for status, stderr for failures) — never
+  /// gated by `--log-level`, matching the branded `sesori-bridge update` path.
   @visibleForTesting
-  void Function(String message) emitMessage = Console.message;
-
-  @visibleForTesting
-  void Function(String message) emitError = Console.error;
+  void Function(RenderedLine line) emitLine = _writeLine;
 
   @visibleForTesting
   void Function(String message) logWarning = Log.w;
@@ -179,7 +181,7 @@ class UpdateService {
       );
       switch (outcome) {
         case UpdateApplied(:final version):
-          emitMessage(_messageFormatter.installedPendingActivation(toVersion: version));
+          _emitLines(_messageFormatter.installedPendingActivation(toVersion: version));
           // The release is now staged for activation on the next launch. This
           // process still reports the old appVersion, so left running it would
           // keep "finding" and re-applying the same release every interval —
@@ -190,7 +192,7 @@ class UpdateService {
           // The next cycle retries.
           break;
         case UpdateApplyFailed(:final reason, :final logPath):
-          emitError(
+          _emitLines(
             _messageFormatter.failureGuidance(
               toVersion: release.version,
               reason: reason,
@@ -245,13 +247,23 @@ class UpdateService {
     } on Object catch (error, stackTrace) {
       logError('Failed to persist update failure log', error, stackTrace);
     }
-    emitError(
+    _emitLines(
       _messageFormatter.failureGuidance(
         toVersion: toVersion,
         reason: reason,
         logPath: _logRepository.logPath,
       ),
     );
+  }
+
+  void _emitLines(List<RenderedLine> lines) => lines.forEach(emitLine);
+
+  static void _writeLine(RenderedLine line) {
+    if (line.isError) {
+      stderr.writeln(line.text);
+    } else {
+      stdout.writeln(line.text);
+    }
   }
 
   String _stageFailureReason(UpdateResult result) {

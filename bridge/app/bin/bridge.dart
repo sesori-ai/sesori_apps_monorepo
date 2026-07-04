@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:args/args.dart' show ArgParserException;
@@ -41,7 +42,9 @@ import 'package:sesori_bridge/src/updater/api/platform_update_api.dart';
 import 'package:sesori_bridge/src/updater/api/update_attempt_api.dart';
 import 'package:sesori_bridge/src/updater/api/update_cache_api.dart';
 import 'package:sesori_bridge/src/updater/api/update_log_api.dart';
+import 'package:sesori_bridge/src/updater/formatters/terminal_download_progress_listener.dart';
 import 'package:sesori_bridge/src/updater/formatters/update_command_formatter.dart';
+import 'package:sesori_bridge/src/updater/formatters/update_output_formatter.dart';
 import 'package:sesori_bridge/src/updater/foundation/filesystem_cleaner.dart';
 import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
 import 'package:sesori_bridge/src/updater/foundation/update_lock.dart';
@@ -453,6 +456,16 @@ class UpdateCommand extends cli.Command<void> {
             );
 
     final httpClient = http.Client();
+    final progressController = StreamController<DownloadProgress>();
+    final outFormatter = UpdateOutputFormatter.forStream(out: stdout, environment: environment);
+    final errFormatter = UpdateOutputFormatter.forStream(out: stderr, environment: environment);
+    // Renders the download progress bar to stderr on an interactive terminal;
+    // silently drains the progress stream otherwise.
+    final progressListener = TerminalDownloadProgressListener(
+      progress: progressController.stream,
+      formatter: errFormatter,
+      out: stderr,
+    );
     try {
       final processRunner = ProcessRunner();
       final logRepository = UpdateLogRepository(
@@ -482,6 +495,7 @@ class UpdateCommand extends cli.Command<void> {
             checksumValidator: ChecksumValidator(),
             archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
             archiveFormat: distributionTarget.archiveFormat,
+            progressSink: progressController.sink,
           ),
           filesystemCleaner: filesystemCleaner,
           // Stage into a per-process workspace so a manual update can't clobber
@@ -505,12 +519,12 @@ class UpdateCommand extends cli.Command<void> {
       );
 
       final outcome = await manualUpdateService.runUpdate(force: force);
+      // Close any open progress-bar line before printing the result summary so
+      // it starts on a fresh line (e.g. after a mid-download failure that left
+      // the bar drawn but not at 100%).
+      await progressListener.dispose();
 
-      final formatter = UpdateCommandFormatter(
-        outStream: stdout,
-        errorStream: stderr,
-        environment: environment,
-      );
+      final formatter = UpdateCommandFormatter(outFormatter: outFormatter, errFormatter: errFormatter);
       for (final line in formatter.format(outcome: outcome)) {
         if (line.isError) {
           stderr.writeln(line.text);
@@ -520,6 +534,7 @@ class UpdateCommand extends cli.Command<void> {
       }
       exitCode = _exitCodeFor(outcome);
     } finally {
+      await progressController.close();
       httpClient.close();
     }
   }

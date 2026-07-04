@@ -1,51 +1,25 @@
-import 'dart:io';
-
-import 'package:sesori_plugin_interface/sesori_plugin_interface.dart'
-    show TerminalColorValidator, TerminalGlyphValidator;
-
 import '../models/explicit_update_outcome.dart';
-
-/// A single rendered output line and where it belongs. [isError] lines go to
-/// stderr; the rest go to stdout. The [text] is already styled (color/glyphs
-/// applied or stripped) for its destination, so the command only writes it.
-class RenderedLine {
-  final bool isError;
-  final String text;
-
-  const RenderedLine({required this.isError, required this.text});
-}
+import 'update_output_formatter.dart';
 
 /// Renders an [ExplicitUpdateOutcome] into branded, capability-gated output
 /// lines for the `sesori-bridge update` command.
 ///
-/// Self-contained on purpose: it owns the brand palette + glyph set (kept
-/// visually consistent with the installer scripts) and decides color/glyph
-/// support per output stream via [TerminalColorValidator] / [TerminalGlyphValidator].
-/// Pure: given the streams + environment, [format] returns strings and performs
-/// no IO — the command does the writing.
+/// The brand palette + glyph set + color/glyph gating live in the injected
+/// [UpdateOutputFormatter]s (one per stream: [_outFormatter] for stdout,
+/// [_errFormatter] for stderr). Pure: [format] returns strings and performs no
+/// IO — the command does the writing.
 class UpdateCommandFormatter {
   UpdateCommandFormatter({
-    required Stdout outStream,
-    required Stdout errorStream,
-    required Map<String, String> environment,
-  }) : _colorOut = TerminalColorValidator.isSupported(out: outStream, environment: environment),
-       _colorErr = TerminalColorValidator.isSupported(out: errorStream, environment: environment),
-       _unicode = TerminalGlyphValidator.isSupported(environment: environment);
+    required UpdateOutputFormatter outFormatter,
+    required UpdateOutputFormatter errFormatter,
+  }) : _outFormatter = outFormatter,
+       _errFormatter = errFormatter;
 
-  final bool _colorOut;
-  final bool _colorErr;
-  final bool _unicode;
+  final UpdateOutputFormatter _outFormatter;
+  final UpdateOutputFormatter _errFormatter;
 
   /// Where users are sent to reinstall manually after a failure.
   static const String installScriptUrl = 'https://sesori.com/';
-
-  static const String _reset = '\x1B[0m';
-  static const String _brand = '\x1B[38;5;39m';
-  static const String _green = '\x1B[38;5;42m';
-  static const String _yellow = '\x1B[38;5;214m';
-  static const String _red = '\x1B[38;5;203m';
-  static const String _dim = '\x1B[2m';
-  static const String _bold = '\x1B[1m';
 
   List<RenderedLine> format({required ExplicitUpdateOutcome outcome}) {
     switch (outcome) {
@@ -112,40 +86,24 @@ class UpdateCommandFormatter {
     return lines;
   }
 
-  String get _arrow => _unicode ? '\u2192' : '->';
+  String get _arrow => _outFormatter.arrow;
 
-  RenderedLine _success(String text, {required bool isError}) => RenderedLine(
-    isError: isError,
-    text: '${_glyph(_green, '\u2713', '[OK]', isError: isError)} $text',
-  );
+  UpdateOutputFormatter _output({required bool isError}) => isError ? _errFormatter : _outFormatter;
 
-  RenderedLine _warn(String text, {required bool isError}) => RenderedLine(
-    isError: isError,
-    text: '${_glyph(_yellow, '\u26a0', '!', isError: isError)} $text',
-  );
+  RenderedLine _success(String text, {required bool isError}) =>
+      RenderedLine(isError: isError, text: _output(isError: isError).success(text));
 
-  RenderedLine _error(String text, {required bool isError}) => RenderedLine(
-    isError: isError,
-    text: '${_glyph(_red, '\u2717', 'x', isError: isError)} $text',
-  );
+  RenderedLine _warn(String text, {required bool isError}) =>
+      RenderedLine(isError: isError, text: _output(isError: isError).warn(text));
 
-  RenderedLine _note(String text, {required bool isError}) => RenderedLine(
-    isError: isError,
-    text: '${_glyph(_brand, '\u279c', '>', isError: isError)} $text',
-  );
+  RenderedLine _error(String text, {required bool isError}) =>
+      RenderedLine(isError: isError, text: _output(isError: isError).error(text));
 
-  RenderedLine _dimLine(String text, {required bool isError}) => RenderedLine(
-    isError: isError,
-    text: _paint(_dim, text, isError: isError),
-  );
+  RenderedLine _note(String text, {required bool isError}) =>
+      RenderedLine(isError: isError, text: _output(isError: isError).note(text));
 
-  String _command(String text, {required bool isError}) => _paint('$_brand$_bold', text, isError: isError);
+  RenderedLine _dimLine(String text, {required bool isError}) =>
+      RenderedLine(isError: isError, text: _output(isError: isError).dim(text));
 
-  String _glyph(String code, String unicode, String ascii, {required bool isError}) =>
-      _paint(code, _unicode ? unicode : ascii, isError: isError);
-
-  String _paint(String code, String text, {required bool isError}) {
-    final bool color = isError ? _colorErr : _colorOut;
-    return color ? '$code$text$_reset' : text;
-  }
+  String _command(String text, {required bool isError}) => _output(isError: isError).command(text);
 }
