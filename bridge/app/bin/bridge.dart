@@ -518,11 +518,16 @@ class UpdateCommand extends cli.Command<void> {
         managedExecutablePath: managedRuntimePaths.binaryPath,
       );
 
-      final outcome = await manualUpdateService.runUpdate(force: force);
-      // Close any open progress-bar line before printing the result summary so
-      // it starts on a fresh line (e.g. after a mid-download failure that left
-      // the bar drawn but not at 100%).
-      await progressListener.dispose();
+      final ExplicitUpdateOutcome outcome;
+      try {
+        outcome = await manualUpdateService.runUpdate(force: force);
+      } finally {
+        // Close any open progress-bar line before printing the result summary so
+        // it starts on a fresh line (e.g. after a mid-download failure that left
+        // the bar drawn but not at 100%). In a finally so even an unexpected
+        // throw can't leave the bar line unterminated ahead of the error output.
+        await progressListener.dispose();
+      }
 
       final formatter = UpdateCommandFormatter(outFormatter: outFormatter, errFormatter: errFormatter);
       for (final line in formatter.format(outcome: outcome)) {

@@ -19,9 +19,6 @@ class UpdateMessageFormatter {
   final UpdateOutputFormatter _outFormatter;
   final UpdateOutputFormatter _errFormatter;
 
-  /// Where users are sent to re-run the installer after an update failure.
-  static const String installScriptUrl = 'https://sesori.com/';
-
   /// Genuine-failure guidance: always surfaced on stderr. [toVersion] may be a
   /// concrete version or a phrase ("the latest release") when the failure
   /// predates knowing the target, so it is not `v`-prefixed here.
@@ -32,7 +29,7 @@ class UpdateMessageFormatter {
   }) {
     return [
       RenderedLine(isError: true, text: _errFormatter.error('Automatic update to $toVersion failed: $reason.')),
-      RenderedLine(isError: true, text: _errFormatter.note('Re-run the install script to update manually: $installScriptUrl')),
+      RenderedLine(isError: true, text: _errFormatter.note('Re-run the install script to update manually: $updateInstallScriptUrl')),
       RenderedLine(isError: true, text: _errFormatter.dim('  Details in $logPath')),
     ];
   }

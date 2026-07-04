@@ -22,6 +22,24 @@ class _CapturingStdout implements Stdout {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// A terminal whose writes always fail, simulating a broken pipe / closed
+/// terminal mid-download.
+class _ThrowingStdout implements Stdout {
+  int writeCalls = 0;
+
+  @override
+  bool get hasTerminal => true;
+
+  @override
+  void write(Object? object) {
+    writeCalls++;
+    throw Exception('broken pipe');
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 /// Feeds [events] through a listener wired to [out] with [style], then drains
 /// the stream so all events (and the terminating done) are delivered.
 Future<String> _render({
@@ -110,6 +128,26 @@ void main() {
       expect(written, contains('#'));
       expect(written, isNot(contains('\u25a0')));
       expect(written, contains(' 50%'));
+    });
+
+    test('tolerates a broken pipe: swallows write errors and stops drawing', () async {
+      final out = _ThrowingStdout();
+      final controller = StreamController<DownloadProgress>();
+      final listener = TerminalDownloadProgressListener(
+        progress: controller.stream,
+        formatter: colorFormatter,
+        out: out,
+      );
+
+      // Must complete without an uncaught async error escaping the subscription.
+      controller.add(const DownloadProgress(receivedBytes: 5, totalBytes: 10));
+      controller.add(const DownloadProgress(receivedBytes: 10, totalBytes: 10));
+      await controller.close();
+      await listener.dispose();
+
+      // After the first failed write the bar is marked terminated, so no further
+      // writes are attempted (for later events or the closing newline).
+      expect(out.writeCalls, 1);
     });
 
     test('closes a partially-drawn bar with a newline when the stream ends early', () async {

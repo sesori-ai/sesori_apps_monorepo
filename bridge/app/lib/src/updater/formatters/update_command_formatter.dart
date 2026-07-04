@@ -18,9 +18,6 @@ class UpdateCommandFormatter {
   final UpdateOutputFormatter _outFormatter;
   final UpdateOutputFormatter _errFormatter;
 
-  /// Where users are sent to reinstall manually after a failure.
-  static const String installScriptUrl = 'https://sesori.com/';
-
   List<RenderedLine> format({required ExplicitUpdateOutcome outcome}) {
     switch (outcome) {
       case ExplicitUpdateApplied():
@@ -77,7 +74,7 @@ class UpdateCommandFormatter {
   List<RenderedLine> _failed(ExplicitUpdateFailed outcome) {
     final lines = <RenderedLine>[
       _error('Update failed: ${outcome.reason}.', isError: true),
-      _note('Re-run the install script to update manually: $installScriptUrl', isError: true),
+      _note('Re-run the install script to update manually: $updateInstallScriptUrl', isError: true),
     ];
     final logPath = outcome.logPath;
     if (logPath != null) {

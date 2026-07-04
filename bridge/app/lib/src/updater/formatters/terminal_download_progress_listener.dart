@@ -58,7 +58,9 @@ class TerminalDownloadProgressListener {
     final int filled = (percent * _barCells) ~/ 100;
     final String bar = _formatter.progressBar(filledCells: filled, totalCells: _barCells);
     final String pct = percent.toString().padLeft(3);
-    _out.write('\r      $bar $pct%');
+    if (!_write('\r      $bar $pct%')) {
+      return;
+    }
     _drew = true;
     if (progress.receivedBytes >= total) {
       _terminateLine();
@@ -69,8 +71,27 @@ class TerminalDownloadProgressListener {
   /// starts on a fresh line instead of the animated bar.
   void _terminateLine() {
     if (_drew && !_terminated) {
-      _out.write('\n');
+      _write('\n');
       _terminated = true;
+    }
+  }
+
+  /// Writes to the cosmetic progress sink, tolerating a broken pipe / closed
+  /// terminal (`stdout.write` can throw `StdoutException`). On failure it marks
+  /// the bar terminated so no further draws are attempted and swallows the
+  /// error: the sink is the very one that failed (so there is nowhere to report
+  /// it), and a broken progress bar must never abort the actual download/update.
+  /// Returns whether the write succeeded.
+  bool _write(String text) {
+    if (_terminated) {
+      return false;
+    }
+    try {
+      _out.write(text);
+      return true;
+    } on Object {
+      _terminated = true;
+      return false;
     }
   }
 

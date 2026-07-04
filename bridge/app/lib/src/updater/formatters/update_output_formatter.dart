@@ -13,6 +13,22 @@ class RenderedLine {
   const RenderedLine({required this.isError, required this.text});
 }
 
+/// Where users are sent to re-run the installer after an update failure. Shared
+/// by every updater output surface so the guidance URL stays in one place.
+const String updateInstallScriptUrl = 'https://sesori.com/';
+
+/// Writes a fully-rendered [RenderedLine] straight to the process streams —
+/// stderr for [RenderedLine.isError], stdout otherwise — never gated by
+/// `--log-level`. The default `emitLine` sink for the background/startup
+/// updater services, kept in one place so their writer behaviour can't drift.
+void writeRenderedLine(RenderedLine line) {
+  if (line.isError) {
+    stderr.writeln(line.text);
+  } else {
+    stdout.writeln(line.text);
+  }
+}
+
 /// Formats text and download state into the bridge updater's branded terminal
 /// vocabulary: the palette, glyph set, and capability-gated painting primitives
 /// shared by every updater output surface (the `sesori-bridge update` command,

@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io' show HttpException, SocketException, stderr, stdout;
+import 'dart:io' show HttpException, SocketException;
 
 import 'package:http/http.dart' show ClientException;
 import 'package:meta/meta.dart';
@@ -68,7 +68,7 @@ class UpdateService {
   /// process streams directly (stdout for status, stderr for failures) — never
   /// gated by `--log-level`, matching the branded `sesori-bridge update` path.
   @visibleForTesting
-  void Function(RenderedLine line) emitLine = _writeLine;
+  void Function(RenderedLine line) emitLine = writeRenderedLine;
 
   @visibleForTesting
   void Function(String message) logWarning = Log.w;
@@ -257,14 +257,6 @@ class UpdateService {
   }
 
   void _emitLines(List<RenderedLine> lines) => lines.forEach(emitLine);
-
-  static void _writeLine(RenderedLine line) {
-    if (line.isError) {
-      stderr.writeln(line.text);
-    } else {
-      stdout.writeln(line.text);
-    }
-  }
 
   String _stageFailureReason(UpdateResult result) {
     switch (result) {
