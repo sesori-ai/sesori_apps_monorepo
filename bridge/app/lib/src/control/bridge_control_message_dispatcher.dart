@@ -6,6 +6,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../foundation/control_channel_client.dart";
 import "../services/control_channel_token_service.dart";
 import "../services/control_prompt_service.dart";
+import "../services/control_unregister_service.dart";
 
 /// The single inbound subscriber/decoder for GUI→helper control messages in
 /// supervised mode: it owns the one subscription to
@@ -24,6 +25,7 @@ class BridgeControlMessageDispatcher {
   final ControlChannelClient _client;
   final ControlChannelTokenService _tokenService;
   final ControlPromptService _promptService;
+  final ControlUnregisterService _unregisterService;
 
   StreamSubscription<String>? _subscription;
 
@@ -31,9 +33,11 @@ class BridgeControlMessageDispatcher {
     required ControlChannelClient client,
     required ControlChannelTokenService tokenService,
     required ControlPromptService promptService,
+    required ControlUnregisterService unregisterService,
   })  : _client = client,
         _tokenService = tokenService,
-        _promptService = promptService;
+        _promptService = promptService,
+        _unregisterService = unregisterService;
 
   /// Subscribes to the client's inbound stream. Idempotent — a second call
   /// while already started does nothing.
@@ -66,16 +70,19 @@ class BridgeControlMessageDispatcher {
         _tokenService.handleTokenUpdate(accessToken: accessToken);
       case ControlPromptResponse(:final id, :final accepted):
         _promptService.handlePromptResponse(id: id, accepted: accepted);
+      case ControlUnregisterAndExit():
+        // Unregisters then terminates the process; fire-and-forget because the
+        // flow ends in a graceful shutdown + exit and owns its own errors.
+        unawaited(_unregisterService.handleUnregisterAndExit());
       case ControlTokenRequest():
       case ControlStatus():
       case ControlPromptRequest():
       case ControlRestart():
-      case ControlUnregisterAndExit():
       case ControlRegistered():
       case ControlProvisionProgressMessage():
-        // Not consumed inbound (yet): helper→GUI variants have no inbound
-        // meaning, `restart` is never an inbound command, and
-        // `unregister_and_exit` gains its route when the unregister flow lands.
+        // Not consumed inbound: helper→GUI variants have no inbound meaning and
+        // `restart` is never an inbound command (the GUI restarts the helper by
+        // kill+respawn, not by message).
         Log.d("[control][dispatcher] ignoring inbound ${message.runtimeType}");
     }
   }

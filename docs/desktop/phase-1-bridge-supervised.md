@@ -599,7 +599,59 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   GUI's logout; (4) standalone logout (`bridge logout` CLI path) untouched.
 - **Acceptance:** command unregisters then exits 0; routed via
   `BridgeControlMessageDispatcher`.
-- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch `next-desktop-plan-step`).
+- **Findings:** Shipped as a new Layer-3 `ControlUnregisterService`
+  (`services/control_unregister_service.dart`), the supervised counterpart of the
+  token/prompt services the dispatcher already routes to. It takes the
+  `auth/`-subsystem `BridgeRegistrationService` and an injected
+  `Future<void> Function() terminate`, and owns the logout ordering boundary:
+  `handleUnregisterAndExit()` calls `registrationService.unregister()` then
+  `terminate()`, and **still terminates when unregister throws** (`Log.w`-logged,
+  swallowed) so a bridge that can't reach the auth server can never hang the GUI's
+  logout — the leaked registration is cleaned up by the GUI's offline-unregister
+  fallback (ADR A13). The dispatcher gained a third `required` delegate; the
+  existing `case ControlUnregisterAndExit()` flipped from `Log.d`-ignore to
+  `unawaited(_unregisterService.handleUnregisterAndExit())`, keeping all three
+  routes symmetric typed-delegate calls (`restart` stays the only inbound
+  helper→GUI variant that is ignored). `terminate` is wired at the composition
+  root to the existing `_shutdownThenExit(shutdownCoordinator, code: 0)` — the
+  same graceful-shutdown-then-`io.exit` path the ADR-A9 loss policy uses, so the
+  ordered plugin stop runs before exit (no orphaned runtime). Exit `0` on both
+  success and unregister failure: a GUI-ordered logout is a clean stop, and a
+  non-zero would risk PR-2.7's exit-code state machine backoff-respawning during
+  logout; the shutdown backstop already defaults to 0 when no sentinel is set, so
+  a hung logout-shutdown exits 0 too. `unregister()`'s 404-is-success and
+  clear-bridge-id-once semantics are unchanged (reused, not reimplemented).
+  Standalone byte-identical: every new object is built inside the
+  `if (options.isSupervised)` gate. `make analyze` + `dart analyze --fatal-infos`
+  clean; `make test` all pass (app 1695; +3 unregister-service/dispatcher tests).
+- **Review round** (codex/cubic/gemini, 3 P2s + 1 P1 + hardening): closed four
+  early-startup teardown gaps the new command exposes. (1) The dispatcher starts
+  before `startPlugin()` registers its ordered stop, so a logout mid-start could
+  exit without stopping the backend → the ordered `stopPlugin` is now registered
+  **before** `startPlugin()` (`stopPlugin` safely awaits an in-flight start),
+  which also hardens the pre-existing ADR-A9 loss path. (2) The dispatcher starts
+  before `BridgeIdMigrationService.migrate()`, so a logout on a legacy
+  `token.json`-only install could read an empty store and leak the registration →
+  `migrate()` now runs first, before the control channel/dispatcher. (3) A hung
+  logout-shutdown backstop reported the `failureLatch`-derived `1` when a plugin
+  had already failed → added a `requestedSupervisedLogoutExitCode = 0` sentinel to
+  the backstop chain. (4) A blackholed network could hang logout forever →
+  `ControlUnregisterService` bounds `unregister()` with a configurable timeout
+  (default 10s) and still terminates on timeout. Also switched the extracted
+  registration builder to the safe `_localHostname()` helper. Declined gemini's
+  auth-generation counter: the process exits immediately after unregister, so
+  there are no surviving in-flight operations to invalidate. `make test` app 1696.
+- **Deltas:** To route the command, the supervised `BridgeRegistrationService`
+  had to exist when the dispatcher is built (before the bootstrap token pull, so
+  `token_response` is never missed). Its construction was extracted into a static
+  `_buildRegistrationService(...)` helper and built **early** in the supervised
+  gate (its refresher is the already-present control token service); the original
+  site now reuses that instance or builds the standalone one (whose refresher is
+  the interactive-auth `TokenManager`, only available late). `bridgeIdStorage`
+  construction moved a few lines earlier (pure, no I/O) so both build sites share
+  it; the legacy-id migration still runs at its original point before auth. §6
+  gains one row: `ControlUnregisterService` (Layer 3 `services/`).
 
 ## PR 1.12 — Single-live precedence under supervised `--hidden`
 - **Goal:** Define/implement contention behaviour when no stdin: a supervised

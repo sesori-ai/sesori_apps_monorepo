@@ -6,6 +6,7 @@ import "package:sesori_bridge/src/control/bridge_control_message_dispatcher.dart
 import "package:sesori_bridge/src/foundation/control_channel_client.dart";
 import "package:sesori_bridge/src/services/control_channel_token_service.dart";
 import "package:sesori_bridge/src/services/control_prompt_service.dart";
+import "package:sesori_bridge/src/services/control_unregister_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -24,6 +25,7 @@ void main() {
       client: client,
       tokenService: service,
       promptService: ControlPromptService(client: client),
+      unregisterService: _NoopUnregisterService(),
     )..start();
     addTearDown(dispatcher.dispose);
     return service;
@@ -425,4 +427,14 @@ class _FakeControlChannelClient implements ControlChannelClient {
   Future<void> dispose() async {
     await _inbound.close();
   }
+}
+
+/// The token-service tests wire a real dispatcher but never exercise the logout
+/// command, so its unregister delegate is a no-op stand-in.
+class _NoopUnregisterService implements ControlUnregisterService {
+  @override
+  Future<void> handleUnregisterAndExit() async {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
