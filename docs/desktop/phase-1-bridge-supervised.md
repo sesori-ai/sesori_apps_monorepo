@@ -669,7 +669,43 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   precedence without either silently exiting; (4) replace-prompt timeout
   behaviour doesn't hang GUI boot.
 - **Acceptance:** documented + tested precedence; no silent abort.
-- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch `next-step-desktop-plan`).
+- **Findings:** The precedence is documented as **ADR A25** and needed no new
+  components — PR 1.9 already routes the replace ask through `BridgeReplacePrompt`
+  (`ControlPromptService` supervised / `TerminalPromptRepository` standalone), so
+  the mechanism stays mode-agnostic and the whole change is exit-code typing at
+  the composition root. `BridgeRuntimeServerException` is thrown ONLY by the six
+  single-live/startup-mutex contention aborts in `startPluginUnderStartupMutex`
+  (verified), so the runner gained a dedicated
+  `on BridgeRuntimeServerException` catch before the generic one: standalone
+  keeps the byte-identical `Log.e` + exit 1; supervised sets a new
+  `requestedSupervisedContentionExitCode` sentinel and returns the new
+  `supervisedBridgeContentionExitCode = 88` (beside 86/87). The sentinel joins
+  the shutdown-coordinator backstop chain and the outer-finally
+  shutdown-error no-rethrow guard, so 88 survives a hung or throwing shutdown
+  exactly like 86/87. Decline and `nonInteractive` both map to 88 — the GUI can
+  tell them apart because it answered (or didn't answer) the `prompt_request`
+  itself; either way respawning would only re-prompt. The prompt path is bounded
+  (2-min `ControlPromptService` timeout; channel-down resolves immediately), so
+  GUI boot cannot hang — proven by test. Tests: 5 new integration-style tests in
+  `bridge_instance_service_test.dart` drive a **real** `ControlPromptService`
+  (fake control channel) as the `BridgeInstanceService` replace prompt: GUI
+  accept → incumbent terminated (graceful signal) + allowed; GUI decline →
+  declined, no signals; unanswered prompt → `nonInteractive` within the timeout,
+  no signals; channel down → immediate `nonInteractive` without the prompt
+  timeout; startup-lock contention unanswered → `nonInteractive`, no signals.
+  Standalone regression: all existing instance-service / terminal-prompt /
+  startup-mutex / `bridge_runtime_server` tests pass unchanged (mutex still
+  serializes `ensureRuntime`; no code outside the runner's catch changed).
+  `make analyze` + `dart analyze --fatal-infos` clean; `make test` all pass
+  (app 1701; +5).
+- **Deltas:** The GUI half is an explicit deferral recorded in PR 2.7's
+  acceptance (exit map 86/87/**88**/0/other; "Take over" = plain respawn that
+  answers the fresh spawn's replace prompt with accept — no new control
+  command) — the PR-1.2 DTO surface is untouched (no new message variants).
+  The exit-code mapping in `BridgeRuntimeRunner.run`'s catch has no unit
+  harness (same as the 86/87 mappings); it is covered by the existing
+  contention-path exception tests plus review.
 
 ## PR 1.13 — Tee `RuntimeProvisionProgress` → control channel
 - **Goal:** In supervised mode, tee the typed `RuntimeProvisionProgress` stream
@@ -796,7 +832,7 @@ which is not in the repo, so it fails on a fresh checkout); have a logged-in
 | 6 | Grace-period exit (1.1) | kill the harness process | helper exits (~5s grace), exit code 1, managed runtime shut down (no orphaned `opencode serve`) |
 | 7 | Restart sentinel (1.7) | trigger restart from the phone | helper flushes `{restarting:true}`, exits **86**, does NOT spawn a successor |
 | 8 | Auth-required sentinel (1.9) | harness replies null at bootstrap | helper emits `loginNeeded` prompt, exits **87** |
-| 9 | Prompts (1.9) | start a second bridge to trigger replace-prompt | prompt arrives as a control event in the harness; reply drives the helper |
+| 9 | Prompts + contention precedence (1.9/1.12) | start a second bridge to trigger replace-prompt | prompt arrives as a control event in the harness; accept replaces the incumbent; decline or no reply makes the supervised newcomer exit **88** (incumbent keeps running — no silent abort, no crash-looking exit 1) |
 | 10 | Status + registered (1.10) | watch harness output | `registered{bridgeId}` right after registration; status reflects relay/plugin changes live (no periodic spam) |
 | 11 | Unregister-and-exit (1.11) | send the command from the harness | helper unregisters (check the account's bridge list), clears `bridge_id`, exits 0 |
 | 12 | Provision tee (1.13) | wipe the managed runtime dir; start via harness | download/extract/ready progress events stream to the harness; standalone run still renders stderr progress |

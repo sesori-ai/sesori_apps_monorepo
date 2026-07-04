@@ -126,6 +126,17 @@ const int supervisedRestartExitCode = 86;
 /// exiting is advisory.
 const int supervisedAuthRequiredExitCode = 87;
 
+/// Exit code a supervised bridge returns when same-machine single-live
+/// contention keeps it from starting: another bridge is already running (or
+/// holds the startup mutex) and the replace ask ended in a decline or could
+/// not be answered (GUI declined / unreachable / prompt timeout / teardown).
+/// Distinct from a crash so the GUI supervisor can surface an "another bridge
+/// is running — take over?" state instead of backoff-respawning a helper that
+/// would just re-prompt forever. The incumbent bridge keeps running; taking
+/// over is a plain respawn whose fresh replace prompt the GUI answers with
+/// accept.
+const int supervisedBridgeContentionExitCode = 88;
+
 Future<int> runBridgeApp({
   required BridgeCliOptions options,
   required PluginConfig pluginConfig,
@@ -174,11 +185,20 @@ class BridgeRuntimeRunner {
     // plugin failure was already latched and the ordered shutdown then hangs —
     // otherwise the supervisor would misread the logout as a crash and respawn.
     int? requestedSupervisedLogoutExitCode;
+    // Set when supervised startup loses a same-machine single-live contention
+    // (another bridge is running / holds the startup mutex and the replace ask
+    // ended in decline or couldn't be answered): the runner returns the
+    // contention sentinel (88) so the GUI offers a take-over instead of
+    // backoff-respawning into a re-prompt loop. Read by the backstop and the
+    // shutdown-error path too, so the sentinel survives a hung or throwing
+    // shutdown.
+    int? requestedSupervisedContentionExitCode;
     final shutdownCoordinator = BridgeShutdownCoordinator(
       backstopExitCode: () =>
           requestedSupervisedRestartExitCode ??
           requestedSupervisedAuthRequiredExitCode ??
           requestedSupervisedLogoutExitCode ??
+          requestedSupervisedContentionExitCode ??
           supervisedLossExitCode ??
           (failureLatch.failure == null ? 0 : 1),
     );
@@ -677,6 +697,19 @@ class BridgeRuntimeRunner {
     } on PluginStartAbortedException {
       Log.i("Plugin start aborted as requested.");
       return 0;
+    } on BridgeRuntimeServerException catch (error) {
+      // Same-machine single-live contention: another bridge is running (or
+      // holds the startup mutex) and this bridge did not replace it. Standalone
+      // keeps today's loud abort (exit 1). Supervised exits with the dedicated
+      // contention sentinel so the GUI shows "another bridge is running — take
+      // over?" instead of misreading the abort as a crash and backoff-
+      // respawning a helper that would just re-prompt forever.
+      Log.e("$error");
+      if (options.isSupervised) {
+        requestedSupervisedContentionExitCode = supervisedBridgeContentionExitCode;
+        return supervisedBridgeContentionExitCode;
+      }
+      return 1;
     } catch (error, stackTrace) {
       // Honor an already-completed supervised restart handoff: a teardown error
       // after the handoff is still an intentional restart, so return the sentinel
@@ -694,11 +727,14 @@ class BridgeRuntimeRunner {
         // `shutdownCoordinator.shutdown()` rethrows a failed ordered/parallel
         // step (by design — a failed plugin stop must surface as a non-zero
         // exit). Thrown from this `finally`, that would override the return
-        // value. For a supervised restart or auth-required exit that must NOT
-        // happen: the exit must stay the sentinel so the GUI respawns (86) or
-        // prompts for login (87) rather than treating it as a crash. For every
-        // other exit, preserve the loud-failure behaviour by rethrowing.
-        if (requestedSupervisedRestartExitCode == null && requestedSupervisedAuthRequiredExitCode == null) {
+        // value. For a supervised restart, auth-required, or contention exit
+        // that must NOT happen: the exit must stay the sentinel so the GUI
+        // respawns (86), prompts for login (87), or offers a take-over (88)
+        // rather than treating it as a crash. For every other exit, preserve
+        // the loud-failure behaviour by rethrowing.
+        if (requestedSupervisedRestartExitCode == null &&
+            requestedSupervisedAuthRequiredExitCode == null &&
+            requestedSupervisedContentionExitCode == null) {
           rethrow;
         }
         Log.w("Shutdown error during a supervised sentinel exit; preserving the sentinel exit code", error, stackTrace);
