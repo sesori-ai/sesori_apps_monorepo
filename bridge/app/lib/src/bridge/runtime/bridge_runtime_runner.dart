@@ -169,10 +169,16 @@ class BridgeRuntimeRunner {
     // and the shutdown-error path too, so the sentinel survives a hung or
     // throwing shutdown.
     int? requestedSupervisedAuthRequiredExitCode;
+    // Set when the GUI's `unregister_and_exit` logout command triggers shutdown:
+    // logout is a deliberate clean stop, so the backstop must report 0 even if a
+    // plugin failure was already latched and the ordered shutdown then hangs —
+    // otherwise the supervisor would misread the logout as a crash and respawn.
+    int? requestedSupervisedLogoutExitCode;
     final shutdownCoordinator = BridgeShutdownCoordinator(
       backstopExitCode: () =>
           requestedSupervisedRestartExitCode ??
           requestedSupervisedAuthRequiredExitCode ??
+          requestedSupervisedLogoutExitCode ??
           supervisedLossExitCode ??
           (failureLatch.failure == null ? 0 : 1),
     );
@@ -246,6 +252,19 @@ class BridgeRuntimeRunner {
     final bridgeIdStorage = BridgeIdStorage(filePath: bridgeIdPath());
 
     try {
+      // Copy a legacy bridge id out of token.json into its own storage before
+      // anything ID-dependent runs — in particular before the supervised control
+      // channel + dispatcher come up, so a GUI `unregister_and_exit` that arrives
+      // during early startup unregisters the migrated id instead of reading an
+      // empty store and leaking the server-side registration. The first token
+      // save no longer serializes bridgeId, so skipping this would erase the only
+      // copy. A failure here aborts startup so the next run retries the copy with
+      // the legacy source still intact.
+      await BridgeIdMigrationService(
+        bridgeIdStorage: bridgeIdStorage,
+        readLegacyBridgeId: readLegacyBridgeId,
+      ).migrate();
+
       // Supervised mode (desktop GUI): bring up the loopback control channel
       // before anything else so the GUI sees the helper connect promptly. Every
       // step here is gated by `--control-url`; standalone startup is unchanged.
@@ -287,10 +306,14 @@ class BridgeRuntimeRunner {
         shutdownCoordinator.add(disposable: supervisedRegistrationService.dispose);
         // Handles the GUI's `unregister_and_exit` logout command: unregister the
         // bridgeId, then gracefully shut down and exit 0 (a clean stop, so the
-        // GUI does not respawn us).
+        // GUI does not respawn us). Record the logout sentinel first so a hung
+        // shutdown's backstop still reports 0 rather than a latched-failure 1.
         final controlUnregisterService = ControlUnregisterService(
           registrationService: supervisedRegistrationService,
-          terminate: () => _shutdownThenExit(shutdownCoordinator: shutdownCoordinator, code: 0),
+          terminate: () {
+            requestedSupervisedLogoutExitCode = 0;
+            return _shutdownThenExit(shutdownCoordinator: shutdownCoordinator, code: 0);
+          },
         );
         // The single inbound subscriber: decodes GUI→helper frames once and
         // routes them to the owning service. Started before the bootstrap token
@@ -371,16 +394,6 @@ class BridgeRuntimeRunner {
           Log.w("Update reconciliation failed (non-fatal): $error");
         }
       }
-
-      // Copy a legacy bridge id out of token.json into its own storage before
-      // authentication: the first token save no longer serializes bridgeId, so
-      // it would otherwise erase the only copy and force a duplicate
-      // registration. A failure here aborts startup so the next run retries the
-      // copy with the legacy source still intact.
-      await BridgeIdMigrationService(
-        bridgeIdStorage: bridgeIdStorage,
-        readLegacyBridgeId: readLegacyBridgeId,
-      ).migrate();
 
       // Supervised mode short-circuits the interactive auth bootstrap: no
       // provider menu, no email/password prompt — the access token comes from
@@ -488,11 +501,17 @@ class BridgeRuntimeRunner {
         }
       }
 
-      final plugin = await pluginManager.startPlugin(id: pluginId);
+      // Register the ordered plugin-stop BEFORE starting the plugin. A logout
+      // (or the ADR-A9 control-loss exit) can trigger `_shutdownThenExit` while
+      // `startPlugin()` is still in-flight; registering the stop first means the
+      // ordered shutdown covers a partially-started plugin (`stopPlugin` awaits
+      // the in-flight start, then shuts it down) instead of exiting without
+      // stopping it and orphaning the backend. It is a no-op if start never ran.
       shutdownCoordinator.addOrdered(
         action: () => pluginManager.stopPlugin(id: pluginId),
         budget: _pluginShutdownBudget,
       );
+      final plugin = await pluginManager.startPlugin(id: pluginId);
       plugin.status
           .listen((status) {
             if (status is PluginFailed) {
@@ -763,7 +782,11 @@ class BridgeRuntimeRunner {
       ),
       tokenRefresher: tokenRefresher,
       bridgeIdStorage: bridgeIdStorage,
-      hostName: io.Platform.localHostname,
+      // Safe helper (not io.Platform.localHostname directly): hostname
+      // resolution can throw a SocketException in restricted/containerized
+      // environments; degrade to "" (which BridgeRegistrationService clamps to
+      // "sesori-bridge") instead of crashing startup.
+      hostName: _localHostname(),
       platform: BridgeRegistrationService.currentPlatformName(),
     );
   }

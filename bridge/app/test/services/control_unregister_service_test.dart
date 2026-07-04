@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:sesori_bridge/src/auth/bridge_registration_service.dart";
 import "package:sesori_bridge/src/services/control_unregister_service.dart";
 import "package:test/test.dart";
@@ -27,6 +29,24 @@ void main() {
       final service = ControlUnregisterService(
         registrationService: registrationService,
         terminate: () async => terminated = true,
+      );
+
+      await service.handleUnregisterAndExit();
+
+      expect(terminated, isTrue);
+    });
+
+    test("terminates when a stalled unregister exceeds the timeout", () async {
+      var terminated = false;
+      final registrationService = _FakeRegistrationService(
+        // Never completes — a blackholed network would hang logout forever
+        // without the bounding timeout.
+        onUnregister: () => Completer<void>().future,
+      );
+      final service = ControlUnregisterService(
+        registrationService: registrationService,
+        terminate: () async => terminated = true,
+        unregisterTimeout: const Duration(milliseconds: 20),
       );
 
       await service.handleUnregisterAndExit();

@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../auth/bridge_registration_service.dart";
@@ -18,21 +20,32 @@ import "../auth/bridge_registration_service.dart";
 /// process-termination effect is injected ([_terminate]) so the composition root
 /// keeps ownership of the graceful-shutdown-then-exit path.
 class ControlUnregisterService {
+  /// The unregister DELETE is a single machine-to-server call with a
+  /// GUI-supplied (already cached) token, so it should be quick. Bounding it
+  /// keeps a stalled network (silent packet loss / blackhole) from hanging the
+  /// GUI's logout forever — on timeout the process still terminates and the
+  /// GUI's offline-unregister fallback (ADR A13) cleans up the leaked
+  /// registration.
+  static const Duration _defaultUnregisterTimeout = Duration(seconds: 10);
+
   final BridgeRegistrationService _registrationService;
   final Future<void> Function() _terminate;
+  final Duration _unregisterTimeout;
 
   ControlUnregisterService({
     required BridgeRegistrationService registrationService,
     required Future<void> Function() terminate,
+    Duration unregisterTimeout = _defaultUnregisterTimeout,
   })  : _registrationService = registrationService,
-        _terminate = terminate;
+        _terminate = terminate,
+        _unregisterTimeout = unregisterTimeout;
 
   /// Unregisters the bridge, then terminates the process. Terminates even when
-  /// the unregister throws so the GUI's logout is never blocked by a bridge that
-  /// can't reach the auth server.
+  /// the unregister throws or times out, so the GUI's logout is never blocked by
+  /// a bridge that can't reach the auth server.
   Future<void> handleUnregisterAndExit() async {
     try {
-      await _registrationService.unregister();
+      await _registrationService.unregister().timeout(_unregisterTimeout);
     } on Object catch (error, stackTrace) {
       Log.w("[control] unregister on logout failed; terminating anyway", error, stackTrace);
     }

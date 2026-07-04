@@ -625,6 +625,23 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   Standalone byte-identical: every new object is built inside the
   `if (options.isSupervised)` gate. `make analyze` + `dart analyze --fatal-infos`
   clean; `make test` all pass (app 1695; +3 unregister-service/dispatcher tests).
+- **Review round** (codex/cubic/gemini, 3 P2s + 1 P1 + hardening): closed four
+  early-startup teardown gaps the new command exposes. (1) The dispatcher starts
+  before `startPlugin()` registers its ordered stop, so a logout mid-start could
+  exit without stopping the backend → the ordered `stopPlugin` is now registered
+  **before** `startPlugin()` (`stopPlugin` safely awaits an in-flight start),
+  which also hardens the pre-existing ADR-A9 loss path. (2) The dispatcher starts
+  before `BridgeIdMigrationService.migrate()`, so a logout on a legacy
+  `token.json`-only install could read an empty store and leak the registration →
+  `migrate()` now runs first, before the control channel/dispatcher. (3) A hung
+  logout-shutdown backstop reported the `failureLatch`-derived `1` when a plugin
+  had already failed → added a `requestedSupervisedLogoutExitCode = 0` sentinel to
+  the backstop chain. (4) A blackholed network could hang logout forever →
+  `ControlUnregisterService` bounds `unregister()` with a configurable timeout
+  (default 10s) and still terminates on timeout. Also switched the extracted
+  registration builder to the safe `_localHostname()` helper. Declined gemini's
+  auth-generation counter: the process exits immediately after unregister, so
+  there are no surviving in-flight operations to invalidate. `make test` app 1696.
 - **Deltas:** To route the command, the supervised `BridgeRegistrationService`
   had to exist when the dispatcher is built (before the bootstrap token pull, so
   `token_response` is never missed). Its construction was extracted into a static
