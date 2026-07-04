@@ -10,6 +10,7 @@ import "package:sesori_bridge/src/bridge/debug_server.dart";
 import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/models/bridge_config.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/relay_client.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime.dart";
 import "package:sesori_bridge/src/server/api/system_process_api.dart";
 import "package:sesori_bridge/src/server/foundation/bridge_restart_command_builder.dart";
@@ -39,6 +40,11 @@ _DebugServerHarness _createDebugServerHarness({
       sseReplayWindow: Duration(minutes: 5),
     ),
     plugin: plugin,
+    relayClient: RelayClient(
+      relayURL: "ws://127.0.0.1:9999",
+      accessTokenProvider: FakeAccessTokenProvider(),
+      bridgeIdProvider: FakeBridgeIdProvider(),
+    ),
     httpClient: httpClient,
     accessTokenProvider: FakeAccessTokenProvider(),
     tokenRefresher: _FakeTokenRefresher(),
@@ -48,6 +54,7 @@ _DebugServerHarness _createDebugServerHarness({
     failureReporter: FakeFailureReporter(),
     restartService: restartService ?? buildTestRestartService(),
     filesystemAccessOk: true,
+    statusNotifier: null,
   );
   final debugServer = runtime.createDebugServer(port: port);
   return _DebugServerHarness(

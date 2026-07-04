@@ -8,8 +8,8 @@
 
 ## Current pointer
 
-- **Last completed phase:** Phase 1 — PR 1.9 `BridgeControlMessageDispatcher` + prompts → control events + auth-required exit `87` (PR raised on branch `next-desktop-implementation`)
-- **Next up:** Phase 1 — PR 1.10 Status push (relay/plugin/active sessions)
+- **Last completed phase:** Phase 1 — PR 1.10 Status push (relay/plugin/active sessions) via `ControlStatusNotifier` (PR raised on branch `desktop-implementation-stage`)
+- **Next up:** Phase 1 — PR 1.11 `unregister-and-exit` control command
 - **Branch:** one feature branch per PR, cut from `main`
 
 > **Tracking lives in four places that MUST move together in the same PR.**
@@ -281,7 +281,7 @@ mobile release.**
 | `BridgeControlMessageDispatcher` | Layer 4 `control/` | owns the **single** inbound subscription + decode of GUI→helper control messages (created in PR 1.9). Routes: `token_response`/`token_update` → token-service delegate, `prompt_response` → prompt-service delegate, `unregister_and_exit` → unregister flow (PR 1.11). `restart` is **helper→GUI only** and is never an inbound command — the GUI restarts the helper by kill+respawn, not by message. |
 | `ControlPromptService` | Layer 3 `services/` | supervised-mode user prompts over the injected `ControlChannelClient` (same blessed seam as the token service): owns prompt-class correlation state + ALL prompt-class outbound sends (`prompt_request`); implements the `server/foundation/` `BridgeReplacePrompt` interface so `BridgeInstanceService` asks the GUI instead of a terminal; `announceLoginNeeded()` is the best-effort advisory before the exit-87 sentinel (ADR A23). Unanswerable asks (channel down / timeout / teardown) degrade to `nonInteractive`. |
 | `BridgeReplacePrompt` | interface in `server/foundation/` | the replace-bridge ask contract with two production implementations: `TerminalPromptRepository` (standalone) and `ControlPromptService` (supervised); keeps the `server/` subsystem free of core-layer imports (mirrors the auth-interface precedent from PR 1.4). |
-| `ControlStatusNotifier` | Layer 4 `control/` | owns **all outbound** status-class control sends (created in PR 1.10): observes Layer-0 state streams (relay connection state incl. close code/reason, plugin health, active-session summary, registration events) and maps them to `status`/`registered`/takeover pushes over the injected `ControlChannelClient`. Higher layers (Orchestrator) never call `ControlChannelClient.send` directly. |
+| `ControlStatusNotifier` | Layer 4 `control/` | owns **all outbound** status-class control sends (created in PR 1.10): observes Layer-0 state streams (relay connection state incl. close code via `RelayClient.connectionState`, plugin health via `BridgePlugin.status`, registration events via the auth seam's `registrations` stream, plus the control channel's own state for a reconnect re-sync) and receives the **active-session summary as a typed delegate feed** from the Orchestrator's SSE pipeline (`handleProjectsSummary` — same shape as `CompletionPushListener.handleSseEvent`; avoids a second Layer-4→Layer-1 derivation path into the plugin). Maps them to `status`/`registered`/takeover pushes over the injected `ControlChannelClient`, deduped. Higher layers (Orchestrator) never call `ControlChannelClient.send` directly. |
 | `BridgeIdStorage` (file API + reader) | **inside the `auth/` subsystem** | persist `bridgeId` separately from `token.json`; kept within `auth/` (which is self-contained, outside the core layer hierarchy) so auth code doesn't depend back on top-level `repositories/`. Injected from the composition root. |
 | supervised auth bootstrap | composition root | short-circuit `BridgeRuntimeAuthService.ensureAuthenticated` (no stdin); keep an equivalent `logAuthenticatedUser` |
 | restart change | `orchestrator`/runner seam | `handleRestartHandoff()` → `exit(86)` instead of `spawnSuccessor()` |
@@ -393,7 +393,7 @@ them). Only the user checks an MT box.
 - ☑ 1.7 Exit-code restart (`86`) + bypass successor-spawn — Med / S-M
 - ☑ 1.8 Disable self-update + reconcile when supervised — Low / S
 - ☑ 1.9 `BridgeControlMessageDispatcher` + prompts/Console → control events + auth-required exit `87` — Med / M
-- ☐ 1.10 Status push (relay/plugin/active sessions) — Low / S-M
+- ☑ 1.10 Status push (relay/plugin/active sessions) — Low / S-M
 - ☐ 1.11 `unregister-and-exit` control command — Low / S-M
 - ☐ 1.12 Single-live precedence under supervised `--hidden` — Med / M
 - ☐ 1.13 Tee `RuntimeProvisionProgress` → control channel — Low / S-M

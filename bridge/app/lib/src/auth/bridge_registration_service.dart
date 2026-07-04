@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
@@ -27,6 +28,7 @@ class BridgeRegistrationService implements BridgeIdProvider {
 
   bool _registered = false;
   String? _bridgeId;
+  final StreamController<String> _registrations = StreamController<String>.broadcast();
 
   BridgeRegistrationService({
     required BridgeRegistrationRepository repository,
@@ -59,6 +61,14 @@ class BridgeRegistrationService implements BridgeIdProvider {
   @override
   String? get bridgeId => _bridgeId;
 
+  /// Emits the assigned bridge id each time a registration round-trip
+  /// actually succeeds: the first [ensureRegistered] of the process and any
+  /// post-revocation re-registration. Memoized [ensureRegistered] calls
+  /// (every reconnect) do NOT emit, so listeners see one event per real
+  /// registration. Lets a supervised-mode observer push the id to the GUI
+  /// right after registration, before any crash/stop.
+  Stream<String> get registrations => _registrations.stream;
+
   /// Ensures this bridge is registered with the auth server.
   ///
   /// Posts the persisted bridge id (if any) so the server updates the
@@ -85,6 +95,9 @@ class BridgeRegistrationService implements BridgeIdProvider {
       await _bridgeIdStorage.write(bridgeId: summary.id);
     }
     _registered = true;
+    if (!_registrations.isClosed) {
+      _registrations.add(summary.id);
+    }
   }
 
   /// Clears the in-memory and persisted bridge id and resets the
@@ -127,6 +140,13 @@ class BridgeRegistrationService implements BridgeIdProvider {
       }
     }
     await _bridgeIdStorage.clear();
+  }
+
+  /// Closes the [registrations] stream. Idempotent.
+  Future<void> dispose() async {
+    if (!_registrations.isClosed) {
+      await _registrations.close();
+    }
   }
 
   Future<T> _withAccessTokenRetry<T>(Future<T> Function(String accessToken) action) async {

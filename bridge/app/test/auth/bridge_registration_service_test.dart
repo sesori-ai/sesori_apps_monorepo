@@ -82,6 +82,63 @@ void main() {
     });
   });
 
+  group("BridgeRegistrationService.registrations", () {
+    test("emits the assigned bridge id when registration succeeds", () async {
+      final emitted = <String>[];
+      service.registrations.listen(emitted.add);
+
+      await service.ensureRegistered();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(emitted, equals(["br_test1234"]));
+    });
+
+    test("memoized calls do not re-emit", () async {
+      final emitted = <String>[];
+      service.registrations.listen(emitted.add);
+
+      await service.ensureRegistered();
+      await service.ensureRegistered();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(emitted, hasLength(1));
+    });
+
+    test("re-emits the fresh id after a revocation re-registers", () async {
+      final emitted = <String>[];
+      service.registrations.listen(emitted.add);
+
+      await service.ensureRegistered();
+      repository.nextBridgeId = "br_fresh5678";
+      await service.handleBridgeRevoked();
+      await service.ensureRegistered();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(emitted, equals(["br_test1234", "br_fresh5678"]));
+    });
+
+    test("a failed registration emits nothing", () async {
+      final emitted = <String>[];
+      service.registrations.listen(emitted.add);
+      repository.registerError = BridgeRegistrationException(statusCode: 500, body: "boom");
+
+      await expectLater(service.ensureRegistered(), throwsA(isA<BridgeRegistrationException>()));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(emitted, isEmpty);
+    });
+
+    test("dispose closes the stream and a later registration does not throw", () async {
+      final done = expectLater(service.registrations, emitsDone);
+
+      await service.dispose();
+      await done;
+
+      await service.ensureRegistered();
+      expect(service.bridgeId, equals("br_test1234"));
+    });
+  });
+
   group("BridgeRegistrationService.sanitizeBridgeName", () {
     test("passes a normal hostname through unchanged", () {
       expect(BridgeRegistrationService.sanitizeBridgeName("Alexs-MacBook"), equals("Alexs-MacBook"));

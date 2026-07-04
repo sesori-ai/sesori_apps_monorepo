@@ -447,6 +447,7 @@ class _ReauthHarness {
         failureReporter: FakeFailureReporter(),
       ),
       restartService: buildTestRestartService(),
+      statusNotifier: null,
     );
 
     final session = orchestrator.create();

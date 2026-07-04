@@ -11,6 +11,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../auth/access_token_provider.dart";
 import "../auth/bridge_registration_service.dart";
 import "../auth/token_refresher.dart";
+import "../control/control_status_notifier.dart";
 import "../push/completion_push_listener.dart";
 import "../push/maintenance_push_listener.dart";
 import "../push/push_dispatcher.dart";
@@ -77,6 +78,7 @@ class Orchestrator {
   final WorktreeService _worktreeService;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final BridgeRestartService _restartService;
+  final ControlStatusNotifier? _statusNotifier;
 
   Orchestrator({
     required this.config,
@@ -106,6 +108,9 @@ class Orchestrator {
     required WorktreeService worktreeService,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
     required BridgeRestartService restartService,
+    // Supervised mode only: owns the status-class pushes to the desktop GUI.
+    // Standalone has no control channel, so this is null there.
+    required ControlStatusNotifier? statusNotifier,
   }) : _client = client,
        _plugin = plugin,
        _metadataService = metadataService,
@@ -131,7 +136,8 @@ class Orchestrator {
        _sessionPersistenceService = sessionPersistenceService,
        _worktreeService = worktreeService,
        _sessionEventEnrichmentService = sessionEventEnrichmentService,
-       _restartService = restartService;
+       _restartService = restartService,
+       _statusNotifier = statusNotifier;
 
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorSession create() {
@@ -188,6 +194,7 @@ class Orchestrator {
       sessionAbortService: sessionAbortService,
       sessionEventEnrichmentService: _sessionEventEnrichmentService,
       restartService: _restartService,
+      statusNotifier: _statusNotifier,
     );
   }
 
@@ -225,6 +232,7 @@ class OrchestratorSession {
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final SessionAbortService _sessionAbortService;
   final BridgeRestartService _restartService;
+  final ControlStatusNotifier? _statusNotifier;
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
   bool _cancelled = false;
@@ -280,6 +288,7 @@ class OrchestratorSession {
     required SessionAbortService sessionAbortService,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
     required BridgeRestartService restartService,
+    required ControlStatusNotifier? statusNotifier,
   }) : _client = client,
        _plugin = plugin,
        _pushDispatcher = pushDispatcher,
@@ -297,6 +306,7 @@ class OrchestratorSession {
        _sessionViewTracker = sessionViewTracker,
        _sessionAbortService = sessionAbortService,
        _restartService = restartService,
+       _statusNotifier = statusNotifier,
        _router = RequestRouter(
          plugin: plugin,
          getCommandsHandler: GetCommandsHandler(
@@ -367,6 +377,9 @@ class OrchestratorSession {
       final startupSummary = _mapper.buildProjectsSummaryEvent();
       if (startupSummary != null) {
         _completionListener.handleSseEvent(startupSummary);
+        if (startupSummary is SesoriProjectsSummary) {
+          _statusNotifier?.handleProjectsSummary(summary: startupSummary);
+        }
       }
 
       Log.d("subscribing to plugin event stream...");
@@ -618,6 +631,9 @@ class OrchestratorSession {
           "[sse] mapped to: ${sesoriEvent.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
         );
         _completionListener.handleSseEvent(sesoriEvent);
+        if (sesoriEvent is SesoriProjectsSummary) {
+          _statusNotifier?.handleProjectsSummary(summary: sesoriEvent);
+        }
         _sseManager.enqueueEvent(sesoriEvent);
         unawaited(
           _routeUnseenActivity(sesoriEvent).catchError((Object e, StackTrace st) {
