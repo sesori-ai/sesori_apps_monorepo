@@ -578,6 +578,10 @@ cat "\$HOME/.zprofile"
         environment: {
           'PATH': Platform.environment['PATH'] ?? '',
           'FORCE_COLOR': '1',
+          // LC_ALL has the highest locale precedence, so setting it here keeps the
+          // UTF-8 assertion deterministic even when the runner exports its own
+          // non-UTF-8 LC_ALL/LC_CTYPE (which Process.run inherits by default).
+          'LC_ALL': 'en_US.UTF-8',
           'LANG': 'en_US.UTF-8',
         },
       );
