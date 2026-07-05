@@ -2,6 +2,8 @@ import "dart:io";
 
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_server_exception.dart";
+import "package:sesori_bridge/src/control/control_provision_notifier.dart";
+import "package:sesori_bridge/src/foundation/control_channel_client.dart";
 import "package:sesori_bridge/src/server/api/runtime_file_api.dart";
 import "package:sesori_bridge/src/server/foundation/process_match.dart";
 import "package:sesori_bridge/src/server/models/bridge_startup_lock.dart";
@@ -9,6 +11,7 @@ import "package:sesori_bridge/src/server/repositories/process_repository.dart";
 import "package:sesori_bridge/src/server/repositories/startup_mutex_repository.dart";
 import "package:sesori_bridge/src/server/services/bridge_instance_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 // The plugin-specific start flows (managed start, attach mode, ownership
@@ -37,7 +40,10 @@ void main() {
       }
     });
 
-    Future<BridgePlugin> startPlugin({String? stateDirectory}) {
+    Future<BridgePlugin> startPlugin({
+      String? stateDirectory,
+      ControlProvisionNotifier? provisionNotifier,
+    }) {
       final directory = stateDirectory ?? runtimeDirectory.path;
       return BridgeRuntimeRunner.startPluginUnderStartupMutex(
         descriptor: descriptor,
@@ -53,6 +59,7 @@ void main() {
         environment: const <String, String>{"HOME": "/home/alex"},
         currentUser: ProcessUser.fromRawUser("alex"),
         startAborted: StartAbortSignal.never,
+        provisionNotifier: provisionNotifier,
       );
     }
 
@@ -255,7 +262,61 @@ void main() {
 
       await expectLater(startPlugin(), throwsA(isA<PluginStartAbortedException>()));
     });
+
+    test("supervised: tees every provisioning event onto the control channel, in order", () async {
+      bridgeInstanceService.resolution = _allowedResolution();
+      descriptor.provisionEvents.addAll(const <RuntimeProvisionProgress>[
+        ProvisionResolving(),
+        ProvisionDownloading(receivedBytes: 50, totalBytes: 100),
+        ProvisionExtracting(),
+        ProvisionReady(binaryPath: "/opt/opencode"),
+      ]);
+      final client = _FakeControlChannelClient();
+      addTearDown(client.dispose);
+
+      await startPlugin(provisionNotifier: ControlProvisionNotifier(client: client));
+
+      expect(
+        client.sentMessages,
+        equals(const <ControlMessage>[
+          ControlMessage.provisionProgress(progress: ControlProvisionProgress.resolving()),
+          ControlMessage.provisionProgress(
+            progress: ControlProvisionProgress.downloading(receivedBytes: 50, totalBytes: 100),
+          ),
+          ControlMessage.provisionProgress(progress: ControlProvisionProgress.extracting()),
+          ControlMessage.provisionProgress(progress: ControlProvisionProgress.ready(binaryPath: "/opt/opencode")),
+        ]),
+      );
+    });
+
+    test("supervised: ProvisionReady is still recorded on the host despite teeing", () async {
+      bridgeInstanceService.resolution = _allowedResolution();
+      descriptor.provisionEvents.add(const ProvisionReady(binaryPath: "/opt/opencode"));
+      final client = _FakeControlChannelClient();
+      addTearDown(client.dispose);
+
+      await startPlugin(provisionNotifier: ControlProvisionNotifier(client: client));
+
+      expect(descriptor.startedHosts.single.provisionedRuntimePath, equals("/opt/opencode"));
+    });
+
+    test("standalone: no notifier means zero control sends, ProvisionReady still recorded", () async {
+      bridgeInstanceService.resolution = _allowedResolution();
+      descriptor.provisionEvents.add(const ProvisionReady(binaryPath: "/opt/opencode"));
+
+      await startPlugin();
+
+      expect(descriptor.startedHosts.single.provisionedRuntimePath, equals("/opt/opencode"));
+    });
   });
+}
+
+BridgeInstanceResolution _allowedResolution() {
+  return const BridgeInstanceResolution(
+    status: BridgeInstanceResolutionStatus.allowed,
+    existingBridges: <ProcessIdentity>[],
+    terminatedBridges: <ProcessIdentity>[],
+  );
 }
 
 ProcessIdentity _identity({required int pid, required String? startMarker}) {
@@ -296,6 +357,10 @@ class _RecordingDescriptor extends BridgePluginDescriptor {
   /// When non-empty, `start()` throws the first entry instead of returning.
   final List<Object> startErrors = <Object>[];
 
+  /// Emitted in order by `ensureRuntime()` before `start()` runs, letting tests
+  /// drive the provisioning tee.
+  final List<RuntimeProvisionProgress> provisionEvents = <RuntimeProvisionProgress>[];
+
   @override
   String get id => "fake";
 
@@ -304,6 +369,13 @@ class _RecordingDescriptor extends BridgePluginDescriptor {
 
   @override
   List<PluginOption> get options => const [];
+
+  @override
+  Stream<RuntimeProvisionProgress> ensureRuntime({required PluginHost host}) async* {
+    for (final event in provisionEvents) {
+      yield event;
+    }
+  }
 
   @override
   Future<BridgePlugin> start(PluginHost host) async {
@@ -428,4 +500,29 @@ class _FakeBridgeInstanceService implements BridgeInstanceService {
     startupLockContentionCalls.add((lock: lock, holder: holder, currentPid: currentPid));
     return startupLockStatus;
   }
+}
+
+/// Records outbound control frames so the provisioning-tee tests can assert
+/// exactly what the notifier pushed to the GUI.
+class _FakeControlChannelClient implements ControlChannelClient {
+  final List<String> sentFrames = <String>[];
+
+  List<ControlMessage> get sentMessages =>
+      sentFrames.map((frame) => ControlMessage.fromJson(jsonDecodeMap(frame))).toList();
+
+  @override
+  Stream<String> get inbound => const Stream<String>.empty();
+
+  @override
+  Stream<ControlChannelConnectionState> get connectionState =>
+      const Stream<ControlChannelConnectionState>.empty();
+
+  @override
+  void send(String frame) => sentFrames.add(frame);
+
+  @override
+  Future<void> connect() async {}
+
+  @override
+  Future<void> dispose() async {}
 }

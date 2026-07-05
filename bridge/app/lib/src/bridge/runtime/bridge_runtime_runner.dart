@@ -44,6 +44,7 @@ import "../../auth/token_manager.dart";
 import "../../auth/token_refresher.dart";
 import "../../control/bridge_control_message_dispatcher.dart";
 import "../../control/control_channel_loss_listener.dart";
+import "../../control/control_provision_notifier.dart";
 import "../../control/control_status_notifier.dart";
 import "../../foundation/control_channel_client.dart";
 import "../../repositories/bridge_settings_repository.dart";
@@ -286,6 +287,11 @@ class BridgeRuntimeRunner {
       // Kept in scope past this block: the ControlStatusNotifier (built later,
       // once the plugin exists) shares this client.
       ControlChannelClient? controlChannelClient;
+      // Tees first-run runtime-provisioning progress onto the control channel so
+      // the GUI can render download/install progress. Built here (once the
+      // client exists) and captured by the plugin `starter` closure below, which
+      // runs the provisioning phase. Null in standalone (stderr only).
+      ControlProvisionNotifier? controlProvisionNotifier;
       // Built early in supervised mode so the dispatcher can route the logout
       // `unregister_and_exit` command; reused as THE registration service later.
       // Standalone builds it after the interactive auth flow yields its token
@@ -308,6 +314,9 @@ class BridgeRuntimeRunner {
         // a terminal the helper doesn't have.
         controlPromptService = ControlPromptService(client: controlChannelClient);
         shutdownCoordinator.add(disposable: controlPromptService.dispose);
+        // Tees runtime-provisioning progress to the GUI. Stateless (fed per
+        // event from the provisioning loop), so nothing to dispose.
+        controlProvisionNotifier = ControlProvisionNotifier(client: controlChannelClient);
         // The GUI's supplied token is this bridge's authority, so the control
         // token service is the refresher. Reads the persisted id only at
         // runtime (unregister/register), after the migration below, so building
@@ -493,6 +502,7 @@ class BridgeRuntimeRunner {
           environment: environment,
           currentUser: currentUser,
           startAborted: startAbortController.signal,
+          provisionNotifier: controlProvisionNotifier,
         ),
       );
       // If this bridge was spawned by a restart, wait for the predecessor to
@@ -864,9 +874,16 @@ class BridgeRuntimeRunner {
   /// stays unset, and `start()` proceeds in a degraded state. A cooperative
   /// abort during provisioning surfaces as [PluginStartAbortedException], which
   /// the caller already treats as "aborted as requested".
+  ///
+  /// In supervised mode [provisionNotifier] tees each event onto the GUI
+  /// control channel (mapped to the shared DTOs) so the GUI can render first-run
+  /// progress. The tee is a best-effort side effect: it never blocks or breaks
+  /// the runner's own consumption of the stream. Standalone passes null and only
+  /// renders to stderr.
   static Future<void> _ensurePluginRuntime({
     required BridgePluginDescriptor descriptor,
     required BridgePluginHostImpl host,
+    required ControlProvisionNotifier? provisionNotifier,
   }) async {
     final formatter = RuntimeProvisionFormatter(
       interactive: io.stderr.hasTerminal,
@@ -877,6 +894,7 @@ class BridgeRuntimeRunner {
       if (rendered != null) {
         io.stderr.write(rendered);
       }
+      provisionNotifier?.notify(event);
       if (event is ProvisionReady) {
         host.provisionedRuntimePath = event.binaryPath;
       }
@@ -906,6 +924,7 @@ class BridgeRuntimeRunner {
     required Map<String, String> environment,
     required ProcessUser? currentUser,
     required StartAbortSignal startAborted,
+    required ControlProvisionNotifier? provisionNotifier,
   }) {
     Future<BridgePlugin> attemptStart({required int attempt}) {
       return startupMutexRepository.withLock<BridgePlugin>(
@@ -950,7 +969,11 @@ class BridgeRuntimeRunner {
               // needed), recording the resolved launch path on the host, before
               // start(). Runs under the mutex so concurrent bridge instances
               // can't install the same managed runtime at once.
-              await _ensurePluginRuntime(descriptor: descriptor, host: host);
+              await _ensurePluginRuntime(
+                descriptor: descriptor,
+                host: host,
+                provisionNotifier: provisionNotifier,
+              );
               return descriptor.start(host);
             case BridgeInstanceResolutionStatus.declined:
               throw const BridgeRuntimeServerException(

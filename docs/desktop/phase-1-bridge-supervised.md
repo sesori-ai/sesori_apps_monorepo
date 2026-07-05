@@ -732,7 +732,47 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   provisioning (send is fire-and-forget/buffered).
 - **Acceptance:** provision events reach a fake server; `ProvisionReady`/`Failed`
   terminal events conveyed; standalone formatter output unchanged.
-- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch `next-step-desktop-plan-6d9fe2`).
+- **Findings:** Shipped one new Layer-4 `control/` class,
+  `ControlProvisionNotifier`, that owns ALL outbound `provision_progress`-class
+  sends over the injected `ControlChannelClient` — the same blessed seam and
+  best-effort send pattern as PR-1.10's `ControlStatusNotifier`
+  (`ControlChannelNotConnectedException` → `Log.d`, any other → `Log.w`, never
+  throws back into the caller). Its single public `notify(RuntimeProvisionProgress)`
+  maps each event to the PR-1.2 wire mirror `ControlProvisionProgress` via a
+  private exhaustive switch (mirroring `ControlStatusNotifier`'s inline
+  `_mapPluginStatus`/`_mapRelayState` — a standalone `Mapper` would own no
+  lifecycle/state and failed the ownership-boundary test at plan review) and
+  sends a `ControlMessage.provisionProgress`. It is stateless — fed synchronously
+  one event at a time from the runner's existing single-subscription provisioning
+  loop — so it owns no subscription and has no `dispose`. Wiring: the runner's
+  `_ensurePluginRuntime` gained an optional `ControlProvisionNotifier?
+  provisionNotifier` teed inside the existing `await for` loop (after the stderr
+  render, before recording `ProvisionReady.binaryPath`); `startPluginUnderStartupMutex`
+  threads the notifier down; the plugin `starter` closure passes the instance
+  built in the `if (options.isSupervised)` gate (null in standalone). The tee is a
+  best-effort side effect on the existing single subscription, so stream
+  single-subscription/error/terminal semantics are unchanged: `ProvisionReady.binaryPath`
+  still lands on the host, `ProvisionFailed` still degrades (non-fatal), a
+  cooperative abort still surfaces as `PluginStartAbortedException`, and a
+  slow/absent channel cannot stall provisioning (`send` is synchronous and
+  non-blocking, throwing only the swallowed not-connected case). No shared-package
+  change (the DTOs already existed since PR 1.2); no relay-protocol change.
+  Standalone is byte-identical: the notifier is null and the `RuntimeProvisionFormatter`
+  stderr path is untouched. Tests: 4 new `ControlProvisionNotifier` unit tests
+  (7-variant mapping, JSON round-trip, not-connected + generic-error swallow) and
+  3 new `bridge_runtime_server_test` integration tests (supervised tees every
+  event in order via a real notifier + fake client; `ProvisionReady` still
+  recorded on the host despite teeing; standalone with a null notifier still
+  records `ProvisionReady` and sends nothing). `make analyze` +
+  `dart analyze --fatal-infos` clean; `make test` all pass (app 1708; +7).
+- **Deltas:** §6 gains one row: `ControlProvisionNotifier` (Layer 4 `control/`),
+  the owner of all outbound `provision_progress`-class sends — the PR text named
+  no component, placing the tee only "onto the control channel". Kept the
+  RuntimeProvisionProgress→ControlProvisionProgress mapping as a private method
+  inside the notifier (consistency with `ControlStatusNotifier`), not a separate
+  `Mapper` or a `repositories/mappers/` file (this is a Layer-4 wire mapping in
+  the control subsystem, not a repository DTO mapping).
 
 ## PR 1.14 — Relay replaced-close (`4007`) → takeover state, no reconnect war (ADR A22)
 - **Goal:** The relay keeps a single bridge slot per account and closes a

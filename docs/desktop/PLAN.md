@@ -8,8 +8,8 @@
 
 ## Current pointer
 
-- **Last completed phase:** Phase 1 — PR 1.12 Single-live precedence under supervised `--hidden` (exit-88 contention sentinel, ADR A25; PR raised on branch `next-step-desktop-plan`)
-- **Next up:** Phase 1 — PR 1.13 Tee `RuntimeProvisionProgress` → control channel
+- **Last completed phase:** Phase 1 — PR 1.13 Tee `RuntimeProvisionProgress` → control channel (`ControlProvisionNotifier`; PR raised on branch `next-step-desktop-plan-6d9fe2`)
+- **Next up:** Phase 1 — PR 1.14 Relay replaced-close (`4007`) → takeover state, no reconnect war (ADR A22)
 - **Branch:** one feature branch per PR, cut from `main`
 
 > **Tracking lives in four places that MUST move together in the same PR.**
@@ -283,6 +283,7 @@ mobile release.**
 | `ControlUnregisterService` | Layer 3 `services/` | supervised logout `unregister_and_exit` handler (created in PR 1.11): the dispatcher's third typed delegate. Owns the logout ordering boundary — unregisters the `bridgeId` via the injected `BridgeRegistrationService`, then runs the injected `terminate` (composition-root-wired to the graceful `_shutdownThenExit(code: 0)`). Still terminates if unregister throws (logged) so a stuck bridge can't hang the GUI's logout; the GUI's offline-unregister fallback (ADR A13) cleans up any leak. |
 | `BridgeReplacePrompt` | interface in `server/foundation/` | the replace-bridge ask contract with two production implementations: `TerminalPromptRepository` (standalone) and `ControlPromptService` (supervised); keeps the `server/` subsystem free of core-layer imports (mirrors the auth-interface precedent from PR 1.4). |
 | `ControlStatusNotifier` | Layer 4 `control/` | owns **all outbound** status-class control sends (created in PR 1.10): observes Layer-0 state streams (relay connection state incl. close code via `RelayClient.connectionState`, plugin health via `BridgePlugin.status`, registration events via the auth seam's `registrations` stream, plus the control channel's own state for a reconnect re-sync) and receives the **active-session summary as a typed delegate feed** from the Orchestrator's SSE pipeline (`handleProjectsSummary` — same shape as `CompletionPushListener.handleSseEvent`; avoids a second Layer-4→Layer-1 derivation path into the plugin). Maps them to `status`/`registered`/takeover pushes over the injected `ControlChannelClient`, deduped. Higher layers (Orchestrator) never call `ControlChannelClient.send` directly. |
+| `ControlProvisionNotifier` | Layer 4 `control/` | owns **all outbound** `provision_progress`-class sends (created in PR 1.13): the runner's `_ensurePluginRuntime` provisioning loop hands each `RuntimeProvisionProgress` event to `notify(...)`, which maps it to the PR-1.2 wire mirror `ControlProvisionProgress` (private exhaustive switch, same pattern as `ControlStatusNotifier`'s inline status/relay mappers) and sends a `ControlMessage.provisionProgress` over the injected `ControlChannelClient`, best-effort. Stateless (fed synchronously per event), so no subscription/`dispose`. The runner never calls `ControlChannelClient.send` for provisioning directly. |
 | `BridgeIdStorage` (file API + reader) | **inside the `auth/` subsystem** | persist `bridgeId` separately from `token.json`; kept within `auth/` (which is self-contained, outside the core layer hierarchy) so auth code doesn't depend back on top-level `repositories/`. Injected from the composition root. |
 | supervised auth bootstrap | composition root | short-circuit `BridgeRuntimeAuthService.ensureAuthenticated` (no stdin); keep an equivalent `logAuthenticatedUser` |
 | restart change | `orchestrator`/runner seam | `handleRestartHandoff()` → `exit(86)` instead of `spawnSuccessor()` |
@@ -398,7 +399,7 @@ them). Only the user checks an MT box.
 - ☑ 1.10 Status push (relay/plugin/active sessions) — Low / S-M
 - ☑ 1.11 `unregister-and-exit` control command — Low / S-M
 - ☑ 1.12 Single-live precedence under supervised `--hidden` — Med / M
-- ☐ 1.13 Tee `RuntimeProvisionProgress` → control channel — Low / S-M
+- ☑ 1.13 Tee `RuntimeProvisionProgress` → control channel — Low / S-M
 - ☐ 1.14 Relay replaced-close (`4007`) → takeover state, no reconnect war (ADR A22) — Med / S-M
 - ☐ 1.15 Dev control-host harness for manual supervised testing (`tool/`) — Low / S
 - ☐ MT-1 Manual checkpoint: bridge supervised mode end-to-end (see phase doc) — user-run
