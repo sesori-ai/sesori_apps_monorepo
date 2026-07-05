@@ -678,12 +678,11 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   single-live/startup-mutex contention aborts in `startPluginUnderStartupMutex`
   (verified), so the runner gained a dedicated
   `on BridgeRuntimeServerException` catch before the generic one: standalone
-  keeps the byte-identical `Log.e` + exit 1; supervised sets a new
-  `requestedSupervisedContentionExitCode` sentinel and returns the new
-  `supervisedBridgeContentionExitCode = 88` (beside 86/87). The sentinel joins
-  the shutdown-coordinator backstop chain and the outer-finally
-  shutdown-error no-rethrow guard, so 88 survives a hung or throwing shutdown
-  exactly like 86/87. Decline and `nonInteractive` both map to 88 — the GUI can
+  keeps the byte-identical `Log.e` + exit 1; supervised records
+  `SupervisedExitCode.bridgeContention` and returns its code `88` (beside
+  86/87). The recorded exit feeds the shutdown-coordinator backstop and the
+  outer-finally shutdown-error no-rethrow guard, so 88 survives a hung or
+  throwing shutdown exactly like 86/87. Decline and `nonInteractive` both map to 88 — the GUI can
   tell them apart because it answered (or didn't answer) the `prompt_request`
   itself; either way respawning would only re-prompt. The prompt path is bounded
   (2-min `ControlPromptService` timeout; channel-down resolves immediately), so
@@ -699,6 +698,16 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   serializes `ensureRuntime`; no code outside the runner's catch changed).
   `make analyze` + `dart analyze --fatal-infos` clean; `make test` all pass
   (app 1701; +5).
+- **Review round** (user): the loose `const int` exit codes and the chain of
+  five `int?` sentinel locals were replaced by a single `SupervisedExitCode`
+  enum (restart 86 / authRequired 87 / bridgeContention 88 / logout 0 /
+  controlChannelLost 1, each carrying its `code`) and ONE
+  `SupervisedExitCode? requestedSupervisedExit` slot. Write discipline
+  preserves the old chain priority: deliberate outcomes assign
+  unconditionally, the loss listener assigns with `??=` so a loss never
+  demotes an already decided intentional exit. The composition root now also
+  pins the loss listener's `exitCode` from the enum instead of relying on the
+  listener's own default staying in sync.
 - **Deltas:** The GUI half is an explicit deferral recorded in PR 2.7's
   acceptance (exit map 86/87/**88**/0/other; "Take over" = plain respawn that
   answers the fresh spawn's replace prompt with accept — no new control

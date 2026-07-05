@@ -112,30 +112,47 @@ import "plugin_manager.dart";
 import "plugin_registry.dart";
 import "runtime_provision_formatter.dart";
 
-/// Exit code a supervised bridge returns to ask the desktop GUI to respawn it
-/// after a phone-triggered restart. Distinct from a clean stop (0), a crash
-/// (other non-zero), and control-channel loss (1) so the GUI supervisor can tell
-/// an intentional restart apart and respawn rather than treat it as a crash.
-const int supervisedRestartExitCode = 86;
+/// The deliberate exit outcomes of a supervised bridge, each carrying the
+/// process exit [code] the desktop GUI supervisor keys its respawn policy on.
+/// Anything not represented here reads to the GUI as a crash (backoff respawn).
+enum SupervisedExitCode {
+  /// A phone-triggered restart handed off by exiting: the GUI must respawn.
+  /// Distinct from a clean stop (0), a crash (other non-zero), and
+  /// control-channel loss (1) so the GUI supervisor can tell an intentional
+  /// restart apart and respawn rather than treat it as a crash.
+  restart(86),
 
-/// Exit code a supervised bridge returns when the desktop GUI cannot supply an
-/// access token at bootstrap (signed out / mid-login / unreachable). Distinct
-/// from a crash so the GUI supervisor surfaces a login prompt instead of
-/// backoff-respawning a helper that can never start. The exit code is the
-/// authoritative signal; the best-effort `loginNeeded` prompt sent just before
-/// exiting is advisory.
-const int supervisedAuthRequiredExitCode = 87;
+  /// The desktop GUI cannot supply an access token at bootstrap (signed out /
+  /// mid-login / unreachable). Distinct from a crash so the GUI supervisor
+  /// surfaces a login prompt instead of backoff-respawning a helper that can
+  /// never start. The exit code is the authoritative signal; the best-effort
+  /// `loginNeeded` prompt sent just before exiting is advisory.
+  authRequired(87),
 
-/// Exit code a supervised bridge returns when same-machine single-live
-/// contention keeps it from starting: another bridge is already running (or
-/// holds the startup mutex) and the replace ask ended in a decline or could
-/// not be answered (GUI declined / unreachable / prompt timeout / teardown).
-/// Distinct from a crash so the GUI supervisor can surface an "another bridge
-/// is running — take over?" state instead of backoff-respawning a helper that
-/// would just re-prompt forever. The incumbent bridge keeps running; taking
-/// over is a plain respawn whose fresh replace prompt the GUI answers with
-/// accept.
-const int supervisedBridgeContentionExitCode = 88;
+  /// Same-machine single-live contention kept this bridge from starting:
+  /// another bridge is already running (or holds the startup mutex) and the
+  /// replace ask ended in a decline or could not be answered (GUI declined /
+  /// unreachable / prompt timeout / teardown). Distinct from a crash so the
+  /// GUI supervisor can surface an "another bridge is running — take over?"
+  /// state instead of backoff-respawning a helper that would just re-prompt
+  /// forever. The incumbent bridge keeps running; taking over is a plain
+  /// respawn whose fresh replace prompt the GUI answers with accept.
+  bridgeContention(88),
+
+  /// The GUI's `unregister_and_exit` logout command: a deliberate clean stop,
+  /// so the GUI must not respawn.
+  logout(0),
+
+  /// The control channel to the GUI was lost past the grace period (ADR A9):
+  /// an abnormal exit — the parent is gone, so a loss must never read as a
+  /// clean stop even when the shutdown itself completes fine.
+  controlChannelLost(1);
+
+  const SupervisedExitCode(this.code);
+
+  /// The process exit code reported to the GUI supervisor.
+  final int code;
+}
 
 Future<int> runBridgeApp({
   required BridgeCliOptions options,
@@ -162,45 +179,21 @@ class BridgeRuntimeRunner {
     required String pluginId,
   }) async {
     final failureLatch = PluginFailureLatch();
-    // Set when a control-channel loss triggers shutdown, so BOTH the explicit
-    // exit and the coordinator backstop report the abnormal code. A loss must
-    // never look like a clean (0) exit, even if the stop hangs — and because
-    // the backstop fires at (ordered budget + slack), its timing varies with
-    // how many ordered steps are registered (none yet before the plugin
-    // starts), so a fixed timeout race against it is not reliable.
-    int? supervisedLossExitCode;
-    // Set after the session ends when a supervised phone-triggered restart handed
-    // off: the runner returns this sentinel so the desktop GUI respawns the
-    // bridge instead of treating the exit as a crash or clean stop. Read by the
-    // backstop too, so a hung restart-shutdown still reports the sentinel.
-    int? requestedSupervisedRestartExitCode;
-    // Set when the supervised bootstrap token pull fails because the GUI cannot
-    // supply a token: the runner returns the auth-required sentinel (87) so the
-    // GUI prompts for login instead of backoff-respawning. Read by the backstop
-    // and the shutdown-error path too, so the sentinel survives a hung or
-    // throwing shutdown.
-    int? requestedSupervisedAuthRequiredExitCode;
-    // Set when the GUI's `unregister_and_exit` logout command triggers shutdown:
-    // logout is a deliberate clean stop, so the backstop must report 0 even if a
-    // plugin failure was already latched and the ordered shutdown then hangs —
-    // otherwise the supervisor would misread the logout as a crash and respawn.
-    int? requestedSupervisedLogoutExitCode;
-    // Set when supervised startup loses a same-machine single-live contention
-    // (another bridge is running / holds the startup mutex and the replace ask
-    // ended in decline or couldn't be answered): the runner returns the
-    // contention sentinel (88) so the GUI offers a take-over instead of
-    // backoff-respawning into a re-prompt loop. Read by the backstop and the
-    // shutdown-error path too, so the sentinel survives a hung or throwing
-    // shutdown.
-    int? requestedSupervisedContentionExitCode;
+    // The single typed slot for a deliberate supervised exit (restart /
+    // auth-required / contention / logout / control-channel loss). Set at the
+    // moment an outcome is decided — BEFORE any shutdown runs — so both the
+    // explicit return and the coordinator backstop report the same code even
+    // when the stop hangs or throws (the backstop's timing varies with how
+    // many ordered steps are registered, so racing it is not reliable).
+    //
+    // Write discipline preserves the old sentinel priority: the deliberate
+    // outcomes assign unconditionally (they are phase-disjoint, and an
+    // intentional exit outranks a pending control-channel loss), while the
+    // loss listener assigns with `??=` so a loss never overwrites an already
+    // decided intentional exit.
+    SupervisedExitCode? requestedSupervisedExit;
     final shutdownCoordinator = BridgeShutdownCoordinator(
-      backstopExitCode: () =>
-          requestedSupervisedRestartExitCode ??
-          requestedSupervisedAuthRequiredExitCode ??
-          requestedSupervisedLogoutExitCode ??
-          requestedSupervisedContentionExitCode ??
-          supervisedLossExitCode ??
-          (failureLatch.failure == null ? 0 : 1),
+      backstopExitCode: () => requestedSupervisedExit?.code ?? (failureLatch.failure == null ? 0 : 1),
     );
     final subscriptions = CompositeSubscription();
     shutdownCoordinator.add(disposable: subscriptions.cancel);
@@ -302,7 +295,9 @@ class BridgeRuntimeRunner {
         controlChannelClient = await _connectSupervisedControlChannel(
           options: options,
           shutdownCoordinator: shutdownCoordinator,
-          requestAbnormalExit: (code) => supervisedLossExitCode = code,
+          // `??=`: a loss must never demote an already decided intentional
+          // exit (restart/auth/logout/contention) to the abnormal code.
+          requestAbnormalExit: () => requestedSupervisedExit ??= SupervisedExitCode.controlChannelLost,
         );
         // The GUI is the token authority in supervised mode: the bridge pulls
         // its access token from the control channel instead of the interactive
@@ -331,8 +326,11 @@ class BridgeRuntimeRunner {
         final controlUnregisterService = ControlUnregisterService(
           registrationService: supervisedRegistrationService,
           terminate: () {
-            requestedSupervisedLogoutExitCode = 0;
-            return _shutdownThenExit(shutdownCoordinator: shutdownCoordinator, code: 0);
+            requestedSupervisedExit = SupervisedExitCode.logout;
+            return _shutdownThenExit(
+              shutdownCoordinator: shutdownCoordinator,
+              code: SupervisedExitCode.logout.code,
+            );
           },
         );
         // The single inbound subscriber: decodes GUI→helper frames once and
@@ -431,8 +429,8 @@ class BridgeRuntimeRunner {
           // advisory (best-effort); the exit code is the authoritative signal.
           Log.e("Cannot start supervised — no access token from the desktop app", error, stackTrace);
           controlPromptService?.announceLoginNeeded();
-          requestedSupervisedAuthRequiredExitCode = supervisedAuthRequiredExitCode;
-          return supervisedAuthRequiredExitCode;
+          requestedSupervisedExit = SupervisedExitCode.authRequired;
+          return SupervisedExitCode.authRequired.code;
         }
       } else {
         final authTokens = await runtimeAuthService.ensureAuthenticated(options: options);
@@ -690,10 +688,13 @@ class BridgeRuntimeRunner {
         // Assigned before the outer `finally`'s shutdown runs, so a hung-shutdown
         // backstop reports the same code too.
         if (restartService.supervisedRestartRequested) {
-          requestedSupervisedRestartExitCode = supervisedRestartExitCode;
+          requestedSupervisedExit = SupervisedExitCode.restart;
         }
       }
-      return requestedSupervisedRestartExitCode ?? (failureLatch.failure == null ? 0 : 1);
+      if (requestedSupervisedExit == SupervisedExitCode.restart) {
+        return SupervisedExitCode.restart.code;
+      }
+      return failureLatch.failure == null ? 0 : 1;
     } on PluginStartAbortedException {
       Log.i("Plugin start aborted as requested.");
       return 0;
@@ -706,17 +707,17 @@ class BridgeRuntimeRunner {
       // respawning a helper that would just re-prompt forever.
       Log.e("$error");
       if (options.isSupervised) {
-        requestedSupervisedContentionExitCode = supervisedBridgeContentionExitCode;
-        return supervisedBridgeContentionExitCode;
+        requestedSupervisedExit = SupervisedExitCode.bridgeContention;
+        return SupervisedExitCode.bridgeContention.code;
       }
       return 1;
     } catch (error, stackTrace) {
       // Honor an already-completed supervised restart handoff: a teardown error
       // after the handoff is still an intentional restart, so return the sentinel
       // (GUI respawns) rather than the crash code.
-      if (requestedSupervisedRestartExitCode != null) {
+      if (requestedSupervisedExit == SupervisedExitCode.restart) {
         Log.w("Session teardown failed after a supervised restart handoff", error, stackTrace);
-        return requestedSupervisedRestartExitCode;
+        return SupervisedExitCode.restart.code;
       }
       Log.e("$error");
       return 1;
@@ -730,14 +731,19 @@ class BridgeRuntimeRunner {
         // value. For a supervised restart, auth-required, or contention exit
         // that must NOT happen: the exit must stay the sentinel so the GUI
         // respawns (86), prompts for login (87), or offers a take-over (88)
-        // rather than treating it as a crash. For every other exit, preserve
-        // the loud-failure behaviour by rethrowing.
-        if (requestedSupervisedRestartExitCode == null &&
-            requestedSupervisedAuthRequiredExitCode == null &&
-            requestedSupervisedContentionExitCode == null) {
-          rethrow;
+        // rather than treating it as a crash. For every other exit — including
+        // logout and control-channel loss, whose graceful path exits the
+        // process itself — preserve the loud-failure behaviour by rethrowing.
+        switch (requestedSupervisedExit) {
+          case SupervisedExitCode.restart:
+          case SupervisedExitCode.authRequired:
+          case SupervisedExitCode.bridgeContention:
+            Log.w("Shutdown error during a supervised sentinel exit; preserving the sentinel exit code", error, stackTrace);
+          case SupervisedExitCode.logout:
+          case SupervisedExitCode.controlChannelLost:
+          case null:
+            rethrow;
         }
-        Log.w("Shutdown error during a supervised sentinel exit; preserving the sentinel exit code", error, stackTrace);
       }
     }
   }
@@ -763,7 +769,7 @@ class BridgeRuntimeRunner {
   static Future<ControlChannelClient> _connectSupervisedControlChannel({
     required BridgeCliOptions options,
     required BridgeShutdownCoordinator shutdownCoordinator,
-    required void Function(int code) requestAbnormalExit,
+    required void Function() requestAbnormalExit,
   }) async {
     final url = Uri.parse(options.controlUrl!);
     if (!isLoopbackControlUrl(url)) {
@@ -782,13 +788,17 @@ class BridgeRuntimeRunner {
     // the ADR A9 grace timer un-armed and the helper running with no parent.
     final lossListener = ControlChannelLossListener(
       connectionState: controlChannelClient.connectionState,
+      // The composition root owns the exit-code vocabulary, so the listener's
+      // code is pinned to the enum here rather than relying on the listener's
+      // own default staying in sync with it.
+      exitCode: SupervisedExitCode.controlChannelLost.code,
       // Don't hard-exit straight from the loss timer: that bypasses the ordered
       // plugin stop in the shutdown coordinator and could orphan an owned
-      // backend runtime (e.g. OpenCode). Record the abnormal code (so the
+      // backend runtime (e.g. OpenCode). Record the abnormal outcome (so the
       // coordinator backstop reports it too if the stop hangs), then shut down
       // gracefully before exiting.
       exitProcess: (code) {
-        requestAbnormalExit(code);
+        requestAbnormalExit();
         unawaited(_shutdownThenExit(shutdownCoordinator: shutdownCoordinator, code: code));
       },
     );

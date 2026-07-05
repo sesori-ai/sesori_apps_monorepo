@@ -288,7 +288,7 @@ Findings log · Plan-deltas.
 - **Acceptance:** each exit class drives the correct action; give-up after N rapid
   crashes surfaces an error with recent helper log lines; exit policy does not
   live in a Layer-2 tracker.
-- **Carried from PR 1.12 (deferral):** map exit 88 (`supervisedBridgeContentionExitCode`,
+- **Carried from PR 1.12 (deferral):** map exit 88 (`SupervisedExitCode.bridgeContention`,
   ADR A25) to an "another Sesori bridge is running on this machine" state instead
   of the crash backoff — the incumbent bridge kept the machine and respawning
   would just re-prompt forever. The GUI also decides prompt render policy for a
