@@ -2,6 +2,7 @@ import "dart:io";
 
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_runner.dart";
 import "package:sesori_bridge/src/bridge/runtime/bridge_runtime_server_exception.dart";
+import "package:sesori_bridge/src/control/control_provision_notifier.dart";
 import "package:sesori_bridge/src/server/api/runtime_file_api.dart";
 import "package:sesori_bridge/src/server/foundation/process_match.dart";
 import "package:sesori_bridge/src/server/models/bridge_startup_lock.dart";
@@ -37,7 +38,7 @@ void main() {
       }
     });
 
-    Future<BridgePlugin> startPlugin({String? stateDirectory}) {
+    Future<BridgePlugin> startPlugin({String? stateDirectory, ControlProvisionNotifier? provisionNotifier}) {
       final directory = stateDirectory ?? runtimeDirectory.path;
       return BridgeRuntimeRunner.startPluginUnderStartupMutex(
         descriptor: descriptor,
@@ -53,6 +54,7 @@ void main() {
         environment: const <String, String>{"HOME": "/home/alex"},
         currentUser: ProcessUser.fromRawUser("alex"),
         startAborted: StartAbortSignal.never,
+        provisionNotifier: provisionNotifier,
       );
     }
 
@@ -255,6 +257,41 @@ void main() {
 
       await expectLater(startPlugin(), throwsA(isA<PluginStartAbortedException>()));
     });
+
+    group("runtime-provisioning tee", () {
+      test("supervised mode tees each provision event to the notifier, in order", () async {
+        descriptor.provisionEvents.addAll(const <RuntimeProvisionProgress>[
+          ProvisionResolving(),
+          ProvisionDownloading(receivedBytes: 256, totalBytes: 1024),
+          ProvisionReady(binaryPath: "/bin/opencode"),
+        ]);
+        final provisionNotifier = _RecordingProvisionNotifier();
+
+        await startPlugin(provisionNotifier: provisionNotifier);
+
+        expect(provisionNotifier.events, equals(descriptor.provisionEvents));
+      });
+
+      test("teeing does not disturb the runner recording ProvisionReady.binaryPath on the host", () async {
+        descriptor.provisionEvents.addAll(const <RuntimeProvisionProgress>[
+          ProvisionResolving(),
+          ProvisionReady(binaryPath: "/opt/opencode/bin/opencode"),
+        ]);
+
+        await startPlugin(provisionNotifier: _RecordingProvisionNotifier());
+
+        expect(descriptor.startedHosts.single.provisionedRuntimePath, equals("/opt/opencode/bin/opencode"));
+      });
+
+      test("standalone mode (no notifier) still records the resolved path with no tee", () async {
+        descriptor.provisionEvents.add(const ProvisionReady(binaryPath: "/opt/opencode/bin/opencode"));
+
+        // No provisionNotifier passed — the standalone/byte-identical path.
+        await startPlugin();
+
+        expect(descriptor.startedHosts.single.provisionedRuntimePath, equals("/opt/opencode/bin/opencode"));
+      });
+    });
   });
 }
 
@@ -296,6 +333,9 @@ class _RecordingDescriptor extends BridgePluginDescriptor {
   /// When non-empty, `start()` throws the first entry instead of returning.
   final List<Object> startErrors = <Object>[];
 
+  /// Emitted, in order, from `ensureRuntime()` before `start()`.
+  final List<RuntimeProvisionProgress> provisionEvents = <RuntimeProvisionProgress>[];
+
   @override
   String get id => "fake";
 
@@ -304,6 +344,13 @@ class _RecordingDescriptor extends BridgePluginDescriptor {
 
   @override
   List<PluginOption> get options => const [];
+
+  @override
+  Stream<RuntimeProvisionProgress> ensureRuntime({required PluginHost host}) async* {
+    for (final event in provisionEvents) {
+      yield event;
+    }
+  }
 
   @override
   Future<BridgePlugin> start(PluginHost host) async {
@@ -427,5 +474,16 @@ class _FakeBridgeInstanceService implements BridgeInstanceService {
   }) async {
     startupLockContentionCalls.add((lock: lock, holder: holder, currentPid: currentPid));
     return startupLockStatus;
+  }
+}
+
+/// Records every provision event the runner tees to it, so a supervised-mode
+/// test can assert the tee fires for each event in order.
+class _RecordingProvisionNotifier implements ControlProvisionNotifier {
+  final List<RuntimeProvisionProgress> events = <RuntimeProvisionProgress>[];
+
+  @override
+  void handleProvisionProgress({required RuntimeProvisionProgress event}) {
+    events.add(event);
   }
 }

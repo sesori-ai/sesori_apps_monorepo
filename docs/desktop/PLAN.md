@@ -8,8 +8,8 @@
 
 ## Current pointer
 
-- **Last completed phase:** Phase 1 — PR 1.12 Single-live precedence under supervised `--hidden` (exit-88 contention sentinel, ADR A25; PR raised on branch `next-step-desktop-plan`)
-- **Next up:** Phase 1 — PR 1.13 Tee `RuntimeProvisionProgress` → control channel
+- **Last completed phase:** Phase 1 — PR 1.13 Tee `RuntimeProvisionProgress` → control channel (`ControlProvisionNotifier` + mapper; PR raised on branch `next-step-desktop-plan`)
+- **Next up:** Phase 1 — PR 1.14 Relay replaced-close (`4007`) → takeover state, no reconnect war (ADR A22)
 - **Branch:** one feature branch per PR, cut from `main`
 
 > **Tracking lives in four places that MUST move together in the same PR.**
@@ -398,7 +398,7 @@ them). Only the user checks an MT box.
 - ☑ 1.10 Status push (relay/plugin/active sessions) — Low / S-M
 - ☑ 1.11 `unregister-and-exit` control command — Low / S-M
 - ☑ 1.12 Single-live precedence under supervised `--hidden` — Med / M
-- ☐ 1.13 Tee `RuntimeProvisionProgress` → control channel — Low / S-M
+- ☑ 1.13 Tee `RuntimeProvisionProgress` → control channel — Low / S-M
 - ☐ 1.14 Relay replaced-close (`4007`) → takeover state, no reconnect war (ADR A22) — Med / S-M
 - ☐ 1.15 Dev control-host harness for manual supervised testing (`tool/`) — Low / S
 - ☐ MT-1 Manual checkpoint: bridge supervised mode end-to-end (see phase doc) — user-run

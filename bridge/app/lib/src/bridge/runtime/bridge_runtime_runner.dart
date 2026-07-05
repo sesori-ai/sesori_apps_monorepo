@@ -44,6 +44,7 @@ import "../../auth/token_manager.dart";
 import "../../auth/token_refresher.dart";
 import "../../control/bridge_control_message_dispatcher.dart";
 import "../../control/control_channel_loss_listener.dart";
+import "../../control/control_provision_notifier.dart";
 import "../../control/control_status_notifier.dart";
 import "../../foundation/control_channel_client.dart";
 import "../../repositories/bridge_settings_repository.dart";
@@ -286,6 +287,9 @@ class BridgeRuntimeRunner {
       // Kept in scope past this block: the ControlStatusNotifier (built later,
       // once the plugin exists) shares this client.
       ControlChannelClient? controlChannelClient;
+      // Kept in scope for the plugin starter: tees runtime-provisioning progress
+      // onto the control channel so the GUI can render first-run progress.
+      ControlProvisionNotifier? controlProvisionNotifier;
       // Built early in supervised mode so the dispatcher can route the logout
       // `unregister_and_exit` command; reused as THE registration service later.
       // Standalone builds it after the interactive auth flow yields its token
@@ -344,6 +348,10 @@ class BridgeRuntimeRunner {
         );
         controlMessageDispatcher.start();
         shutdownCoordinator.add(disposable: controlMessageDispatcher.dispose);
+        // Provision-progress tee: the runner's provisioning loop feeds each
+        // event here, and the notifier maps + best-effort pushes it to the GUI.
+        // It observes no stream and owns no subscription, so nothing to dispose.
+        controlProvisionNotifier = ControlProvisionNotifier(client: controlChannelClient);
       }
 
       final BridgeReplacePrompt replacePrompt = controlPromptService ?? terminalPromptRepository;
@@ -493,6 +501,7 @@ class BridgeRuntimeRunner {
           environment: environment,
           currentUser: currentUser,
           startAborted: startAbortController.signal,
+          provisionNotifier: controlProvisionNotifier,
         ),
       );
       // If this bridge was spawned by a restart, wait for the predecessor to
@@ -864,9 +873,14 @@ class BridgeRuntimeRunner {
   /// stays unset, and `start()` proceeds in a degraded state. A cooperative
   /// abort during provisioning surfaces as [PluginStartAbortedException], which
   /// the caller already treats as "aborted as requested".
+  ///
+  /// In supervised mode [provisionNotifier] tees each event onto the control
+  /// channel so the GUI can render first-run progress; standalone passes null
+  /// and only the stderr render runs (byte-identical).
   static Future<void> _ensurePluginRuntime({
     required BridgePluginDescriptor descriptor,
     required BridgePluginHostImpl host,
+    required ControlProvisionNotifier? provisionNotifier,
   }) async {
     final formatter = RuntimeProvisionFormatter(
       interactive: io.stderr.hasTerminal,
@@ -877,6 +891,7 @@ class BridgeRuntimeRunner {
       if (rendered != null) {
         io.stderr.write(rendered);
       }
+      provisionNotifier?.handleProvisionProgress(event: event);
       if (event is ProvisionReady) {
         host.provisionedRuntimePath = event.binaryPath;
       }
@@ -906,6 +921,7 @@ class BridgeRuntimeRunner {
     required Map<String, String> environment,
     required ProcessUser? currentUser,
     required StartAbortSignal startAborted,
+    required ControlProvisionNotifier? provisionNotifier,
   }) {
     Future<BridgePlugin> attemptStart({required int attempt}) {
       return startupMutexRepository.withLock<BridgePlugin>(
@@ -950,7 +966,11 @@ class BridgeRuntimeRunner {
               // needed), recording the resolved launch path on the host, before
               // start(). Runs under the mutex so concurrent bridge instances
               // can't install the same managed runtime at once.
-              await _ensurePluginRuntime(descriptor: descriptor, host: host);
+              await _ensurePluginRuntime(
+                descriptor: descriptor,
+                host: host,
+                provisionNotifier: provisionNotifier,
+              );
               return descriptor.start(host);
             case BridgeInstanceResolutionStatus.declined:
               throw const BridgeRuntimeServerException(
