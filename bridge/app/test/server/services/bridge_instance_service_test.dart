@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:sesori_bridge/src/foundation/control_channel_client.dart';
 import 'package:sesori_bridge/src/server/foundation/process_match.dart';
 import 'package:sesori_bridge/src/server/foundation/terminal_prompt_decision.dart';
 import 'package:sesori_bridge/src/server/models/bridge_startup_lock.dart';
@@ -7,7 +8,9 @@ import 'package:sesori_bridge/src/server/repositories/bridge_instance_repository
 import 'package:sesori_bridge/src/server/repositories/process_repository.dart';
 import 'package:sesori_bridge/src/server/repositories/terminal_prompt_repository.dart';
 import 'package:sesori_bridge/src/server/services/bridge_instance_service.dart';
+import 'package:sesori_bridge/src/services/control_prompt_service.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
+import 'package:sesori_shared/sesori_shared.dart' show ControlMessage, ControlPromptKind, ControlPromptRequest, jsonDecodeMap;
 import 'package:test/test.dart';
 
 void main() {
@@ -343,7 +346,118 @@ void main() {
       });
     });
   });
+
+  // The supervised contention path end-to-end: the same BridgeInstanceService
+  // decisions driven by the real ControlPromptService over a fake control
+  // channel, mirroring how the composition root wires a supervised bridge.
+  group('BridgeInstanceService with the supervised replace prompt', () {
+    late _FakeBridgeInstanceRepository bridgeInstanceRepository;
+    late _FakeProcessRepository processRepository;
+    late _FakeServerClock clock;
+    late _FakeControlChannelClient client;
+    late ControlPromptService promptService;
+    late BridgeInstanceService service;
+
+    setUp(() {
+      bridgeInstanceRepository = _FakeBridgeInstanceRepository();
+      processRepository = _FakeProcessRepository();
+      clock = _FakeServerClock();
+      client = _FakeControlChannelClient();
+      // A short timeout keeps the unanswered-prompt tests fast; production
+      // uses the generous human-scale default.
+      promptService = ControlPromptService(
+        client: client,
+        responseTimeout: const Duration(milliseconds: 50),
+      );
+      addTearDown(promptService.dispose);
+      service = BridgeInstanceService(
+        bridgeInstanceRepository: bridgeInstanceRepository,
+        replacePrompt: promptService,
+        processRepository: processRepository,
+        clock: clock,
+      );
+    });
+
+    test('a GUI accept over the control channel replaces the existing bridge', () async {
+      bridgeInstanceRepository.snapshots = <List<ProcessIdentity>>[
+        <ProcessIdentity>[_candidate(pid: 210)],
+        <ProcessIdentity>[],
+      ];
+
+      final resultFuture = service.enforceSingleLiveBridge(currentPid: 100);
+      await pumpEventQueue();
+
+      final request = _decodePromptRequest(client.sentFrames.single);
+      expect(request.kind, equals(ControlPromptKind.replaceBridge));
+      promptService.handlePromptResponse(id: request.id, accepted: true);
+
+      final result = await resultFuture;
+      expect(result.status, equals(BridgeInstanceResolutionStatus.allowed));
+      expect(result.terminatedBridges.single.pid, equals(210));
+      expect(processRepository.signalRequests, equals(<String>['graceful:210']));
+    });
+
+    test('a GUI decline aborts without killing the existing bridge', () async {
+      bridgeInstanceRepository.snapshots = <List<ProcessIdentity>>[
+        <ProcessIdentity>[_candidate(pid: 211)],
+      ];
+
+      final resultFuture = service.enforceSingleLiveBridge(currentPid: 100);
+      await pumpEventQueue();
+
+      final request = _decodePromptRequest(client.sentFrames.single);
+      promptService.handlePromptResponse(id: request.id, accepted: false);
+
+      final result = await resultFuture;
+      expect(result.status, equals(BridgeInstanceResolutionStatus.declined));
+      expect(processRepository.signalRequests, isEmpty);
+    });
+
+    test('an unanswered GUI prompt resolves nonInteractive within the timeout — no hang, no kill', () async {
+      bridgeInstanceRepository.snapshots = <List<ProcessIdentity>>[
+        <ProcessIdentity>[_candidate(pid: 212)],
+      ];
+
+      final result = await service.enforceSingleLiveBridge(currentPid: 100);
+
+      // The ask was actually sent, but never answered: the bounded prompt
+      // timeout resolves the contention instead of stalling startup.
+      expect(client.sentFrames, hasLength(1));
+      expect(result.status, equals(BridgeInstanceResolutionStatus.nonInteractive));
+      expect(processRepository.signalRequests, isEmpty);
+    });
+
+    test('a down control channel resolves nonInteractive immediately without the prompt timeout', () async {
+      client.throwOnSend = true;
+      bridgeInstanceRepository.snapshots = <List<ProcessIdentity>>[
+        <ProcessIdentity>[_candidate(pid: 213)],
+      ];
+
+      final result = await service.enforceSingleLiveBridge(currentPid: 100);
+
+      expect(client.sentFrames, isEmpty);
+      expect(result.status, equals(BridgeInstanceResolutionStatus.nonInteractive));
+      expect(processRepository.signalRequests, isEmpty);
+    });
+
+    test('startup-lock contention with no GUI answer resolves nonInteractive without signals', () async {
+      const lock = BridgeStartupLock(bridgePid: 310, bridgeStartMarker: 'holder-start');
+      final holder = _match(pid: 310, startMarker: 'holder-start');
+
+      final status = await service.resolveStartupLockContention(
+        lock: lock,
+        holder: holder,
+        currentPid: 100,
+      );
+
+      expect(client.sentFrames, hasLength(1));
+      expect(status, equals(BridgeInstanceResolutionStatus.nonInteractive));
+      expect(processRepository.signalRequests, isEmpty);
+    });
+  });
 }
+
+ControlPromptRequest _decodePromptRequest(String frame) => ControlMessage.fromJson(jsonDecodeMap(frame)) as ControlPromptRequest;
 
 ProcessIdentity _candidate({
   required int pid,
@@ -511,4 +625,31 @@ class _FakeServerClock implements ServerClock {
   DateTime now() {
     return DateTime.utc(2026, 5, 15, 12);
   }
+}
+
+class _FakeControlChannelClient implements ControlChannelClient {
+  final List<String> sentFrames = <String>[];
+
+  /// Mimics [ControlChannelClient.send] throwing when the channel is down.
+  bool throwOnSend = false;
+
+  @override
+  Stream<String> get inbound => const Stream<String>.empty();
+
+  @override
+  void send(String frame) {
+    if (throwOnSend) {
+      throw const ControlChannelNotConnectedException('Control channel is not connected');
+    }
+    sentFrames.add(frame);
+  }
+
+  @override
+  Stream<ControlChannelConnectionState> get connectionState => const Stream<ControlChannelConnectionState>.empty();
+
+  @override
+  Future<void> connect() async {}
+
+  @override
+  Future<void> dispose() async {}
 }

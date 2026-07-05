@@ -267,7 +267,10 @@ Findings log · Plan-deltas.
 - **Goal:** Keep exit-code/backoff decisions in `BridgeProcessService`, because
   respawn/stop/give-up policy is process lifecycle business logic. Mapping:
   86→respawn (no backoff), **87 (auth-required, ADR A23)→stop with
-  login-required state (no backoff thrash)**, 0→stop (no respawn),
+  login-required state (no backoff thrash)**, **88 (single-live contention,
+  ADR A25)→stop with an "another bridge is running" state + Take-over action
+  (no backoff thrash; Take over = plain respawn, answering the fresh spawn's
+  replace prompt with accept)**, 0→stop (no respawn),
   repository-marked expected stop→stop (no respawn), other→crash backoff +
   give-up + tray surfacing (give-up shows the last-N helper log lines from the
   PR-2.6 `BridgeProcessLogTracker` snapshot). Isolated state-machine tests
@@ -285,6 +288,13 @@ Findings log · Plan-deltas.
 - **Acceptance:** each exit class drives the correct action; give-up after N rapid
   crashes surfaces an error with recent helper log lines; exit policy does not
   live in a Layer-2 tracker.
+- **Carried from PR 1.12 (deferral):** map exit 88 (`SupervisedExitCode.bridgeContention`,
+  ADR A25) to an "another Sesori bridge is running on this machine" state instead
+  of the crash backoff — the incumbent bridge kept the machine and respawning
+  would just re-prompt forever. The GUI also decides prompt render policy for a
+  silent `--hidden` autostart (notification / auto-answer rather than a modal
+  dialog), and its "Take over" action is a plain respawn whose fresh replace
+  `prompt_request` it answers with accept — no dedicated control command.
 - **Carried from PR 1.7 (deferral):** a supervised restart that requests exit 86 but
   then **hangs** in session teardown never emits any exit code (PR 1.7 covers a
   clean return, a teardown throw, and a throwing coordinator shutdown, but not a
