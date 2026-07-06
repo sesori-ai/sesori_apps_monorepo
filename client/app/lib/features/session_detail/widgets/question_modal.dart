@@ -205,10 +205,15 @@ class _QuestionModalState extends State<QuestionModal> {
     final info = _currentInfo;
     final size = MediaQuery.sizeOf(context);
     final keyboard = MediaQuery.viewInsetsOf(context).bottom;
-    // The body hosts its own scroll view, so it needs a bounded height.
-    // Shrink above the keyboard (the sheet re-adds the keyboard inset below
-    // the body) so the actions stay visible while typing a custom answer.
-    final height = math.max(size.height * 0.7 - keyboard, size.height * 0.3);
+    // Mirror the inset PregoBottomSheet adds below the body so the cap below
+    // leaves the pinned action row on screen (including above the keyboard
+    // while typing a custom answer).
+    final bottomInset = keyboard > 0 ? keyboard : MediaQuery.paddingOf(context).bottom;
+    // Size to content: a short question set wraps; a tall one caps just under
+    // the sheet's own cap and scrolls inside the Flexible list while the
+    // actions stay pinned.
+    final maxBody =
+        size.height - MediaQuery.viewPaddingOf(context).top - PregoBottomSheet.contentTopInset - bottomInset;
 
     return PregoBottomSheet(
       title: info.header.isNotEmpty ? info.header : loc.questionModalTitle,
@@ -218,9 +223,10 @@ class _QuestionModalState extends State<QuestionModal> {
       onClose: _dismissModal,
       // Full-bleed body; the step indicator, list, and actions pad themselves.
       contentPadding: EdgeInsetsDirectional.zero,
-      child: SizedBox(
-        height: height,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: math.max(maxBody, size.height * 0.3)),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Step indicator (only when there are multiple questions)
             if (_isMultiQuestion)
@@ -253,9 +259,12 @@ class _QuestionModalState extends State<QuestionModal> {
                 ),
               ),
 
-            // Scrollable body
-            Expanded(
+            // Scrollable body — wraps its content (a handful of option tiles,
+            // so laying them all out is cheap) and scrolls only once the
+            // sheet hits its cap.
+            Flexible(
               child: ListView(
+                shrinkWrap: true,
                 padding: const EdgeInsets.all(16),
                 children: [
                   // Question text
