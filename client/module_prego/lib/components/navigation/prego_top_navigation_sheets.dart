@@ -130,7 +130,6 @@ class PregoTopNavigationSheets extends StatelessWidget implements PreferredSizeW
     // page), so without this the buttons would have no glass layer to join.
     return GlassIsolationScope(
       isolated: true,
-      defaultQuality: GlassQuality.premium,
       child: Padding(
         // Leading/trailing buttons sit 16pt from the bar edges.
         padding: const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.xl),
