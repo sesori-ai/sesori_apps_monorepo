@@ -1141,10 +1141,14 @@ class OrchestratorSession {
   Duration _nextBackoff(Duration backoff, {required bool takenOver}) {
     final max = takenOver ? _takeoverMaxBackoff : _ordinaryMaxBackoff;
     final next = Duration(microseconds: backoff.inMicroseconds * 2);
+    // Re-jitter every takeover step (not just the cap) so two mutually
+    // displacing bridges don't resynchronize onto the same retry cadence as
+    // they climb the backoff curve. Ordinary reconnects keep the deterministic
+    // fast backoff.
     if (next > max) {
       return takenOver ? _jitter(max) : max;
     }
-    return next;
+    return takenOver ? _jitter(next) : next;
   }
 
   Duration _jitter(Duration base) {
