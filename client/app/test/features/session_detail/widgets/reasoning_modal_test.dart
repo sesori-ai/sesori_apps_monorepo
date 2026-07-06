@@ -230,6 +230,39 @@ void main() {
     expect(tester.widget<MarkdownBody>(markdownFinder).selectable, false);
   });
 
+  testWidgets("sheet wraps short reasoning and caps at the screen for long reasoning", (tester) async {
+    whenListen(
+      mockCubit,
+      const Stream<SessionDetailState>.empty(),
+      initialState: _loadedState(
+        streamingText: {},
+        messages: [_messageWithPart(text: "one short thought")],
+      ),
+    );
+
+    await tester.pumpWidget(_buildApp(cubit: mockCubit));
+    await tester.pumpAndSettle();
+
+    final surfaceHeight = tester.getSize(find.byType(Scaffold)).height;
+    final shortHeight = tester.getSize(find.byType(PregoBottomSheet)).height;
+    expect(shortHeight, lessThan(surfaceHeight / 2));
+
+    final tallCubit = MockSessionDetailCubit();
+    whenListen(
+      tallCubit,
+      const Stream<SessionDetailState>.empty(),
+      initialState: _loadedState(
+        streamingText: {},
+        messages: [_messageWithPart(text: _reasoningText(paragraphs: 60))],
+      ),
+    );
+    await tester.pumpWidget(_buildApp(cubit: tallCubit));
+    await tester.pumpAndSettle();
+
+    final tallHeight = tester.getSize(find.byType(PregoBottomSheet)).height;
+    expect(tallHeight, greaterThan(surfaceHeight * 0.9));
+  });
+
   testWidgets("isStreaming drives header text", (tester) async {
     final controller = StreamController<SessionDetailState>.broadcast();
     addTearDown(controller.close);

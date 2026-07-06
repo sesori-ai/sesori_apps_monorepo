@@ -1,3 +1,5 @@
+import "dart:math" as math;
+
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
@@ -97,7 +99,15 @@ class _ReasoningModalState extends State<ReasoningModal> {
 
     final prego = context.prego;
     final loc = context.loc;
-    final height = MediaQuery.sizeOf(context).height * 0.7;
+    final size = MediaQuery.sizeOf(context);
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    // Mirror the inset PregoBottomSheet adds below the body so the cap below
+    // stops exactly at the sheet's own cap.
+    final bottomInset = keyboard > 0 ? keyboard : MediaQuery.paddingOf(context).bottom;
+    // Size to content: short reasoning wraps, and the shrink-wrapped list
+    // only starts scrolling once the sheet reaches the top of the screen.
+    final maxBody =
+        size.height - MediaQuery.viewPaddingOf(context).top - PregoBottomSheet.contentTopInset - bottomInset;
 
     // Coalesced post-frame tail-jump. Safe to call every rebuild;
     // repeated calls within a frame collapse into one jump. Gated on
@@ -115,10 +125,10 @@ class _ReasoningModalState extends State<ReasoningModal> {
       onClose: () => context.pop(),
       // Full-bleed body; the list pads itself.
       contentPadding: EdgeInsetsDirectional.zero,
-      child: SizedBox(
+      child: ConstrainedBox(
         // The body hosts its own scroll view (the follow/detach list needs to
-        // own scrolling), so it gets a bounded height.
-        height: height,
+        // own scrolling), so its height must be bounded.
+        constraints: BoxConstraints(maxHeight: math.max(maxBody, size.height * 0.3)),
         child: FollowDetachScrollable(
           tracker: _follow,
           detachedOverlayBuilder: data.isStreaming
@@ -133,6 +143,9 @@ class _ReasoningModalState extends State<ReasoningModal> {
           child: ListView(
             key: _kListViewKey,
             controller: _follow.scrollController,
+            // Wrap the content (a single markdown block, so laying it all out
+            // is cheap) instead of filling the cap.
+            shrinkWrap: true,
             padding: const EdgeInsets.all(16),
             children: [
               SelectionArea(
