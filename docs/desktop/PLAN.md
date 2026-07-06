@@ -8,8 +8,8 @@
 
 ## Current pointer
 
-- **Last completed phase:** Phase 1 — PR 1.13 Tee `RuntimeProvisionProgress` → control channel (`ControlProvisionNotifier` + mapper; PR raised on branch `next-step-desktop-plan`)
-- **Next up:** Phase 1 — PR 1.14 Relay replaced-close (`4007`) → takeover state, no reconnect war (ADR A22)
+- **Last completed phase:** Phase 1 — PR 1.14 Relay replaced-close (`4007`) → takeover state, no reconnect war (ADR A22) — bridge PR raised on branch `start-next-step-desktop-plan`; relay prerequisite raised as `sesori-ai/sesori_relay_server#7` (must deploy to prod before this merges)
+- **Next up:** Phase 1 — PR 1.15 Dev control-host harness for manual supervised testing (`tool/`)
 - **Branch:** one feature branch per PR, cut from `main`
 
 > **Tracking lives in four places that MUST move together in the same PR.**
@@ -356,7 +356,7 @@ seams through `module_core` interfaces, not `AuthManager` internals.
 | Item | Status | Owner | Notes |
 |---|---|---|---|
 | Windows code-signing cert | **OPEN — lead time, START PROCUREMENT NOW** | TBD | blocks PR 3.4 (signed Windows); EV clears SmartScreen faster. Non-code and parallelizable — do not serialize behind Phase 2; if it slips, ship macOS-first (phase-3 preamble allows per-OS v1). |
-| Relay single-slot replace war (cross-machine) | **OPEN → PR 1.14** | TBD | Relay keeps ONE bridge slot per account and closes the displaced bridge with 1000/`"replaced"`; the bridge treats that as a generic drop and reconnects on a backoff that resets to 1s — two always-on bridges mutually kick forever, phones see flapping. PR 1.12's mutex only covers same-machine. PR 1.14 (ADR A22) adds a dedicated relay close code `4007` + the takeover policy; verified in MT-1/MT-3. Stage C multi-bridge dissolves the problem properly. |
+| Relay single-slot replace war (cross-machine) | **RESOLVED in bridge PR 1.14 (relay deploy gate open → `sesori_relay_server#7`)** | TBD | Relay keeps ONE bridge slot per account and closed the displaced bridge with 1000/`"replaced"`; the bridge treated that as a generic drop and reconnected on a backoff that resets to 1s — two always-on bridges mutually kick forever, phones see flapping. PR 1.12's mutex only covers same-machine. PR 1.14 (ADR A22) adds `RelayCloseCodes.bridgeReplaced = 4007` + `isBridgeReplaced` detection (code-authoritative, `1000/"replaced"` rollout fallback), a minutes-order takeover backoff in the orchestrator reconnect loop (standalone `Console.warning`), and a `ControlRelayConnectionState.takenOver` status push (supervised). **Relay prerequisite `sesori-ai/sesori_relay_server#7` must be merged AND deployed to prod before the bridge PR merges** — the bridge's `1000/"replaced"` fallback keeps an older relay safe during rollout. Verified in MT-1/MT-3. Stage C multi-bridge dissolves the problem properly. |
 | Linux tray availability (GNOME) | OPEN | TBD | `tray_manager` needs AppIndicator; stock GNOME hides tray icons without an extension → tray-only `--hidden` boot = running but unreachable app. PR 2.9 adds windowed fallback, PR 2.11 refuses hidden boot without a tray (ADR A24); verified on GNOME in MT-3/MT-4. |
 | GUI crash → helper self-exits (A9) → bridge silently down | OPEN — accepted for v1 | TBD | Login items don't relaunch crashed apps (macOS `SMAppService`, Windows run keys), so a 2am GUI crash kills the bridge until the user notices a missing tray icon. Deliberate v1 trade against orphaned helpers; revisit post-v1 (watchdog / `KeepAlive`-style relaunch) if telemetry (PR 2.14) shows it matters. |
 | Control-channel secret bootstrap (off-argv) | OPEN | TBD | ADR A8; designed in PR 1.1 / PR 2.6 |
@@ -399,7 +399,7 @@ them). Only the user checks an MT box.
 - ☑ 1.11 `unregister-and-exit` control command — Low / S-M
 - ☑ 1.12 Single-live precedence under supervised `--hidden` — Med / M
 - ☑ 1.13 Tee `RuntimeProvisionProgress` → control channel — Low / S-M
-- ☐ 1.14 Relay replaced-close (`4007`) → takeover state, no reconnect war (ADR A22) — Med / S-M
+- ☑ 1.14 Relay replaced-close (`4007`) → takeover state, no reconnect war (ADR A22) — Med / S-M
 - ☐ 1.15 Dev control-host harness for manual supervised testing (`tool/`) — Low / S
 - ☐ MT-1 Manual checkpoint: bridge supervised mode end-to-end (see phase doc) — user-run
 

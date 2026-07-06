@@ -101,5 +101,17 @@ void main() {
         expect((parsed as ControlPromptRequest).kind, equals(ControlPromptKind.unknown));
       });
     });
+
+    test("status round-trips the takenOver relay state", () {
+      const original = ControlMessage.status(
+        relay: ControlRelayConnectionState.takenOver,
+        plugin: ControlPluginHealthState.healthy,
+      );
+
+      final json = original.toJson();
+
+      expect(json["relay"], equals("taken_over"));
+      expect(ControlMessage.fromJson(json), equals(original));
+    });
   });
 }

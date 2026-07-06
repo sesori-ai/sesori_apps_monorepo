@@ -234,6 +234,7 @@ class OrchestratorSession {
   final BridgeRestartService _restartService;
   final ControlStatusNotifier? _statusNotifier;
   final CompositeSubscription _subscriptions = CompositeSubscription();
+  final Random _backoffJitter = Random();
 
   bool _cancelled = false;
 
@@ -478,7 +479,24 @@ class OrchestratorSession {
           await _bridgeRegistrationService.handleBridgeRevoked();
         }
 
-        var backoff = const Duration(seconds: 1);
+        // Another bridge on this account took the single relay slot. Reconnect
+        // only on a long backoff so two always-on bridges don't tight-loop
+        // kicking each other (ADR A22); headless/VM failover is preserved
+        // because we still retry, just slowly. The GUI is told separately via
+        // ControlStatusNotifier (it observes the same replaced-close on the
+        // connection-state stream); this loop owns only the backoff policy.
+        final takenOver = RelayCloseCodes.isBridgeReplaced(
+          closeCode: _client.closeCode,
+          closeReason: _client.closeReason,
+        );
+        if (takenOver) {
+          Console.warning(
+            "Another bridge for this account has taken over the relay connection. "
+            "Retrying on a long backoff — stop the other bridge to reclaim this slot.",
+          );
+        }
+
+        var backoff = _initialBackoff(takenOver: takenOver);
         while (!_cancelled) {
           await Future<void>.delayed(backoff);
           if (_cancelled) {
@@ -491,7 +509,7 @@ class OrchestratorSession {
           // retry — a later refresh (or a token_update push) recovers.
           if (!await _refreshAccessToken()) {
             Log.w("No access token available — deferring reconnect (retrying in $backoff)");
-            backoff = _nextBackoff(backoff);
+            backoff = _nextBackoff(backoff, takenOver: takenOver);
             continue;
           }
 
@@ -500,11 +518,11 @@ class OrchestratorSession {
             await _client.reconnect();
           } catch (e) {
             Log.w("Reconnect failed: $e (retrying in $backoff)");
-            backoff = _nextBackoff(backoff);
+            backoff = _nextBackoff(backoff, takenOver: takenOver);
             continue;
           }
 
-          backoff = const Duration(seconds: 1);
+          backoff = _initialBackoff(takenOver: takenOver);
           Log.i("Reconnected to relay");
           break;
         }
@@ -1105,13 +1123,34 @@ class OrchestratorSession {
     }
   }
 
-  Duration _nextBackoff(Duration backoff) {
+  // Ordinary drop (network blip, relay restart) reconnects promptly; a
+  // takeover drop reconnects on a minutes-order backoff so two always-on
+  // bridges don't tight-loop kicking each other (ADR A22).
+  static const _ordinaryInitialBackoff = Duration(seconds: 1);
+  static const _ordinaryMaxBackoff = Duration(seconds: 30);
+  static const _takeoverInitialBackoff = Duration(minutes: 2);
+  static const _takeoverMaxBackoff = Duration(minutes: 5);
+
+  Duration _initialBackoff({required bool takenOver}) {
+    if (!takenOver) return _ordinaryInitialBackoff;
+    // Jitter the takeover backoff so two mutually-displacing bridges don't
+    // resynchronize onto the same retry cadence.
+    return _jitter(_takeoverInitialBackoff);
+  }
+
+  Duration _nextBackoff(Duration backoff, {required bool takenOver}) {
+    final max = takenOver ? _takeoverMaxBackoff : _ordinaryMaxBackoff;
     final next = Duration(microseconds: backoff.inMicroseconds * 2);
-    const maxBackoff = Duration(seconds: 30);
-    if (next > maxBackoff) {
-      return maxBackoff;
+    if (next > max) {
+      return takenOver ? _jitter(max) : max;
     }
     return next;
+  }
+
+  Duration _jitter(Duration base) {
+    // Add up to +25% random jitter to spread out retries.
+    final extra = (base.inMilliseconds * 0.25 * _backoffJitter.nextDouble()).round();
+    return base + Duration(milliseconds: extra);
   }
 
   Future<void> _encryptAndSend({
