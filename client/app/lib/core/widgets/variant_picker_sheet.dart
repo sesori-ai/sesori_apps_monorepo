@@ -4,7 +4,6 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../extensions/build_context_x.dart";
-import "app_modal_bottom_sheet.dart";
 
 class VariantPickerSheet extends StatelessWidget {
   final String? selectedVariantId;
@@ -24,8 +23,11 @@ class VariantPickerSheet extends StatelessWidget {
     required List<SessionVariant> availableVariants,
     required ValueChanged<SessionVariant?> onVariantChanged,
   }) {
-    return showAppModalBottomSheet(
+    return showPregoBottomSheet<void>(
       context: context,
+      title: context.loc.sessionDetailPickerVariant,
+      // Full-bleed tiles; each ListTile carries its own horizontal padding.
+      contentPadding: EdgeInsetsDirectional.zero,
       builder: (_) => VariantPickerSheet(
         selectedVariantId: selectedVariantId,
         availableVariants: availableVariants,
@@ -41,43 +43,29 @@ class VariantPickerSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final prego = context.prego;
     final loc = context.loc;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Center(
-          child: Container(
-            margin: const EdgeInsetsDirectional.only(top: 12, bottom: 8),
-            width: 32,
-            height: 4,
-            decoration: BoxDecoration(
-              color: prego.colors.textSecondary.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text(
-            loc.sessionDetailPickerVariant,
-            style: prego.textTheme.textMd.bold,
-          ),
-        ),
-        _VariantTile(
-          label: loc.sessionDetailVariantDefault,
-          isSelected: selectedVariantId == null,
-          onTap: () => onVariantChanged(null),
-        ),
-        for (final variant in availableVariants)
+    // Transparent Material so the tiles' ink paints on top of the sheet
+    // surface instead of behind it on the modal's transparent Material.
+    return Material(
+      type: MaterialType.transparency,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
           _VariantTile(
-            label: variant.id,
-            isSelected: variant.id == selectedVariantId,
-            onTap: () => onVariantChanged(variant),
+            label: loc.sessionDetailVariantDefault,
+            isSelected: selectedVariantId == null,
+            onTap: () => onVariantChanged(null),
           ),
-        const SizedBox(height: 8),
-      ],
+          for (final variant in availableVariants)
+            _VariantTile(
+              label: variant.id,
+              isSelected: variant.id == selectedVariantId,
+              onTap: () => onVariantChanged(variant),
+            ),
+          const SizedBox(height: 8),
+        ],
+      ),
     );
   }
 }
