@@ -349,7 +349,9 @@ class _OptionTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsetsDirectional.only(bottom: 8),
       child: Material(
-        color: isSelected ? prego.colors.bgBrandPrimary : prego.colors.bgSecondary,
+        // bgPrimary so the card reads as raised against the sheet's
+        // bgSecondary surface (bgSecondary here would vanish into it).
+        color: isSelected ? prego.colors.bgBrandPrimary : prego.colors.bgPrimary,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
@@ -423,7 +425,9 @@ class _CustomAnswerTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsetsDirectional.only(bottom: 8),
       child: Material(
-        color: isSelected ? prego.colors.bgBrandPrimary : prego.colors.bgSecondary,
+        // bgPrimary so the card reads as raised against the sheet's
+        // bgSecondary surface (bgSecondary here would vanish into it).
+        color: isSelected ? prego.colors.bgBrandPrimary : prego.colors.bgPrimary,
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
