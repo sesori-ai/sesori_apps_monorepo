@@ -578,6 +578,12 @@ cat "\$HOME/.zprofile"
         environment: {
           'PATH': Platform.environment['PATH'] ?? '',
           'FORCE_COLOR': '1',
+          // should_use_unicode gates on both a non-dumb TERM and a UTF-8 locale.
+          // Process.run inherits the parent env, and CI runners export TERM=dumb
+          // plus their own non-UTF-8 LC_ALL/LC_CTYPE, either of which forces the
+          // ASCII fallback. Pin both here so the Unicode assertion is deterministic.
+          'TERM': 'xterm-256color',
+          'LC_ALL': 'en_US.UTF-8',
           'LANG': 'en_US.UTF-8',
         },
       );

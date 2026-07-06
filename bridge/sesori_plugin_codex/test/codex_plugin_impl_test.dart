@@ -20,10 +20,11 @@ void main() {
       expect(plugin.id, equals("codex"));
     });
 
-    test("getProjects synthesises a single project from launch CWD", () async {
-      // Phase 3: a single PluginProject is returned for the launch CWD.
-      // Pin both CODEX_HOME (away from the user's real history) and
-      // projectCwd so the test is hermetic.
+    test("is bridge-derived: launchDirectory is the launch CWD and sessions enumerate from disk", () async {
+      // codex is a BridgeDerivedProjectsPluginApi, so the bridge derives the
+      // project list from listAllSessions/launchDirectory — the plugin has no
+      // project members at all. Pin CODEX_HOME away from the user's real
+      // history so the test is hermetic.
       final tempHome = Directory.systemTemp.createTempSync("codex-home-stub-");
       try {
         final plugin = CodexPlugin(
@@ -33,9 +34,8 @@ void main() {
           ),
           projectCwd: "/repo/example",
         );
-        final projects = await plugin.getProjects();
-        expect(projects, hasLength(1));
-        expect(projects.single.id, equals("/repo/example"));
+        expect(plugin.launchDirectory, equals("/repo/example"));
+        expect(await plugin.listAllSessions(), isEmpty);
         await plugin.dispose();
       } finally {
         try {
@@ -47,19 +47,25 @@ void main() {
     test("read methods return empty when no codex history exists", () async {
       final tempHome = Directory.systemTemp.createTempSync("codex-home-stub-");
       try {
+        // Hermetic readers so the user's real ~/.codex/ doesn't leak into
+        // this test.
+        final rolloutReader = SessionRolloutReader(
+          environment: {"CODEX_HOME": tempHome.path},
+        );
+        final configReader = CodexConfigReader(
+          environment: {"CODEX_HOME": tempHome.path},
+        );
         final plugin = CodexPlugin(
           serverUrl: "ws://127.0.0.1:0",
-          rolloutReader: SessionRolloutReader(
-            environment: {"CODEX_HOME": tempHome.path},
-          ),
-          // Hermetic config/skill readers so the user's real ~/.codex/
-          // doesn't leak into this test.
-          configReader: CodexConfigReader(
-            environment: {"CODEX_HOME": tempHome.path},
-          ),
-          skillReader: CodexSkillReader(
-            environment: {"CODEX_HOME": tempHome.path},
-            projectCwd: tempHome.path,
+          rolloutReader: rolloutReader,
+          configReader: configReader,
+          metadataRepository: CodexMetadataRepository(
+            skillReader: CodexSkillReader(
+              environment: {"CODEX_HOME": tempHome.path},
+            ),
+            rolloutReader: rolloutReader,
+            configReader: configReader,
+            launchDirectory: "/repo/example",
           ),
           projectCwd: "/repo/example",
         );
@@ -86,7 +92,7 @@ void main() {
       }
     });
 
-    test("getAgents/getProviders synthesise from config + latest rollout", () async {
+    test("getAgents/getProviders synthesise from config + the project's own latest rollout", () async {
       final tempHome = Directory.systemTemp.createTempSync("codex-home-syn-");
       try {
         File(p.join(tempHome.path, "config.toml"))
@@ -112,18 +118,45 @@ void main() {
             "payload": {"model": "gpt-5.4-codex"},
           })}\n",
         );
+        // A NEWER rollout in a different derived project — it must not leak
+        // into /repo/example's defaults.
+        final otherRollout = File(p.join(
+          tempHome.path,
+          "sessions/2026/05/28/rollout-2026-05-28T10-00-00-019a0000-1111-2222-3333-cccccccccccc.jsonl",
+        ))..createSync(recursive: true);
+        otherRollout.writeAsStringSync(
+          "${jsonEncode({
+            "type": "session_meta",
+            "payload": {
+              "id": "019a0000-1111-2222-3333-cccccccccccc",
+              "timestamp": "2026-05-28T10:00:00Z",
+              "cwd": "/repo/other",
+              "model_provider": "anthropic",
+            },
+          })}\n"
+          "${jsonEncode({
+            "type": "turn_context",
+            "payload": {"model": "claude-x"},
+          })}\n",
+        );
 
+        final rolloutReader = SessionRolloutReader(
+          environment: {"CODEX_HOME": tempHome.path},
+        );
+        final configReader = CodexConfigReader(
+          environment: {"CODEX_HOME": tempHome.path},
+        );
         final plugin = CodexPlugin(
           serverUrl: "ws://127.0.0.1:0",
-          rolloutReader: SessionRolloutReader(
-            environment: {"CODEX_HOME": tempHome.path},
-          ),
-          configReader: CodexConfigReader(
-            environment: {"CODEX_HOME": tempHome.path},
-          ),
-          skillReader: CodexSkillReader(
-            environment: {"CODEX_HOME": tempHome.path},
-            projectCwd: tempHome.path,
+          rolloutReader: rolloutReader,
+          configReader: configReader,
+          metadataRepository: CodexMetadataRepository(
+            skillReader: CodexSkillReader(
+              environment: {"CODEX_HOME": tempHome.path},
+            ),
+            rolloutReader: rolloutReader,
+            configReader: configReader,
+            launchDirectory: "/repo/example",
           ),
           projectCwd: "/repo/example",
         );
@@ -137,6 +170,16 @@ void main() {
             (await plugin.getProviders(projectId: "/repo/example")).providers;
         expect(providers.single.id, equals("openai"));
         expect(providers.single.defaultModelID, equals("gpt-5.4-codex"));
+
+        // The other derived project resolves its own rollout's defaults.
+        final otherAgent = (await plugin.getAgents(projectId: "/repo/other")).single;
+        expect(otherAgent.model?.modelID, equals("claude-x"));
+        expect(otherAgent.model?.providerID, equals("anthropic"));
+
+        // A project with no sessions falls back to the global config.toml.
+        final freshAgent = (await plugin.getAgents(projectId: "/repo/fresh")).single;
+        expect(freshAgent.model?.modelID, equals("gpt-5.5"));
+        expect(freshAgent.model?.providerID, equals("openai"));
         await plugin.dispose();
       } finally {
         try {
@@ -144,38 +187,6 @@ void main() {
         } catch (_) {}
       }
     });
-
-    test(
-      "renameProject returns the synthesised project with the new name",
-      () async {
-        // Phase 6 dropped the last UnimplementedError. renameProject is a
-        // no-op against codex (single-project model) but echoes the new
-        // name so any caller's local cache stays consistent.
-        final tempHome = Directory.systemTemp.createTempSync("codex-home-rn-");
-        try {
-          final plugin = CodexPlugin(
-            serverUrl: "ws://127.0.0.1:0",
-            rolloutReader: SessionRolloutReader(
-              environment: {"CODEX_HOME": tempHome.path},
-            ),
-            skillReader: CodexSkillReader(
-              environment: {"CODEX_HOME": tempHome.path},
-              projectCwd: tempHome.path,
-            ),
-            projectCwd: "/repo/example",
-          );
-          final renamed =
-              await plugin.renameProject(projectId: "/repo/example", name: "X");
-          expect(renamed.id, equals("/repo/example"));
-          expect(renamed.name, equals("X"));
-          await plugin.dispose();
-        } finally {
-          try {
-            tempHome.deleteSync(recursive: true);
-          } catch (_) {}
-        }
-      },
-    );
 
     test("healthCheck returns true after a successful initialize handshake", () async {
       final fake = _FakeWebSocket();

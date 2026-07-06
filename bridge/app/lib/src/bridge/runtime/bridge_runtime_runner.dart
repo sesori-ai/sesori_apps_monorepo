@@ -42,13 +42,17 @@ import "../../auth/login_oauth_service.dart";
 import "../../auth/token.dart";
 import "../../auth/token_manager.dart";
 import "../../auth/token_refresher.dart";
+import "../../control/bridge_control_message_dispatcher.dart";
 import "../../control/control_channel_loss_listener.dart";
+import "../../control/control_provision_notifier.dart";
+import "../../control/control_status_notifier.dart";
 import "../../foundation/control_channel_client.dart";
 import "../../repositories/bridge_settings_repository.dart";
 import "../../server/api/loopback_port_api.dart";
 import "../../server/api/runtime_file_api.dart";
 import "../../server/api/system_process_api.dart";
 import "../../server/api/terminal_prompt_api.dart";
+import "../../server/foundation/bridge_replace_prompt.dart";
 import "../../server/foundation/bridge_restart_command_builder.dart";
 import "../../server/foundation/bridge_restart_env.dart";
 import "../../server/host/bridge_host_info_impl.dart";
@@ -63,6 +67,8 @@ import "../../server/repositories/terminal_prompt_repository.dart";
 import "../../server/services/bridge_instance_service.dart";
 import "../../server/services/bridge_restart_service.dart";
 import "../../services/control_channel_token_service.dart";
+import "../../services/control_prompt_service.dart";
+import "../../services/control_unregister_service.dart";
 import "../../updater/api/checksum_manifest_api.dart";
 import "../../updater/api/github_releases_api.dart";
 import "../../updater/api/managed_runtime_manifest_api.dart";
@@ -95,6 +101,7 @@ import "../log_failure_reporter.dart";
 import "../models/bridge_config.dart";
 import "../persistence/bridge_diagnostics.dart";
 import "../persistence/database.dart";
+import "../relay_client.dart";
 import "../sse/sse_manager.dart";
 import "bridge_cli_options.dart";
 import "bridge_runtime.dart";
@@ -105,6 +112,48 @@ import "plugin_failure_latch.dart";
 import "plugin_manager.dart";
 import "plugin_registry.dart";
 import "runtime_provision_formatter.dart";
+
+/// The deliberate exit outcomes of a supervised bridge, each carrying the
+/// process exit [code] the desktop GUI supervisor keys its respawn policy on.
+/// Anything not represented here reads to the GUI as a crash (backoff respawn).
+enum SupervisedExitCode {
+  /// A phone-triggered restart handed off by exiting: the GUI must respawn.
+  /// Distinct from a clean stop (0), a crash (other non-zero), and
+  /// control-channel loss (1) so the GUI supervisor can tell an intentional
+  /// restart apart and respawn rather than treat it as a crash.
+  restart(86),
+
+  /// The desktop GUI cannot supply an access token at bootstrap (signed out /
+  /// mid-login / unreachable). Distinct from a crash so the GUI supervisor
+  /// surfaces a login prompt instead of backoff-respawning a helper that can
+  /// never start. The exit code is the authoritative signal; the best-effort
+  /// `loginNeeded` prompt sent just before exiting is advisory.
+  authRequired(87),
+
+  /// Same-machine single-live contention kept this bridge from starting:
+  /// another bridge is already running (or holds the startup mutex) and the
+  /// replace ask ended in a decline or could not be answered (GUI declined /
+  /// unreachable / prompt timeout / teardown). Distinct from a crash so the
+  /// GUI supervisor can surface an "another bridge is running — take over?"
+  /// state instead of backoff-respawning a helper that would just re-prompt
+  /// forever. The incumbent bridge keeps running; taking over is a plain
+  /// respawn whose fresh replace prompt the GUI answers with accept.
+  bridgeContention(88),
+
+  /// The GUI's `unregister_and_exit` logout command: a deliberate clean stop,
+  /// so the GUI must not respawn.
+  logout(0),
+
+  /// The control channel to the GUI was lost past the grace period (ADR A9):
+  /// an abnormal exit — the parent is gone, so a loss must never read as a
+  /// clean stop even when the shutdown itself completes fine.
+  controlChannelLost(1);
+
+  const SupervisedExitCode(this.code);
+
+  /// The process exit code reported to the GUI supervisor.
+  final int code;
+}
 
 Future<int> runBridgeApp({
   required BridgeCliOptions options,
@@ -131,15 +180,21 @@ class BridgeRuntimeRunner {
     required String pluginId,
   }) async {
     final failureLatch = PluginFailureLatch();
-    // Set when a control-channel loss triggers shutdown, so BOTH the explicit
-    // exit and the coordinator backstop report the abnormal code. A loss must
-    // never look like a clean (0) exit, even if the stop hangs — and because
-    // the backstop fires at (ordered budget + slack), its timing varies with
-    // how many ordered steps are registered (none yet before the plugin
-    // starts), so a fixed timeout race against it is not reliable.
-    int? supervisedLossExitCode;
+    // The single typed slot for a deliberate supervised exit (restart /
+    // auth-required / contention / logout / control-channel loss). Set at the
+    // moment an outcome is decided — BEFORE any shutdown runs — so both the
+    // explicit return and the coordinator backstop report the same code even
+    // when the stop hangs or throws (the backstop's timing varies with how
+    // many ordered steps are registered, so racing it is not reliable).
+    //
+    // Write discipline preserves the old sentinel priority: the deliberate
+    // outcomes assign unconditionally (they are phase-disjoint, and an
+    // intentional exit outranks a pending control-channel loss), while the
+    // loss listener assigns with `??=` so a loss never overwrites an already
+    // decided intentional exit.
+    SupervisedExitCode? requestedSupervisedExit;
     final shutdownCoordinator = BridgeShutdownCoordinator(
-      backstopExitCode: () => supervisedLossExitCode ?? (failureLatch.failure == null ? 0 : 1),
+      backstopExitCode: () => requestedSupervisedExit?.code ?? (failureLatch.failure == null ? 0 : 1),
     );
     final subscriptions = CompositeSubscription();
     shutdownCoordinator.add(disposable: subscriptions.cancel);
@@ -181,15 +236,6 @@ class BridgeRuntimeRunner {
     final terminalPromptRepository = TerminalPromptRepository(
       api: terminalPromptApi,
     );
-    final bridgeInstanceService = BridgeInstanceService(
-      bridgeInstanceRepository: BridgeInstanceRepository(
-        api: systemProcessApi,
-        currentUser: currentUser,
-      ),
-      terminalPromptRepository: terminalPromptRepository,
-      processRepository: processRepository,
-      clock: serverClock,
-    );
     shutdownCoordinator.add(disposable: httpClient.close);
 
     final runtimeAuthService = BridgeRuntimeAuthService(
@@ -213,23 +259,111 @@ class BridgeRuntimeRunner {
       clearTokens: clearTokens,
     );
 
+    // Persisted bridge-id storage (its own file, not token.json). Constructed
+    // here so the supervised registration service below can share it; the
+    // legacy-id migration that populates it still runs at its normal point
+    // before authentication.
+    final bridgeIdStorage = BridgeIdStorage(filePath: bridgeIdPath());
+
     try {
+      // Copy a legacy bridge id out of token.json into its own storage before
+      // anything ID-dependent runs — in particular before the supervised control
+      // channel + dispatcher come up, so a GUI `unregister_and_exit` that arrives
+      // during early startup unregisters the migrated id instead of reading an
+      // empty store and leaking the server-side registration. The first token
+      // save no longer serializes bridgeId, so skipping this would erase the only
+      // copy. A failure here aborts startup so the next run retries the copy with
+      // the legacy source still intact.
+      await BridgeIdMigrationService(
+        bridgeIdStorage: bridgeIdStorage,
+        readLegacyBridgeId: readLegacyBridgeId,
+      ).migrate();
+
       // Supervised mode (desktop GUI): bring up the loopback control channel
       // before anything else so the GUI sees the helper connect promptly. Every
       // step here is gated by `--control-url`; standalone startup is unchanged.
       ControlChannelTokenService? controlChannelTokenService;
+      ControlPromptService? controlPromptService;
+      // Kept in scope past this block: the ControlStatusNotifier (built later,
+      // once the plugin exists) shares this client.
+      ControlChannelClient? controlChannelClient;
+      // Kept in scope for the plugin starter: tees runtime-provisioning progress
+      // onto the control channel so the GUI can render first-run progress.
+      ControlProvisionNotifier? controlProvisionNotifier;
+      // Built early in supervised mode so the dispatcher can route the logout
+      // `unregister_and_exit` command; reused as THE registration service later.
+      // Standalone builds it after the interactive auth flow yields its token
+      // refresher.
+      BridgeRegistrationService? supervisedRegistrationService;
       if (options.isSupervised) {
-        final controlChannelClient = await _connectSupervisedControlChannel(
+        controlChannelClient = await _connectSupervisedControlChannel(
           options: options,
           shutdownCoordinator: shutdownCoordinator,
-          requestAbnormalExit: (code) => supervisedLossExitCode = code,
+          // `??=`: a loss must never demote an already decided intentional
+          // exit (restart/auth/logout/contention) to the abnormal code.
+          requestAbnormalExit: () => requestedSupervisedExit ??= SupervisedExitCode.controlChannelLost,
         );
         // The GUI is the token authority in supervised mode: the bridge pulls
         // its access token from the control channel instead of the interactive
         // terminal login. Shares the same client the loss listener observes.
         controlChannelTokenService = ControlChannelTokenService(client: controlChannelClient);
         shutdownCoordinator.add(disposable: controlChannelTokenService.dispose);
+        // User prompts (replace-bridge, login-needed) go to the GUI instead of
+        // a terminal the helper doesn't have.
+        controlPromptService = ControlPromptService(client: controlChannelClient);
+        shutdownCoordinator.add(disposable: controlPromptService.dispose);
+        // The GUI's supplied token is this bridge's authority, so the control
+        // token service is the refresher. Reads the persisted id only at
+        // runtime (unregister/register), after the migration below, so building
+        // it before that migration is safe.
+        supervisedRegistrationService = _buildRegistrationService(
+          httpClient: httpClient,
+          authBackendUrl: options.authBackendUrl,
+          tokenRefresher: controlChannelTokenService,
+          bridgeIdStorage: bridgeIdStorage,
+        );
+        shutdownCoordinator.add(disposable: supervisedRegistrationService.dispose);
+        // Handles the GUI's `unregister_and_exit` logout command: unregister the
+        // bridgeId, then gracefully shut down and exit 0 (a clean stop, so the
+        // GUI does not respawn us). Record the logout sentinel first so a hung
+        // shutdown's backstop still reports 0 rather than a latched-failure 1.
+        final controlUnregisterService = ControlUnregisterService(
+          registrationService: supervisedRegistrationService,
+          terminate: () {
+            requestedSupervisedExit = SupervisedExitCode.logout;
+            return _shutdownThenExit(
+              shutdownCoordinator: shutdownCoordinator,
+              code: SupervisedExitCode.logout.code,
+            );
+          },
+        );
+        // The single inbound subscriber: decodes GUI→helper frames once and
+        // routes them to the owning service. Started before the bootstrap token
+        // pull below so its response is never missed.
+        final controlMessageDispatcher = BridgeControlMessageDispatcher(
+          client: controlChannelClient,
+          tokenService: controlChannelTokenService,
+          promptService: controlPromptService,
+          unregisterService: controlUnregisterService,
+        );
+        controlMessageDispatcher.start();
+        shutdownCoordinator.add(disposable: controlMessageDispatcher.dispose);
+        // Provision-progress tee: the runner's provisioning loop feeds each
+        // event here, and the notifier maps + best-effort pushes it to the GUI.
+        // It observes no stream and owns no subscription, so nothing to dispose.
+        controlProvisionNotifier = ControlProvisionNotifier(client: controlChannelClient);
       }
+
+      final BridgeReplacePrompt replacePrompt = controlPromptService ?? terminalPromptRepository;
+      final bridgeInstanceService = BridgeInstanceService(
+        bridgeInstanceRepository: BridgeInstanceRepository(
+          api: systemProcessApi,
+          currentUser: currentUser,
+        ),
+        replacePrompt: replacePrompt,
+        processRepository: processRepository,
+        clock: serverClock,
+      );
 
       final runtimeOwnershipError = unsupportedPackageRuntimeMessage(
         executablePath: io.Platform.resolvedExecutable,
@@ -263,6 +397,7 @@ class BridgeRuntimeRunner {
         processRunner: processRunner,
         managedRuntimePaths: managedRuntimePaths,
         releaseTrack: releaseTrack,
+        isSupervised: options.isSupervised,
       );
       // Reconcile a prior in-place update first (fast, local): confirm a
       // pending activation, surface a prior failure, sweep residue. Best-effort:
@@ -270,11 +405,13 @@ class BridgeRuntimeRunner {
       //
       // Gate it on the same skip check the periodic update path uses: a
       // non-managed binary (npm payload, dev build, CI, or updates disabled)
-      // must not touch the managed install's attempt/residue state.
+      // must not touch the managed install's attempt/residue state, and a
+      // supervised (GUI-bundled) bridge must never rewrite itself.
       final bool updatesEnabledForThisInstall = !shouldSkipUpdates(
         environment: environment,
         executablePath: io.Platform.resolvedExecutable,
         managedExecutablePath: managedRuntimePaths.binaryPath,
+        isSupervised: options.isSupervised,
       );
       if (updatesEnabledForThisInstall) {
         try {
@@ -284,17 +421,6 @@ class BridgeRuntimeRunner {
         }
       }
 
-      // Copy a legacy bridge id out of token.json into its own storage before
-      // authentication: the first token save no longer serializes bridgeId, so
-      // it would otherwise erase the only copy and force a duplicate
-      // registration. A failure here aborts startup so the next run retries the
-      // copy with the legacy source still intact.
-      final bridgeIdStorage = BridgeIdStorage(filePath: bridgeIdPath());
-      await BridgeIdMigrationService(
-        bridgeIdStorage: bridgeIdStorage,
-        readLegacyBridgeId: readLegacyBridgeId,
-      ).migrate();
-
       // Supervised mode short-circuits the interactive auth bootstrap: no
       // provider menu, no email/password prompt — the access token comes from
       // the GUI over the control channel. Standalone runs the unchanged
@@ -302,7 +428,18 @@ class BridgeRuntimeRunner {
       final String authAccessToken;
       final supervisedTokenService = controlChannelTokenService;
       if (supervisedTokenService != null) {
-        authAccessToken = await supervisedTokenService.getAccessToken();
+        try {
+          authAccessToken = await supervisedTokenService.getAccessToken();
+        } on ControlTokenUnavailableException catch (error, stackTrace) {
+          // The GUI cannot supply a token (signed out / mid-login / down). Exit
+          // with the auth-required sentinel so the GUI prompts for login instead
+          // of backoff-respawning a helper that can never start. The prompt is
+          // advisory (best-effort); the exit code is the authoritative signal.
+          Log.e("Cannot start supervised — no access token from the desktop app", error, stackTrace);
+          controlPromptService?.announceLoginNeeded();
+          requestedSupervisedExit = SupervisedExitCode.authRequired;
+          return SupervisedExitCode.authRequired.code;
+        }
       } else {
         final authTokens = await runtimeAuthService.ensureAuthenticated(options: options);
         authAccessToken = authTokens.accessToken;
@@ -364,6 +501,7 @@ class BridgeRuntimeRunner {
           environment: environment,
           currentUser: currentUser,
           startAborted: startAbortController.signal,
+          provisionNotifier: controlProvisionNotifier,
         ),
       );
       // If this bridge was spawned by a restart, wait for the predecessor to
@@ -390,11 +528,17 @@ class BridgeRuntimeRunner {
         }
       }
 
-      final plugin = await pluginManager.startPlugin(id: pluginId);
+      // Register the ordered plugin-stop BEFORE starting the plugin. A logout
+      // (or the ADR-A9 control-loss exit) can trigger `_shutdownThenExit` while
+      // `startPlugin()` is still in-flight; registering the stop first means the
+      // ordered shutdown covers a partially-started plugin (`stopPlugin` awaits
+      // the in-flight start, then shuts it down) instead of exiting without
+      // stopping it and orphaning the backend. It is a no-op if start never ran.
       shutdownCoordinator.addOrdered(
         action: () => pluginManager.stopPlugin(id: pluginId),
         budget: _pluginShutdownBudget,
       );
+      final plugin = await pluginManager.startPlugin(id: pluginId);
       plugin.status
           .listen((status) {
             if (status is PluginFailed) {
@@ -426,18 +570,46 @@ class BridgeRuntimeRunner {
         tokenRefresher = tokenManager;
       }
 
-      final bridgeRegistrationService = BridgeRegistrationService(
-        repository: BridgeRegistrationRepository(
-          api: BridgeRegistrationApi(
-            authBackendUrl: options.authBackendUrl,
-            client: httpClient,
-          ),
-        ),
-        tokenRefresher: tokenRefresher,
-        bridgeIdStorage: bridgeIdStorage,
-        hostName: io.Platform.localHostname,
-        platform: BridgeRegistrationService.currentPlatformName(),
+      // Supervised mode already built this early (so the dispatcher could route
+      // the logout command); reuse that instance. Standalone builds it here, now
+      // that the interactive auth flow has produced its token refresher.
+      final BridgeRegistrationService bridgeRegistrationService;
+      if (supervisedRegistrationService != null) {
+        bridgeRegistrationService = supervisedRegistrationService;
+      } else {
+        bridgeRegistrationService = _buildRegistrationService(
+          httpClient: httpClient,
+          authBackendUrl: options.authBackendUrl,
+          tokenRefresher: tokenRefresher,
+          bridgeIdStorage: bridgeIdStorage,
+        );
+        shutdownCoordinator.add(disposable: bridgeRegistrationService.dispose);
+      }
+
+      // Constructed here (not inside BridgeRuntime.create) so supervised mode
+      // can observe its connectionState stream below.
+      final relayClient = RelayClient(
+        relayURL: options.relayUrl,
+        accessTokenProvider: accessTokenProvider,
+        bridgeIdProvider: bridgeRegistrationService,
       );
+
+      // Supervised status pushes: the notifier owns every outbound
+      // status-class send (status + registered) over the control channel,
+      // observing the plugin's lifecycle stream, the relay's connection-state
+      // stream, and registration successes. Started before the session runs so
+      // the initial registration and relay connect are never missed.
+      ControlStatusNotifier? controlStatusNotifier;
+      if (controlChannelClient != null) {
+        controlStatusNotifier = ControlStatusNotifier(
+          client: controlChannelClient,
+          pluginStatus: plugin.status,
+          relayConnectionState: relayClient.connectionState,
+          registrations: bridgeRegistrationService.registrations,
+        );
+        controlStatusNotifier.start();
+        shutdownCoordinator.add(disposable: controlStatusNotifier.dispose);
+      }
 
       final restartService = BridgeRestartService(
         processRepository: processRepository,
@@ -445,6 +617,10 @@ class BridgeRuntimeRunner {
         binaryPath: managedRuntimePaths.binaryPath,
         cliArgs: options.cliArgs,
         currentPid: io.pid,
+        // Supervised: the GUI owns the lifecycle and respawns us, so a restart
+        // exits with the sentinel code instead of spawning a successor (which
+        // would replay --control-url with no off-argv secret and fail closed).
+        isSupervised: options.isSupervised,
       );
 
       // Run startup diagnostics before composing the runtime so the
@@ -469,6 +645,7 @@ class BridgeRuntimeRunner {
           sseReplayWindow: SSEManager.defaultReplayWindow,
         ),
         plugin: plugin.api,
+        relayClient: relayClient,
         httpClient: httpClient,
         accessTokenProvider: accessTokenProvider,
         tokenRefresher: tokenRefresher,
@@ -478,6 +655,7 @@ class BridgeRuntimeRunner {
         failureReporter: LogFailureReporter(),
         restartService: restartService,
         filesystemAccessOk: filesystemAccessOk,
+        statusNotifier: controlStatusNotifier,
       );
       shutdownCoordinator.add(disposable: runtime.close);
       // Defined stop semantics: stopping the active plugin cancels the
@@ -507,16 +685,75 @@ class BridgeRuntimeRunner {
         unawaited(runtime.session.cancel());
       });
 
-      await runtime.session.run();
+      try {
+        await runtime.session.run();
+      } finally {
+        // A supervised phone-triggered restart handed the session off by exiting
+        // rather than spawning a successor; resolve the GUI-respawn sentinel here
+        // (in a finally) so it survives even if a teardown await in run()/cancel()
+        // throws — otherwise the error path below would return a crash code and
+        // the GUI would back off instead of respawning. `restartService` is only
+        // in scope inside this try, hence resolving into the outer-scoped local.
+        // Assigned before the outer `finally`'s shutdown runs, so a hung-shutdown
+        // backstop reports the same code too.
+        if (restartService.supervisedRestartRequested) {
+          requestedSupervisedExit = SupervisedExitCode.restart;
+        }
+      }
+      if (requestedSupervisedExit == SupervisedExitCode.restart) {
+        return SupervisedExitCode.restart.code;
+      }
       return failureLatch.failure == null ? 0 : 1;
     } on PluginStartAbortedException {
       Log.i("Plugin start aborted as requested.");
       return 0;
-    } catch (error) {
+    } on BridgeRuntimeServerException catch (error) {
+      // Same-machine single-live contention: another bridge is running (or
+      // holds the startup mutex) and this bridge did not replace it. Standalone
+      // keeps today's loud abort (exit 1). Supervised exits with the dedicated
+      // contention sentinel so the GUI shows "another bridge is running — take
+      // over?" instead of misreading the abort as a crash and backoff-
+      // respawning a helper that would just re-prompt forever.
+      Log.e("$error");
+      if (options.isSupervised) {
+        requestedSupervisedExit = SupervisedExitCode.bridgeContention;
+        return SupervisedExitCode.bridgeContention.code;
+      }
+      return 1;
+    } catch (error, stackTrace) {
+      // Honor an already-completed supervised restart handoff: a teardown error
+      // after the handoff is still an intentional restart, so return the sentinel
+      // (GUI respawns) rather than the crash code.
+      if (requestedSupervisedExit == SupervisedExitCode.restart) {
+        Log.w("Session teardown failed after a supervised restart handoff", error, stackTrace);
+        return SupervisedExitCode.restart.code;
+      }
       Log.e("$error");
       return 1;
     } finally {
-      await shutdownCoordinator.shutdown();
+      try {
+        await shutdownCoordinator.shutdown();
+      } catch (error, stackTrace) {
+        // `shutdownCoordinator.shutdown()` rethrows a failed ordered/parallel
+        // step (by design — a failed plugin stop must surface as a non-zero
+        // exit). Thrown from this `finally`, that would override the return
+        // value. For a supervised restart, auth-required, or contention exit
+        // that must NOT happen: the exit must stay the sentinel so the GUI
+        // respawns (86), prompts for login (87), or offers a take-over (88)
+        // rather than treating it as a crash. For every other exit — including
+        // logout and control-channel loss, whose graceful path exits the
+        // process itself — preserve the loud-failure behaviour by rethrowing.
+        switch (requestedSupervisedExit) {
+          case SupervisedExitCode.restart:
+          case SupervisedExitCode.authRequired:
+          case SupervisedExitCode.bridgeContention:
+            Log.w("Shutdown error during a supervised sentinel exit; preserving the sentinel exit code", error, stackTrace);
+          case SupervisedExitCode.logout:
+          case SupervisedExitCode.controlChannelLost:
+          case null:
+            rethrow;
+        }
+      }
     }
   }
 
@@ -541,7 +778,7 @@ class BridgeRuntimeRunner {
   static Future<ControlChannelClient> _connectSupervisedControlChannel({
     required BridgeCliOptions options,
     required BridgeShutdownCoordinator shutdownCoordinator,
-    required void Function(int code) requestAbnormalExit,
+    required void Function() requestAbnormalExit,
   }) async {
     final url = Uri.parse(options.controlUrl!);
     if (!isLoopbackControlUrl(url)) {
@@ -560,13 +797,17 @@ class BridgeRuntimeRunner {
     // the ADR A9 grace timer un-armed and the helper running with no parent.
     final lossListener = ControlChannelLossListener(
       connectionState: controlChannelClient.connectionState,
+      // The composition root owns the exit-code vocabulary, so the listener's
+      // code is pinned to the enum here rather than relying on the listener's
+      // own default staying in sync with it.
+      exitCode: SupervisedExitCode.controlChannelLost.code,
       // Don't hard-exit straight from the loss timer: that bypasses the ordered
       // plugin stop in the shutdown coordinator and could orphan an owned
-      // backend runtime (e.g. OpenCode). Record the abnormal code (so the
+      // backend runtime (e.g. OpenCode). Record the abnormal outcome (so the
       // coordinator backstop reports it too if the stop hangs), then shut down
       // gracefully before exiting.
       exitProcess: (code) {
-        requestAbnormalExit(code);
+        requestAbnormalExit();
         unawaited(_shutdownThenExit(shutdownCoordinator: shutdownCoordinator, code: code));
       },
     );
@@ -577,14 +818,42 @@ class BridgeRuntimeRunner {
     return controlChannelClient;
   }
 
-  /// Graceful termination for the control-channel parent-loss policy (ADR A9):
-  /// run the ordered shutdown (which stops the plugin and any owned runtime)
-  /// before exiting, so a hard exit from the loss timer cannot orphan the
-  /// backend process. If the stop hangs, the coordinator backstop fires — and
-  /// because the loss code was recorded via `requestAbnormalExit`, the backstop
-  /// reports that abnormal code, not the neutral 0, so a loss is never seen as a
-  /// clean exit regardless of the backstop's (step-count-dependent) timing. The
-  /// precise exit code the GUI observes is finalized in Phase 2 (PR 2.7).
+  /// Builds the bridge registration service. Extracted so supervised mode can
+  /// construct it early (sharing the control token service as its refresher) to
+  /// route the logout command, while standalone builds it after interactive auth
+  /// yields its refresher — both from one definition.
+  static BridgeRegistrationService _buildRegistrationService({
+    required http.Client httpClient,
+    required String authBackendUrl,
+    required TokenRefresher tokenRefresher,
+    required BridgeIdStorage bridgeIdStorage,
+  }) {
+    return BridgeRegistrationService(
+      repository: BridgeRegistrationRepository(
+        api: BridgeRegistrationApi(
+          authBackendUrl: authBackendUrl,
+          client: httpClient,
+        ),
+      ),
+      tokenRefresher: tokenRefresher,
+      bridgeIdStorage: bridgeIdStorage,
+      // Safe helper (not io.Platform.localHostname directly): hostname
+      // resolution can throw a SocketException in restricted/containerized
+      // environments; degrade to "" (which BridgeRegistrationService clamps to
+      // "sesori-bridge") instead of crashing startup.
+      hostName: _localHostname(),
+      platform: BridgeRegistrationService.currentPlatformName(),
+    );
+  }
+
+  /// Runs the ordered shutdown (stopping the plugin and any owned runtime),
+  /// then exits with [code]. Two supervised paths use it: the control-channel
+  /// parent-loss policy (ADR A9) and the GUI logout `unregister_and_exit`
+  /// command. Running the ordered shutdown first means a hard exit can never
+  /// orphan the backend process. If the stop hangs, the coordinator backstop
+  /// fires; for the loss path the abnormal code recorded via
+  /// `requestAbnormalExit` is reported so a loss is never seen as a clean exit.
+  /// The precise exit code the GUI observes is finalized in Phase 2 (PR 2.7).
   static Future<void> _shutdownThenExit({
     required BridgeShutdownCoordinator shutdownCoordinator,
     required int code,
@@ -604,9 +873,14 @@ class BridgeRuntimeRunner {
   /// stays unset, and `start()` proceeds in a degraded state. A cooperative
   /// abort during provisioning surfaces as [PluginStartAbortedException], which
   /// the caller already treats as "aborted as requested".
+  ///
+  /// In supervised mode [provisionNotifier] tees each event onto the control
+  /// channel so the GUI can render first-run progress; standalone passes null
+  /// and only the stderr render runs (byte-identical).
   static Future<void> _ensurePluginRuntime({
     required BridgePluginDescriptor descriptor,
     required BridgePluginHostImpl host,
+    required ControlProvisionNotifier? provisionNotifier,
   }) async {
     final formatter = RuntimeProvisionFormatter(
       interactive: io.stderr.hasTerminal,
@@ -617,6 +891,7 @@ class BridgeRuntimeRunner {
       if (rendered != null) {
         io.stderr.write(rendered);
       }
+      provisionNotifier?.handleProvisionProgress(event: event);
       if (event is ProvisionReady) {
         host.provisionedRuntimePath = event.binaryPath;
       }
@@ -646,6 +921,7 @@ class BridgeRuntimeRunner {
     required Map<String, String> environment,
     required ProcessUser? currentUser,
     required StartAbortSignal startAborted,
+    required ControlProvisionNotifier? provisionNotifier,
   }) {
     Future<BridgePlugin> attemptStart({required int attempt}) {
       return startupMutexRepository.withLock<BridgePlugin>(
@@ -690,7 +966,11 @@ class BridgeRuntimeRunner {
               // needed), recording the resolved launch path on the host, before
               // start(). Runs under the mutex so concurrent bridge instances
               // can't install the same managed runtime at once.
-              await _ensurePluginRuntime(descriptor: descriptor, host: host);
+              await _ensurePluginRuntime(
+                descriptor: descriptor,
+                host: host,
+                provisionNotifier: provisionNotifier,
+              );
               return descriptor.start(host);
             case BridgeInstanceResolutionStatus.declined:
               throw const BridgeRuntimeServerException(
@@ -745,6 +1025,7 @@ class BridgeRuntimeRunner {
     required ProcessRunner processRunner,
     required ManagedRuntimePaths managedRuntimePaths,
     required ReleaseTrack releaseTrack,
+    required bool isSupervised,
   }) {
     const clock = Clock();
     const messageFormatter = UpdateMessageFormatter();
@@ -820,6 +1101,7 @@ class BridgeRuntimeRunner {
       executablePath: io.Platform.resolvedExecutable,
       managedExecutablePath: managedRuntimePaths.binaryPath,
       environment: io.Platform.environment,
+      isSupervised: isSupervised,
     );
 
     final reconciliationService = UpdateReconciliationService(

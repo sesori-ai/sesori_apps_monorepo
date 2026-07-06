@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ProjectDto {
 
- String get projectId; bool get hidden; String? get baseBranch; int get worktreeCounter;
+ String get projectId; String get path; bool get hidden; String? get baseBranch; int get worktreeCounter; String? get displayName; int get openedAt;
 /// Create a copy of ProjectDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $ProjectDtoCopyWith<ProjectDto> get copyWith => _$ProjectDtoCopyWithImpl<Project
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectDto&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.hidden, hidden) || other.hidden == hidden)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.worktreeCounter, worktreeCounter) || other.worktreeCounter == worktreeCounter));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectDto&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.path, path) || other.path == path)&&(identical(other.hidden, hidden) || other.hidden == hidden)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.worktreeCounter, worktreeCounter) || other.worktreeCounter == worktreeCounter)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.openedAt, openedAt) || other.openedAt == openedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,projectId,hidden,baseBranch,worktreeCounter);
+int get hashCode => Object.hash(runtimeType,projectId,path,hidden,baseBranch,worktreeCounter,displayName,openedAt);
 
 @override
 String toString() {
-  return 'ProjectDto(projectId: $projectId, hidden: $hidden, baseBranch: $baseBranch, worktreeCounter: $worktreeCounter)';
+  return 'ProjectDto(projectId: $projectId, path: $path, hidden: $hidden, baseBranch: $baseBranch, worktreeCounter: $worktreeCounter, displayName: $displayName, openedAt: $openedAt)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $ProjectDtoCopyWith<$Res>  {
   factory $ProjectDtoCopyWith(ProjectDto value, $Res Function(ProjectDto) _then) = _$ProjectDtoCopyWithImpl;
 @useResult
 $Res call({
- String projectId, bool hidden, String? baseBranch, int worktreeCounter
+ String projectId, String path, bool hidden, String? baseBranch, int worktreeCounter, String? displayName, int openedAt
 });
 
 
@@ -62,12 +62,15 @@ class _$ProjectDtoCopyWithImpl<$Res>
 
 /// Create a copy of ProjectDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,Object? hidden = null,Object? baseBranch = freezed,Object? worktreeCounter = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? projectId = null,Object? path = null,Object? hidden = null,Object? baseBranch = freezed,Object? worktreeCounter = null,Object? displayName = freezed,Object? openedAt = null,}) {
   return _then(_self.copyWith(
 projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
+as String,path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
 as String,hidden: null == hidden ? _self.hidden : hidden // ignore: cast_nullable_to_non_nullable
 as bool,baseBranch: freezed == baseBranch ? _self.baseBranch : baseBranch // ignore: cast_nullable_to_non_nullable
 as String?,worktreeCounter: null == worktreeCounter ? _self.worktreeCounter : worktreeCounter // ignore: cast_nullable_to_non_nullable
+as int,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
+as String?,openedAt: null == openedAt ? _self.openedAt : openedAt // ignore: cast_nullable_to_non_nullable
 as int,
   ));
 }
@@ -80,13 +83,16 @@ as int,
 
 
 class _ProjectDto extends ProjectDto {
-  const _ProjectDto({required this.projectId, this.hidden = false, this.baseBranch, this.worktreeCounter = 0}): super._();
+  const _ProjectDto({required this.projectId, required this.path, this.hidden = false, this.baseBranch, this.worktreeCounter = 0, this.displayName, required this.openedAt}): super._();
   
 
 @override final  String projectId;
+@override final  String path;
 @override@JsonKey() final  bool hidden;
 @override final  String? baseBranch;
 @override@JsonKey() final  int worktreeCounter;
+@override final  String? displayName;
+@override final  int openedAt;
 
 /// Create a copy of ProjectDto
 /// with the given fields replaced by the non-null parameter values.
@@ -98,16 +104,16 @@ _$ProjectDtoCopyWith<_ProjectDto> get copyWith => __$ProjectDtoCopyWithImpl<_Pro
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectDto&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.hidden, hidden) || other.hidden == hidden)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.worktreeCounter, worktreeCounter) || other.worktreeCounter == worktreeCounter));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectDto&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.path, path) || other.path == path)&&(identical(other.hidden, hidden) || other.hidden == hidden)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.worktreeCounter, worktreeCounter) || other.worktreeCounter == worktreeCounter)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.openedAt, openedAt) || other.openedAt == openedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,projectId,hidden,baseBranch,worktreeCounter);
+int get hashCode => Object.hash(runtimeType,projectId,path,hidden,baseBranch,worktreeCounter,displayName,openedAt);
 
 @override
 String toString() {
-  return 'ProjectDto(projectId: $projectId, hidden: $hidden, baseBranch: $baseBranch, worktreeCounter: $worktreeCounter)';
+  return 'ProjectDto(projectId: $projectId, path: $path, hidden: $hidden, baseBranch: $baseBranch, worktreeCounter: $worktreeCounter, displayName: $displayName, openedAt: $openedAt)';
 }
 
 
@@ -118,7 +124,7 @@ abstract mixin class _$ProjectDtoCopyWith<$Res> implements $ProjectDtoCopyWith<$
   factory _$ProjectDtoCopyWith(_ProjectDto value, $Res Function(_ProjectDto) _then) = __$ProjectDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String projectId, bool hidden, String? baseBranch, int worktreeCounter
+ String projectId, String path, bool hidden, String? baseBranch, int worktreeCounter, String? displayName, int openedAt
 });
 
 
@@ -135,12 +141,15 @@ class __$ProjectDtoCopyWithImpl<$Res>
 
 /// Create a copy of ProjectDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? projectId = null,Object? hidden = null,Object? baseBranch = freezed,Object? worktreeCounter = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? projectId = null,Object? path = null,Object? hidden = null,Object? baseBranch = freezed,Object? worktreeCounter = null,Object? displayName = freezed,Object? openedAt = null,}) {
   return _then(_ProjectDto(
 projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
+as String,path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
 as String,hidden: null == hidden ? _self.hidden : hidden // ignore: cast_nullable_to_non_nullable
 as bool,baseBranch: freezed == baseBranch ? _self.baseBranch : baseBranch // ignore: cast_nullable_to_non_nullable
 as String?,worktreeCounter: null == worktreeCounter ? _self.worktreeCounter : worktreeCounter // ignore: cast_nullable_to_non_nullable
+as int,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
+as String?,openedAt: null == openedAt ? _self.openedAt : openedAt // ignore: cast_nullable_to_non_nullable
 as int,
   ));
 }

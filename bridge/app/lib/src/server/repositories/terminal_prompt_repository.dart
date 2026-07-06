@@ -1,20 +1,23 @@
 import '../api/terminal_prompt_api.dart';
+import '../foundation/bridge_replace_prompt.dart';
 import '../foundation/terminal_prompt_decision.dart';
 
-class TerminalPromptRepository {
+class TerminalPromptRepository implements BridgeReplacePrompt {
   TerminalPromptRepository({required TerminalPromptApi api}) : _api = api;
 
   final TerminalPromptApi _api;
 
+  @override
   Future<TerminalPromptDecision> askReplaceExistingBridge({required int bridgeCount}) async {
     return _askYesNo(
-      message: 'Another Sesori bridge is already running. Kill it and start fresh? [y/N]',
+      message: '${BridgeReplacePrompt.replaceExistingBridgeMessage} [y/N]',
     );
   }
 
+  @override
   Future<TerminalPromptDecision> askReplaceStartingBridge({required int holderPid}) async {
     return _askYesNo(
-      message: 'Another Sesori bridge is still starting up (pid $holderPid). Kill it and start fresh? [y/N]',
+      message: '${BridgeReplacePrompt.replaceStartingBridgeMessage(holderPid: holderPid)} [y/N]',
     );
   }
 

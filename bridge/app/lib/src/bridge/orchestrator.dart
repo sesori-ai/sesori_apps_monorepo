@@ -11,6 +11,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../auth/access_token_provider.dart";
 import "../auth/bridge_registration_service.dart";
 import "../auth/token_refresher.dart";
+import "../control/control_status_notifier.dart";
 import "../push/completion_push_listener.dart";
 import "../push/maintenance_push_listener.dart";
 import "../push/push_dispatcher.dart";
@@ -41,6 +42,8 @@ import "services/session_creation_service.dart";
 import "services/session_event_enrichment_service.dart";
 import "services/session_persistence_service.dart";
 import "services/session_prompt_service.dart";
+import "services/session_unseen_service.dart";
+import "services/session_view_tracker.dart";
 import "services/worktree_service.dart";
 import "sse/bridge_event_mapper.dart";
 import "sse/sse_manager.dart";
@@ -62,6 +65,8 @@ class Orchestrator {
   final PrSyncService _prSyncService;
   final SessionRepository _sessionRepository;
   final ProjectRepository _projectRepository;
+  final SessionUnseenService _sessionUnseenService;
+  final SessionViewTracker _sessionViewTracker;
   final FilesystemRepository _filesystemRepository;
   final ProjectInitializationService _projectInitializationService;
   final HealthRepository _healthRepository;
@@ -73,6 +78,7 @@ class Orchestrator {
   final WorktreeService _worktreeService;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final BridgeRestartService _restartService;
+  final ControlStatusNotifier? _statusNotifier;
 
   Orchestrator({
     required this.config,
@@ -89,6 +95,8 @@ class Orchestrator {
     required PrSyncService prSyncService,
     required SessionRepository sessionRepository,
     required ProjectRepository projectRepository,
+    required SessionUnseenService sessionUnseenService,
+    required SessionViewTracker sessionViewTracker,
     required FilesystemRepository filesystemRepository,
     required ProjectInitializationService projectInitializationService,
     required HealthRepository healthRepository,
@@ -100,6 +108,9 @@ class Orchestrator {
     required WorktreeService worktreeService,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
     required BridgeRestartService restartService,
+    // Supervised mode only: owns the status-class pushes to the desktop GUI.
+    // Standalone has no control channel, so this is null there.
+    required ControlStatusNotifier? statusNotifier,
   }) : _client = client,
        _plugin = plugin,
        _metadataService = metadataService,
@@ -113,6 +124,8 @@ class Orchestrator {
        _sessionRepository = sessionRepository,
        _prSyncService = prSyncService,
        _projectRepository = projectRepository,
+       _sessionUnseenService = sessionUnseenService,
+       _sessionViewTracker = sessionViewTracker,
        _filesystemRepository = filesystemRepository,
        _projectInitializationService = projectInitializationService,
        _healthRepository = healthRepository,
@@ -123,7 +136,8 @@ class Orchestrator {
        _sessionPersistenceService = sessionPersistenceService,
        _worktreeService = worktreeService,
        _sessionEventEnrichmentService = sessionEventEnrichmentService,
-       _restartService = restartService;
+       _restartService = restartService,
+       _statusNotifier = statusNotifier;
 
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorSession create() {
@@ -164,6 +178,8 @@ class Orchestrator {
       sessionRepository: _sessionRepository,
       prSyncService: _prSyncService,
       projectRepository: _projectRepository,
+      sessionUnseenService: _sessionUnseenService,
+      sessionViewTracker: _sessionViewTracker,
       filesystemRepository: _filesystemRepository,
       projectInitializationService: _projectInitializationService,
       healthRepository: _healthRepository,
@@ -178,6 +194,7 @@ class Orchestrator {
       sessionAbortService: sessionAbortService,
       sessionEventEnrichmentService: _sessionEventEnrichmentService,
       restartService: _restartService,
+      statusNotifier: _statusNotifier,
     );
   }
 
@@ -210,9 +227,12 @@ class OrchestratorSession {
   final StreamController<int> _bytesSentController;
   final FailureReporter _failureReporter;
   final PrSyncService _prSyncService;
+  final SessionUnseenService _sessionUnseenService;
+  final SessionViewTracker _sessionViewTracker;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final SessionAbortService _sessionAbortService;
   final BridgeRestartService _restartService;
+  final ControlStatusNotifier? _statusNotifier;
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
   bool _cancelled = false;
@@ -252,6 +272,8 @@ class OrchestratorSession {
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
     required ProjectRepository projectRepository,
+    required SessionUnseenService sessionUnseenService,
+    required SessionViewTracker sessionViewTracker,
     required FilesystemRepository filesystemRepository,
     required ProjectInitializationService projectInitializationService,
     required HealthRepository healthRepository,
@@ -266,6 +288,7 @@ class OrchestratorSession {
     required SessionAbortService sessionAbortService,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
     required BridgeRestartService restartService,
+    required ControlStatusNotifier? statusNotifier,
   }) : _client = client,
        _plugin = plugin,
        _pushDispatcher = pushDispatcher,
@@ -279,8 +302,11 @@ class OrchestratorSession {
        _bytesSentController = bytesSentController,
        _failureReporter = failureReporter,
        _prSyncService = prSyncService,
+       _sessionUnseenService = sessionUnseenService,
+       _sessionViewTracker = sessionViewTracker,
        _sessionAbortService = sessionAbortService,
        _restartService = restartService,
+       _statusNotifier = statusNotifier,
        _router = RequestRouter(
          plugin: plugin,
          getCommandsHandler: GetCommandsHandler(
@@ -306,6 +332,7 @@ class OrchestratorSession {
           permissionRepository: permissionRepository,
          questionRepository: questionRepository,
          sessionPersistenceService: sessionPersistenceService,
+         sessionUnseenService: sessionUnseenService,
          worktreeService: worktreeService,
          sessionDiffsHandler: GetSessionDiffsHandler(
            sessionRepository: sessionRepository,
@@ -350,6 +377,9 @@ class OrchestratorSession {
       final startupSummary = _mapper.buildProjectsSummaryEvent();
       if (startupSummary != null) {
         _completionListener.handleSseEvent(startupSummary);
+        if (startupSummary is SesoriProjectsSummary) {
+          _statusNotifier?.handleProjectsSummary(summary: startupSummary);
+        }
       }
 
       Log.d("subscribing to plugin event stream...");
@@ -383,24 +413,35 @@ class OrchestratorSession {
             _sseManager.enqueueEvent(SesoriSseEvent.sessionsUpdated(projectID: projectId));
           })
           .addTo(_subscriptions);
+      _sessionUnseenService.unseenChanges
+          .listen((change) {
+            _sseManager.enqueueEvent(
+              SesoriSseEvent.sessionUnseenChanged(
+                projectID: change.projectId,
+                sessionId: change.sessionId,
+                unseen: change.unseen,
+                projectHasUnseenChanges: change.projectHasUnseenChanges,
+              ),
+            );
+          })
+          .addTo(_subscriptions);
 
-      // Live re-auth: when the token provider emits a token that differs from the
-      // one the relay socket is actually authenticated with (supervised mode, the
-      // GUI pushed a token_update), the open WebSocket is still on the previous
-      // JWT. Drop the relay so the reconnect loop below re-authenticates on the
-      // fresh token — the same path a relay-side disconnect drives, so both
-      // triggers stay symmetric.
+      // Live re-auth: when the token provider emits a token whose auth IDENTITY
+      // differs from the one the relay socket is actually authenticated with
+      // (supervised mode: the GUI pushed a token_update after an account switch;
+      // standalone: a re-login as another user picked up by the next refresh),
+      // drop the relay so the reconnect loop below re-authenticates on the fresh
+      // token — the same path a relay-side disconnect drives, so both triggers
+      // stay symmetric.
       //
-      // Compare against the token the socket actually used for auth
-      // ([RelayClient.lastAuthedToken]) rather than skipping the BehaviorSubject's
-      // replayed value. This (a) ignores routine unchanged pulls (e.g. metadata
-      // generation) so they don't needlessly drop a live connection, (b) breaks
-      // the feedback loop where the reconnect path's own force-pull re-emits the
-      // token it just authenticated with, and (c) still re-auths for a push that
-      // landed in the gap between connect() and this subscription, since that
-      // pushed token differs from the one connect() sent.
+      // Identity-gated on purpose: the relay validates the JWT once at connect
+      // and never re-checks it for the lifetime of the socket, so a routine
+      // same-user token rotation (TokenManager refreshing near expiry during
+      // metadata generation or push sends, or the GUI pushing a routine refresh)
+      // keeps the open socket fully valid. Dropping it would disconnect every
+      // phone mid-flight for nothing — see [_requiresRelayReauth].
       _accessTokenProvider.tokenStream
-          .where((token) => token != _client.lastAuthedToken)
+          .where(_requiresRelayReauth)
           .listen((token) => unawaited(_reauthenticateRelay()))
           .addTo(_subscriptions);
     } catch (e) {
@@ -427,6 +468,10 @@ class OrchestratorSession {
         Log.w("Relay connection lost. Reconnecting...");
         _sseManager.orphanAll();
         activePhones.clear();
+        // Every phone connection died with the relay link; drop their view
+        // declarations so no session stays "watched" by a ghost connection.
+        // Phones re-assert their current view on reconnect.
+        _sessionViewTracker.clearAll();
 
         if (_client.closeCode == RelayCloseCodes.bridgeRevoked) {
           Log.w("Relay reports this bridge as revoked — re-registering with a fresh bridge id");
@@ -536,10 +581,13 @@ class OrchestratorSession {
   }
 
   /// Performs the restart handoff after the `{restarting:true}` reply has been
-  /// enqueued: spawns the successor, then drives the normal graceful shutdown
-  /// ([cancel]) — which flushes the queued reply by closing the relay and lets
-  /// this process exit. The successor waits for this pid to exit before it
-  /// enforces single-live-bridge, so the handoff is clean.
+  /// enqueued: delegates the run-mode strategy to [BridgeRestartService]
+  /// (standalone spawns a successor; supervised records the GUI-respawn intent),
+  /// then drives the normal graceful shutdown ([cancel]) — which flushes the
+  /// queued reply by closing the relay and lets this process exit. A standalone
+  /// successor waits for this pid to exit before it enforces single-live-bridge,
+  /// so the handoff is clean; the supervised exit code is applied by the
+  /// composition root once the session ends.
   ///
   /// Public because both restart triggers drive the same handoff: the relay
   /// request loop (below) and the local [DebugServer], which reuses this
@@ -556,9 +604,13 @@ class OrchestratorSession {
       return;
     }
     _restartHandoffStarted = true;
-    Log.i("[restart] restart requested; spawning successor bridge");
-    final bool spawned = await _restartService.spawnSuccessor();
-    if (!spawned) {
+    Log.i("[restart] restart requested");
+    // The restart service owns the run-mode strategy: standalone spawns a
+    // successor process; supervised records the intent so the composition root
+    // exits with the GUI-respawn sentinel (no successor spawn). A `false` return
+    // means the standalone successor could not be started, so we keep running.
+    final bool proceed = await _restartService.performRestartHandoff();
+    if (!proceed) {
       _restartHandoffStarted = false;
       Console.error(
         "Restart requested but a new bridge could not be started; continuing to run. "
@@ -566,7 +618,7 @@ class OrchestratorSession {
       );
       return;
     }
-    Log.i("[restart] successor spawned; shutting down for handoff");
+    Log.i("[restart] handing off; shutting down");
     await cancel();
   }
 
@@ -579,7 +631,15 @@ class OrchestratorSession {
           "[sse] mapped to: ${sesoriEvent.runtimeType} — enqueuing (subscribers: ${_sseManager.subscriberCount})",
         );
         _completionListener.handleSseEvent(sesoriEvent);
+        if (sesoriEvent is SesoriProjectsSummary) {
+          _statusNotifier?.handleProjectsSummary(summary: sesoriEvent);
+        }
         _sseManager.enqueueEvent(sesoriEvent);
+        unawaited(
+          _routeUnseenActivity(sesoriEvent).catchError((Object e, StackTrace st) {
+            Log.w("failed to route unseen activity for ${sesoriEvent.runtimeType}", e, st);
+          }),
+        );
       } else {
         Log.v("[sse] mapping returned null — event dropped");
       }
@@ -597,6 +657,70 @@ class OrchestratorSession {
             )
             .catchError((_) {}),
       );
+    }
+  }
+
+  /// Feeds an already-mapped [SesoriSseEvent] into the unseen-changes tracking.
+  /// Only message activity, pending input requests, and session lifecycle
+  /// events matter; everything else is ignored. A user-authored message (or a
+  /// question/permission reply) advances the "last user message" timestamp in
+  /// addition to general activity.
+  ///
+  /// Streamed part/delta events are deliberately NOT activity: `message.updated`
+  /// fires when a message is created and when it completes, which is sufficient
+  /// granularity for a bold indicator and keeps per-token deltas out of the
+  /// write path.
+  Future<void> _routeUnseenActivity(SesoriSseEvent event) async {
+    switch (event) {
+      case SesoriSessionCreated(:final info):
+        await _sessionUnseenService.recordSessionCreated(
+          sessionId: info.id,
+          projectId: info.projectID,
+          parentId: info.parentID,
+          occurredAt: info.time?.created,
+        );
+      case SesoriSessionDeleted(:final info):
+        await _sessionUnseenService.recordSessionDeleted(sessionId: info.id, projectId: info.projectID);
+      case SesoriMessageUpdated(:final info):
+        await _sessionUnseenService.recordActivity(
+          sessionId: info.sessionID,
+          isUserMessage: info is MessageUser,
+          occurredAt: info.time?.created,
+        );
+      // For child/subagent requests, `displaySessionId` is the root session the
+      // UI surfaces the request under; the child has no persisted row, so route
+      // to the displayed root so it becomes unseen for pending input.
+      case SesoriQuestionAsked(:final sessionID, :final displaySessionId):
+        await _sessionUnseenService.recordActivity(
+          sessionId: displaySessionId ?? sessionID,
+          isUserMessage: false,
+        );
+      case SesoriPermissionAsked(:final sessionID, :final displaySessionId):
+        await _sessionUnseenService.recordActivity(
+          sessionId: displaySessionId ?? sessionID,
+          isUserMessage: false,
+        );
+      // Question replied/rejected and permission replied are all user responses
+      // to a pending prompt, so they advance the user-interaction timestamp and
+      // clear the unseen state.
+      case SesoriQuestionReplied(:final sessionID, :final displaySessionId):
+        await _sessionUnseenService.recordActivity(
+          sessionId: displaySessionId ?? sessionID,
+          isUserMessage: true,
+        );
+      case SesoriQuestionRejected(:final sessionID, :final displaySessionId):
+        await _sessionUnseenService.recordActivity(
+          sessionId: displaySessionId ?? sessionID,
+          isUserMessage: true,
+        );
+      case SesoriPermissionReplied(:final sessionID, :final displaySessionId):
+        await _sessionUnseenService.recordActivity(
+          sessionId: displaySessionId ?? sessionID,
+          isUserMessage: true,
+        );
+      default:
+        // Not an unseen-relevant event.
+        break;
     }
   }
 
@@ -644,11 +768,42 @@ class OrchestratorSession {
     }
   }
 
-  /// Live re-auth trigger: the token provider emitted a fresh token while the
-  /// relay was connected, so the open socket is still on the old JWT. Closing the
-  /// relay ends the active read loop, after which [run]'s reconnect block force-
-  /// pulls the new token and reconnects — the same path a relay-side drop drives.
-  /// No-op once cancelled so a token emit during shutdown can't fight teardown.
+  /// Whether a freshly emitted [token] warrants dropping the live relay socket
+  /// to re-authenticate.
+  ///
+  /// The relay checks the JWT once at connect and never again, keyed on the
+  /// `userId` claim — so an open socket authenticated as the same user stays
+  /// fully valid no matter how many times the token rotates. Re-auth is needed
+  /// only when the socket's authenticated identity no longer matches the token
+  /// the provider now holds:
+  ///
+  /// - the last connect sent no auth at all ([RelayClient.lastAuthedToken] is
+  ///   null — also covers a push landing in the gap between connect() and this
+  ///   subscription on a never-authed socket);
+  /// - the `userId` claim differs (supervised account switch, standalone
+  ///   re-login as another user);
+  /// - either token's identity can't be parsed — we can't prove the rotation
+  ///   kept the same identity, so re-auth conservatively.
+  ///
+  /// An identical token (routine unchanged pull, or the reconnect path's own
+  /// force-pull re-emitting the token it just authenticated with) never
+  /// re-auths.
+  bool _requiresRelayReauth(String token) {
+    final String? lastAuthed = _client.lastAuthedToken;
+    if (lastAuthed == null) return true;
+    if (token == lastAuthed) return false;
+    final String? newUserId = parseJwtUserId(token);
+    final String? authedUserId = parseJwtUserId(lastAuthed);
+    if (newUserId == null || authedUserId == null) return true;
+    return newUserId != authedUserId;
+  }
+
+  /// Live re-auth trigger: the token provider emitted a token for a different
+  /// auth identity while the relay was connected, so the open socket is still
+  /// authenticated as the old identity. Closing the relay ends the active read
+  /// loop, after which [run]'s reconnect block force-pulls the new token and
+  /// reconnects — the same path a relay-side drop drives. No-op once cancelled
+  /// so a token emit during shutdown can't fight teardown.
   Future<void> _reauthenticateRelay() async {
     if (_cancelled) return;
     // If the socket has already closed (closeCode is set), the read loop is
@@ -712,6 +867,7 @@ class OrchestratorSession {
             kxManager.removeExchange(connID);
             activePhones.remove(connID);
             _sseManager.removeSubscriber(connID);
+            _sessionViewTracker.releaseConnection(connID: connID);
         }
         continue;
       }
@@ -941,6 +1097,9 @@ class OrchestratorSession {
       case RelaySseUnsubscribe():
         Log.v("SseUnsubscribe connID=$connID");
         _sseManager.unsubscribe(connID);
+      case RelaySessionView(:final sessionId):
+        Log.v("SessionView connID=$connID sessionId=$sessionId");
+        _sessionViewTracker.setViewing(connID: connID, sessionId: sessionId);
       default:
         Log.v("unhandled msg type: ${msg.runtimeType}");
     }

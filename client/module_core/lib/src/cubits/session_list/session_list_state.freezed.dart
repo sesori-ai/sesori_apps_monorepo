@@ -78,7 +78,7 @@ String toString() {
 
 
 class SessionListLoaded implements SessionListState {
-  const SessionListLoaded({required final  List<Session> sessions, this.showArchived = false, final  Map<String, SessionActivityInfo> activeSessionIds = const {}, this.isRefreshing = false, required this.baseBranch}): _sessions = sessions,_activeSessionIds = activeSessionIds;
+  const SessionListLoaded({required final  List<Session> sessions, this.showArchived = false, final  Map<String, SessionActivityInfo> activeSessionIds = const {}, this.isRefreshing = false, final  Map<String, bool> unseenBySessionId = const {}, required this.baseBranch}): _sessions = sessions,_activeSessionIds = activeSessionIds,_unseenBySessionId = unseenBySessionId;
   
 
  final  List<Session> _sessions;
@@ -105,6 +105,19 @@ class SessionListLoaded implements SessionListState {
 }
 
 @JsonKey() final  bool isRefreshing;
+/// Map of session ID -> whether it has unseen changes (bold title). Merges
+/// the REST-seeded `Session.unseen` with live `SesoriSessionUnseenChanged`
+/// updates, the latter taking precedence.
+ final  Map<String, bool> _unseenBySessionId;
+/// Map of session ID -> whether it has unseen changes (bold title). Merges
+/// the REST-seeded `Session.unseen` with live `SesoriSessionUnseenChanged`
+/// updates, the latter taking precedence.
+@JsonKey() Map<String, bool> get unseenBySessionId {
+  if (_unseenBySessionId is EqualUnmodifiableMapView) return _unseenBySessionId;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(_unseenBySessionId);
+}
+
 /// The base branch of the project (e.g. "main", "develop"), if available.
  final  String? baseBranch;
 
@@ -118,16 +131,16 @@ $SessionListLoadedCopyWith<SessionListLoaded> get copyWith => _$SessionListLoade
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListLoaded&&const DeepCollectionEquality().equals(other._sessions, _sessions)&&(identical(other.showArchived, showArchived) || other.showArchived == showArchived)&&const DeepCollectionEquality().equals(other._activeSessionIds, _activeSessionIds)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListLoaded&&const DeepCollectionEquality().equals(other._sessions, _sessions)&&(identical(other.showArchived, showArchived) || other.showArchived == showArchived)&&const DeepCollectionEquality().equals(other._activeSessionIds, _activeSessionIds)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing)&&const DeepCollectionEquality().equals(other._unseenBySessionId, _unseenBySessionId)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_sessions),showArchived,const DeepCollectionEquality().hash(_activeSessionIds),isRefreshing,baseBranch);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_sessions),showArchived,const DeepCollectionEquality().hash(_activeSessionIds),isRefreshing,const DeepCollectionEquality().hash(_unseenBySessionId),baseBranch);
 
 @override
 String toString() {
-  return 'SessionListState.loaded(sessions: $sessions, showArchived: $showArchived, activeSessionIds: $activeSessionIds, isRefreshing: $isRefreshing, baseBranch: $baseBranch)';
+  return 'SessionListState.loaded(sessions: $sessions, showArchived: $showArchived, activeSessionIds: $activeSessionIds, isRefreshing: $isRefreshing, unseenBySessionId: $unseenBySessionId, baseBranch: $baseBranch)';
 }
 
 
@@ -138,7 +151,7 @@ abstract mixin class $SessionListLoadedCopyWith<$Res> implements $SessionListSta
   factory $SessionListLoadedCopyWith(SessionListLoaded value, $Res Function(SessionListLoaded) _then) = _$SessionListLoadedCopyWithImpl;
 @useResult
 $Res call({
- List<Session> sessions, bool showArchived, Map<String, SessionActivityInfo> activeSessionIds, bool isRefreshing, String? baseBranch
+ List<Session> sessions, bool showArchived, Map<String, SessionActivityInfo> activeSessionIds, bool isRefreshing, Map<String, bool> unseenBySessionId, String? baseBranch
 });
 
 
@@ -155,13 +168,14 @@ class _$SessionListLoadedCopyWithImpl<$Res>
 
 /// Create a copy of SessionListState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? sessions = null,Object? showArchived = null,Object? activeSessionIds = null,Object? isRefreshing = null,Object? baseBranch = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? sessions = null,Object? showArchived = null,Object? activeSessionIds = null,Object? isRefreshing = null,Object? unseenBySessionId = null,Object? baseBranch = freezed,}) {
   return _then(SessionListLoaded(
 sessions: null == sessions ? _self._sessions : sessions // ignore: cast_nullable_to_non_nullable
 as List<Session>,showArchived: null == showArchived ? _self.showArchived : showArchived // ignore: cast_nullable_to_non_nullable
 as bool,activeSessionIds: null == activeSessionIds ? _self._activeSessionIds : activeSessionIds // ignore: cast_nullable_to_non_nullable
 as Map<String, SessionActivityInfo>,isRefreshing: null == isRefreshing ? _self.isRefreshing : isRefreshing // ignore: cast_nullable_to_non_nullable
-as bool,baseBranch: freezed == baseBranch ? _self.baseBranch : baseBranch // ignore: cast_nullable_to_non_nullable
+as bool,unseenBySessionId: null == unseenBySessionId ? _self._unseenBySessionId : unseenBySessionId // ignore: cast_nullable_to_non_nullable
+as Map<String, bool>,baseBranch: freezed == baseBranch ? _self.baseBranch : baseBranch // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

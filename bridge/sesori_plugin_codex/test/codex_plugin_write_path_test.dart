@@ -8,6 +8,7 @@ import "dart:convert";
 import "dart:io";
 
 import "package:codex_plugin/codex_plugin.dart";
+import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 import "package:web_socket_channel/web_socket_channel.dart";
@@ -78,6 +79,88 @@ void main() {
       final turnStartParams = fake.sentParamsFor("turn/start");
       expect(turnStartParams["threadId"], equals("t-new"));
       expect((turnStartParams["input"] as List).first["text"], equals("hello codex"));
+    });
+
+    test("a live event emitted during the first turn is scoped to the new session's directory", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {
+              "id": "t-live",
+              "cwd": "/other/proj",
+              "createdAt": 1700000000,
+              "updatedAt": 1700000000,
+              "name": null,
+            },
+          },
+        ),
+        const _Response(result: {"turnId": "u-1"}),
+      ]);
+      // codex can emit a cwd-less notification while turn/start is still in
+      // flight and before any rollout exists on disk — the thread directory
+      // must already be recorded so the event maps to the session's real
+      // project instead of the launch cwd.
+      fake.onRequest = (method) {
+        if (method == "turn/start") {
+          fake.pushNotification("thread/name/updated", {
+            "threadId": "t-live",
+            "threadName": "First title",
+          });
+        }
+      };
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+
+      await plugin.createSession(
+        directory: "/other/proj",
+        parentSessionId: null,
+        parts: const [PluginPromptPart.text(text: "go")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await Future<void>.delayed(Duration.zero);
+      await subscription.cancel();
+
+      final updated = events.whereType<BridgeSseSessionUpdated>().single;
+      expect(updated.info["projectID"], equals("/other/proj"));
+    });
+
+    test("renameSession keeps a fresh non-launch session on its own project before the rollout is flushed", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {
+              "id": "t-sub",
+              "cwd": "/work/sample/packages/core",
+              "createdAt": 1700000000,
+              "updatedAt": 1700000000,
+              "name": null,
+            },
+          },
+        ),
+        const _Response(result: {}),
+      ]);
+
+      final created = await plugin.createSession(
+        directory: "/work/sample/packages/core",
+        parentSessionId: null,
+        parts: const [],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      expect(created.projectID, equals("/work/sample/packages/core"));
+
+      // codexHome is empty — no rollout has been flushed — yet the rename
+      // response must still attribute the session to its real project rather
+      // than the launch cwd, proving the in-memory thread→directory map is
+      // consulted before the disk rollout.
+      final renamed = await plugin.renameSession(sessionId: "t-sub", title: "Renamed");
+      expect(renamed.projectID, equals("/work/sample/packages/core"));
+      expect(renamed.directory, equals("/work/sample/packages/core"));
     });
 
     test("sendPrompt resumes a thread from a prior run before the turn", () async {
@@ -338,6 +421,75 @@ void main() {
       expect(fake.sentMethods, contains("model/list"));
     });
 
+    test("getProviders preselects the project's own latest rollout model over codex's live default", () async {
+      // The selected project's newest rollout used gpt-5.4-mini, while codex's
+      // live catalog marks gpt-5.5 as the global default — the project-scoped
+      // model must win the picker preselection.
+      final rollout = File(
+        p.join(
+          codexHome.path,
+          "sessions/2026/06/01/rollout-2026-06-01T10-00-00-019a0000-1111-2222-3333-dddddddddddd.jsonl",
+        ),
+      )..createSync(recursive: true);
+      rollout.writeAsStringSync(
+        "${jsonEncode({
+          "type": "session_meta",
+          "payload": {
+            "id": "019a0000-1111-2222-3333-dddddddddddd",
+            "timestamp": "2026-06-01T10:00:00Z",
+            "cwd": "/work/sample",
+            "model_provider": "openai",
+          },
+        })}\n"
+        "${jsonEncode({
+          "type": "turn_context",
+          "payload": {"model": "gpt-5.4-mini"},
+        })}\n",
+      );
+      final scopedFake = _FakeAppServer();
+      final rolloutReader = SessionRolloutReader(
+        environment: {"CODEX_HOME": codexHome.path},
+      );
+      final configReader = CodexConfigReader(
+        environment: {"CODEX_HOME": codexHome.path},
+      );
+      final scopedPlugin = CodexPlugin(
+        serverUrl: "ws://127.0.0.1:0",
+        clientFactory: () => CodexAppServerClient(
+          serverUrl: "ws://127.0.0.1:0",
+          channelFactory: (_) => scopedFake.channel,
+        ),
+        rolloutReader: rolloutReader,
+        configReader: configReader,
+        metadataRepository: CodexMetadataRepository(
+          skillReader: CodexSkillReader(
+            environment: {"CODEX_HOME": codexHome.path},
+          ),
+          rolloutReader: rolloutReader,
+          configReader: configReader,
+          launchDirectory: "/work/sample",
+        ),
+        projectCwd: "/work/sample",
+      );
+      addTearDown(scopedPlugin.dispose);
+      scopedFake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "data": [
+              {"id": "gpt-5.5", "displayName": "GPT-5.5", "hidden": false, "isDefault": true},
+              {"id": "gpt-5.4-mini", "displayName": "GPT-5.4 mini", "hidden": false, "isDefault": false},
+            ],
+          },
+        ),
+      ]);
+
+      await scopedPlugin.healthCheck(); // connect so model/list can be called
+      final result = await scopedPlugin.getProviders(projectId: "/work/sample");
+
+      expect(result.providers.single.defaultModelID, equals("gpt-5.4-mini"));
+    });
+
     test("sendPrompt forwards the selected variant as the turn/start effort", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
@@ -437,6 +589,11 @@ class _FakeAppServer {
   final List<_SentFrame> _sent = [];
   final List<_Response> _pending = [];
 
+  /// Invoked with each request method BEFORE the canned response is sent —
+  /// lets a test emit server notifications mid-request (e.g. codex pushing
+  /// `thread/name/updated` while `turn/start` is still in flight).
+  void Function(String method)? onRequest;
+
   List<String> get sentMethods =>
       _sent.map((f) => f.method).toList(growable: false);
 
@@ -466,6 +623,7 @@ class _FakeAppServer {
         params: (decoded["params"] as Map?)?.cast<String, dynamic>(),
       ),
     );
+    onRequest?.call(decoded["method"] as String);
     final id = decoded["id"];
     if (id == null) return; // notification from client (none today)
     if (_pending.isEmpty) {

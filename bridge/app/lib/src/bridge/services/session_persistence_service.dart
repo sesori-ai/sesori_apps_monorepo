@@ -40,14 +40,17 @@ class SessionPersistenceService {
   final ProjectsDao _projectsDao;
   final SessionDao _sessionDao;
   final AppDatabase _db;
+  final String _pluginId;
 
   SessionPersistenceService({
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
     required AppDatabase db,
+    required String pluginId,
   }) : _projectsDao = projectsDao,
        _sessionDao = sessionDao,
-       _db = db;
+       _db = db,
+       _pluginId = pluginId;
 
   Future<void> ensureProject({required String projectId}) async {
     await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
@@ -60,6 +63,7 @@ class SessionPersistenceService {
     await _db.transaction(() async {
       await _projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
       await _sessionDao.insertSessionsIfMissing(
+        pluginId: _pluginId,
         sessions: [
           for (final s in sessions)
             (
@@ -102,6 +106,7 @@ class SessionPersistenceService {
         baseCommit: baseCommit,
         lastAgent: null,
         lastAgentModel: null,
+        pluginId: _pluginId,
       );
     });
   }

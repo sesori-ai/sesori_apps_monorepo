@@ -29,6 +29,8 @@ import "package:sesori_dart_core/src/repositories/bridge_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/services/registered_bridges_service.dart";
+import "package:sesori_dart_core/src/services/session_unseen_tracker.dart";
+import "package:sesori_dart_core/src/services/session_viewing_service.dart";
 
 import "package:sesori_mobile/capabilities/voice/audio_format_config.dart";
 import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
@@ -114,6 +116,71 @@ class MockNotificationCanceller extends Mock implements NotificationCanceller {}
 class MockUrlLauncher extends Mock implements UrlLauncher {}
 
 class MockAnalyticsReporter extends Mock implements AnalyticsReporter {}
+
+/// In-memory [SessionUnseenTracker] stand-in mirroring its lean contract:
+/// overwrite-only maps plus a tick guard.
+class FakeSessionUnseenTracker extends Mock implements SessionUnseenTracker {
+  final BehaviorSubject<Map<String, bool>> _projectUnseen = BehaviorSubject.seeded(const {});
+  final BehaviorSubject<Map<String, Map<String, bool>>> _sessionUnseen = BehaviorSubject.seeded(const {});
+
+  @override
+  ValueStream<Map<String, bool>> get projectUnseen => _projectUnseen.stream;
+
+  @override
+  Map<String, bool> get currentProjectUnseen => _projectUnseen.value;
+
+  @override
+  ValueStream<Map<String, Map<String, bool>>> get sessionUnseen => _sessionUnseen.stream;
+
+  @override
+  Map<String, Map<String, bool>> get currentSessionUnseen => _sessionUnseen.value;
+
+  @override
+  int get tick => 0;
+
+  @override
+  void seedProjects(Map<String, bool> unseenByProjectId, {required int sinceTick}) {
+    _projectUnseen.add({..._projectUnseen.value, ...unseenByProjectId});
+  }
+
+  @override
+  void seedSessions({
+    required String projectId,
+    required Map<String, bool> unseenBySessionId,
+    required int sinceTick,
+  }) {
+    final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
+    sessions[projectId] = Map<String, bool>.from(unseenBySessionId);
+    _sessionUnseen.add(sessions);
+  }
+
+  @override
+  void applyLocalSessionUnseen({
+    required String projectId,
+    required String sessionId,
+    required bool unseen,
+  }) {
+    final sessions = Map<String, Map<String, bool>>.from(_sessionUnseen.value);
+    final projectSessions = Map<String, bool>.from(sessions[projectId] ?? const {});
+    projectSessions[sessionId] = unseen;
+    sessions[projectId] = projectSessions;
+    _sessionUnseen.add(sessions);
+  }
+
+  void emitProjectUnseen(Map<String, bool> unseen) => _projectUnseen.add(unseen);
+
+  void emitSessionUnseen(Map<String, Map<String, bool>> unseen) => _sessionUnseen.add(unseen);
+}
+
+class MockSessionViewingService extends Mock implements SessionViewingService {}
+
+/// A [MockSessionViewingService] with its void methods pre-stubbed.
+MockSessionViewingService stubbedSessionViewingService() {
+  final mock = MockSessionViewingService();
+  when(() => mock.setViewingSession(any())).thenReturn(null);
+  when(() => mock.clearViewingSession(any())).thenReturn(null);
+  return mock;
+}
 
 class MockRouteSource extends Mock implements RouteSource {
   final BehaviorSubject<AppRouteDef?> _currentRoute;

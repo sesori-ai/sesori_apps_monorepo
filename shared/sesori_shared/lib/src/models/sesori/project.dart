@@ -19,6 +19,10 @@ sealed class Project with _$Project {
     required String id,
     required String? name,
     required ProjectTime? time,
+    // Whether this project has at least one non-archived session with unseen
+    // activity. Backend-derived from its sessions. Defaults to false so older
+    // payloads (and the baseline) deserialize as "seen".
+    @Default(false) bool hasUnseenChanges,
   }) = _Project;
 
   factory Project.fromJson(Map<String, dynamic> json) => _$ProjectFromJson(json);

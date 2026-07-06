@@ -39,10 +39,9 @@ void main() {
 
       final reader = CodexSkillReader(
         environment: {"CODEX_HOME": codexHome.path},
-        projectCwd: projectCwd.path,
       );
 
-      final skills = reader.list();
+      final skills = reader.list(projectCwd: projectCwd.path);
       expect(skills.map((s) => s.name).toList(), equals(["plan", "ralph"]));
       expect(skills.first.description, equals("Strategic planning workflow"));
       expect(skills.first.source, equals(CodexSkillSource.user));
@@ -64,10 +63,9 @@ void main() {
 
       final reader = CodexSkillReader(
         environment: {"CODEX_HOME": codexHome.path},
-        projectCwd: projectCwd.path,
       );
 
-      final skills = reader.list();
+      final skills = reader.list(projectCwd: projectCwd.path);
       expect(skills, hasLength(1));
       expect(skills.single.description, equals("project-local override"));
       expect(skills.single.source, equals(CodexSkillSource.project));
@@ -83,10 +81,9 @@ void main() {
 
       final reader = CodexSkillReader(
         environment: {"CODEX_HOME": codexHome.path},
-        projectCwd: projectCwd.path,
       );
 
-      final skills = reader.list();
+      final skills = reader.list(projectCwd: projectCwd.path);
       expect(skills.single.name, equals("no-name"));
       expect(skills.single.description, equals("just-a-description"));
     });
@@ -105,10 +102,9 @@ void main() {
 
         final reader = CodexSkillReader(
           environment: {"CODEX_HOME": codexHome.path},
-          projectCwd: projectCwd.path,
         );
 
-        expect(reader.list(), isEmpty);
+        expect(reader.list(projectCwd: projectCwd.path), isEmpty);
       },
     );
   });

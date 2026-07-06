@@ -6,6 +6,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/session_repository.dart";
 import "../services/pr_sync_service.dart";
 import "../services/session_persistence_service.dart";
+import "../services/session_unseen_service.dart";
 import "request_handler.dart";
 
 /// Handles `GET /sessions` — returns sessions for a given project.
@@ -15,16 +16,19 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
   final SessionRepository _sessionRepository;
   final PrSyncService _prSyncService;
   final SessionPersistenceService _sessionPersistenceService;
+  final SessionUnseenService _sessionUnseenService;
   final Duration _prRefreshTimeout;
 
   GetSessionsHandler({
     required SessionRepository sessionRepository,
     required PrSyncService prSyncService,
     required SessionPersistenceService sessionPersistenceService,
+    required SessionUnseenService sessionUnseenService,
     Duration prRefreshTimeout = const Duration(seconds: 5),
   }) : _sessionRepository = sessionRepository,
        _prSyncService = prSyncService,
        _sessionPersistenceService = sessionPersistenceService,
+       _sessionUnseenService = sessionUnseenService,
        _prRefreshTimeout = prRefreshTimeout,
        super(
          HttpMethod.post,
@@ -54,6 +58,10 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
 
     await _sessionPersistenceService.ensureProject(projectId: projectId);
 
+    // Captured BEFORE the fetch so the vanished-session reconcile only removes
+    // rows that already existed when the snapshot was taken — a session created
+    // concurrently (row inserted after this point) is kept.
+    final fetchStartedAt = DateTime.now().millisecondsSinceEpoch;
     final sessions = await _sessionRepository.getSessionsForProject(
       projectId: projectId,
       start: start,
@@ -67,6 +75,24 @@ class GetSessionsHandler extends BodyRequestHandler<SessionListRequest, SessionL
       );
     } on Object catch (e, st) {
       Log.w("GetSessionsHandler: persistSessionsForProject failed for projectId=$projectId: $e\n$st");
+    }
+
+    if (start == null && limit == null && _sessionRepository.sessionListIsAuthoritative) {
+      // Unpaginated + authoritative ⇒ `sessions` is the complete list, so rows
+      // for sessions that no longer exist (deleted while the bridge was
+      // offline) can be reconciled away. Skipped when the repository cannot
+      // vouch for completeness (bridge-derived plugins): deleting against an
+      // incomplete list would drop rows for sessions the backend simply hasn't
+      // flushed yet. Fire-and-forget: the unseen service serializes, emits the
+      // aggregate updates for other clients, and logs failures; the requesting
+      // client already gets the fresh list below.
+      unawaited(
+        _sessionUnseenService.reconcileVanishedSessions(
+          projectId: projectId,
+          keepSessionIds: [for (final s in sessions) s.id],
+          fetchStartedAt: fetchStartedAt,
+        ),
+      );
     }
 
     final prRefreshFuture = _triggerPrRefresh(projectId: projectId, sessions: sessions);

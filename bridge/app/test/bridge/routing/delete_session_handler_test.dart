@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/bridge/foundation/process_runner.dart";
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/delete_session_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
@@ -39,11 +40,13 @@ void main() {
             pullRequestDao: db.pullRequestDao,
             projectsDao: db.projectsDao,
           ),
+          unseenCalculator: const SessionUnseenCalculator(),
         ),
         sessionPersistenceService: SessionPersistenceService(
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
           db: db,
+          pluginId: "opencode",
         ),
       );
     });
@@ -430,6 +433,7 @@ Future<void> _insertSession({
 }) async {
   await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]); // satisfy v5 FK constraint
   await db.sessionDao.insertSession(
+    pluginId: "opencode",
     sessionId: sessionId,
     projectId: projectId,
     isDedicated: true,

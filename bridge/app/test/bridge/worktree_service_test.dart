@@ -87,6 +87,7 @@ void main() {
       // Insert a mapping for the parent session.
       await projectsDao.insertProjectsIfMissing(projectIds: [_projectId]); // satisfy v5 FK constraint
       await sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "parent-001",
         projectId: _projectId,
         isDedicated: true,
@@ -440,6 +441,7 @@ void main() {
       // Insert a mapping for the parent session.
       await projectsDao.insertProjectsIfMissing(projectIds: [_projectId]); // satisfy v5 FK constraint
       await sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "parent-001",
         projectId: _projectId,
         isDedicated: true,
@@ -1021,7 +1023,7 @@ class _FakeProcessRunner implements ProcessRunner {
   }
 }
 
-class _FakeBridgePluginApi implements BridgePluginApi {
+class _FakeBridgePluginApi implements NativeProjectsPluginApi {
   @override
   String get id => "fake";
 

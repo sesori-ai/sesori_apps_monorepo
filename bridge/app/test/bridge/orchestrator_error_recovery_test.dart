@@ -22,11 +22,15 @@ import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/pr_sync_service.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/completion_push_listener.dart";
@@ -60,6 +64,7 @@ void main() {
           pullRequestDao: database.pullRequestDao,
           projectsDao: database.projectsDao,
         ),
+        unseenCalculator: const SessionUnseenCalculator(),
       );
       final orchestrator = Orchestrator(
         config: const BridgeConfig(
@@ -87,7 +92,29 @@ void main() {
           sessionRepository: sessionRepository,
         ),
         sessionRepository: sessionRepository,
-        projectRepository: ProjectRepository(plugin: plugin, projectsDao: database.projectsDao),
+        projectRepository: ProjectRepository(
+          plugin: plugin,
+          projectsDao: database.projectsDao,
+          sessionDao: database.sessionDao,
+          unseenCalculator: const SessionUnseenCalculator(),
+        ),
+        sessionUnseenService: SessionUnseenService(
+          unseenRepository: SessionUnseenRepository(
+            pluginId: "opencode",
+            sessionDao: database.sessionDao,
+            projectsDao: database.projectsDao,
+            db: database,
+            calculator: const SessionUnseenCalculator(),
+          ),
+          projectRepository: ProjectRepository(
+            plugin: plugin,
+            projectsDao: database.projectsDao,
+            sessionDao: database.sessionDao,
+            unseenCalculator: const SessionUnseenCalculator(),
+          ),
+          viewTracker: SessionViewTracker(),
+        ),
+        sessionViewTracker: SessionViewTracker(),
         filesystemRepository: FilesystemRepository(
           filesystemApi: const FilesystemApi(),
           permissionValidator: const FilesystemPermissionValidator(),
@@ -115,11 +142,12 @@ void main() {
         providerRepository: ProviderRepository(plugin: plugin),
         agentRepository: AgentRepository(plugin: plugin),
         permissionRepository: PermissionRepository(plugin: plugin),
-        questionRepository: QuestionRepository(plugin: plugin),
+        questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
         sessionPersistenceService: SessionPersistenceService(
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           db: database,
+          pluginId: "opencode",
         ),
         worktreeService: WorktreeService(
           worktreeRepository: WorktreeRepository(
@@ -145,6 +173,7 @@ void main() {
           failureReporter: FakeFailureReporter(),
         ),
         restartService: buildTestRestartService(),
+        statusNotifier: null,
       );
 
       final session = orchestrator.create();
@@ -242,6 +271,7 @@ class _TestHarness {
       plugin: plugin,
       sessionDao: database.sessionDao,
       pullRequestRepository: pullRequestRepository,
+      unseenCalculator: const SessionUnseenCalculator(),
     );
     final prSyncService = PrSyncService(
       prSource: _NoopPrSource(),
@@ -249,12 +279,18 @@ class _TestHarness {
       sessionRepository: sessionRepository,
     );
 
-    final projectRepository = ProjectRepository(plugin: plugin, projectsDao: database.projectsDao);
+    final projectRepository = ProjectRepository(
+      plugin: plugin,
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      unseenCalculator: const SessionUnseenCalculator(),
+    );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       db: database,
+      pluginId: "opencode",
     );
     final worktreeService = WorktreeService(
       worktreeRepository: WorktreeRepository(
@@ -300,6 +336,23 @@ class _TestHarness {
       prSyncService: prSyncService,
       sessionRepository: sessionRepository,
       projectRepository: projectRepository,
+      sessionUnseenService: SessionUnseenService(
+        unseenRepository: SessionUnseenRepository(
+          pluginId: "opencode",
+          sessionDao: database.sessionDao,
+          projectsDao: database.projectsDao,
+          db: database,
+          calculator: const SessionUnseenCalculator(),
+        ),
+        projectRepository: ProjectRepository(
+          plugin: plugin,
+          projectsDao: database.projectsDao,
+          sessionDao: database.sessionDao,
+          unseenCalculator: const SessionUnseenCalculator(),
+        ),
+        viewTracker: SessionViewTracker(),
+      ),
+      sessionViewTracker: SessionViewTracker(),
       filesystemRepository: FilesystemRepository(
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
@@ -327,11 +380,12 @@ class _TestHarness {
       providerRepository: ProviderRepository(plugin: plugin),
       agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: permissionRepository,
-      questionRepository: QuestionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
       sessionPersistenceService: sessionPersistenceService,
       worktreeService: worktreeService,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
       restartService: buildTestRestartService(),
+      statusNotifier: null,
     );
 
     final session = orchestrator.create();
@@ -417,7 +471,7 @@ _TestPushSubsystem _createPushSubsystem() {
   );
 }
 
-class _ThrowingSummaryPlugin implements BridgePluginApi {
+class _ThrowingSummaryPlugin implements NativeProjectsPluginApi {
   final _controller = StreamController<BridgeSseEvent>.broadcast();
 
   int subscribeCount = 0;

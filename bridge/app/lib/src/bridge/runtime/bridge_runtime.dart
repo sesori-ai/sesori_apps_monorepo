@@ -9,6 +9,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../auth/access_token_provider.dart";
 import "../../auth/bridge_registration_service.dart";
 import "../../auth/token_refresher.dart";
+import "../../control/control_status_notifier.dart";
 import "../../push/completion_notifier.dart";
 import "../../push/completion_push_listener.dart";
 import "../../push/maintenance_push_listener.dart";
@@ -42,11 +43,15 @@ import "../repositories/provider_repository.dart";
 import "../repositories/pull_request_repository.dart";
 import "../repositories/question_repository.dart";
 import "../repositories/session_repository.dart";
+import "../repositories/session_unseen_calculator.dart";
+import "../repositories/session_unseen_repository.dart";
 import "../repositories/worktree_repository.dart";
 import "../services/pr_sync_service.dart";
 import "../services/project_initialization_service.dart";
 import "../services/session_event_enrichment_service.dart";
 import "../services/session_persistence_service.dart";
+import "../services/session_unseen_service.dart";
+import "../services/session_view_tracker.dart";
 import "../services/worktree_service.dart";
 import "bridge_shutdown_coordinator.dart";
 
@@ -56,6 +61,10 @@ class BridgeRuntime {
   final FailureReporter _failureReporter;
   final SessionEventEnrichmentService _sessionEventEnrichmentService;
   final BridgeRestartService _restartService;
+  // Owned here (composition root) because they are global/singleton and must
+  // outlive any single OrchestratorSession (e.g. across a restart/reconnect).
+  final SessionUnseenService _sessionUnseenService;
+  final SessionViewTracker _sessionViewTracker;
   final OrchestratorSession session;
 
   BridgeRuntime({
@@ -64,16 +73,23 @@ class BridgeRuntime {
     required FailureReporter failureReporter,
     required SessionEventEnrichmentService sessionEventEnrichmentService,
     required BridgeRestartService restartService,
+    required SessionUnseenService sessionUnseenService,
+    required SessionViewTracker sessionViewTracker,
     required this.session,
   }) : _database = database,
        _plugin = plugin,
        _failureReporter = failureReporter,
        _sessionEventEnrichmentService = sessionEventEnrichmentService,
-       _restartService = restartService;
+       _restartService = restartService,
+       _sessionUnseenService = sessionUnseenService,
+       _sessionViewTracker = sessionViewTracker;
 
   static BridgeRuntime create({
     required BridgeConfig config,
     required BridgePluginApi plugin,
+    // Constructed at the composition root (not here) so supervised mode can
+    // wire its connectionState stream into the ControlStatusNotifier.
+    required RelayClient relayClient,
     required http.Client httpClient,
     required AccessTokenProvider accessTokenProvider,
     required TokenRefresher tokenRefresher,
@@ -83,15 +99,38 @@ class BridgeRuntime {
     required FailureReporter failureReporter,
     required BridgeRestartService restartService,
     required bool filesystemAccessOk,
+    // Supervised mode only; null in standalone (no control channel).
+    required ControlStatusNotifier? statusNotifier,
   }) {
     final pullRequestRepository = PullRequestRepository(
       pullRequestDao: database.pullRequestDao,
       projectsDao: database.projectsDao,
     );
+    const unseenCalculator = SessionUnseenCalculator();
     final sessionRepository = SessionRepository(
       plugin: plugin,
       sessionDao: database.sessionDao,
       pullRequestRepository: pullRequestRepository,
+      unseenCalculator: unseenCalculator,
+    );
+    final projectRepository = ProjectRepository(
+      plugin: plugin,
+      projectsDao: database.projectsDao,
+      sessionDao: database.sessionDao,
+      unseenCalculator: unseenCalculator,
+    );
+    final sessionUnseenRepository = SessionUnseenRepository(
+      sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
+      db: database,
+      calculator: unseenCalculator,
+      pluginId: plugin.id,
+    );
+    final sessionViewTracker = SessionViewTracker();
+    final sessionUnseenService = SessionUnseenService(
+      unseenRepository: sessionUnseenRepository,
+      projectRepository: projectRepository,
+      viewTracker: sessionViewTracker,
     );
     final sessionEventEnrichmentService = SessionEventEnrichmentService(
       sessionRepository: sessionRepository,
@@ -120,7 +159,7 @@ class BridgeRuntime {
       rssBytesReader: readCurrentRssBytes,
     );
 
-    final projectRepository = ProjectRepository(plugin: plugin, projectsDao: database.projectsDao);
+
     final filesystemRepository = FilesystemRepository(
       filesystemApi: const FilesystemApi(),
       permissionValidator: const FilesystemPermissionValidator(),
@@ -148,13 +187,11 @@ class BridgeRuntime {
       failureReporter: failureReporter,
       sessionEventEnrichmentService: sessionEventEnrichmentService,
       restartService: restartService,
+      sessionUnseenService: sessionUnseenService,
+      sessionViewTracker: sessionViewTracker,
       session: Orchestrator(
         config: config,
-        client: RelayClient(
-          relayURL: config.relayURL,
-          accessTokenProvider: accessTokenProvider,
-          bridgeIdProvider: bridgeRegistrationService,
-        ),
+        client: relayClient,
         plugin: plugin,
         metadataService: MetadataService(
           client: httpClient,
@@ -188,17 +225,20 @@ class BridgeRuntime {
         ),
         sessionRepository: sessionRepository,
         projectRepository: projectRepository,
+        sessionUnseenService: sessionUnseenService,
+        sessionViewTracker: sessionViewTracker,
         filesystemRepository: filesystemRepository,
         projectInitializationService: projectInitializationService,
         healthRepository: healthRepository,
         providerRepository: providerRepository,
         agentRepository: agentRepository,
         permissionRepository: PermissionRepository(plugin: plugin),
-        questionRepository: QuestionRepository(plugin: plugin),
+        questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
         sessionPersistenceService: SessionPersistenceService(
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           db: database,
+          pluginId: plugin.id,
         ),
         worktreeService: WorktreeService(
           worktreeRepository: WorktreeRepository(
@@ -210,6 +250,7 @@ class BridgeRuntime {
         ),
         sessionEventEnrichmentService: sessionEventEnrichmentService,
         restartService: restartService,
+        statusNotifier: statusNotifier,
       ).create(),
     );
   }
@@ -230,8 +271,30 @@ class BridgeRuntime {
     );
   }
 
-  Future<void> close() {
-    return _database.close();
+  Future<void> close() async {
+    // Dispose the global unseen collaborators here (their owner), not in
+    // OrchestratorSession (a consumer that may be recreated across restarts).
+    // Each step is isolated so one failure cannot skip the remaining cleanup;
+    // the first error is preserved and rethrown after everything has run.
+    Object? firstError;
+    StackTrace? firstStackTrace;
+
+    Future<void> step(Future<void> Function() dispose) async {
+      try {
+        await dispose();
+      } catch (error, stackTrace) {
+        firstError ??= error;
+        firstStackTrace ??= stackTrace;
+      }
+    }
+
+    await step(_sessionUnseenService.dispose);
+    await step(_sessionViewTracker.dispose);
+    await step(_database.close);
+
+    if (firstError != null) {
+      Error.throwWithStackTrace(firstError!, firstStackTrace!);
+    }
   }
 }
 

@@ -6,8 +6,9 @@ import "request_handler.dart";
 
 /// Handles `POST /global/restart` — an explicit, user-triggered bridge restart.
 ///
-/// It validates that a successor can be spawned, replies `{restarting:true}`,
-/// and flags the restart. The orchestrator performs the actual spawn + graceful
+/// It validates that a restart can be delivered, replies `{restarting:true}`,
+/// and flags the restart. The orchestrator performs the actual handoff (spawn a
+/// successor in standalone, or exit for GUI respawn in supervised mode) + graceful
 /// shutdown *after* this reply has been flushed to the phone, so the response is
 /// never lost to the handoff.
 class RestartBridgeHandler extends RequestHandlerBase {
@@ -24,8 +25,8 @@ class RestartBridgeHandler extends RequestHandlerBase {
     required Map<String, String> queryParams,
     required String? fragment,
   }) async {
-    final bool canSpawn = await _restartService.canSpawnSuccessor();
-    if (!canSpawn) {
+    final bool canRestart = await _restartService.canRestart();
+    if (!canRestart) {
       return buildErrorResponse(
         request,
         503,
