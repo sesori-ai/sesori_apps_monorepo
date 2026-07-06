@@ -55,6 +55,25 @@ void main() {
       expect(find.byType(GlassDivider), findsNothing);
       expect(find.byType(Divider), findsOneWidget);
     }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+    testWidgets("PregoListTile draws a flat Divider below itself unless it is the last row", (tester) async {
+      await tester.pumpWidget(
+        _harness(
+          const PregoCard(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                PregoListTile(title: Text("Alpha")),
+                PregoListTile(title: Text("Beta"), isLast: true),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      // Only the first (non-last) row composes a divider; the last row suppresses it.
+      expect(find.byType(Divider), findsOneWidget);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.android));
   });
 
   group("Apple (glass) path", () {
@@ -81,6 +100,27 @@ void main() {
       await tester.tap(find.text("Alpha"));
       await tester.pumpAndSettle();
       expect(taps, 1);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+    testWidgets("PregoListTile draws its own GlassDivider unless it is the last row", (tester) async {
+      await tester.pumpWidget(
+        _harness(
+          const PregoCard(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                PregoListTile(title: Text("Alpha")),
+                PregoListTile(title: Text("Beta"), isLast: true),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      // GlassListTile no longer owns divider rendering; PregoListTile composes a
+      // GlassDivider below the first (non-last) row and none below the last.
+      expect(find.byType(GlassListTile), findsNWidgets(2));
+      expect(find.byType(GlassDivider), findsOneWidget);
     }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
   });
 }
