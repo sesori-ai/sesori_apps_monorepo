@@ -22,8 +22,9 @@ void _showArchiveSheet({
     return;
   }
 
-  showAppModalBottomSheet<void>(
+  showPregoBottomSheet<void>(
     context: context,
+    title: context.loc.sessionListArchiveConfirmTitle,
     builder: (_) => _ArchiveSessionSheet(
       session: session,
       onConfirm: ({required bool deleteWorktree, required bool deleteBranch}) {
