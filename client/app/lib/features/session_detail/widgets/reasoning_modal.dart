@@ -112,7 +112,7 @@ class _ReasoningModalState extends State<ReasoningModal> {
 
     final prego = context.prego;
     final loc = context.loc;
-    final size = MediaQuery.sizeOf(context);
+    final screenHeight = MediaQuery.heightOf(context);
     final keyboard = MediaQuery.viewInsetsOf(context).bottom;
     final bottomSafe = MediaQuery.paddingOf(context).bottom;
     // Size to content: short reasoning wraps, and the shrink-wrapped list
@@ -121,7 +121,7 @@ class _ReasoningModalState extends State<ReasoningModal> {
     // so a capped list scrolls behind the home indicator instead of being
     // cut at the safe-area line; the list consumes the inset as scroll
     // padding below.
-    final maxBody = size.height - widget.topInset - PregoBottomSheet.contentTopInset - keyboard;
+    final maxBody = screenHeight - widget.topInset - PregoBottomSheet.contentTopInset - keyboard;
 
     // Coalesced post-frame tail-jump. Safe to call every rebuild;
     // repeated calls within a frame collapse into one jump. Gated on
@@ -142,7 +142,7 @@ class _ReasoningModalState extends State<ReasoningModal> {
       child: ConstrainedBox(
         // The body hosts its own scroll view (the follow/detach list needs to
         // own scrolling), so its height must be bounded.
-        constraints: BoxConstraints(maxHeight: math.max(maxBody, size.height * 0.3)),
+        constraints: BoxConstraints(maxHeight: math.max(maxBody, screenHeight * 0.3)),
         child: FollowDetachScrollable(
           tracker: _follow,
           detachedOverlayBuilder: data.isStreaming

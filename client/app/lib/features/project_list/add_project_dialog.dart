@@ -109,13 +109,13 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final size = MediaQuery.sizeOf(context);
+    final screenHeight = MediaQuery.heightOf(context);
     final keyboard = MediaQuery.viewInsetsOf(context).bottom;
     // The body hosts its own scroll view (the directory browser), so it needs
     // a bounded height. Shrink above the keyboard (the sheet re-adds the
     // keyboard inset below the body) so the name field stays visible while
     // typing.
-    final height = math.max(size.height * 0.7 - keyboard, size.height * 0.3);
+    final height = math.max(screenHeight * 0.7 - keyboard, screenHeight * 0.3);
 
     // Transparent Material so the browser tiles' ink paints on top of the
     // sheet surface instead of behind it on the modal's transparent Material.

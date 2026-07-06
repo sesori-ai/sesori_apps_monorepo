@@ -80,7 +80,7 @@ class PermissionModal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final size = MediaQuery.sizeOf(context);
+    final screenHeight = MediaQuery.heightOf(context);
     final keyboard = MediaQuery.viewInsetsOf(context).bottom;
     // Mirror the inset PregoBottomSheet adds below the body so the cap below
     // leaves the pinned action row on screen.
@@ -88,7 +88,7 @@ class PermissionModal extends StatelessWidget {
     // Cap the body just under the sheet's own cap: a long description then
     // scrolls inside its Flexible slot while the action row stays pinned,
     // instead of pushing the (blocking) actions below the fold.
-    final maxBody = size.height - topInset - PregoBottomSheet.contentTopInset - bottomInset;
+    final maxBody = screenHeight - topInset - PregoBottomSheet.contentTopInset - bottomInset;
 
     return PregoBottomSheet(
       title: context.loc.diffPermissionRequestTitle,
@@ -97,7 +97,7 @@ class PermissionModal extends StatelessWidget {
       // explicit reject button.
       onClose: () => _reply(context, reply: PermissionReply.reject),
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: math.max(maxBody, size.height * 0.3)),
+        constraints: BoxConstraints(maxHeight: math.max(maxBody, screenHeight * 0.3)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,

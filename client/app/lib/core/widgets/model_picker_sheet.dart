@@ -68,18 +68,18 @@ class ModelPickerSheet extends StatefulWidget {
       handleBottomSafeArea: false,
       builder: (sheetContext) {
         // Granular getters (not MediaQuery.of) so this builder only depends on
-        // the size/insets it actually reads, rather than rebuilding on every
+        // the height/insets it actually reads, rather than rebuilding on every
         // unrelated MediaQueryData change (text scale, brightness, …).
-        final size = MediaQuery.sizeOf(sheetContext);
+        final screenHeight = MediaQuery.heightOf(sheetContext);
         final keyboard = MediaQuery.viewInsetsOf(sheetContext).bottom;
         // The body hosts its own scroll view, so it needs a bounded height.
         // The keyboard inset is subtracted (the sheet re-adds it below the
         // body) so the search field stays visible while typing. Full screen:
         // fill from just below the sheet header to the bottom edge.
-        final maxBody = size.height - topInset - PregoBottomSheet.contentTopInset - keyboard;
-        final height = fullScreen ? maxBody : math.min(size.height * 0.7 - keyboard, maxBody);
+        final maxBody = screenHeight - topInset - PregoBottomSheet.contentTopInset - keyboard;
+        final height = fullScreen ? maxBody : math.min(screenHeight * 0.7 - keyboard, maxBody);
         return SizedBox(
-          height: math.max(height, size.height * 0.3),
+          height: math.max(height, screenHeight * 0.3),
           child: ModelPickerSheet(
             providers: providers,
             selectedProviderID: selectedProviderID,

@@ -41,12 +41,12 @@ class CommandPickerSheet extends StatefulWidget {
         // and cap at the space left below the sheet header (mirroring the
         // model picker) so the outer sheet never gains scroll range of its
         // own on top of the inner list.
-        final size = MediaQuery.sizeOf(sheetContext);
+        final screenHeight = MediaQuery.heightOf(sheetContext);
         final keyboard = MediaQuery.viewInsetsOf(sheetContext).bottom;
-        final maxBody = size.height - topInset - PregoBottomSheet.contentTopInset - keyboard;
-        final height = math.min(size.height * 0.7 - keyboard, maxBody);
+        final maxBody = screenHeight - topInset - PregoBottomSheet.contentTopInset - keyboard;
+        final height = math.min(screenHeight * 0.7 - keyboard, maxBody);
         return SizedBox(
-          height: math.max(height, size.height * 0.3),
+          height: math.max(height, screenHeight * 0.3),
           child: CommandPickerSheet(commands: commands),
         );
       },

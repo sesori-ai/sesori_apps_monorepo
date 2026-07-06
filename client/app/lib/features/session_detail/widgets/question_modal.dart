@@ -214,7 +214,7 @@ class _QuestionModalState extends State<QuestionModal> {
     final prego = context.prego;
     final loc = context.loc;
     final info = _currentInfo;
-    final size = MediaQuery.sizeOf(context);
+    final screenHeight = MediaQuery.heightOf(context);
     final keyboard = MediaQuery.viewInsetsOf(context).bottom;
     // Mirror the inset PregoBottomSheet adds below the body so the cap below
     // leaves the pinned action row on screen (including above the keyboard
@@ -223,7 +223,7 @@ class _QuestionModalState extends State<QuestionModal> {
     // Size to content: a short question set wraps; a tall one caps just under
     // the sheet's own cap and scrolls inside the Flexible list while the
     // actions stay pinned.
-    final maxBody = size.height - widget.topInset - PregoBottomSheet.contentTopInset - bottomInset;
+    final maxBody = screenHeight - widget.topInset - PregoBottomSheet.contentTopInset - bottomInset;
 
     return PregoBottomSheet(
       title: info.header.isNotEmpty ? info.header : loc.questionModalTitle,
@@ -232,7 +232,7 @@ class _QuestionModalState extends State<QuestionModal> {
       // Full-bleed body; the step indicator, list, and actions pad themselves.
       contentPadding: EdgeInsetsDirectional.zero,
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: math.max(maxBody, size.height * 0.3)),
+        constraints: BoxConstraints(maxHeight: math.max(maxBody, screenHeight * 0.3)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

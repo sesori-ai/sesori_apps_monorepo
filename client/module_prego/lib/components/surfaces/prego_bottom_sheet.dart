@@ -120,7 +120,7 @@ class PregoBottomSheet extends StatelessWidget {
     // Cap the sheet just below the status bar. Size is unaffected by the modal's
     // padding removal, so subtracting the real [topInset] stops a full-height
     // sheet from sliding its header under the status bar / notch.
-    final maxHeight = MediaQuery.sizeOf(context).height - topInset;
+    final maxHeight = MediaQuery.heightOf(context) - topInset;
 
     // Push the body above the keyboard when it is up, otherwise clear the home
     // indicator — but never both at once. Mirrors the app's _ModalSafeArea.
