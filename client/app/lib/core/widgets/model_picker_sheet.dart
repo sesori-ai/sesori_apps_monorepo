@@ -53,6 +53,10 @@ class ModelPickerSheet extends StatefulWidget {
     bool fullScreen = false,
     bool autofocusSearch = false,
   }) {
+    // Status-bar inset, captured before presenting: the modal route strips
+    // the top inset from both `padding` and `viewPadding`, so inside the
+    // sheet it reads as 0.
+    final topInset = MediaQuery.paddingOf(context).top;
     return showPregoBottomSheet<void>(
       context: context,
       title: context.loc.sessionDetailSelectModel,
@@ -66,16 +70,13 @@ class ModelPickerSheet extends StatefulWidget {
         // Granular getters (not MediaQuery.of) so this builder only depends on
         // the size/insets it actually reads, rather than rebuilding on every
         // unrelated MediaQueryData change (text scale, brightness, …).
-        // viewPadding (unlike padding) survives the modal's top-padding
-        // removal, so the status-bar inset is still readable here.
         final size = MediaQuery.sizeOf(sheetContext);
-        final viewPadding = MediaQuery.viewPaddingOf(sheetContext);
         final keyboard = MediaQuery.viewInsetsOf(sheetContext).bottom;
         // The body hosts its own scroll view, so it needs a bounded height.
         // The keyboard inset is subtracted (the sheet re-adds it below the
         // body) so the search field stays visible while typing. Full screen:
         // fill from just below the sheet header to the bottom edge.
-        final maxBody = size.height - viewPadding.top - PregoBottomSheet.contentTopInset - keyboard;
+        final maxBody = size.height - topInset - PregoBottomSheet.contentTopInset - keyboard;
         final height = fullScreen ? maxBody : math.min(size.height * 0.7 - keyboard, maxBody);
         return SizedBox(
           height: math.max(height, size.height * 0.3),

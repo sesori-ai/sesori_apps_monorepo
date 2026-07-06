@@ -23,10 +23,17 @@ class PermissionModal extends StatelessWidget {
   })
   onReply;
 
+  /// Status-bar inset captured from the presenting context. The modal route
+  /// (`useSafeArea: false`) strips the top inset from BOTH `padding` and
+  /// `viewPadding` in the sheet's own MediaQuery, so it must be measured
+  /// before presenting and threaded through.
+  final double topInset;
+
   const PermissionModal({
     super.key,
     required this.permission,
     required this.onReply,
+    required this.topInset,
   });
 
   /// Opens the permission modal as a bottom sheet.
@@ -44,6 +51,8 @@ class PermissionModal extends StatelessWidget {
     })
     onReply,
   }) {
+    // Capture before presenting: inside the route the top inset reads as 0.
+    final topInset = MediaQuery.paddingOf(context).top;
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -54,6 +63,7 @@ class PermissionModal extends StatelessWidget {
       builder: (_) => PermissionModal(
         permission: permission,
         onReply: onReply,
+        topInset: topInset,
       ),
     );
   }
@@ -78,14 +88,11 @@ class PermissionModal extends StatelessWidget {
     // Cap the body just under the sheet's own cap: a long description then
     // scrolls inside its Flexible slot while the action row stays pinned,
     // instead of pushing the (blocking) actions below the fold.
-    final maxBody =
-        size.height - MediaQuery.viewPaddingOf(context).top - PregoBottomSheet.contentTopInset - bottomInset;
+    final maxBody = size.height - topInset - PregoBottomSheet.contentTopInset - bottomInset;
 
     return PregoBottomSheet(
       title: context.loc.diffPermissionRequestTitle,
-      // The modal route strips the top padding from the sheet's MediaQuery;
-      // viewPadding survives, so read the status-bar inset from it.
-      topInset: MediaQuery.viewPaddingOf(context).top,
+      topInset: topInset,
       // Closing the sheet answers the assistant: the X rejects, matching the
       // explicit reject button.
       onClose: () => _reply(context, reply: PermissionReply.reject),

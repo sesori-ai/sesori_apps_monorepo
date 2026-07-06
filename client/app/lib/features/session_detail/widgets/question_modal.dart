@@ -19,15 +19,23 @@ class QuestionModal extends StatefulWidget {
   final void Function(String requestId, List<ReplyAnswer> answers) onReply;
   final void Function(String requestId) onReject;
 
+  /// Status-bar inset captured from the presenting context. The modal route
+  /// (`useSafeArea: false`) strips the top inset from BOTH `padding` and
+  /// `viewPadding` in the sheet's own MediaQuery, so it must be measured
+  /// before presenting and threaded through.
+  final double topInset;
+
   const QuestionModal({
     super.key,
     required this.question,
     required this.onReply,
     required this.onReject,
+    required this.topInset,
   });
 
-  /// Opens the question modal as a 70 % bottom sheet and returns a [Future]
-  /// that completes when the sheet is dismissed (by answer, reject, or swipe).
+  /// Opens the question modal as a content-sized bottom sheet and returns a
+  /// [Future] that completes when the sheet is dismissed (by answer, reject,
+  /// or swipe).
   ///
   /// Presents a [PregoBottomSheet] directly (not via [showPregoBottomSheet])
   /// because the sheet title tracks the question currently being answered.
@@ -37,6 +45,8 @@ class QuestionModal extends StatefulWidget {
     required void Function(String requestId, List<ReplyAnswer> answers) onReply,
     required void Function(String requestId) onReject,
   }) {
+    // Capture before presenting: inside the route the top inset reads as 0.
+    final topInset = MediaQuery.paddingOf(context).top;
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -48,6 +58,7 @@ class QuestionModal extends StatefulWidget {
         question: question,
         onReply: onReply,
         onReject: onReject,
+        topInset: topInset,
       ),
     );
   }
@@ -212,14 +223,11 @@ class _QuestionModalState extends State<QuestionModal> {
     // Size to content: a short question set wraps; a tall one caps just under
     // the sheet's own cap and scrolls inside the Flexible list while the
     // actions stay pinned.
-    final maxBody =
-        size.height - MediaQuery.viewPaddingOf(context).top - PregoBottomSheet.contentTopInset - bottomInset;
+    final maxBody = size.height - widget.topInset - PregoBottomSheet.contentTopInset - bottomInset;
 
     return PregoBottomSheet(
       title: info.header.isNotEmpty ? info.header : loc.questionModalTitle,
-      // The modal route strips the top padding from the sheet's MediaQuery;
-      // viewPadding survives, so read the status-bar inset from it.
-      topInset: MediaQuery.viewPaddingOf(context).top,
+      topInset: widget.topInset,
       onClose: _dismissModal,
       // Full-bleed body; the step indicator, list, and actions pad themselves.
       contentPadding: EdgeInsetsDirectional.zero,

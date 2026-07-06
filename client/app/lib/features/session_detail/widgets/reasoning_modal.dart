@@ -35,10 +35,17 @@ class ReasoningModal extends StatefulWidget {
   final String partId;
   final String messageId;
 
+  /// Status-bar inset captured from the presenting context. The modal route
+  /// (`useSafeArea: false`) strips the top inset from BOTH `padding` and
+  /// `viewPadding` in the sheet's own MediaQuery, so it must be measured
+  /// before presenting and threaded through.
+  final double topInset;
+
   const ReasoningModal({
     super.key,
     required this.partId,
     required this.messageId,
+    required this.topInset,
   });
 
   /// Opens the reasoning modal as a bottom sheet, forwarding the presenting
@@ -52,6 +59,8 @@ class ReasoningModal extends StatefulWidget {
     required String messageId,
   }) {
     final cubit = context.read<SessionDetailCubit>();
+    // Capture before presenting: inside the route the top inset reads as 0.
+    final topInset = MediaQuery.paddingOf(context).top;
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -61,7 +70,11 @@ class ReasoningModal extends StatefulWidget {
       useSafeArea: false,
       builder: (_) => BlocProvider.value(
         value: cubit,
-        child: ReasoningModal(partId: partId, messageId: messageId),
+        child: ReasoningModal(
+          partId: partId,
+          messageId: messageId,
+          topInset: topInset,
+        ),
       ),
     );
   }
@@ -106,8 +119,7 @@ class _ReasoningModalState extends State<ReasoningModal> {
     final bottomInset = keyboard > 0 ? keyboard : MediaQuery.paddingOf(context).bottom;
     // Size to content: short reasoning wraps, and the shrink-wrapped list
     // only starts scrolling once the sheet reaches the top of the screen.
-    final maxBody =
-        size.height - MediaQuery.viewPaddingOf(context).top - PregoBottomSheet.contentTopInset - bottomInset;
+    final maxBody = size.height - widget.topInset - PregoBottomSheet.contentTopInset - bottomInset;
 
     // Coalesced post-frame tail-jump. Safe to call every rebuild;
     // repeated calls within a frame collapse into one jump. Gated on
@@ -119,9 +131,7 @@ class _ReasoningModalState extends State<ReasoningModal> {
 
     return PregoBottomSheet(
       title: data.isStreaming ? loc.sessionDetailThinking : loc.sessionDetailThought,
-      // The modal route strips the top padding from the sheet's MediaQuery;
-      // viewPadding survives, so read the status-bar inset from it.
-      topInset: MediaQuery.viewPaddingOf(context).top,
+      topInset: widget.topInset,
       onClose: () => context.pop(),
       // Full-bleed body; the list pads itself.
       contentPadding: EdgeInsetsDirectional.zero,

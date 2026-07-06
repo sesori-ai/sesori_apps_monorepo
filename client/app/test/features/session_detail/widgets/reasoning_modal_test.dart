@@ -97,7 +97,43 @@ Widget _buildApp({required SessionDetailCubit cubit}) {
     home: BlocProvider<SessionDetailCubit>.value(
       value: cubit,
       child: const Scaffold(
-        body: ReasoningModal(partId: "part-1", messageId: "msg-1"),
+        body: ReasoningModal(partId: "part-1", messageId: "msg-1", topInset: 0),
+      ),
+    ),
+  );
+}
+
+const _openModalKey = Key("open-reasoning-modal");
+
+/// App whose home presents the modal through [ReasoningModal.show], with a
+/// simulated status bar on the presenting context — mirroring how the modal
+/// route strips the top inset from the sheet's own MediaQuery on a device.
+Widget _buildShowApp({required SessionDetailCubit cubit, required double statusBarInset}) {
+  return MaterialApp(
+    theme: ThemeData(extensions: [PregoDesignSystem.light]),
+    darkTheme: ThemeData(extensions: [PregoDesignSystem.dark]),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: Builder(
+      builder: (context) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          padding: EdgeInsets.only(top: statusBarInset),
+          viewPadding: EdgeInsets.only(top: statusBarInset),
+        ),
+        child: BlocProvider<SessionDetailCubit>.value(
+          value: cubit,
+          child: Scaffold(
+            body: Builder(
+              builder: (context) => Center(
+                child: FilledButton(
+                  key: _openModalKey,
+                  onPressed: () => ReasoningModal.show(context, partId: "part-1", messageId: "msg-1"),
+                  child: const Text("open"),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     ),
   );
@@ -230,7 +266,7 @@ void main() {
     expect(tester.widget<MarkdownBody>(markdownFinder).selectable, false);
   });
 
-  testWidgets("sheet wraps short reasoning and caps at the screen for long reasoning", (tester) async {
+  testWidgets("sheet wraps short reasoning to its content", (tester) async {
     whenListen(
       mockCubit,
       const Stream<SessionDetailState>.empty(),
@@ -240,27 +276,43 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(_buildApp(cubit: mockCubit));
+    await tester.pumpWidget(_buildShowApp(cubit: mockCubit, statusBarInset: 47));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(_openModalKey));
     await tester.pumpAndSettle();
 
     final surfaceHeight = tester.getSize(find.byType(Scaffold)).height;
     final shortHeight = tester.getSize(find.byType(PregoBottomSheet)).height;
     expect(shortHeight, lessThan(surfaceHeight / 2));
+  });
 
-    final tallCubit = MockSessionDetailCubit();
+  testWidgets("sheet caps below the status bar for long reasoning", (tester) async {
+    const statusBarInset = 47.0;
+
     whenListen(
-      tallCubit,
+      mockCubit,
       const Stream<SessionDetailState>.empty(),
       initialState: _loadedState(
         streamingText: {},
         messages: [_messageWithPart(text: _reasoningText(paragraphs: 60))],
       ),
     );
-    await tester.pumpWidget(_buildApp(cubit: tallCubit));
+
+    await tester.pumpWidget(_buildShowApp(cubit: mockCubit, statusBarInset: statusBarInset));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(_openModalKey));
     await tester.pumpAndSettle();
 
+    // Grows to the cap, but never into the simulated status bar: the top
+    // inset is captured from the presenting context because the modal route
+    // zeroes it inside the sheet.
+    final surfaceHeight = tester.getSize(find.byType(Scaffold)).height;
     final tallHeight = tester.getSize(find.byType(PregoBottomSheet)).height;
-    expect(tallHeight, greaterThan(surfaceHeight * 0.9));
+    expect(tallHeight, greaterThan(surfaceHeight * 0.8));
+    expect(
+      tester.getTopLeft(find.byType(PregoBottomSheet)).dy,
+      greaterThanOrEqualTo(statusBarInset),
+    );
   });
 
   testWidgets("isStreaming drives header text", (tester) async {
