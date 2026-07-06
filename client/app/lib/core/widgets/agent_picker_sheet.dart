@@ -4,7 +4,6 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../extensions/build_context_x.dart";
-import "app_modal_bottom_sheet.dart";
 
 /// Bottom sheet for selecting an agent.
 ///
@@ -29,8 +28,11 @@ class AgentPickerSheet extends StatelessWidget {
     required String selectedAgent,
     required ValueChanged<String> onAgentChanged,
   }) {
-    return showAppModalBottomSheet(
+    return showPregoBottomSheet<void>(
       context: context,
+      title: context.loc.sessionDetailPickerAgent,
+      // Full-bleed tiles; each ListTile carries its own horizontal padding.
+      contentPadding: EdgeInsetsDirectional.zero,
       builder: (_) => AgentPickerSheet(
         agents: agents,
         selectedAgent: selectedAgent,
@@ -45,45 +47,30 @@ class AgentPickerSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final loc = context.loc;
 
-    return Column(
-      mainAxisSize: .min,
-      children: [
-        // Drag handle
-        Center(
-          child: Container(
-            margin: const EdgeInsetsDirectional.only(top: 12, bottom: 8),
-            width: 32,
-            height: 4,
-            decoration: BoxDecoration(
-              color: prego.colors.textSecondary.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(2),
+    // Transparent Material so the tiles' ink paints on top of the sheet
+    // surface instead of behind it on the modal's transparent Material.
+    return Material(
+      type: MaterialType.transparency,
+      child: Column(
+        mainAxisSize: .min,
+        children: [
+          for (final agent in agents)
+            ListTile(
+              dense: true,
+              title: Text(agent.name),
+              subtitle: switch (agent.description) {
+                final description? => Text(description, maxLines: 1, overflow: .ellipsis),
+                null => null,
+              },
+              leading: agent.name == selectedAgent
+                  ? Icon(Icons.radio_button_checked, color: prego.colors.bgBrandSolid)
+                  : Icon(Icons.radio_button_unchecked, color: prego.colors.borderPrimary),
+              onTap: () => onAgentChanged(agent.name),
             ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text(
-            loc.sessionDetailPickerAgent,
-            style: prego.textTheme.textMd.bold,
-          ),
-        ),
-        for (final agent in agents)
-          ListTile(
-            dense: true,
-            title: Text(agent.name),
-            subtitle: switch (agent.description) {
-              final description? => Text(description, maxLines: 1, overflow: .ellipsis),
-              null => null,
-            },
-            leading: agent.name == selectedAgent
-                ? Icon(Icons.radio_button_checked, color: prego.colors.bgBrandSolid)
-                : Icon(Icons.radio_button_unchecked, color: prego.colors.borderPrimary),
-            onTap: () => onAgentChanged(agent.name),
-          ),
-        const SizedBox(height: 8),
-      ],
+          const SizedBox(height: 8),
+        ],
+      ),
     );
   }
 }
