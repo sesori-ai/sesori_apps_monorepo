@@ -23,6 +23,10 @@ class CommandPickerSheet extends StatefulWidget {
     BuildContext context, {
     required List<CommandInfo> commands,
   }) {
+    // Status-bar inset, captured before presenting: the modal route strips
+    // the top inset from both `padding` and `viewPadding`, so inside the
+    // sheet it reads as 0.
+    final topInset = MediaQuery.paddingOf(context).top;
     return showPregoBottomSheet<CommandInfo>(
       context: context,
       title: context.loc.sessionDetailCommandPickerTitle,
@@ -33,12 +37,16 @@ class CommandPickerSheet extends StatefulWidget {
       builder: (sheetContext) {
         // The body hosts its own scroll view, so it needs a bounded height.
         // Shrink above the keyboard (the sheet re-adds the keyboard inset
-        // below the body) so the search field stays visible while typing.
+        // below the body) so the search field stays visible while typing,
+        // and cap at the space left below the sheet header (mirroring the
+        // model picker) so the outer sheet never gains scroll range of its
+        // own on top of the inner list.
         final size = MediaQuery.sizeOf(sheetContext);
         final keyboard = MediaQuery.viewInsetsOf(sheetContext).bottom;
-        final height = math.max(size.height * 0.7 - keyboard, size.height * 0.3);
+        final maxBody = size.height - topInset - PregoBottomSheet.contentTopInset - keyboard;
+        final height = math.min(size.height * 0.7 - keyboard, maxBody);
         return SizedBox(
-          height: height,
+          height: math.max(height, size.height * 0.3),
           child: CommandPickerSheet(commands: commands),
         );
       },
