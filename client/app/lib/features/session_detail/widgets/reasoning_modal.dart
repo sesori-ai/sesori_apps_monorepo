@@ -114,12 +114,14 @@ class _ReasoningModalState extends State<ReasoningModal> {
     final loc = context.loc;
     final size = MediaQuery.sizeOf(context);
     final keyboard = MediaQuery.viewInsetsOf(context).bottom;
-    // Mirror the inset PregoBottomSheet adds below the body so the cap below
-    // stops exactly at the sheet's own cap.
-    final bottomInset = keyboard > 0 ? keyboard : MediaQuery.paddingOf(context).bottom;
+    final bottomSafe = MediaQuery.paddingOf(context).bottom;
     // Size to content: short reasoning wraps, and the shrink-wrapped list
     // only starts scrolling once the sheet reaches the top of the screen.
-    final maxBody = size.height - widget.topInset - PregoBottomSheet.contentTopInset - bottomInset;
+    // The body runs to the sheet's bottom edge (handleBottomSafeArea: false)
+    // so a capped list scrolls behind the home indicator instead of being
+    // cut at the safe-area line; the list consumes the inset as scroll
+    // padding below.
+    final maxBody = size.height - widget.topInset - PregoBottomSheet.contentTopInset - keyboard;
 
     // Coalesced post-frame tail-jump. Safe to call every rebuild;
     // repeated calls within a frame collapse into one jump. Gated on
@@ -133,8 +135,10 @@ class _ReasoningModalState extends State<ReasoningModal> {
       title: data.isStreaming ? loc.sessionDetailThinking : loc.sessionDetailThought,
       topInset: widget.topInset,
       onClose: () => context.pop(),
-      // Full-bleed body; the list pads itself.
+      // Full-bleed body; the list pads itself (including the home-indicator
+      // inset, taken as scroll padding rather than a hard bottom edge).
       contentPadding: EdgeInsetsDirectional.zero,
+      handleBottomSafeArea: false,
       child: ConstrainedBox(
         // The body hosts its own scroll view (the follow/detach list needs to
         // own scrolling), so its height must be bounded.
@@ -146,8 +150,10 @@ class _ReasoningModalState extends State<ReasoningModal> {
                   tapTargetKey: _kFollowOutputKey,
                   label: loc.sessionDetailFollowOutput,
                   onTap: () => _follow.animateToEdge(),
-                  // No floating composer in the reasoning sheet.
-                  bottomInset: 0,
+                  // No floating composer here, but the list runs to the
+                  // screen's bottom edge, so lift the pill clear of the
+                  // home indicator.
+                  bottomInset: bottomSafe,
                 )
               : null,
           child: ListView(
@@ -156,7 +162,10 @@ class _ReasoningModalState extends State<ReasoningModal> {
             // Wrap the content (a single markdown block, so laying it all out
             // is cheap) instead of filling the cap.
             shrinkWrap: true,
-            padding: const EdgeInsets.all(16),
+            // The home-indicator inset rides inside the scrollable: the last
+            // line can scroll clear of the indicator while earlier content
+            // stays visible behind it.
+            padding: EdgeInsetsDirectional.fromSTEB(16, 16, 16, 16 + bottomSafe),
             children: [
               SelectionArea(
                 child: MarkdownBody(
