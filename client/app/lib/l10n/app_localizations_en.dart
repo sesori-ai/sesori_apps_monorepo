@@ -30,6 +30,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectListTitle => 'Projects';
 
   @override
+  String get projectListLoadingSemantics => 'Loading projects';
+
+  @override
   String get projectListEmpty => 'No projects found';
 
   @override

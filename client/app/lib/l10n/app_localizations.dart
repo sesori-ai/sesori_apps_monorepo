@@ -133,6 +133,12 @@ abstract class AppLocalizations {
   /// **'Projects'**
   String get projectListTitle;
 
+  /// No description provided for @projectListLoadingSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading projects'**
+  String get projectListLoadingSemantics;
+
   /// No description provided for @projectListEmpty.
   ///
   /// In en, this message translates to:

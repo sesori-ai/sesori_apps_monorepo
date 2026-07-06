@@ -179,8 +179,10 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
     required bool isRefreshing,
   }) {
     return switch (state) {
-      ProjectListLoading() => const [
-        SliverFillRemaining(hasScrollBody: false, child: Center(child: CircularProgressIndicator())),
+      ProjectListLoading() => [
+        SliverToBoxAdapter(
+          child: PregoSkeletonList(semanticLabel: context.loc.projectListLoadingSemantics),
+        ),
       ],
       // No bridge has ever been registered → setup onboarding; a bridge exists
       // but isn't running → ask to turn it on. Both are full-screen views that
