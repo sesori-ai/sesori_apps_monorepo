@@ -135,6 +135,7 @@
       }
     }
   },
+  "sessionListLoadingSemantics": "Loading sessions",
   "sessionListEmpty": "No sessions found",
   "sessionListUntitled": "Untitled session",
   "sessionListUpdated": "Updated {timestamp}",

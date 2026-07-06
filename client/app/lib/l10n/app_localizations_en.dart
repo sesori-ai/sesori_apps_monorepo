@@ -192,6 +192,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get sessionListLoadingSemantics => 'Loading sessions';
+
+  @override
   String get sessionListEmpty => 'No sessions found';
 
   @override

@@ -427,6 +427,12 @@ abstract class AppLocalizations {
   /// **'{name} — Sessions'**
   String sessionListTitleWithName(String name);
 
+  /// No description provided for @sessionListLoadingSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading sessions'**
+  String get sessionListLoadingSemantics;
+
   /// No description provided for @sessionListEmpty.
   ///
   /// In en, this message translates to:
