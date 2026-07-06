@@ -1,12 +1,12 @@
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
+import "package:go_router/go_router.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/widgets/markdown_styles.dart";
-import "../../../l10n/app_localizations.dart";
 import "follow_detach_scrollable.dart";
 import "jump_to_edge_pill.dart";
 import "scroll_follow_tracker.dart";
@@ -38,6 +38,31 @@ class ReasoningModal extends StatefulWidget {
     required this.partId,
     required this.messageId,
   });
+
+  /// Opens the reasoning modal as a bottom sheet, forwarding the presenting
+  /// context's [SessionDetailCubit] into the sheet's own route.
+  ///
+  /// Presents a [PregoBottomSheet] directly (not via [showPregoBottomSheet])
+  /// because the sheet title tracks the live streaming state.
+  static Future<void> show(
+    BuildContext context, {
+    required String partId,
+    required String messageId,
+  }) {
+    final cubit = context.read<SessionDetailCubit>();
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      // PregoBottomSheet paints the rounded surface; keep the route
+      // transparent. The sheet caps itself below the status bar.
+      backgroundColor: Colors.transparent,
+      useSafeArea: false,
+      builder: (_) => BlocProvider.value(
+        value: cubit,
+        child: ReasoningModal(partId: partId, messageId: messageId),
+      ),
+    );
+  }
 
   @override
   State<ReasoningModal> createState() => _ReasoningModalState();
@@ -72,7 +97,7 @@ class _ReasoningModalState extends State<ReasoningModal> {
 
     final prego = context.prego;
     final loc = context.loc;
-    final height = MediaQuery.of(context).size.height * 0.7;
+    final height = MediaQuery.sizeOf(context).height * 0.7;
 
     // Coalesced post-frame tail-jump. Safe to call every rebuild;
     // repeated calls within a frame collapse into one jump. Gated on
@@ -82,86 +107,50 @@ class _ReasoningModalState extends State<ReasoningModal> {
       _follow.scheduleJumpToEdge();
     }
 
-    return Container(
-      height: height,
-      decoration: BoxDecoration(
-        color: prego.colors.bgPrimary,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      child: Column(
-        children: [
-          _buildDragHandle(prego: prego),
-          _buildHeader(prego: prego, isStreaming: data.isStreaming, loc: loc),
-          const Divider(height: 1),
-          Expanded(
-            child: FollowDetachScrollable(
-              tracker: _follow,
-              detachedOverlayBuilder: data.isStreaming
-                  ? (ctx) => JumpToEdgePill(
-                        tapTargetKey: _kFollowOutputKey,
-                        label: loc.sessionDetailFollowOutput,
-                        onTap: () => _follow.animateToEdge(),
-                        // No floating composer in the reasoning sheet.
-                        bottomInset: 0,
-                      )
-                  : null,
-              child: ListView(
-                key: _kListViewKey,
-                controller: _follow.scrollController,
-                padding: const EdgeInsets.all(16),
-                children: [
-                  SelectionArea(
-                    child: MarkdownBody(
-                      data: data.text,
-                      selectable: false,
-                      onTapLink: handleMarkdownLinkTap,
-                      styleSheet: buildSessionMarkdownStyleSheet(
-                        prego: prego,
-                        paragraphStyle: prego.textTheme.textXs.regular.copyWith(
-                          color: prego.colors.textSecondary,
-                        ),
-                      ),
+    return PregoBottomSheet(
+      title: data.isStreaming ? loc.sessionDetailThinking : loc.sessionDetailThought,
+      // The modal route strips the top padding from the sheet's MediaQuery;
+      // viewPadding survives, so read the status-bar inset from it.
+      topInset: MediaQuery.viewPaddingOf(context).top,
+      onClose: () => context.pop(),
+      // Full-bleed body; the list pads itself.
+      contentPadding: EdgeInsetsDirectional.zero,
+      child: SizedBox(
+        // The body hosts its own scroll view (the follow/detach list needs to
+        // own scrolling), so it gets a bounded height.
+        height: height,
+        child: FollowDetachScrollable(
+          tracker: _follow,
+          detachedOverlayBuilder: data.isStreaming
+              ? (ctx) => JumpToEdgePill(
+                  tapTargetKey: _kFollowOutputKey,
+                  label: loc.sessionDetailFollowOutput,
+                  onTap: () => _follow.animateToEdge(),
+                  // No floating composer in the reasoning sheet.
+                  bottomInset: 0,
+                )
+              : null,
+          child: ListView(
+            key: _kListViewKey,
+            controller: _follow.scrollController,
+            padding: const EdgeInsets.all(16),
+            children: [
+              SelectionArea(
+                child: MarkdownBody(
+                  data: data.text,
+                  selectable: false,
+                  onTapLink: handleMarkdownLinkTap,
+                  styleSheet: buildSessionMarkdownStyleSheet(
+                    prego: prego,
+                    paragraphStyle: prego.textTheme.textXs.regular.copyWith(
+                      color: prego.colors.textSecondary,
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDragHandle({required PregoDesignSystem prego}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Container(
-        width: 32,
-        height: 4,
-        decoration: BoxDecoration(
-          color: prego.colors.borderSecondary,
-          borderRadius: BorderRadius.circular(2),
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeader({
-    required PregoDesignSystem prego,
-    required bool isStreaming,
-    required AppLocalizations loc,
-  }) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(16, 4, 16, 12),
-      child: Row(
-        children: [
-          Icon(Icons.psychology, size: 20, color: prego.colors.textSecondary),
-          const SizedBox(width: 8),
-          Text(
-            isStreaming ? loc.sessionDetailThinking : loc.sessionDetailThought,
-            style: prego.textTheme.textMd.bold.copyWith(fontStyle: FontStyle.italic),
-          ),
-        ],
       ),
     );
   }
