@@ -1,3 +1,5 @@
+import "dart:math" as math;
+
 import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:go_router/go_router.dart";
@@ -68,6 +70,16 @@ class PermissionModal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    final size = MediaQuery.sizeOf(context);
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    // Mirror the inset PregoBottomSheet adds below the body so the cap below
+    // leaves the pinned action row on screen.
+    final bottomInset = keyboard > 0 ? keyboard : MediaQuery.paddingOf(context).bottom;
+    // Cap the body just under the sheet's own cap: a long description then
+    // scrolls inside its Flexible slot while the action row stays pinned,
+    // instead of pushing the (blocking) actions below the fold.
+    final maxBody =
+        size.height - MediaQuery.viewPaddingOf(context).top - PregoBottomSheet.contentTopInset - bottomInset;
 
     return PregoBottomSheet(
       title: context.loc.diffPermissionRequestTitle,
@@ -77,84 +89,92 @@ class PermissionModal extends StatelessWidget {
       // Closing the sheet answers the assistant: the X rejects, matching the
       // explicit reject button.
       onClose: () => _reply(context, reply: PermissionReply.reject),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Tool name
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 8,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: math.max(maxBody, size.height * 0.3)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Tool name
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              decoration: BoxDecoration(
+                color: prego.colors.bgQuaternary,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.terminal,
+                    size: 16,
+                    color: prego.colors.textSecondary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    permission.tool,
+                    style: prego.textTheme.textSm.bold
+                        .copyWith(
+                          fontWeight: FontWeight.bold,
+                        )
+                        .monospace,
+                  ),
+                ],
+              ),
             ),
-            decoration: BoxDecoration(
-              color: prego.colors.bgQuaternary,
-              borderRadius: BorderRadius.circular(8),
+            const SizedBox(height: 16),
+
+            // Description — scrolls on its own when tall so the actions below
+            // stay on screen.
+            Flexible(
+              child: SingleChildScrollView(
+                child: MarkdownBody(
+                  data: permission.description,
+                  selectable: true,
+                  onTapLink: handleMarkdownLinkTap,
+                  styleSheet: buildSessionMarkdownStyleSheet(
+                    prego: prego,
+                    paragraphStyle: prego.textTheme.textSm.regular,
+                  ),
+                ),
+              ),
             ),
-            child: Row(
+            const SizedBox(height: 16),
+
+            // Action buttons
+            Row(
               children: [
-                Icon(
-                  Icons.terminal,
-                  size: 16,
-                  color: prego.colors.textSecondary,
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: prego.colors.fgErrorPrimary,
+                      side: BorderSide(color: prego.colors.fgErrorPrimary),
+                    ),
+                    onPressed: () => _reply(context, reply: PermissionReply.reject),
+                    child: Text(context.loc.diffPermissionReject),
+                  ),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  permission.tool,
-                  style: prego.textTheme.textSm.bold
-                      .copyWith(
-                        fontWeight: FontWeight.bold,
-                      )
-                      .monospace,
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _reply(context, reply: PermissionReply.once),
+                    child: Text(context.loc.diffPermissionOnce),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => _reply(context, reply: PermissionReply.always),
+                    child: Text(context.loc.diffPermissionAlwaysAllow),
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 16),
-
-          // Description
-          MarkdownBody(
-            data: permission.description,
-            selectable: true,
-            onTapLink: handleMarkdownLinkTap,
-            styleSheet: buildSessionMarkdownStyleSheet(
-              prego: prego,
-              paragraphStyle: prego.textTheme.textSm.regular,
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Action buttons
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: prego.colors.fgErrorPrimary,
-                    side: BorderSide(color: prego.colors.fgErrorPrimary),
-                  ),
-                  onPressed: () => _reply(context, reply: PermissionReply.reject),
-                  child: Text(context.loc.diffPermissionReject),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => _reply(context, reply: PermissionReply.once),
-                  child: Text(context.loc.diffPermissionOnce),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: FilledButton(
-                  onPressed: () => _reply(context, reply: PermissionReply.always),
-                  child: Text(context.loc.diffPermissionAlwaysAllow),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-        ],
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }
