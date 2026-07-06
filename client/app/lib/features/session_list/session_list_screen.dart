@@ -10,7 +10,6 @@ import "package:theme_prego/module_prego.dart";
 import "../../core/constants.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
-import "../../core/widgets/app_modal_bottom_sheet.dart";
 import "../../l10n/app_localizations.dart";
 import "rename_session_dialog.dart";
 import "session_list_scaffold.dart";
