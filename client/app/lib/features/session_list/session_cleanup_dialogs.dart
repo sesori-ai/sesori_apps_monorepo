@@ -22,63 +22,63 @@ class _DeleteSessionSheetState extends State<_DeleteSessionSheet> {
   Widget build(BuildContext context) {
     final loc = context.loc;
 
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            loc.sessionListDeleteConfirmTitle,
-            style: context.prego.textTheme.textMd.bold,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            loc.sessionListDeleteConfirmMessage,
-            style: context.prego.textTheme.textSm.regular.copyWith(
-              color: context.prego.colors.textSecondary,
+    // Transparent Material so the checkbox tiles' ink paints on top of the
+    // sheet surface instead of behind it on the modal's transparent Material.
+    return Material(
+      type: MaterialType.transparency,
+      child: Padding(
+        padding: const EdgeInsetsDirectional.only(bottom: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              loc.sessionListDeleteConfirmMessage,
+              style: context.prego.textTheme.textSm.regular.copyWith(
+                color: context.prego.colors.textSecondary,
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          CheckboxListTile(
-            value: _deleteWorktree,
-            onChanged: (v) => setState(() => _deleteWorktree = v ?? false),
-            title: Text(loc.sessionListDeleteWorktreeCheckbox),
-            dense: true,
-            controlAffinity: ListTileControlAffinity.leading,
-            contentPadding: EdgeInsets.zero,
-          ),
-          CheckboxListTile(
-            value: _deleteBranch,
-            onChanged: (v) => setState(() => _deleteBranch = v ?? false),
-            title: Text(loc.sessionListDeleteBranchCheckbox),
-            dense: true,
-            controlAffinity: ListTileControlAffinity.leading,
-            contentPadding: EdgeInsets.zero,
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () => context.pop(),
-                child: Text(loc.sessionListDeleteConfirmCancel),
-              ),
-              const SizedBox(width: 8),
-              FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: context.prego.colors.fgErrorPrimary),
-                onPressed: () {
-                  context.pop();
-                  widget.onConfirm(
-                    deleteWorktree: _deleteWorktree,
-                    deleteBranch: _deleteBranch,
-                  );
-                },
-                child: Text(loc.sessionListDeleteConfirmAction),
-              ),
-            ],
-          ),
-        ],
+            const SizedBox(height: 12),
+            CheckboxListTile(
+              value: _deleteWorktree,
+              onChanged: (v) => setState(() => _deleteWorktree = v ?? false),
+              title: Text(loc.sessionListDeleteWorktreeCheckbox),
+              dense: true,
+              controlAffinity: ListTileControlAffinity.leading,
+              contentPadding: EdgeInsets.zero,
+            ),
+            CheckboxListTile(
+              value: _deleteBranch,
+              onChanged: (v) => setState(() => _deleteBranch = v ?? false),
+              title: Text(loc.sessionListDeleteBranchCheckbox),
+              dense: true,
+              controlAffinity: ListTileControlAffinity.leading,
+              contentPadding: EdgeInsets.zero,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => context.pop(),
+                  child: Text(loc.sessionListDeleteConfirmCancel),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: context.prego.colors.fgErrorPrimary),
+                  onPressed: () {
+                    context.pop();
+                    widget.onConfirm(
+                      deleteWorktree: _deleteWorktree,
+                      deleteBranch: _deleteBranch,
+                    );
+                  },
+                  child: Text(loc.sessionListDeleteConfirmAction),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
