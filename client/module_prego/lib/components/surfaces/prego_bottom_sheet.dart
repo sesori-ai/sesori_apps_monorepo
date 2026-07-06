@@ -97,6 +97,15 @@ class PregoBottomSheet extends StatelessWidget {
   /// content out.
   static const double _fadeExtent = PregoSpacing.x3l;
 
+  /// Height of the sheet chrome above the body: the glass header plus the
+  /// scroll-edge fade below it.
+  ///
+  /// A body that hosts its own scroll view needs a bounded height; subtract
+  /// this (and the top inset the sheet keeps clear) from the screen height so
+  /// the sheet tops out exactly at its cap instead of spilling into the outer
+  /// scroll.
+  static const double contentTopInset = PregoTopNavigationSheets.headerHeight + _fadeExtent;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.prego.colors;
@@ -141,7 +150,7 @@ class PregoBottomSheet extends StatelessWidget {
                 // starts fully legible and only dissolves once it scrolls up
                 // under the bar.
                 const SliverToBoxAdapter(
-                  child: SizedBox(height: PregoTopNavigationSheets.headerHeight + _fadeExtent),
+                  child: SizedBox(height: contentTopInset),
                 ),
                 SliverToBoxAdapter(
                   child: Padding(padding: contentPadding, child: child),
@@ -161,7 +170,7 @@ class PregoBottomSheet extends StatelessWidget {
               right: 0,
               child: IgnorePointer(
                 child: Container(
-                  height: PregoTopNavigationSheets.headerHeight + _fadeExtent,
+                  height: contentTopInset,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
