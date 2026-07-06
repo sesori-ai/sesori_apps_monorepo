@@ -124,8 +124,8 @@ class PregoBottomSheet extends StatelessWidget {
       decoration: BoxDecoration(
         color: surface,
         borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(38),
-        ), // TODO(daniil): replace radius once Figma is updated
+          top: Radius.circular(PregoRadius.x6l),
+        ),
       ),
       child: ConstrainedBox(
         constraints: BoxConstraints(maxHeight: maxHeight),
