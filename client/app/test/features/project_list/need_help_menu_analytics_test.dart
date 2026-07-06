@@ -13,6 +13,7 @@ import "package:sesori_dart_core/src/capabilities/sse/sse_event_repository.dart"
 import "package:sesori_dart_core/src/platform/route_source.dart";
 import "package:sesori_dart_core/src/platform/url_launcher.dart";
 import "package:sesori_dart_core/src/services/registered_bridges_service.dart";
+import "package:sesori_dart_core/src/services/session_unseen_tracker.dart";
 import "package:sesori_mobile/core/analytics/analytics_event.dart";
 import "package:sesori_mobile/core/analytics/analytics_reporter.dart";
 import "package:sesori_mobile/core/support_links.dart";
@@ -113,6 +114,7 @@ void main() {
     register<SseEventRepository>(mockSseEventRepository);
     register<RouteSource>(mockRouteSource);
     register<RegisteredBridgesService>(mockRegisteredBridgesService);
+    register<SessionUnseenTracker>(FakeSessionUnseenTracker());
     register<FailureReporter>(mockFailureReporter);
     register<UrlLauncher>(mockUrlLauncher);
     register<AnalyticsReporter>(mockAnalyticsReporter);
