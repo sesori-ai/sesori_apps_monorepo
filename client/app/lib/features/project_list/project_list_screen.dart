@@ -79,10 +79,20 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final cubit = context.read<ProjectListCubit>();
     final loc = context.loc;
+    // Same display-name resolution as _ProjectTile, so the sheet is titled
+    // by the project it acts on.
+    final lastSegment = project.id.split("/").last;
+    final displayName = project.name ?? (lastSegment.isNotEmpty ? lastSegment : loc.projectListDefaultName);
 
-    showModalBottomSheet<void>(
+    showPregoBottomSheet<void>(
       context: context,
-      builder: (sheetContext) => SafeArea(
+      title: displayName,
+      // Full-bleed tiles; each ListTile carries its own horizontal padding.
+      contentPadding: EdgeInsetsDirectional.zero,
+      builder: (sheetContext) => Material(
+        // Transparent Material so the tiles' ink paints on top of the sheet
+        // surface instead of behind it on the modal's transparent Material.
+        type: MaterialType.transparency,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

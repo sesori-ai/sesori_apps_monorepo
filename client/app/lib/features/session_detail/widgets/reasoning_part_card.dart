@@ -1,11 +1,8 @@
 import "package:flutter/material.dart";
-import "package:flutter_bloc/flutter_bloc.dart";
 import "package:markdown/markdown.dart" as md;
-import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
-import "../../../core/widgets/app_modal_bottom_sheet.dart";
 import "reasoning_modal.dart";
 
 class ReasoningPartCard extends StatefulWidget {
@@ -86,9 +83,7 @@ class _ReasoningPartCardState extends State<ReasoningPartCard> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        widget.isStreaming
-                            ? loc.sessionDetailThinking
-                            : loc.sessionDetailThought,
+                        widget.isStreaming ? loc.sessionDetailThinking : loc.sessionDetailThought,
                         style: prego.textTheme.textXs.regular.copyWith(
                           color: prego.colors.textSecondary,
                           fontStyle: FontStyle.italic,
@@ -139,9 +134,9 @@ class _ReasoningPartCardState extends State<ReasoningPartCard> {
                     _previewText,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                      style: prego.textTheme.textXs.regular.copyWith(
-                        color: prego.colors.textSecondary,
-                      ),
+                    style: prego.textTheme.textXs.regular.copyWith(
+                      color: prego.colors.textSecondary,
+                    ),
                   ),
                 ),
             ],
@@ -152,20 +147,7 @@ class _ReasoningPartCardState extends State<ReasoningPartCard> {
   }
 
   void _showFullText({required BuildContext context}) {
-    final cubit = context.read<SessionDetailCubit>();
-
-    showAppModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => BlocProvider.value(
-        value: cubit,
-        child: ReasoningModal(
-          partId: widget.partId,
-          messageId: widget.messageId,
-        ),
-      ),
-    );
+    ReasoningModal.show(context, partId: widget.partId, messageId: widget.messageId);
   }
 
   /// Returns the first non-empty physical line of [text], or the empty
