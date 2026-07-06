@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math" as math;
 
 import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
@@ -9,7 +10,6 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../l10n/app_localizations.dart";
 import "../extensions/build_context_x.dart";
-import "app_modal_bottom_sheet.dart";
 
 class CommandPickerSheet extends StatefulWidget {
   final List<CommandInfo> commands;
@@ -23,24 +23,23 @@ class CommandPickerSheet extends StatefulWidget {
     BuildContext context, {
     required List<CommandInfo> commands,
   }) {
-    return showAppModalBottomSheet<CommandInfo>(
+    return showPregoBottomSheet<CommandInfo>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      title: context.loc.sessionDetailCommandPickerTitle,
+      // Full-bleed list; rows and the search field pad themselves. The list
+      // consumes the home-indicator inset as scroll padding.
+      contentPadding: EdgeInsetsDirectional.zero,
       handleBottomSafeArea: false,
       builder: (sheetContext) {
-        final height = MediaQuery.sizeOf(sheetContext).height * 0.7;
-        final prego = sheetContext.prego;
-        // Material (not a decorated Container) so the ListTiles inside can
-        // paint their ink effects on the sheet surface.
-        return Material(
-          color: prego.colors.bgPrimary,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-          clipBehavior: Clip.antiAlias,
-          child: SizedBox(
-            height: height,
-            child: CommandPickerSheet(commands: commands),
-          ),
+        // The body hosts its own scroll view, so it needs a bounded height.
+        // Shrink above the keyboard (the sheet re-adds the keyboard inset
+        // below the body) so the search field stays visible while typing.
+        final size = MediaQuery.sizeOf(sheetContext);
+        final keyboard = MediaQuery.viewInsetsOf(sheetContext).bottom;
+        final height = math.max(size.height * 0.7 - keyboard, size.height * 0.3);
+        return SizedBox(
+          height: height,
+          child: CommandPickerSheet(commands: commands),
         );
       },
     );
@@ -110,126 +109,113 @@ class _CommandPickerSheetState extends State<CommandPickerSheet> {
     final prego = context.prego;
     final loc = context.loc;
 
-    return Column(
-      children: [
-        Center(
-          child: Container(
-            margin: const EdgeInsetsDirectional.only(top: 12, bottom: 8),
-            width: 32,
-            height: 4,
-            decoration: BoxDecoration(
-              color: prego.colors.textSecondary.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text(
-            loc.sessionDetailCommandPickerTitle,
-            style: prego.textTheme.textMd.bold,
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: TextField(
-            decoration: InputDecoration(
-              hintText: loc.sessionDetailCommandSearch,
-              prefixIcon: const Icon(Icons.search, size: 20),
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24),
-                borderSide: BorderSide.none,
+    // Transparent Material so the tiles' ink paints on top of the sheet
+    // surface instead of behind it on the modal's transparent Material.
+    return Material(
+      type: MaterialType.transparency,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: loc.sessionDetailCommandSearch,
+                prefixIcon: const Icon(Icons.search, size: 20),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: prego.colors.bgPrimary,
               ),
-              filled: true,
-              fillColor: prego.colors.bgPrimary,
+              onChanged: (value) => setState(() {
+                _query = value;
+                final entries = _entries;
+                if (entries != null) _filtered = _filteredEntries(entries);
+              }),
             ),
-            onChanged: (value) => setState(() {
-              _query = value;
-              final entries = _entries;
-              if (entries != null) _filtered = _filteredEntries(entries);
-            }),
           ),
-        ),
-        const SizedBox(height: 8),
-        Expanded(
-          child: switch (_filtered) {
-            null => const Center(child: CircularProgressIndicator()),
-            final filtered when filtered.isEmpty => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  loc.sessionDetailNoCommands,
-                  textAlign: TextAlign.center,
-                  style: prego.textTheme.textSm.regular.copyWith(
-                    color: prego.colors.textSecondary,
+          const SizedBox(height: 8),
+          Expanded(
+            child: switch (_filtered) {
+              null => const Center(child: CircularProgressIndicator()),
+              final filtered when filtered.isEmpty => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    loc.sessionDetailNoCommands,
+                    textAlign: TextAlign.center,
+                    style: prego.textTheme.textSm.regular.copyWith(
+                      color: prego.colors.textSecondary,
+                    ),
                   ),
                 ),
               ),
-            ),
-            final filtered => ListView.separated(
-              // Extend the scrollable underneath the home indicator: with
-              // handleBottomSafeArea: false the sheet no longer pads for it, so
-              // the bottom inset is added as scroll padding here (mirroring the
-              // model picker) instead of clipping the last command above it.
-              padding: EdgeInsetsDirectional.fromSTEB(8, 4, 8, 4 + MediaQuery.paddingOf(context).bottom),
-              itemCount: filtered.length,
-              separatorBuilder: (_, _) => Divider(
-                height: 1,
-                color: prego.colors.borderPrimary,
-              ),
-              itemBuilder: (context, index) {
-                final entry = filtered[index];
-                final description = entry.displayDescription;
-                final hints = entry.displayHints;
-                return ListTile(
-                  title: Text("/${entry.command.name}"),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (description != null)
-                        Text(
-                          description,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      if (hints != null)
-                        Padding(
-                          padding: const EdgeInsetsDirectional.only(top: 4),
-                          child: Text(
-                            hints,
+              final filtered => ListView.separated(
+                // Extend the scrollable underneath the home indicator: with
+                // handleBottomSafeArea: false the sheet no longer pads for it, so
+                // the bottom inset is added as scroll padding here (mirroring the
+                // model picker) instead of clipping the last command above it.
+                padding: EdgeInsetsDirectional.fromSTEB(8, 4, 8, 4 + MediaQuery.paddingOf(context).bottom),
+                itemCount: filtered.length,
+                separatorBuilder: (_, _) => Divider(
+                  height: 1,
+                  color: prego.colors.borderPrimary,
+                ),
+                itemBuilder: (context, index) {
+                  final entry = filtered[index];
+                  final description = entry.displayDescription;
+                  final hints = entry.displayHints;
+                  return ListTile(
+                    title: Text("/${entry.command.name}"),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (description != null)
+                          Text(
+                            description,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: prego.textTheme.textXs.regular.copyWith(
-                              color: prego.colors.textSecondary,
+                          ),
+                        if (hints != null)
+                          Padding(
+                            padding: const EdgeInsetsDirectional.only(top: 4),
+                            child: Text(
+                              hints,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: prego.textTheme.textXs.regular.copyWith(
+                                color: prego.colors.textSecondary,
+                              ),
                             ),
                           ),
-                        ),
-                    ],
-                  ),
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: prego.colors.bgBrandPrimary,
-                      borderRadius: BorderRadius.circular(12),
+                      ],
                     ),
-                    child: Text(
-                      _sourceLabel(entry.command.source, loc: loc),
-                      style: prego.textTheme.textXs.medium.copyWith(
-                        color: prego.colors.textBrandPrimary,
-                        fontWeight: FontWeight.w600,
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: prego.colors.bgBrandPrimary,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        _sourceLabel(entry.command.source, loc: loc),
+                        style: prego.textTheme.textXs.medium.copyWith(
+                          color: prego.colors.textBrandPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ),
-                  onTap: () => context.pop(entry.command),
-                );
-              },
-            ),
-          },
-        ),
-      ],
+                    onTap: () => context.pop(entry.command),
+                  );
+                },
+              ),
+            },
+          ),
+        ],
+      ),
     );
   }
 }
