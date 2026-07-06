@@ -498,7 +498,7 @@ class OrchestratorSession {
 
         var backoff = _initialBackoff(takenOver: takenOver);
         while (!_cancelled) {
-          await Future<void>.delayed(backoff);
+          await _backoffDelay(backoff);
           if (_cancelled) {
             return;
           }
@@ -1130,6 +1130,18 @@ class OrchestratorSession {
   static const _ordinaryMaxBackoff = Duration(seconds: 30);
   static const _takeoverInitialBackoff = Duration(minutes: 2);
   static const _takeoverMaxBackoff = Duration(minutes: 5);
+
+  /// Waits out a reconnect backoff, but wakes immediately on shutdown so a
+  /// pending long wait (a minutes-order takeover backoff, ADR A22) never blocks
+  /// teardown/exit on SIGTERM — [cancel] completes [_shutdownCompleter], which
+  /// races the timer. A single completed-completer wait is safe to reuse across
+  /// iterations because it only ever resolves once (on shutdown).
+  Future<void> _backoffDelay(Duration backoff) {
+    return Future.any<void>([
+      Future<void>.delayed(backoff),
+      _shutdownCompleter.future,
+    ]);
+  }
 
   Duration _initialBackoff({required bool takenOver}) {
     if (!takenOver) return _ordinaryInitialBackoff;
