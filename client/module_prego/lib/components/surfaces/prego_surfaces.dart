@@ -177,6 +177,7 @@ class PregoListTile extends StatelessWidget {
       final indent = dividerIndent ?? (leading != null ? 56.0 : 16.0);
       return Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [tile, PregoDivider(indent: indent)],
       );
     }
