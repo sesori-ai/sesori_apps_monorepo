@@ -47,7 +47,7 @@ dependencies:
   go_router: ^17.3.0
   get_it: ^9.2.1
   injectable: ^3.0.0
-  flutter_markdown_plus: ^1.0.7
+  flutter_markdown_plus: ^1.0.9
   markdown: ^7.3.1
   sesori_shared:
     path: ../../shared/sesori_shared
@@ -61,13 +61,13 @@ dependencies:
   cryptography_flutter: ^2.3.4
   web_socket_channel: ^3.0.3
   flutter_secure_storage: ^10.3.1
-  app_links: ^7.1.2
+  app_links: ^7.2.0
   url_launcher: ^6.3.2
   share_plus: ^13.2.0
   universal_platform: ^1.1.0
   device_info_plus: ^13.2.0
   package_info_plus: ^10.2.0
-  record: ^7.1.0
+  record: ^7.1.1
   path: any
   path_provider: ^2.1.6
   re_highlight: ^0.0.3
