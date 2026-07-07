@@ -101,13 +101,18 @@ class AcpEventMapper {
     _sessionProject.remove(sessionId);
     _turnSeq.remove(sessionId);
     _startedParts.remove(sessionId);
-    _liveTools.removeWhere((key, _) => key.startsWith("$sessionId:"));
+    // Exact per-session removal — session ids are opaque agent strings that may
+    // themselves contain ':', so a prefix match on a composite key could wipe a
+    // different session's tools.
+    _liveTools.remove(sessionId);
   }
 
-  /// "sessionId:toolCallId" -> the last-rendered live tool state. ACP
+  /// sessionId -> (toolCallId -> last-rendered live tool state). ACP
   /// `tool_call_update` notifications are partial, so this preserves the tool's
-  /// name/title/status/output across updates that omit them.
-  final Map<String, _LiveTool> _liveTools = {};
+  /// name/title/status/output across updates that omit them. Nested (not a
+  /// composite "sessionId:toolCallId" key) so cleanup is exact regardless of
+  /// characters in the opaque agent-supplied ids.
+  final Map<String, Map<String, _LiveTool>> _liveTools = {};
 
   /// sessionId -> current turn number, advanced by [beginTurn].
   final Map<String, int> _turnSeq = {};
@@ -124,6 +129,10 @@ class AcpEventMapper {
     // The new turn uses fresh (turn-numbered) part ids, so the prior turn's are
     // dead weight — drop them to bound memory in long sessions.
     _startedParts.remove(sessionId);
+    // Tool state is retained across a turn (so a reordered late `tool_call_update`
+    // still merges onto its terminal state instead of blanking the card), and
+    // cleared here at the turn boundary to keep it bounded.
+    _liveTools.remove(sessionId);
   }
 
   int _turn(String sessionId) => _turnSeq[sessionId] ?? 1;
@@ -252,7 +261,7 @@ class AcpEventMapper {
       status: acpToolStatus(update["status"]),
       output: acpToolOutputText(update),
     );
-    _retainOrPrune("$sessionId:$toolCallId", state);
+    (_liveTools[sessionId] ??= {})[toolCallId] = state;
     return [
       _toolEnvelope(sessionId: sessionId, messageId: messageId),
       _toolPartEvent(sessionId: sessionId, messageId: messageId, state: state),
@@ -271,8 +280,7 @@ class AcpEventMapper {
     // state so an omitted name/title/output/status isn't reset to a default,
     // which would blank an existing tool card. Mirrors the replay collector,
     // which already merges — keeping live and history renderings consistent.
-    final key = "$sessionId:$toolCallId";
-    final prior = _liveTools[key];
+    final prior = _liveTools[sessionId]?[toolCallId];
     // Only re-resolve the tool identifier when `kind` is explicitly present; a
     // title-only update must NOT overwrite the canonical id (e.g. "edit") with
     // the title text (`title` lives separately in PluginToolState.title). This
@@ -289,29 +297,21 @@ class AcpEventMapper {
     );
     final events = <BridgeSseEvent>[
       // ACP events can be reordered (reconnect / resume / replay), so a
-      // `tool_call_update` may arrive before its `tool_call` (or after the
-      // entry was pruned on completion). When it is first-seen, synthesize the
-      // message envelope — like `_textChunk` does — so the client can render
-      // the part instead of receiving an orphan it drops.
+      // `tool_call_update` may arrive before its `tool_call`. When it is
+      // first-seen, synthesize the message envelope — like `_textChunk` does —
+      // so the client can render the part instead of receiving an orphan it
+      // drops.
       if (prior == null) _toolEnvelope(sessionId: sessionId, messageId: messageId),
       _toolPartEvent(sessionId: sessionId, messageId: messageId, state: state),
     ];
-    _retainOrPrune(key, state);
+    // Retained (not pruned on terminal) so a late reordered update still merges
+    // onto the terminal state; bounded by the [beginTurn] / [forgetSession]
+    // clears.
+    (_liveTools[sessionId] ??= {})[toolCallId] = state;
     if (_isFileMutation(update)) {
       events.add(BridgeSseSessionDiff(sessionID: sessionId));
     }
     return events;
-  }
-
-  /// Retains [state] for future partial merges, or prunes it once the tool has
-  /// reached a terminal status — no further updates modify a finished tool, so
-  /// keeping it would grow `_liveTools` without bound in a long-lived process.
-  void _retainOrPrune(String key, _LiveTool state) {
-    if (state.status == PluginToolStatus.completed || state.status == PluginToolStatus.error) {
-      _liveTools.remove(key);
-    } else {
-      _liveTools[key] = state;
-    }
   }
 
   BridgeSseMessageUpdated _toolEnvelope({required String sessionId, required String messageId}) {

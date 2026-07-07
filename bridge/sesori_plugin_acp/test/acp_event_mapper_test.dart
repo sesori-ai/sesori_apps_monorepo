@@ -189,26 +189,41 @@ void main() {
       expect(events.whereType<BridgeSseMessagePartUpdated>(), hasLength(1));
     });
 
-    test("a completed tool is pruned; a later update is treated as first-seen", () {
+    test("a completed tool retains its state for a late in-turn update; beginTurn clears it", () {
+      mapper.beginTurn("s1");
       mapper.map(update({
         "sessionUpdate": "tool_call",
         "toolCallId": "tc-3",
         "kind": "read",
         "status": "pending",
       }));
-      final done = mapper.map(update({
+      mapper.map(update({
         "sessionUpdate": "tool_call_update",
         "toolCallId": "tc-3",
         "status": "completed",
+        "rawOutput": {"stdout": "done"},
       }));
-      expect(done.whereType<BridgeSseMessageUpdated>(), isEmpty, reason: "prior existed → no envelope");
-      // The completed entry was pruned, so a further update is first-seen again.
-      final after = mapper.map(update({
+      // A late, reordered output-only update must merge onto the retained
+      // terminal state, not blank the finished card.
+      final late = mapper.map(update({
+        "sessionUpdate": "tool_call_update",
+        "toolCallId": "tc-3",
+        "rawOutput": {"stdout": "final"},
+      }));
+      expect(late.whereType<BridgeSseMessageUpdated>(), isEmpty, reason: "retained → not first-seen");
+      final latePart = late.whereType<BridgeSseMessagePartUpdated>().single.part;
+      expect(latePart.state?.status, PluginToolStatus.completed, reason: "terminal status preserved");
+      expect(latePart.tool, "read");
+      expect(latePart.state?.output, "final");
+
+      // The next turn clears the prior turn's tools to keep the cache bounded.
+      mapper.beginTurn("s1");
+      final afterTurn = mapper.map(update({
         "sessionUpdate": "tool_call_update",
         "toolCallId": "tc-3",
         "status": "in_progress",
       }));
-      expect(after.whereType<BridgeSseMessageUpdated>(), hasLength(1), reason: "entry pruned → first-seen");
+      expect(afterTurn.whereType<BridgeSseMessageUpdated>(), hasLength(1), reason: "cleared on beginTurn → first-seen");
     });
 
     test("forgetSession drops live tool state for the session", () {
@@ -225,6 +240,25 @@ void main() {
         "status": "in_progress",
       }));
       expect(after.whereType<BridgeSseMessageUpdated>(), hasLength(1), reason: "state cleared → first-seen");
+    });
+
+    test("forgetSession is exact — a session id that is a colon-prefix of another is unaffected", () {
+      AcpNotification updFor(String sid, Map<String, dynamic> body) =>
+          AcpNotification(method: "session/update", params: {"sessionId": sid, "update": body});
+
+      // "s1" and "s1:2" collide under a naive "s1:" composite-key prefix match.
+      mapper.map(updFor("s1", {"sessionUpdate": "tool_call", "toolCallId": "a", "kind": "read", "status": "pending"}));
+      mapper.map(updFor("s1:2", {"sessionUpdate": "tool_call", "toolCallId": "b", "kind": "read", "status": "pending"}));
+
+      mapper.forgetSession("s1");
+
+      // "s1:2"'s tool must survive → a follow-up update for it is NOT first-seen.
+      final ev = mapper.map(updFor("s1:2", {"sessionUpdate": "tool_call_update", "toolCallId": "b", "status": "in_progress"}));
+      expect(
+        ev.whereType<BridgeSseMessageUpdated>(),
+        isEmpty,
+        reason: "forgetSession('s1') must not wipe 's1:2' — exact per-session removal",
+      );
     });
 
     test("tool_call_update on an edit emits a session diff", () {
