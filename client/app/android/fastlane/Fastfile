@@ -41,6 +41,55 @@ def build_commit_changelog(max_length: nil)
   text
 end
 
+# Google Play finishes processing an uploaded App Bundle asynchronously: the
+# bundle bytes upload fine, but the edit *commit* that assigns the bundle to a
+# track is sometimes rejected with "Some of the Android App Bundle uploads are
+# not completed yet" while Google is still processing it server-side (more likely
+# for a large AAB over a slow CI link). A rejected commit discards the whole
+# edit, so the version code is NOT consumed and re-running the upload is safe and
+# idempotent. These bound a retry that absorbs that race instead of turning a
+# transient store hiccup into a red release.
+PLAY_UPLOAD_MAX_ATTEMPTS = 3
+PLAY_UPLOAD_RETRY_BASE_DELAY = 45 # seconds, multiplied by the attempt number
+
+# Lower-cased substrings that mark a *transient* Google Play upload/commit
+# failure worth retrying. Deliberately narrow so real errors (bad credentials, a
+# version-code collision, signing problems, quota) still fail fast on the first
+# attempt instead of wasting three uploads.
+PLAY_UPLOAD_RETRYABLE_ERRORS = [
+  "are not completed yet", # bundle still processing when the edit was committed
+  "internal error",        # Google 5xx surfaced through the API client
+  "service is currently unavailable",
+  "try again",
+].freeze
+
+def play_upload_error_retryable?(message)
+  normalized = message.to_s.downcase
+  PLAY_UPLOAD_RETRYABLE_ERRORS.any? { |fragment| normalized.include?(fragment) }
+end
+
+# Runs a Google Play upload block, retrying ONLY on the transient store-side
+# errors above with a linear backoff. Non-retryable failures raise immediately;
+# the final attempt re-raises so a hiccup that never clears still fails the
+# release loudly rather than being swallowed.
+def with_play_upload_retry
+  attempt = 0
+  begin
+    attempt += 1
+    yield
+  rescue StandardError => e
+    raise if attempt >= PLAY_UPLOAD_MAX_ATTEMPTS || !play_upload_error_retryable?(e.message)
+
+    delay = PLAY_UPLOAD_RETRY_BASE_DELAY * attempt
+    UI.important(
+      "Google Play upload attempt #{attempt}/#{PLAY_UPLOAD_MAX_ATTEMPTS} failed with a " \
+      "transient error (#{e.message.to_s.strip}); retrying in #{delay}s."
+    )
+    sleep(delay)
+    retry
+  end
+end
+
 default_platform(:android)
 
 platform :android do
@@ -227,17 +276,19 @@ platform :android do
         "#{build_commit_changelog(max_length: 400)}\n"
       )
 
-      upload_to_play_store(
-        track: "internal",
-        aab: aab_path,
-        metadata_path: metadata_path,
-        skip_upload_metadata: true,
-        skip_upload_images: true,
-        skip_upload_screenshots: true,
-        skip_upload_changelogs: false,
-        release_status: "completed",
-        version_name: version_name
-      )
+      with_play_upload_retry do
+        upload_to_play_store(
+          track: "internal",
+          aab: aab_path,
+          metadata_path: metadata_path,
+          skip_upload_metadata: true,
+          skip_upload_images: true,
+          skip_upload_screenshots: true,
+          skip_upload_changelogs: false,
+          release_status: "completed",
+          version_name: version_name
+        )
+      end
 
       # Write build info for CI summary
       File.write("../build_info.env", "VERSION=#{version_name}\nVERSION_CODE=#{new_build_number}\n")
