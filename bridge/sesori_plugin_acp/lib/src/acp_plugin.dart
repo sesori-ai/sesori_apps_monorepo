@@ -1,41 +1,44 @@
 import "dart:async";
 
 import "package:path/path.dart" as p;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
 import "acp_approval_registry.dart";
 import "acp_event_mapper.dart";
 import "acp_process_factory.dart";
-import "acp_project_registry.dart";
 import "acp_protocol.dart";
 import "acp_session_loader.dart";
 import "acp_stdio_client.dart";
 
-/// Base [BridgePluginApi] implementation for any ACP (Agent Client Protocol)
-/// agent driven over stdio.
+/// Base [BridgeDerivedProjectsPluginApi] implementation for any ACP (Agent
+/// Client Protocol) agent driven over stdio.
+///
+/// ACP backends have no project concept — each session just carries a `cwd` —
+/// so the bridge derives the project list from [listAllSessions] and owns all
+/// project/session persistence itself; the plugin stores nothing on disk.
 ///
 /// Concrete so a vanilla ACP harness needs only an [id] + [agentDisplayName]
 /// (the "config row" case). Harnesses with quirks (e.g. Cursor's model
 /// selection and `cursor/*` extensions) subclass and override the hooks:
-/// [buildApprovalRegistry], [applyModelSelection], [authMethodId],
+/// [buildApprovalRegistry], [applyTurnSelection], [authMethodId],
 /// [initializeCapabilityMeta], [getAgents], [getProviders].
 ///
 /// Unlike the codex plugin (which connects to a process listening on a ws
 /// port), this owns the agent subprocess: it spawns lazily on first use and
 /// reaps it on [dispose].
-class AcpPlugin implements BridgePluginApi {
+class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   AcpPlugin({
     required this.id,
     required this.agentDisplayName,
     required this.launchSpec,
-    required this.projectCwd,
+    required String launchDirectory,
     required this.eventMapper,
     AcpProcessFactory? processFactory,
-    HostJsonStore? projectStore,
-  }) : _processFactory = processFactory,
-       _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>(),
-       _projects = AcpProjectRegistry(cwd: projectCwd, store: projectStore);
+  }) : launchDirectory = normalizeProjectDirectory(directory: launchDirectory),
+       _processFactory = processFactory,
+       _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>();
 
   @override
   final String id;
@@ -45,9 +48,11 @@ class AcpPlugin implements BridgePluginApi {
 
   final AcpLaunchSpec launchSpec;
 
-  /// Bridge launch CWD — the implicit default project (always present in the
-  /// [_projects] registry, even before any directory is explicitly opened).
-  final String projectCwd;
+  /// Bridge launch CWD (canonicalized) — the directory the bridge seeds as an
+  /// always-present project, and the fallback attribution for sessions whose
+  /// own directory is unknown.
+  @override
+  final String launchDirectory;
 
   /// The live event mapper (subclasses may pass a specialized one).
   final AcpEventMapper eventMapper;
@@ -55,17 +60,12 @@ class AcpPlugin implements BridgePluginApi {
   final AcpProcessFactory? _processFactory;
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
 
-  /// Persistent set of directories opened as projects (seeded with
-  /// [projectCwd]). ACP agents have no project list of their own — each session
-  /// just carries a `cwd` — so the plugin tracks them here and persists across
-  /// restarts via the host JSON store.
-  final AcpProjectRegistry _projects;
-
-  /// sessionId -> the canonical project id (directory) the session belongs to.
-  /// Populated on create, on `session/list`, and lets a turn/history load use
-  /// the session's own `cwd` (not the launch CWD) and the activity summary be
-  /// grouped under the right project.
-  final Map<String, String> _sessionProjects = {};
+  /// sessionId -> the canonical directory the session lives in. Populated on
+  /// create and on every `session/list` hit, so a turn/history load runs in
+  /// the session's own `cwd` (not the launch directory), events attribute to
+  /// the right project, and the activity summary groups correctly. In-memory
+  /// only: the bridge's stored rows are the durable attribution.
+  final Map<String, String> _sessionDirectories = {};
 
   AcpStdioClient? _client;
   Future<bool>? _connectFuture;
@@ -107,6 +107,12 @@ class AcpPlugin implements BridgePluginApi {
   /// into the live stream.
   final Set<String> _suppressedSessions = {};
   int _suppressedReplayCount = 0;
+
+  /// Whether this connection's agent rejected an *unfiltered* `session/list`
+  /// (the ACP spec's global enumeration — `cwd` is only a filter). Remembered
+  /// per connection so a non-compliant agent is asked once, not on every
+  /// enumeration; reset on respawn since a replacement process may comply.
+  bool _bareSessionListUnsupported = false;
 
   // --- Overridable hooks ---
 
@@ -254,12 +260,13 @@ class AcpPlugin implements BridgePluginApi {
   ///
   /// Resident sessions are forgotten: the replacement process holds no sessions
   /// until they are re-created or resumed via `session/load`. The event channel
-  /// and project registry are left intact — the plugin stays alive, only the
-  /// connection is reset. Never throws.
+  /// is left intact — the plugin stays alive, only the connection is reset.
+  /// Never throws.
   Future<void> resetConnectionAfterExit() async {
     _connectFuture = null;
     _initResult = null;
     _residentSessions.clear();
+    _bareSessionListUnsupported = false;
     // Let subclasses drop any process-global state cached against the dead agent
     // (e.g. Cursor's applied model/mode) so it is re-applied on the next turn.
     onConnectionReset();
@@ -295,21 +302,64 @@ class AcpPlugin implements BridgePluginApi {
     }
   }
 
-  @override
-  Future<List<PluginProject>> getProjects() async {
-    await _projects.ensureLoaded();
-    return _projects.list();
-  }
-
-  /// Returns the project for [projectId], registering it as a known project.
+  /// Enumerates every session the agent will report, by unioning:
   ///
-  /// This is the `POST /project/open` ("open a directory as a project") path as
-  /// well as the per-project metadata lookup, so opening a new directory adds it
-  /// to [getProjects]. Registration is idempotent for an already-known project.
+  ///  - one *unfiltered* `session/list` (per the ACP spec `cwd` is only a
+  ///    filter), so sessions living in directories the bridge never recorded
+  ///    (e.g. created via the agent's own CLI) still surface — matching how
+  ///    codex's global rollout index behaves; and
+  ///  - a `session/list {cwd}` scan per directory — the bridge's
+  ///    [knownDirectories] (stored project paths and worktree paths), the
+  ///    launch directory, and every directory this run has attributed a
+  ///    session to — because the cwd-filtered form is the shape verified
+  ///    against live cursor-agent.
+  ///
+  /// Fail-soft: an agent that rejects the unfiltered form is remembered for
+  /// this connection and not asked again; a failed per-directory scan is
+  /// logged and skipped so one bad directory cannot empty the enumeration; an
+  /// unreachable agent yields `[]` so the bridge still serves its stored
+  /// project rows.
   @override
-  Future<PluginProject> getProject(String projectId) async {
-    final id = await _projects.register(projectId);
-    return _projects.projectFor(id);
+  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
+    final AcpStdioClient client;
+    try {
+      client = await _connectedClient();
+    } on Object catch (error) {
+      Log.w("[$id] listAllSessions: agent unreachable; serving no sessions", error);
+      return const [];
+    }
+    if (!(_initResult?.agentCapabilities.listSessions ?? false)) return const [];
+
+    final directories = <String>{
+      launchDirectory,
+      for (final directory in knownDirectories)
+        if (directory.trim().isNotEmpty) normalizeProjectDirectory(directory: directory),
+      ..._sessionDirectories.values,
+    };
+
+    final sessionsById = <String, PluginSession>{};
+    if (!_bareSessionListUnsupported) {
+      try {
+        for (final info in await _listSessionPages(client, cwd: null)) {
+          final session = _toPluginSession(info, fallbackDirectory: launchDirectory);
+          if (session.id.isNotEmpty) sessionsById[session.id] = session;
+        }
+      } on Object catch (error) {
+        _bareSessionListUnsupported = true;
+        Log.d("[$id] unfiltered session/list rejected; per-directory scans only: $error");
+      }
+    }
+    for (final directory in directories) {
+      try {
+        for (final info in await _listSessionPages(client, cwd: directory)) {
+          final session = _toPluginSession(info, fallbackDirectory: directory);
+          if (session.id.isNotEmpty) sessionsById.putIfAbsent(session.id, () => session);
+        }
+      } on Object catch (error, stack) {
+        Log.w("[$id] session/list failed for $directory; skipping", error, stack);
+      }
+    }
+    return sessionsById.values.toList(growable: false);
   }
 
   @override
@@ -318,49 +368,78 @@ class AcpPlugin implements BridgePluginApi {
     int? start,
     int? limit,
   }) async {
-    final client = await _connectedClient();
-    if (!(_initResult?.agentCapabilities.listSessions ?? false)) return const [];
+    final AcpStdioClient client;
     try {
-      final raw = await client.request(
-        method: "session/list",
-        params: {"cwd": projectId},
-      );
-      final map = raw is Map ? raw.cast<String, dynamic>() : const <String, dynamic>{};
-      final rawSessions = map["sessions"];
-      final sessions = rawSessions is List ? rawSessions : const <Object?>[];
-      final mapped = sessions
-          .whereType<Map<dynamic, dynamic>>()
-          .map((s) => _toPluginSession(s.cast<String, dynamic>(), projectId))
-          .toList(growable: false);
+      client = await _connectedClient();
+    } on Object catch (error) {
+      Log.w("[$id] getSessions: agent unreachable; serving no sessions", error);
+      return const [];
+    }
+    if (!(_initResult?.agentCapabilities.listSessions ?? false)) return const [];
+    final target = normalizeProjectDirectory(directory: projectId);
+    try {
+      final mapped = [
+        for (final info in await _listSessionPages(client, cwd: target))
+          _toPluginSession(info, fallbackDirectory: target),
+      ];
       final from = start ?? 0;
       if (from >= mapped.length) return const [];
-      final until =
-          limit == null ? mapped.length : (from + limit).clamp(0, mapped.length);
+      final until = limit == null ? mapped.length : (from + limit).clamp(0, mapped.length);
       return mapped.sublist(from, until);
-    } catch (_) {
+    } on Object catch (error, stack) {
+      Log.w("[$id] session/list failed for $target; serving no sessions", error, stack);
       return const [];
     }
   }
 
-  PluginSession _toPluginSession(Map<String, dynamic> raw, String projectId) {
-    final updated = raw["updatedAt"];
-    final ts = updated is num ? updated.round() : null;
-    final id = (raw["sessionId"] ?? "") as String;
-    // Remember which project this session belongs to so a later turn/history
-    // load uses its own cwd and the activity badge lands on the right project.
-    if (id.isNotEmpty) {
-      _sessionProjects[id] = projectId;
-      eventMapper.setSessionProject(id, projectId);
+  /// Fetches the full `session/list` result for [cwd] (null = unfiltered),
+  /// following `nextCursor` pagination. Bounded so an agent that never
+  /// exhausts its cursor cannot spin the bridge forever.
+  Future<List<AcpSessionInfo>> _listSessionPages(
+    AcpStdioClient client, {
+    required String? cwd,
+  }) async {
+    const maxPages = 50;
+    final infos = <AcpSessionInfo>[];
+    String? cursor;
+    for (var page = 0; page < maxPages; page++) {
+      final raw = await client.request(
+        method: AcpMethods.sessionList,
+        params: {
+          "cwd": ?cwd,
+          "cursor": ?cursor,
+        },
+      );
+      final result = AcpSessionListResult.fromJson(
+        raw is Map ? raw.cast<String, dynamic>() : const {},
+      );
+      infos.addAll(result.sessions);
+      cursor = result.nextCursor;
+      if (cursor == null) break;
     }
+    return infos;
+  }
+
+  PluginSession _toPluginSession(AcpSessionInfo info, {required String fallbackDirectory}) {
+    // The session belongs to its own cwd, canonicalized so it matches the
+    // project id the bridge derives from the same value. A missing cwd falls
+    // back to the directory that was scanned.
+    final directory = normalizeProjectDirectory(directory: info.cwd ?? fallbackDirectory);
+    final id = info.sessionId;
+    // Remember the session's directory so a later turn/history load uses its
+    // own cwd and events/activity attribute to the right project.
+    if (id.isNotEmpty) {
+      _sessionDirectories[id] = directory;
+      eventMapper.setSessionProject(id, directory);
+    }
+    final ts = info.updatedAtMs;
     return PluginSession(
       id: id,
-      projectID: projectId,
-      directory: (raw["cwd"] as String?) ?? projectId,
+      projectID: directory,
+      directory: directory,
       parentID: null,
-      title: raw["title"] as String?,
-      time: ts == null
-          ? null
-          : PluginSessionTime(created: ts, updated: ts, archived: null),
+      title: info.title,
+      time: ts == null ? null : PluginSessionTime(created: ts, updated: ts, archived: null),
       summary: null,
     );
   }
@@ -379,10 +458,11 @@ class AcpPlugin implements BridgePluginApi {
     required ({String providerID, String modelID})? model,
   }) async {
     final client = await _connectedClient();
-    // The directory is a project the session lives in — make sure it is a known
-    // project (the app normally creates sessions in an already-opened project,
-    // but a session created directly should still surface its directory).
-    final projectId = await _projects.register(directory);
+    // The session lives in its own cwd (for a dedicated session that is the
+    // worktree path). Canonicalized so it matches the project id the bridge
+    // derives from it; the bridge's stored row folds a worktree session back
+    // under the project the user opened.
+    final canonicalDirectory = normalizeProjectDirectory(directory: directory);
     final raw = await client.request(
       method: AcpMethods.sessionNew,
       params: {"cwd": directory, "mcpServers": const <Object?>[]},
@@ -393,8 +473,8 @@ class AcpPlugin implements BridgePluginApi {
     if (session.sessionId.isEmpty) {
       throw StateError("session/new response missing sessionId");
     }
-    _sessionProjects[session.sessionId] = projectId;
-    eventMapper.setSessionProject(session.sessionId, projectId);
+    _sessionDirectories[session.sessionId] = canonicalDirectory;
+    eventMapper.setSessionProject(session.sessionId, canonicalDirectory);
     captureSessionConfig(session.raw, sessionId: session.sessionId);
     // session/new leaves the session resident in the agent process.
     _residentSessions.add(session.sessionId);
@@ -411,8 +491,8 @@ class AcpPlugin implements BridgePluginApi {
     final now = DateTime.now().millisecondsSinceEpoch;
     return PluginSession(
       id: session.sessionId,
-      projectID: projectId,
-      directory: directory,
+      projectID: canonicalDirectory,
+      directory: canonicalDirectory,
       parentID: parentSessionId,
       title: null,
       time: PluginSessionTime(created: now, updated: now, archived: null),
@@ -460,21 +540,30 @@ class AcpPlugin implements BridgePluginApi {
     _dispatchPrompt(client, sessionId, [PluginPromptPart.text(text: body)]);
   }
 
+  /// The directory a session should be loaded/operated in — its own canonical
+  /// directory when known, else the launch directory.
+  String _directoryForSession(String sessionId) =>
+      _sessionDirectories[sessionId] ?? launchDirectory;
+
   /// Ensures [sessionId] is resident in the agent process before a turn. A
   /// session created/resumed this run is already resident; one from a prior
   /// bridge run is re-loaded via `session/load` (its history replay suppressed
   /// so it does not re-stream into the live conversation). Best-effort: on a
   /// failed/unsupported load the session is still marked resident so the turn
   /// proceeds and surfaces any error itself, rather than looping.
-  /// The directory a session should be loaded/operated in — its own project's
-  /// cwd when known, else the launch CWD.
-  String _sessionCwd(String sessionId) => _sessionProjects[sessionId] ?? projectCwd;
-
   Future<void> _ensureResident(AcpStdioClient client, String sessionId) async {
     if (_residentSessions.contains(sessionId)) return;
     if (!(_initResult?.agentCapabilities.loadSession ?? false)) {
       _residentSessions.add(sessionId);
       return;
+    }
+    // A prior-run session may not have been enumerated yet this run (e.g. a
+    // prompt issued straight from a push notification), so its directory is
+    // unknown and the load below would run in the launch directory instead of
+    // the session's own cwd. Enumerating warms [_sessionDirectories] as a side
+    // effect; fail-soft, so at worst the prior fallback behaviour remains.
+    if (!_sessionDirectories.containsKey(sessionId)) {
+      await listAllSessions(knownDirectories: const {});
     }
     _suppressedSessions.add(sessionId);
     try {
@@ -482,7 +571,7 @@ class AcpPlugin implements BridgePluginApi {
         method: AcpMethods.sessionLoad,
         params: {
           "sessionId": sessionId,
-          "cwd": _sessionCwd(sessionId),
+          "cwd": _directoryForSession(sessionId),
           "mcpServers": const <Object?>[],
         },
         timeout: const Duration(minutes: 2),
@@ -591,25 +680,16 @@ class AcpPlugin implements BridgePluginApi {
   }) async {
     // ACP has no standard rename; honour the contract optimistically so any
     // local UI cache stays consistent. The mobile DB is authoritative.
-    final cwd = _sessionCwd(sessionId);
+    final directory = _directoryForSession(sessionId);
     return PluginSession(
       id: sessionId,
-      projectID: cwd,
-      directory: cwd,
+      projectID: directory,
+      directory: directory,
       parentID: null,
       title: title,
       time: null,
       summary: null,
     );
-  }
-
-  @override
-  Future<PluginProject> renameProject({
-    required String projectId,
-    required String name,
-  }) async {
-    await _projects.rename(path: projectId, name: name);
-    return _projects.projectFor(projectId);
   }
 
   @override
@@ -620,7 +700,7 @@ class AcpPlugin implements BridgePluginApi {
     _activeSessions.remove(sessionId);
     _sessionStatuses.remove(sessionId);
     _residentSessions.remove(sessionId);
-    _sessionProjects.remove(sessionId);
+    _sessionDirectories.remove(sessionId);
     eventMapper.setSessionProject(sessionId, null);
   }
 
@@ -680,7 +760,7 @@ class AcpPlugin implements BridgePluginApi {
         method: AcpMethods.sessionLoad,
         params: {
           "sessionId": sessionId,
-          "cwd": _sessionCwd(sessionId),
+          "cwd": _directoryForSession(sessionId),
           "mcpServers": const <Object?>[],
         },
         timeout: const Duration(minutes: 2),
@@ -742,33 +822,20 @@ class AcpPlugin implements BridgePluginApi {
   /// a `session/new` probe — creates no throwaway session (the ACP agents this
   /// drives have no session-delete). No-op when there are no existing sessions
   /// (a brand-new account's first `session/new` populates the catalog instead).
-  Future<void> probeCatalogFromExistingSession() async {
+  ///
+  /// The catalog (models/modes) is account-global, so ANY existing session is
+  /// a valid source. Enumeration goes through [listAllSessions] — the launch
+  /// directory is often a fresh directory with no history, so callers serving
+  /// a specific project pass it via [extraDirectories] to widen the scan
+  /// beyond the launch directory and this run's sessions.
+  Future<void> probeCatalogFromExistingSession({Set<String> extraDirectories = const {}}) async {
     if (_client == null) return;
-    // The catalog (models/modes) is account-global, so ANY existing session is a
-    // valid source. `session/list` is cwd-scoped, and the launch cwd is often a
-    // fresh directory with no history while other opened projects do have
-    // sessions — so scan every known project's cwd and load the newest session
-    // found (using its own cwd). Scanning the launch cwd alone would leave the
-    // catalog empty, and the model picker blank, whenever the bridge starts in a
-    // directory that has never hosted a session.
-    await _projects.ensureLoaded();
-    final cwds = <String>{
-      projectCwd,
-      for (final project in _projects.list()) project.id,
-    };
+    final sessions = await listAllSessions(knownDirectories: extraDirectories);
     PluginSession? newest;
-    for (final cwd in cwds) {
-      final List<PluginSession> sessions;
-      try {
-        sessions = await getSessions(cwd);
-      } catch (_) {
-        continue;
-      }
-      for (final session in sessions) {
-        if (session.id.isEmpty) continue;
-        if (newest == null || _sessionRecency(session) > _sessionRecency(newest)) {
-          newest = session;
-        }
+    for (final session in sessions) {
+      if (session.id.isEmpty) continue;
+      if (newest == null || _sessionRecency(session) > _sessionRecency(newest)) {
+        newest = session;
       }
     }
     if (newest == null) return;
@@ -869,7 +936,14 @@ class AcpPlugin implements BridgePluginApi {
   }) async {
     final registry = _approvalRegistry;
     if (registry == null) return const [];
-    return registry.pendingForProject(_sessionStatuses.keys);
+    // Scope to the sessions attributed to this project so a pending question
+    // in one project doesn't surface under every other. The bridge merges in
+    // this plugin's worktree sessions itself via its stored attribution rows.
+    final target = normalizeProjectDirectory(directory: projectId);
+    final sessionIds = _sessionStatuses.keys
+        .where((sessionId) => _directoryForSession(sessionId) == target)
+        .toList(growable: false);
+    return registry.pendingForProject(sessionIds);
   }
 
   @override
@@ -919,7 +993,7 @@ class AcpPlugin implements BridgePluginApi {
       final running = _activeSessions.contains(sessionId);
       final awaiting = registry?.hasPendingInput(sessionId) ?? false;
       if (!running && !awaiting) continue;
-      (byProject[_sessionCwd(sessionId)] ??= []).add(
+      (byProject[_directoryForSession(sessionId)] ??= []).add(
         PluginActiveSession(
           id: sessionId,
           mainAgentRunning: running,

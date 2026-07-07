@@ -5,62 +5,57 @@ import "package:acp_plugin/acp_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
-/// Multi-project behaviour: an ACP agent is a single process with no project
-/// list of its own, so the plugin tracks every directory opened as a project.
-/// Before this, `getProjects` returned only the launch CWD, so a discovered
-/// directory never appeared in the app's project list.
+/// Derived-project behaviour: an ACP agent is a single process with no project
+/// list of its own, so the bridge derives projects from [AcpPlugin.listAllSessions]
+/// and owns all project/session persistence. These tests cover the enumeration
+/// contract — the union of the spec's unfiltered `session/list` with
+/// per-directory scans over the bridge's known directories — plus the flows
+/// that depend on the resulting attribution (resume cwd, activity grouping,
+/// catalog probing).
 void main() {
-  group("AcpPlugin projects", () {
-    late FakeAcpProcess fake;
-    late AcpPlugin plugin;
+  group("AcpPlugin session enumeration", () {
+    final fakes = <FakeAcpProcess>[];
+    late _RegistryCapturingAcpPlugin plugin;
     const cwd = "/repo";
 
     setUp(() {
-      fake = FakeAcpProcess();
-      plugin = AcpPlugin(
+      fakes.clear();
+      plugin = _RegistryCapturingAcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
-        projectCwd: cwd,
-        eventMapper: AcpEventMapper(projectCwd: cwd, agentId: "acp"),
-        processFactory: (_) async => fake,
+        launchDirectory: cwd,
+        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp"),
+        processFactory: (_) async {
+          final fake = FakeAcpProcess();
+          fakes.add(fake);
+          return fake;
+        },
       );
     });
 
     tearDown(() async {
       await plugin.dispose();
-      await fake.close();
+      for (final fake in fakes) {
+        await fake.close();
+      }
     });
 
-    test("getProjects starts with just the launch CWD", () async {
-      final projects = await plugin.getProjects();
-      expect(projects.map((p) => p.id), [cwd]);
-    });
-
-    test("getProject registers a newly opened directory; getProjects then lists it", () async {
-      const opened = "/Users/x/kustos";
-      final project = await plugin.getProject(opened);
-      expect(project.id, opened);
-      expect(project.name, "kustos");
-
-      final ids = (await plugin.getProjects()).map((p) => p.id).toSet();
-      expect(ids, {cwd, opened}, reason: "the opened directory must appear in the list");
-    });
-
-    test("getProject normalizes a trailing slash to the same project", () async {
-      await plugin.getProject("/Users/x/kustos/");
-      final ids = (await plugin.getProjects()).map((p) => p.id).toList();
-      expect(ids, contains("/Users/x/kustos"));
-      expect(ids.where((id) => id.startsWith("/Users/x/kustos")), hasLength(1));
-    });
-
-    // ── Session attribution across projects ───────────────────────────────────
+    FakeAcpProcess fake() => fakes.last;
 
     Future<void> pump() => Future<void>.delayed(Duration.zero);
 
+    // Frames respond() has already answered, keyed per fake process (request
+    // ids restart at 1 for every spawned client, so a bare id would collide
+    // across a respawn). Lets a second same-method request wait for ITS frame
+    // instead of re-answering the first one.
+    final answered = <(FakeAcpProcess, Object?)>{};
+
     Future<Map<String, dynamic>> waitForFrame(String method) async {
       for (var i = 0; i < 50; i++) {
-        final matches = fake.written.where((f) => f["method"] == method);
+        final matches = fake()
+            .written
+            .where((f) => f["method"] == method && !answered.contains((fake(), f["id"])));
         if (matches.isNotEmpty) return matches.last;
         await pump();
       }
@@ -69,7 +64,8 @@ void main() {
 
     Future<void> respond(String method, Map<String, dynamic> result) async {
       final frame = await waitForFrame(method);
-      fake.emit({"jsonrpc": "2.0", "id": frame["id"], "result": result});
+      answered.add((fake(), frame["id"]));
+      fake().emit({"jsonrpc": "2.0", "id": frame["id"], "result": result});
       await pump();
     }
 
@@ -88,6 +84,192 @@ void main() {
       expect(await connecting, isTrue);
     }
 
+    /// Auto-answers every `session/list` request until stopped: an unfiltered
+    /// request gets [bare]'s result (or an error when null — a non-spec agent
+    /// that requires `cwd`), a cwd-filtered request gets its [byCwd] sessions
+    /// (empty when absent). Returns a stop function; counts unfiltered
+    /// attempts via [onBareRequest].
+    void Function() autoListResponder({
+      Map<String, dynamic> Function()? bare,
+      Map<String, List<Map<String, dynamic>>> byCwd = const {},
+      void Function()? onBareRequest,
+    }) {
+      // Scoped to the CURRENT fake: request ids restart per spawned client, so
+      // scanning a dead process's frames would re-answer stale ids on the live
+      // one.
+      final answered = <Object?>{};
+      var running = true;
+      unawaited(() async {
+        while (running) {
+          final frames = fake()
+              .written
+              .where((f) => f["method"] == "session/list")
+              .toList(growable: false);
+          for (final frame in frames) {
+            if (!answered.add(frame["id"])) continue;
+            final params = (frame["params"] as Map?)?.cast<String, dynamic>() ?? const {};
+            final requestedCwd = params["cwd"] as String?;
+            if (requestedCwd == null) {
+              onBareRequest?.call();
+              if (bare == null) {
+                fake().emit({
+                  "jsonrpc": "2.0",
+                  "id": frame["id"],
+                  "error": {"code": -32602, "message": "cwd is required"},
+                });
+              } else {
+                fake().emit({"jsonrpc": "2.0", "id": frame["id"], "result": bare()});
+              }
+            } else {
+              fake().emit({
+                "jsonrpc": "2.0",
+                "id": frame["id"],
+                "result": {"sessions": byCwd[requestedCwd] ?? <Object?>[]},
+              });
+            }
+          }
+          await pump();
+        }
+      }());
+      return () => running = false;
+    }
+
+    test("without the list capability, listAllSessions is empty", () async {
+      await connect();
+      expect(await plugin.listAllSessions(knownDirectories: const {}), isEmpty);
+    });
+
+    test("unions the unfiltered list with per-directory scans and dedupes by id", () async {
+      await connect(sessionCapabilities: true);
+      const known = "/Users/x/kustos";
+
+      final stop = autoListResponder(
+        // The spec's global list also knows a session in a directory the
+        // bridge never recorded (created via the agent's own CLI)...
+        bare: () => {
+          "sessions": [
+            {"sessionId": "outside", "cwd": "/elsewhere/lab", "title": "Outside"},
+            // ...and re-reports a known-directory session (must not duplicate).
+            {"sessionId": "known-s", "cwd": known, "title": "Known"},
+          ],
+        },
+        byCwd: {
+          known: [
+            {"sessionId": "known-s", "cwd": known, "title": "Known"},
+          ],
+        },
+      );
+      final sessions = await plugin.listAllSessions(knownDirectories: const {known});
+      stop();
+
+      expect(sessions.map((s) => s.id).toSet(), {"outside", "known-s"});
+      final outside = sessions.singleWhere((s) => s.id == "outside");
+      expect(outside.directory, "/elsewhere/lab");
+      expect(outside.projectID, "/elsewhere/lab");
+      final knownSession = sessions.singleWhere((s) => s.id == "known-s");
+      expect(knownSession.directory, known);
+
+      // Both the launch directory and the bridge-known directory were scanned.
+      final listedCwds = fake().written
+          .where((f) => f["method"] == "session/list")
+          .map((f) => ((f["params"] as Map?) ?? const {})["cwd"])
+          .toSet();
+      expect(listedCwds, containsAll(<Object?>[null, cwd, known]));
+    });
+
+    test("a rejected unfiltered list is remembered for the connection, forgotten after reset", () async {
+      await connect(sessionCapabilities: true);
+      var bareAttempts = 0;
+      final stop = autoListResponder(onBareRequest: () => bareAttempts++);
+
+      await plugin.listAllSessions(knownDirectories: const {});
+      expect(bareAttempts, 1, reason: "the spec path is attempted first");
+      await plugin.listAllSessions(knownDirectories: const {});
+      expect(bareAttempts, 1, reason: "a rejecting agent is not re-asked on this connection");
+      stop();
+
+      // A respawned agent may support it — the memo must reset with the
+      // connection.
+      fake().exit(1);
+      await pump();
+      await plugin.resetConnectionAfterExit();
+      final reconnecting = plugin.ensureConnected();
+      await respond("initialize", {
+        "protocolVersion": 1,
+        "agentCapabilities": {
+          "loadSession": true,
+          "sessionCapabilities": {"list": <String, dynamic>{}},
+        },
+        "authMethods": <Object?>[],
+      });
+      expect(await reconnecting, isTrue);
+
+      final stopSecond = autoListResponder(onBareRequest: () => bareAttempts++);
+      await plugin.listAllSessions(knownDirectories: const {});
+      stopSecond();
+      expect(bareAttempts, 2, reason: "the fresh process is probed again");
+    });
+
+    test("follows nextCursor pagination and parses both timestamp shapes", () async {
+      await connect(sessionCapabilities: true);
+
+      // Answer the unfiltered probe with an error, then serve two pages for
+      // the launch-directory scan.
+      unawaited(() async {
+        final answered = <Object?>{};
+        while (answered.length < 3) {
+          for (final frame
+              in fake().written.where((f) => f["method"] == "session/list").toList(growable: false)) {
+            if (!answered.add(frame["id"])) continue;
+            final params = (frame["params"] as Map?)?.cast<String, dynamic>() ?? const {};
+            if (params["cwd"] == null) {
+              fake().emit({
+                "jsonrpc": "2.0",
+                "id": frame["id"],
+                "error": {"code": -32602, "message": "cwd is required"},
+              });
+            } else if (params["cursor"] == null) {
+              fake().emit({
+                "jsonrpc": "2.0",
+                "id": frame["id"],
+                "result": {
+                  "sessions": [
+                    // Spec shape: ISO 8601 updatedAt.
+                    {"sessionId": "s1", "cwd": cwd, "updatedAt": "2026-07-01T10:00:00Z"},
+                  ],
+                  "nextCursor": "page-2",
+                },
+              });
+            } else {
+              expect(params["cursor"], "page-2");
+              fake().emit({
+                "jsonrpc": "2.0",
+                "id": frame["id"],
+                "result": {
+                  "sessions": [
+                    // Live cursor-agent shape: epoch milliseconds.
+                    {"sessionId": "s2", "cwd": cwd, "updatedAt": 1751364000000},
+                  ],
+                },
+              });
+            }
+          }
+          await pump();
+        }
+      }());
+
+      final sessions = await plugin.listAllSessions(knownDirectories: const {});
+      expect(sessions.map((s) => s.id).toSet(), {"s1", "s2"});
+      final s1 = sessions.singleWhere((s) => s.id == "s1");
+      expect(
+        s1.time?.updated,
+        DateTime.utc(2026, 7, 1, 10).millisecondsSinceEpoch,
+        reason: "ISO 8601 updatedAt must parse",
+      );
+      final s2 = sessions.singleWhere((s) => s.id == "s2");
+      expect(s2.time?.updated, 1751364000000, reason: "epoch-ms updatedAt must parse");
+    });
+
     test("a session created in an opened directory is attributed to that project", () async {
       await connect();
       const opened = "/Users/x/kustos";
@@ -105,10 +287,6 @@ void main() {
 
       expect(session.projectID, opened, reason: "session belongs to the opened directory, not the launch CWD");
       expect(session.directory, opened);
-
-      // Opening a session in a directory implicitly registers it as a project.
-      final ids = (await plugin.getProjects()).map((p) => p.id).toSet();
-      expect(ids, containsAll(<String>[cwd, opened]));
 
       // A running turn surfaces under that project's activity row, not the CWD.
       await plugin.sendPrompt(
@@ -129,9 +307,10 @@ void main() {
       await connect(sessionCapabilities: true);
       const opened = "/Users/x/kustos";
 
-      // Teach the plugin the session->project mapping the way getSessions would
-      // (the app lists a project's sessions before opening one), then prompt a
-      // session this process never created so a resume-load is forced.
+      // Teach the plugin the session->directory mapping the way an
+      // enumeration would (the app lists a project's sessions before opening
+      // one), then prompt a session this process never created so a
+      // resume-load is forced.
       final listing = plugin.getSessions(opened);
       await respond("session/list", {
         "sessions": [
@@ -150,7 +329,7 @@ void main() {
       );
       final loadFrame = await waitForFrame("session/load");
       expect((loadFrame["params"] as Map)["cwd"], opened, reason: "resume-load must use the session's own project cwd");
-      fake.emit({"jsonrpc": "2.0", "id": loadFrame["id"], "result": const <String, dynamic>{}});
+      fake().emit({"jsonrpc": "2.0", "id": loadFrame["id"], "result": const <String, dynamic>{}});
 
       // sendPrompt drains the (empty) suppressed replay, then dispatches the
       // prompt; await it so the prompt frame exists before we resolve the turn.
@@ -158,45 +337,128 @@ void main() {
       await respond("session/prompt", {"stopReason": "end_turn"});
     });
 
-    test("catalog probe scans every known project cwd, not just the launch CWD", () async {
+    test("a prompt to a never-enumerated session warms attribution before the load", () async {
+      await connect(sessionCapabilities: true);
+      const home = "/Users/x/kustos";
+
+      // The plugin has never seen "cold-s" (no create, no enumeration this
+      // run — e.g. a prompt straight from a push notification). The pre-load
+      // enumeration must discover its directory so the resume-load runs there
+      // instead of the launch directory.
+      final stop = autoListResponder(
+        bare: () => {
+          "sessions": [
+            {"sessionId": "cold-s", "cwd": home, "title": "Cold"},
+          ],
+        },
+      );
+
+      final sending = plugin.sendPrompt(
+        sessionId: "cold-s",
+        parts: const [PluginPromptPart.text(text: "resume me")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final loadFrame = await waitForFrame("session/load");
+      stop();
+      expect(
+        (loadFrame["params"] as Map)["cwd"],
+        home,
+        reason: "the warm-up enumeration must teach the load its real cwd",
+      );
+      fake().emit({"jsonrpc": "2.0", "id": loadFrame["id"], "result": const <String, dynamic>{}});
+      await sending;
+      await respond("session/prompt", {"stopReason": "end_turn"});
+    });
+
+    test("catalog probe scans the launch directory and every extra directory", () async {
       await connect(sessionCapabilities: true);
       const opened = "/Users/x/kustos";
-      await plugin.getProject(opened); // register a second project
 
-      // Answer every session/list with an empty result so the probe scans all
-      // known cwds and then returns (nothing to load), keeping the test free of
-      // a probe sub-client. The catalog is account-global, so the probe must not
+      // Empty everywhere: the probe scans all directories and returns without
+      // loading (nothing to probe), keeping the test free of a probe
+      // sub-client. The catalog is account-global, so the probe must not
       // restrict itself to the launch cwd — otherwise a bridge launched from a
       // session-less directory leaves the model picker empty.
-      final answered = <Object?>{};
-      var probing = true;
-      unawaited(() async {
-        while (probing) {
-          for (final frame in fake.written.where((f) => f["method"] == "session/list")) {
-            if (answered.add(frame["id"])) {
-              fake.emit({
-                "jsonrpc": "2.0",
-                "id": frame["id"],
-                "result": {"sessions": <Object?>[]},
-              });
-            }
-          }
-          await pump();
-        }
-      }());
+      final stop = autoListResponder();
+      await plugin.probeCatalogFromExistingSession(extraDirectories: const {opened});
+      stop();
 
-      await plugin.probeCatalogFromExistingSession();
-      probing = false;
-
-      final listedCwds = fake.written
+      final listedCwds = fake().written
           .where((f) => f["method"] == "session/list")
-          .map((f) => (f["params"] as Map)["cwd"])
+          .map((f) => ((f["params"] as Map?) ?? const {})["cwd"])
           .toSet();
       expect(
         listedCwds,
-        containsAll(<String>[cwd, opened]),
-        reason: "the catalog probe must scan the launch CWD AND every opened project",
+        containsAll(<Object?>[cwd, opened]),
+        reason: "the catalog probe must scan the launch CWD AND the requested project",
       );
     });
+
+    test("getProjectQuestions only reports sessions attributed to the project", () async {
+      await connect();
+      const opened = "/Users/x/kustos";
+
+      // One session per directory, both with a pending question.
+      Future<PluginSession> create(String directory, String sessionId) async {
+        final creating = plugin.createSession(
+          directory: directory,
+          parentSessionId: null,
+          parts: const [],
+          variant: null,
+          agent: null,
+          model: null,
+        );
+        await respond("session/new", {"sessionId": sessionId});
+        return creating;
+      }
+
+      final inLaunch = await create(cwd, "s-launch");
+      final inOpened = await create(opened, "s-opened");
+
+      const question = PluginQuestionInfo(
+        question: "Proceed?",
+        header: "Plan",
+        options: [PluginQuestionOption(label: "Yes", description: "confirm")],
+        multiple: false,
+        custom: false,
+      );
+      for (final session in [inLaunch, inOpened]) {
+        plugin.registry!.addPendingQuestion(
+          bridgeRequestId: "q-${session.id}",
+          acpId: "acp-${session.id}",
+          sessionId: session.id,
+          questions: const [question],
+          replyBuilder: (answers) => null,
+        );
+      }
+
+      final launchQuestions = await plugin.getProjectQuestions(projectId: cwd);
+      expect(launchQuestions.map((q) => q.sessionID).toSet(), {"s-launch"});
+      final openedQuestions = await plugin.getProjectQuestions(projectId: opened);
+      expect(openedQuestions.map((q) => q.sessionID).toSet(), {"s-opened"});
+    });
   });
+}
+
+/// [AcpPlugin] that captures the approval registry built at connect so tests
+/// can register pending questions directly (the base registry only creates
+/// questions through harness extension handlers).
+class _RegistryCapturingAcpPlugin extends AcpPlugin {
+  _RegistryCapturingAcpPlugin({
+    required super.id,
+    required super.agentDisplayName,
+    required super.launchSpec,
+    required super.launchDirectory,
+    required super.eventMapper,
+    super.processFactory,
+  });
+
+  AcpApprovalRegistry? registry;
+
+  @override
+  AcpApprovalRegistry buildApprovalRegistry(AcpStdioClient client) {
+    return registry = super.buildApprovalRegistry(client);
+  }
 }

@@ -89,7 +89,7 @@ void main() {
     setUp(() {
       fake = FakeAcpProcess();
       plugin = CursorPlugin(
-        projectCwd: "/repo",
+        launchDirectory: "/repo",
         processFactory: (_) async => fake,
       );
     });

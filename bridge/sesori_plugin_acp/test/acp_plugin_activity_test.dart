@@ -18,8 +18,8 @@ void main() {
         id: "acp",
         agentDisplayName: "ACP",
         launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
-        projectCwd: cwd,
-        eventMapper: AcpEventMapper(projectCwd: cwd, agentId: "acp"),
+        launchDirectory: cwd,
+        eventMapper: AcpEventMapper(launchDirectory: cwd, agentId: "acp"),
         processFactory: (_) async => fake,
       );
     });

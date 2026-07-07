@@ -16,25 +16,22 @@ import "../cursor_plugin_impl.dart";
 typedef CursorPluginFactory =
     CursorPlugin Function({
       required String binaryPath,
-      required String projectCwd,
+      required String launchDirectory,
       required String? apiEndpoint,
       required AcpProcessFactory processFactory,
-      required HostJsonStore? projectStore,
     });
 
 CursorPlugin _defaultBuildPlugin({
   required String binaryPath,
-  required String projectCwd,
+  required String launchDirectory,
   required String? apiEndpoint,
   required AcpProcessFactory processFactory,
-  required HostJsonStore? projectStore,
 }) {
   return CursorPlugin(
     binaryPath: binaryPath,
-    projectCwd: projectCwd,
+    launchDirectory: launchDirectory,
     apiEndpoint: apiEndpoint,
     processFactory: processFactory,
-    projectStore: projectStore,
   );
 }
 
@@ -225,13 +222,12 @@ class CursorPluginDescriptor extends BridgePluginDescriptor {
 
     final cursor = (_buildPlugin ?? _defaultBuildPlugin)(
       binaryPath: binaryPath,
-      // The implicit default Cursor project is the bridge's launch directory;
-      // directories opened from the app are added to (and persisted by) the
-      // plugin's project registry via host.store.
-      projectCwd: io.Directory.current.path,
+      // The bridge seeds the launch directory as an always-present project;
+      // the bridge itself owns all project/session persistence for this
+      // derive-style plugin, so the plugin needs no store of its own.
+      launchDirectory: io.Directory.current.path,
       apiEndpoint: apiEndpoint,
       processFactory: processFactory,
-      projectStore: host.store,
     );
 
     final plugin = AcpBridgePlugin(

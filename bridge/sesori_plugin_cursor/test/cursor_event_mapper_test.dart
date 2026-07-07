@@ -5,7 +5,7 @@ import "package:test/test.dart";
 
 void main() {
   group("CursorEventMapper", () {
-    final mapper = CursorEventMapper(projectCwd: "/repo");
+    final mapper = CursorEventMapper(launchDirectory: "/repo");
 
     test("cursor/update_todos maps to a todo update", () {
       final events = mapper.map(

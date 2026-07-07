@@ -29,31 +29,28 @@ import "cursor_model_probe.dart";
 class CursorPlugin extends AcpPlugin {
   factory CursorPlugin({
     String binaryPath = CursorBinary.defaultBinary,
-    String? projectCwd,
+    String? launchDirectory,
     String? apiEndpoint,
     AcpProcessFactory? processFactory,
-    HostJsonStore? projectStore,
   }) {
-    final cwd = projectCwd ?? Directory.current.path;
+    final cwd = launchDirectory ?? Directory.current.path;
     return CursorPlugin._(
       launchSpec: CursorBinary.launchSpec(
         binary: binaryPath,
         cwd: cwd,
         apiEndpoint: apiEndpoint,
       ),
-      projectCwd: cwd,
-      mapper: CursorEventMapper(projectCwd: cwd),
+      launchDirectory: cwd,
+      mapper: CursorEventMapper(launchDirectory: cwd),
       processFactory: processFactory,
-      projectStore: projectStore,
     );
   }
 
   CursorPlugin._({
     required super.launchSpec,
-    required super.projectCwd,
+    required super.launchDirectory,
     required CursorEventMapper mapper,
     super.processFactory,
-    super.projectStore,
   }) : super(id: "cursor", agentDisplayName: "Cursor", eventMapper: mapper);
 
   static const String _providerId = "cursor";
@@ -217,11 +214,16 @@ class CursorPlugin extends AcpPlugin {
 
   /// Loads the catalog from an existing session if it has not been captured yet
   /// this connection (so the new-session model picker is populated even before
-  /// any session is created this run).
-  Future<void> _ensureCatalog() async {
+  /// any session is created this run). The catalog is account-global, but the
+  /// launch directory often has no sessions to probe — so the project being
+  /// served (when known) widens the scan, mirroring how codex scopes its
+  /// metadata lookups to the requested project.
+  Future<void> _ensureCatalog({String? projectId}) async {
     if (_models.isNotEmpty) return;
     if (!await ensureConnected()) return;
-    await probeCatalogFromExistingSession();
+    await probeCatalogFromExistingSession(
+      extraDirectories: {if (projectId != null && projectId.trim().isNotEmpty) projectId},
+    );
   }
 
   /// Eagerly populates the catalog right after the bridge connects, so the
@@ -264,7 +266,7 @@ class CursorPlugin extends AcpPlugin {
 
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async {
-    await _ensureCatalog();
+    await _ensureCatalog(projectId: projectId);
     final modelId = eventMapper.currentModelId ?? _currentModelId;
     return [
       PluginAgent(
@@ -285,7 +287,7 @@ class CursorPlugin extends AcpPlugin {
 
   @override
   Future<PluginProvidersResult> getProviders({required String projectId}) async {
-    await _ensureCatalog();
+    await _ensureCatalog(projectId: projectId);
     if (_models.isEmpty) return const PluginProvidersResult(providers: []);
     final variants = _modeVariants();
     return PluginProvidersResult(

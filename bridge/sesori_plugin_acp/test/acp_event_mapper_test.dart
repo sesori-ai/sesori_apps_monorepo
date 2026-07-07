@@ -10,7 +10,7 @@ void main() {
     late AcpEventMapper mapper;
 
     setUp(() {
-      mapper = AcpEventMapper(projectCwd: "/repo", agentId: "cursor")
+      mapper = AcpEventMapper(launchDirectory: "/repo", agentId: "cursor")
         ..currentModelId = "gpt-5.4"
         ..currentProviderId = "cursor";
     });

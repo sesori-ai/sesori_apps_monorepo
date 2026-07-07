@@ -8,7 +8,6 @@ export "src/acp_approval_registry.dart";
 export "src/acp_event_mapper.dart";
 export "src/acp_plugin.dart";
 export "src/acp_process_factory.dart";
-export "src/acp_project_registry.dart";
 export "src/acp_protocol.dart";
 export "src/acp_session_loader.dart";
 export "src/acp_stdio_client.dart";

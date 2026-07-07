@@ -1,3 +1,4 @@
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
@@ -24,10 +25,13 @@ import "acp_stdio_client.dart";
 /// Harness-specific notifications (e.g. Cursor's `cursor/*`) are routed to
 /// [mapExtension], which subclasses override.
 class AcpEventMapper {
-  AcpEventMapper({required this.projectCwd, required this.agentId});
+  AcpEventMapper({required String launchDirectory, required this.agentId})
+    : launchDirectory = normalizeProjectDirectory(directory: launchDirectory);
 
-  /// The bridge launch CWD — the single synthesized project id.
-  final String projectCwd;
+  /// The bridge launch directory (canonicalized) — the fallback project
+  /// attribution for sessions whose own directory is not (yet) known. Matches
+  /// the canonical project id the bridge derives for the same directory.
+  final String launchDirectory;
 
   /// Agent name stamped on assistant messages (e.g. "cursor").
   final String agentId;
@@ -67,7 +71,7 @@ class AcpEventMapper {
 
   /// Per-session project directory (an ACP project id *is* its `cwd`). The
   /// plugin records it so `session_info_update` (title) events are filed under
-  /// the session's real project, not the launch [projectCwd]. The mobile
+  /// the session's real project, not the launch [launchDirectory]. The mobile
   /// session list drops `session.updated` events whose projectID does not match
   /// the active project, so a session opened outside the launch directory would
   /// otherwise have its title updates ignored (or misrouted to the launch
@@ -75,7 +79,7 @@ class AcpEventMapper {
   final Map<String, String> _sessionProject = {};
 
   /// Records the project directory [sessionId] belongs to. A null/empty
-  /// [directory] clears the override (falls back to [projectCwd]).
+  /// [directory] clears the override (falls back to [launchDirectory]).
   void setSessionProject(String sessionId, String? directory) {
     if (directory == null || directory.isEmpty) {
       _sessionProject.remove(sessionId);
@@ -86,7 +90,7 @@ class AcpEventMapper {
 
   /// The project id/directory to stamp on [sessionId]'s session-level events.
   String projectForSession(String sessionId) =>
-      _sessionProject[sessionId] ?? projectCwd;
+      _sessionProject[sessionId] ?? launchDirectory;
 
   /// sessionId -> current turn number, advanced by [beginTurn].
   final Map<String, int> _turnSeq = {};

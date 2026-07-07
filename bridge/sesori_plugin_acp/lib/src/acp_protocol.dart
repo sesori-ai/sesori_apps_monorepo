@@ -11,6 +11,7 @@ abstract final class AcpMethods {
   static const String initialize = "initialize";
   static const String authenticate = "authenticate";
   static const String sessionNew = "session/new";
+  static const String sessionList = "session/list";
   static const String sessionLoad = "session/load";
   static const String sessionPrompt = "session/prompt";
   static const String sessionCancel = "session/cancel";
@@ -96,6 +97,66 @@ class AcpInitializeResult {
           .map((m) => AcpAuthMethod.fromJson(m.cast<String, dynamic>()))
           .toList(growable: false),
       raw: json,
+    );
+  }
+}
+
+/// One entry of a `session/list` result.
+class AcpSessionInfo {
+  const AcpSessionInfo({
+    required this.sessionId,
+    required this.cwd,
+    required this.title,
+    required this.updatedAtMs,
+  });
+
+  final String sessionId;
+
+  /// The session's working directory. Required by the spec, but parsed
+  /// defensively — a missing value falls back to the directory the caller
+  /// scanned.
+  final String? cwd;
+
+  final String? title;
+
+  /// Last-activity time in epoch milliseconds. The ACP spec sends an ISO 8601
+  /// string; live cursor-agent builds have shipped epoch numbers — both are
+  /// accepted.
+  final int? updatedAtMs;
+
+  factory AcpSessionInfo.fromJson(Map<String, dynamic> json) => AcpSessionInfo(
+    sessionId: (json["sessionId"] ?? "") as String,
+    cwd: json["cwd"] as String?,
+    title: json["title"] as String?,
+    updatedAtMs: _parseTimestamp(json["updatedAt"]),
+  );
+
+  static int? _parseTimestamp(Object? raw) {
+    if (raw is num) return raw.round();
+    if (raw is String) return DateTime.tryParse(raw)?.millisecondsSinceEpoch;
+    return null;
+  }
+}
+
+/// Parsed result of one `session/list` page.
+class AcpSessionListResult {
+  const AcpSessionListResult({required this.sessions, required this.nextCursor});
+
+  final List<AcpSessionInfo> sessions;
+
+  /// Opaque continuation token — non-null means more pages exist.
+  final String? nextCursor;
+
+  factory AcpSessionListResult.fromJson(Map<String, dynamic> json) {
+    final rawSessions = json["sessions"];
+    final sessions = rawSessions is List ? rawSessions : const <Object?>[];
+    final cursor = json["nextCursor"];
+    return AcpSessionListResult(
+      sessions: sessions
+          .whereType<Map<dynamic, dynamic>>()
+          .map((s) => AcpSessionInfo.fromJson(s.cast<String, dynamic>()))
+          .toList(growable: false),
+      nextCursor: cursor is String && cursor.isNotEmpty ? cursor : null,
     );
   }
 }

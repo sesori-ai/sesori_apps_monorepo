@@ -750,6 +750,10 @@ void main() {
       final worktreeSession = sessions.singleWhere((s) => s.id == "w1");
       expect(worktreeSession.projectID, parent);
       expect(worktreeSession.directory, worktree);
+      // The bridge told the plugin where to look: the project being served and
+      // the stored session's project + worktree paths — a directory-scoped
+      // backend (ACP) can only enumerate directories it is pointed at.
+      expect(plugin.receivedKnownDirectories, containsAll(<String>[parent, worktree]));
     });
 
     test("findProjectIdForSession resolves a recorded worktree session to its parent via its stored row", () async {
@@ -961,11 +965,17 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
 
   List<PluginSession> allSessions;
 
+  /// The hint set received on the most recent [listAllSessions] call.
+  Set<String>? receivedKnownDirectories;
+
   @override
   String get id => "codex";
 
   @override
-  Future<List<PluginSession>> listAllSessions() async => allSessions;
+  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
+    receivedKnownDirectories = knownDirectories;
+    return allSessions;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
