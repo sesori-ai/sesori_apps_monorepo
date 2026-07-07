@@ -180,11 +180,12 @@ class UpdateService {
       switch (outcome) {
         case UpdateApplied(:final version):
           emitMessage(_messageFormatter.installedPendingActivation(toVersion: version));
-          // The release is now staged for activation on the next launch. This
-          // process still reports the old appVersion, so left running it would
-          // keep "finding" and re-applying the same release every interval —
-          // stop the cycle until a restart.
-          _stopPolling();
+          // The release is now staged for activation on the next launch, but
+          // this process still reports its old appVersion. Advance the release
+          // baseline to what we just staged so the cycle keeps running and only
+          // acts on a strictly-newer release — chaining further updates
+          // published during this session without ever re-applying this one.
+          _releaseRepository.advanceBaselineTo(version: version);
         case UpdateApplyLockBusy():
           // Another update is in progress — benign; apply logged a diagnostic.
           // The next cycle retries.
@@ -205,13 +206,6 @@ class UpdateService {
         logDetail: 'Applying update to ${release.version} failed: $error\n$stackTrace',
       );
     }
-  }
-
-  void _stopPolling() {
-    final subscription = _subscription;
-    _subscription = null;
-    // Defer so we never cancel the subscription from within its own event.
-    scheduleMicrotask(() => subscription?.cancel());
   }
 
   Future<void> _reportStageFailure({required ReleaseInfo release, required UpdateResult result}) async {

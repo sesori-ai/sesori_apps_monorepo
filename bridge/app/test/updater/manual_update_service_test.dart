@@ -48,6 +48,9 @@ class _FakeReleaseRepository implements ReleaseRepository {
 
   @override
   Future<ReleaseInfo?> checkForNewerRelease() => throw UnimplementedError();
+
+  @override
+  void advanceBaselineTo({required String version}) => throw UnimplementedError();
 }
 
 class _FakeInstallService implements UpdateInstallService {

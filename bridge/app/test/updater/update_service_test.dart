@@ -18,12 +18,16 @@ const String _managedPath = '/usr/local/bin/sesori-bridge';
 class _FakeReleaseRepository implements ReleaseRepository {
   int checkCount = 0;
   Future<ReleaseInfo?> Function()? onCheck;
+  final List<String> advancedBaselines = <String>[];
 
   @override
   Future<ReleaseInfo?> checkForNewerRelease() async {
     checkCount++;
     return onCheck == null ? null : onCheck!();
   }
+
+  @override
+  void advanceBaselineTo({required String version}) => advancedBaselines.add(version);
 
   @override
   Future<UpdateResolution> resolveUpdate() => throw UnimplementedError();
@@ -135,6 +139,49 @@ void main() {
       expect(apply.appliedVersions, equals(['2.0.0']));
       expect(infoMessages.single, contains('2.0.0'));
       expect(errors, isEmpty);
+    });
+  });
+
+  test('a successful apply advances the release baseline and keeps polling', () {
+    release.onCheck = () async => _release(version: '2.0.0');
+
+    runStarted(buildService(), (async) {
+      expect(apply.appliedVersions, equals(['2.0.0']));
+      // The cycle advanced the comparison baseline instead of stopping.
+      expect(release.advancedBaselines, equals(['2.0.0']));
+    });
+  });
+
+  test('further releases published in-session are chained without a restart', () {
+    // The fake repository stands in for the real baseline advance: after a
+    // version is staged, only strictly-newer releases surface on later cycles.
+    final available = <String>['2.0.0', '2.1.0'];
+    release.onCheck = () async => available.isEmpty ? null : _release(version: available.first);
+    final service = buildService();
+
+    fakeAsync((async) {
+      service.start();
+      async.flushMicrotasks();
+
+      // Cycle 1 applies 2.0.0 and advances the baseline.
+      expect(apply.appliedVersions, equals(['2.0.0']));
+      expect(release.advancedBaselines, equals(['2.0.0']));
+      available.removeAt(0); // 2.0.0 is no longer "newer" than the baseline.
+
+      // Cycle 2 fires after the poll interval and applies 2.1.0 — no restart.
+      async.elapse(const Duration(hours: 4));
+      async.flushMicrotasks();
+      expect(apply.appliedVersions, equals(['2.0.0', '2.1.0']));
+      expect(release.advancedBaselines, equals(['2.0.0', '2.1.0']));
+
+      // With nothing newer left, later cycles do not re-apply anything.
+      available.removeAt(0);
+      async.elapse(const Duration(hours: 4));
+      async.flushMicrotasks();
+      expect(apply.appliedVersions, equals(['2.0.0', '2.1.0']));
+
+      service.dispose();
+      async.flushMicrotasks();
     });
   });
 
