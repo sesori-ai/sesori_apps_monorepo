@@ -30,6 +30,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectListTitle => 'Projects';
 
   @override
+  String get projectListLoadingSemantics => 'Loading projects';
+
+  @override
   String get projectListEmpty => 'No projects found';
 
   @override
@@ -187,6 +190,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String sessionListTitleWithName(String name) {
     return '$name — Sessions';
   }
+
+  @override
+  String get sessionListLoadingSemantics => 'Loading sessions';
 
   @override
   String get sessionListEmpty => 'No sessions found';

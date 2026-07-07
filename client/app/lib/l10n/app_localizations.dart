@@ -133,6 +133,12 @@ abstract class AppLocalizations {
   /// **'Projects'**
   String get projectListTitle;
 
+  /// No description provided for @projectListLoadingSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading projects'**
+  String get projectListLoadingSemantics;
+
   /// No description provided for @projectListEmpty.
   ///
   /// In en, this message translates to:
@@ -420,6 +426,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{name} — Sessions'**
   String sessionListTitleWithName(String name);
+
+  /// No description provided for @sessionListLoadingSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading sessions'**
+  String get sessionListLoadingSemantics;
 
   /// No description provided for @sessionListEmpty.
   ///
