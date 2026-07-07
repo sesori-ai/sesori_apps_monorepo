@@ -15,7 +15,8 @@ import "package:sesori_shared/sesori_shared.dart";
 /// It hosts a loopback WebSocket control server, spawns a locally-built bridge
 /// with `--control-url`, hands the per-spawn secret to the child off-argv (first
 /// stdin line, ADR A8), answers `token_request` from the developer's own
-/// `token.json` (or a `--token` flag), prints every inbound [ControlMessage],
+/// `token.json` (or the `SESORI_DEV_CONTROL_TOKEN` env var — kept off argv, which
+/// other local processes can read), prints every inbound [ControlMessage],
 /// and offers keyboard commands to push a token, log out, answer prompts, and
 /// simulate the GUI vanishing so the helper's grace-period exit (ADR A9) can be
 /// observed.
@@ -34,10 +35,6 @@ Future<void> main(List<String> args) async {
     ..addOption(
       "bridge",
       help: "Path to a locally-built bridge binary (e.g. build/cli/bundle/bin/bridge).",
-    )
-    ..addOption(
-      "token",
-      help: "Access token to answer token_request with. Defaults to token.json's accessToken.",
     )
     ..addFlag(
       "deny-token",
@@ -67,8 +64,11 @@ Future<void> main(List<String> args) async {
     await _flushAndExit(64);
   }
 
-  final explicitToken = results.option("token");
-  final token = (explicitToken != null && explicitToken.isNotEmpty) ? explicitToken : _readStoredToken();
+  // The token override is read from the environment (not a CLI flag): argv is
+  // visible to other local processes via `ps`/`/proc`, and this token
+  // authenticates the supervised bridge.
+  final envToken = Platform.environment["SESORI_DEV_CONTROL_TOKEN"];
+  final token = (envToken != null && envToken.isNotEmpty) ? envToken : _readStoredToken();
 
   final host = _DevControlHost(
     bridgePath: bridgePath,
@@ -80,9 +80,10 @@ Future<void> main(List<String> args) async {
 }
 
 String _usage(ArgParser parser) {
-  return "Usage: dart run tool/dev_control_host.dart --bridge <path> [--token <jwt>] [--deny-token] [-- <bridge args>]\n\n"
+  return "Usage: dart run tool/dev_control_host.dart --bridge <path> [--deny-token] [-- <bridge args>]\n\n"
       "${parser.usage}\n\n"
-      "Everything after `--` is forwarded verbatim to the bridge (e.g. --log-level debug, --auth-backend ...).";
+      "The access token defaults to token.json's accessToken; set SESORI_DEV_CONTROL_TOKEN to override\n"
+      "it off-argv. Everything after `--` is forwarded verbatim to the bridge (e.g. --log-level debug).";
 }
 
 /// Reads the developer's own access token from the standalone bridge's
@@ -200,11 +201,9 @@ class _DevControlHost {
       await _flushAndExit(70);
     }
 
-    // Deliver the per-spawn secret off-argv as the first stdin line (ADR A8).
-    child.stdin.writeln(_secret);
-    await child.stdin.flush();
-
-    // Drain the child's stdio so it never blocks, echoing bridge logs inline.
+    // Wire observation BEFORE handing off the secret, so a child that crashes
+    // immediately (bad path, missing dependency) is still reported via its exit
+    // code instead of being masked by a broken-pipe throw on the stdin write.
     child.stdout.transform(utf8.decoder).listen(
           (chunk) => stdout.write(chunk),
           onError: (Object error, StackTrace stackTrace) => stderr.writeln("bridge stdout pipe error: $error"),
@@ -213,46 +212,84 @@ class _DevControlHost {
           (chunk) => stderr.write(chunk),
           onError: (Object error, StackTrace stackTrace) => stderr.writeln("bridge stderr pipe error: $error"),
         );
-
     unawaited(child.exitCode.then(_onChildExit));
+
+    // Deliver the per-spawn secret off-argv as the first stdin line (ADR A8).
+    // Best-effort: if the child already exited, the write throws a broken-pipe
+    // error — log it and let the exit-code handler above report the exit.
+    try {
+      child.stdin.writeln(_secret);
+      await child.stdin.flush();
+    } on Object catch (error) {
+      stderr.writeln("Failed to deliver the secret to the bridge (it may have exited): $error");
+    }
   }
 
   Future<void> _handleHttpRequest(HttpRequest request) async {
-    // The helper presents the per-spawn secret as the WS upgrade bearer; reject
-    // anything that doesn't match so a leaked/absent secret can't attach.
-    final authorization = request.headers.value(HttpHeaders.authorizationHeader);
-    if (authorization != "Bearer $_secret") {
-      stderr.writeln("Rejecting control upgrade: bad or missing Authorization header.");
-      request.response.statusCode = HttpStatus.unauthorized;
-      await request.response.close();
-      return;
-    }
-    if (!WebSocketTransformer.isUpgradeRequest(request)) {
-      request.response.statusCode = HttpStatus.badRequest;
-      await request.response.close();
-      return;
-    }
-    if (_socket != null) {
-      // One authenticated helper per spawn, mirroring the real control server.
-      stderr.writeln("A helper is already connected; rejecting the extra connection.");
-      request.response.statusCode = HttpStatus.conflict;
-      await request.response.close();
-      return;
-    }
+    // A premature client disconnect can make the upgrade or a response close
+    // throw; catch it so one bad connection never crashes the harness server.
+    try {
+      // The helper presents the per-spawn secret as the WS upgrade bearer;
+      // reject anything that doesn't match so a leaked/absent secret can't attach.
+      final authorization = request.headers.value(HttpHeaders.authorizationHeader);
+      if (authorization != "Bearer $_secret") {
+        stderr.writeln("Rejecting control upgrade: bad or missing Authorization header.");
+        request.response.statusCode = HttpStatus.unauthorized;
+        await request.response.close();
+        return;
+      }
+      if (!WebSocketTransformer.isUpgradeRequest(request)) {
+        request.response.statusCode = HttpStatus.badRequest;
+        await request.response.close();
+        return;
+      }
+      if (_socket != null) {
+        // One authenticated helper per spawn, mirroring the real control server.
+        stderr.writeln("A helper is already connected; rejecting the extra connection.");
+        request.response.statusCode = HttpStatus.conflict;
+        await request.response.close();
+        return;
+      }
 
-    final socket = await WebSocketTransformer.upgrade(request);
-    _socket = socket;
-    stdout.writeln("[ok] helper connected — secret verified");
-    socket.listen(
-      _onFrameData,
-      onError: (Object error, StackTrace stackTrace) => stderr.writeln("helper socket error: $error"),
-      onDone: () => stdout.writeln("[--] helper closed the control socket"),
-      cancelOnError: false,
-    );
+      final socket = await WebSocketTransformer.upgrade(request);
+      _socket = socket;
+      stdout.writeln("[ok] helper connected — secret verified");
+      socket.listen(
+        _onFrameData,
+        onError: (Object error, StackTrace stackTrace) {
+          stderr.writeln("helper socket error: $error");
+          _clearSocket(socket);
+        },
+        onDone: () {
+          stdout.writeln("[--] helper closed the control socket");
+          _clearSocket(socket);
+        },
+        cancelOnError: false,
+      );
+    } on Object catch (error) {
+      stderr.writeln("Error handling a control-upgrade request: $error");
+    }
+  }
+
+  /// Drops the current helper socket when it disconnects (only if it is still
+  /// the one we hold), so the helper's normal reconnect is accepted instead of
+  /// being rejected as "already connected" — the harness must exercise the real
+  /// reconnect / control-loss behaviour.
+  void _clearSocket(WebSocket socket) {
+    if (identical(_socket, socket)) {
+      _socket = null;
+    }
   }
 
   void _onFrameData(dynamic data) {
-    final frame = data is String ? data : (data is List<int> ? utf8.decode(data) : null);
+    String? frame;
+    if (data is String) {
+      frame = data;
+    } else if (data is List<int>) {
+      // Control frames are UTF-8 JSON; tolerate a malformed binary frame instead
+      // of letting the decode throw and tear down the socket listener.
+      frame = utf8.decode(data, allowMalformed: true);
+    }
     if (frame == null) {
       stderr.writeln("ignoring non-text control frame: ${data.runtimeType}");
       return;
@@ -266,8 +303,22 @@ class _DevControlHost {
       return;
     }
 
-    stdout.writeln("[helper->harness] $message");
+    stdout.writeln("[helper->harness] ${_describe(message)}");
     _react(message);
+  }
+
+  /// Human-readable one-liner for a control message with access tokens redacted,
+  /// so a saved harness/MT-1 terminal log never captures the developer's bearer
+  /// token (Freezed's `toString()` would otherwise print `accessToken` in full).
+  String _describe(ControlMessage message) {
+    if (message is ControlTokenResponse) {
+      final token = message.accessToken == null ? "null" : "<redacted>";
+      return "ControlMessage.tokenResponse(id: ${message.id}, accessToken: $token)";
+    }
+    if (message is ControlTokenUpdate) {
+      return "ControlMessage.tokenUpdate(accessToken: <redacted>)";
+    }
+    return message.toString();
   }
 
   void _react(ControlMessage message) {
@@ -373,8 +424,18 @@ class _DevControlHost {
       stderr.writeln("[harness->helper] no helper connected — dropping ${message.runtimeType}");
       return;
     }
-    socket.add(jsonEncode(message.toJson()));
-    stdout.writeln("[harness->helper] $message");
+    // Keep serialization outside the try so only the transport send is guarded:
+    // add() throws StateError once the socket has closed, and _send runs
+    // synchronously from the stdin command handler, so an uncaught throw here
+    // would take down the harness.
+    final payload = jsonEncode(message.toJson());
+    try {
+      socket.add(payload);
+    } on Object catch (error) {
+      stderr.writeln("[harness->helper] send failed (socket closed?): $error — dropping ${message.runtimeType}");
+      return;
+    }
+    stdout.writeln("[harness->helper] ${_describe(message)}");
   }
 
   Future<void> _onChildExit(int code) async {
@@ -402,7 +463,7 @@ class _DevControlHost {
   void _printBanner(String controlUrl) {
     stdout.writeln("Sesori dev control-host harness");
     stdout.writeln("control URL : $controlUrl (loopback WS; per-spawn secret via child stdin)");
-    final tokenState = _token == null ? "NONE (token_request -> null)" : "loaded from token.json/--token";
+    final tokenState = _token == null ? "NONE (token_request -> null)" : "loaded from token.json / SESORI_DEV_CONTROL_TOKEN";
     stdout.writeln("token       : $tokenState${_denyToken ? "  [deny ON]" : ""}");
     _printCommands();
   }
