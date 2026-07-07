@@ -156,7 +156,8 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   /// Whether the bridge (the user's computer) is currently unreachable. With
   /// nothing loaded, the bridge-disconnected flow (setup onboarding or "turn
   /// on your bridge") is surfaced; a non-empty loaded list is kept instead.
-  /// `ConnectionLost` is excluded — it has its own app-wide reconnect overlay.
+  /// `ConnectionLost` is excluded: the list stays loaded so the inline
+  /// connection banner (with its reconnect action) owns that state.
   bool get _isBridgeUnavailable => switch (_connectionService.currentStatus) {
     ConnectionDisconnected() || ConnectionBridgeOffline() => true,
     ConnectionConnected() || ConnectionReconnecting() || ConnectionLost() => false,
@@ -194,8 +195,9 @@ class ProjectListCubit extends Cubit<ProjectListState> {
         // onboarding checklist would contradict an offline banner).
         if (state case ProjectListLoaded(:final projects) when projects.isNotEmpty) break;
         unawaited(_emitBridgeDisconnected());
-      // Transient states: keep the current UI. ConnectionLost is handled by
-      // the app-wide reconnect overlay; ConnectionReconnecting is brief.
+      // Keep the current UI. A loaded list keeps hosting the inline connection
+      // banner, which owns the ConnectionLost reconnect action;
+      // ConnectionReconnecting is a brief transient.
       case ConnectionReconnecting():
       case ConnectionLost():
         break;

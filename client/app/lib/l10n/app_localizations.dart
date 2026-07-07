@@ -379,24 +379,6 @@ abstract class AppLocalizations {
   /// **'Reconnect'**
   String get connectionLostReconnect;
 
-  /// No description provided for @connectionLostDisconnect.
-  ///
-  /// In en, this message translates to:
-  /// **'Disconnect'**
-  String get connectionLostDisconnect;
-
-  /// No description provided for @relayConnectionLost.
-  ///
-  /// In en, this message translates to:
-  /// **'Bridge went offline'**
-  String get relayConnectionLost;
-
-  /// No description provided for @relayReconnecting.
-  ///
-  /// In en, this message translates to:
-  /// **'Reconnecting to bridge...'**
-  String get relayReconnecting;
-
   /// No description provided for @bridgeDisconnectedTitle.
   ///
   /// In en, this message translates to:

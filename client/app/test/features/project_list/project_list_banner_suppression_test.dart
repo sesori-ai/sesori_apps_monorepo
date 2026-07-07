@@ -14,14 +14,16 @@ import "package:theme_prego/module_prego.dart";
 import "../../helpers/test_helpers.dart";
 
 /// The project list owns dedicated full-screen bridge-offline designs, so the
-/// top-nav connection banner must stay suppressed there — except when a
-/// non-empty loaded list is retained across a bridge outage, where the banner
-/// is the only offline messaging.
+/// top-nav connection banner must stay suppressed there — except when a loaded
+/// list is retained across an outage: a non-empty list across a bridge outage,
+/// or an empty onboarding list across a terminal connection loss (which has no
+/// other recovery surface). In those cases the banner is the only recovery.
 void main() {
   const config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token");
   const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: null);
   const connected = ConnectionStatus.connected(config: config, health: health);
   const bridgeOffline = ConnectionStatus.bridgeOffline(config: config, health: health);
+  const connectionLost = ConnectionStatus.connectionLost(config: config);
 
   late BehaviorSubject<ConnectionStatus> statusController;
   late MockConnectionService mockConnectionService;
@@ -103,6 +105,29 @@ void main() {
     expect(find.byType(ConnectionBanner), findsOneWidget);
     expect(find.text("Bridge disconnected"), findsOneWidget);
     expect(find.text("My Project"), findsOneWidget);
+  });
+
+  testWidgets("an empty onboarding list surfaces the reconnect banner when the connection is lost", (tester) async {
+    when(() => mockProjectService.listProjects()).thenAnswer(
+      (_) async => ApiResponse.success(const Projects(data: [])),
+    );
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    // Connected + empty → the onboarding checklist owns the screen; no banner.
+    expect(find.byType(ConnectionBanner), findsNothing);
+
+    // The relay drops all the way to the terminal ConnectionLost. The cubit
+    // keeps the list loaded-empty (bridge-offline empties would instead move to
+    // the full-screen offline flow), so the reconnect banner is the only
+    // recovery affordance and must appear over the onboarding checklist.
+    statusController.add(connectionLost);
+    overlayCubit.setOverlayState(const ConnectionOverlayState.connectionLost());
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ConnectionBanner), findsOneWidget);
+    expect(find.text("Connection Lost"), findsOneWidget);
+    expect(find.text("Reconnect"), findsOneWidget);
   });
 }
 

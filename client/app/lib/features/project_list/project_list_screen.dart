@@ -169,10 +169,10 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
     return PregoGlassScaffold(
       title: isConnectOnboarding ? loc.projectListConnectTitle : loc.projectListTitle,
       scrollable: !bodyOwnsScroll,
-      // Only a retained non-empty list shows the offline banner; the loading /
-      // empty / bridge-disconnected states own their messaging full-screen
-      // (setup onboarding or the "turn on your bridge" design).
-      banner: state is ProjectListLoaded && state.projects.isNotEmpty ? ConnectionBanner.maybeFor(context) : null,
+      // A loaded list hosts the top-nav connection banner; the loading and
+      // bridge-disconnected states own their messaging full-screen (setup
+      // onboarding or the "turn on your bridge" design), so they suppress it.
+      banner: _bannerFor(context: context, state: state),
       actions: [
         PregoButtonsIconGlass(
           icon: VESPRSolid.gear,
@@ -189,6 +189,25 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
       onRefresh: state is ProjectListLoaded ? () => _refreshProjects(context) : null,
       slivers: _buildContentSlivers(context: context, state: state, isRefreshing: isRefreshing),
     );
+  }
+
+  /// The top-nav connection banner for [state], or `null` when it should be
+  /// suppressed.
+  ///
+  /// A non-empty loaded list always hosts it. The empty onboarding list
+  /// normally owns the screen full-screen (its checklist would contradict an
+  /// offline banner, and a bridge-offline empty list transitions to the
+  /// dedicated offline flow instead) — but a terminal `ConnectionLost` keeps
+  /// the list loaded-empty with no other recovery surface, so surface the
+  /// reconnect banner there too.
+  Widget? _bannerFor({required BuildContext context, required ProjectListState state}) {
+    if (state is! ProjectListLoaded) return null;
+    final banner = ConnectionBanner.maybeFor(context);
+    if (state.projects.isNotEmpty) return banner;
+    // maybeFor already watched the connection cubit above, so a read here still
+    // rebuilds reactively while surfacing only the connection-lost variant over
+    // the onboarding checklist.
+    return context.read<ConnectionOverlayCubit>().state is ConnectionOverlayConnectionLost ? banner : null;
   }
 
   List<Widget> _buildContentSlivers({

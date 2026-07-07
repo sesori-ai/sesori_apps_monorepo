@@ -55,9 +55,6 @@ class StubConnectionOverlayCubit extends Cubit<ConnectionOverlayState> implement
 
   @override
   void reconnect() {}
-
-  @override
-  Future<void> disconnect() async {}
 }
 
 class MockProjectService extends Mock implements ProjectService {}

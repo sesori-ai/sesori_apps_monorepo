@@ -13,7 +13,6 @@ import "../../helpers/test_helpers.dart";
 void main() {
   group("ConnectionOverlayCubit", () {
     late MockConnectionService mockConnectionService;
-    late MockAuthSession mockAuthSession;
     late MockRegisteredBridgesService mockRegisteredBridgesService;
     late BehaviorSubject<ConnectionStatus> statusStream;
     late BehaviorSubject<bool> registeredStream;
@@ -27,7 +26,6 @@ void main() {
 
     setUp(() {
       mockConnectionService = MockConnectionService();
-      mockAuthSession = MockAuthSession();
       mockRegisteredBridgesService = MockRegisteredBridgesService();
       statusStream = BehaviorSubject<ConnectionStatus>.seeded(const ConnectionStatus.disconnected());
       registeredStream = BehaviorSubject<bool>.seeded(false);
@@ -35,7 +33,6 @@ void main() {
       when(() => mockConnectionService.status).thenAnswer((_) => statusStream.stream);
       when(() => mockConnectionService.currentStatus).thenReturn(const ConnectionStatus.disconnected());
       when(() => mockRegisteredBridgesService.isRegistered).thenAnswer((_) => registeredStream.stream);
-      when(() => mockAuthSession.logoutCurrentDevice()).thenAnswer((_) async {});
     });
 
     tearDown(() async {
@@ -44,7 +41,7 @@ void main() {
     });
 
     ConnectionOverlayCubit buildCubit() =>
-        ConnectionOverlayCubit(mockConnectionService, mockAuthSession, mockRegisteredBridgesService);
+        ConnectionOverlayCubit(mockConnectionService, mockRegisteredBridgesService);
 
     blocTest<ConnectionOverlayCubit, ConnectionOverlayState>(
       "starts hidden when disconnected and not registered",
@@ -120,16 +117,6 @@ void main() {
       act: (cubit) => cubit.reconnect(),
       verify: (_) {
         verify(() => mockConnectionService.reconnect()).called(1);
-      },
-    );
-
-    blocTest<ConnectionOverlayCubit, ConnectionOverlayState>(
-      "disconnect() logs out then disconnects",
-      build: buildCubit,
-      act: (cubit) => cubit.disconnect(),
-      verify: (_) {
-        verify(() => mockAuthSession.logoutCurrentDevice()).called(1);
-        verify(() => mockConnectionService.disconnect()).called(1);
       },
     );
 

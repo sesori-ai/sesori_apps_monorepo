@@ -11,9 +11,17 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
 
-/// A [StubConnectionOverlayCubit] whose state can be driven mid-test.
+/// A [StubConnectionOverlayCubit] whose state can be driven mid-test and that
+/// counts `reconnect()` calls (the connection-lost banner's Retry action).
 class _MutableConnectionOverlayCubit extends StubConnectionOverlayCubit {
+  _MutableConnectionOverlayCubit({super.initialState});
+
+  int reconnectCount = 0;
+
   void setOverlayState(ConnectionOverlayState next) => emit(next);
+
+  @override
+  void reconnect() => reconnectCount++;
 }
 
 class _MockSessionListCubit extends MockCubit<SessionListState> implements SessionListCubit {}
@@ -50,15 +58,47 @@ void main() {
       return resolved;
     }
 
-    testWidgets("returns the banner only for bridgeOffline", (tester) async {
+    testWidgets("returns a banner for bridgeOffline and connectionLost, nothing otherwise", (tester) async {
       expect(
         await resolveFor(tester, const ConnectionOverlayState.bridgeOffline()),
         isA<ConnectionBanner>(),
       );
+      expect(
+        await resolveFor(tester, const ConnectionOverlayState.connectionLost()),
+        isA<ConnectionBanner>(),
+      );
       expect(await resolveFor(tester, const ConnectionOverlayState.hidden()), isNull);
       expect(await resolveFor(tester, const ConnectionOverlayState.reconnecting()), isNull);
-      expect(await resolveFor(tester, const ConnectionOverlayState.connectionLost()), isNull);
     });
+  });
+
+  testWidgets("the connection-lost banner shows an error alert with a Reconnect action that retries", (tester) async {
+    final cubit = _MutableConnectionOverlayCubit(
+      initialState: const ConnectionOverlayState.connectionLost(),
+    );
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(
+      _app(
+        cubit: cubit,
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: ConnectionBanner.maybeFor(context) ?? const SizedBox.shrink(),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text("Connection Lost"), findsOneWidget);
+    final alert = tester.widget<PregoInlineAlertsNotifications>(find.byType(PregoInlineAlertsNotifications));
+    expect(alert.type, PregoInlineAlertsNotificationsType.error);
+    expect(alert.icon, TablerRegular.cloud_off);
+    expect(alert.primaryAction?.label, "Reconnect");
+
+    await tester.tap(find.text("Reconnect"));
+    await tester.pump();
+
+    expect(cubit.reconnectCount, 1);
   });
 
   testWidgets("renders the warning alert with the bridge-disconnected title", (tester) async {
