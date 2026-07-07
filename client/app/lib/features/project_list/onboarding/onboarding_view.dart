@@ -249,12 +249,14 @@ class _InstallCommandBoxesState extends State<_InstallCommandBoxes> {
 }
 
 /// Flat, non-glass segmented control that switches the install command group.
-/// Wraps the out-of-the-box [CupertinoSlidingSegmentedControl] — whose track
-/// and thumb match the Figma's native iOS control — rather than the glass
-/// variant the design deliberately renders flat. Track and thumb use the
-/// platform's adaptive fills so it themes in light and dark; the labels use the
-/// prego text theme. A tight, full-width constraint (from the parent's stretch
-/// Column) makes the two segments split the width equally.
+/// Matches the Figma's pill-shaped iOS segmented control — a fully-rounded track
+/// with a rounded thumb that slides under the selected segment. Flutter's
+/// [CupertinoSlidingSegmentedControl] can't be used because its track (9px) and
+/// thumb (7px) corner radii are hardcoded constants with no override, and the
+/// design wants a full pill; this is a compact reimplementation that reuses the
+/// same adaptive iOS fills (so it themes in light and dark) with the prego text
+/// theme for the labels. Selection is tap-driven — the two-segment switch has no
+/// need for Cupertino's drag-to-slide gesture — and the thumb still animates.
 class _OsSegmentedControl extends StatelessWidget {
   const _OsSegmentedControl({
     required this.labels,
@@ -266,26 +268,88 @@ class _OsSegmentedControl extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onChanged;
 
+  /// iOS segmented-control thumb fill (white in light, grey in dark) and its
+  /// subtle lift shadow, taken from Cupertino's own values so the thumb reads as
+  /// native despite the rounder pill shape.
+  static const CupertinoDynamicColor _thumbColor = CupertinoDynamicColor.withBrightness(
+    color: Color(0xFFFFFFFF),
+    darkColor: Color(0xFF636366),
+  );
+  static const List<BoxShadow> _thumbShadow = [
+    BoxShadow(color: Color(0x1F000000), offset: Offset(0, 3), blurRadius: 8),
+    BoxShadow(color: Color(0x0A000000), offset: Offset(0, 3), blurRadius: 1),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    return CupertinoSlidingSegmentedControl<int>(
-      groupValue: selectedIndex,
-      onValueChanged: (value) {
-        if (value != null) onChanged(value);
-      },
-      children: {
-        for (var i = 0; i < labels.length; i++)
-          i: Text(
-            labels[i],
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            // Selected segment reads slightly heavier (medium), matching iOS.
-            style: (i == selectedIndex ? prego.textTheme.textSm.medium : prego.textTheme.textSm.regular)
-                .copyWith(color: prego.colors.textPrimary),
-          ),
-      },
+    final count = labels.length;
+
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.all(2),
+      decoration: ShapeDecoration(
+        color: CupertinoColors.tertiarySystemFill.resolveFrom(context),
+        shape: const StadiumBorder(),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final segmentWidth = constraints.maxWidth / count;
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              // The sliding thumb: one segment wide, positioned under the
+              // selected label and glided into place on selection change.
+              AnimatedPositioned(
+                duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                left: selectedIndex * segmentWidth,
+                top: 0,
+                bottom: 0,
+                width: segmentWidth,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 1),
+                  child: DecoratedBox(
+                    decoration: ShapeDecoration(
+                      color: _thumbColor.resolveFrom(context),
+                      shape: const StadiumBorder(),
+                      shadows: _thumbShadow,
+                    ),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  for (var i = 0; i < count; i++)
+                    Expanded(
+                      child: Semantics(
+                        button: true,
+                        selected: i == selectedIndex,
+                        label: labels[i],
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: i == selectedIndex ? null : () => onChanged(i),
+                          child: Center(
+                            child: Text(
+                              labels[i],
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              // Selected segment reads slightly heavier (medium),
+                              // matching iOS.
+                              style: (i == selectedIndex ? prego.textTheme.textSm.medium : prego.textTheme.textSm.regular)
+                                  .copyWith(color: prego.colors.textPrimary),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

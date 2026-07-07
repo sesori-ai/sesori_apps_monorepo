@@ -1,6 +1,6 @@
 import "dart:async";
 
-import "package:flutter/cupertino.dart" show CupertinoSlidingSegmentedControl;
+import "package:flutter/cupertino.dart" show CupertinoColors, CupertinoDynamicColor;
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
