@@ -68,7 +68,7 @@
   },
   "projectsOnboardingInstallUnixLabel": "macOS, Linux, WSL",
   "@projectsOnboardingInstallUnixLabel": {
-    "description": "Group label above the macOS/Linux/WSL install command box in the onboarding."
+    "description": "Segmented-control label that selects the macOS/Linux/WSL install commands, shown both in the onboarding and in the bridge-offline install-commands disclosure."
   },
   "projectsOnboardingInstallUnixMethod": "curl",
   "@projectsOnboardingInstallUnixMethod": {
@@ -76,7 +76,7 @@
   },
   "projectsOnboardingInstallWindowsLabel": "Windows PowerShell",
   "@projectsOnboardingInstallWindowsLabel": {
-    "description": "Group label above the Windows PowerShell install command box in the onboarding."
+    "description": "Segmented-control label that selects the Windows PowerShell install commands, shown both in the onboarding and in the bridge-offline install-commands disclosure."
   },
   "projectsOnboardingInstallWindowsMethod": "native",
   "@projectsOnboardingInstallWindowsMethod": {
@@ -101,6 +101,10 @@
   "projectsBridgeOfflineInstallCommands": "Install commands",
   "@projectsBridgeOfflineInstallCommands": {
     "description": "Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands."
+  },
+  "projectsBridgeOfflineRunBridge": "Run the bridge",
+  "@projectsBridgeOfflineRunBridge": {
+    "description": "Label above the command box on the bridge-offline Projects screen that shows the command to start an already-installed bridge."
   },
   "connectionLostTitle": "Connection Lost",
   "connectionLostReconnect": "Reconnect",
