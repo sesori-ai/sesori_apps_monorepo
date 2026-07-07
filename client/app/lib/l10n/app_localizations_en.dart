@@ -130,6 +130,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsBridgeOfflineInstallCommands => 'Install commands';
 
   @override
+  String get projectsBridgeOfflineRunBridge => 'Run the bridge';
+
+  @override
   String get connectionLostTitle => 'Connection Lost';
 
   @override

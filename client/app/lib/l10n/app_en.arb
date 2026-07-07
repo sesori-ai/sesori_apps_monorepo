@@ -102,6 +102,10 @@
   "@projectsBridgeOfflineInstallCommands": {
     "description": "Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands."
   },
+  "projectsBridgeOfflineRunBridge": "Run the bridge",
+  "@projectsBridgeOfflineRunBridge": {
+    "description": "Label above the command box on the bridge-offline Projects screen that shows the command to start an already-installed bridge."
+  },
   "connectionLostTitle": "Connection Lost",
   "connectionLostReconnect": "Reconnect",
   "connectionLostDisconnect": "Disconnect",

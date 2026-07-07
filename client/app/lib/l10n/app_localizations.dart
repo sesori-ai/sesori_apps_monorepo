@@ -241,7 +241,7 @@ abstract class AppLocalizations {
   /// **'DM on X'**
   String get projectsOnboardingNeedHelpX;
 
-  /// Group label above the macOS/Linux/WSL install command box in the onboarding.
+  /// Segmented-control label that selects the macOS/Linux/WSL install commands in the onboarding.
   ///
   /// In en, this message translates to:
   /// **'macOS, Linux, WSL'**
@@ -253,7 +253,7 @@ abstract class AppLocalizations {
   /// **'curl'**
   String get projectsOnboardingInstallUnixMethod;
 
-  /// Group label above the Windows PowerShell install command box in the onboarding.
+  /// Segmented-control label that selects the Windows PowerShell install commands in the onboarding.
   ///
   /// In en, this message translates to:
   /// **'Windows PowerShell'**
@@ -312,6 +312,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Install commands'**
   String get projectsBridgeOfflineInstallCommands;
+
+  /// Label above the command box on the bridge-offline Projects screen that shows the command to start an already-installed bridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Run the bridge'**
+  String get projectsBridgeOfflineRunBridge;
 
   /// No description provided for @connectionLostTitle.
   ///
