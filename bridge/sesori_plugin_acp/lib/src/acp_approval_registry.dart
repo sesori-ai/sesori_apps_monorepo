@@ -167,18 +167,11 @@ class AcpApprovalRegistry {
     _subscription = null;
     final remaining = List<_PendingApproval>.from(_pending.values);
     _pending.clear();
+    // Emit the resolution SSEs (not just answer the agent) so a phone showing a
+    // prompt when the child exits mid-approval clears it, instead of displaying
+    // a stale prompt until a reload — same as [cancelForSession].
     for (final entry in remaining) {
-      try {
-        if (entry.kind == _PendingKind.permission) {
-          _respond(entry.acpId, const {
-            "outcome": {"outcome": "cancelled"},
-          });
-        } else {
-          _respondError(entry.acpId, -32000, "bridge dispose");
-        }
-      } catch (_) {
-        // Best-effort.
-      }
+      _resolveCancelled(entry, questionErrorMessage: "bridge dispose");
     }
   }
 
@@ -223,32 +216,39 @@ class AcpApprovalRegistry {
     final entries = _pending.values.where((e) => e.sessionId == sessionId).toList(growable: false);
     for (final entry in entries) {
       _pending.remove(entry.bridgeRequestId);
-      try {
-        if (entry.kind == _PendingKind.permission) {
-          _respond(entry.acpId, const {
-            "outcome": {"outcome": "cancelled"},
-          });
-          _emit(
-            BridgeSsePermissionReplied(
-              requestID: entry.bridgeRequestId,
-              sessionID: entry.sessionId,
-              displaySessionId: entry.sessionId,
-              reply: PluginPermissionReply.reject.name,
-            ),
-          );
-        } else {
-          _respondError(entry.acpId, -32603, "aborted");
-          _emit(
-            BridgeSseQuestionRejected(
-              requestID: entry.bridgeRequestId,
-              sessionID: entry.sessionId,
-              displaySessionId: entry.sessionId,
-            ),
-          );
-        }
-      } on Object catch (error, stack) {
-        Log.w("[acp] failed to resolve pending approval on abort", error, stack);
+      _resolveCancelled(entry, questionErrorMessage: "aborted");
+    }
+  }
+
+  /// Answers the agent for a pending approval [entry] as cancelled AND emits
+  /// the replied/rejected SSE so the phone clears its prompt. Shared by
+  /// [cancelForSession] (abort) and [dispose] (crash/teardown); never throws.
+  void _resolveCancelled(_PendingApproval entry, {required String questionErrorMessage}) {
+    try {
+      if (entry.kind == _PendingKind.permission) {
+        _respond(entry.acpId, const {
+          "outcome": {"outcome": "cancelled"},
+        });
+        _emit(
+          BridgeSsePermissionReplied(
+            requestID: entry.bridgeRequestId,
+            sessionID: entry.sessionId,
+            displaySessionId: entry.sessionId,
+            reply: PluginPermissionReply.reject.name,
+          ),
+        );
+      } else {
+        _respondError(entry.acpId, -32603, questionErrorMessage);
+        _emit(
+          BridgeSseQuestionRejected(
+            requestID: entry.bridgeRequestId,
+            sessionID: entry.sessionId,
+            displaySessionId: entry.sessionId,
+          ),
+        );
       }
+    } on Object catch (error, stack) {
+      Log.w("[acp] failed to resolve pending approval", error, stack);
     }
   }
 
@@ -370,13 +370,18 @@ class AcpApprovalRegistry {
     Map<String, dynamic> params,
   ) {
     final toolCall = _asMap(params["toolCall"]) ?? const {};
+    // Fail-soft `is String` checks (like the tool-call mapper): a non-string
+    // kind/title/toolCallId (schema drift / malformed agent data) must render a
+    // fallback rather than throw in the server-request listener — otherwise the
+    // agent stays blocked on the permission request and the phone never sees a
+    // prompt.
     return (
-      tool: (toolCall["kind"] as String?) ?? "tool",
-      description: (toolCall["title"] as String?) ??
-          (toolCall["toolCallId"] as String?) ??
-          "permission requested",
+      tool: _str(toolCall["kind"]) ?? "tool",
+      description: _str(toolCall["title"]) ?? _str(toolCall["toolCallId"]) ?? "permission requested",
     );
   }
+
+  static String? _str(Object? value) => value is String && value.isNotEmpty ? value : null;
 
   PluginPendingQuestion _toPluginPendingQuestion(_PendingApproval entry) {
     return PluginPendingQuestion(

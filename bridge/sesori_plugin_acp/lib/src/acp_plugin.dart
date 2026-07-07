@@ -373,8 +373,17 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
           if (!hasCwd) fallbackAttributed.add(info.sessionId);
         }
       } on Object catch (error) {
-        _bareSessionListUnsupported = true;
-        Log.d("[$id] unfiltered session/list rejected; per-directory scans only: $error");
+        // Only a genuine "unsupported RPC" (method-not-found / invalid-params)
+        // means this agent will never serve the unfiltered form — memoize that.
+        // A transient failure (timeout, process-exit race, other agent error)
+        // must NOT be memoized, or a one-off blip would permanently drop the
+        // only path that finds sessions outside the bridge's hinted directories.
+        if (error is AcpRpcException && (error.code == -32601 || error.code == -32602)) {
+          _bareSessionListUnsupported = true;
+          Log.d("[$id] unfiltered session/list unsupported (code ${error.code}); per-directory scans only");
+        } else {
+          Log.d("[$id] unfiltered session/list failed transiently; will retry next enumeration: $error");
+        }
       }
     }
     for (final directory in directories) {

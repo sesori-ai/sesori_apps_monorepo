@@ -182,6 +182,53 @@ void main() {
       expect(emitted.whereType<BridgeSseQuestionRejected>(), hasLength(1));
     });
 
+    test("dispose emits resolution SSEs so the phone clears pending prompts", () async {
+      requests.add(permission());
+      await pump();
+      registry.addPendingQuestion(
+        bridgeRequestId: "q-1",
+        acpId: 5,
+        sessionId: "s1",
+        questions: const [
+          PluginQuestionInfo(question: "q", header: "h", options: [], multiple: false, custom: false),
+        ],
+        replyBuilder: (answers) => null,
+      );
+      responds.clear();
+      errors.clear();
+      emitted.clear();
+
+      await registry.dispose();
+
+      // The agent is answered AND the phone gets clearing events (not just the
+      // JSON-RPC response) so a mid-approval crash/reset doesn't leave a stale
+      // prompt on screen.
+      expect(responds.single.$2, const {
+        "outcome": {"outcome": "cancelled"},
+      });
+      expect(errors.single.$2, -32603);
+      expect(emitted.whereType<BridgeSsePermissionReplied>(), hasLength(1));
+      expect(emitted.whereType<BridgeSseQuestionRejected>(), hasLength(1));
+    });
+
+    test("a permission with non-string tool metadata still surfaces (no throw)", () async {
+      requests.add(const AcpServerRequest(
+        id: 31,
+        method: "session/request_permission",
+        params: {
+          "sessionId": "s1",
+          "toolCall": {"kind": 123, "title": {"x": 1}, "toolCallId": 7},
+          "options": [
+            {"optionId": "opt", "kind": "allow_once"},
+          ],
+        },
+      ));
+      await pump();
+      final asked = emitted.single as BridgeSsePermissionAsked;
+      expect(asked.tool, "tool");
+      expect(asked.description, "permission requested");
+    });
+
     test("unknown server methods get a soft -32601 error", () async {
       requests.add(const AcpServerRequest(id: 11, method: "cursor/mystery", params: {}));
       await pump();

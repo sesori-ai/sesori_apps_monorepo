@@ -46,7 +46,7 @@ class AcpReplayCollector {
         if (id == null) return;
         _assistant().tools[id] = _ToolDraft(
           tool: acpToolName(update),
-          title: update["title"] as String?,
+          title: _toolTitle(update),
           status: acpToolStatus(update["status"]),
           output: acpToolOutputText(update),
         );
@@ -61,13 +61,16 @@ class AcpReplayCollector {
           // part unconditionally.
           _assistant().tools[id] = _ToolDraft(
             tool: acpToolName(update),
-            title: update["title"] as String?,
+            title: _toolTitle(update),
             status: acpToolStatus(update["status"]),
             output: acpToolOutputText(update),
           );
           return;
         }
-        draft.status = acpToolStatus(update["status"]);
+        // A `tool_call_update` is partial: only advance status when the field is
+        // present, else a later output-only update would reset a
+        // completed/failed replayed tool card back to pending.
+        if (update.containsKey("status")) draft.status = acpToolStatus(update["status"]);
         final out = acpToolOutputText(update);
         if (out != null) draft.output = out;
     }
@@ -178,6 +181,12 @@ class AcpReplayCollector {
     if (value is Map) return value.cast<String, dynamic>();
     return null;
   }
+
+  /// Fail-soft tool title: a non-string value (schema drift / malformed agent
+  /// data) renders as null rather than throwing mid-replay, which would fail
+  /// the whole `/session/messages` history load.
+  static String? _toolTitle(Map<String, dynamic> update) =>
+      update["title"] is String ? update["title"] as String? : null;
 }
 
 class _Draft {

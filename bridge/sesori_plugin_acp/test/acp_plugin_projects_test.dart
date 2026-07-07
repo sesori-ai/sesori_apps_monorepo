@@ -210,6 +210,44 @@ void main() {
       expect(bareAttempts, 2, reason: "the fresh process is probed again");
     });
 
+    test("a transient unfiltered-list failure is retried, not memoized", () async {
+      await connect(sessionCapabilities: true);
+      var bareAttempts = 0;
+      // The bare request fails with a TRANSIENT error (-32000, not a
+      // method/params rejection) each time; per-directory scans return empty.
+      final answered = <Object?>{};
+      var running = true;
+      unawaited(() async {
+        while (running) {
+          for (final frame
+              in fake().written.where((f) => f["method"] == "session/list").toList(growable: false)) {
+            if (!answered.add(frame["id"])) continue;
+            final params = (frame["params"] as Map?)?.cast<String, dynamic>() ?? const {};
+            if (params["cwd"] == null) {
+              bareAttempts++;
+              fake().emit({
+                "jsonrpc": "2.0",
+                "id": frame["id"],
+                "error": {"code": -32000, "message": "boom"},
+              });
+            } else {
+              fake().emit({
+                "jsonrpc": "2.0",
+                "id": frame["id"],
+                "result": {"sessions": <Object?>[]},
+              });
+            }
+          }
+          await pump();
+        }
+      }());
+
+      await plugin.listAllSessions(knownDirectories: const {});
+      await plugin.listAllSessions(knownDirectories: const {});
+      running = false;
+      expect(bareAttempts, 2, reason: "a transient error must not be memoized; the unfiltered form is retried");
+    });
+
     test("follows nextCursor pagination and parses both timestamp shapes", () async {
       await connect(sessionCapabilities: true);
 

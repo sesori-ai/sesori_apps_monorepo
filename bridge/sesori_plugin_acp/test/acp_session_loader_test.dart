@@ -53,6 +53,47 @@ void main() {
       expect(textPart.text, "There is 1 file.");
     });
 
+    test("a partial (output-only) update does not reset a completed tool to pending", () {
+      final collector = AcpReplayCollector(sessionId: "s1", agentId: "Cursor")
+        ..consume(upd({
+          "sessionUpdate": "tool_call",
+          "toolCallId": "t1",
+          "kind": "execute",
+          "status": "pending",
+        }))
+        ..consume(upd({
+          "sessionUpdate": "tool_call_update",
+          "toolCallId": "t1",
+          "status": "completed",
+          "rawOutput": {"stdout": "done"},
+        }))
+        // An output-only update with NO status must keep the completed state.
+        ..consume(upd({
+          "sessionUpdate": "tool_call_update",
+          "toolCallId": "t1",
+          "rawOutput": {"stdout": "done (final)"},
+        }));
+
+      final toolPart = collector.build().single.parts.firstWhere((p) => p.type == PluginMessagePartType.tool);
+      expect(toolPart.state?.status, PluginToolStatus.completed, reason: "status-less update must not reset to pending");
+      expect(toolPart.state?.output, "done (final)");
+    });
+
+    test("a non-string tool title does not throw mid-replay", () {
+      final collector = AcpReplayCollector(sessionId: "s1", agentId: "Cursor")
+        ..consume(upd({
+          "sessionUpdate": "tool_call",
+          "toolCallId": "t1",
+          "kind": "read",
+          "title": {"unexpected": "object"},
+          "status": "completed",
+          "rawOutput": {"stdout": "x"},
+        }));
+      final toolPart = collector.build().single.parts.firstWhere((p) => p.type == PluginMessagePartType.tool);
+      expect(toolPart.tool, "read");
+      expect(toolPart.state?.title, isNull);
+    });
+
     test("stamps replayed assistant messages with the loaded session model", () {
       final collector = AcpReplayCollector(
         sessionId: "s1",
