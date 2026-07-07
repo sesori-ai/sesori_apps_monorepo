@@ -829,7 +829,55 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   supervised); detection works on close code `4007` alone (no reason string)
   AND on the `1000/"replaced"` rollout fallback; normal drop reconnection
   unchanged; covered by connection-level tests.
-- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+- **Aristotle:** plan ☑ · impl ☑ (bridge PR raised on branch `start-next-step-desktop-plan`;
+  relay prerequisite raised as `sesori-ai/sesori_relay_server#7`).
+- **Findings:** Shipped as an additive shared constant + predicate, a Layer-0
+  transport accessor, an orchestrator backoff-policy change, and a notifier map
+  extension — no new classes. (1) **Shared** (`close_codes.dart`):
+  `RelayCloseCodes.bridgeReplaced = 4007` (deliberately NOT in
+  `noReconnectCodes` — the policy is long-backoff, not never-reconnect) plus a
+  single `isBridgeReplaced({closeCode, closeReason})` predicate — the
+  authoritative detection rule shared by the reconnect loop and the status push
+  so the two never diverge. The dedicated `4007` code is reason-independent; a
+  `1000` close whose reason is `bridgeReplacedFallbackReason = "replaced"` is
+  matched only as a rollout fallback for the relay-deploy window. `taken_over`
+  was added to `ControlRelayConnectionState` (before the `unknown` fallback), an
+  additive enum value on the existing `status` DTO (no new message variant). (2)
+  **RelayClient** (Layer 0): a dumb `closeReason` accessor mirroring `closeCode`,
+  and `RelayDisconnected` now carries `closeReason` so the notifier detects the
+  replaced-close off the connection-state stream without racing the loop's own
+  `_client.closeReason` read. (3) **Orchestrator reconnect loop:** after the
+  existing `bridgeRevoked` branch it computes `isBridgeReplaced(...)`; a takeover
+  drop logs a loud `Console.warning` and uses a minutes-order backoff
+  (`_takeoverInitialBackoff = 2min`, cap `5min`, +25% jitter so two mutually
+  displacing bridges don't resynchronise) instead of the ordinary 1s-reset
+  seconds-order backoff — `_initialBackoff`/`_nextBackoff` are now
+  takeover-scoped. The loop still reconnects (headless/VM failover preserved),
+  just slowly, so two bridges don't tight-loop; every other close code keeps
+  today's behaviour byte-for-byte. The orchestrator owns ONLY this policy change
+  and never calls `ControlChannelClient.send`. (4) **ControlStatusNotifier:**
+  `_mapRelayState` maps a `RelayDisconnected` matching `isBridgeReplaced` to
+  `ControlRelayConnectionState.takenOver`, else `disconnected`; it still owns all
+  outbound status sends (deduped), so supervised takeover reaches the GUI as a
+  normal `status` push. (5) **Relay prerequisite** (`sesori_relay_server#7`):
+  `CloseBridgeReplaced = 4007`; the displaced bridge is closed with `4007`
+  (writing the frame before cancelling the old connection's context, off the new
+  bridge's hot path) keeping `"replaced"` as the rollout-fallback reason. Tests:
+  shared `isBridgeReplaced` matrix + `taken_over` round-trip; RelayClient
+  `closeReason` accessor + `RelayDisconnected.closeReason` connection-level
+  tests; notifier `4007`/`1000-replaced`/plain-`1000` mapping tests; orchestrator
+  takeover tests (a `4007` and a `1000/"replaced"` drop hold off reconnect within
+  the war window; a plain `1000` drop reconnects promptly). `make analyze` +
+  `dart analyze --fatal-infos` clean; bridge `make test` all pass (app 1726);
+  shared 282 pass; `client/app` (mobile) `flutter analyze` clean (additive shared
+  change). **Standing-acceptance exception honored:** only the replaced-close
+  standalone behaviour changed; `4006` and normal drops are asserted unchanged.
+- **Deltas:** §6 gains no rows — the change is a shared predicate + additive enum
+  value + an orchestrator-owned policy tweak + a notifier map arm, none of which
+  warrant a new component (confirmed by `aristotle-plan-review`). The relay
+  prerequisite is a **deploy gate**, tracked in §8 and this entry: `#7` must be
+  merged AND deployed to production before this bridge PR merges; the bridge's
+  `1000/"replaced"` fallback keeps an older relay safe during rollout.
 
 ## PR 1.15 — Dev control-host harness for manual supervised testing
 - **Goal:** A small dev-only tool (`bridge/app/tool/dev_control_host.dart`,
