@@ -43,12 +43,17 @@ class _WhyBridgeInfoSheet extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: PregoSpacing.x2l),
-        // Reused decorative onboarding artwork. The Figma sheet shows a
-        // phone+desktop "E2E Encrypted" illustration; swapping to that would
-        // need a dedicated asset export.
-        const Center(
+        // Decorative illustration: a phone and desktop editor joined by an
+        // "E2E Encrypted" badge, conveying that the bridge relays over an
+        // end-to-end-encrypted channel. Exported from Figma at 1× = display
+        // size, with @2×/@3× density variants.
+        Center(
           child: ExcludeSemantics(
-            child: ConnectionGraphic.connectionOn(),
+            child: Image.asset(
+              "assets/images/projects_onboarding/info_graphic/why-needed.png",
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.medium,
+            ),
           ),
         ),
         const SizedBox(height: PregoSpacing.x2l),
