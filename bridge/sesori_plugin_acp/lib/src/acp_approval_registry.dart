@@ -215,6 +215,43 @@ class AcpApprovalRegistry {
   bool hasPendingInput(String sessionId) =>
       _pending.values.any((e) => e.sessionId == sessionId);
 
+  /// Resolves every pending approval for [sessionId] as cancelled — used when
+  /// a turn is aborted. ACP still requires the client to answer an in-flight
+  /// permission/question request, so this responds to the agent (unblocking
+  /// it) and emits the replied/rejected event so the phone clears the prompt.
+  void cancelForSession(String sessionId) {
+    final entries = _pending.values.where((e) => e.sessionId == sessionId).toList(growable: false);
+    for (final entry in entries) {
+      _pending.remove(entry.bridgeRequestId);
+      try {
+        if (entry.kind == _PendingKind.permission) {
+          _respond(entry.acpId, const {
+            "outcome": {"outcome": "cancelled"},
+          });
+          _emit(
+            BridgeSsePermissionReplied(
+              requestID: entry.bridgeRequestId,
+              sessionID: entry.sessionId,
+              displaySessionId: entry.sessionId,
+              reply: PluginPermissionReply.reject.name,
+            ),
+          );
+        } else {
+          _respondError(entry.acpId, -32603, "aborted");
+          _emit(
+            BridgeSseQuestionRejected(
+              requestID: entry.bridgeRequestId,
+              sessionID: entry.sessionId,
+              displaySessionId: entry.sessionId,
+            ),
+          );
+        }
+      } on Object catch (error, stack) {
+        Log.w("[acp] failed to resolve pending approval on abort", error, stack);
+      }
+    }
+  }
+
   // --- Replies ---
 
   /// Acknowledges a permission ask. Maps the once/always/reject decision onto
@@ -375,7 +412,12 @@ class AcpApprovalRegistry {
     PluginPermissionReply reply,
   ) {
     final preference = switch (reply) {
-      PluginPermissionReply.once => const ["allow_once", "allow_always"],
+      // A one-time approval must never fall back to `allow_always` — that would
+      // silently grant a broader, session-persistent permission the user did
+      // not choose. If no once-scoped option exists, return null so the caller
+      // cancels rather than escalates. `always` may fall back to `once` (a
+      // safe downgrade), and both reject kinds are equivalent.
+      PluginPermissionReply.once => const ["allow_once"],
       PluginPermissionReply.always => const ["allow_always", "allow_once"],
       PluginPermissionReply.reject => const ["reject_once", "reject_always"],
     };

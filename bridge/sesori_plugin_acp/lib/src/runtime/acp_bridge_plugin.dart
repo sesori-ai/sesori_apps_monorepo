@@ -66,6 +66,23 @@ class AcpBridgePlugin with SteadyPluginLifecycle implements BridgePlugin {
     required Duration budget,
     required StartAbortSignal startAborted,
   }) async {
+    // Subscribe BEFORE connecting. If the eager connect times out here, the
+    // underlying ensureConnected() keeps running and emits onConnected when it
+    // finally completes; a later request then reuses that cached success
+    // without re-emitting. Subscribing first guarantees that emit isn't lost in
+    // the window between a timeout and the listener install — otherwise the
+    // plugin would stay degraded forever. Recovers to ready on every later
+    // (re)connect too (a lazy reconnect after a crash+reset). markReady and
+    // _armExitWatch are idempotent, so the connected branch below double-firing
+    // with this listener is harmless.
+    _connectedSubscription ??= _plugin.onConnected.listen((_) {
+      if (_stopping) {
+        return;
+      }
+      _armExitWatch();
+      markReady();
+    });
+
     bool connected;
     try {
       connected = await _plugin.ensureConnected().timeout(
@@ -81,18 +98,6 @@ class AcpBridgePlugin with SteadyPluginLifecycle implements BridgePlugin {
     if (startAborted.isAborted) {
       return;
     }
-    // Re-arm the exit watch and recover to ready on every later (re)connect — a
-    // lazy reconnect after a crash+reset, or a first success following a
-    // degraded start. Subscribed after the initial ensureConnected above, whose
-    // emit (a broadcast with no subscriber yet) is dropped, so the connected
-    // branch below is not double-handled.
-    _connectedSubscription ??= _plugin.onConnected.listen((_) {
-      if (_stopping) {
-        return;
-      }
-      _armExitWatch();
-      markReady();
-    });
     if (connected) {
       _armExitWatch();
       markReady();

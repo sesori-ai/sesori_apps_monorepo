@@ -348,11 +348,18 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     };
 
     final sessionsById = <String, PluginSession>{};
+    // Session ids whose directory came only from the launch-directory fallback
+    // (the unfiltered list returned them without a `cwd`). A later cwd-scoped
+    // scan that returns the same session knows its real directory, so it must
+    // replace the fallback attribution rather than be dropped by dedup.
+    final fallbackAttributed = <String>{};
     if (!_bareSessionListUnsupported) {
       try {
         for (final info in await _listSessionPages(client, cwd: null)) {
-          final session = _toPluginSession(info, fallbackDirectory: launchDirectory);
-          if (session.id.isNotEmpty) sessionsById[session.id] = session;
+          if (info.sessionId.isEmpty) continue;
+          sessionsById[info.sessionId] = _toPluginSession(info, fallbackDirectory: launchDirectory);
+          final hasCwd = info.cwd != null && info.cwd!.trim().isNotEmpty;
+          if (!hasCwd) fallbackAttributed.add(info.sessionId);
         }
       } on Object catch (error) {
         _bareSessionListUnsupported = true;
@@ -362,8 +369,13 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     for (final directory in directories) {
       try {
         for (final info in await _listSessionPages(client, cwd: directory)) {
-          final session = _toPluginSession(info, fallbackDirectory: directory);
-          if (session.id.isNotEmpty) sessionsById.putIfAbsent(session.id, () => session);
+          if (info.sessionId.isEmpty) continue;
+          // A cwd-scoped hit is authoritative for the session's directory, so
+          // it fills a session not seen yet AND repairs one the unfiltered
+          // pass could only attribute to the launch fallback.
+          if (!sessionsById.containsKey(info.sessionId) || fallbackAttributed.remove(info.sessionId)) {
+            sessionsById[info.sessionId] = _toPluginSession(info, fallbackDirectory: directory);
+          }
         }
       } on Object catch (error, stack) {
         Log.w("[$id] session/list failed for $directory; skipping", error, stack);
@@ -642,17 +654,22 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
           (raw as Map?)?.cast<String, dynamic>() ?? const {},
         );
         _onTurnEnd(sessionId, result.stopReason);
-      }).catchError((Object _) {
-        _onTurnEnd(sessionId, AcpStopReason.unknown);
+      }).catchError((Object error, StackTrace stack) {
+        // The frame was already accepted (the phone's send returned success),
+        // so a later rejection (auth expiry, stale session, bad payload) would
+        // otherwise stop the run with no signal. Log and surface it as a
+        // session error, not a silent idle.
+        Log.w("[$id] session/prompt for $sessionId failed after dispatch", error, stack);
+        _onTurnEnd(sessionId, AcpStopReason.unknown, failed: true);
       }),
     );
   }
 
-  void _onTurnEnd(String sessionId, AcpStopReason reason) {
+  void _onTurnEnd(String sessionId, AcpStopReason reason, {bool failed = false}) {
     _activeSessions.remove(sessionId);
     _sessionStatuses[sessionId] = const PluginSessionStatus.idle();
     _eventBuffer.add(BridgeSseSessionIdle(sessionID: sessionId));
-    if (reason == AcpStopReason.refusal) {
+    if (failed || reason == AcpStopReason.refusal) {
       _eventBuffer.add(BridgeSseSessionError(sessionID: sessionId));
     }
   }
@@ -662,7 +679,10 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       PluginPromptPartText(:final text) => textContentBlock(text),
       PluginPromptPartFilePath(:final path, :final filename) => {
         "type": "resource_link",
-        "uri": "file://$path",
+        // Uri.file encodes spaces and Windows drive/backslash paths; plain
+        // "file://$path" interpolation emits an invalid uri (e.g.
+        // `file://C:\a b.png`) that the agent rejects or ignores.
+        "uri": Uri.file(path).toString(),
         "name": filename ?? p.basename(path),
       },
       PluginPromptPartFileUrl(:final url, :final filename) => {
@@ -670,10 +690,21 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         "uri": url,
         "name": filename ?? url,
       },
-      // Inline base64 has no clean ACP ContentBlock without a mime contract;
-      // dropped until a real trace shows the expected shape.
-      PluginPromptPartFileData() => null,
+      // ACP defines inline image/audio content blocks (base64 `data` +
+      // `mimeType`); map those so a phone attachment is not silently lost.
+      // Other mime types have no ACP inline block and are dropped.
+      PluginPromptPartFileData(:final mime, :final base64) => _inlineContentBlock(mime, base64),
     };
+  }
+
+  Map<String, dynamic>? _inlineContentBlock(String mime, String base64) {
+    final type = switch (mime.split("/").first.toLowerCase()) {
+      "image" => "image",
+      "audio" => "audio",
+      _ => null,
+    };
+    if (type == null) return null;
+    return {"type": type, "mimeType": mime, "data": base64};
   }
 
   @override
@@ -684,6 +715,10 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       method: AcpMethods.sessionCancel,
       params: {"sessionId": sessionId},
     );
+    // ACP requires the client to resolve any permission/question the cancelled
+    // turn was blocked on; otherwise the agent keeps waiting on that JSON-RPC
+    // request and the phone shows a stale prompt.
+    _approvalRegistry?.cancelForSession(sessionId);
   }
 
   @override
@@ -793,7 +828,11 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
       collector.modelId = eventMapper.modelForSession(sessionId);
       collector.providerId = eventMapper.providerForSession(sessionId);
       return collector.build();
-    } catch (_) {
+    } on Object catch (error, stack) {
+      // A broken replay (connect/init/auth/load failure) returns no messages;
+      // the phone can't tell that from a truly empty thread, so at least log
+      // it rather than silently swallowing the failure.
+      Log.w("[$id] history replay for $sessionId failed; returning no messages", error, stack);
       return const [];
     } finally {
       try {

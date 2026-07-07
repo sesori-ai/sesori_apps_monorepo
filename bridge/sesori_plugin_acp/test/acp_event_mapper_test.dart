@@ -107,6 +107,27 @@ void main() {
       );
     });
 
+    test("tool_call reads output from the standard ACP content wrapper", () {
+      // A spec-compliant ACP agent reports tool output as
+      // content: [{type:content, content:{type:text, text:...}}] rather than
+      // Cursor's rawOutput. The nested wrapper must be unwrapped, else the tool
+      // card renders blank.
+      final events = mapper.map(update({
+        "sessionUpdate": "tool_call",
+        "toolCallId": "tc-wrap",
+        "kind": "read",
+        "status": "completed",
+        "content": [
+          {
+            "type": "content",
+            "content": {"type": "text", "text": "wrapped output"},
+          },
+        ],
+      }));
+      final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
+      expect(part.state?.output, "wrapped output");
+    });
+
     test("tool_call_update on an edit emits a session diff", () {
       final events = mapper.map(update({
         "sessionUpdate": "tool_call_update",

@@ -136,6 +136,39 @@ void main() {
       expect(agents.single.model?.providerID, "cursor");
     });
 
+    test("a loaded history session's model does not overwrite the new-session default", () async {
+      // A session/new-shaped capture (no sessionId) sets the default model.
+      plugin.captureSessionConfig(catalogResult());
+      expect((await plugin.getProviders(projectId: "/repo")).providers.single.defaultModelID, "gpt-5.4");
+
+      // A session/load capture (concrete sessionId) replays whatever model the
+      // OLD session ran — it must NOT become the new-session default, or later
+      // "Default" turns would silently run/stamp as that old model.
+      plugin.captureSessionConfig(
+        {
+          "sessionId": "old",
+          "configOptions": [
+            {
+              "id": "model",
+              "category": "model",
+              "currentValue": "sonnet-4.6",
+              "options": [
+                {"value": "gpt-5.4", "name": "GPT-5.4"},
+                {"value": "sonnet-4.6", "name": "Sonnet 4.6"},
+              ],
+            },
+          ],
+        },
+        sessionId: "old",
+      );
+
+      expect(
+        (await plugin.getProviders(projectId: "/repo")).providers.single.defaultModelID,
+        "gpt-5.4",
+        reason: "browsing a history thread must not change the new-session default",
+      );
+    });
+
     test("applyTurnSelection drives model + mode set_config_option calls", () async {
       plugin.captureSessionConfig(catalogResult());
 

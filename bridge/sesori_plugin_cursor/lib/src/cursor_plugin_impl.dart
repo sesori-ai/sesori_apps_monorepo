@@ -95,12 +95,20 @@ class CursorPlugin extends AcpPlugin {
   void captureSessionConfig(Map<String, dynamic> result, {String? sessionId}) {
     final session = AcpNewSessionResult.fromJson(result);
 
+    // A `session/load` (history / resume / catalog probe) carries a concrete
+    // sessionId and replays whatever model THAT old session used. Only a
+    // `session/new`-shaped capture (no sessionId) may set the global default
+    // model — otherwise browsing a history thread that ran a non-default model
+    // would make later "Default" turns run and stamp as that old model.
+    final isDefaultSource = sessionId == null;
     final modelConfig = CursorModelProbe.findConfig(session, "model");
+    String? loadedModelId;
     if (modelConfig != null) {
       _modelConfigId = modelConfig["id"] as String? ?? _modelConfigId;
       final models = CursorModelProbe.options(modelConfig);
       if (models.isNotEmpty) _models = models;
-      _currentModelId = CursorModelProbe.currentValue(modelConfig) ?? _currentModelId;
+      loadedModelId = CursorModelProbe.currentValue(modelConfig);
+      if (isDefaultSource && loadedModelId != null) _currentModelId = loadedModelId;
     }
 
     final modeConfig = CursorModelProbe.findConfig(session, "mode");
@@ -108,13 +116,17 @@ class CursorPlugin extends AcpPlugin {
       _modeConfigId = modeConfig["id"] as String? ?? _modeConfigId;
       final modes = CursorModelProbe.options(modeConfig);
       if (modes.isNotEmpty) _modes = modes;
-      _defaultModeId = CursorModelProbe.currentValue(modeConfig) ?? _defaultModeId;
+      // Mode has no per-session stamping, so only the new-session shape (no
+      // sessionId) advances the default mode, for the same reason as the model.
+      if (isDefaultSource) _defaultModeId = CursorModelProbe.currentValue(modeConfig) ?? _defaultModeId;
     }
 
     eventMapper.currentProviderId = _providerId;
     eventMapper.currentModelId = _currentModelId;
     if (sessionId != null) {
-      eventMapper.setSessionModel(sessionId, _currentModelId, providerId: _providerId);
+      // Stamp the loaded session's OWN model (not the global default) so its
+      // replayed/live messages carry the model it actually used.
+      eventMapper.setSessionModel(sessionId, loadedModelId ?? _currentModelId, providerId: _providerId);
     }
   }
 

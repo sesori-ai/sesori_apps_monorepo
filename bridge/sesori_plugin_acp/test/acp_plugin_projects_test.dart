@@ -270,6 +270,73 @@ void main() {
       expect(s2.time?.updated, 1751364000000, reason: "epoch-ms updatedAt must parse");
     });
 
+    test("a cwd-scoped scan repairs a session the unfiltered list left on the launch dir", () async {
+      await connect(sessionCapabilities: true);
+      const home = "/Users/x/kustos";
+      // The unfiltered (spec) list returns the session with NO cwd, so it is
+      // first attributed to the launch directory; the per-directory scan of a
+      // bridge-known directory then confirms its real cwd.
+      final stop = autoListResponder(
+        bare: () => {
+          "sessions": [
+            {"sessionId": "s1", "title": "One"},
+          ],
+        },
+        byCwd: {
+          home: [
+            {"sessionId": "s1", "cwd": home, "title": "One"},
+          ],
+        },
+      );
+      final sessions = await plugin.listAllSessions(knownDirectories: const {home});
+      stop();
+
+      final s1 = sessions.singleWhere((s) => s.id == "s1");
+      expect(s1.directory, home, reason: "the cwd-scoped hit must replace the launch fallback");
+      expect(s1.projectID, home);
+    });
+
+    test("a session/prompt rejection after dispatch surfaces a session error, not a silent idle", () async {
+      await connect();
+      final creating = plugin.createSession(
+        directory: "/repo",
+        parentSessionId: null,
+        parts: const [],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await respond("session/new", {"sessionId": "s1"});
+      await creating;
+
+      final events = <BridgeSseEvent>[];
+      final sub = plugin.events.listen(events.add);
+      addTearDown(sub.cancel);
+
+      await plugin.sendPrompt(
+        sessionId: "s1",
+        parts: const [PluginPromptPart.text(text: "hi")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final promptFrame = await waitForFrame("session/prompt");
+      // The agent rejects the prompt AFTER the frame was accepted.
+      fake().emit({
+        "jsonrpc": "2.0",
+        "id": promptFrame["id"],
+        "error": {"code": -32000, "message": "boom"},
+      });
+      await pump();
+      await pump();
+
+      expect(
+        events.whereType<BridgeSseSessionError>(),
+        isNotEmpty,
+        reason: "a post-dispatch prompt rejection must surface as an error, not a silent idle",
+      );
+    });
+
     test("a session created in an opened directory is attributed to that project", () async {
       await connect();
       const opened = "/Users/x/kustos";

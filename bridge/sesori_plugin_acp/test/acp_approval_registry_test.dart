@@ -131,6 +131,57 @@ void main() {
       expect((result! as Map)["outcome"], {"outcome": "cancelled"});
     });
 
+    test("reply 'once' does NOT escalate to allow_always when allow_once is absent", () async {
+      // The agent only offers a session-persistent option. A user who chose a
+      // one-time approval must not be silently upgraded to it — cancel instead.
+      requests.add(const AcpServerRequest(
+        id: 21,
+        method: "session/request_permission",
+        params: {
+          "sessionId": "s1",
+          "toolCall": {"kind": "execute"},
+          "options": [
+            {"optionId": "opt-allow-always", "kind": "allow_always"},
+            {"optionId": "opt-reject", "kind": "reject_once"},
+          ],
+        },
+      ));
+      await pump();
+      final id = (emitted.single as BridgeSsePermissionAsked).requestID;
+      registry.replyPermission(id, PluginPermissionReply.once);
+      final (_, result) = responds.single;
+      expect((result! as Map)["outcome"], {"outcome": "cancelled"});
+    });
+
+    test("cancelForSession resolves pending permission + question and emits clearing events", () async {
+      requests.add(permission());
+      await pump();
+      registry.addPendingQuestion(
+        bridgeRequestId: "q-1",
+        acpId: 5,
+        sessionId: "s1",
+        questions: const [
+          PluginQuestionInfo(question: "Pick", header: "H", options: [], multiple: false, custom: false),
+        ],
+        replyBuilder: (answers) => null,
+      );
+      responds.clear();
+      errors.clear();
+      emitted.clear();
+
+      registry.cancelForSession("s1");
+
+      // Permission answered with a cancelled outcome; question answered with an error.
+      expect(responds.single.$2, const {
+        "outcome": {"outcome": "cancelled"},
+      });
+      expect(errors.single.$2, -32603);
+      // Both pending entries cleared, and the phone gets clearing events.
+      expect(registry.hasPendingInput("s1"), isFalse);
+      expect(emitted.whereType<BridgeSsePermissionReplied>(), hasLength(1));
+      expect(emitted.whereType<BridgeSseQuestionRejected>(), hasLength(1));
+    });
+
     test("unknown server methods get a soft -32601 error", () async {
       requests.add(const AcpServerRequest(id: 11, method: "cursor/mystery", params: {}));
       await pump();

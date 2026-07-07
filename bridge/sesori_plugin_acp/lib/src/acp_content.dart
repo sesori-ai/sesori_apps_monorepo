@@ -70,21 +70,25 @@ String? acpRawOutputText(Object? raw) {
   return null;
 }
 
-/// Extracts text from an ACP `ContentBlock` (`{type:text,text}`) or a list of
-/// them.
+/// Extracts text from an ACP `ContentBlock` (`{type:text,text}`), the standard
+/// tool-content wrapper (`{type:content,content:{type:text,text}}`), or a list
+/// of either. The nested-`content` recursion is what lets a spec-compliant ACP
+/// agent — which reports tool output through the wrapper rather than Cursor's
+/// `rawOutput` — render non-blank tool cards and replayed history.
 String? acpContentText(Object? content) {
   if (content is String) return content.isEmpty ? null : content;
   if (content is Map) {
     final text = content["text"];
-    return text is String && text.isNotEmpty ? text : null;
+    if (text is String && text.isNotEmpty) return text;
+    // Unwrap the standard `{type:content, content:<block>}` tool-output shape.
+    final nested = content["content"];
+    return nested == null ? null : acpContentText(nested);
   }
   if (content is List) {
     final buffer = StringBuffer();
     for (final entry in content) {
-      if (entry is Map) {
-        final text = entry["text"];
-        if (text is String) buffer.write(text);
-      }
+      final text = acpContentText(entry);
+      if (text != null) buffer.write(text);
     }
     final result = buffer.toString();
     return result.isEmpty ? null : result;
