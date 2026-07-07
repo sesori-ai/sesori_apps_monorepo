@@ -99,12 +99,13 @@ void main() {
         "sessionUpdate": "tool_call",
         "toolCallId": "tc-bad",
         "kind": 123,
+        // A non-string title must not throw either — it renders as null.
+        "title": {"unexpected": "object"},
         "status": "pending",
       }));
-      expect(
-        nonStringKind.whereType<BridgeSseMessagePartUpdated>().single.part.tool,
-        "tool",
-      );
+      final badPart = nonStringKind.whereType<BridgeSseMessagePartUpdated>().single.part;
+      expect(badPart.tool, "tool");
+      expect(badPart.state?.title, isNull);
     });
 
     test("tool_call reads output from the standard ACP content wrapper", () {

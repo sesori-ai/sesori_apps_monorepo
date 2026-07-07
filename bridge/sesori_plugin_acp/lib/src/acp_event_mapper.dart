@@ -232,8 +232,11 @@ class AcpEventMapper {
     if (toolCallId == null || toolCallId.isEmpty) return const [];
     final messageId = "$sessionId-tool-$toolCallId";
     final state = _LiveTool(
+      // Fail-soft like the tool name and `_toolCallUpdate`'s title: a non-string
+      // title (schema drift / malformed agent data) renders as null rather than
+      // throwing and aborting the notification.
       tool: acpToolName(update),
-      title: update["title"] as String?,
+      title: update["title"] is String ? update["title"] as String? : null,
       status: acpToolStatus(update["status"]),
       output: acpToolOutputText(update),
     );
