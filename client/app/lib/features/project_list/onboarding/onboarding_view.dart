@@ -513,7 +513,7 @@ class _CommandActionRowState extends State<_CommandActionRow> {
     // derive it from this row so the popover points at the command instead of
     // floating (an unanchored sheet throws on iPad).
     final renderObject = context.findRenderObject();
-    final origin = renderObject is RenderBox && renderObject.hasSize
+    final origin = renderObject is RenderBox && renderObject.attached && renderObject.hasSize
         ? renderObject.localToGlobal(Offset.zero) & renderObject.size
         : null;
     try {
