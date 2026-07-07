@@ -195,18 +195,19 @@ class _DevControlHost {
 
   Future<void> _spawnBridge({required String controlUrl}) async {
     stdout.writeln("spawning: $_bridgePath --control-url $controlUrl ${_bridgeArgs.join(" ")}");
-    // Inherit the parent environment (the bridge needs PATH/HOME/etc.) but strip
-    // the dev token: only the harness needs it, and Process.start would otherwise
-    // leak it into the bridge env and — via the plugin host copying its
-    // environment — the backend (OpenCode) process too.
-    final childEnvironment = Map<String, String>.from(Platform.environment)..remove("SESORI_DEV_CONTROL_TOKEN");
     final Process child;
     try {
       child = await Process.start(
         _bridgePath,
         ["--control-url", controlUrl, ..._bridgeArgs],
-        environment: childEnvironment,
-        includeParentEnvironment: false,
+        // Inherit the parent environment natively (the bridge needs PATH/HOME/…),
+        // but blank out the dev token so it isn't leaked to the bridge — or, via
+        // the plugin host copying its environment, the OpenCode backend. Overriding
+        // it to empty (vs copying all of Platform.environment into an explicit map)
+        // avoids re-encoding every inherited value, which can fail on non-ASCII
+        // environments, and still removes the secret since the bridge never reads
+        // this var.
+        environment: const <String, String>{"SESORI_DEV_CONTROL_TOKEN": ""},
       );
     } on Object catch (error) {
       stderr.writeln("Failed to spawn the bridge at '$_bridgePath': $error");
