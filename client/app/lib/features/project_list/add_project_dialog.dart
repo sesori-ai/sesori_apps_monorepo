@@ -1,3 +1,5 @@
+import "dart:math" as math;
+
 import "package:flutter/material.dart";
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
@@ -15,10 +17,11 @@ import "../../core/extensions/build_context_x.dart";
 /// widget tree's BlocProvider (which lives in the parent screen).
 // ignore: no_slop_linter/prefer_required_named_parameters, shared helper signature used by tests
 Future<void> showAddProjectDialog(BuildContext context, ProjectListCubit cubit) {
-  return showModalBottomSheet<void>(
+  return showPregoBottomSheet<void>(
     context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
+    title: context.loc.addProject,
+    // Full-bleed body; the banner, browser tiles, and actions pad themselves.
+    contentPadding: EdgeInsetsDirectional.zero,
     builder: (_) => AddProjectDialog(cubit: cubit),
   );
 }
@@ -106,99 +109,84 @@ class _AddProjectDialogState extends State<AddProjectDialog> {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final screenHeight = MediaQuery.sizeOf(context).height;
-    final prego = context.prego;
+    final screenHeight = MediaQuery.heightOf(context);
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    // The body hosts its own scroll view (the directory browser), so it needs
+    // a bounded height. Shrink above the keyboard (the sheet re-adds the
+    // keyboard inset below the body) so the name field stays visible while
+    // typing.
+    final height = math.max(screenHeight * 0.7 - keyboard, screenHeight * 0.3);
 
-    return SafeArea(
+    // Transparent Material so the browser tiles' ink paints on top of the
+    // sheet surface instead of behind it on the modal's transparent Material.
+    return Material(
+      type: MaterialType.transparency,
       child: SizedBox(
-        height: screenHeight * 0.7,
-        child: Padding(
-          padding: EdgeInsetsDirectional.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-          child: Column(
-            children: [
-              const SizedBox(height: 8),
-              Center(
-                child: Container(
-                  width: 32,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: prego.colors.textSecondary.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(2),
+        height: height,
+        child: Column(
+          children: [
+            const _FilesystemAccessBanner(),
+            Expanded(
+              child: _DirectoryBrowser(
+                key: _browserKey,
+                cubit: widget.cubit,
+                onPathChanged: (path) => setState(() => _browsingPath = path),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  OutlinedButton(
+                    onPressed: _actionLoading || _browsingPath.isEmpty ? null : _onOpen,
+                    child: _actionLoading
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const _CompactSpinner(),
+                              const SizedBox(width: 8),
+                              Text(loc.discoveringProject),
+                            ],
+                          )
+                        : Text(loc.openAsProject),
                   ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(loc.addProject, style: prego.textTheme.textMd.bold),
-                ),
-              ),
-              const SizedBox(height: 8),
-              const _FilesystemAccessBanner(),
-              Expanded(
-                child: _DirectoryBrowser(
-                  key: _browserKey,
-                  cubit: widget.cubit,
-                  onPathChanged: (path) => setState(() => _browsingPath = path),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    OutlinedButton(
-                      onPressed: _actionLoading || _browsingPath.isEmpty ? null : _onOpen,
-                      child: _actionLoading
-                          ? Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const _CompactSpinner(),
-                                const SizedBox(width: 8),
-                                Text(loc.discoveringProject),
-                              ],
-                            )
-                          : Text(loc.openAsProject),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SizedBox(
-                            height: 48,
-                            child: TextField(
-                              controller: _nameController,
-                              decoration: InputDecoration(
-                                hintText: loc.projectNameHint,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                                border: const OutlineInputBorder(),
-                                isDense: true,
-                              ),
-                              onChanged: (_) => setState(() {}),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        SizedBox(
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
                           height: 48,
-                          child: FilledButton(
-                            onPressed: _actionLoading || _nameController.text.trim().isEmpty || _browsingPath.isEmpty
-                                ? null
-                                : _onCreate,
-                            child: _actionLoading
-                                ? const _CompactSpinner(color: Colors.white)
-                                : Text(loc.createProjectButton),
+                          child: TextField(
+                            controller: _nameController,
+                            decoration: InputDecoration(
+                              hintText: loc.projectNameHint,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                              border: const OutlineInputBorder(),
+                              isDense: true,
+                            ),
+                            onChanged: (_) => setState(() {}),
                           ),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        height: 48,
+                        child: FilledButton(
+                          onPressed: _actionLoading || _nameController.text.trim().isEmpty || _browsingPath.isEmpty
+                              ? null
+                              : _onCreate,
+                          child: _actionLoading
+                              ? const _CompactSpinner(color: Colors.white)
+                              : Text(loc.createProjectButton),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

@@ -180,13 +180,9 @@ class UpdateService {
         stagingPath: stagingPath,
       );
       switch (outcome) {
-        case UpdateApplied(:final version):
+        case UpdateApplied(:final version, :final durablyRecorded):
           _emitLines(_messageFormatter.installedPendingActivation(toVersion: version));
-          // The release is now staged for activation on the next launch. This
-          // process still reports the old appVersion, so left running it would
-          // keep "finding" and re-applying the same release every interval —
-          // stop the cycle until a restart.
-          _stopPolling();
+          _handleApplied(version: version, durablyRecorded: durablyRecorded);
         case UpdateApplyLockBusy():
           // Another update is in progress — benign; apply logged a diagnostic.
           // The next cycle retries.
@@ -206,6 +202,34 @@ class UpdateService {
         reason: error.toString(),
         logDetail: 'Applying update to ${release.version} failed: $error\n$stackTrace',
       );
+    }
+  }
+
+  /// Decides what to do after a successful in-place swap.
+  ///
+  /// The release is now staged for activation on the next launch, but this
+  /// process still reports its old appVersion. Chaining a further in-session
+  /// apply is only safe when BOTH hold:
+  ///
+  /// - the platform applier can chain applies in-session (POSIX can clear the
+  ///   displaced backup of the still-running binary; Windows cannot until a
+  ///   restart, so a second apply would collide with the locked backup); and
+  /// - this apply was durably recorded — both the `appliedPendingActivation`
+  ///   record and the managed-runtime manifest were written. If either write
+  ///   failed, chaining is unsafe: recovery may still be incomplete, or may
+  ///   depend on an activation record that a chained apply would overwrite,
+  ///   leaving the manifest stale (risking an npm reinstall/downgrade of the
+  ///   swapped runtime).
+  ///
+  /// When safe, advance the release baseline to what we just staged so the cycle
+  /// keeps running and only acts on a strictly-newer release — picking up
+  /// further updates published this session without ever re-applying this one.
+  /// Otherwise stop the cycle and let the next launch reconcile.
+  void _handleApplied({required String version, required bool durablyRecorded}) {
+    if (_updateApplyService.supportsInSessionChaining && durablyRecorded) {
+      _releaseRepository.advanceBaselineTo(version: version);
+    } else {
+      _stopPolling();
     }
   }
 

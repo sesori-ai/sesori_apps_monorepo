@@ -48,6 +48,9 @@ class _FakeReleaseRepository implements ReleaseRepository {
 
   @override
   Future<ReleaseInfo?> checkForNewerRelease() => throw UnimplementedError();
+
+  @override
+  void advanceBaselineTo({required String version}) => throw UnimplementedError();
 }
 
 class _FakeInstallService implements UpdateInstallService {
@@ -66,12 +69,15 @@ class _FakeApplyService implements UpdateApplyService {
   int applyCount = 0;
 
   @override
+  bool get supportsInSessionChaining => throw UnimplementedError();
+
+  @override
   void Function(String message) logWarning = (_) {};
 
   @override
   Future<UpdateApplyOutcome> apply({required ReleaseInfo release, required String stagingPath}) async {
     applyCount++;
-    return onApply?.call(release) ?? UpdateApplied(version: release.version);
+    return onApply?.call(release) ?? UpdateApplied(version: release.version, durablyRecorded: true);
   }
 }
 

@@ -42,6 +42,9 @@ class _FakeInstallationRepository implements UpdateInstallationRepository {
   String? recordedVersion;
 
   @override
+  bool get supportsInSessionChaining => throw UnimplementedError();
+
+  @override
   Future<void> applyInPlace({required String installRoot, required String stagingPath}) async {
     throw UnimplementedError();
   }

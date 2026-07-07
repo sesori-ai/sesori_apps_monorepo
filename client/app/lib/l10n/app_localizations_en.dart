@@ -30,6 +30,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectListTitle => 'Projects';
 
   @override
+  String get projectListLoadingSemantics => 'Loading projects';
+
+  @override
   String get projectListEmpty => 'No projects found';
 
   @override
@@ -74,6 +77,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get projectsOnboardingPcStatusRun => 'Run Sesori on your PC';
+
+  @override
+  String get projectsOnboardingPcStatusWhy => 'Why is this needed?';
 
   @override
   String get projectsOnboardingNeedHelp => 'Need help?';
@@ -122,6 +128,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get projectsBridgeOfflineInstallCommands => 'Install commands';
+
+  @override
+  String get projectsBridgeOfflineRunBridge => 'Run the bridge';
 
   @override
   String get connectionLostTitle => 'Connection Lost';
@@ -184,6 +193,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String sessionListTitleWithName(String name) {
     return '$name — Sessions';
   }
+
+  @override
+  String get sessionListLoadingSemantics => 'Loading sessions';
 
   @override
   String get sessionListEmpty => 'No sessions found';
@@ -892,4 +904,52 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get emptySessionDetailSubtitle => 'Choose a session from the list to view details';
+
+  @override
+  String get projectsOnboardingWhyLede => 'Your LLM of choice runs on your computer.';
+
+  @override
+  String get projectsOnboardingWhyBody => 'The Bridge securely connects it to Sesori on your phone.';
+
+  @override
+  String get projectsOnboardingWhySecureTitle => 'Secure access';
+
+  @override
+  String get projectsOnboardingWhySecureSubtitle => 'Your sessions are end-to-end encrypted.';
+
+  @override
+  String get projectsOnboardingWhyAnywhereTitle => 'Connect from anywhere';
+
+  @override
+  String get projectsOnboardingWhyAnywhereSubtitle => 'No shared Wi-Fi required.';
+
+  @override
+  String get projectsOnboardingWhyNotifiedTitle => 'Get notified';
+
+  @override
+  String get projectsOnboardingWhyNotifiedSubtitle => 'Know when a task needs you.';
+
+  @override
+  String get projectsOnboardingWhyFaqHeader => 'FAQs';
+
+  @override
+  String get projectsOnboardingWhyFaqDirectQuestion => 'Why can\'t the app connect directly?';
+
+  @override
+  String get projectsOnboardingWhyFaqDirectAnswer =>
+      'Your AI assistant runs on your computer, not our servers. The Bridge is the secure link that lets your phone reach it from anywhere.';
+
+  @override
+  String get projectsOnboardingWhyFaqPcOnQuestion => 'Does my PC stay on?';
+
+  @override
+  String get projectsOnboardingWhyFaqPcOnAnswer =>
+      'Your computer needs to be on and running Sesori for live sessions. You can start or stop it whenever you like.';
+
+  @override
+  String get projectsOnboardingWhyFaqReadQuestion => 'Can Sesori read my sessions?';
+
+  @override
+  String get projectsOnboardingWhyFaqReadAnswer =>
+      'No. Everything between your phone and computer is end-to-end encrypted — the relay only passes along sealed data it can\'t read.';
 }

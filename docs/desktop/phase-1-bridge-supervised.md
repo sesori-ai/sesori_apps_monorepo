@@ -669,7 +669,52 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   precedence without either silently exiting; (4) replace-prompt timeout
   behaviour doesn't hang GUI boot.
 - **Acceptance:** documented + tested precedence; no silent abort.
-- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch `next-step-desktop-plan`).
+- **Findings:** The precedence is documented as **ADR A25** and needed no new
+  components — PR 1.9 already routes the replace ask through `BridgeReplacePrompt`
+  (`ControlPromptService` supervised / `TerminalPromptRepository` standalone), so
+  the mechanism stays mode-agnostic and the whole change is exit-code typing at
+  the composition root. `BridgeRuntimeServerException` is thrown ONLY by the six
+  single-live/startup-mutex contention aborts in `startPluginUnderStartupMutex`
+  (verified), so the runner gained a dedicated
+  `on BridgeRuntimeServerException` catch before the generic one: standalone
+  keeps the byte-identical `Log.e` + exit 1; supervised records
+  `SupervisedExitCode.bridgeContention` and returns its code `88` (beside
+  86/87). The recorded exit feeds the shutdown-coordinator backstop and the
+  outer-finally shutdown-error no-rethrow guard, so 88 survives a hung or
+  throwing shutdown exactly like 86/87. Decline and `nonInteractive` both map to 88 — the GUI can
+  tell them apart because it answered (or didn't answer) the `prompt_request`
+  itself; either way respawning would only re-prompt. The prompt path is bounded
+  (2-min `ControlPromptService` timeout; channel-down resolves immediately), so
+  GUI boot cannot hang — proven by test. Tests: 5 new integration-style tests in
+  `bridge_instance_service_test.dart` drive a **real** `ControlPromptService`
+  (fake control channel) as the `BridgeInstanceService` replace prompt: GUI
+  accept → incumbent terminated (graceful signal) + allowed; GUI decline →
+  declined, no signals; unanswered prompt → `nonInteractive` within the timeout,
+  no signals; channel down → immediate `nonInteractive` without the prompt
+  timeout; startup-lock contention unanswered → `nonInteractive`, no signals.
+  Standalone regression: all existing instance-service / terminal-prompt /
+  startup-mutex / `bridge_runtime_server` tests pass unchanged (mutex still
+  serializes `ensureRuntime`; no code outside the runner's catch changed).
+  `make analyze` + `dart analyze --fatal-infos` clean; `make test` all pass
+  (app 1701; +5).
+- **Review round** (user): the loose `const int` exit codes and the chain of
+  five `int?` sentinel locals were replaced by a single `SupervisedExitCode`
+  enum (restart 86 / authRequired 87 / bridgeContention 88 / logout 0 /
+  controlChannelLost 1, each carrying its `code`) and ONE
+  `SupervisedExitCode? requestedSupervisedExit` slot. Write discipline
+  preserves the old chain priority: deliberate outcomes assign
+  unconditionally, the loss listener assigns with `??=` so a loss never
+  demotes an already decided intentional exit. The composition root now also
+  pins the loss listener's `exitCode` from the enum instead of relying on the
+  listener's own default staying in sync.
+- **Deltas:** The GUI half is an explicit deferral recorded in PR 2.7's
+  acceptance (exit map 86/87/**88**/0/other; "Take over" = plain respawn that
+  answers the fresh spawn's replace prompt with accept — no new control
+  command) — the PR-1.2 DTO surface is untouched (no new message variants).
+  The exit-code mapping in `BridgeRuntimeRunner.run`'s catch has no unit
+  harness (same as the 86/87 mappings); it is covered by the existing
+  contention-path exception tests plus review.
 
 ## PR 1.13 — Tee `RuntimeProvisionProgress` → control channel
 - **Goal:** In supervised mode, tee the typed `RuntimeProvisionProgress` stream
@@ -687,7 +732,42 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   provisioning (send is fire-and-forget/buffered).
 - **Acceptance:** provision events reach a fake server; `ProvisionReady`/`Failed`
   terminal events conveyed; standalone formatter output unchanged.
-- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch `next-step-desktop-plan`).
+- **Findings:** Shipped as two new units + the runner tee, no shared-package
+  change (the PR-1.2 `ControlProvisionProgress`/`ControlMessage.provisionProgress`
+  DTOs already carried the wire shape). (1) `RuntimeProvisionProgressMapping`
+  (Layer 2 extension in `repositories/mappers/`): an exhaustive `switch` mapping
+  each of the 7 `RuntimeProvisionProgress` variants 1:1 to the shared
+  `ControlProvisionProgress` union; the source's derived `fraction` getter is
+  intentionally dropped (pure-data DTO — the GUI recomputes it from
+  `totalBytes`). (2) `ControlProvisionNotifier` (Layer 4 `control/`): owns ALL
+  provision-class outbound sends over the injected `ControlChannelClient` — the
+  provisioning analogue of `ControlStatusNotifier` (it can't fold into the
+  status notifier because provisioning runs BEFORE `plugin.status`/`relayClient`
+  exist). It observes no stream and owns no subscription: `_ensurePluginRuntime`
+  already consumes the single-subscription provisioning stream synchronously to
+  record `ProvisionReady.binaryPath`, so events arrive as a typed fed sink via
+  `handleProvisionProgress({required RuntimeProvisionProgress event})` — nothing
+  to dispose. Sends are best-effort (mirrors `ControlStatusNotifier._send`):
+  `ControlChannelNotConnectedException` → `Log.d` (GUI briefly away — a dropped
+  progress frame only skips a UI update, so there is no re-sync to attempt),
+  catch-all → `Log.w` with the error/stack as logger args, never throwing into
+  the runner loop. (3) Tee wiring: a nullable `ControlProvisionNotifier?` is
+  threaded through the static `startPluginUnderStartupMutex` → `_ensurePluginRuntime`;
+  after the existing stderr render the loop calls
+  `provisionNotifier?.handleProvisionProgress(event: event)`. The notifier is
+  built inside the existing `if (options.isSupervised)` control gate (sharing the
+  same `controlChannelClient`) and captured in the plugin `starter` closure;
+  standalone passes null so the `?.` is a no-op and the stderr path is
+  byte-identical. Tests: mapper (7 variants + null-total), notifier (map→send,
+  ready/failed terminal, one-frame-per-event ordering, channel-down + unexpected
+  send-error both swallowed no-throw), and 3 runner integration tests (supervised
+  tees each event in order; tee does not disturb `ProvisionReady.binaryPath`
+  landing on the host; standalone with no notifier still records the path). `make
+  analyze` + `dart analyze --fatal-infos` clean; `make test` all pass (app; +17
+  new). **Deltas:** §6's PR-1.2 DTO row is unchanged; the mapper is realized as an
+  extension in `repositories/mappers/` (matching every other bridge mapper) rather
+  than a standalone class.
 
 ## PR 1.14 — Relay replaced-close (`4007`) → takeover state, no reconnect war (ADR A22)
 - **Goal:** The relay keeps a single bridge slot per account and closes a
@@ -749,7 +829,55 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   supervised); detection works on close code `4007` alone (no reason string)
   AND on the `1000/"replaced"` rollout fallback; normal drop reconnection
   unchanged; covered by connection-level tests.
-- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+- **Aristotle:** plan ☑ · impl ☑ (bridge PR raised on branch `start-next-step-desktop-plan`;
+  relay prerequisite raised as `sesori-ai/sesori_relay_server#7`).
+- **Findings:** Shipped as an additive shared constant + predicate, a Layer-0
+  transport accessor, an orchestrator backoff-policy change, and a notifier map
+  extension — no new classes. (1) **Shared** (`close_codes.dart`):
+  `RelayCloseCodes.bridgeReplaced = 4007` (deliberately NOT in
+  `noReconnectCodes` — the policy is long-backoff, not never-reconnect) plus a
+  single `isBridgeReplaced({closeCode, closeReason})` predicate — the
+  authoritative detection rule shared by the reconnect loop and the status push
+  so the two never diverge. The dedicated `4007` code is reason-independent; a
+  `1000` close whose reason is `bridgeReplacedFallbackReason = "replaced"` is
+  matched only as a rollout fallback for the relay-deploy window. `taken_over`
+  was added to `ControlRelayConnectionState` (before the `unknown` fallback), an
+  additive enum value on the existing `status` DTO (no new message variant). (2)
+  **RelayClient** (Layer 0): a dumb `closeReason` accessor mirroring `closeCode`,
+  and `RelayDisconnected` now carries `closeReason` so the notifier detects the
+  replaced-close off the connection-state stream without racing the loop's own
+  `_client.closeReason` read. (3) **Orchestrator reconnect loop:** after the
+  existing `bridgeRevoked` branch it computes `isBridgeReplaced(...)`; a takeover
+  drop logs a loud `Console.warning` and uses a minutes-order backoff
+  (`_takeoverInitialBackoff = 2min`, cap `5min`, +25% jitter so two mutually
+  displacing bridges don't resynchronise) instead of the ordinary 1s-reset
+  seconds-order backoff — `_initialBackoff`/`_nextBackoff` are now
+  takeover-scoped. The loop still reconnects (headless/VM failover preserved),
+  just slowly, so two bridges don't tight-loop; every other close code keeps
+  today's behaviour byte-for-byte. The orchestrator owns ONLY this policy change
+  and never calls `ControlChannelClient.send`. (4) **ControlStatusNotifier:**
+  `_mapRelayState` maps a `RelayDisconnected` matching `isBridgeReplaced` to
+  `ControlRelayConnectionState.takenOver`, else `disconnected`; it still owns all
+  outbound status sends (deduped), so supervised takeover reaches the GUI as a
+  normal `status` push. (5) **Relay prerequisite** (`sesori_relay_server#7`):
+  `CloseBridgeReplaced = 4007`; the displaced bridge is closed with `4007`
+  (writing the frame before cancelling the old connection's context, off the new
+  bridge's hot path) keeping `"replaced"` as the rollout-fallback reason. Tests:
+  shared `isBridgeReplaced` matrix + `taken_over` round-trip; RelayClient
+  `closeReason` accessor + `RelayDisconnected.closeReason` connection-level
+  tests; notifier `4007`/`1000-replaced`/plain-`1000` mapping tests; orchestrator
+  takeover tests (a `4007` and a `1000/"replaced"` drop hold off reconnect within
+  the war window; a plain `1000` drop reconnects promptly). `make analyze` +
+  `dart analyze --fatal-infos` clean; bridge `make test` all pass (app 1726);
+  shared 282 pass; `client/app` (mobile) `flutter analyze` clean (additive shared
+  change). **Standing-acceptance exception honored:** only the replaced-close
+  standalone behaviour changed; `4006` and normal drops are asserted unchanged.
+- **Deltas:** §6 gains no rows — the change is a shared predicate + additive enum
+  value + an orchestrator-owned policy tweak + a notifier map arm, none of which
+  warrant a new component (confirmed by `aristotle-plan-review`). The relay
+  prerequisite is a **deploy gate**, tracked in §8 and this entry: `#7` must be
+  merged AND deployed to production before this bridge PR merges; the bridge's
+  `1000/"replaced"` fallback keeps an older relay safe during rollout.
 
 ## PR 1.15 — Dev control-host harness for manual supervised testing
 - **Goal:** A small dev-only tool (`bridge/app/tool/dev_control_host.dart`,
@@ -796,7 +924,7 @@ which is not in the repo, so it fails on a fresh checkout); have a logged-in
 | 6 | Grace-period exit (1.1) | kill the harness process | helper exits (~5s grace), exit code 1, managed runtime shut down (no orphaned `opencode serve`) |
 | 7 | Restart sentinel (1.7) | trigger restart from the phone | helper flushes `{restarting:true}`, exits **86**, does NOT spawn a successor |
 | 8 | Auth-required sentinel (1.9) | harness replies null at bootstrap | helper emits `loginNeeded` prompt, exits **87** |
-| 9 | Prompts (1.9) | start a second bridge to trigger replace-prompt | prompt arrives as a control event in the harness; reply drives the helper |
+| 9 | Prompts + contention precedence (1.9/1.12) | start a second bridge to trigger replace-prompt | prompt arrives as a control event in the harness; accept replaces the incumbent; decline or no reply makes the supervised newcomer exit **88** (incumbent keeps running — no silent abort, no crash-looking exit 1) |
 | 10 | Status + registered (1.10) | watch harness output | `registered{bridgeId}` right after registration; status reflects relay/plugin changes live (no periodic spam) |
 | 11 | Unregister-and-exit (1.11) | send the command from the harness | helper unregisters (check the account's bridge list), clears `bridge_id`, exits 0 |
 | 12 | Provision tee (1.13) | wipe the managed runtime dir; start via harness | download/extract/ready progress events stream to the harness; standalone run still renders stderr progress |

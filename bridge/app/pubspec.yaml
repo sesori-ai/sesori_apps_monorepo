@@ -1,6 +1,6 @@
 name: sesori_bridge
 description: Dart implementation of the Sesori Bridge CLI for WebSocket communication.
-version: 1.3.0
+version: 1.4.0
 publish_to: none
 resolution: workspace
 
@@ -39,7 +39,7 @@ dev_dependencies:
   fake_async: ^1.3.3
   # Tests exercise raw sqlite3 directly (drift migrations, DAO tests);
   # production code reaches sqlite3 only transitively through drift.
-  sqlite3: ^3.3.3
+  sqlite3: ^3.3.4
   build_runner: any
   freezed: ^3.2.5
   json_serializable: ^6.14.0

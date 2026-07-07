@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter/cupertino.dart" show CupertinoColors, CupertinoDynamicColor;
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
@@ -23,6 +24,7 @@ import "add_project_dialog.dart";
 import "rename_project_dialog.dart";
 
 part "onboarding/onboarding_view.dart";
+part "onboarding/why_bridge_info_sheet.dart";
 part "widgets/bridge_offline_view.dart";
 part "widgets/error_view.dart";
 part "widgets/project_tile.dart";
@@ -78,10 +80,20 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final cubit = context.read<ProjectListCubit>();
     final loc = context.loc;
+    // Same display-name resolution as _ProjectTile, so the sheet is titled
+    // by the project it acts on.
+    final lastSegment = project.id.split("/").last;
+    final displayName = project.name ?? (lastSegment.isNotEmpty ? lastSegment : loc.projectListDefaultName);
 
-    showModalBottomSheet<void>(
+    showPregoBottomSheet<void>(
       context: context,
-      builder: (sheetContext) => SafeArea(
+      title: displayName,
+      // Full-bleed tiles; each ListTile carries its own horizontal padding.
+      contentPadding: EdgeInsetsDirectional.zero,
+      builder: (sheetContext) => Material(
+        // Transparent Material so the tiles' ink paints on top of the sheet
+        // surface instead of behind it on the modal's transparent Material.
+        type: MaterialType.transparency,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -168,8 +180,10 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
     required bool isRefreshing,
   }) {
     return switch (state) {
-      ProjectListLoading() => const [
-        SliverFillRemaining(hasScrollBody: false, child: Center(child: CircularProgressIndicator())),
+      ProjectListLoading() => [
+        SliverToBoxAdapter(
+          child: PregoSkeletonList(semanticLabel: context.loc.projectListLoadingSemantics),
+        ),
       ],
       // No bridge has ever been registered → setup onboarding; a bridge exists
       // but isn't running → ask to turn it on. Both are full-screen views that

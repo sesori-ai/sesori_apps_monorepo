@@ -19,12 +19,16 @@ const String _managedPath = '/usr/local/bin/sesori-bridge';
 class _FakeReleaseRepository implements ReleaseRepository {
   int checkCount = 0;
   Future<ReleaseInfo?> Function()? onCheck;
+  final List<String> advancedBaselines = <String>[];
 
   @override
   Future<ReleaseInfo?> checkForNewerRelease() async {
     checkCount++;
     return onCheck == null ? null : onCheck!();
   }
+
+  @override
+  void advanceBaselineTo({required String version}) => advancedBaselines.add(version);
 
   @override
   Future<UpdateResolution> resolveUpdate() => throw UnimplementedError();
@@ -46,12 +50,15 @@ class _FakeApplyService implements UpdateApplyService {
   UpdateApplyOutcome Function(ReleaseInfo release)? onApply;
 
   @override
+  bool supportsInSessionChaining = true;
+
+  @override
   void Function(String message) logWarning = (_) {};
 
   @override
   Future<UpdateApplyOutcome> apply({required ReleaseInfo release, required String stagingPath}) async {
     appliedVersions.add(release.version);
-    return onApply?.call(release) ?? UpdateApplied(version: release.version);
+    return onApply?.call(release) ?? UpdateApplied(version: release.version, durablyRecorded: true);
   }
 }
 
@@ -137,6 +144,87 @@ void main() {
       expect(infoMessages, isNotEmpty);
       expect(infoMessages.first, contains('2.0.0'));
       expect(errors, isEmpty);
+    });
+  });
+
+  test('a successful apply advances the release baseline and keeps polling', () {
+    release.onCheck = () async => _release(version: '2.0.0');
+
+    runStarted(buildService(), (async) {
+      expect(apply.appliedVersions, equals(['2.0.0']));
+      // The cycle advanced the comparison baseline instead of stopping.
+      expect(release.advancedBaselines, equals(['2.0.0']));
+    });
+  });
+
+  test('further releases published in-session are chained without a restart', () {
+    // The fake repository stands in for the real baseline advance: after a
+    // version is staged, only strictly-newer releases surface on later cycles.
+    final available = <String>['2.0.0', '2.1.0'];
+    release.onCheck = () async => available.isEmpty ? null : _release(version: available.first);
+    final service = buildService();
+
+    fakeAsync((async) {
+      service.start();
+      async.flushMicrotasks();
+
+      // Cycle 1 applies 2.0.0 and advances the baseline.
+      expect(apply.appliedVersions, equals(['2.0.0']));
+      expect(release.advancedBaselines, equals(['2.0.0']));
+      available.removeAt(0); // 2.0.0 is no longer "newer" than the baseline.
+
+      // Cycle 2 fires after the poll interval and applies 2.1.0 — no restart.
+      async.elapse(const Duration(hours: 4));
+      async.flushMicrotasks();
+      expect(apply.appliedVersions, equals(['2.0.0', '2.1.0']));
+      expect(release.advancedBaselines, equals(['2.0.0', '2.1.0']));
+
+      // With nothing newer left, later cycles do not re-apply anything.
+      available.removeAt(0);
+      async.elapse(const Duration(hours: 4));
+      async.flushMicrotasks();
+      expect(apply.appliedVersions, equals(['2.0.0', '2.1.0']));
+
+      service.dispose();
+      async.flushMicrotasks();
+    });
+  });
+
+  test('a not-durably-recorded apply stops polling even when chaining is supported', () {
+    // The manifest bump failed, so the next launch depends on this version's
+    // pending-activation record. Chaining would overwrite it — so we stop and
+    // let the restart reconcile instead.
+    var version = 2;
+    release.onCheck = () async => _release(version: '$version.0.0');
+    apply.onApply = (release) => UpdateApplied(version: release.version, durablyRecorded: false);
+
+    runStarted(buildService(), (async) {
+      expect(apply.appliedVersions, equals(['2.0.0']));
+      expect(release.advancedBaselines, isEmpty);
+
+      version = 3;
+      async.elapse(const Duration(hours: 8));
+      async.flushMicrotasks();
+      expect(apply.appliedVersions, equals(['2.0.0']));
+    });
+  });
+
+  test('when the applier cannot chain in-session, polling stops after one apply', () {
+    // Windows keeps the displaced backup locked until a restart, so a second
+    // in-session apply would collide with it. The updater must stop instead.
+    apply.supportsInSessionChaining = false;
+    var version = 2;
+    release.onCheck = () async => _release(version: '$version.0.0');
+
+    runStarted(buildService(), (async) {
+      expect(apply.appliedVersions, equals(['2.0.0']));
+      expect(release.advancedBaselines, isEmpty);
+
+      // Even with a newer release available, no further cycle runs.
+      version = 3;
+      async.elapse(const Duration(hours: 8));
+      async.flushMicrotasks();
+      expect(apply.appliedVersions, equals(['2.0.0']));
     });
   });
 

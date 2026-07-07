@@ -145,6 +145,91 @@ void main() {
       expect(authMessage["bridgeId"], equals("br_second002"));
     });
   });
+
+  group("OrchestratorSession relay takeover (ADR A22)", () {
+    test("a 4007 replaced-close does not reconnect within the war window", () async {
+      final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_first001";
+      final harness = await _RegistrationHarness.start(repository: repository);
+      addTearDown(harness.close);
+
+      final firstSocket = await harness.relayServer.nextClient();
+      await _firstTextMessage(firstSocket);
+
+      // The relay displaces this bridge: another bridge for the account took
+      // the slot. The displaced bridge must NOT tight-loop back — it uses a
+      // long backoff, so no reconnect happens within the war window.
+      await firstSocket.close(RelayCloseCodes.bridgeReplaced, "replaced");
+
+      await expectLater(
+        harness.relayServer.nextClient(timeout: const Duration(seconds: 3)),
+        throwsA(isA<TimeoutException>()),
+        reason: "displaced bridge must not reconnect on a tight loop",
+      );
+      expect(harness.relayServer.connectedClientCount, equals(1));
+    });
+
+    test("the 1000/replaced rollout fallback also holds off reconnect", () async {
+      final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_first001";
+      final harness = await _RegistrationHarness.start(repository: repository);
+      addTearDown(harness.close);
+
+      final firstSocket = await harness.relayServer.nextClient();
+      await _firstTextMessage(firstSocket);
+
+      await firstSocket.close(1000, "replaced");
+
+      await expectLater(
+        harness.relayServer.nextClient(timeout: const Duration(seconds: 3)),
+        throwsA(isA<TimeoutException>()),
+        reason: "the rollout fallback (1000/replaced) must be treated as a takeover",
+      );
+      expect(harness.relayServer.connectedClientCount, equals(1));
+    });
+
+    test("cancel wakes a long takeover backoff promptly (no shutdown stall)", () async {
+      final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_first001";
+      final harness = await _RegistrationHarness.start(repository: repository);
+      addTearDown(harness.close);
+
+      final firstSocket = await harness.relayServer.nextClient();
+      await _firstTextMessage(firstSocket);
+
+      // Displace the bridge: it enters the minutes-order takeover backoff.
+      await firstSocket.close(RelayCloseCodes.bridgeReplaced, "replaced");
+      // Give the loop a moment to settle into the long Future.delayed wait.
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+
+      // A SIGTERM-style cancel must wake the loop immediately, not wait out the
+      // 2+ minute backoff. run() should return well within a few seconds.
+      final sw = Stopwatch()..start();
+      await harness.session.cancel();
+      await harness.runFuture.timeout(const Duration(seconds: 10));
+      sw.stop();
+
+      expect(
+        sw.elapsed,
+        lessThan(const Duration(seconds: 10)),
+        reason: "cancel must not block on the long takeover backoff",
+      );
+    });
+
+    test("a plain normal drop (1000, no replaced reason) reconnects promptly", () async {
+      final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_first001";
+      final harness = await _RegistrationHarness.start(repository: repository);
+      addTearDown(harness.close);
+
+      final firstSocket = await harness.relayServer.nextClient();
+      await _firstTextMessage(firstSocket);
+
+      // A vanilla close (network blip / relay restart) is not a takeover and
+      // must reconnect on the ordinary 1s-reset backoff, unchanged by this PR.
+      await firstSocket.close();
+
+      final secondSocket = await harness.relayServer.nextClient(timeout: const Duration(seconds: 5));
+      final authMessage = await _firstTextMessage(secondSocket);
+      expect(authMessage["bridgeId"], equals("br_first001"));
+    });
+  });
 }
 
 Future<Map<String, dynamic>> _firstTextMessage(WebSocket socket) async {

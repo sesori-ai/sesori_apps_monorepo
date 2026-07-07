@@ -43,10 +43,15 @@ final class RelayConnected extends RelayConnectionState {
 ///
 /// [closeCode] is the WebSocket close code of the dropped connection, or
 /// `null` when none is available (e.g. a failed connect attempt).
+/// [closeReason] is the paired close reason string, needed to detect a
+/// bridge-replaced close during the relay-deploy rollout window (the relay
+/// sends `1000 + "replaced"` until it emits the dedicated code); it is fragile
+/// and only consulted for that fallback — the close code is authoritative.
 final class RelayDisconnected extends RelayConnectionState {
   final int? closeCode;
+  final String? closeReason;
 
-  const RelayDisconnected({required this.closeCode});
+  const RelayDisconnected({required this.closeCode, required this.closeReason});
 }
 
 class RelayClient {
@@ -75,6 +80,12 @@ class RelayClient {
   /// The WebSocket close code of the current connection, available once the
   /// connection has closed and until [close] or [reconnect] discards it.
   int? get closeCode => _channel?.closeCode;
+
+  /// The WebSocket close reason of the current connection, paired with
+  /// [closeCode]. Only meaningful for the bridge-replaced rollout fallback
+  /// (`1000 + "replaced"`); close reason strings are fragile, so close-code
+  /// semantics are authoritative everywhere else.
+  String? get closeReason => _channel?.closeReason;
 
   /// The access token most recently sent in an auth message by [connect], or
   /// `null` if the last connect sent no auth (empty token). Lets a live re-auth
@@ -110,7 +121,7 @@ class RelayClient {
     try {
       await channel.ready.timeout(_connectTimeout);
     } catch (e) {
-      _connectionState.add(const RelayDisconnected(closeCode: null));
+      _connectionState.add(const RelayDisconnected(closeCode: null, closeReason: null));
       // Clean up the channel if connection fails or times out to prevent
       // zombie WebSocket connections from lingering.
       try {
@@ -156,7 +167,9 @@ class RelayClient {
 
   void _handleChannelDone(IOWebSocketChannel channel) {
     if (!identical(_channel, channel)) return;
-    _connectionState.add(RelayDisconnected(closeCode: channel.closeCode));
+    _connectionState.add(
+      RelayDisconnected(closeCode: channel.closeCode, closeReason: channel.closeReason),
+    );
   }
 
   Future<void> reconnect() async {

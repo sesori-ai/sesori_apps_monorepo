@@ -8,8 +8,8 @@
 
 ## Current pointer
 
-- **Last completed phase:** Phase 1 — PR 1.11 `unregister-and-exit` control command via `ControlUnregisterService` (PR raised on branch `next-desktop-plan-step`)
-- **Next up:** Phase 1 — PR 1.12 Single-live precedence under supervised `--hidden`
+- **Last completed phase:** Phase 1 — PR 1.14 Relay replaced-close (`4007`) → takeover state, no reconnect war (ADR A22) — bridge PR raised on branch `start-next-step-desktop-plan`; relay prerequisite raised as `sesori-ai/sesori_relay_server#7` (must deploy to prod before this merges)
+- **Next up:** Phase 1 — PR 1.15 Dev control-host harness for manual supervised testing (`tool/`)
 - **Branch:** one feature branch per PR, cut from `main`
 
 > **Tracking lives in four places that MUST move together in the same PR.**
@@ -349,13 +349,14 @@ seams through `module_core` interfaces, not `AuthManager` internals.
 | A22 | A bridge displaced by the relay does **NOT** tight-loop reconnect: standalone logs a loud takeover warning and retries only on a long capped backoff; supervised additionally surfaces a takeover state over the control channel and the GUI's "Take over" action is a plain helper respawn. **Detection keys on a dedicated relay close code `4007 bridgeReplaced`** (small relay change shipped with PR 1.14); today's `1000 + reason "replaced"` is only a rollout fallback, because intermediaries may strip/rewrite close **reason strings** while codes survive, and the codebase already keys close semantics on codes (`4006` precedent) | the relay holds a single bridge slot per account and closes the displaced bridge on contact; with today's 1s-reset backoff two always-on bridges (two desktops, or desktop + forgotten systemd bridge) mutually kick each other forever while phones see `bridge_connected` flapping. Desktop autostart (Decision #7) makes this mainstream. Stage C multi-bridge is the real fix — this keeps losing the slot graceful until then |
 | A23 | Supervised auth-required exit uses a **dedicated exit-code sentinel `87`** (alongside restart `86`): when the GUI cannot supply a token at bootstrap, the helper emits a `loginNeeded` prompt (best-effort) and exits `87` | the GUI's exit-code state machine (PR 2.7) must distinguish "needs login" from a crash, or it backoff-respawns a helper that can never start; inferring auth-required from a prompt seen shortly before a generic exit is racy — the exit code is the authoritative signal, the prompt is advisory |
 | A24 | If the OS tray is unavailable (stock GNOME hides AppIndicators without an extension), the GUI falls back to **windowed mode** and never boots `--hidden` | a tray-only hidden app with no tray icon is running but unreachable; hidden autostart is only safe when a tray icon is actually visible |
+| A25 | **Same-machine single-live precedence:** enforcement stays mode-agnostic (startup mutex + live scan + replace ask + SIGTERM→SIGKILL); **explicit confirmation wins** — a terminal "y" or a GUI prompt accept replaces the incumbent regardless of the incumbent's mode (a replaced supervised helper exits 0 via its normal signal teardown = deliberate stop, not a crash); **no answer ⇒ the incumbent wins and the newcomer exits typed** — standalone keeps today's loud abort (exit 1), a supervised newcomer whose contention ends in decline or `nonInteractive` (GUI declined / unreachable / prompt timeout / teardown / unidentifiable mutex holder) exits with the dedicated sentinel **`88` (`SupervisedExitCode.bridgeContention`)**; GUI render/auto-answer policy for a silent `--hidden` autostart and the "Take over" action (plain respawn + accept the fresh replace prompt) live GUI-side (PR 2.7/2.9), not in the bridge | a supervised helper has no stdin, so contention used to resolve `nonInteractive` → generic exit 1 — indistinguishable from a crash, so the GUI's state machine would backoff-respawn into an endless re-prompt loop while the incumbent (e.g. a dev's terminal bridge) keeps getting asked; a typed exit lets the GUI surface "another bridge is running — take over?" exactly once, and keeping the ask/kill mechanics mode-agnostic preserves today's standalone behaviour byte-for-byte |
 
 ## 8. Open risks & lead-time register
 
 | Item | Status | Owner | Notes |
 |---|---|---|---|
 | Windows code-signing cert | **OPEN — lead time, START PROCUREMENT NOW** | TBD | blocks PR 3.4 (signed Windows); EV clears SmartScreen faster. Non-code and parallelizable — do not serialize behind Phase 2; if it slips, ship macOS-first (phase-3 preamble allows per-OS v1). |
-| Relay single-slot replace war (cross-machine) | **OPEN → PR 1.14** | TBD | Relay keeps ONE bridge slot per account and closes the displaced bridge with 1000/`"replaced"`; the bridge treats that as a generic drop and reconnects on a backoff that resets to 1s — two always-on bridges mutually kick forever, phones see flapping. PR 1.12's mutex only covers same-machine. PR 1.14 (ADR A22) adds a dedicated relay close code `4007` + the takeover policy; verified in MT-1/MT-3. Stage C multi-bridge dissolves the problem properly. |
+| Relay single-slot replace war (cross-machine) | **RESOLVED in bridge PR 1.14 (relay deploy gate open → `sesori_relay_server#7`)** | TBD | Relay keeps ONE bridge slot per account and closed the displaced bridge with 1000/`"replaced"`; the bridge treated that as a generic drop and reconnected on a backoff that resets to 1s — two always-on bridges mutually kick forever, phones see flapping. PR 1.12's mutex only covers same-machine. PR 1.14 (ADR A22) adds `RelayCloseCodes.bridgeReplaced = 4007` + `isBridgeReplaced` detection (code-authoritative, `1000/"replaced"` rollout fallback), a minutes-order takeover backoff in the orchestrator reconnect loop (standalone `Console.warning`), and a `ControlRelayConnectionState.takenOver` status push (supervised). **Relay prerequisite `sesori-ai/sesori_relay_server#7` must be merged AND deployed to prod before the bridge PR merges** — the bridge's `1000/"replaced"` fallback keeps an older relay safe during rollout. Verified in MT-1/MT-3. Stage C multi-bridge dissolves the problem properly. |
 | Linux tray availability (GNOME) | OPEN | TBD | `tray_manager` needs AppIndicator; stock GNOME hides tray icons without an extension → tray-only `--hidden` boot = running but unreachable app. PR 2.9 adds windowed fallback, PR 2.11 refuses hidden boot without a tray (ADR A24); verified on GNOME in MT-3/MT-4. |
 | GUI crash → helper self-exits (A9) → bridge silently down | OPEN — accepted for v1 | TBD | Login items don't relaunch crashed apps (macOS `SMAppService`, Windows run keys), so a 2am GUI crash kills the bridge until the user notices a missing tray icon. Deliberate v1 trade against orphaned helpers; revisit post-v1 (watchdog / `KeepAlive`-style relaunch) if telemetry (PR 2.14) shows it matters. |
 | Control-channel secret bootstrap (off-argv) | OPEN | TBD | ADR A8; designed in PR 1.1 / PR 2.6 |
@@ -396,9 +397,9 @@ them). Only the user checks an MT box.
 - ☑ 1.9 `BridgeControlMessageDispatcher` + prompts/Console → control events + auth-required exit `87` — Med / M
 - ☑ 1.10 Status push (relay/plugin/active sessions) — Low / S-M
 - ☑ 1.11 `unregister-and-exit` control command — Low / S-M
-- ☐ 1.12 Single-live precedence under supervised `--hidden` — Med / M
-- ☐ 1.13 Tee `RuntimeProvisionProgress` → control channel — Low / S-M
-- ☐ 1.14 Relay replaced-close (`4007`) → takeover state, no reconnect war (ADR A22) — Med / S-M
+- ☑ 1.12 Single-live precedence under supervised `--hidden` — Med / M
+- ☑ 1.13 Tee `RuntimeProvisionProgress` → control channel — Low / S-M
+- ☑ 1.14 Relay replaced-close (`4007`) → takeover state, no reconnect war (ADR A22) — Med / S-M
 - ☐ 1.15 Dev control-host harness for manual supervised testing (`tool/`) — Low / S
 - ☐ MT-1 Manual checkpoint: bridge supervised mode end-to-end (see phase doc) — user-run
 

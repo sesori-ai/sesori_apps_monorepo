@@ -122,10 +122,11 @@ class PregoDivider extends StatelessWidget {
 /// A grouped-list row: leading slot, title (+ optional subtitle), trailing slot,
 /// with press feedback and an optional bottom divider.
 ///
-/// Apple: delegates to [GlassListTile] (identical to the existing glass rows).
-/// Android: a flat [InkWell] row with the same metrics — 32px leading box, 12px
-/// gap, title/subtitle column, trailing — and a [PregoDivider] below unless it
-/// is the last row.
+/// Apple: the row itself is a [GlassListTile] (identical metrics to the existing
+/// glass rows). Android: a flat [InkWell] row with the same metrics — 32px
+/// leading box, 12px gap, title/subtitle column, trailing. On both paths the row
+/// composes a [PregoDivider] below itself unless it is the last row —
+/// [GlassListTile] is position-agnostic and no longer owns divider rendering.
 class PregoListTile extends StatelessWidget {
   const PregoListTile({
     super.key,
@@ -166,24 +167,36 @@ class PregoListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (glassEffectsEnabled()) {
-      return GlassListTile(
-        leading: leading,
-        title: title,
-        subtitle: subtitle,
-        trailing: trailing,
-        onTap: onTap,
-        isLast: isLast,
-        showDivider: showDivider,
-        contentPadding: contentPadding,
-        leadingIconColor: leadingIconColor,
-        titleStyle: titleStyle,
-        subtitleStyle: subtitleStyle,
-        dividerIndent: dividerIndent,
+    // GlassListTile is position-agnostic in liquid_glass_widgets — it no longer
+    // draws its own divider. PregoListTile owns that layout concern on both
+    // paths, composing a PregoDivider below the row (frosted hairline on Apple,
+    // flat Divider on Android) so the same call site renders either way.
+    final tile = glassEffectsEnabled() ? _buildGlass() : _buildFlat(context);
+
+    if (showDivider && !isLast) {
+      final indent = dividerIndent ?? (leading != null ? 56.0 : 16.0);
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [tile, PregoDivider(indent: indent)],
       );
     }
 
-    return _buildFlat(context);
+    return tile;
+  }
+
+  Widget _buildGlass() {
+    return GlassListTile(
+      leading: leading,
+      title: title,
+      subtitle: subtitle,
+      trailing: trailing,
+      onTap: onTap,
+      contentPadding: contentPadding,
+      leadingIconColor: leadingIconColor,
+      titleStyle: titleStyle,
+      subtitleStyle: subtitleStyle,
+    );
   }
 
   Widget _buildFlat(BuildContext context) {
@@ -233,14 +246,6 @@ class PregoListTile extends StatelessWidget {
     Widget tile = Padding(padding: contentPadding, child: row);
     if (onTap != null) {
       tile = InkWell(onTap: onTap, child: tile);
-    }
-
-    if (showDivider && !isLast) {
-      final indent = dividerIndent ?? (leading != null ? 56.0 : 16.0);
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [tile, PregoDivider(indent: indent)],
-      );
     }
 
     return tile;

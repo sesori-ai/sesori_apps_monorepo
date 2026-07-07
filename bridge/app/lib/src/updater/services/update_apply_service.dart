@@ -51,6 +51,13 @@ class UpdateApplyService {
   @visibleForTesting
   void Function(String message) logWarning = Log.w;
 
+  /// Whether a successful apply can be chained with another in the same session
+  /// before a restart activates it. Delegates to the platform applier: POSIX can
+  /// clear the displaced backup of the still-running binary, Windows cannot until
+  /// the next launch. The background updater consults this to decide whether to
+  /// keep polling after an apply or wait for a restart.
+  bool get supportsInSessionChaining => _installationRepository.supportsInSessionChaining;
+
   /// Applies the staged payload at [stagingPath] in place, under the
   /// cross-process update lock. Returns an [UpdateApplyOutcome] describing the
   /// result. The durable attempt record and the update log are written here, but
@@ -132,9 +139,9 @@ class UpdateApplyService {
       return outcome;
     }
 
-    await _recordPendingActivation(attempt: attempt, release: release);
+    final bool durablyRecorded = await _recordPendingActivation(attempt: attempt, release: release);
     await _cleanupStaging(stagingPath: stagingPath);
-    return UpdateApplied(version: release.version);
+    return UpdateApplied(version: release.version, durablyRecorded: durablyRecorded);
   }
 
   Future<UpdateApplyOutcome> _recordSwapFailure({
@@ -157,7 +164,15 @@ class UpdateApplyService {
     return UpdateApplyFailed(reason: error.toString(), logPath: _logRepository.logPath);
   }
 
-  Future<void> _recordPendingActivation({
+  /// Records the post-swap bookkeeping and returns whether it fully succeeded,
+  /// i.e. BOTH the durable `appliedPendingActivation` record and the
+  /// managed-runtime manifest were written. A false return means at least one of
+  /// those writes failed — the manifest may be stale (the next launch would rely
+  /// on the pending-activation record to retry the bump), or the record itself
+  /// may have been cleared. Either way the post-swap state is not fully
+  /// persisted, so the caller must not let a chained in-session apply proceed
+  /// before a restart reconciles it.
+  Future<bool> _recordPendingActivation({
     required UpdateAttempt attempt,
     required ReleaseInfo release,
   }) async {
@@ -203,7 +218,14 @@ class UpdateApplyService {
       await _installationRepository.recordManagedVersion(installRoot: _installRoot, version: release.version);
     } on Object catch (manifestError) {
       logWarning('Failed to update the managed runtime manifest: $manifestError');
+      return false;
     }
+
+    // Fully persisted only when BOTH the durable activation status and the
+    // manifest bump landed. If the status write failed above we cleared the
+    // record, so the next launch cannot confirm-and-retry this version — it is
+    // not safe to chain over it either.
+    return pendingActivationRecorded;
   }
 
   Future<void> _cleanupStaging({required String stagingPath}) {

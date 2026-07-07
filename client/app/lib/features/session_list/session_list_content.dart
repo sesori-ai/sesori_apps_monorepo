@@ -51,9 +51,8 @@ class SessionListContent extends StatelessWidget {
     final state = context.watch<SessionListCubit>().state;
 
     return switch (state) {
-      SessionListLoading() => const SliverFillRemaining(
-        hasScrollBody: false,
-        child: Center(child: CircularProgressIndicator()),
+      SessionListLoading() => SliverToBoxAdapter(
+        child: PregoSkeletonList(semanticLabel: loc.sessionListLoadingSemantics),
       ),
       SessionListLoaded(:final sessions, :final showArchived, :final activeSessionIds, :final unseenBySessionId) =>
         sessions.isEmpty

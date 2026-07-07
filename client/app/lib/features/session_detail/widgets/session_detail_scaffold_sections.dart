@@ -45,7 +45,6 @@ class SessionDetailPendingBanner extends StatelessWidget {
         settings: LiquidGlassSettings(glassColor: backgroundColor.withValues(alpha: 0.6)),
         child: GlassListTile(
           onTap: onTap,
-          showDivider: false,
           leading: Icon(icon, size: 20, color: foregroundColor),
           title: Text(label),
           titleStyle: prego.textTheme.textMd.bold.copyWith(color: foregroundColor),

@@ -15,9 +15,13 @@ import 'package:test/test.dart';
 
 class _FakeInstallationRepository implements UpdateInstallationRepository {
   Object? applyError;
+  Object? recordError;
   int applyCount = 0;
   int sweepCount = 0;
   String? recordedVersion;
+
+  @override
+  bool supportsInSessionChaining = true;
 
   @override
   Future<void> applyInPlace({required String installRoot, required String stagingPath}) async {
@@ -34,6 +38,9 @@ class _FakeInstallationRepository implements UpdateInstallationRepository {
 
   @override
   Future<void> recordManagedVersion({required String installRoot, required String version}) async {
+    if (recordError != null) {
+      throw recordError!;
+    }
     recordedVersion = version;
   }
 }
@@ -160,7 +167,13 @@ void main() {
 
     final outcome = await service.apply(release: _release(), stagingPath: stagingPath);
 
-    expect(outcome, isA<UpdateApplied>().having((o) => o.version, 'version', '2.0.0'));
+    expect(
+      outcome,
+      isA<UpdateApplied>()
+          .having((o) => o.version, 'version', '2.0.0')
+          // Fully persisted: safe for the background updater to chain over.
+          .having((o) => o.durablyRecorded, 'durablyRecorded', isTrue),
+    );
     expect(installation.applyCount, 1);
     // The managed-runtime manifest is bumped so the npm bootstrap won't clobber
     // the freshly swapped binary.
@@ -179,8 +192,12 @@ void main() {
     final outcome = await service.apply(release: _release(), stagingPath: stagingPath);
 
     // The swap landed, so apply still succeeds; recording activation is
-    // best-effort.
-    expect(outcome, isA<UpdateApplied>());
+    // best-effort. But the activation record was lost, so the next launch can't
+    // confirm-and-retry this version — it is not safe to chain over.
+    expect(
+      outcome,
+      isA<UpdateApplied>().having((o) => o.durablyRecorded, 'durablyRecorded', isFalse),
+    );
     expect(installation.applyCount, 1);
     // The inFlight record could not be advanced to appliedPendingActivation, so
     // it is cleared — the next launch must not reconcile this successful update
@@ -189,6 +206,23 @@ void main() {
     expect(attempts.cleared, isTrue);
     expect(installation.recordedVersion, '2.0.0');
     expect(warnings, contains(predicate<String>((w) => w.contains('pending activation'))));
+  });
+
+  test('a manifest bump failure marks the apply as not durably recorded', () async {
+    // The swap and the durable activation status both landed, but the manifest
+    // bump failed. The next launch relies on the appliedPendingActivation record
+    // to retry the bump, so a chained apply must not overwrite it.
+    installation.recordError = StateError('manifest unwritable');
+    final service = buildService();
+
+    final outcome = await service.apply(release: _release(), stagingPath: stagingPath);
+
+    expect(
+      outcome,
+      isA<UpdateApplied>().having((o) => o.durablyRecorded, 'durablyRecorded', isFalse),
+    );
+    expect(attempts.saved.last.status, UpdateAttemptStatus.appliedPendingActivation);
+    expect(warnings, contains(predicate<String>((w) => w.contains('managed runtime manifest'))));
   });
 
   test('a log-append failure after the status write still bumps the manifest', () async {
@@ -200,7 +234,12 @@ void main() {
 
     final outcome = await service.apply(release: _release(), stagingPath: stagingPath);
 
-    expect(outcome, isA<UpdateApplied>());
+    // Status write + manifest bump both landed, so this is durably recorded even
+    // though the trailing log append failed.
+    expect(
+      outcome,
+      isA<UpdateApplied>().having((o) => o.durablyRecorded, 'durablyRecorded', isTrue),
+    );
     expect(attempts.saved.last.status, UpdateAttemptStatus.appliedPendingActivation);
     expect(installation.recordedVersion, '2.0.0');
     expect(warnings, contains(predicate<String>((w) => w.contains('pending activation'))));

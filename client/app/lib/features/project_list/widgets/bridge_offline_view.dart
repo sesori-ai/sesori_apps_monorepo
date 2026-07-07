@@ -104,12 +104,44 @@ class _BridgeOfflineViewState extends State<_BridgeOfflineView> {
                       ),
                     ),
                   ),
+                  // Always visible: the bridge is already installed here, so the
+                  // common recovery is to (re)start it rather than reinstall.
+                  const SizedBox(height: PregoSpacing.xl),
+                  const _RunBridgeCommand(),
                 ],
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// The bridge-offline "Run the bridge" command: a label and a single-command
+/// box showing [BridgeInstall.runCommand]. Always visible (unlike the collapsed
+/// install commands) because the bridge is already installed, so the common
+/// recovery is to start it. Reuses the onboarding command-box chrome
+/// ([_CommandBoxFrame] / [_CommandActionRow]) so it matches the install
+/// commands.
+class _RunBridgeCommand extends StatelessWidget {
+  const _RunBridgeCommand();
+
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          context.loc.projectsBridgeOfflineRunBridge,
+          style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
+        ),
+        const SizedBox(height: PregoSpacing.md),
+        const _CommandBoxFrame(
+          child: _CommandActionRow(command: BridgeInstall.runCommand),
+        ),
+      ],
     );
   }
 }
