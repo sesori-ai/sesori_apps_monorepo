@@ -335,9 +335,9 @@ class _OsSegmentedControl extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               textAlign: TextAlign.center,
-                              // Selected segment reads slightly heavier (medium),
-                              // matching iOS.
-                              style: (i == selectedIndex ? prego.textTheme.textSm.medium : prego.textTheme.textSm.regular)
+                              // Selected segment is bolded to highlight it,
+                              // matching the design.
+                              style: (i == selectedIndex ? prego.textTheme.textSm.bold : prego.textTheme.textSm.regular)
                                   .copyWith(color: prego.colors.textPrimary),
                             ),
                           ),
