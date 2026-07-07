@@ -24,7 +24,10 @@ jobs:
   deploy:
     name: Build and Deploy to Internal Track
     runs-on: ${{ inputs.runner }}
-    timeout-minutes: 30
+    # Headroom for a bounded retry of upload_to_play_store: each ~74MB AAB upload
+    # runs ~5 min, and the lane may re-upload up to twice on a transient Play API
+    # "uploads are not completed yet" commit rejection.
+    timeout-minutes: 45
 
     env:
       VERSION_CODE: ${{ inputs.build_number }}
