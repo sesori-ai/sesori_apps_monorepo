@@ -92,6 +92,18 @@ class AcpEventMapper {
   String projectForSession(String sessionId) =>
       _sessionProject[sessionId] ?? launchDirectory;
 
+  /// Drops every per-session cache entry for [sessionId] — called when the
+  /// session is deleted so live-render state (model, project, turn counters,
+  /// started parts, live tools) doesn't accumulate across a long-lived process.
+  void forgetSession(String sessionId) {
+    _sessionModel.remove(sessionId);
+    _sessionProvider.remove(sessionId);
+    _sessionProject.remove(sessionId);
+    _turnSeq.remove(sessionId);
+    _startedParts.remove(sessionId);
+    _liveTools.removeWhere((key, _) => key.startsWith("$sessionId:"));
+  }
+
   /// "sessionId:toolCallId" -> the last-rendered live tool state. ACP
   /// `tool_call_update` notifications are partial, so this preserves the tool's
   /// name/title/status/output across updates that omit them.
@@ -240,20 +252,9 @@ class AcpEventMapper {
       status: acpToolStatus(update["status"]),
       output: acpToolOutputText(update),
     );
-    _liveTools["$sessionId:$toolCallId"] = state;
+    _retainOrPrune("$sessionId:$toolCallId", state);
     return [
-      BridgeSseMessageUpdated(
-        info: shared.Message.assistant(
-          id: messageId,
-          sessionID: sessionId,
-          agent: agentId,
-          modelID: modelForSession(sessionId),
-          providerID: providerForSession(sessionId),
-          // ACP carries no per-message timestamps; the mobile model treats
-          // a null time as "unknown".
-          time: null,
-        ).toJson(),
-      ),
+      _toolEnvelope(sessionId: sessionId, messageId: messageId),
       _toolPartEvent(sessionId: sessionId, messageId: messageId, state: state),
     ];
   }
@@ -272,26 +273,60 @@ class AcpEventMapper {
     // which already merges — keeping live and history renderings consistent.
     final key = "$sessionId:$toolCallId";
     final prior = _liveTools[key];
-    final hasName =
-        (update["kind"] is String && (update["kind"] as String).isNotEmpty) ||
-        (update["title"] is String && (update["title"] as String).isNotEmpty);
+    // Only re-resolve the tool identifier when `kind` is explicitly present; a
+    // title-only update must NOT overwrite the canonical id (e.g. "edit") with
+    // the title text (`title` lives separately in PluginToolState.title). This
+    // matches the replay collector, which preserves the original tool name.
+    final hasKind = update["kind"] is String && (update["kind"] as String).isNotEmpty;
     final newOutput = acpToolOutputText(update);
     final state = _LiveTool(
-      tool: hasName ? acpToolName(update) : (prior?.tool ?? "tool"),
+      tool: hasKind ? acpToolName(update) : (prior?.tool ?? acpToolName(update)),
       title: update.containsKey("title") && update["title"] is String
           ? update["title"] as String?
           : prior?.title,
       status: update.containsKey("status") ? acpToolStatus(update["status"]) : (prior?.status ?? PluginToolStatus.pending),
       output: newOutput ?? prior?.output,
     );
-    _liveTools[key] = state;
     final events = <BridgeSseEvent>[
+      // ACP events can be reordered (reconnect / resume / replay), so a
+      // `tool_call_update` may arrive before its `tool_call` (or after the
+      // entry was pruned on completion). When it is first-seen, synthesize the
+      // message envelope — like `_textChunk` does — so the client can render
+      // the part instead of receiving an orphan it drops.
+      if (prior == null) _toolEnvelope(sessionId: sessionId, messageId: messageId),
       _toolPartEvent(sessionId: sessionId, messageId: messageId, state: state),
     ];
+    _retainOrPrune(key, state);
     if (_isFileMutation(update)) {
       events.add(BridgeSseSessionDiff(sessionID: sessionId));
     }
     return events;
+  }
+
+  /// Retains [state] for future partial merges, or prunes it once the tool has
+  /// reached a terminal status — no further updates modify a finished tool, so
+  /// keeping it would grow `_liveTools` without bound in a long-lived process.
+  void _retainOrPrune(String key, _LiveTool state) {
+    if (state.status == PluginToolStatus.completed || state.status == PluginToolStatus.error) {
+      _liveTools.remove(key);
+    } else {
+      _liveTools[key] = state;
+    }
+  }
+
+  BridgeSseMessageUpdated _toolEnvelope({required String sessionId, required String messageId}) {
+    return BridgeSseMessageUpdated(
+      info: shared.Message.assistant(
+        id: messageId,
+        sessionID: sessionId,
+        agent: agentId,
+        modelID: modelForSession(sessionId),
+        providerID: providerForSession(sessionId),
+        // ACP carries no per-message timestamps; the mobile model treats a null
+        // time as "unknown".
+        time: null,
+      ).toJson(),
+    );
   }
 
   BridgeSseMessagePartUpdated _toolPartEvent({

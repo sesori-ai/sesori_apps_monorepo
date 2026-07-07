@@ -768,7 +768,10 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     _sessionStatuses.remove(sessionId);
     _residentSessions.remove(sessionId);
     _sessionDirectories.remove(sessionId);
-    eventMapper.setSessionProject(sessionId, null);
+    // Drops the session's project attribution plus all other per-session mapper
+    // caches (model, turn counters, started parts, live tools) so nothing
+    // accumulates for a deleted session.
+    eventMapper.forgetSession(sessionId);
   }
 
   @override

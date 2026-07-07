@@ -154,6 +154,79 @@ void main() {
       expect(part.state?.output, "starting", reason: "prior output preserved when the update omits it");
     });
 
+    test("a title-only tool_call_update keeps the canonical tool id", () {
+      mapper.map(update({
+        "sessionUpdate": "tool_call",
+        "toolCallId": "tc-2",
+        "kind": "edit",
+        "title": "Edit main.dart",
+        "status": "pending",
+      }));
+      // An update with a new title but no kind must not overwrite the canonical
+      // "edit" identifier with the title text.
+      final events = mapper.map(update({
+        "sessionUpdate": "tool_call_update",
+        "toolCallId": "tc-2",
+        "title": "Edit main.dart (revised)",
+        "status": "in_progress",
+      }));
+      final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
+      expect(part.tool, "edit", reason: "no kind → canonical id preserved");
+      expect(part.state?.title, "Edit main.dart (revised)");
+    });
+
+    test("a first-seen tool_call_update synthesizes the message envelope", () {
+      // No prior tool_call (reordered on reconnect/resume/replay, or after the
+      // completed entry was pruned): the update must still carry an envelope so
+      // the client can render the part instead of dropping an orphan.
+      final events = mapper.map(update({
+        "sessionUpdate": "tool_call_update",
+        "toolCallId": "tc-orphan",
+        "kind": "read",
+        "status": "in_progress",
+      }));
+      expect(events.whereType<BridgeSseMessageUpdated>(), hasLength(1));
+      expect(events.whereType<BridgeSseMessagePartUpdated>(), hasLength(1));
+    });
+
+    test("a completed tool is pruned; a later update is treated as first-seen", () {
+      mapper.map(update({
+        "sessionUpdate": "tool_call",
+        "toolCallId": "tc-3",
+        "kind": "read",
+        "status": "pending",
+      }));
+      final done = mapper.map(update({
+        "sessionUpdate": "tool_call_update",
+        "toolCallId": "tc-3",
+        "status": "completed",
+      }));
+      expect(done.whereType<BridgeSseMessageUpdated>(), isEmpty, reason: "prior existed → no envelope");
+      // The completed entry was pruned, so a further update is first-seen again.
+      final after = mapper.map(update({
+        "sessionUpdate": "tool_call_update",
+        "toolCallId": "tc-3",
+        "status": "in_progress",
+      }));
+      expect(after.whereType<BridgeSseMessageUpdated>(), hasLength(1), reason: "entry pruned → first-seen");
+    });
+
+    test("forgetSession drops live tool state for the session", () {
+      mapper.map(update({
+        "sessionUpdate": "tool_call",
+        "toolCallId": "tc-4",
+        "kind": "read",
+        "status": "pending",
+      }));
+      mapper.forgetSession("s1");
+      final after = mapper.map(update({
+        "sessionUpdate": "tool_call_update",
+        "toolCallId": "tc-4",
+        "status": "in_progress",
+      }));
+      expect(after.whereType<BridgeSseMessageUpdated>(), hasLength(1), reason: "state cleared → first-seen");
+    });
+
     test("tool_call_update on an edit emits a session diff", () {
       final events = mapper.map(update({
         "sessionUpdate": "tool_call_update",
