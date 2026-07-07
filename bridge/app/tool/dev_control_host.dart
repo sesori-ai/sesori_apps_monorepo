@@ -101,7 +101,9 @@ String? _readStoredToken() {
 
   final file = File(path);
   if (!file.existsSync()) {
-    stderr.writeln("No token at $path — log in with the standalone bridge once, or pass --token. Continuing token-less.");
+    stderr.writeln(
+      "No token at $path — log in with the standalone bridge once, or set SESORI_DEV_CONTROL_TOKEN. Continuing token-less.",
+    );
     return null;
   }
 
