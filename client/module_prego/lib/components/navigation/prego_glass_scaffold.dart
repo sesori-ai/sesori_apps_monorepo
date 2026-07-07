@@ -317,29 +317,37 @@ class _PregoGlassScaffoldState extends State<PregoGlassScaffold> {
       if (overlay != null) Positioned.fill(child: overlay),
     ];
 
-    // GlassScaffold itself rebuilds per banner-animation frame: its
-    // appBarHeight drives the body offset of non-extended bodies
-    // ([extendBodyBehindBar] false), which has no listenable seam of its own.
-    // The rebuild is cheap — every child above is a stable widget instance, so
+    // GlassScaffold's appBarHeight drives the body offset only for a
+    // NON-extended body ([extendBodyBehindBar] false), which has no listenable
+    // seam of its own — so that case rebuilds the scaffold per banner-animation
+    // frame. With an extended body the banner height is irrelevant to
+    // GlassScaffold (the body is Positioned.fill behind the bar, and our own
+    // gradient/spacer carry the fade), so it is built once and the per-frame
+    // tracking stays with the spacer, gradient and inset scope. The rebuild,
+    // when it runs, is cheap: every child above is a stable widget instance, so
     // their elements short-circuit and only GlassScaffold's layout math reruns.
-    final scaffold = ValueListenableBuilder<double>(
-      valueListenable: _bannerHeight,
-      builder: (context, bannerHeight, _) => GlassScaffold(
-        backgroundColor: backgroundColor,
-        statusBarStyle: GlassStatusBarStyle.auto,
-        extendBody: extendBehind,
-        topEdgeFade: false, // Disable the top edge fade -- we use our own custom gradient
-        bottomEdgeFade: false, // Disable the bottom edge fade -- we use our own custom gradient
-        floatingActionButton: widget.floatingActionButton,
-        bodyOverlays: bodyOverlays.isEmpty ? null : bodyOverlays,
-        appBar: topBar,
-        // The top bar is a Column (not a PreferredSizeWidget), so GlassScaffold
-        // takes the bar extent from this parameter — the bar row plus the
-        // banner's current animated height.
-        appBarHeight: PregoTopNavigation.barHeight + bannerHeight,
-        body: scrollView,
-      ),
+    GlassScaffold buildScaffold(double bannerHeight) => GlassScaffold(
+      backgroundColor: backgroundColor,
+      statusBarStyle: GlassStatusBarStyle.auto,
+      extendBody: extendBehind,
+      topEdgeFade: false, // Disable the top edge fade -- we use our own custom gradient
+      bottomEdgeFade: false, // Disable the bottom edge fade -- we use our own custom gradient
+      floatingActionButton: widget.floatingActionButton,
+      bodyOverlays: bodyOverlays.isEmpty ? null : bodyOverlays,
+      appBar: topBar,
+      // The top bar is a Column (not a PreferredSizeWidget), so GlassScaffold
+      // takes the bar extent from this parameter — the bar row plus the
+      // banner's current animated height.
+      appBarHeight: PregoTopNavigation.barHeight + bannerHeight,
+      body: scrollView,
     );
+
+    final Widget scaffold = extendBehind
+        ? buildScaffold(0)
+        : ValueListenableBuilder<double>(
+            valueListenable: _bannerHeight,
+            builder: (context, bannerHeight, _) => buildScaffold(bannerHeight),
+          );
 
     return _TopBarInsetScope(
       baseInset: topPad + PregoTopNavigation.barHeight,
@@ -395,8 +403,10 @@ class _AnimatedBannerSlotState extends State<_AnimatedBannerSlot> {
   @override
   void didUpdateWidget(_AnimatedBannerSlot oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Runs on every ancestor rebuild (including each frame of the height
-    // animation), so this must stay a pure capture with no other side effects.
+    // Runs when the enclosing scaffold rebuilds this slot (a banner toggle, a
+    // MediaQuery change, an ancestor rebuild) — not per animation frame, since
+    // AnimatedSize animates in layout without rebuilding here. Keep it a pure
+    // capture with no other side effects.
     if (widget.banner != null) _retained = widget.banner;
   }
 

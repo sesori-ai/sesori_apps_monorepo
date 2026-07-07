@@ -32,10 +32,21 @@ class ConnectionBanner extends StatelessWidget {
     // Deliberately does not read the cubit here: the nav banner slot keeps
     // rendering a retained copy of this widget while animating the banner
     // away, and that copy must keep showing stable content.
-    return PregoInlineAlertsNotifications(
-      type: PregoInlineAlertsNotificationsType.warning,
-      title: context.loc.bridgeDisconnectedTitle,
-      icon: TablerRegular.broadcast_off,
+    //
+    // Wrapped in a live region so VoiceOver/TalkBack announce the offline
+    // status when the banner appears, even though focus doesn't move to it —
+    // the same treatment (container + liveRegion, keeping the child's own text
+    // semantics) Flutter's own SnackBar uses, so the title stays navigable as
+    // well as announced. The nav slot excludes the departing retained copy from
+    // semantics, so recovery doesn't re-announce.
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      child: PregoInlineAlertsNotifications(
+        type: PregoInlineAlertsNotificationsType.warning,
+        title: context.loc.bridgeDisconnectedTitle,
+        icon: TablerRegular.broadcast_off,
+      ),
     );
   }
 }

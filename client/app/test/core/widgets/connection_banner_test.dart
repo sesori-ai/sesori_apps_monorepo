@@ -75,6 +75,27 @@ void main() {
     expect(alert.icon, TablerRegular.broadcast_off);
   });
 
+  testWidgets("marks the offline banner as a live region so screen readers announce it", (tester) async {
+    final handle = tester.ensureSemantics();
+    final cubit = StubConnectionOverlayCubit(initialState: const ConnectionOverlayState.bridgeOffline());
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(
+      _app(cubit: cubit, home: const Scaffold(body: ConnectionBanner())),
+    );
+
+    // A live region is announced by VoiceOver/TalkBack when it appears without
+    // moving focus — the whole point of the banner. The title stays a readable
+    // text node inside it (so it's also navigable), so assert both.
+    final banner = tester.getSemantics(find.byType(ConnectionBanner));
+    expect(banner.flagsCollection.isLiveRegion, isTrue);
+    expect(find.text("Bridge disconnected"), findsOneWidget);
+
+    // Dispose in the body, not a tearDown: the framework verifies handle
+    // disposal at the end of the test body, before tearDowns run.
+    handle.dispose();
+  });
+
   testWidgets("bridge going offline slides the banner into the top nav and back out on recovery", (tester) async {
     final cubit = _MutableConnectionOverlayCubit();
     addTearDown(cubit.close);
