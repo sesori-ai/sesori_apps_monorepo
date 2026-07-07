@@ -19,6 +19,7 @@ import "../../core/extensions/text_style_x.dart";
 import "../../core/external_link.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/support_links.dart";
+import "../../core/widgets/connection_banner.dart";
 import "../../core/widgets/connection_graphic.dart";
 import "add_project_dialog.dart";
 import "rename_project_dialog.dart";
@@ -168,6 +169,10 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
     return PregoGlassScaffold(
       title: isConnectOnboarding ? loc.projectListConnectTitle : loc.projectListTitle,
       scrollable: !bodyOwnsScroll,
+      // Only a retained non-empty list shows the offline banner; the loading /
+      // empty / bridge-disconnected states own their messaging full-screen
+      // (setup onboarding or the "turn on your bridge" design).
+      banner: state is ProjectListLoaded && state.projects.isNotEmpty ? ConnectionBanner.maybeFor(context) : null,
       actions: [
         PregoButtonsIconGlass(
           icon: VESPRSolid.gear,

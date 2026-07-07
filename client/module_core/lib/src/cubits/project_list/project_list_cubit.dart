@@ -153,9 +153,9 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     }
   }
 
-  /// Whether the bridge (the user's computer) is currently unreachable, in
-  /// which case there are no projects to show and the bridge-disconnected
-  /// flow (setup onboarding or "turn on your bridge") is surfaced.
+  /// Whether the bridge (the user's computer) is currently unreachable. With
+  /// nothing loaded, the bridge-disconnected flow (setup onboarding or "turn
+  /// on your bridge") is surfaced; a non-empty loaded list is kept instead.
   /// `ConnectionLost` is excluded — it has its own app-wide reconnect overlay.
   bool get _isBridgeUnavailable => switch (_connectionService.currentStatus) {
     ConnectionDisconnected() || ConnectionBridgeOffline() => true,
@@ -182,10 +182,17 @@ class ProjectListCubit extends Cubit<ProjectListState> {
           case ProjectListLoading():
             break; // Load already in progress.
         }
-      // The user's computer is offline / not yet connected — surface the
-      // bridge-disconnected flow instead of an error or stale list.
+      // The relay connection is fully torn down — nothing is reachable and no
+      // banner represents this state, so surface the bridge-disconnected flow.
       case ConnectionDisconnected():
+        unawaited(_emitBridgeDisconnected());
       case ConnectionBridgeOffline():
+        // A non-empty loaded list stays browsable while the bridge is offline —
+        // the top-nav connection banner owns the messaging. The full-screen
+        // bridge-disconnected flow is reserved for when there is nothing to
+        // show (launch before the bridge starts, or an empty list whose
+        // onboarding checklist would contradict an offline banner).
+        if (state case ProjectListLoaded(:final projects) when projects.isNotEmpty) break;
         unawaited(_emitBridgeDisconnected());
       // Transient states: keep the current UI. ConnectionLost is handled by
       // the app-wide reconnect overlay; ConnectionReconnecting is brief.

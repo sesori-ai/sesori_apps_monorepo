@@ -61,10 +61,10 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
 
     // The scaffold lets this view fill the full height behind the transparent
     // bar (reserveBarSpace: false), so the message list scrolls behind it like
-    // every other screen. Inset the chat's content — and pin the refresh
-    // indicator / banners — by this much so they clear the bar at rest.
-    final topInset = MediaQuery.paddingOf(context).top + PregoTopNavigation.barHeight;
-
+    // every other screen. The chat's content inset — and the pinned refresh
+    // indicator / banners — come from PregoTopBarInsetBuilder so they clear
+    // the bar at rest and ride the top-nav connection banner's height
+    // animation frame-by-frame.
     return Stack(
       children: [
         Column(
@@ -72,35 +72,42 @@ class _SessionDetailLoadedViewState extends State<SessionDetailLoadedView> {
             Expanded(
               child: state.messages.isEmpty && state.retryErrorMessage == null
                   ? Center(child: Text(loc.sessionDetailEmpty))
-                  : SessionDetailMessageList(
-                      projectId: widget.projectId,
-                      messages: state.messages,
-                      streamingText: state.streamingText,
-                      children: state.children,
-                      childStatuses: state.childStatuses,
-                      retryErrorMessage: state.retryErrorMessage,
-                      // Pad the oldest-message edge clear of the bar it scrolls
-                      // behind, and the newest-message edge clear of the floating
-                      // bottom controls overlaid below (background-tasks bar,
-                      // queued messages and composer); content in between scrolls
-                      // up behind the bar's fade and the composer's fade.
-                      topInset: topInset,
-                      // The read-only variant renders no floating controls, so
-                      // force the inset to 0 there — guarding against a stale
-                      // measured height lingering if a state object is reused
-                      // across an editable -> read-only transition.
-                      bottomInset: widget.readOnly ? 0 : _bottomControlsHeight,
+                  : PregoTopBarInsetBuilder(
+                      builder: (context, topInset, _) => SessionDetailMessageList(
+                        projectId: widget.projectId,
+                        messages: state.messages,
+                        streamingText: state.streamingText,
+                        children: state.children,
+                        childStatuses: state.childStatuses,
+                        retryErrorMessage: state.retryErrorMessage,
+                        // Pad the oldest-message edge clear of the bar it scrolls
+                        // behind, and the newest-message edge clear of the floating
+                        // bottom controls overlaid below (background-tasks bar,
+                        // queued messages and composer); content in between scrolls
+                        // up behind the bar's fade and the composer's fade.
+                        topInset: topInset,
+                        // The read-only variant renders no floating controls, so
+                        // force the inset to 0 there — guarding against a stale
+                        // measured height lingering if a state object is reused
+                        // across an editable -> read-only transition.
+                        bottomInset: widget.readOnly ? 0 : _bottomControlsHeight,
+                      ),
                     ),
             ),
           ],
         ),
         // The refresh indicator and pending banners pin just below the
         // transparent bar, floating over the chat that scrolls behind them —
-        // rather than pushing the chat down out of the behind-bar region.
-        Positioned(
-          top: topInset,
-          left: 0,
-          right: 0,
+        // rather than pushing the chat down out of the behind-bar region. The
+        // cluster itself is inset-independent, so it rides through as `child`
+        // and only the Positioned offset follows the banner animation.
+        PregoTopBarInsetBuilder(
+          builder: (context, topInset, child) => Positioned(
+            top: topInset,
+            left: 0,
+            right: 0,
+            child: child ?? const SizedBox.shrink(),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

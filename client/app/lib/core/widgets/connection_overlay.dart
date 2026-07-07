@@ -46,22 +46,13 @@ class _ConnectionOverlayBody extends StatelessWidget {
     final state = context.watch<ConnectionOverlayCubit>().state;
     final showOverlay = state is ConnectionOverlayConnectionLost;
     final isReconnecting = state is ConnectionOverlayReconnecting;
-    final isBridgeOffline = state is ConnectionOverlayBridgeOffline;
+    // The bridge-offline state is not an overlay: each screen hosts it as an
+    // inline `ConnectionBanner` in its top navigation, so it can shift the
+    // layout and be suppressed by screens with a dedicated offline design.
 
     return Stack(
       children: [
         child,
-
-        // Non-blocking bridge offline banner — user can still view the app.
-        if (isBridgeOffline)
-          const Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: SafeArea(
-              child: _BridgeOfflineBanner(),
-            ),
-          ),
 
         // Subtle reconnecting indicator — no blur, no blocking.
         if (isReconnecting)
@@ -116,28 +107,6 @@ class _ConnectionOverlayBody extends StatelessWidget {
           ),
         ],
       ],
-    );
-  }
-}
-
-class _BridgeOfflineBanner extends StatelessWidget {
-  const _BridgeOfflineBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    final loc = context.loc;
-
-    // No reconnect action here: while the bridge is offline the relay
-    // connection is still alive and ConnectionService keeps a bridge-status
-    // watcher that auto-reconnects when the bridge comes back. Forcing a
-    // reconnect now can't complete the E2E handshake and would tear that
-    // watcher down, dropping into the blocking ConnectionLost state — the exact
-    // case ConnectionService deliberately avoids (see the resume path in
-    // connection_service.dart). The banner is purely informational.
-    return PregoInlineAlertsNotifications(
-      type: PregoInlineAlertsNotificationsType.warning,
-      title: loc.bridgeDisconnectedTitle,
-      icon: TablerRegular.broadcast_off,
     );
   }
 }

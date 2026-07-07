@@ -10,6 +10,7 @@ import "../../../core/constants.dart";
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/routing/app_router.dart";
 import "../../../core/routing/imperative_pane_route.dart";
+import "../../../core/widgets/connection_banner.dart";
 import "../../../core/widgets/session_split/session_split_scope.dart";
 import "permission_modal.dart";
 import "question_modal.dart";
@@ -121,6 +122,7 @@ class _SessionDetailBodyState extends State<SessionDetailBody> {
     return PregoGlassScaffold(
       title: title,
       subtitle: subtitle.isEmpty ? null : subtitle,
+      banner: ConnectionBanner.maybeFor(context),
       // A chat owns its own (reversed) scroll, so there is no top-anchored
       // scroll for a large title to collapse against. Use the fixed, centred
       // inline title (Figma "Middle Title") instead.

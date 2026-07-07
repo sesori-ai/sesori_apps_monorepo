@@ -55,20 +55,23 @@ Widget _buildApp({required SessionListCubit cubit}) {
 }
 
 Widget _buildScreenApp({required Widget child}) {
-  return MaterialApp(
-    theme: ThemeData(
-      colorScheme: PregoColors.light.toFlutterColorScheme(),
-      textTheme: PregoTextTheme.light.asFlutterTextTheme(),
-      extensions: [PregoDesignSystem.light],
+  return BlocProvider<ConnectionOverlayCubit>(
+    create: (_) => StubConnectionOverlayCubit(),
+    child: MaterialApp(
+      theme: ThemeData(
+        colorScheme: PregoColors.light.toFlutterColorScheme(),
+        textTheme: PregoTextTheme.light.asFlutterTextTheme(),
+        extensions: [PregoDesignSystem.light],
+      ),
+      darkTheme: ThemeData(
+        colorScheme: PregoColors.dark.toFlutterColorScheme(),
+        textTheme: PregoTextTheme.dark.asFlutterTextTheme(),
+        extensions: [PregoDesignSystem.dark],
+      ),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: child,
     ),
-    darkTheme: ThemeData(
-      colorScheme: PregoColors.dark.toFlutterColorScheme(),
-      textTheme: PregoTextTheme.dark.asFlutterTextTheme(),
-      extensions: [PregoDesignSystem.dark],
-    ),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
-    home: child,
   );
 }
 

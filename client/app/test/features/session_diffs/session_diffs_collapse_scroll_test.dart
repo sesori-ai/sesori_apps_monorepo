@@ -5,7 +5,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart" show ApiResponse;
-import "package:sesori_dart_core/sesori_dart_core.dart" show DiffCubit, DiffState;
+import "package:sesori_dart_core/sesori_dart_core.dart" show ConnectionOverlayCubit, DiffCubit, DiffState;
 import "package:sesori_dart_core/sesori_dart_core.dart" show SessionRepository;
 import "package:sesori_mobile/features/session_diffs/session_diffs_body.dart";
 import "package:sesori_mobile/features/session_diffs/session_diffs_screen.dart";
@@ -44,11 +44,14 @@ FileDiff _makeDiff(String file, {required int lineCount}) {
 /// fake-async clock can never resolve on its own.
 Future<void> _pumpLoadedScreen(WidgetTester tester) async {
   await tester.pumpWidget(
-    MaterialApp(
-      theme: ThemeData(extensions: [PregoDesignSystem.light]),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: const SessionDiffsScreen(projectId: "project-1", sessionId: "session-1"),
+    BlocProvider<ConnectionOverlayCubit>(
+      create: (_) => StubConnectionOverlayCubit(),
+      child: MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const SessionDiffsScreen(projectId: "project-1", sessionId: "session-1"),
+      ),
     ),
   );
 
@@ -245,16 +248,19 @@ void main() {
       final bodyKey = GlobalKey();
 
       await tester.pumpWidget(
-        MaterialApp(
-          theme: ThemeData(
-            brightness: tester.platformDispatcher.platformBrightness,
-            extensions: [PregoDesignSystem.light],
-          ),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: BlocProvider<DiffCubit>.value(
-            value: mockCubit,
-            child: SessionDiffsBody(key: bodyKey),
+        BlocProvider<ConnectionOverlayCubit>(
+          create: (_) => StubConnectionOverlayCubit(),
+          child: MaterialApp(
+            theme: ThemeData(
+              brightness: tester.platformDispatcher.platformBrightness,
+              extensions: [PregoDesignSystem.light],
+            ),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: BlocProvider<DiffCubit>.value(
+              value: mockCubit,
+              child: SessionDiffsBody(key: bodyKey),
+            ),
           ),
         ),
       );
