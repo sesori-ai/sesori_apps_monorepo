@@ -22,6 +22,7 @@ void main() {
         projectsDao: projectsDao,
         sessionDao: sessionDao,
         db: db,
+        pluginId: "opencode",
       );
     });
 
@@ -72,6 +73,7 @@ void main() {
     test("persistSessionsForProject is idempotent and preserves worktree state", () async {
       await projectsDao.insertProjectsIfMissing(projectIds: ["X"]);
       await sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "s1",
         projectId: "X",
         isDedicated: true,
@@ -161,6 +163,7 @@ void main() {
         projectsDao: projectsDao,
         sessionDao: failingDao,
         db: db,
+        pluginId: "opencode",
       );
 
       await expectLater(
@@ -183,6 +186,7 @@ void main() {
     test("deleteSession removes an existing stored session", () async {
       await projectsDao.insertProjectsIfMissing(projectIds: ["proj-delete"]);
       await sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "sess-delete",
         projectId: "proj-delete",
         isDedicated: true,
@@ -204,6 +208,7 @@ void main() {
     test("archiveSession sets archivedAt on an existing stored session", () async {
       await projectsDao.insertProjectsIfMissing(projectIds: ["proj-archive"]);
       await sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "sess-archive",
         projectId: "proj-archive",
         isDedicated: true,
@@ -225,6 +230,7 @@ void main() {
     test("unarchiveSession clears archivedAt on an existing stored session", () async {
       await projectsDao.insertProjectsIfMissing(projectIds: ["proj-unarchive"]);
       await sessionDao.insertSession(
+        pluginId: "opencode",
         sessionId: "sess-unarchive",
         projectId: "proj-unarchive",
         isDedicated: true,
@@ -274,11 +280,12 @@ class _ThrowingSessionDao extends SessionDao {
   @override
   Future<void> insertSessionsIfMissing({
     required List<({String sessionId, String projectId, int createdAt, int? archivedAt})> sessions,
+    String pluginId = "opencode",
   }) async {
     _calls++;
     if (_calls == throwOnCall) {
       throw StateError("boom");
     }
-    await super.insertSessionsIfMissing(sessions: sessions);
+    await super.insertSessionsIfMissing(sessions: sessions, pluginId: pluginId);
   }
 }

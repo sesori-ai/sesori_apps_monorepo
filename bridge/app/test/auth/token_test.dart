@@ -8,7 +8,6 @@ void main() {
       final original = TokenData(
         accessToken: "access-token",
         refreshToken: "refresh-token",
-        bridgeId: "br_abc12345",
         lastProvider: AuthProvider.github,
       );
 
@@ -16,50 +15,33 @@ void main() {
 
       expect(restored.accessToken, equals(original.accessToken));
       expect(restored.refreshToken, equals(original.refreshToken));
-      expect(restored.bridgeId, equals(original.bridgeId));
       expect(restored.lastProvider, equals(original.lastProvider));
     });
 
-    test("toJson omits bridgeId when it is null", () {
+    test("toJson serializes the provider key", () {
       final data = TokenData(
         accessToken: "access-token",
         refreshToken: "refresh-token",
-        bridgeId: null,
         lastProvider: AuthProvider.github,
       );
 
       final json = data.toJson();
 
-      expect(json.containsKey("bridgeId"), isFalse);
       expect(json["lastProvider"], equals("github"));
     });
 
-    test("fromJson sets bridgeId to null when missing", () {
+    test("fromJson ignores a legacy bridgeId key from old token files", () {
       final restored = TokenData.fromJson(<String, dynamic>{
         "accessToken": "access-token",
         "refreshToken": "refresh-token",
-        "lastProvider": "google",
-      });
-
-      expect(restored.accessToken, equals("access-token"));
-      expect(restored.refreshToken, equals("refresh-token"));
-      expect(restored.bridgeId, isNull);
-      expect(restored.lastProvider, equals(AuthProvider.google));
-    });
-
-    test("fromJson ignores the legacy bridgeToken key from old token files", () {
-      final restored = TokenData.fromJson(<String, dynamic>{
-        "accessToken": "access-token",
-        "refreshToken": "refresh-token",
-        "bridgeToken": "legacy-bridge-token",
+        "bridgeId": "br_abc12345",
         "lastProvider": "github",
       });
 
       expect(restored.accessToken, equals("access-token"));
       expect(restored.refreshToken, equals("refresh-token"));
-      expect(restored.bridgeId, isNull);
       expect(restored.lastProvider, equals(AuthProvider.github));
-      expect(restored.toJson().containsKey("bridgeToken"), isFalse);
+      expect(restored.toJson().containsKey("bridgeId"), isFalse);
     });
 
     test("fromJson throws when lastProvider is missing", () {

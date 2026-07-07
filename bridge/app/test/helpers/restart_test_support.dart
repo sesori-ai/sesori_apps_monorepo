@@ -48,5 +48,6 @@ BridgeRestartService buildTestRestartService() {
     binaryPath: '/tmp/sesori-bridge',
     cliArgs: const <String>[],
     currentPid: 0,
+    isSupervised: false,
   );
 }

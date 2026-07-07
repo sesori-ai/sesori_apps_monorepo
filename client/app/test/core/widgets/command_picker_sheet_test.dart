@@ -144,4 +144,32 @@ void main() {
 
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
+
+  testWidgets("caps the body at the space left below the sheet header", (tester) async {
+    // A status bar tall enough that the default 70%-of-screen body no longer
+    // fits under the sheet header: the body must cap at the remaining space
+    // (mirroring the model picker) instead of giving the outer sheet scroll
+    // range of its own on top of the inner list.
+    const topInset = 140.0;
+    final dpr = tester.view.devicePixelRatio;
+    tester.view.padding = FakeViewPadding(top: topInset * dpr);
+    tester.view.viewPadding = FakeViewPadding(top: topInset * dpr);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(_buildApp(commands: _commands(), onClosed: (_) {}));
+    await _openPicker(tester);
+    // Let the sheet's entrance animation finish before measuring.
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final screenHeight = tester.view.physicalSize.height / dpr;
+    final maxBody = screenHeight - topInset - PregoBottomSheet.contentTopInset;
+    // Premise guard: the cap must actually bite in this geometry, otherwise
+    // this test silently stops exercising it.
+    expect(maxBody, lessThan(screenHeight * 0.7));
+
+    expect(
+      tester.getSize(find.byType(CommandPickerSheet)).height,
+      moreOrLessEquals(maxBody),
+    );
+  });
 }

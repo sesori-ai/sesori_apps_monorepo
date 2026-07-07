@@ -9,6 +9,48 @@ part "projects_dao.g.dart";
 class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin {
   ProjectsDao(super.attachedDatabase);
 
+  // Every insert below stamps the project id as the row's `path`: the id has
+  // always been the project's directory path for every shipped plugin. If ids
+  // ever stop being paths, insert sites must take an explicit path instead.
+
+  /// Returns every stored project row. Used by the bridge-derived project path
+  /// to read paths, display-name overrides, and opened-folder timestamps.
+  Future<List<ProjectDto>> getAllProjects() async {
+    return select(projectsTable).get();
+  }
+
+  /// Returns the stored row for [projectId], or null when none exists.
+  Future<ProjectDto?> getProject({required String projectId}) async {
+    return (select(projectsTable)..where((t) => t.projectId.equals(projectId))).getSingleOrNull();
+  }
+
+  /// Records [projectId] as an explicitly-opened folder by stamping [openedAt],
+  /// creating the row if missing. Updates only openedAt on conflict, preserving
+  /// hidden/baseBranch/displayName/worktreeCounter. Lets a folder with no
+  /// sessions yet resurface with a fresh time when the user re-opens it.
+  Future<void> recordOpenedProject({required String projectId, required int openedAt}) async {
+    await into(projectsTable).insert(
+      ProjectsTableCompanion.insert(projectId: projectId, path: projectId, openedAt: Value(openedAt)),
+      onConflict: DoUpdate(
+        (old) => ProjectsTableCompanion(openedAt: Value(openedAt)),
+        target: [projectsTable.projectId],
+      ),
+    );
+  }
+
+  /// Sets the bridge-persisted display-name override for [projectId], creating
+  /// the row if missing. Updates only displayName on conflict. Used to persist a
+  /// rename for a bridge-derived plugin that has no backend to store the name.
+  Future<void> setDisplayName({required String projectId, required String displayName}) async {
+    await into(projectsTable).insert(
+      ProjectsTableCompanion.insert(projectId: projectId, path: projectId, displayName: Value(displayName)),
+      onConflict: DoUpdate(
+        (old) => ProjectsTableCompanion(displayName: Value(displayName)),
+        target: [projectsTable.projectId],
+      ),
+    );
+  }
+
   /// Returns the set of all currently hidden project IDs (one-shot).
   Future<Set<String>> getHiddenProjectIds() async {
     final rows = await (select(projectsTable)..where((t) => t.hidden.equals(true))).get();
@@ -22,10 +64,15 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
     )..where((t) => t.hidden.equals(true))).watch().map((rows) => rows.map((r) => r.projectId).toSet());
   }
 
-  /// Marks a project as hidden. Idempotent.
+  /// Marks a project as hidden. Creates the row if missing. Uses DoUpdate to
+  /// update ONLY the hidden column on conflict, preserving all other fields.
   Future<void> hideProject({required String projectId}) async {
-    await into(projectsTable).insertOnConflictUpdate(
-      ProjectsTableCompanion.insert(projectId: projectId, hidden: const Value(true)),
+    await into(projectsTable).insert(
+      ProjectsTableCompanion.insert(projectId: projectId, path: projectId, hidden: const Value(true)),
+      onConflict: DoUpdate(
+        (old) => const ProjectsTableCompanion(hidden: Value(true)),
+        target: [projectsTable.projectId],
+      ),
     );
   }
 
@@ -34,7 +81,7 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
   /// baseBranch and worktreeCounter on existing rows.
   Future<void> unhideProject({required String projectId}) async {
     await into(projectsTable).insert(
-      ProjectsTableCompanion.insert(projectId: projectId, hidden: const Value(false)),
+      ProjectsTableCompanion.insert(projectId: projectId, path: projectId, hidden: const Value(false)),
       onConflict: DoUpdate(
         (old) => const ProjectsTableCompanion(hidden: Value(false)),
         target: [projectsTable.projectId],
@@ -58,7 +105,7 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
         return newCounter;
       } else {
         await into(projectsTable).insert(
-          ProjectsTableCompanion.insert(projectId: projectId, worktreeCounter: const Value(1)),
+          ProjectsTableCompanion.insert(projectId: projectId, path: projectId, worktreeCounter: const Value(1)),
         );
         return 1;
       }
@@ -76,20 +123,32 @@ class ProjectsDao extends DatabaseAccessor<AppDatabase> with _$ProjectsDaoMixin 
   /// If no row exists, inserts one with the given [baseBranch].
   /// If a row exists, updates only [baseBranch], preserving [hidden] and [worktreeCounter].
   Future<void> setBaseBranch({required String projectId, required String? baseBranch}) async {
-    await into(projectsTable).insertOnConflictUpdate(
-      ProjectsTableCompanion.insert(projectId: projectId, baseBranch: Value(baseBranch)),
+    await into(projectsTable).insert(
+      ProjectsTableCompanion.insert(projectId: projectId, path: projectId, baseBranch: Value(baseBranch)),
+      onConflict: DoUpdate(
+        (old) => ProjectsTableCompanion(baseBranch: Value(baseBranch)),
+        target: [projectsTable.projectId],
+      ),
     );
+  }
+
+  /// Deletes the project row for [projectId]. The session/PR FKs cascade, so
+  /// callers must first ensure nothing still references the row.
+  Future<void> deleteProject({required String projectId}) async {
+    await (delete(projectsTable)..where((t) => t.projectId.equals(projectId))).go();
   }
 
   /// Inserts a minimal project row if none exists for [projectId].
   /// Preserves all fields of existing rows — uses InsertMode.insertOrIgnore.
-  /// Use this to satisfy FK constraints without clobbering user-set state.
+  /// Use this to satisfy FK constraints (and to seed a just-discovered or
+  /// just-opened folder, whose openedAt stamps at insert) without clobbering
+  /// user-set state.
   Future<void> insertProjectsIfMissing({required List<String> projectIds}) async {
     if (projectIds.isEmpty) return;
     await batch((b) {
       b.insertAll(
         projectsTable,
-        projectIds.map((id) => ProjectsTableCompanion.insert(projectId: id)).toList(),
+        projectIds.map((id) => ProjectsTableCompanion.insert(projectId: id, path: id)).toList(),
         mode: InsertMode.insertOrIgnore,
       );
     });

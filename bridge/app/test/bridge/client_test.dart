@@ -130,6 +130,176 @@ void main() {
 
       expect(client.closeCode, equals(RelayCloseCodes.bridgeRevoked));
     });
+
+    test("exposes the server's close reason (bridge-replaced rollout fallback)", () async {
+      final server = await TestRelayServer.start();
+      addTearDown(server.close);
+
+      final client = RelayClient(
+        relayURL: "ws://127.0.0.1:${server.port}",
+        accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
+      );
+      await client.connect();
+      addTearDown(client.close);
+
+      final serverWs = await server.nextClient();
+      final streamDone = Completer<void>();
+      client.read().listen((_) {}, onDone: streamDone.complete);
+      await serverWs.close(1000, "replaced");
+      await streamDone.future.timeout(const Duration(seconds: 5));
+
+      expect(client.closeCode, equals(1000));
+      expect(client.closeReason, equals("replaced"));
+    });
+  });
+
+  group("RelayClient connectionState", () {
+    test("connect emits connecting then connected", () async {
+      final server = await TestRelayServer.start();
+      addTearDown(server.close);
+
+      final client = RelayClient(
+        relayURL: "ws://127.0.0.1:${server.port}",
+        accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
+      );
+      final states = <RelayConnectionState>[];
+      client.connectionState.listen(states.add);
+
+      await client.connect();
+      addTearDown(client.close);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(states, hasLength(2));
+      expect(states[0], isA<RelayConnecting>());
+      expect(states[1], isA<RelayConnected>());
+    });
+
+    test("remote close emits disconnected carrying the close code", () async {
+      final server = await TestRelayServer.start();
+      addTearDown(server.close);
+
+      final client = RelayClient(
+        relayURL: "ws://127.0.0.1:${server.port}",
+        accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
+      );
+      final states = <RelayConnectionState>[];
+      client.connectionState.listen(states.add);
+      await client.connect();
+      addTearDown(client.close);
+
+      final serverWs = await server.nextClient();
+      // Drop detection requires the inbound stream to be consumed, exactly
+      // like the orchestrator's relay loop does on a live connection.
+      client.read().listen((_) {});
+      final disconnected = client.connectionState.firstWhere((state) => state is RelayDisconnected);
+      await serverWs.close(RelayCloseCodes.bridgeRevoked);
+
+      final state = await disconnected.timeout(const Duration(seconds: 5)) as RelayDisconnected;
+      expect(state.closeCode, equals(RelayCloseCodes.bridgeRevoked));
+    });
+
+    test("remote close carries the close reason on the disconnected state", () async {
+      final server = await TestRelayServer.start();
+      addTearDown(server.close);
+
+      final client = RelayClient(
+        relayURL: "ws://127.0.0.1:${server.port}",
+        accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
+      );
+      final states = <RelayConnectionState>[];
+      client.connectionState.listen(states.add);
+      await client.connect();
+      addTearDown(client.close);
+
+      final serverWs = await server.nextClient();
+      client.read().listen((_) {});
+      final disconnected = client.connectionState.firstWhere((state) => state is RelayDisconnected);
+      await serverWs.close(1000, "replaced");
+
+      final state = await disconnected.timeout(const Duration(seconds: 5)) as RelayDisconnected;
+      expect(state.closeCode, equals(1000));
+      expect(state.closeReason, equals("replaced"));
+    });
+
+    test("deliberate close emits no disconnected state", () async {
+      final server = await TestRelayServer.start();
+      addTearDown(server.close);
+
+      final client = RelayClient(
+        relayURL: "ws://127.0.0.1:${server.port}",
+        accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
+      );
+      final states = <RelayConnectionState>[];
+      client.connectionState.listen(states.add);
+      await client.connect();
+      await server.nextClient();
+
+      await client.close();
+      // Give the sink-done watcher time to fire if it (incorrectly) would.
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+
+      expect(states.whereType<RelayDisconnected>(), isEmpty);
+    });
+
+    test("failed connect emits disconnected with no close code", () async {
+      // A TCP server that accepts but never completes the WebSocket upgrade.
+      final rawServer = await ServerSocket.bind("127.0.0.1", 0);
+      addTearDown(rawServer.close);
+
+      final client = RelayClient(
+        relayURL: "ws://127.0.0.1:${rawServer.port}",
+        accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
+        connectTimeout: const Duration(milliseconds: 500),
+      );
+      final states = <RelayConnectionState>[];
+      client.connectionState.listen(states.add);
+
+      await expectLater(client.connect(), throwsA(isA<TimeoutException>()));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(states[0], isA<RelayConnecting>());
+      expect(states[1], isA<RelayDisconnected>());
+      expect((states[1] as RelayDisconnected).closeCode, isNull);
+    });
+
+    test("reconnect after a remote drop emits connecting then connected again", () async {
+      final server = await TestRelayServer.start();
+      addTearDown(server.close);
+
+      final client = RelayClient(
+        relayURL: "ws://127.0.0.1:${server.port}",
+        accessTokenProvider: FakeAccessTokenProvider(""),
+        bridgeIdProvider: FakeBridgeIdProvider(),
+      );
+      final states = <RelayConnectionState>[];
+      client.connectionState.listen(states.add);
+      await client.connect();
+      addTearDown(client.close);
+
+      final serverWs1 = await server.nextClient();
+      // Drop detection requires the inbound stream to be consumed, exactly
+      // like the orchestrator's relay loop does on a live connection.
+      client.read().listen((_) {});
+      final disconnected = client.connectionState.firstWhere((state) => state is RelayDisconnected);
+      await serverWs1.close();
+      await disconnected.timeout(const Duration(seconds: 5));
+
+      final serverWs2Future = server.nextClient();
+      await client.reconnect();
+      await serverWs2Future;
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(
+        states.map((state) => state.runtimeType).toList(),
+        equals([RelayConnecting, RelayConnected, RelayDisconnected, RelayConnecting, RelayConnected]),
+      );
+    });
   });
 
   group("RelayClient reconnection", () {

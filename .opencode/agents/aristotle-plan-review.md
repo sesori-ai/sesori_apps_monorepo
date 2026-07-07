@@ -1,5 +1,5 @@
 ---
-description: Reviews development plans against strict architectural rules for the Sesori monorepo. Validates proposed layer boundaries, dependency direction, class cohesion, naming discipline, and simplicity before any code is written. Rejects god classes, pass-through parameters, peer-as-child dependency patterns, asymmetric trigger handling, and misuse of class suffixes. Input is a plan containing a clear goal plus concrete implementation steps. Always invoke before implementation begins.
+description: Reviews development plans against strict architectural rules for the Sesori monorepo. Validates proposed layer boundaries, dependency direction, class cohesion, naming discipline, and simplicity before any code is written. Rejects god classes, pass-through parameters, peer-as-child dependency patterns, asymmetric trigger handling, and misuse of class suffixes. Also rejects designs that foreclose the documented product-direction invariants in docs/VISION.md, or that build speculatively ahead of need. Input is a plan containing a clear goal plus concrete implementation steps. Always invoke before implementation begins.
 mode: subagent
 model: kimi-for-coding/k2p7
 variant: max
@@ -202,6 +202,25 @@ Every extracted collaborator must own at least one of:
 If the proposed class owns none of those, the logic must stay as cohesive private methods on the existing class.
 
 This review question is mandatory and blocking: **Would this class still deserve to exist if the original file were under the line limit?** If the answer is no, reject the plan.
+
+**A12. Directional Invariants (do not foreclose the product direction)**
+
+`docs/VISION.md` defines the product's directional invariants — the small set of "doors" that must stay open because the roadmap (`docs/ROADMAP.md`) will need them. A plan is an architecture defect if it **welds one of these doors shut** when a compliant alternative of similar cost exists. This is a forward-compatibility check and is part of architectural integrity, not scope creep.
+
+The invariants (see `docs/VISION.md` for the full statements):
+
+1. **Plugin boundary is sacred** — no backend/assistant specifics (OpenCode, Codex, our own harness) leak past `BridgePluginApi` into `shared/sesori_shared`, the relay protocol, or `client/`. A new backend ability is an optional, declared capability on the interface — never a special-case branch in shared/relay/client code.
+2. **The bridge is one of many** — session/bridge addressing stays per-bridge; do not bake in a single-bridge assumption (e.g., a global "the bridge" singleton in relay/auth/client routing).
+3. **Shared brain, thin shells** — `module_core` stays Flutter-free and surface-agnostic; surface-specific (phone/desktop/web) assumptions do not enter shared logic.
+4. **Headless-first bridge** — bridge capabilities stay runnable headless; a feature must not depend on the desktop GUI being present.
+5. **One session-control surface** — anything that drives sessions (including future automation) goes through the same API a human uses; no automation-only backdoor.
+6. **Two trust postures, kept apart** — local mode stays zero-knowledge (E2E phone↔bridge); do not route local-mode application data through a Sesori-readable path, and do not let a managed-mode assumption weaken local mode.
+7. **Teams-later** — new durable entities carry an owner/identity field even while it is always the local user, so multi-user needs no later data migration.
+8. **Autonomy at the bridge seam** — opt-in automation (auto-handle CI/review, future auto-approve) is intercepted at the bridge, not scattered into clients or plugins.
+
+Reject a plan that violates any invariant above. State the invariant, the foreclosure, and the compliant alternative.
+
+**The mirror image is equally blocking.** This rule does NOT licence building for the future. A plan that adds abstraction, generalization, or infrastructure for a `docs/VISION.md` / `docs/ROADMAP.md` item that has no concrete present need is an **A5** violation (No Unnecessary Complexity) — reject it under A5. Direction breaks ties between otherwise-compliant designs; it never justifies premature construction. YAGNI wins.
 
 ---
 
@@ -969,7 +988,7 @@ Applied: [B-Client / B-Bridge / B-Shared]
 Skipped: [the others, with reason]
 
 ### Section A — General Architecture
-[List each violated principle (A1-A10) with a reference to the specific plan step or class. Only list violations — do not list rules that pass.]
+[List each violated principle (A1-A12) with a reference to the specific plan step or class. Only list violations — do not list rules that pass.]
 
 ### Section B — Project-Specific Rules
 [For each applied subsection, list violated rules with references to specific plan steps or classes. Only list violations.]

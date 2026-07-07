@@ -1,6 +1,6 @@
 name: sesori_bridge
 description: Dart implementation of the Sesori Bridge CLI for WebSocket communication.
-version: 1.2.0
+version: 1.4.0
 publish_to: none
 resolution: workspace
 

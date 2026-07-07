@@ -1,6 +1,6 @@
 {
   "name": "@sesori/bridge-darwin-arm64",
-  "version": "1.2.0",
+  "version": "1.4.0",
   "description": "Bootstrap payload for the managed Sesori Bridge runtime on macOS ARM64",
   "os": [
     "darwin"
@@ -14,7 +14,7 @@
   "sesoriBridge": {
     "bootstrapOnly": true,
     "managedRuntimeOwner": false,
-    "releaseTag": "v1.2.0",
+    "releaseTag": "v1.4.0",
     "releaseArtifact": "sesori-bridge-macos-arm64.tar.gz",
     "runtimeBundlePath": "lib/runtime"
   },

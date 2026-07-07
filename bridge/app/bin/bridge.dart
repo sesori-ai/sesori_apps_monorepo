@@ -7,6 +7,8 @@ import 'package:http/http.dart' as http;
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
 import 'package:sesori_bridge/src/api/default_editor_api.dart';
 import 'package:sesori_bridge/src/api/wake_lock_client.dart';
+import 'package:sesori_bridge/src/auth/bridge_id_migration_service.dart';
+import 'package:sesori_bridge/src/auth/bridge_id_storage.dart';
 import 'package:sesori_bridge/src/auth/bridge_registration_api.dart';
 import 'package:sesori_bridge/src/auth/bridge_registration_repository.dart';
 import 'package:sesori_bridge/src/auth/bridge_registration_service.dart';
@@ -237,7 +239,8 @@ class LogoutCommand extends cli.Command<void> {
       bridgeInstanceRepository: bridgeInstanceRepository,
       bridgeInstanceService: BridgeInstanceService(
         bridgeInstanceRepository: bridgeInstanceRepository,
-        terminalPromptRepository: terminalPromptRepository,
+        // The logout CLI always runs from a terminal, never supervised.
+        replacePrompt: terminalPromptRepository,
         processRepository: ProcessRepository(
           api: systemProcessApi,
           currentUser: currentUser,
@@ -271,16 +274,27 @@ class LogoutCommand extends cli.Command<void> {
 /// Removes this bridge's registration on the auth server before the token
 /// file is deleted. Callers treat any failure as non-fatal.
 Future<void> _unregisterBridgeRegistration({required String authBackendUrl}) async {
+  final bridgeIdStorage = BridgeIdStorage(filePath: bridgeIdPath());
+  // Adopt a legacy id persisted inside token.json first, so a never-reconnected
+  // legacy install still unregisters cleanly; the service reads the bridge id
+  // back out of storage.
+  await BridgeIdMigrationService(
+    bridgeIdStorage: bridgeIdStorage,
+    readLegacyBridgeId: readLegacyBridgeId,
+  ).migrate();
+  if (await bridgeIdStorage.read() == null) {
+    // Nothing registered to remove.
+    return;
+  }
+
   final TokenData tokens;
   try {
     tokens = await loadTokens();
   } on Object catch (e) {
-    // No stored tokens — nothing registered to remove. A corrupt token file
-    // also lands here; logout still proceeds, but leave a trace.
+    // A registered bridge with no usable token file — there is no credential
+    // left to authenticate the unregister call. Logout still proceeds, but
+    // leave a trace.
     Log.w('Skipping bridge unregistration; could not load tokens: $e');
-    return;
-  }
-  if (tokens.bridgeId == null) {
     return;
   }
 
@@ -297,8 +311,7 @@ Future<void> _unregisterBridgeRegistration({required String authBackendUrl}) asy
         api: BridgeRegistrationApi(authBackendUrl: authBackendUrl, client: httpClient),
       ),
       tokenRefresher: tokenManager,
-      loadTokens: loadTokens,
-      saveTokens: saveTokens,
+      bridgeIdStorage: bridgeIdStorage,
       hostName: Platform.localHostname,
       platform: BridgeRegistrationService.currentPlatformName(),
     );

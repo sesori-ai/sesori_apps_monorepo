@@ -236,7 +236,6 @@ class LoginOAuthService {
             return TokenData(
               accessToken: accessToken,
               refreshToken: refreshToken,
-              bridgeId: null,
               lastProvider: provider,
             );
           case AuthSessionStatusResponseDenied():

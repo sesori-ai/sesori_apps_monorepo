@@ -135,7 +135,7 @@ class _Invocation {
   _Invocation({required this.command, required this.arguments, required this.workingDirectory});
 }
 
-class _FakeBridgePlugin implements BridgePluginApi {
+class _FakeBridgePlugin implements NativeProjectsPluginApi {
   int deleteWorkspaceCallCount = 0;
   String? lastDeleteWorkspaceProjectId;
   String? lastDeleteWorkspaceWorktreePath;

@@ -97,7 +97,43 @@ Widget _buildApp({required SessionDetailCubit cubit}) {
     home: BlocProvider<SessionDetailCubit>.value(
       value: cubit,
       child: const Scaffold(
-        body: ReasoningModal(partId: "part-1", messageId: "msg-1"),
+        body: ReasoningModal(partId: "part-1", messageId: "msg-1", topInset: 0),
+      ),
+    ),
+  );
+}
+
+const _openModalKey = Key("open-reasoning-modal");
+
+/// App whose home presents the modal through [ReasoningModal.show], with a
+/// simulated status bar on the presenting context — mirroring how the modal
+/// route strips the top inset from the sheet's own MediaQuery on a device.
+Widget _buildShowApp({required SessionDetailCubit cubit, required double statusBarInset}) {
+  return MaterialApp(
+    theme: ThemeData(extensions: [PregoDesignSystem.light]),
+    darkTheme: ThemeData(extensions: [PregoDesignSystem.dark]),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: Builder(
+      builder: (context) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          padding: EdgeInsets.only(top: statusBarInset),
+          viewPadding: EdgeInsets.only(top: statusBarInset),
+        ),
+        child: BlocProvider<SessionDetailCubit>.value(
+          value: cubit,
+          child: Scaffold(
+            body: Builder(
+              builder: (context) => Center(
+                child: FilledButton(
+                  key: _openModalKey,
+                  onPressed: () => ReasoningModal.show(context, partId: "part-1", messageId: "msg-1"),
+                  child: const Text("open"),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     ),
   );
@@ -228,6 +264,112 @@ void main() {
     expect(selectionAreaFinder, findsOneWidget);
 
     expect(tester.widget<MarkdownBody>(markdownFinder).selectable, false);
+  });
+
+  testWidgets("sheet wraps short reasoning to its content", (tester) async {
+    whenListen(
+      mockCubit,
+      const Stream<SessionDetailState>.empty(),
+      initialState: _loadedState(
+        streamingText: {},
+        messages: [_messageWithPart(text: "one short thought")],
+      ),
+    );
+
+    await tester.pumpWidget(_buildShowApp(cubit: mockCubit, statusBarInset: 47));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(_openModalKey));
+    await tester.pumpAndSettle();
+
+    final surfaceHeight = tester.getSize(find.byType(Scaffold)).height;
+    final shortHeight = tester.getSize(find.byType(PregoBottomSheet)).height;
+    expect(shortHeight, lessThan(surfaceHeight / 2));
+  });
+
+  testWidgets("sheet caps below the status bar for long reasoning", (tester) async {
+    const statusBarInset = 47.0;
+
+    whenListen(
+      mockCubit,
+      const Stream<SessionDetailState>.empty(),
+      initialState: _loadedState(
+        streamingText: {},
+        messages: [_messageWithPart(text: _reasoningText(paragraphs: 60))],
+      ),
+    );
+
+    await tester.pumpWidget(_buildShowApp(cubit: mockCubit, statusBarInset: statusBarInset));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(_openModalKey));
+    await tester.pumpAndSettle();
+
+    // Grows to the cap, but never into the simulated status bar: the top
+    // inset is captured from the presenting context because the modal route
+    // zeroes it inside the sheet.
+    final surfaceHeight = tester.getSize(find.byType(Scaffold)).height;
+    final tallHeight = tester.getSize(find.byType(PregoBottomSheet)).height;
+    expect(tallHeight, greaterThan(surfaceHeight * 0.8));
+    expect(
+      tester.getTopLeft(find.byType(PregoBottomSheet)).dy,
+      greaterThanOrEqualTo(statusBarInset),
+    );
+  });
+
+  testWidgets("capped sheet scrolls behind the home indicator instead of cutting at it", (tester) async {
+    const statusBarInset = 47.0;
+    const homeIndicatorInset = 34.0;
+    // Simulate a rounded-screen device at the view level: the sheet reads the
+    // bottom inset from its own MediaQuery inside the modal route (only the
+    // top inset is stripped there), so the presenting-context override in
+    // _buildShowApp is not enough.
+    tester.view.padding = FakeViewPadding(
+      top: statusBarInset * tester.view.devicePixelRatio,
+      bottom: homeIndicatorInset * tester.view.devicePixelRatio,
+    );
+    tester.view.viewPadding = FakeViewPadding(
+      top: statusBarInset * tester.view.devicePixelRatio,
+      bottom: homeIndicatorInset * tester.view.devicePixelRatio,
+    );
+    addTearDown(tester.view.reset);
+
+    whenListen(
+      mockCubit,
+      const Stream<SessionDetailState>.empty(),
+      initialState: _loadedState(
+        streamingText: {},
+        messages: [_messageWithPart(text: _reasoningText(paragraphs: 60))],
+      ),
+    );
+
+    await tester.pumpWidget(_buildShowApp(cubit: mockCubit, statusBarInset: statusBarInset));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(_openModalKey));
+    await tester.pumpAndSettle();
+
+    // The scroll viewport runs to the very bottom of the screen — content
+    // scrolls behind the home indicator rather than being clipped at the
+    // safe-area line above it.
+    final surfaceHeight = tester.getSize(find.byType(Scaffold).first).height;
+    final listBottom = tester.getRect(find.byKey(_reasoningListViewKey)).bottom;
+    expect(listBottom, moreOrLessEquals(surfaceHeight));
+
+    // The inset rides inside the scrollable as trailing padding, so the last
+    // line can still scroll clear of the indicator.
+    final padding = tester.widget<ListView>(find.byKey(_reasoningListViewKey)).padding! as EdgeInsetsDirectional;
+    expect(padding.bottom, 16 + homeIndicatorInset);
+
+    // The capped sheet still tops out exactly at the status bar: if the body
+    // cap re-subtracted the bottom inset, the bottom-aligned sheet would fall
+    // 34px short of it while the viewport-bottom check above still passed.
+    expect(tester.getTopLeft(find.byType(PregoBottomSheet)).dy, moreOrLessEquals(statusBarInset));
+
+    // And the sheet's own outer scroll view is exactly full: if the sheet
+    // still padded the home indicator below the body, it would gain 34px of
+    // scroll range and could slide the body up to expose a blank strip.
+    final outerScrollable = find
+        .descendant(of: find.byType(CustomScrollView), matching: find.byType(Scrollable))
+        .first;
+    expect(tester.state<ScrollableState>(outerScrollable).position.maxScrollExtent, 0);
   });
 
   testWidgets("isStreaming drives header text", (tester) async {

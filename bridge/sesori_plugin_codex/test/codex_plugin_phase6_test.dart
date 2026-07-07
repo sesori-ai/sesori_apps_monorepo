@@ -30,17 +30,26 @@ void main() {
       } catch (_) {}
     });
 
-    CodexPlugin newPlugin() => CodexPlugin(
-      serverUrl: "ws://127.0.0.1:0",
-      rolloutReader: SessionRolloutReader(
+    CodexPlugin newPlugin() {
+      final rolloutReader = SessionRolloutReader(
         environment: {"CODEX_HOME": codexHome.path},
-      ),
-      skillReader: CodexSkillReader(
-        environment: {"CODEX_HOME": codexHome.path},
+      );
+      return CodexPlugin(
+        serverUrl: "ws://127.0.0.1:0",
+        rolloutReader: rolloutReader,
+        metadataRepository: CodexMetadataRepository(
+          skillReader: CodexSkillReader(
+            environment: {"CODEX_HOME": codexHome.path},
+          ),
+          rolloutReader: rolloutReader,
+          configReader: CodexConfigReader(
+            environment: {"CODEX_HOME": codexHome.path},
+          ),
+          launchDirectory: projectCwd.path,
+        ),
         projectCwd: projectCwd.path,
-      ),
-      projectCwd: projectCwd.path,
-    );
+      );
+    }
 
     test("getCommands enumerates codex skills as PluginCommand(source=skill)", () async {
       _writeSkill(
@@ -65,14 +74,31 @@ void main() {
       await plugin.dispose();
     });
 
-    test("renameProject returns the synthesised project with the new name", () async {
-      final plugin = newPlugin();
-      final renamed = await plugin.renameProject(
-        projectId: projectCwd.path,
-        name: "My Codex Project",
+    test("getCommands scopes project-local skills to the selected derived project", () async {
+      _writeSkill(
+        projectCwd,
+        ".codex/skills/launch-only/SKILL.md",
+        name: "launch-only",
+        description: "Launch project skill",
       );
-      expect(renamed.id, equals(projectCwd.path));
-      expect(renamed.name, equals("My Codex Project"));
+      final otherProject = Directory.systemTemp.createTempSync("codex-other-p6-");
+      addTearDown(() {
+        try {
+          otherProject.deleteSync(recursive: true);
+        } catch (_) {}
+      });
+      _writeSkill(
+        otherProject,
+        ".codex/skills/other-only/SKILL.md",
+        name: "other-only",
+        description: "Derived project skill",
+      );
+
+      final plugin = newPlugin();
+      // A derived project outside the launch directory sees its own project-
+      // local skills, not the launch project's.
+      final commands = await plugin.getCommands(projectId: otherProject.path);
+      expect(commands.map((c) => c.name).toList(), equals(["other-only"]));
       await plugin.dispose();
     });
 

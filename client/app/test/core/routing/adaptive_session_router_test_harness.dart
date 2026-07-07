@@ -16,7 +16,7 @@ import "../../helpers/test_helpers.dart";
 
 class MockPermissionRepository extends Mock implements PermissionRepository {}
 
-class MockRegisteredBridgesStore extends Mock implements RegisteredBridgesStore {}
+class MockRegisteredBridgesService extends Mock implements RegisteredBridgesService {}
 
 class MockSessionDetailLoadService extends Mock implements SessionDetailLoadService {}
 
@@ -25,7 +25,7 @@ class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionSe
 class AdaptiveSessionRouterTestHarness {
   late final MockProjectService projectService;
   late final MockBridgeRepository bridgeRepository;
-  late final MockRegisteredBridgesStore registeredBridgesStore;
+  late final MockRegisteredBridgesService registeredBridgesService;
   late final MockSessionRepository sessionRepository;
   late final MockConnectionService connectionService;
   late final MockSseEventRepository sseEventRepository;
@@ -55,7 +55,7 @@ class AdaptiveSessionRouterTestHarness {
 
     projectService = MockProjectService();
     bridgeRepository = MockBridgeRepository();
-    registeredBridgesStore = MockRegisteredBridgesStore();
+    registeredBridgesService = MockRegisteredBridgesService();
     sessionRepository = MockSessionRepository();
     connectionService = MockConnectionService();
     sseEventRepository = MockSseEventRepository();
@@ -82,8 +82,7 @@ class AdaptiveSessionRouterTestHarness {
       () => bridgeRepository.getRegisteredBridges(),
     ).thenAnswer((_) async => ApiResponse.success(const <BridgeSummary>[]));
 
-    when(() => registeredBridgesStore.hasRegisteredBridges()).thenAnswer((_) async => false);
-    when(() => registeredBridgesStore.markRegistered()).thenAnswer((_) async {});
+    when(() => registeredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => false);
 
     when(
       () => projectService.listSessions(
@@ -163,11 +162,14 @@ class AdaptiveSessionRouterTestHarness {
     final getIt = GetIt.instance;
     getIt.registerSingleton<ProjectService>(projectService);
     getIt.registerSingleton<BridgeRepository>(bridgeRepository);
-    getIt.registerSingleton<RegisteredBridgesStore>(registeredBridgesStore);
+    getIt.registerSingleton<RegisteredBridgesService>(registeredBridgesService);
     getIt.registerSingleton<SessionService>(SessionService(repository: sessionRepository));
     getIt.registerSingleton<SessionRepository>(sessionRepository);
     getIt.registerSingleton<ConnectionService>(connectionService);
     getIt.registerSingleton<SseEventRepository>(sseEventRepository);
+    getIt.registerSingleton<SessionUnseenTracker>(FakeSessionUnseenTracker());
+    getIt.registerSingleton<SessionViewingService>(stubbedSessionViewingService());
+    getIt.registerSingleton<LifecycleSource>(MockLifecycleSource());
     getIt.registerSingleton<RouteSource>(routeSource);
     getIt.registerSingleton<FailureReporter>(failureReporter);
     getIt.registerSingleton<PermissionRepository>(permissionRepository);

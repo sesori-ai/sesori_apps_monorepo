@@ -13,9 +13,9 @@ import "../../capabilities/sse/sse_event_repository.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
 import "../../platform/route_source.dart";
-import "../../repositories/bridge_repository.dart";
 import "../../routing/app_routes.dart";
-import "../../services/registered_bridges_store.dart";
+import "../../services/registered_bridges_service.dart";
+import "../../services/session_unseen_tracker.dart";
 import "add_project_outcome.dart";
 import "project_list_state.dart";
 
@@ -31,8 +31,8 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   final ProjectService _projectService;
   final ConnectionService _connectionService;
   final SseEventRepository _sseEventRepository;
-  final BridgeRepository _bridgeRepository;
-  final RegisteredBridgesStore _registeredBridgesStore;
+  final SessionUnseenTracker _sessionUnseenTracker;
+  final RegisteredBridgesService _registeredBridgesService;
   final FailureReporter _failureReporter;
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
@@ -42,14 +42,14 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     ConnectionService connectionService,
     SseEventRepository sseEventRepository,
     RouteSource routeSource, {
-    required BridgeRepository bridgeRepository,
-    required RegisteredBridgesStore registeredBridgesStore,
+    required SessionUnseenTracker sessionUnseenTracker,
+    required RegisteredBridgesService registeredBridgesService,
     required FailureReporter failureReporter,
   }) : _projectService = projectService,
        _connectionService = connectionService,
        _sseEventRepository = sseEventRepository,
-       _bridgeRepository = bridgeRepository,
-       _registeredBridgesStore = registeredBridgesStore,
+       _sessionUnseenTracker = sessionUnseenTracker,
+       _registeredBridgesService = registeredBridgesService,
        _failureReporter = failureReporter,
        super(const ProjectListState.loading()) {
     unawaited(_loadInitialProjects());
@@ -57,6 +57,11 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     // 1. Immediate activity badge updates (no API call).
     _subscriptions.add(
       _sseEventRepository.projectActivity.listen(_onActivityUpdated),
+    );
+
+    // 1b. Immediate unseen (bold) updates (no API call).
+    _subscriptions.add(
+      _sessionUnseenTracker.projectUnseen.listen((_) => _onUnseenUpdated()),
     );
 
     // 2. Auto-refresh: throttled project data fetch, active only while the
@@ -109,16 +114,27 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     _connectionService.setActiveDirectory(project.id);
   }
 
+  void _onUnseenUpdated() {
+    if (isClosed) return;
+    if (state case final ProjectListLoaded loaded) {
+      emit(loaded.copyWith(unseenByProjectId: _unseenByProjectId(loaded.projects)));
+    }
+  }
+
+  /// Merges the REST-loaded `Project.hasUnseenChanges` with the live tracker
+  /// map (the tracker takes precedence once it has an entry).
+  Map<String, bool> _unseenByProjectId(List<Project> projects) {
+    final live = _sessionUnseenTracker.currentProjectUnseen;
+    return {
+      for (final project in projects) project.id: live[project.id] ?? project.hasUnseenChanges,
+    };
+  }
+
   void _onActivityUpdated(Map<String, int> activityById) {
     try {
       if (state case final ProjectListLoaded loaded) {
         if (isClosed) return;
-        emit(
-          ProjectListState.loaded(
-            projects: loaded.projects,
-            activityById: activityById,
-          ),
-        );
+        emit(loaded.copyWith(activityById: activityById));
       }
     } catch (e, st) {
       loge("Activity update handler error", e, st);
@@ -188,55 +204,10 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   /// this emit is skipped. Re-emitting an unchanged state is harmless (bloc
   /// dedupes equal states).
   Future<void> _emitBridgeDisconnected() async {
-    final hasRegisteredBridges = await _fetchHasRegisteredBridges();
+    final hasRegisteredBridges = await _registeredBridgesService.hasRegisteredBridges();
     if (isClosed) return;
     if (!_isBridgeUnavailable) return;
     emit(ProjectListState.bridgeDisconnected(hasRegisteredBridges: hasRegisteredBridges));
-  }
-
-  /// In-flight registered-bridges resolution, used for coalescing.
-  Future<bool>? _activeBridgesLookup;
-
-  /// Whether the account has any bridges registered with the auth server.
-  /// Concurrent calls are coalesced into a single resolution.
-  ///
-  /// The answer is a one-way latch — an account never reverts from *has a
-  /// registered bridge* to *none* — so once [RegisteredBridgesStore] knows the
-  /// positive answer (in memory this run, or persisted from a prior one) the
-  /// network lookup is skipped entirely.
-  Future<bool> _fetchHasRegisteredBridges() {
-    return _activeBridgesLookup ??= _resolveHasRegisteredBridges().whenComplete(() => _activeBridgesLookup = null);
-  }
-
-  Future<bool> _resolveHasRegisteredBridges() async {
-    // Tiers 1 & 2: in-memory flag, then persisted flag. A known-positive
-    // answer never reverts, so don't touch the network.
-    if (await _registeredBridgesStore.hasRegisteredBridges()) return true;
-    // Tier 3: ask the auth server, latching a positive answer for next time.
-    return _lookupHasRegisteredBridges();
-  }
-
-  Future<bool> _lookupHasRegisteredBridges() async {
-    // Reached via unawaited(_emitBridgeDisconnected()), so an unexpected throw
-    // (network timeout, deserialization failure) — rather than an ErrorResponse —
-    // would surface as an uncaught async error. Fail soft to `false` (the setup
-    // onboarding), the safe default for an account we can't classify yet.
-    try {
-      final response = await _bridgeRepository.getRegisteredBridges();
-      switch (response) {
-        case SuccessResponse(:final data):
-          if (data.isEmpty) return false;
-          // Latch the positive answer so future transitions skip the network.
-          await _registeredBridgesStore.markRegistered();
-          return true;
-        case ErrorResponse(:final error):
-          logw("Failed to fetch registered bridges: ${error.toString()}");
-          return false;
-      }
-    } on Object catch (error, stackTrace) {
-      logw("Failed to fetch registered bridges (unexpected error)", error, stackTrace);
-      return false;
-    }
   }
 
   void _onStaleReconnect() {
@@ -402,10 +373,11 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     if (isClosed) return;
     if (response is! SuccessResponse) return;
     if (state case final ProjectListLoaded loaded) {
+      final remaining = loaded.projects.where((p) => p.id != projectId).toList();
       emit(
-        ProjectListState.loaded(
-          projects: loaded.projects.where((p) => p.id != projectId).toList(),
-          activityById: loaded.activityById,
+        loaded.copyWith(
+          projects: remaining,
+          unseenByProjectId: _unseenByProjectId(remaining),
         ),
       );
     }
@@ -486,15 +458,26 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   }
 
   Future<bool> _fetchProjects({bool silent = false}) async {
+    // Captured BEFORE the fetch so the seed can't overwrite a live update that
+    // arrives while the request is in flight.
+    final unseenTick = _sessionUnseenTracker.tick;
     final projectResponse = await _projectService.listProjects();
     if (isClosed) return false;
 
     switch (projectResponse) {
       case SuccessResponse(data: Projects(data: final projects)):
+        // The REST aggregate is authoritative at fetch time — seed the tracker
+        // so a stale live `true` can't keep a project bold after its last
+        // unseen session was archived/deleted while an echo was missed.
+        _sessionUnseenTracker.seedProjects(
+          {for (final p in projects) p.id: p.hasUnseenChanges},
+          sinceTick: unseenTick,
+        );
         emit(
           ProjectListState.loaded(
             projects: projects,
             activityById: _sseEventRepository.currentProjectActivity,
+            unseenByProjectId: _unseenByProjectId(projects),
           ),
         );
         return true;

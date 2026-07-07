@@ -270,7 +270,22 @@ void main() {
       }
     });
 
-    test("getProjects returns the synthesised project for the launch CWD", () async {
+    test("bridge-derived: getProjects is empty; listAllSessions maps each rollout to its real cwd", () async {
+      _writeRollout(
+        codexHome,
+        path: "sessions/2026/04/17/rollout-2026-04-17T10-00-00-019a0000-1111-2222-3333-aaaaaaaaaaaa.jsonl",
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
+        cwd: "/work/sample-app",
+        timestamp: "2026-04-17T10:00:00Z",
+      );
+      _writeRollout(
+        codexHome,
+        path: "sessions/2026/04/18/rollout-2026-04-18T08-30-00-019a0000-1111-2222-3333-bbbbbbbbbbbb.jsonl",
+        sessionId: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
+        cwd: "/other/project",
+        timestamp: "2026-04-18T08:30:00Z",
+      );
+
       final plugin = CodexPlugin(
         serverUrl: "ws://127.0.0.1:0",
         rolloutReader: SessionRolloutReader(
@@ -278,10 +293,13 @@ void main() {
         ),
         projectCwd: "/work/sample-app",
       );
-      final projects = await plugin.getProjects();
-      expect(projects, hasLength(1));
-      expect(projects.single.id, equals("/work/sample-app"));
-      expect(projects.single.name, equals("sample-app"));
+
+      // Each session carries its own rollout cwd (never the launch CWD), so the
+      // bridge groups it under the right project.
+      final byId = {for (final session in await plugin.listAllSessions()) session.id: session};
+      expect(byId["019a0000-1111-2222-3333-aaaaaaaaaaaa"]?.directory, "/work/sample-app");
+      expect(byId["019a0000-1111-2222-3333-bbbbbbbbbbbb"]?.directory, "/other/project");
+      expect(byId["019a0000-1111-2222-3333-bbbbbbbbbbbb"]?.projectID, "/other/project");
       await plugin.dispose();
     });
 

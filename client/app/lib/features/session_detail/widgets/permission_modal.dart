@@ -1,3 +1,5 @@
+import "dart:math" as math;
+
 import "package:flutter/material.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:go_router/go_router.dart";
@@ -6,7 +8,6 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../core/extensions/build_context_x.dart";
 import "../../../core/extensions/text_style_x.dart";
-import "../../../core/widgets/app_modal_bottom_sheet.dart";
 import "../../../core/widgets/markdown_styles.dart";
 
 /// Bottom sheet that presents a tool permission request from the AI assistant.
@@ -22,13 +23,24 @@ class PermissionModal extends StatelessWidget {
   })
   onReply;
 
+  /// Status-bar inset captured from the presenting context. The modal route
+  /// (`useSafeArea: false`) strips the top inset from BOTH `padding` and
+  /// `viewPadding` in the sheet's own MediaQuery, so it must be measured
+  /// before presenting and threaded through.
+  final double topInset;
+
   const PermissionModal({
     super.key,
     required this.permission,
     required this.onReply,
+    required this.topInset,
   });
 
   /// Opens the permission modal as a bottom sheet.
+  ///
+  /// Presents a [PregoBottomSheet] directly (not via [showPregoBottomSheet])
+  /// so the header close button rejects the request instead of silently
+  /// dismissing it.
   static Future<void> show(
     BuildContext context, {
     required SesoriPermissionAsked permission,
@@ -39,13 +51,19 @@ class PermissionModal extends StatelessWidget {
     })
     onReply,
   }) {
-    return showAppModalBottomSheet<void>(
+    // Capture before presenting: inside the route the top inset reads as 0.
+    final topInset = MediaQuery.paddingOf(context).top;
+    return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      // PregoBottomSheet paints the rounded surface; keep the route
+      // transparent. The sheet caps itself below the status bar.
       backgroundColor: Colors.transparent,
+      useSafeArea: false,
       builder: (_) => PermissionModal(
         permission: permission,
         onReply: onReply,
+        topInset: topInset,
       ),
     );
   }
@@ -62,112 +80,78 @@ class PermissionModal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    final screenHeight = MediaQuery.heightOf(context);
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    // Mirror the inset PregoBottomSheet adds below the body so the cap below
+    // leaves the pinned action row on screen.
+    final bottomInset = keyboard > 0 ? keyboard : MediaQuery.paddingOf(context).bottom;
+    // Cap the body just under the sheet's own cap: a long description then
+    // scrolls inside its Flexible slot while the action row stays pinned,
+    // instead of pushing the (blocking) actions below the fold.
+    final maxBody = screenHeight - topInset - PregoBottomSheet.contentTopInset - bottomInset;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: prego.colors.bgPrimary,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(16),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Drag handle
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Container(
-              width: 32,
-              height: 4,
+    return PregoBottomSheet(
+      title: context.loc.diffPermissionRequestTitle,
+      topInset: topInset,
+      // Closing the sheet answers the assistant: the X rejects, matching the
+      // explicit reject button.
+      onClose: () => _reply(context, reply: PermissionReply.reject),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: math.max(maxBody, screenHeight * 0.3)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Tool name
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
               decoration: BoxDecoration(
-                color: prego.colors.borderSecondary,
-                borderRadius: BorderRadius.circular(2),
+                color: prego.colors.bgQuaternary,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.terminal,
+                    size: 16,
+                    color: prego.colors.textSecondary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    permission.tool,
+                    style: prego.textTheme.textSm.bold
+                        .copyWith(
+                          fontWeight: FontWeight.bold,
+                        )
+                        .monospace,
+                  ),
+                ],
               ),
             ),
-          ),
+            const SizedBox(height: 16),
 
-          // Header row
-          Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(16, 4, 8, 12),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.shield_outlined,
-                  size: 20,
-                  color: prego.colors.bgBrandSolid,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    context.loc.diffPermissionRequestTitle,
-                    style: prego.textTheme.textMd.bold,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close, size: 20),
-                  onPressed: () => _reply(context, reply: PermissionReply.reject),
-                ),
-              ],
-            ),
-          ),
-
-          const Divider(height: 1),
-
-          // Body — constrained to avoid full-screen expansion
-          Flexible(
-            child: ListView(
-              shrinkWrap: true,
-              padding: const EdgeInsets.all(16),
-              children: [
-                // Tool name
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: prego.colors.bgQuaternary,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.terminal,
-                        size: 16,
-                        color: prego.colors.textSecondary,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        permission.tool,
-                        style: prego.textTheme.textSm.bold.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ).monospace,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Description
-                MarkdownBody(
+            // Description — scrolls on its own when tall so the actions below
+            // stay on screen.
+            Flexible(
+              child: SingleChildScrollView(
+                child: MarkdownBody(
                   data: permission.description,
                   selectable: true,
                   onTapLink: handleMarkdownLinkTap,
-                    styleSheet: buildSessionMarkdownStyleSheet(
-                      prego: prego,
-                      paragraphStyle: prego.textTheme.textSm.regular,
-                    ),
+                  styleSheet: buildSessionMarkdownStyleSheet(
+                    prego: prego,
+                    paragraphStyle: prego.textTheme.textSm.regular,
+                  ),
                 ),
-              ],
+              ),
             ),
-          ),
+            const SizedBox(height: 16),
 
-          // Action buttons
-          Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 16),
-            child: Row(
+            // Action buttons
+            Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
@@ -195,8 +179,9 @@ class PermissionModal extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }

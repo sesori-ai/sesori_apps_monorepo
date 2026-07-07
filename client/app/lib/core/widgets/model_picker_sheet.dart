@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math" as math;
 
 import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
@@ -9,7 +10,6 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../extensions/build_context_x.dart";
-import "app_modal_bottom_sheet.dart";
 import "model_picker_list_items.dart";
 
 /// Bottom sheet for selecting a model, grouped by provider.
@@ -53,47 +53,42 @@ class ModelPickerSheet extends StatefulWidget {
     bool fullScreen = false,
     bool autofocusSearch = false,
   }) {
-    return showAppModalBottomSheet(
+    // Status-bar inset, captured before presenting: the modal route strips
+    // the top inset from both `padding` and `viewPadding`, so inside the
+    // sheet it reads as 0.
+    final topInset = MediaQuery.paddingOf(context).top;
+    return showPregoBottomSheet<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      // The model list scrolls to the bottom edge, so it consumes the
-      // home-indicator inset as scroll padding (see the ListView below) rather
-      // than having the whole sheet lifted above the indicator.
+      title: context.loc.sessionDetailSelectModel,
+      // Full-bleed list; rows and the search field pad themselves. The model
+      // list scrolls to the bottom edge, so it consumes the home-indicator
+      // inset as scroll padding (see the ListView below) rather than having
+      // the whole sheet lifted above the indicator.
+      contentPadding: EdgeInsetsDirectional.zero,
       handleBottomSafeArea: false,
       builder: (sheetContext) {
         // Granular getters (not MediaQuery.of) so this builder only depends on
-        // the size/insets it actually reads, rather than rebuilding on every
+        // the height/insets it actually reads, rather than rebuilding on every
         // unrelated MediaQueryData change (text scale, brightness, …).
-        final size = MediaQuery.sizeOf(sheetContext);
-        final viewPadding = MediaQuery.viewPaddingOf(sheetContext);
-        final viewInsets = MediaQuery.viewInsetsOf(sheetContext);
-        // Full screen: fill from just below the notch to the bottom edge. The
-        // keyboard inset is subtracted here (and re-added as bottom padding by
-        // showAppModalBottomSheet) so the content never overflows above the
-        // top safe area when the keyboard is up.
-        final height = fullScreen
-            ? size.height - viewPadding.top - viewInsets.bottom
-            : size.height * 0.7;
-        final prego = sheetContext.prego;
-        // Material (not a decorated Container) so the ListTiles inside can
-        // paint their ink and selection effects on the sheet surface.
-        return Material(
-          color: prego.colors.bgPrimary,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-          clipBehavior: Clip.antiAlias,
-          child: SizedBox(
-            height: height,
-            child: ModelPickerSheet(
-              providers: providers,
-              selectedProviderID: selectedProviderID,
-              selectedModelID: selectedModelID,
-              autofocusSearch: autofocusSearch,
-              onModelChanged: ({required String providerID, required String modelID}) {
-                onModelChanged(providerID: providerID, modelID: modelID);
-                context.pop();
-              },
-            ),
+        final screenHeight = MediaQuery.heightOf(sheetContext);
+        final keyboard = MediaQuery.viewInsetsOf(sheetContext).bottom;
+        // The body hosts its own scroll view, so it needs a bounded height.
+        // The keyboard inset is subtracted (the sheet re-adds it below the
+        // body) so the search field stays visible while typing. Full screen:
+        // fill from just below the sheet header to the bottom edge.
+        final maxBody = screenHeight - topInset - PregoBottomSheet.contentTopInset - keyboard;
+        final height = fullScreen ? maxBody : math.min(screenHeight * 0.7 - keyboard, maxBody);
+        return SizedBox(
+          height: math.max(height, screenHeight * 0.3),
+          child: ModelPickerSheet(
+            providers: providers,
+            selectedProviderID: selectedProviderID,
+            selectedModelID: selectedModelID,
+            autofocusSearch: autofocusSearch,
+            onModelChanged: ({required String providerID, required String modelID}) {
+              onModelChanged(providerID: providerID, modelID: modelID);
+              context.pop();
+            },
           ),
         );
       },
@@ -179,57 +174,45 @@ class _ModelPickerSheetState extends State<ModelPickerSheet> {
     final prego = context.prego;
     final loc = context.loc;
 
-    return Column(
-      children: [
-        Center(
-          child: Container(
-            margin: const EdgeInsetsDirectional.only(top: 12, bottom: 8),
-            width: 32,
-            height: 4,
-            decoration: BoxDecoration(
-              color: prego.colors.textSecondary.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text(
-            loc.sessionDetailSelectModel,
-            style: prego.textTheme.textMd.bold,
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: TextField(
-            autofocus: widget.autofocusSearch,
-            decoration: InputDecoration(
-              hintText: loc.sessionDetailModelSearch,
-              prefixIcon: const Icon(Icons.search, size: 20),
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24),
-                borderSide: BorderSide.none,
+    // Transparent Material so the tiles' ink and selection effects paint on
+    // top of the sheet surface instead of behind it on the modal's
+    // transparent Material.
+    return Material(
+      type: MaterialType.transparency,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: TextField(
+              autofocus: widget.autofocusSearch,
+              decoration: InputDecoration(
+                hintText: loc.sessionDetailModelSearch,
+                prefixIcon: const Icon(Icons.search, size: 20),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: prego.colors.bgPrimary,
               ),
-              filled: true,
-              fillColor: prego.colors.bgPrimary,
+              onChanged: (value) => setState(() {
+                _query = value.trim();
+                final sections = _sections;
+                if (sections != null) _rows = _visibleRows(sections);
+              }),
             ),
-            onChanged: (value) => setState(() {
-              _query = value.trim();
-              final sections = _sections;
-              if (sections != null) _rows = _visibleRows(sections);
-            }),
           ),
-        ),
-        const SizedBox(height: 4),
-        Expanded(
-          child: switch (_rows) {
-            null => const Center(child: CircularProgressIndicator()),
-            final rows => _buildModelList(context: context, rows: rows),
-          },
-        ),
-      ],
+          const SizedBox(height: 4),
+          Expanded(
+            child: switch (_rows) {
+              null => const Center(child: CircularProgressIndicator()),
+              final rows => _buildModelList(context: context, rows: rows),
+            },
+          ),
+        ],
+      ),
     );
   }
 

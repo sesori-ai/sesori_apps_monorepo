@@ -7,49 +7,69 @@ class SessionListActionDispatcher {
     final loc = context.loc;
     final cubit = context.read<SessionListCubit>();
     final isArchived = session.time?.archived != null;
+    final state = cubit.state;
+    final isUnseen = state is SessionListLoaded
+        ? (state.unseenBySessionId[session.id] ?? session.unseen)
+        : session.unseen;
 
-    showAppModalBottomSheet<void>(
+    showPregoBottomSheet<void>(
       context: context,
+      title: session.title ?? loc.sessionListUntitled,
+      // Full-bleed tiles; each ListTile carries its own horizontal padding.
+      contentPadding: EdgeInsetsDirectional.zero,
       builder: (sheetContext) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: Text(loc.rename),
-              onTap: () {
-                sheetContext.pop();
-                showRenameSessionDialog(
-                  context: context,
-                  session: session,
-                  cubit: cubit,
-                );
-              },
-            ),
-            ListTile(
-              leading: Icon(isArchived ? Icons.unarchive_outlined : Icons.archive_outlined),
-              title: Text(isArchived ? loc.sessionListUnarchive : loc.sessionListArchive),
-              onTap: () {
-                sheetContext.pop();
-                if (isArchived) {
-                  _unarchiveSession(context: context, cubit: cubit, sessionId: session.id);
-                } else {
-                  _showArchiveSheet(context: context, cubit: cubit, session: session);
-                }
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.delete_outlined, color: context.prego.colors.fgErrorPrimary),
-              title: Text(
-                loc.sessionListDelete,
-                style: TextStyle(color: context.prego.colors.fgErrorPrimary),
+        // Transparent Material so the tiles' ink paints on top of the sheet
+        // surface instead of behind it on the modal's transparent Material.
+        return Material(
+          type: MaterialType.transparency,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: Text(loc.rename),
+                onTap: () {
+                  sheetContext.pop();
+                  showRenameSessionDialog(
+                    context: context,
+                    session: session,
+                    cubit: cubit,
+                  );
+                },
               ),
-              onTap: () {
-                sheetContext.pop();
-                _showDeleteSheet(context: context, cubit: cubit, session: session);
-              },
-            ),
-          ],
+              ListTile(
+                leading: Icon(isUnseen ? Icons.mark_email_read_outlined : Icons.mark_email_unread_outlined),
+                title: Text(isUnseen ? loc.sessionListMarkRead : loc.sessionListMarkUnread),
+                onTap: () {
+                  sheetContext.pop();
+                  unawaited(cubit.markSessionSeen(sessionId: session.id, read: isUnseen));
+                },
+              ),
+              ListTile(
+                leading: Icon(isArchived ? Icons.unarchive_outlined : Icons.archive_outlined),
+                title: Text(isArchived ? loc.sessionListUnarchive : loc.sessionListArchive),
+                onTap: () {
+                  sheetContext.pop();
+                  if (isArchived) {
+                    _unarchiveSession(context: context, cubit: cubit, sessionId: session.id);
+                  } else {
+                    _showArchiveSheet(context: context, cubit: cubit, session: session);
+                  }
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.delete_outlined, color: context.prego.colors.fgErrorPrimary),
+                title: Text(
+                  loc.sessionListDelete,
+                  style: TextStyle(color: context.prego.colors.fgErrorPrimary),
+                ),
+                onTap: () {
+                  sheetContext.pop();
+                  _showDeleteSheet(context: context, cubit: cubit, session: session);
+                },
+              ),
+            ],
+          ),
         );
       },
     );

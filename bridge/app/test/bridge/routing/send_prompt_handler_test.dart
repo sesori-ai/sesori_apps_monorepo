@@ -1,6 +1,7 @@
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/send_prompt_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_prompt_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -27,6 +28,7 @@ void main() {
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
         ),
+        unseenCalculator: const SessionUnseenCalculator(),
       );
       handler = SendPromptHandler(
         sessionPromptService: SessionPromptService(
@@ -351,6 +353,7 @@ void main() {
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
         ),
+        unseenCalculator: const SessionUnseenCalculator(),
       );
       final localHandler = SendPromptHandler(
         sessionPromptService: SessionPromptService(sessionRepository: localRepository, sseManager: FakeSSEManager()),
@@ -402,6 +405,7 @@ void main() {
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
         ),
+        unseenCalculator: const SessionUnseenCalculator(),
       );
       final localHandler = SendPromptHandler(
         sessionPromptService: SessionPromptService(sessionRepository: localRepository, sseManager: FakeSSEManager()),
@@ -442,6 +446,7 @@ void main() {
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
         ),
+        unseenCalculator: const SessionUnseenCalculator(),
       );
       final localHandler = SendPromptHandler(
         sessionPromptService: SessionPromptService(sessionRepository: throwingRepository, sseManager: FakeSSEManager()),
@@ -566,6 +571,7 @@ class _ThrowingUpdateSessionRepository extends SessionRepository {
     required super.plugin,
     required super.sessionDao,
     required super.pullRequestRepository,
+    required super.unseenCalculator,
   });
 
   @override

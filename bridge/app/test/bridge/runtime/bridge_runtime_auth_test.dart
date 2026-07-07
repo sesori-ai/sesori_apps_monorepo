@@ -40,13 +40,11 @@ void main() {
       final storedTokens = TokenData(
         accessToken: 'expired-access-token',
         refreshToken: 'expired-refresh-token',
-        bridgeId: 'existing-bridge-id',
         lastProvider: AuthProvider.google,
       );
       final oauthTokens = TokenData(
         accessToken: 'oauth-access-token',
         refreshToken: 'oauth-refresh-token',
-        bridgeId: null,
         lastProvider: AuthProvider.google,
       );
       TokenData? savedTokens;
@@ -56,7 +54,6 @@ void main() {
           expect(sessionToken, equals('oauth-session-token'));
           expect(savedTokens, isNotNull);
           expect(savedTokens!.accessToken, equals('oauth-access-token'));
-          expect(savedTokens!.bridgeId, equals('existing-bridge-id'));
         },
       );
       final service = BridgeRuntimeAuthService(
@@ -73,7 +70,6 @@ void main() {
       final result = await service.ensureAuthenticated(options: _options(authBackendUrl: authBackend.baseUrl));
 
       expect(result.accessToken, equals('oauth-access-token'));
-      expect(result.bridgeId, equals('existing-bridge-id'));
       expect(oauthService.ackCalls, equals(['oauth-session-token']));
     });
 
@@ -83,7 +79,6 @@ void main() {
       final storedTokens = TokenData(
         accessToken: 'expired-access-token',
         refreshToken: 'expired-refresh-token',
-        bridgeId: null,
         lastProvider: AuthProvider.github,
       );
       final oauthService = _FakeLoginOAuthService(error: Exception('authorization denied'));
@@ -110,13 +105,11 @@ void main() {
       final storedTokens = TokenData(
         accessToken: 'expired-access-token',
         refreshToken: 'expired-refresh-token',
-        bridgeId: null,
         lastProvider: AuthProvider.google,
       );
       final oauthTokens = TokenData(
         accessToken: 'oauth-access-token',
         refreshToken: 'oauth-refresh-token',
-        bridgeId: null,
         lastProvider: AuthProvider.google,
       );
       TokenData? savedTokens;

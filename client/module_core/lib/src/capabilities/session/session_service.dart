@@ -50,6 +50,10 @@ class SessionService {
     return _repository.abortSession(sessionId: sessionId);
   }
 
+  Future<ApiResponse<void>> markSessionSeen({required String sessionId, required bool read}) {
+    return _repository.markSessionSeen(sessionId: sessionId, read: read);
+  }
+
   Future<ApiResponse<void>> replyToQuestion({
     required String requestId,
     required String sessionId,

@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
+import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -7,8 +8,16 @@ import "../../../core/extensions/build_context_x.dart";
 import "../../../core/extensions/remote_failure_x.dart";
 import "queued_message_bubble.dart";
 
+/// A floating call-to-action pinned below the top bar when the session has a
+/// pending question or permission. Rendered as a semantic-tinted liquid-glass
+/// card (brand for questions, success for permissions) so it pops over the chat
+/// while sharing the glass language of the background-tasks card and the
+/// composer pills below.
 class SessionDetailPendingBanner extends StatelessWidget {
   final IconData icon;
+
+  /// Semantic surface colour for the glass tint — applied with reduced alpha so
+  /// the card stays frosted and the chat refracts through its edges.
   final Color backgroundColor;
   final Color foregroundColor;
   final String label;
@@ -25,26 +34,21 @@ class SessionDetailPendingBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      elevation: 2,
-      color: backgroundColor,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Row(
-            children: [
-              Icon(icon, size: 20, color: foregroundColor),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  label,
-                  style: context.prego.textTheme.textMd.bold.copyWith(color: foregroundColor),
-                ),
-              ),
-              Icon(Icons.chevron_right, size: 20, color: foregroundColor),
-            ],
-          ),
+    final prego = context.prego;
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0),
+      child: GlassContainer(
+        useOwnLayer: true,
+        clipBehavior: Clip.antiAlias,
+        padding: EdgeInsets.zero,
+        shape: const LiquidRoundedSuperellipse(borderRadius: 20),
+        settings: LiquidGlassSettings(glassColor: backgroundColor.withValues(alpha: 0.6)),
+        child: GlassListTile(
+          onTap: onTap,
+          leading: Icon(icon, size: 20, color: foregroundColor),
+          title: Text(label),
+          titleStyle: prego.textTheme.textMd.bold.copyWith(color: foregroundColor),
+          trailing: Icon(Icons.chevron_right, size: 20, color: foregroundColor),
         ),
       ),
     );

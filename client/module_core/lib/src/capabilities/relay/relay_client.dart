@@ -357,6 +357,23 @@ class RelayClient {
     return controller.stream;
   }
 
+  /// Declares to the bridge which session this phone is currently viewing
+  /// ([sessionId] == null when viewing nothing). Fire-and-forget control
+  /// message; no-op when not connected.
+  Future<void> sendSessionView({required String? sessionId}) async {
+    if (!isConnected || _sessionEncryptor == null) {
+      return;
+    }
+    try {
+      await _sendEncryptedMessage(RelayMessage.sessionView(sessionId: sessionId));
+    } catch (error, stackTrace) {
+      // Best-effort control message: a disconnect can race the connected check
+      // above. Swallow so callers' fire-and-forget `unawaited` paths never see
+      // an unhandled async error; the phone re-asserts its view on reconnect.
+      logw("sendSessionView failed (likely a disconnect race)", error, stackTrace);
+    }
+  }
+
   Future<void> disconnect() async {
     if (_disposed) {
       return;

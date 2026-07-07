@@ -17,7 +17,7 @@ resolution: workspace
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.2.0+1
+version: 1.4.0+1
 environment:
   sdk: ^3.12.2
 
@@ -37,7 +37,7 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.9
-  liquid_glass_widgets: ^0.19.1
+  liquid_glass_widgets: ^0.21.1
   http: ^1.6.0
   freezed_annotation: ^3.1.0
   json_annotation: ^4.12.0

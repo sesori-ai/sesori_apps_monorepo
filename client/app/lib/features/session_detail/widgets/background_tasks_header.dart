@@ -2,6 +2,10 @@ import "package:flutter/material.dart";
 import "package:theme_prego/module_prego.dart";
 import "../../../core/extensions/build_context_x.dart";
 
+/// Tappable header row of the background-tasks card. Shows a spinner +
+/// "N Tasks Running" (or a check + "Completed") and a chevron that rotates as
+/// the card expands. Rendered as a [PregoListTile] so it shares the card's
+/// surface and press feedback with the task rows below it.
 class BackgroundTasksHeader extends StatelessWidget {
   final int runningCount;
   final bool expanded;
@@ -20,43 +24,40 @@ class BackgroundTasksHeader extends StatelessWidget {
     final loc = context.loc;
     final hasRunning = runningCount > 0;
 
-    return InkWell(
-      borderRadius: expanded ? const BorderRadius.vertical(top: Radius.circular(12)) : BorderRadius.circular(12),
+    return PregoListTile(
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Row(
-          children: [
-            if (hasRunning)
-              SizedBox(
-                width: 16,
-                height: 16,
+      showDivider: false,
+      leading: hasRunning
+          // The leading slot is a tight 32px wide but leaves its height free. A
+          // CircularProgressIndicator has no intrinsic size and paints to its box
+          // without preserving aspect ratio, so it renders as an oval. Center
+          // re-loosens the constraints around a fixed square so the spinner
+          // stays a 16px circle.
+          ? Center(
+              heightFactor: 1,
+              child: SizedBox.square(
+                dimension: 16,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   color: prego.colors.bgBrandSolid,
                 ),
-              )
-            else
-              Icon(
-                Icons.check_circle,
-                size: 16,
-                color: prego.colors.bgBrandSolid,
               ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                hasRunning ? loc.backgroundTasksRunning(runningCount) : loc.backgroundTasksCompleted,
-                style: prego.textTheme.textMd.bold.copyWith(
-                  color: prego.colors.textPrimary,
-                ),
-              ),
+            )
+          : Icon(
+              Icons.check_circle,
+              size: 16,
+              color: prego.colors.bgBrandSolid,
             ),
-            Icon(
-              expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-              size: 20,
-              color: prego.colors.textSecondary,
-            ),
-          ],
+      title: Text(hasRunning ? loc.backgroundTasksRunning(runningCount) : loc.backgroundTasksCompleted),
+      titleStyle: prego.textTheme.textMd.bold.copyWith(color: prego.colors.textPrimary),
+      trailing: AnimatedRotation(
+        turns: expanded ? 0.5 : 0.0,
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeInOut,
+        child: Icon(
+          Icons.keyboard_arrow_down,
+          size: 20,
+          color: prego.colors.textSecondary,
         ),
       ),
     );

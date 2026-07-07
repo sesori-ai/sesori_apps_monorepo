@@ -22,8 +22,9 @@ void _showArchiveSheet({
     return;
   }
 
-  showAppModalBottomSheet<void>(
+  showPregoBottomSheet<void>(
     context: context,
+    title: context.loc.sessionListArchiveConfirmTitle,
     builder: (_) => _ArchiveSessionSheet(
       session: session,
       onConfirm: ({required bool deleteWorktree, required bool deleteBranch}) {
@@ -147,8 +148,9 @@ void _showDeleteSheet({
     return;
   }
 
-  showAppModalBottomSheet<void>(
+  showPregoBottomSheet<void>(
     context: context,
+    title: context.loc.sessionListDeleteConfirmTitle,
     builder: (_) => _DeleteSessionSheet(
       session: session,
       onConfirm: ({required bool deleteWorktree, required bool deleteBranch}) {

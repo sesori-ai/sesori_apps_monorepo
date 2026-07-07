@@ -1,5 +1,5 @@
 ---
-description: Reviews implemented code (branches, PRs, changed files) against strict architectural rules for the Sesori monorepo. Validates layer boundaries, dependency direction, class cohesion, naming discipline, and simplicity in actual code. Rejects god classes, pass-through parameters, peer-as-child dependency patterns, asymmetric trigger handling, and misuse of class suffixes. Only flags new or changed code — preexisting legacy patterns are not flagged unless the change extends them. Always invoke before opening a PR.
+description: Reviews implemented code (branches, PRs, changed files) against strict architectural rules for the Sesori monorepo. Validates layer boundaries, dependency direction, class cohesion, naming discipline, and simplicity in actual code. Rejects god classes, pass-through parameters, peer-as-child dependency patterns, asymmetric trigger handling, and misuse of class suffixes. Also flags new code that forecloses the documented product-direction invariants in docs/VISION.md, such as backend specifics leaking past the plugin boundary. Only flags new or changed code — preexisting legacy patterns are not flagged unless the change extends them. Always invoke before opening a PR.
 mode: subagent
 model: kimi-for-coding/k2p7
 variant: max
@@ -196,6 +196,21 @@ Every extracted collaborator must own at least one of:
 If the changed class owns none of those, the logic must stay as cohesive private methods on the existing class.
 
 This review question is mandatory and blocking: **Would this class still deserve to exist if the original file were under the line limit?** If the answer is no, reject the change.
+
+**A12. Directional Invariants (do not foreclose the product direction)**
+
+`docs/VISION.md` defines the product's directional invariants — doors that must stay open for the roadmap. In code review, flag a NEW or CHANGED line that concretely violates one of these. Only flag a present, concrete violation visible in the diff — never reject for a speculative "might foreclose."
+
+Concretely checkable in code:
+
+1. **Plugin boundary is sacred (primary)** — a changed file under `shared/sesori_shared/`, the relay protocol, or `client/` that references a specific backend's concepts (OpenCode/Codex endpoints, event shapes, model identifiers, config) is a violation: backend specifics must stay behind `BridgePluginApi`. Likewise, a second backend special-cased with `if (plugin == ...)` branches in bridge core instead of via the interface's declared capabilities.
+2. **Shared brain** — `module_core` importing `package:flutter`, or surface-specific assumptions entering shared logic (also covered by the B-C hard constraints).
+3. **One session-control surface** — new code that drives sessions through an automation-only path that bypasses the normal session/request API.
+4. **Two trust postures** — new code that routes local-mode application data through a path the relay or a Sesori backend can read in cleartext.
+
+For the remaining `docs/VISION.md` invariants (per-bridge addressing, headless-first, teams-later owner/identity, autonomy at the bridge seam), flag only when the change concretely breaks them in the diff; do not speculate.
+
+**Mirror image (A5):** new abstraction or infrastructure built for a future `docs/VISION.md` / `docs/ROADMAP.md` item with no present consumer is an **A5** violation — reject under A5. Direction never licences premature construction.
 
 ---
 
@@ -1013,7 +1028,7 @@ Applied: [B-Client / B-Bridge / B-Shared]
 Skipped: [the others, with reason]
 
 ### Section A — General Architecture
-[List each violated principle (A1-A10) with file:line references. Only list violations.]
+[List each violated principle (A1-A12) with file:line references. Only list violations.]
 
 ### Section B — Project-Specific Rules
 [For each applied subsection, list violated rules with file:line references. Only list violations.]

@@ -36,6 +36,7 @@ class UpdateService {
     required String executablePath,
     required String managedExecutablePath,
     required Map<String, String> environment,
+    required bool isSupervised,
   }) : _releaseRepository = releaseRepository,
        _updateInstallService = updateInstallService,
        _updateApplyService = updateApplyService,
@@ -44,7 +45,8 @@ class UpdateService {
        _installRoot = installRoot,
        _executablePath = executablePath,
        _managedExecutablePath = managedExecutablePath,
-       _environment = environment;
+       _environment = environment,
+       _isSupervised = isSupervised;
 
   final ReleaseRepository _releaseRepository;
   final UpdateInstallService _updateInstallService;
@@ -55,6 +57,7 @@ class UpdateService {
   final String _executablePath;
   final String _managedExecutablePath;
   final Map<String, String> _environment;
+  final bool _isSupervised;
 
   StreamSubscription<void>? _subscription;
   bool _disposed = false;
@@ -75,8 +78,9 @@ class UpdateService {
   Duration pollInterval = const Duration(hours: 4);
 
   /// Begins the initial + periodic check/stage/apply pipeline in the
-  /// background. A no-op when updates are disabled or this is not the managed
-  /// install. Idempotent — calling it again while already running does nothing.
+  /// background. A no-op when updates are disabled, this is not the managed
+  /// install, or the bridge is supervised (the GUI updater owns the bundle).
+  /// Idempotent — calling it again while already running does nothing.
   void start() {
     if (_subscription != null || _shouldSkipUpdates()) {
       return;
@@ -105,6 +109,7 @@ class UpdateService {
       environment: _environment,
       executablePath: _executablePath,
       managedExecutablePath: _managedExecutablePath,
+      isSupervised: _isSupervised,
     );
   }
 

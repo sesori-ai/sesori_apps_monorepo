@@ -20,7 +20,7 @@ void main() {
         initialToken: currentToken,
         authBackendUrl: server.baseUrl,
         loadTokens: () async =>
-            TokenData(accessToken: "a", refreshToken: "r", bridgeId: null, lastProvider: AuthProvider.github),
+            TokenData(accessToken: "a", refreshToken: "r", lastProvider: AuthProvider.github),
         saveTokens: (_) async {},
       );
 
@@ -52,7 +52,6 @@ void main() {
           return TokenData(
             accessToken: "old-access",
             refreshToken: "refresh-token",
-            bridgeId: null,
             lastProvider: AuthProvider.github,
           );
         },
@@ -85,7 +84,6 @@ void main() {
         loadTokens: () async => TokenData(
           accessToken: "old-access",
           refreshToken: "refresh-token",
-          bridgeId: null,
           lastProvider: AuthProvider.github,
         ),
         saveTokens: (_) async {},
@@ -107,7 +105,6 @@ void main() {
         loadTokens: () async => TokenData(
           accessToken: "old-access",
           refreshToken: "refresh-token",
-          bridgeId: null,
           lastProvider: AuthProvider.github,
         ),
         saveTokens: (_) async {},
@@ -129,7 +126,6 @@ void main() {
         loadTokens: () async => TokenData(
           accessToken: "old-access",
           refreshToken: "refresh-token",
-          bridgeId: null,
           lastProvider: AuthProvider.github,
         ),
         saveTokens: (_) async {},
@@ -145,7 +141,7 @@ void main() {
       expect(server.requestCount, 1);
     });
 
-    test("successful refresh persists new tokens while preserving bridgeId", () async {
+    test("successful refresh persists the rotated access/refresh pair", () async {
       final server = await _RefreshTestServer.start();
       addTearDown(server.close);
 
@@ -156,7 +152,6 @@ void main() {
         loadTokens: () async => TokenData(
           accessToken: "old-access",
           refreshToken: "refresh-token",
-          bridgeId: "br_abc12345",
           lastProvider: AuthProvider.github,
         ),
         saveTokens: (tokens) async {
@@ -169,55 +164,10 @@ void main() {
       expect(savedTokens, isNotNull);
       expect(savedTokens!.accessToken, "new-access-token");
       expect(savedTokens!.refreshToken, "new-refresh-token");
-      expect(savedTokens!.bridgeId, "br_abc12345");
+      expect(savedTokens!.lastProvider, AuthProvider.github);
     });
 
-    test("refresh keeps a bridgeId persisted while the refresh was in flight", () async {
-      final requestReceived = Completer<void>();
-      final server = await _RefreshTestServer.start(
-        responseDelay: const Duration(milliseconds: 60),
-        onRequest: (_, __) {
-          if (!requestReceived.isCompleted) {
-            requestReceived.complete();
-          }
-        },
-      );
-      addTearDown(server.close);
-
-      var stored = TokenData(
-        accessToken: "old-access",
-        refreshToken: "refresh-token",
-        bridgeId: null,
-        lastProvider: AuthProvider.github,
-      );
-      final manager = TokenManager(
-        initialToken: _makeJwtFromNow(300),
-        authBackendUrl: server.baseUrl,
-        loadTokens: () async => stored,
-        saveTokens: (tokens) async {
-          stored = tokens;
-        },
-      );
-
-      final refreshFuture = manager.getAccessToken(forceRefresh: true);
-      // The refresh has loaded its pre-registration snapshot and is awaiting
-      // the HTTP response; registration now persists a freshly minted id.
-      await requestReceived.future.timeout(const Duration(seconds: 2));
-      stored = TokenData(
-        accessToken: stored.accessToken,
-        refreshToken: stored.refreshToken,
-        bridgeId: "br_minted123",
-        lastProvider: stored.lastProvider,
-      );
-
-      await refreshFuture;
-
-      expect(stored.bridgeId, "br_minted123");
-      expect(stored.accessToken, "new-access-token");
-      expect(stored.refreshToken, "new-refresh-token");
-    });
-
-    test("refresh repairs a corrupt token file by persisting the snapshot's merge fields", () async {
+    test("refresh repairs a corrupt token file by persisting the response tokens", () async {
       final server = await _RefreshTestServer.start();
       addTearDown(server.close);
 
@@ -234,7 +184,6 @@ void main() {
           return TokenData(
             accessToken: "old-access",
             refreshToken: "refresh-token",
-            bridgeId: "br_abc12345",
             lastProvider: AuthProvider.github,
           );
         },
@@ -249,7 +198,7 @@ void main() {
       expect(savedTokens, isNotNull);
       expect(savedTokens!.accessToken, "new-access-token");
       expect(savedTokens!.refreshToken, "new-refresh-token");
-      expect(savedTokens!.bridgeId, "br_abc12345");
+      expect(savedTokens!.lastProvider, AuthProvider.github);
     });
 
     test("refresh does not recreate a token file deleted mid-refresh", () async {
@@ -258,8 +207,9 @@ void main() {
 
       var loadCalls = 0;
       TokenData? savedTokens;
+      final initialToken = _makeJwtFromNow(10);
       final manager = TokenManager(
-        initialToken: _makeJwtFromNow(10),
+        initialToken: initialToken,
         authBackendUrl: server.baseUrl,
         loadTokens: () async {
           loadCalls += 1;
@@ -269,7 +219,6 @@ void main() {
           return TokenData(
             accessToken: "old-access",
             refreshToken: "refresh-token",
-            bridgeId: null,
             lastProvider: AuthProvider.github,
           );
         },
@@ -280,6 +229,40 @@ void main() {
 
       await expectLater(manager.getAccessToken(), throwsA(isA<FileSystemException>()));
       expect(savedTokens, isNull);
+      // The refreshed token must not leak onto the in-memory stream when the
+      // file was cleared mid-refresh — a reconnect must not be able to use it.
+      expect(manager.accessToken, initialToken);
+    });
+
+    test("refresh that finds the token file cleared (null) does not publish the new token", () async {
+      final server = await _RefreshTestServer.start();
+      addTearDown(server.close);
+
+      var loadCalls = 0;
+      TokenData? savedTokens;
+      final initialToken = _makeJwtFromNow(10);
+      final manager = TokenManager(
+        initialToken: initialToken,
+        authBackendUrl: server.baseUrl,
+        loadTokens: () async {
+          loadCalls += 1;
+          if (loadCalls > 1) {
+            return null;
+          }
+          return TokenData(
+            accessToken: "old-access",
+            refreshToken: "refresh-token",
+            lastProvider: AuthProvider.github,
+          );
+        },
+        saveTokens: (tokens) async {
+          savedTokens = tokens;
+        },
+      );
+
+      await expectLater(manager.getAccessToken(), throwsA(isA<TokenRefreshException>()));
+      expect(savedTokens, isNull);
+      expect(manager.accessToken, initialToken);
     });
 
     test("successful refresh updates current access token", () async {
@@ -292,7 +275,6 @@ void main() {
         loadTokens: () async => TokenData(
           accessToken: "old-access",
           refreshToken: "refresh-token",
-          bridgeId: null,
           lastProvider: AuthProvider.github,
         ),
         saveTokens: (_) async {},
@@ -313,7 +295,6 @@ void main() {
         loadTokens: () async => TokenData(
           accessToken: "old-access",
           refreshToken: "refresh-token",
-          bridgeId: null,
           lastProvider: AuthProvider.github,
         ),
         saveTokens: (_) async {},
@@ -329,7 +310,6 @@ void main() {
         loadTokens: () async => TokenData(
           accessToken: "old-access",
           refreshToken: "refresh-token",
-          bridgeId: null,
           lastProvider: AuthProvider.github,
         ),
         saveTokens: (_) async {},
@@ -361,7 +341,7 @@ void main() {
         initialToken: _makeJwtFromNow(10),
         authBackendUrl: server.baseUrl,
         loadTokens: () async =>
-            TokenData(accessToken: "old-access", refreshToken: "", bridgeId: null, lastProvider: AuthProvider.github),
+            TokenData(accessToken: "old-access", refreshToken: "", lastProvider: AuthProvider.github),
         saveTokens: (_) async {},
       );
 
@@ -379,7 +359,6 @@ void main() {
         loadTokens: () async => TokenData(
           accessToken: "old-access",
           refreshToken: "refresh-token",
-          bridgeId: null,
           lastProvider: AuthProvider.github,
         ),
         saveTokens: (_) async {},

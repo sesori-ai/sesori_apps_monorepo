@@ -7,6 +7,7 @@ import "package:sesori_bridge/src/bridge/models/session_metadata.dart" as bridge
 import "package:sesori_bridge/src/bridge/persistence/database.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/routing/create_session_handler.dart";
 import "package:sesori_bridge/src/bridge/services/session_creation_service.dart";
@@ -57,6 +58,7 @@ void main() {
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
         ),
+        unseenCalculator: const SessionUnseenCalculator(),
       );
       handler = CreateSessionHandler(
         sessionCreationService: SessionCreationService(
@@ -348,6 +350,7 @@ void main() {
           pullRequestDao: db.pullRequestDao,
           projectsDao: db.projectsDao,
         ),
+        unseenCalculator: const SessionUnseenCalculator(),
       );
       final localHandler = CreateSessionHandler(
         sessionCreationService: SessionCreationService(
@@ -415,6 +418,8 @@ void main() {
       );
 
       expect(result.id, equals("s1"));
+      // A native plugin's reported projectID is authoritative — enrichment
+      // adopts the stored row's attribution only for bridge-derived plugins.
       expect(result.projectID, equals("p1"));
       expect(result.directory, equals("/repo"));
       expect(result.parentID, equals("parent-1"));
@@ -824,6 +829,7 @@ void main() {
               pullRequestDao: db.pullRequestDao,
               projectsDao: db.projectsDao,
             ),
+            unseenCalculator: const SessionUnseenCalculator(),
           ),
         ),
       );
@@ -1019,6 +1025,7 @@ void main() {
               pullRequestDao: db.pullRequestDao,
               projectsDao: db.projectsDao,
             ),
+            unseenCalculator: const SessionUnseenCalculator(),
           ),
         ),
       );

@@ -4,7 +4,6 @@ import "dart:io";
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/auth/bridge_registration_api.dart";
 import "package:sesori_bridge/src/auth/bridge_registration_service.dart";
-import "package:sesori_bridge/src/auth/token.dart";
 import "package:sesori_bridge/src/bridge/api/filesystem_api.dart";
 import "package:sesori_bridge/src/bridge/api/git_cli_api.dart";
 import "package:sesori_bridge/src/bridge/foundation/filesystem_permission_validator.dart";
@@ -22,10 +21,14 @@ import "package:sesori_bridge/src/bridge/repositories/provider_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/question_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/session_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_repository.dart";
 import "package:sesori_bridge/src/bridge/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/bridge/services/project_initialization_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_event_enrichment_service.dart";
 import "package:sesori_bridge/src/bridge/services/session_persistence_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_unseen_service.dart";
+import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/services/worktree_service.dart";
 import "package:sesori_bridge/src/push/completion_notifier.dart";
 import "package:sesori_bridge/src/push/completion_push_listener.dart";
@@ -68,7 +71,7 @@ void main() {
       final authMessage = await _firstTextMessage(bridgeSocket);
 
       expect(repository.registeredBridgeIds, equals([null]));
-      expect(harness.tokenStore.tokens!.bridgeId, equals("br_first001"));
+      expect(harness.bridgeIdStorage.bridgeId, equals("br_first001"));
       expect(authMessage["type"], equals("auth"));
       expect(authMessage["role"], equals("bridge"));
       expect(authMessage["bridgeId"], equals("br_first001"));
@@ -109,7 +112,7 @@ void main() {
         equals([null, null]),
         reason: "the revoked bridge id must not be re-posted",
       );
-      expect(harness.tokenStore.tokens!.bridgeId, equals("br_second002"));
+      expect(harness.bridgeIdStorage.bridgeId, equals("br_second002"));
       expect(authMessage["bridgeId"], equals("br_second002"));
     });
 
@@ -142,6 +145,91 @@ void main() {
       expect(authMessage["bridgeId"], equals("br_second002"));
     });
   });
+
+  group("OrchestratorSession relay takeover (ADR A22)", () {
+    test("a 4007 replaced-close does not reconnect within the war window", () async {
+      final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_first001";
+      final harness = await _RegistrationHarness.start(repository: repository);
+      addTearDown(harness.close);
+
+      final firstSocket = await harness.relayServer.nextClient();
+      await _firstTextMessage(firstSocket);
+
+      // The relay displaces this bridge: another bridge for the account took
+      // the slot. The displaced bridge must NOT tight-loop back — it uses a
+      // long backoff, so no reconnect happens within the war window.
+      await firstSocket.close(RelayCloseCodes.bridgeReplaced, "replaced");
+
+      await expectLater(
+        harness.relayServer.nextClient(timeout: const Duration(seconds: 3)),
+        throwsA(isA<TimeoutException>()),
+        reason: "displaced bridge must not reconnect on a tight loop",
+      );
+      expect(harness.relayServer.connectedClientCount, equals(1));
+    });
+
+    test("the 1000/replaced rollout fallback also holds off reconnect", () async {
+      final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_first001";
+      final harness = await _RegistrationHarness.start(repository: repository);
+      addTearDown(harness.close);
+
+      final firstSocket = await harness.relayServer.nextClient();
+      await _firstTextMessage(firstSocket);
+
+      await firstSocket.close(1000, "replaced");
+
+      await expectLater(
+        harness.relayServer.nextClient(timeout: const Duration(seconds: 3)),
+        throwsA(isA<TimeoutException>()),
+        reason: "the rollout fallback (1000/replaced) must be treated as a takeover",
+      );
+      expect(harness.relayServer.connectedClientCount, equals(1));
+    });
+
+    test("cancel wakes a long takeover backoff promptly (no shutdown stall)", () async {
+      final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_first001";
+      final harness = await _RegistrationHarness.start(repository: repository);
+      addTearDown(harness.close);
+
+      final firstSocket = await harness.relayServer.nextClient();
+      await _firstTextMessage(firstSocket);
+
+      // Displace the bridge: it enters the minutes-order takeover backoff.
+      await firstSocket.close(RelayCloseCodes.bridgeReplaced, "replaced");
+      // Give the loop a moment to settle into the long Future.delayed wait.
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+
+      // A SIGTERM-style cancel must wake the loop immediately, not wait out the
+      // 2+ minute backoff. run() should return well within a few seconds.
+      final sw = Stopwatch()..start();
+      await harness.session.cancel();
+      await harness.runFuture.timeout(const Duration(seconds: 10));
+      sw.stop();
+
+      expect(
+        sw.elapsed,
+        lessThan(const Duration(seconds: 10)),
+        reason: "cancel must not block on the long takeover backoff",
+      );
+    });
+
+    test("a plain normal drop (1000, no replaced reason) reconnects promptly", () async {
+      final repository = FakeBridgeRegistrationRepository()..nextBridgeId = "br_first001";
+      final harness = await _RegistrationHarness.start(repository: repository);
+      addTearDown(harness.close);
+
+      final firstSocket = await harness.relayServer.nextClient();
+      await _firstTextMessage(firstSocket);
+
+      // A vanilla close (network blip / relay restart) is not a takeover and
+      // must reconnect on the ordinary 1s-reset backoff, unchanged by this PR.
+      await firstSocket.close();
+
+      final secondSocket = await harness.relayServer.nextClient(timeout: const Duration(seconds: 5));
+      final authMessage = await _firstTextMessage(secondSocket);
+      expect(authMessage["bridgeId"], equals("br_first001"));
+    });
+  });
 }
 
 Future<Map<String, dynamic>> _firstTextMessage(WebSocket socket) async {
@@ -161,7 +249,7 @@ Future<void> _waitFor(bool Function() condition, {required String reason}) async
 
 class _RegistrationHarness {
   final FakeBridgePlugin plugin;
-  final InMemoryTokenStore tokenStore;
+  final FakeBridgeIdStorage bridgeIdStorage;
   final OrchestratorSession session;
   final Future<void> runFuture;
   final _CountingRelayServer relayServer;
@@ -169,7 +257,7 @@ class _RegistrationHarness {
 
   _RegistrationHarness._({
     required this.plugin,
-    required this.tokenStore,
+    required this.bridgeIdStorage,
     required this.session,
     required this.runFuture,
     required this.relayServer,
@@ -182,14 +270,11 @@ class _RegistrationHarness {
     final relayServer = await _CountingRelayServer.start();
     final database = createTestDatabase();
     final plugin = FakeBridgePlugin();
-    final tokenStore = InMemoryTokenStore(
-      TokenData(accessToken: "access", refreshToken: "refresh", bridgeId: null, lastProvider: AuthProvider.github),
-    );
+    final bridgeIdStorage = FakeBridgeIdStorage();
     final registrationService = BridgeRegistrationService(
       repository: repository,
       tokenRefresher: FakeTokenRefresher(),
-      loadTokens: tokenStore.load,
-      saveTokens: tokenStore.save,
+      bridgeIdStorage: bridgeIdStorage,
       hostName: "test-host",
       platform: "macos",
     );
@@ -202,6 +287,7 @@ class _RegistrationHarness {
       plugin: plugin,
       sessionDao: database.sessionDao,
       pullRequestRepository: pullRequestRepository,
+      unseenCalculator: const SessionUnseenCalculator(),
     );
     final pushSubsystem = _createPushSubsystem();
 
@@ -222,12 +308,35 @@ class _RegistrationHarness {
       pushDispatcher: pushSubsystem.dispatcher,
       completionListener: pushSubsystem.completionListener,
       maintenanceListener: pushSubsystem.maintenanceListener,
+      accessTokenProvider: FakeAccessTokenProvider(),
       tokenRefresher: FakeTokenRefresher(),
       bridgeRegistrationService: registrationService,
       failureReporter: FakeFailureReporter(),
       prSyncService: FakePrSyncService(),
       sessionRepository: sessionRepository,
-      projectRepository: ProjectRepository(plugin: plugin, projectsDao: database.projectsDao),
+      projectRepository: ProjectRepository(
+        plugin: plugin,
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      ),
+      sessionUnseenService: SessionUnseenService(
+        unseenRepository: SessionUnseenRepository(
+          pluginId: "opencode",
+          sessionDao: database.sessionDao,
+          projectsDao: database.projectsDao,
+          db: database,
+          calculator: const SessionUnseenCalculator(),
+        ),
+        projectRepository: ProjectRepository(
+          plugin: plugin,
+          projectsDao: database.projectsDao,
+          sessionDao: database.sessionDao,
+          unseenCalculator: const SessionUnseenCalculator(),
+        ),
+        viewTracker: SessionViewTracker(),
+      ),
+      sessionViewTracker: SessionViewTracker(),
       filesystemRepository: FilesystemRepository(
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
@@ -255,11 +364,12 @@ class _RegistrationHarness {
       providerRepository: ProviderRepository(plugin: plugin),
       agentRepository: AgentRepository(plugin: plugin),
       permissionRepository: PermissionRepository(plugin: plugin),
-      questionRepository: QuestionRepository(plugin: plugin),
+      questionRepository: QuestionRepository(plugin: plugin, sessionDao: database.sessionDao),
       sessionPersistenceService: SessionPersistenceService(
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         db: database,
+        pluginId: "opencode",
       ),
       worktreeService: WorktreeService(
         worktreeRepository: WorktreeRepository(
@@ -285,6 +395,7 @@ class _RegistrationHarness {
         failureReporter: FakeFailureReporter(),
       ),
       restartService: buildTestRestartService(),
+      statusNotifier: null,
     );
 
     final session = orchestrator.create();
@@ -295,7 +406,7 @@ class _RegistrationHarness {
 
     return _RegistrationHarness._(
       plugin: plugin,
-      tokenStore: tokenStore,
+      bridgeIdStorage: bridgeIdStorage,
       session: session,
       runFuture: runFuture,
       relayServer: relayServer,

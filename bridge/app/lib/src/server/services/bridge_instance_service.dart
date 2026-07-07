@@ -1,11 +1,11 @@
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
 
+import '../foundation/bridge_replace_prompt.dart';
 import '../foundation/process_match.dart';
 import '../foundation/terminal_prompt_decision.dart';
 import '../models/bridge_startup_lock.dart';
 import '../repositories/bridge_instance_repository.dart';
 import '../repositories/process_repository.dart';
-import '../repositories/terminal_prompt_repository.dart';
 
 const Duration _bridgeShutdownWait = Duration(seconds: 5);
 
@@ -26,16 +26,16 @@ class BridgeInstanceResolution {
 class BridgeInstanceService {
   BridgeInstanceService({
     required BridgeInstanceRepository bridgeInstanceRepository,
-    required TerminalPromptRepository terminalPromptRepository,
+    required BridgeReplacePrompt replacePrompt,
     required ProcessRepository processRepository,
     required ServerClock clock,
   }) : _bridgeInstanceRepository = bridgeInstanceRepository,
-       _terminalPromptRepository = terminalPromptRepository,
+       _replacePrompt = replacePrompt,
        _processRepository = processRepository,
        _clock = clock;
 
   final BridgeInstanceRepository _bridgeInstanceRepository;
-  final TerminalPromptRepository _terminalPromptRepository;
+  final BridgeReplacePrompt _replacePrompt;
   final ProcessRepository _processRepository;
   final ServerClock _clock;
 
@@ -92,7 +92,7 @@ class BridgeInstanceService {
       );
     }
 
-    final decision = await _terminalPromptRepository.askReplaceExistingBridge(bridgeCount: existingBridges.length);
+    final decision = await _replacePrompt.askReplaceExistingBridge(bridgeCount: existingBridges.length);
     switch (decision) {
       case TerminalPromptDecision.nonInteractive:
         return BridgeInstanceResolution(
@@ -128,7 +128,7 @@ class BridgeInstanceService {
       return BridgeInstanceResolutionStatus.allowed;
     }
 
-    final decision = await _terminalPromptRepository.askReplaceStartingBridge(holderPid: holder.identity.pid);
+    final decision = await _replacePrompt.askReplaceStartingBridge(holderPid: holder.identity.pid);
     switch (decision) {
       case TerminalPromptDecision.nonInteractive:
         return BridgeInstanceResolutionStatus.nonInteractive;

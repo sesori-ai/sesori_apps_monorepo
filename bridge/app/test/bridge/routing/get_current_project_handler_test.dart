@@ -1,21 +1,37 @@
+import "package:sesori_bridge/src/bridge/persistence/database.dart";
+import "package:sesori_bridge/src/bridge/repositories/project_repository.dart";
+import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/bridge/routing/get_current_project_handler.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
 void main() {
   group("GetCurrentProjectHandler", () {
     late FakeBridgePlugin plugin;
+    late AppDatabase db;
     late GetCurrentProjectHandler handler;
 
     setUp(() {
       plugin = FakeBridgePlugin();
-      handler = GetCurrentProjectHandler(plugin);
+      db = createTestDatabase();
+      handler = GetCurrentProjectHandler(
+        projectRepository: ProjectRepository(
+          plugin: plugin,
+          projectsDao: db.projectsDao,
+          sessionDao: db.sessionDao,
+          unseenCalculator: const SessionUnseenCalculator(),
+        ),
+      );
     });
 
-    tearDown(() => plugin.close());
+    tearDown(() async {
+      await plugin.close();
+      await db.close();
+    });
 
     test("canHandle POST /project/current", () {
       expect(handler.canHandle(makeRequest("POST", "/project/current")), isTrue);

@@ -7,16 +7,21 @@ import "../../../core/routing/app_router.dart";
 import "../../../core/routing/current_project_name.dart";
 import "../../../l10n/app_localizations.dart";
 
+/// A single background task as a row inside the tasks card. Shows the
+/// session's status icon, title + status text, and a disclosure chevron that
+/// opens the (read-only) session detail.
 class BackgroundTaskRow extends StatelessWidget {
   final String? projectId;
   final Session session;
   final SessionStatus? status;
+  final bool isLast;
 
   const BackgroundTaskRow({
     super.key,
     required this.projectId,
     required this.session,
     this.status,
+    this.isLast = false,
   });
 
   @override
@@ -25,7 +30,8 @@ class BackgroundTaskRow extends StatelessWidget {
     final loc = context.loc;
     final title = session.title ?? loc.sessionDetailSubtaskUnnamed;
 
-    return InkWell(
+    return PregoListTile(
+      isLast: isLast,
       onTap: () => context.pushRoute(
         AppRoute.sessionDetail(
           projectId: projectId ?? session.projectID,
@@ -35,48 +41,35 @@ class BackgroundTaskRow extends StatelessWidget {
           sessionTitle: session.title,
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Row(
-          children: [
-            _statusIcon(status: status, prego: prego),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: prego.textTheme.textSm.regular,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  _statusTextWidget(
-                    loc: loc,
-                    status: status,
-                    prego: prego,
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.chevron_right,
-              size: 20,
-              color: prego.colors.textSecondary,
-            ),
-          ],
-        ),
+      leading: _statusIcon(status: status, prego: prego),
+      title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      titleStyle: prego.textTheme.textSm.regular,
+      subtitle: _statusTextWidget(loc: loc, status: status, prego: prego),
+      subtitleStyle: prego.textTheme.textXs.regular.copyWith(
+        color: prego.colors.textSecondary,
+      ),
+      trailing: Icon(
+        Icons.chevron_right,
+        size: 20,
+        color: prego.colors.textSecondary,
       ),
     );
   }
 
   Widget _statusIcon({required SessionStatus? status, required PregoDesignSystem prego}) => switch (status) {
-    SessionStatusBusy() || SessionStatusRetry() => SizedBox(
-      width: 16,
-      height: 16,
-      child: CircularProgressIndicator(
-        strokeWidth: 2,
-        color: prego.colors.bgBrandSolid,
+    // The leading slot is a tight 32px wide but leaves its height free. A
+    // CircularProgressIndicator has no intrinsic size and paints to its box
+    // without preserving aspect ratio, so it renders as an oval. Center
+    // re-loosens the constraints around a fixed square so the spinner stays a
+    // 16px circle.
+    SessionStatusBusy() || SessionStatusRetry() => Center(
+      heightFactor: 1,
+      child: SizedBox.square(
+        dimension: 16,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: prego.colors.bgBrandSolid,
+        ),
       ),
     ),
     SessionStatusIdle() || null => Icon(
@@ -131,9 +124,9 @@ class BackgroundTaskRow extends StatelessWidget {
       DateTime.fromMillisecondsSinceEpoch(updatedMs, isUtc: true),
     );
 
-    if (diff.inMinutes < 1) return "${loc.backgroundTaskStatusIdle} \u00b7 ${loc.timestampJustNow}";
-    if (diff.inHours < 1) return "${loc.backgroundTaskStatusIdle} \u00b7 ${loc.timestampMinutesAgo(diff.inMinutes)}";
-    if (diff.inDays < 1) return "${loc.backgroundTaskStatusIdle} \u00b7 ${loc.timestampHoursAgo(diff.inHours)}";
-    return "${loc.backgroundTaskStatusIdle} \u00b7 ${loc.timestampDaysAgo(diff.inDays)}";
+    if (diff.inMinutes < 1) return "${loc.backgroundTaskStatusIdle} · ${loc.timestampJustNow}";
+    if (diff.inHours < 1) return "${loc.backgroundTaskStatusIdle} · ${loc.timestampMinutesAgo(diff.inMinutes)}";
+    if (diff.inDays < 1) return "${loc.backgroundTaskStatusIdle} · ${loc.timestampHoursAgo(diff.inHours)}";
+    return "${loc.backgroundTaskStatusIdle} · ${loc.timestampDaysAgo(diff.inDays)}";
   }
 }

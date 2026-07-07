@@ -35,6 +35,10 @@ RelayMessage _$RelayMessageFromJson(
           return RelaySseUnsubscribe.fromJson(
             json
           );
+                case 'session_view':
+          return RelaySessionView.fromJson(
+            json
+          );
                 case 'key_exchange':
           return RelayKeyExchange.fromJson(
             json
@@ -460,6 +464,79 @@ String toString() {
 
 
 
+
+/// @nodoc
+@JsonSerializable()
+
+class RelaySessionView implements RelayMessage {
+  const RelaySessionView({required this.sessionId, final  String? $type}): $type = $type ?? 'session_view';
+  factory RelaySessionView.fromJson(Map<String, dynamic> json) => _$RelaySessionViewFromJson(json);
+
+ final  String? sessionId;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of RelayMessage
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$RelaySessionViewCopyWith<RelaySessionView> get copyWith => _$RelaySessionViewCopyWithImpl<RelaySessionView>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$RelaySessionViewToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RelaySessionView&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,sessionId);
+
+@override
+String toString() {
+  return 'RelayMessage.sessionView(sessionId: $sessionId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $RelaySessionViewCopyWith<$Res> implements $RelayMessageCopyWith<$Res> {
+  factory $RelaySessionViewCopyWith(RelaySessionView value, $Res Function(RelaySessionView) _then) = _$RelaySessionViewCopyWithImpl;
+@useResult
+$Res call({
+ String? sessionId
+});
+
+
+
+
+}
+/// @nodoc
+class _$RelaySessionViewCopyWithImpl<$Res>
+    implements $RelaySessionViewCopyWith<$Res> {
+  _$RelaySessionViewCopyWithImpl(this._self, this._then);
+
+  final RelaySessionView _self;
+  final $Res Function(RelaySessionView) _then;
+
+/// Create a copy of RelayMessage
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? sessionId = freezed,}) {
+  return _then(RelaySessionView(
+sessionId: freezed == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
 
 /// @nodoc
 @JsonSerializable()

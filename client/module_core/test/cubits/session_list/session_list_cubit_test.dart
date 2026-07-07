@@ -25,6 +25,7 @@ void main() {
     late MockProjectService mockProjectService;
     late MockConnectionService mockConnectionService;
     late MockSseEventRepository mockSseEventRepository;
+    late FakeSessionUnseenTracker fakeSessionUnseenTracker;
     late MockRouteSource mockRouteSource;
     late MockFailureReporter mockFailureReporter;
     late StreamController<SseEvent> eventController;
@@ -37,6 +38,7 @@ void main() {
       mockProjectService = MockProjectService();
       mockConnectionService = MockConnectionService();
       mockSseEventRepository = MockSseEventRepository();
+      fakeSessionUnseenTracker = FakeSessionUnseenTracker();
       mockFailureReporter = MockFailureReporter();
       eventController = StreamController<SseEvent>.broadcast();
       statusController = BehaviorSubject<ConnectionStatus>.seeded(
@@ -72,6 +74,7 @@ void main() {
       projectService: mockProjectService,
       connectionService: mockConnectionService,
       sseEventRepository: mockSseEventRepository,
+      sessionUnseenTracker: fakeSessionUnseenTracker,
       routeSource: mockRouteSource,
       projectId: projectId,
       failureReporter: mockFailureReporter,
@@ -1410,6 +1413,7 @@ void main() {
           projectService: mockProjectService,
           connectionService: mockConnectionService,
           sseEventRepository: mockSseEventRepository,
+          sessionUnseenTracker: fakeSessionUnseenTracker,
           routeSource: mockRouteSource,
           projectId: "global",
           failureReporter: mockFailureReporter,
@@ -1792,5 +1796,99 @@ void main() {
         verify(() => mockProjectService.listSessions(projectId: projectId, waitForPrData: any(named: "waitForPrData"))).called(greaterThanOrEqualTo(1));
       },
     );
+
+    test("fetch seeds the tracker with the REST unseen flags", () async {
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      when(
+        () => mockProjectService.listSessions(projectId: projectId, waitForPrData: any(named: "waitForPrData")),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          SessionListResponse(items: [testSession(id: "s1", unseen: true), testSession(id: "s2")]),
+        ),
+      );
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        fakeSessionUnseenTracker.seededSessions.single.unseenBySessionId,
+        equals({"s1": true, "s2": false}),
+      );
+      expect((cubit.state as SessionListLoaded).unseenBySessionId, equals({"s1": true, "s2": false}));
+    });
+
+    test("live tracker updates re-emit the merged unseen map", () async {
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      when(
+        () => mockProjectService.listSessions(projectId: projectId, waitForPrData: any(named: "waitForPrData")),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])),
+      );
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+      expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isFalse);
+
+      fakeSessionUnseenTracker.emitSessionUnseen({
+        projectId: {"s1": true},
+      });
+      await Future<void>.delayed(Duration.zero);
+
+      expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isTrue);
+    });
+
+    test("markSessionSeen applies the change to the tracker optimistically", () async {
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      when(
+        () => mockProjectService.listSessions(projectId: projectId, waitForPrData: any(named: "waitForPrData")),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1", unseen: true)])),
+      );
+      when(
+        () => mockSessionService.markSessionSeen(sessionId: "s1", read: true),
+      ).thenAnswer((_) async => ApiResponse.success(null));
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+      expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isTrue);
+
+      await cubit.markSessionSeen(sessionId: "s1", read: true);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?["s1"], isFalse);
+      expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isFalse);
+      verify(() => mockSessionService.markSessionSeen(sessionId: "s1", read: true)).called(1);
+    });
+
+    test("markSessionSeen failure refetches the authoritative list", () async {
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      when(
+        () => mockProjectService.listSessions(projectId: projectId, waitForPrData: any(named: "waitForPrData")),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1", unseen: true)])),
+      );
+      when(
+        () => mockSessionService.markSessionSeen(sessionId: "s1", read: true),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
+      clearInteractions(mockProjectService);
+
+      await cubit.markSessionSeen(sessionId: "s1", read: true);
+      await Future<void>.delayed(Duration.zero);
+
+      // No local rollback bookkeeping: the failed request triggers a silent
+      // refetch, whose seed restores the authoritative unseen flags.
+      verify(
+        () => mockProjectService.listSessions(projectId: projectId, waitForPrData: any(named: "waitForPrData")),
+      ).called(1);
+      expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?["s1"], isTrue);
+      expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isTrue);
+    });
   });
 }

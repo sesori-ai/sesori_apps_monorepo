@@ -10,6 +10,7 @@ class SessionTile extends StatelessWidget {
   final Session session;
   final bool isArchived;
   final bool isActive;
+  final bool unseen;
   final bool selected;
   final bool awaitingInput;
   final bool isRetrying;
@@ -23,6 +24,7 @@ class SessionTile extends StatelessWidget {
     required this.session,
     required this.isArchived,
     required this.isActive,
+    this.unseen = false,
     this.selected = false,
     this.awaitingInput = false,
     this.isRetrying = false,
@@ -68,7 +70,10 @@ class SessionTile extends StatelessWidget {
             color: context.prego.colors.fgWhite,
           ),
         ),
-        title: Text(session.title ?? loc.sessionListUntitled),
+        title: Text(
+          session.title ?? loc.sessionListUntitled,
+          style: unseen ? context.prego.textTheme.textMd.bold : null,
+        ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -99,7 +104,17 @@ class SessionTile extends StatelessWidget {
           session.pullRequest != null,
           isActive,
         ].where((v) => v).length >= 2,
-        trailing: const Icon(Icons.chevron_right),
+        trailing: switch (unseen) {
+          true => Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.circle, size: 10, color: context.prego.colors.bgBrandSolid),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+          false => const Icon(Icons.chevron_right),
+        },
         onTap: onTap,
         onLongPress: onLongPress,
       ),

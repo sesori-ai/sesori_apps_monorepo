@@ -70,6 +70,9 @@ void main() {
   late MockSessionService sessionService;
   late MockVoiceTranscriptionService voiceTranscriptionService;
 
+  // flutter_test defaults `defaultTargetPlatform` to android, so PregoAnchorMenu
+  // renders its flat (cue) menu here — the menu rows are Material InkWells, not
+  // GlassMenuItems. Finders below target those InkWells.
   setUp(() async {
     await GetIt.instance.reset();
     sessionService = MockSessionService();
@@ -114,12 +117,12 @@ void main() {
     await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
     await tester.pumpAndSettle();
 
-    // The variant pill morphs into a glass popup listing the Default option
-    // plus the model's variants.
-    expect(find.widgetWithText(GlassMenuItem, "Default"), findsOneWidget);
-    expect(find.widgetWithText(GlassMenuItem, "xhigh"), findsOneWidget);
+    // Tapping the variant pill opens a popup listing the Default option plus
+    // the model's variants.
+    expect(find.widgetWithText(InkWell, "Default"), findsOneWidget);
+    expect(find.widgetWithText(InkWell, "xhigh"), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(GlassMenuItem, "xhigh"));
+    await tester.tap(find.widgetWithText(InkWell, "xhigh"));
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
@@ -162,7 +165,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Select a different variant.
-    await tester.tap(find.widgetWithText(GlassMenuItem, "low"));
+    await tester.tap(find.widgetWithText(InkWell, "low"));
     await tester.pumpAndSettle();
 
     // The UI should now reflect the newly selected variant.
@@ -207,7 +210,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Select Default (null variant).
-    await tester.tap(find.widgetWithText(GlassMenuItem, "Default"));
+    await tester.tap(find.widgetWithText(InkWell, "Default"));
     await tester.pumpAndSettle();
 
     // The UI should now show "Default".
@@ -222,7 +225,7 @@ void main() {
     await tester.tap(find.widgetWithText(GlassButton, "xhigh"));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(GlassMenuItem, "xhigh"));
+    await tester.tap(find.widgetWithText(InkWell, "xhigh"));
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(GlassButton, "xhigh"), findsOneWidget);
@@ -230,7 +233,7 @@ void main() {
     await tester.tap(find.widgetWithText(GlassButton, "coder"));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(GlassMenuItem, "reviewer"));
+    await tester.tap(find.widgetWithText(InkWell, "reviewer"));
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(GlassButton, "reviewer"), findsOneWidget);
