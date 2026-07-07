@@ -67,6 +67,13 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   /// only: the bridge's stored rows are the durable attribution.
   final Map<String, String> _sessionDirectories = {};
 
+  /// Every canonical directory the bridge has hinted at this run (see
+  /// [listAllSessions]). Internal enumerations that have no hints of their own
+  /// — the pre-resume warm-up, the catalog probe — scan these too, so a
+  /// never-enumerated prior-run session in a bridge-known directory is still
+  /// discoverable when the agent lacks the unfiltered `session/list` form.
+  final Set<String> _hintedDirectories = {};
+
   AcpStdioClient? _client;
   Future<bool>? _connectFuture;
   StreamSubscription<AcpNotification>? _notificationSubscription;
@@ -330,10 +337,13 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     }
     if (!(_initResult?.agentCapabilities.listSessions ?? false)) return const [];
 
-    final directories = <String>{
-      launchDirectory,
+    _hintedDirectories.addAll({
       for (final directory in knownDirectories)
         if (directory.trim().isNotEmpty) normalizeProjectDirectory(directory: directory),
+    });
+    final directories = <String>{
+      launchDirectory,
+      ..._hintedDirectories,
       ..._sessionDirectories.values,
     };
 
@@ -562,7 +572,9 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     // prompt issued straight from a push notification), so its directory is
     // unknown and the load below would run in the launch directory instead of
     // the session's own cwd. Enumerating warms [_sessionDirectories] as a side
-    // effect; fail-soft, so at worst the prior fallback behaviour remains.
+    // effect — the scan covers the unfiltered list plus every bridge-hinted
+    // directory seen this run ([_hintedDirectories]); fail-soft, so at worst
+    // the prior fallback behaviour remains.
     if (!_sessionDirectories.containsKey(sessionId)) {
       await listAllSessions(knownDirectories: const {});
     }

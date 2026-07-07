@@ -23,15 +23,9 @@ Map<String, dynamic> _$AcpSessionInfoToJson(_AcpSessionInfo instance) =>
 
 _AcpSessionListResult _$AcpSessionListResultFromJson(Map json) =>
     _AcpSessionListResult(
-      sessions:
-          (json['sessions'] as List<dynamic>?)
-              ?.map(
-                (e) => AcpSessionInfo.fromJson(
-                  Map<String, dynamic>.from(e as Map),
-                ),
-              )
-              .toList() ??
-          const <AcpSessionInfo>[],
+      sessions: json['sessions'] == null
+          ? const <AcpSessionInfo>[]
+          : _sessionInfosFromJson(json['sessions']),
       nextCursor: json['nextCursor'] as String?,
     );
 

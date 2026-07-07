@@ -372,6 +372,46 @@ void main() {
       await respond("session/prompt", {"stopReason": "end_turn"});
     });
 
+    test("the pre-resume warm-up scans directories the bridge hinted earlier", () async {
+      await connect(sessionCapabilities: true);
+      const home = "/Users/x/kustos";
+
+      // The bridge hints at a known directory during a routine enumeration
+      // that finds nothing yet, on an agent WITHOUT the unfiltered list form.
+      final stopFirst = autoListResponder();
+      await plugin.listAllSessions(knownDirectories: const {home});
+      stopFirst();
+
+      // A prior-run session in that directory becomes visible later (it was
+      // never enumerated, so the plugin has no per-session attribution). The
+      // hint-less warm-up must still scan the remembered directory so the
+      // resume-load runs in the session's own cwd.
+      final stopSecond = autoListResponder(
+        byCwd: {
+          home: [
+            {"sessionId": "cold-s", "cwd": home, "title": "Cold"},
+          ],
+        },
+      );
+      final sending = plugin.sendPrompt(
+        sessionId: "cold-s",
+        parts: const [PluginPromptPart.text(text: "resume me")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final loadFrame = await waitForFrame("session/load");
+      stopSecond();
+      expect(
+        (loadFrame["params"] as Map)["cwd"],
+        home,
+        reason: "the remembered bridge hint must teach the load its real cwd",
+      );
+      fake().emit({"jsonrpc": "2.0", "id": loadFrame["id"], "result": const <String, dynamic>{}});
+      await sending;
+      await respond("session/prompt", {"stopReason": "end_turn"});
+    });
+
     test("catalog probe scans the launch directory and every extra directory", () async {
       await connect(sessionCapabilities: true);
       const opened = "/Users/x/kustos";

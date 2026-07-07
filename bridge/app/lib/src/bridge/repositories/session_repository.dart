@@ -236,10 +236,19 @@ class SessionRepository {
         // No stored row means the bridge did not create this session (every
         // bridge-created session — worktree ones included — is persisted with
         // its owning project and was handled above), so its own cwd IS its
-        // project: resolve via the session enumeration.
-        final sessionProjectPaths = await _sessionDao.getSessionProjectPaths(pluginId: plugin.id);
+        // project: resolve via the session enumeration. The hint set includes
+        // every stored project row (not just the owning projects of this
+        // plugin's sessions) so a rowless session in an opened-but-sessionless
+        // folder is still discoverable by a directory-scoped backend.
+        final (sessionProjectPaths, storedProjects) = await (
+          _sessionDao.getSessionProjectPaths(pluginId: plugin.id),
+          _sessionDao.attachedDatabase.projectsDao.getAllProjects(),
+        ).wait;
         final sessions = await plugin.listAllSessions(
-          knownDirectories: _knownDirectories(sessionProjectPaths: sessionProjectPaths, projectId: null),
+          knownDirectories: {
+            ..._knownDirectories(sessionProjectPaths: sessionProjectPaths, projectId: null),
+            for (final stored in storedProjects) stored.path,
+          },
         );
         for (final session in sessions) {
           if (session.id == sessionId) {

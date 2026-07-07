@@ -61,4 +61,38 @@ void main() {
     expect(AcpStopReason.parse("refusal"), AcpStopReason.refusal);
     expect(AcpStopReason.parse("???"), AcpStopReason.unknown);
   });
+
+  group("AcpSessionListResult", () {
+    test("parses sessions with ISO-8601 and epoch-ms timestamps", () {
+      final result = AcpSessionListResult.fromJson({
+        "sessions": [
+          {"sessionId": "s1", "cwd": "/repo", "title": "One", "updatedAt": "2026-07-01T10:00:00Z"},
+          {"sessionId": "s2", "cwd": "/repo", "updatedAt": 1751364000000},
+        ],
+        "nextCursor": "page-2",
+      });
+      expect(result.sessions, hasLength(2));
+      expect(result.sessions.first.updatedAtMs, DateTime.utc(2026, 7, 1, 10).millisecondsSinceEpoch);
+      expect(result.sessions.last.updatedAtMs, 1751364000000);
+      expect(result.nextCursor, "page-2");
+    });
+
+    test("a malformed entry is skipped without hiding the page's valid sessions", () {
+      final result = AcpSessionListResult.fromJson({
+        "sessions": [
+          {"sessionId": "good", "cwd": "/repo"},
+          "junk-string-entry",
+          {"sessionId": 42, "cwd": "/repo"},
+          {"sessionId": "also-good", "cwd": "/other"},
+        ],
+      });
+      expect(result.sessions.map((s) => s.sessionId), ["good", "also-good"]);
+      expect(result.nextCursor, isNull);
+    });
+
+    test("a non-list sessions payload parses as empty", () {
+      expect(AcpSessionListResult.fromJson({"sessions": "nope"}).sessions, isEmpty);
+      expect(AcpSessionListResult.fromJson(const {}).sessions, isEmpty);
+    });
+  });
 }

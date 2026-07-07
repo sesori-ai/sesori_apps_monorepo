@@ -811,6 +811,31 @@ void main() {
       expect(result, equals(directory));
     });
 
+    test("findProjectIdForSession hints at opened-but-sessionless folders too", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      // An opened folder with no stored sessions for this plugin: it never
+      // appears in the sessions⋈projects join, but a directory-scoped backend
+      // can only discover a rowless session there if the hint set includes it.
+      const opened = "/tmp/proj/opened-only";
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [opened]);
+      final plugin = _FakeDerivedPlugin(launchDirectory: "/tmp/proj/alpha", allSessions: const []);
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      await repository.findProjectIdForSession(sessionId: "missing");
+
+      expect(plugin.receivedKnownDirectories, contains(opened));
+    });
+
     test("sessionListIsAuthoritative is false for a derived plugin and true for a native one", () async {
       final db = createTestDatabase();
       addTearDown(db.close);

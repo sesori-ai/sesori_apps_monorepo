@@ -4,6 +4,7 @@
 library;
 
 import "package:freezed_annotation/freezed_annotation.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 part "acp_protocol.freezed.dart";
 part "acp_protocol.g.dart";
@@ -140,11 +141,31 @@ sealed class AcpSessionInfo with _$AcpSessionInfo {
   factory AcpSessionInfo.fromJson(Map<String, dynamic> json) => _$AcpSessionInfoFromJson(json);
 }
 
+/// Defensive parser for a `session/list` page's `sessions` array: a malformed
+/// entry is logged and skipped so it cannot hide the page's valid sessions —
+/// session enumeration is a fail-soft flow end to end.
+List<AcpSessionInfo> _sessionInfosFromJson(Object? raw) {
+  if (raw is! List) return const [];
+  final infos = <AcpSessionInfo>[];
+  for (final entry in raw) {
+    if (entry is! Map) {
+      Log.d("[acp] skipping non-object session/list entry: ${entry.runtimeType}");
+      continue;
+    }
+    try {
+      infos.add(AcpSessionInfo.fromJson(entry.cast<String, dynamic>()));
+    } on Object catch (error) {
+      Log.d("[acp] skipping malformed session/list entry: $error");
+    }
+  }
+  return infos;
+}
+
 /// Parsed result of one `session/list` page.
 @freezed
 sealed class AcpSessionListResult with _$AcpSessionListResult {
   const factory AcpSessionListResult({
-    @Default(<AcpSessionInfo>[]) List<AcpSessionInfo> sessions,
+    @JsonKey(fromJson: _sessionInfosFromJson) @Default(<AcpSessionInfo>[]) List<AcpSessionInfo> sessions,
     /// Opaque continuation token — a non-empty value means more pages exist.
     required String? nextCursor,
   }) = _AcpSessionListResult;

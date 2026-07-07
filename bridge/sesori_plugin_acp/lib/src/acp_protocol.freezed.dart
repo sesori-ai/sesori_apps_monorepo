@@ -166,7 +166,7 @@ as int?,
 /// @nodoc
 mixin _$AcpSessionListResult {
 
- List<AcpSessionInfo> get sessions;/// Opaque continuation token — a non-empty value means more pages exist.
+@JsonKey(fromJson: _sessionInfosFromJson) List<AcpSessionInfo> get sessions;/// Opaque continuation token — a non-empty value means more pages exist.
  String? get nextCursor;
 /// Create a copy of AcpSessionListResult
 /// with the given fields replaced by the non-null parameter values.
@@ -200,7 +200,7 @@ abstract mixin class $AcpSessionListResultCopyWith<$Res>  {
   factory $AcpSessionListResultCopyWith(AcpSessionListResult value, $Res Function(AcpSessionListResult) _then) = _$AcpSessionListResultCopyWithImpl;
 @useResult
 $Res call({
- List<AcpSessionInfo> sessions, String? nextCursor
+@JsonKey(fromJson: _sessionInfosFromJson) List<AcpSessionInfo> sessions, String? nextCursor
 });
 
 
@@ -233,11 +233,11 @@ as String?,
 @JsonSerializable()
 
 class _AcpSessionListResult implements AcpSessionListResult {
-  const _AcpSessionListResult({final  List<AcpSessionInfo> sessions = const <AcpSessionInfo>[], required this.nextCursor}): _sessions = sessions;
+  const _AcpSessionListResult({@JsonKey(fromJson: _sessionInfosFromJson) final  List<AcpSessionInfo> sessions = const <AcpSessionInfo>[], required this.nextCursor}): _sessions = sessions;
   factory _AcpSessionListResult.fromJson(Map<String, dynamic> json) => _$AcpSessionListResultFromJson(json);
 
  final  List<AcpSessionInfo> _sessions;
-@override@JsonKey() List<AcpSessionInfo> get sessions {
+@override@JsonKey(fromJson: _sessionInfosFromJson) List<AcpSessionInfo> get sessions {
   if (_sessions is EqualUnmodifiableListView) return _sessions;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_sessions);
@@ -279,7 +279,7 @@ abstract mixin class _$AcpSessionListResultCopyWith<$Res> implements $AcpSession
   factory _$AcpSessionListResultCopyWith(_AcpSessionListResult value, $Res Function(_AcpSessionListResult) _then) = __$AcpSessionListResultCopyWithImpl;
 @override @useResult
 $Res call({
- List<AcpSessionInfo> sessions, String? nextCursor
+@JsonKey(fromJson: _sessionInfosFromJson) List<AcpSessionInfo> sessions, String? nextCursor
 });
 
 
