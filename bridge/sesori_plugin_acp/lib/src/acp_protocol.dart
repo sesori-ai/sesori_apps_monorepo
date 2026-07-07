@@ -3,6 +3,11 @@
 /// methods and model `configOptions`) live in the consuming package.
 library;
 
+import "package:freezed_annotation/freezed_annotation.dart";
+
+part "acp_protocol.freezed.dart";
+part "acp_protocol.g.dart";
+
 /// The ACP protocol version this bridge implements.
 const int acpProtocolVersion = 1;
 
@@ -101,64 +106,50 @@ class AcpInitializeResult {
   }
 }
 
-/// One entry of a `session/list` result.
-class AcpSessionInfo {
-  const AcpSessionInfo({
-    required this.sessionId,
-    required this.cwd,
-    required this.title,
-    required this.updatedAtMs,
-  });
+/// Converts an ACP `updatedAt` value to epoch milliseconds: the spec sends an
+/// ISO 8601 string, while live cursor-agent builds have shipped epoch
+/// numbers — both are accepted, anything else is null.
+class AcpTimestampMsConverter implements JsonConverter<int?, Object?> {
+  const AcpTimestampMsConverter();
 
-  final String sessionId;
-
-  /// The session's working directory. Required by the spec, but parsed
-  /// defensively — a missing value falls back to the directory the caller
-  /// scanned.
-  final String? cwd;
-
-  final String? title;
-
-  /// Last-activity time in epoch milliseconds. The ACP spec sends an ISO 8601
-  /// string; live cursor-agent builds have shipped epoch numbers — both are
-  /// accepted.
-  final int? updatedAtMs;
-
-  factory AcpSessionInfo.fromJson(Map<String, dynamic> json) => AcpSessionInfo(
-    sessionId: (json["sessionId"] ?? "") as String,
-    cwd: json["cwd"] as String?,
-    title: json["title"] as String?,
-    updatedAtMs: _parseTimestamp(json["updatedAt"]),
-  );
-
-  static int? _parseTimestamp(Object? raw) {
-    if (raw is num) return raw.round();
-    if (raw is String) return DateTime.tryParse(raw)?.millisecondsSinceEpoch;
+  @override
+  int? fromJson(Object? json) {
+    if (json is num) return json.round();
+    if (json is String) return DateTime.tryParse(json)?.millisecondsSinceEpoch;
     return null;
   }
+
+  @override
+  Object? toJson(int? object) => object;
+}
+
+/// One entry of a `session/list` result.
+@freezed
+sealed class AcpSessionInfo with _$AcpSessionInfo {
+  const factory AcpSessionInfo({
+    @Default("") String sessionId,
+    /// The session's working directory. Required by the spec, but kept
+    /// nullable — a missing value falls back to the directory the caller
+    /// scanned.
+    required String? cwd,
+    required String? title,
+    /// Last-activity time in epoch milliseconds (see [AcpTimestampMsConverter]).
+    @AcpTimestampMsConverter() @JsonKey(name: "updatedAt") required int? updatedAtMs,
+  }) = _AcpSessionInfo;
+
+  factory AcpSessionInfo.fromJson(Map<String, dynamic> json) => _$AcpSessionInfoFromJson(json);
 }
 
 /// Parsed result of one `session/list` page.
-class AcpSessionListResult {
-  const AcpSessionListResult({required this.sessions, required this.nextCursor});
+@freezed
+sealed class AcpSessionListResult with _$AcpSessionListResult {
+  const factory AcpSessionListResult({
+    @Default(<AcpSessionInfo>[]) List<AcpSessionInfo> sessions,
+    /// Opaque continuation token — a non-empty value means more pages exist.
+    required String? nextCursor,
+  }) = _AcpSessionListResult;
 
-  final List<AcpSessionInfo> sessions;
-
-  /// Opaque continuation token — non-null means more pages exist.
-  final String? nextCursor;
-
-  factory AcpSessionListResult.fromJson(Map<String, dynamic> json) {
-    final rawSessions = json["sessions"];
-    final sessions = rawSessions is List ? rawSessions : const <Object?>[];
-    final cursor = json["nextCursor"];
-    return AcpSessionListResult(
-      sessions: sessions
-          .whereType<Map<dynamic, dynamic>>()
-          .map((s) => AcpSessionInfo.fromJson(s.cast<String, dynamic>()))
-          .toList(growable: false),
-      nextCursor: cursor is String && cursor.isNotEmpty ? cursor : null,
-    );
-  }
+  factory AcpSessionListResult.fromJson(Map<String, dynamic> json) => _$AcpSessionListResultFromJson(json);
 }
 
 /// Result of `session/new`.

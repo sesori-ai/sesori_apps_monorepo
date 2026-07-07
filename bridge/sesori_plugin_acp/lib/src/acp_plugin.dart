@@ -414,8 +414,9 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         raw is Map ? raw.cast<String, dynamic>() : const {},
       );
       infos.addAll(result.sessions);
-      cursor = result.nextCursor;
-      if (cursor == null) break;
+      final next = result.nextCursor;
+      if (next == null || next.isEmpty) break;
+      cursor = next;
     }
     return infos;
   }
