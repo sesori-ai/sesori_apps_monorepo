@@ -92,15 +92,19 @@ class CursorPlugin extends AcpPlugin {
   }
 
   @override
-  void captureSessionConfig(Map<String, dynamic> result, {String? sessionId}) {
+  void captureSessionConfig(
+    Map<String, dynamic> result, {
+    String? sessionId,
+    bool fromNewSession = false,
+  }) {
     final session = AcpNewSessionResult.fromJson(result);
 
-    // A `session/load` (history / resume / catalog probe) carries a concrete
-    // sessionId and replays whatever model THAT old session used. Only a
-    // `session/new`-shaped capture (no sessionId) may set the global default
-    // model — otherwise browsing a history thread that ran a non-default model
-    // would make later "Default" turns run and stamp as that old model.
-    final isDefaultSource = sessionId == null;
+    // The catalog LIST (available models/modes) is account-global, so it is
+    // taken from any capture — new or load. But only a `session/new` response
+    // ([fromNewSession]) defines the new-session DEFAULT model/mode; a
+    // `session/load` (history / resume / catalog probe) replays whatever model
+    // that old session used and must not redefine the default, or later
+    // "Default" turns would run and stamp as that old model.
     final modelConfig = CursorModelProbe.findConfig(session, "model");
     String? loadedModelId;
     if (modelConfig != null) {
@@ -108,7 +112,7 @@ class CursorPlugin extends AcpPlugin {
       final models = CursorModelProbe.options(modelConfig);
       if (models.isNotEmpty) _models = models;
       loadedModelId = CursorModelProbe.currentValue(modelConfig);
-      if (isDefaultSource && loadedModelId != null) _currentModelId = loadedModelId;
+      if (fromNewSession && loadedModelId != null) _currentModelId = loadedModelId;
     }
 
     final modeConfig = CursorModelProbe.findConfig(session, "mode");
@@ -116,16 +120,14 @@ class CursorPlugin extends AcpPlugin {
       _modeConfigId = modeConfig["id"] as String? ?? _modeConfigId;
       final modes = CursorModelProbe.options(modeConfig);
       if (modes.isNotEmpty) _modes = modes;
-      // Mode has no per-session stamping, so only the new-session shape (no
-      // sessionId) advances the default mode, for the same reason as the model.
-      if (isDefaultSource) _defaultModeId = CursorModelProbe.currentValue(modeConfig) ?? _defaultModeId;
+      if (fromNewSession) _defaultModeId = CursorModelProbe.currentValue(modeConfig) ?? _defaultModeId;
     }
 
     eventMapper.currentProviderId = _providerId;
     eventMapper.currentModelId = _currentModelId;
     if (sessionId != null) {
-      // Stamp the loaded session's OWN model (not the global default) so its
-      // replayed/live messages carry the model it actually used.
+      // Stamp the created/loaded session's OWN model (not the global default)
+      // so its replayed/live messages carry the model it actually used.
       eventMapper.setSessionModel(sessionId, loadedModelId ?? _currentModelId, providerId: _providerId);
     }
   }

@@ -120,7 +120,7 @@ void main() {
     });
 
     test("captureSessionConfig populates providers, mode variants, and agents", () async {
-      plugin.captureSessionConfig(catalogResult());
+      plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
 
       final providers = await plugin.getProviders(projectId: "/repo");
       expect(providers.providers, hasLength(1));
@@ -136,41 +136,52 @@ void main() {
       expect(agents.single.model?.providerID, "cursor");
     });
 
-    test("a loaded history session's model does not overwrite the new-session default", () async {
-      // A session/new-shaped capture (no sessionId) sets the default model.
-      plugin.captureSessionConfig(catalogResult());
-      expect((await plugin.getProviders(projectId: "/repo")).providers.single.defaultModelID, "gpt-5.4");
-
-      // A session/load capture (concrete sessionId) replays whatever model the
-      // OLD session ran — it must NOT become the new-session default, or later
-      // "Default" turns would silently run/stamp as that old model.
-      plugin.captureSessionConfig(
+    // A model config whose currentValue is the SECOND option, so "seeded the
+    // default" is distinguishable from "fell back to the first model".
+    Map<String, dynamic> modelCatalog(String currentValue) => {
+      "sessionId": "s",
+      "configOptions": [
         {
-          "sessionId": "old",
-          "configOptions": [
-            {
-              "id": "model",
-              "category": "model",
-              "currentValue": "sonnet-4.6",
-              "options": [
-                {"value": "gpt-5.4", "name": "GPT-5.4"},
-                {"value": "sonnet-4.6", "name": "Sonnet 4.6"},
-              ],
-            },
+          "id": "model",
+          "category": "model",
+          "currentValue": currentValue,
+          "options": [
+            {"value": "gpt-5.4", "name": "GPT-5.4"},
+            {"value": "sonnet-4.6", "name": "Sonnet 4.6"},
           ],
         },
-        sessionId: "old",
+      ],
+    };
+
+    test("a session/new capture seeds the new-session default model", () async {
+      // session/new carries a fresh id AND is the default source.
+      plugin.captureSessionConfig(modelCatalog("sonnet-4.6"), sessionId: "new-1", fromNewSession: true);
+      expect(
+        (await plugin.getProviders(projectId: "/repo")).providers.single.defaultModelID,
+        "sonnet-4.6",
+        reason: "session/new's currentValue is the new-session default, even when it isn't the first model",
       );
+    });
+
+    test("a session/load (or probe) does not overwrite the new-session default", () async {
+      plugin.captureSessionConfig(modelCatalog("gpt-5.4"), sessionId: "new-1", fromNewSession: true);
+      expect((await plugin.getProviders(projectId: "/repo")).providers.single.defaultModelID, "gpt-5.4");
+
+      // A resume/history/probe load (fromNewSession: false) replays an old
+      // session's model — it must NOT become the default.
+      plugin.captureSessionConfig(modelCatalog("sonnet-4.6"), sessionId: "old");
+      // A catalog probe carries no sessionId at all, also fromNewSession: false.
+      plugin.captureSessionConfig(modelCatalog("sonnet-4.6"));
 
       expect(
         (await plugin.getProviders(projectId: "/repo")).providers.single.defaultModelID,
         "gpt-5.4",
-        reason: "browsing a history thread must not change the new-session default",
+        reason: "neither a load nor a probe may change the new-session default",
       );
     });
 
     test("applyTurnSelection drives model + mode set_config_option calls", () async {
-      plugin.captureSessionConfig(catalogResult());
+      plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
 
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
@@ -213,7 +224,7 @@ void main() {
     });
 
     test("applyTurnSelection never pushes an unknown model", () async {
-      plugin.captureSessionConfig(catalogResult());
+      plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
@@ -246,7 +257,7 @@ void main() {
       // Cursor's model selection is process-global: if one session selects a
       // non-default model, a later turn that uses the default must push it back,
       // or it silently runs on the other session's model.
-      plugin.captureSessionConfig(catalogResult()); // default gpt-5.4
+      plugin.captureSessionConfig(catalogResult(), fromNewSession: true); // default gpt-5.4
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
@@ -291,7 +302,7 @@ void main() {
       // Interleaved sessions: sA selected sonnet-4.6, sB selected gpt-5.4. A
       // later null-model turn on sA must re-apply sonnet-4.6 (sA's own model),
       // not fall back to the process-global default and run on gpt-5.4.
-      plugin.captureSessionConfig(catalogResult()); // default gpt-5.4
+      plugin.captureSessionConfig(catalogResult(), fromNewSession: true); // default gpt-5.4
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
@@ -342,7 +353,7 @@ void main() {
     });
 
     test("a rejected model switch stamps the model actually in effect", () async {
-      plugin.captureSessionConfig(catalogResult()); // default gpt-5.4
+      plugin.captureSessionConfig(catalogResult(), fromNewSession: true); // default gpt-5.4
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
@@ -378,7 +389,7 @@ void main() {
       // sB then tries gpt-5.4 and is rejected. sB must NOT be stamped with sA's
       // sonnet-4.6 — that would make sB's later default turns re-target sonnet-4.6
       // instead of sB's own intended default (gpt-5.4).
-      plugin.captureSessionConfig(catalogResult()); // default gpt-5.4
+      plugin.captureSessionConfig(catalogResult(), fromNewSession: true); // default gpt-5.4
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
@@ -425,7 +436,7 @@ void main() {
       // applied nothing. The applied-cache must be cleared on reset or the
       // redundant-call guard skips re-pushing and the turn runs on the fresh
       // process's defaults instead of the user's selection.
-      plugin.captureSessionConfig(catalogResult());
+      plugin.captureSessionConfig(catalogResult(), fromNewSession: true);
       final client = AcpStdioClient(
         launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,

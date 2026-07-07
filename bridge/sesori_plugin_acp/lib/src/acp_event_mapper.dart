@@ -92,6 +92,11 @@ class AcpEventMapper {
   String projectForSession(String sessionId) =>
       _sessionProject[sessionId] ?? launchDirectory;
 
+  /// "sessionId:toolCallId" -> the last-rendered live tool state. ACP
+  /// `tool_call_update` notifications are partial, so this preserves the tool's
+  /// name/title/status/output across updates that omit them.
+  final Map<String, _LiveTool> _liveTools = {};
+
   /// sessionId -> current turn number, advanced by [beginTurn].
   final Map<String, int> _turnSeq = {};
 
@@ -226,10 +231,13 @@ class AcpEventMapper {
     final toolCallId = update["toolCallId"] as String?;
     if (toolCallId == null || toolCallId.isEmpty) return const [];
     final messageId = "$sessionId-tool-$toolCallId";
-    final partId = "$messageId-call";
-    final title = update["title"] as String?;
-    final status = acpToolStatus(update["status"]);
-    final output = acpToolOutputText(update);
+    final state = _LiveTool(
+      tool: acpToolName(update),
+      title: update["title"] as String?,
+      status: acpToolStatus(update["status"]),
+      output: acpToolOutputText(update),
+    );
+    _liveTools["$sessionId:$toolCallId"] = state;
     return [
       BridgeSseMessageUpdated(
         info: shared.Message.assistant(
@@ -243,23 +251,7 @@ class AcpEventMapper {
           time: null,
         ).toJson(),
       ),
-      BridgeSseMessagePartUpdated(
-        part: _toolPart(
-          partId: partId,
-          messageId: messageId,
-          sessionId: sessionId,
-          // Same fail-soft name resolution as tool_call_update: `kind`, else
-          // `title`, else "tool" — never an empty `kind`, never a throw on a
-          // non-string field.
-          tool: acpToolName(update),
-          state: PluginToolState(
-            status: status,
-            title: title,
-            output: output,
-            error: status == PluginToolStatus.error ? output : null,
-          ),
-        ),
-      ),
+      _toolPartEvent(sessionId: sessionId, messageId: messageId, state: state),
     ];
   }
 
@@ -270,29 +262,54 @@ class AcpEventMapper {
     final toolCallId = update["toolCallId"] as String?;
     if (toolCallId == null || toolCallId.isEmpty) return const [];
     final messageId = "$sessionId-tool-$toolCallId";
-    final partId = "$messageId-call";
-    final status = acpToolStatus(update["status"]);
-    final output = acpToolOutputText(update);
+    // A `tool_call_update` is a PARTIAL update: an agent may send only the
+    // changed fields (e.g. `{status: completed}`). Merge onto the tool's prior
+    // state so an omitted name/title/output/status isn't reset to a default,
+    // which would blank an existing tool card. Mirrors the replay collector,
+    // which already merges — keeping live and history renderings consistent.
+    final key = "$sessionId:$toolCallId";
+    final prior = _liveTools[key];
+    final hasName =
+        (update["kind"] is String && (update["kind"] as String).isNotEmpty) ||
+        (update["title"] is String && (update["title"] as String).isNotEmpty);
+    final newOutput = acpToolOutputText(update);
+    final state = _LiveTool(
+      tool: hasName ? acpToolName(update) : (prior?.tool ?? "tool"),
+      title: update.containsKey("title") && update["title"] is String
+          ? update["title"] as String?
+          : prior?.title,
+      status: update.containsKey("status") ? acpToolStatus(update["status"]) : (prior?.status ?? PluginToolStatus.pending),
+      output: newOutput ?? prior?.output,
+    );
+    _liveTools[key] = state;
     final events = <BridgeSseEvent>[
-      BridgeSseMessagePartUpdated(
-        part: _toolPart(
-          partId: partId,
-          messageId: messageId,
-          sessionId: sessionId,
-          tool: acpToolName(update),
-          state: PluginToolState(
-            status: status,
-            title: update["title"] as String?,
-            output: output,
-            error: status == PluginToolStatus.error ? output : null,
-          ),
-        ),
-      ),
+      _toolPartEvent(sessionId: sessionId, messageId: messageId, state: state),
     ];
     if (_isFileMutation(update)) {
       events.add(BridgeSseSessionDiff(sessionID: sessionId));
     }
     return events;
+  }
+
+  BridgeSseMessagePartUpdated _toolPartEvent({
+    required String sessionId,
+    required String messageId,
+    required _LiveTool state,
+  }) {
+    return BridgeSseMessagePartUpdated(
+      part: _toolPart(
+        partId: "$messageId-call",
+        messageId: messageId,
+        sessionId: sessionId,
+        tool: state.tool,
+        state: PluginToolState(
+          status: state.status,
+          title: state.title,
+          output: state.output,
+          error: state.status == PluginToolStatus.error ? state.output : null,
+        ),
+      ),
+    );
   }
 
   shared.Message _messageFor(_ChunkRole role, String messageId, String sessionId) {
@@ -392,3 +409,19 @@ class AcpEventMapper {
 }
 
 enum _ChunkRole { user, assistant }
+
+/// The last-rendered state of one live tool call, so a partial
+/// `tool_call_update` merges onto it instead of replacing it.
+class _LiveTool {
+  _LiveTool({
+    required this.tool,
+    required this.title,
+    required this.status,
+    required this.output,
+  });
+
+  final String tool;
+  final String? title;
+  final PluginToolStatus status;
+  final String? output;
+}

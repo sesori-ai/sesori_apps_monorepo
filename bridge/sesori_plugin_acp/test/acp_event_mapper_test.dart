@@ -128,6 +128,31 @@ void main() {
       expect(part.state?.output, "wrapped output");
     });
 
+    test("a partial tool_call_update preserves the tool's prior name/title/output", () {
+      // Seed the tool card.
+      mapper.map(update({
+        "sessionUpdate": "tool_call",
+        "toolCallId": "tc-1",
+        "kind": "execute",
+        "title": "Run tests",
+        "status": "pending",
+        "rawOutput": {"stdout": "starting"},
+      }));
+
+      // A status-only update (the common shape) must NOT reset the name/title
+      // to defaults or drop the earlier output.
+      final events = mapper.map(update({
+        "sessionUpdate": "tool_call_update",
+        "toolCallId": "tc-1",
+        "status": "completed",
+      }));
+      final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
+      expect(part.tool, "execute", reason: "name preserved across a partial update");
+      expect(part.state?.title, "Run tests", reason: "title preserved");
+      expect(part.state?.status, PluginToolStatus.completed, reason: "status advanced");
+      expect(part.state?.output, "starting", reason: "prior output preserved when the update omits it");
+    });
+
     test("tool_call_update on an edit emits a session diff", () {
       final events = mapper.map(update({
         "sessionUpdate": "tool_call_update",

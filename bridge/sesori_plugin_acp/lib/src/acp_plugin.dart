@@ -143,9 +143,20 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   /// Captures the model/mode catalog from a `session/new` or `session/load`
   /// result (config-option ids, available models/modes, current values) and
   /// seeds the event mapper's fallback model. When [sessionId] is known, the
-  /// session's current model is recorded for per-message stamping. Base does
-  /// nothing; Cursor overrides for its `configOptions` picker.
-  void captureSessionConfig(Map<String, dynamic> result, {String? sessionId}) {}
+  /// session's current model is recorded for per-message stamping.
+  ///
+  /// [fromNewSession] distinguishes a `session/new` response — the only source
+  /// that carries the backend's *new-session default* model/mode — from a
+  /// `session/load` (resume, history replay, catalog probe), which replays some
+  /// existing session's own model and must never redefine the default. The
+  /// `sessionId`'s presence alone can't tell them apart: a `session/new`
+  /// carries a fresh id, and a catalog probe carries none. Base does nothing;
+  /// Cursor overrides for its `configOptions` picker.
+  void captureSessionConfig(
+    Map<String, dynamic> result, {
+    String? sessionId,
+    bool fromNewSession = false,
+  }) {}
 
   /// Applies the requested [model] and [variant] for a turn on [sessionId]
   /// before the prompt is dispatched. Called from [createSession] and from
@@ -502,7 +513,9 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     }
     _sessionDirectories[session.sessionId] = canonicalDirectory;
     eventMapper.setSessionProject(session.sessionId, canonicalDirectory);
-    captureSessionConfig(session.raw, sessionId: session.sessionId);
+    // A session/new response is the authoritative source of the backend's
+    // new-session default model/mode.
+    captureSessionConfig(session.raw, sessionId: session.sessionId, fromNewSession: true);
     // session/new leaves the session resident in the agent process.
     _residentSessions.add(session.sessionId);
     await applyTurnSelection(
@@ -605,6 +618,8 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         },
         timeout: const Duration(minutes: 2),
       );
+      // A resume load: capture the catalog + this session's own model, but do
+      // not let it redefine the new-session default.
       captureSessionConfig(
         raw is Map ? raw.cast<String, dynamic>() : const {},
         sessionId: sessionId,
@@ -781,6 +796,14 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   Future<List<PluginMessageWithParts>> getSessionMessages(
     String sessionId,
   ) async {
+    // After a restart this replay can be the FIRST ACP call for a stored
+    // worktree session (session-detail loads messages + detail in parallel,
+    // and the messages handler hits the plugin directly), so its directory may
+    // be unknown and the load below would run in the launch directory. Warm
+    // attribution first — same fail-soft enumeration the resume path uses.
+    if (!_sessionDirectories.containsKey(sessionId)) {
+      await listAllSessions(knownDirectories: const {});
+    }
     // History via `session/load` replay on a dedicated short-lived client so
     // replayed updates don't interleave with the live session's stream.
     final replayClient = AcpStdioClient(
@@ -913,6 +936,10 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
         },
         timeout: const Duration(minutes: 1),
       );
+      // This loads an EXISTING session purely to populate the model/mode
+      // catalog list. It must not be treated as a new-session default source,
+      // or the probed session's own (possibly non-default) model would become
+      // the new-session default (fromNewSession stays false).
       captureSessionConfig(raw is Map ? raw.cast<String, dynamic>() : const {});
     } catch (error, stack) {
       Log.d("[$id] catalog probe failed: $error\n$stack");
