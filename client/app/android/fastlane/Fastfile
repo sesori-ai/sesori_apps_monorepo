@@ -55,12 +55,25 @@ PLAY_UPLOAD_RETRY_BASE_DELAY = 45 # seconds, multiplied by the attempt number
 # Lower-cased substrings that mark a *transient* Google Play upload/commit
 # failure worth retrying. Deliberately narrow so real errors (bad credentials, a
 # version-code collision, signing problems, quota) still fail fast on the first
-# attempt instead of wasting three uploads.
+# attempt instead of wasting three uploads. "try again later" is used verbatim
+# rather than a bare "try again" so it can't match permanent auth/quota messages
+# like "verify your credentials and try again".
 PLAY_UPLOAD_RETRYABLE_ERRORS = [
   "are not completed yet", # bundle still processing when the edit was committed
   "internal error",        # Google 5xx surfaced through the API client
   "service is currently unavailable",
-  "try again",
+  "try again later",
+].freeze
+
+# Lower-cased substrings that mean the version code is ALREADY on the track. When
+# one of these surfaces on a RETRY, an earlier attempt's edit actually committed
+# before it returned a transient-looking error to the client — so the upload is
+# done, not a real collision. We only accept this on a retry (attempt > 1); on
+# the first attempt the same message is a genuine version-code collision (a
+# mis-computed next code) and must fail loudly.
+PLAY_UPLOAD_ALREADY_APPLIED_ERRORS = [
+  "already been used",
+  "already exists",
 ].freeze
 
 def play_upload_error_retryable?(message)
@@ -68,22 +81,40 @@ def play_upload_error_retryable?(message)
   PLAY_UPLOAD_RETRYABLE_ERRORS.any? { |fragment| normalized.include?(fragment) }
 end
 
+def play_upload_already_applied?(message)
+  normalized = message.to_s.downcase
+  PLAY_UPLOAD_ALREADY_APPLIED_ERRORS.any? { |fragment| normalized.include?(fragment) }
+end
+
 # Runs a Google Play upload block, retrying ONLY on the transient store-side
-# errors above with a linear backoff. Non-retryable failures raise immediately;
-# the final attempt re-raises so a hiccup that never clears still fails the
-# release loudly rather than being swallowed.
+# errors above with a linear backoff. If a retry then reports the version code is
+# already present, an earlier attempt's edit actually landed (it returned a
+# transient-looking error after committing), so the upload is treated as done
+# instead of failing the lane on a self-inflicted collision. Non-retryable
+# failures raise immediately; the final attempt re-raises so a hiccup that never
+# clears still fails the release loudly rather than being swallowed.
 def with_play_upload_retry
   attempt = 0
   begin
     attempt += 1
     yield
   rescue StandardError => e
-    raise if attempt >= PLAY_UPLOAD_MAX_ATTEMPTS || !play_upload_error_retryable?(e.message)
+    message = e.message.to_s
+
+    if attempt > 1 && play_upload_already_applied?(message)
+      UI.important(
+        "Google Play reports the version code is already present (#{message.strip}); a " \
+        "previous attempt committed before erroring, so the upload is complete."
+      )
+      return
+    end
+
+    raise if attempt >= PLAY_UPLOAD_MAX_ATTEMPTS || !play_upload_error_retryable?(message)
 
     delay = PLAY_UPLOAD_RETRY_BASE_DELAY * attempt
     UI.important(
       "Google Play upload attempt #{attempt}/#{PLAY_UPLOAD_MAX_ATTEMPTS} failed with a " \
-      "transient error (#{e.message.to_s.strip}); retrying in #{delay}s."
+      "transient error (#{message.strip}); retrying in #{delay}s."
     )
     sleep(delay)
     retry
