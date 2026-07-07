@@ -51,6 +51,13 @@ class UpdateApplyService {
   @visibleForTesting
   void Function(String message) logWarning = Log.w;
 
+  /// Whether a successful apply can be chained with another in the same session
+  /// before a restart activates it. Delegates to the platform applier: POSIX can
+  /// clear the displaced backup of the still-running binary, Windows cannot until
+  /// the next launch. The background updater consults this to decide whether to
+  /// keep polling after an apply or wait for a restart.
+  bool get supportsInSessionChaining => _installationRepository.supportsInSessionChaining;
+
   /// Applies the staged payload at [stagingPath] in place, under the
   /// cross-process update lock. Returns an [UpdateApplyOutcome] describing the
   /// result. The durable attempt record and the update log are written here, but

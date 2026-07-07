@@ -14,6 +14,10 @@ class UpdateInstallationRepository {
   final PlatformUpdateApi _platformUpdateApi;
   final ManagedRuntimeManifestApi _manifestApi;
 
+  /// Whether the platform applier supports a second in-place apply in the same
+  /// session before a restart activates the first (see [PlatformUpdateApi]).
+  bool get supportsInSessionChaining => _platformUpdateApi.supportsInSessionChaining;
+
   Future<void> applyInPlace({required String installRoot, required String stagingPath}) {
     return _platformUpdateApi.applyInPlace(installRoot: installRoot, stagingPath: stagingPath);
   }

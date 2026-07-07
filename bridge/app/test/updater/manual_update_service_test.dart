@@ -69,6 +69,9 @@ class _FakeApplyService implements UpdateApplyService {
   int applyCount = 0;
 
   @override
+  bool get supportsInSessionChaining => throw UnimplementedError();
+
+  @override
   void Function(String message) logWarning = (_) {};
 
   @override

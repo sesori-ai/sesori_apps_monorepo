@@ -180,12 +180,7 @@ class UpdateService {
       switch (outcome) {
         case UpdateApplied(:final version):
           emitMessage(_messageFormatter.installedPendingActivation(toVersion: version));
-          // The release is now staged for activation on the next launch, but
-          // this process still reports its old appVersion. Advance the release
-          // baseline to what we just staged so the cycle keeps running and only
-          // acts on a strictly-newer release — chaining further updates
-          // published during this session without ever re-applying this one.
-          _releaseRepository.advanceBaselineTo(version: version);
+          _handleApplied(version: version);
         case UpdateApplyLockBusy():
           // Another update is in progress — benign; apply logged a diagnostic.
           // The next cycle retries.
@@ -206,6 +201,31 @@ class UpdateService {
         logDetail: 'Applying update to ${release.version} failed: $error\n$stackTrace',
       );
     }
+  }
+
+  /// Decides what to do after a successful in-place swap.
+  ///
+  /// The release is now staged for activation on the next launch, but this
+  /// process still reports its old appVersion. When the platform applier can
+  /// chain applies in-session (POSIX), advance the release baseline to what we
+  /// just staged so the cycle keeps running and only acts on a strictly-newer
+  /// release — picking up further updates published this session without ever
+  /// re-applying this one. When it cannot (Windows, where the displaced backup
+  /// stays locked until a restart), stop the cycle so a second apply never
+  /// collides with the locked backup and fails on every retry.
+  void _handleApplied({required String version}) {
+    if (_updateApplyService.supportsInSessionChaining) {
+      _releaseRepository.advanceBaselineTo(version: version);
+    } else {
+      _stopPolling();
+    }
+  }
+
+  void _stopPolling() {
+    final subscription = _subscription;
+    _subscription = null;
+    // Defer so we never cancel the subscription from within its own event.
+    scheduleMicrotask(() => subscription?.cancel());
   }
 
   Future<void> _reportStageFailure({required ReleaseInfo release, required UpdateResult result}) async {

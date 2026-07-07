@@ -22,6 +22,15 @@ abstract class PlatformUpdateApi {
   /// from a previous apply. Safe to call when nothing remains.
   Future<void> sweepResidue({required String installRoot});
 
+  /// Whether a second in-place apply can safely run in the same session before
+  /// the swapped binary is activated by a restart.
+  ///
+  /// POSIX can unlink the displaced backup of a still-running binary, so each
+  /// apply starts from a clean backup slot and chaining is safe. Windows cannot
+  /// delete the loaded `.old` backup until the next launch, so a second apply
+  /// would collide with the locked backup and fail — it must wait for a restart.
+  bool get supportsInSessionChaining;
+
   /// Returns the implementation matching the host platform.
   factory PlatformUpdateApi.forPlatform({required ProcessRunner processRunner}) {
     if (Platform.isWindows) {

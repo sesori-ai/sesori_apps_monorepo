@@ -49,6 +49,9 @@ class _FakeApplyService implements UpdateApplyService {
   UpdateApplyOutcome Function(ReleaseInfo release)? onApply;
 
   @override
+  bool supportsInSessionChaining = true;
+
+  @override
   void Function(String message) logWarning = (_) {};
 
   @override
@@ -182,6 +185,25 @@ void main() {
 
       service.dispose();
       async.flushMicrotasks();
+    });
+  });
+
+  test('when the applier cannot chain in-session, polling stops after one apply', () {
+    // Windows keeps the displaced backup locked until a restart, so a second
+    // in-session apply would collide with it. The updater must stop instead.
+    apply.supportsInSessionChaining = false;
+    var version = 2;
+    release.onCheck = () async => _release(version: '$version.0.0');
+
+    runStarted(buildService(), (async) {
+      expect(apply.appliedVersions, equals(['2.0.0']));
+      expect(release.advancedBaselines, isEmpty);
+
+      // Even with a newer release available, no further cycle runs.
+      version = 3;
+      async.elapse(const Duration(hours: 8));
+      async.flushMicrotasks();
+      expect(apply.appliedVersions, equals(['2.0.0']));
     });
   });
 
