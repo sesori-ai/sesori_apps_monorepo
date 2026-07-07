@@ -445,9 +445,13 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
 
   PluginSession _toPluginSession(AcpSessionInfo info, {required String fallbackDirectory}) {
     // The session belongs to its own cwd, canonicalized so it matches the
-    // project id the bridge derives from the same value. A missing cwd falls
-    // back to the directory that was scanned.
-    final directory = normalizeProjectDirectory(directory: info.cwd ?? fallbackDirectory);
+    // project id the bridge derives from the same value. A missing OR blank cwd
+    // falls back to the directory that was scanned — the same `trim().isNotEmpty`
+    // guard the caller uses to flag fallback attribution, so the two stay
+    // consistent (a bare `?? ` would let `""` through to the process cwd).
+    final rawCwd = info.cwd;
+    final hasCwd = rawCwd != null && rawCwd.trim().isNotEmpty;
+    final directory = normalizeProjectDirectory(directory: hasCwd ? rawCwd : fallbackDirectory);
     final id = info.sessionId;
     // Remember the session's directory so a later turn/history load uses its
     // own cwd and events/activity attribute to the right project.

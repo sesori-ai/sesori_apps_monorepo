@@ -296,6 +296,26 @@ void main() {
       expect(s1.projectID, home);
     });
 
+    test("a blank cwd falls back to the launch directory, not the process cwd", () async {
+      await connect(sessionCapabilities: true);
+      // The unfiltered list returns a blank (whitespace) cwd and nothing else
+      // scans up that session, so it must land on the launch directory — a bare
+      // `?? ` would let "" through to normalizeProjectDirectory → the process
+      // cwd, which is neither the launch dir nor a real project.
+      final stop = autoListResponder(
+        bare: () => {
+          "sessions": [
+            {"sessionId": "s1", "cwd": "   ", "title": "One"},
+          ],
+        },
+      );
+      final sessions = await plugin.listAllSessions(knownDirectories: const {});
+      stop();
+
+      final s1 = sessions.singleWhere((s) => s.id == "s1");
+      expect(s1.directory, cwd, reason: "a blank cwd must fall back to the launch directory");
+    });
+
     test("a session/prompt rejection after dispatch surfaces a session error, not a silent idle", () async {
       await connect();
       final creating = plugin.createSession(
