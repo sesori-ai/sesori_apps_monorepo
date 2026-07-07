@@ -68,7 +68,7 @@
   },
   "projectsOnboardingInstallUnixLabel": "macOS, Linux, WSL",
   "@projectsOnboardingInstallUnixLabel": {
-    "description": "Group label above the macOS/Linux/WSL install command box in the onboarding."
+    "description": "Segmented-control label that selects the macOS/Linux/WSL install commands in the onboarding."
   },
   "projectsOnboardingInstallUnixMethod": "curl",
   "@projectsOnboardingInstallUnixMethod": {
@@ -76,7 +76,7 @@
   },
   "projectsOnboardingInstallWindowsLabel": "Windows PowerShell",
   "@projectsOnboardingInstallWindowsLabel": {
-    "description": "Group label above the Windows PowerShell install command box in the onboarding."
+    "description": "Segmented-control label that selects the Windows PowerShell install commands in the onboarding."
   },
   "projectsOnboardingInstallWindowsMethod": "native",
   "@projectsOnboardingInstallWindowsMethod": {

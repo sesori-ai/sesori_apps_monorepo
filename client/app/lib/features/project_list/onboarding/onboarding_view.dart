@@ -186,56 +186,106 @@ class _NeedHelpMenu extends StatelessWidget {
   }
 }
 
-/// The per-platform install command boxes — Unix (curl/npm/bun) and Windows
-/// (irm/npm/bun). Shared by the [_OnboardingChecklist] and the bridge-offline
-/// reconnect disclosure ([_BridgeOfflineView]) so both stay in sync; callers
-/// supply their own surrounding padding.
-class _InstallCommandBoxes extends StatelessWidget {
+/// The per-platform install commands: a flat iOS-style segmented control that
+/// switches between the Unix (macOS/Linux/WSL) and Windows install groups, and
+/// a single [_InstallCommandBox] showing the selected group's methods. Shared
+/// by the [_OnboardingChecklist] and the bridge-offline reconnect disclosure
+/// ([_BridgeOfflineView]) so both stay in sync; callers supply their own
+/// surrounding padding.
+class _InstallCommandBoxes extends StatefulWidget {
   const _InstallCommandBoxes();
+
+  @override
+  State<_InstallCommandBoxes> createState() => _InstallCommandBoxesState();
+}
+
+class _InstallCommandBoxesState extends State<_InstallCommandBoxes> {
+  /// Index of the selected platform group; 0 (Unix) initially.
+  int _selectedOs = 0;
 
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
 
+    // The two platform groups the segmented control switches between. Built
+    // per-frame so the labels/commands follow the active locale.
+    final osGroups = <({String label, List<_InstallMethod> methods})>[
+      (
+        label: loc.projectsOnboardingInstallUnixLabel,
+        methods: [
+          _InstallMethod(label: loc.projectsOnboardingInstallUnixMethod, command: BridgeInstall.macLinuxCommand),
+          _InstallMethod(label: loc.projectsOnboardingInstallMethodNpm, command: BridgeInstall.npmCommand),
+          _InstallMethod(label: loc.projectsOnboardingInstallMethodBun, command: BridgeInstall.bunCommand),
+        ],
+      ),
+      (
+        label: loc.projectsOnboardingInstallWindowsLabel,
+        methods: [
+          _InstallMethod(label: loc.projectsOnboardingInstallWindowsMethod, command: BridgeInstall.windowsCommand),
+          _InstallMethod(label: loc.projectsOnboardingInstallMethodNpm, command: BridgeInstall.npmCommand),
+          _InstallMethod(label: loc.projectsOnboardingInstallMethodBun, command: BridgeInstall.bunCommand),
+        ],
+      ),
+    ];
+
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _InstallCommandBox(
-          osLabel: loc.projectsOnboardingInstallUnixLabel,
-          methods: [
-            _InstallMethod(
-              label: loc.projectsOnboardingInstallUnixMethod,
-              command: BridgeInstall.macLinuxCommand,
-            ),
-            _InstallMethod(
-              label: loc.projectsOnboardingInstallMethodNpm,
-              command: BridgeInstall.npmCommand,
-            ),
-            _InstallMethod(
-              label: loc.projectsOnboardingInstallMethodBun,
-              command: BridgeInstall.bunCommand,
-            ),
-          ],
+        _OsSegmentedControl(
+          labels: [for (final group in osGroups) group.label],
+          selectedIndex: _selectedOs,
+          onChanged: (index) => setState(() => _selectedOs = index),
         ),
-        const SizedBox(height: PregoSpacing.xl),
+        const SizedBox(height: PregoSpacing.lg),
+        // Keyed by platform so switching groups remounts the box and resets its
+        // method tab to the group's first entry (curl / native).
         _InstallCommandBox(
-          osLabel: loc.projectsOnboardingInstallWindowsLabel,
-          methods: [
-            _InstallMethod(
-              label: loc.projectsOnboardingInstallWindowsMethod,
-              command: BridgeInstall.windowsCommand,
-            ),
-            _InstallMethod(
-              label: loc.projectsOnboardingInstallMethodNpm,
-              command: BridgeInstall.npmCommand,
-            ),
-            _InstallMethod(
-              label: loc.projectsOnboardingInstallMethodBun,
-              command: BridgeInstall.bunCommand,
-            ),
-          ],
+          key: ValueKey(_selectedOs),
+          methods: osGroups[_selectedOs].methods,
         ),
       ],
+    );
+  }
+}
+
+/// Flat, non-glass segmented control that switches the install command group.
+/// Wraps the out-of-the-box [CupertinoSlidingSegmentedControl] — whose track
+/// and thumb match the Figma's native iOS control — rather than the glass
+/// variant the design deliberately renders flat. Track and thumb use the
+/// platform's adaptive fills so it themes in light and dark; the labels use the
+/// prego text theme. A tight, full-width constraint (from the parent's stretch
+/// Column) makes the two segments split the width equally.
+class _OsSegmentedControl extends StatelessWidget {
+  const _OsSegmentedControl({
+    required this.labels,
+    required this.selectedIndex,
+    required this.onChanged,
+  });
+
+  final List<String> labels;
+  final int selectedIndex;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    return CupertinoSlidingSegmentedControl<int>(
+      groupValue: selectedIndex,
+      onValueChanged: (value) {
+        if (value != null) onChanged(value);
+      },
+      children: {
+        for (var i = 0; i < labels.length; i++)
+          i: Text(
+            labels[i],
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            // Selected segment reads slightly heavier (medium), matching iOS.
+            style: (i == selectedIndex ? prego.textTheme.textSm.medium : prego.textTheme.textSm.regular)
+                .copyWith(color: prego.colors.textPrimary),
+          ),
+      },
     );
   }
 }
@@ -252,18 +302,13 @@ class _InstallMethod {
   final String command;
 }
 
-/// One platform's install instruction: a group label (e.g. "macOS, Linux,
-/// WSL"), a row of method tabs (e.g. curl/npm/bun), and the monospace one-line
-/// command for the selected method with a copy-to-clipboard button. Mirrors the
-/// Figma onboarding install boxes.
+/// One platform's install instruction box: a row of method tabs (e.g.
+/// curl/npm/bun) and, below them, the monospace one-line command for the
+/// selected method with copy and share actions. The platform group is chosen by
+/// the [_OsSegmentedControl] above it; this box just renders the given
+/// [methods]. Mirrors the Figma onboarding install box.
 class _InstallCommandBox extends StatefulWidget {
-  const _InstallCommandBox({
-    required this.osLabel,
-    required this.methods,
-  });
-
-  /// Platform group label shown above the box.
-  final String osLabel;
+  const _InstallCommandBox({super.key, required this.methods});
 
   /// Selectable install methods; the first is selected initially.
   final List<_InstallMethod> methods;
@@ -277,164 +322,29 @@ class _InstallCommandBoxState extends State<_InstallCommandBox> {
 
   _InstallMethod get _selected => widget.methods[_selectedIndex];
 
-  Future<void> _copyCommand() async {
-    final messenger = ScaffoldMessenger.of(context);
-    final loc = context.loc;
-    // Clipboard can throw on restricted platforms/states; fail soft and skip
-    // the success snackbar. Log so a broken copy button leaves a diagnostic
-    // trail instead of failing silently.
-    try {
-      await Clipboard.setData(ClipboardData(text: _selected.command));
-    } on Object catch (error, stackTrace) {
-      logw("Failed to copy install command", error, stackTrace);
-      return;
-    }
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(loc.projectsOnboardingCommandCopied),
-        duration: kSnackBarDuration,
-      ),
-    );
-  }
-
-  Future<void> _shareCommand() async {
-    final command = _selected.command;
-    // iPad presents the share sheet as a popover anchored to a source rect;
-    // derive it from this box so the popover points at the command instead of
-    // floating (an unanchored sheet throws on iPad).
-    final renderObject = context.findRenderObject();
-    final origin = renderObject is RenderBox && renderObject.hasSize
-        ? renderObject.localToGlobal(Offset.zero) & renderObject.size
-        : null;
-    try {
-      await SharePlus.instance.share(ShareParams(text: command, sharePositionOrigin: origin));
-    } on Object catch (error, stackTrace) {
-      // Dismissing the sheet is reported via ShareResultStatus, not a throw, so
-      // reaching here is a real platform failure with nothing to recover — log
-      // it and move on.
-      logw("Failed to share install command", error, stackTrace);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final prego = context.prego;
-    final colors = prego.colors;
-    final loc = context.loc;
-    final mono = prego.textTheme.textXs.regular.copyWith(color: colors.textSecondary).monospace;
+    final colors = context.prego.colors;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          widget.osLabel,
-          style: prego.textTheme.textSm.regular.copyWith(color: colors.textPrimary),
-        ),
-        const SizedBox(height: PregoSpacing.md),
-        Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(PregoRadius.xl),
+    return _CommandBoxFrame(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Method tabs (curl/npm/bun); the selected one is highlighted and
+          // drives the command shown below.
+          Container(
+            width: double.infinity,
+            color: colors.bgSurface3,
+            child: Row(
+              spacing: PregoSpacing.sm,
+              children: [
+                for (var i = 0; i < widget.methods.length; i++) _buildTab(index: i),
+              ],
+            ),
           ),
-          foregroundDecoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(PregoRadius.xl),
-            border: Border.all(color: colors.borderPrimary),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Method tabs (curl/npm/bun); the selected one is highlighted and
-              // drives the command shown below.
-              Container(
-                width: double.infinity,
-                color: colors.bgSurface2,
-                padding: const EdgeInsetsDirectional.only(
-                  start: PregoSpacing.sm,
-                  end: PregoSpacing.sm,
-                  top: PregoSpacing.xs,
-                  bottom: PregoSpacing.xs,
-                ),
-                child: Row(
-                  spacing: PregoSpacing.lg,
-                  children: [
-                    for (var i = 0; i < widget.methods.length; i++) _buildTab(index: i),
-                  ],
-                ),
-              ),
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: colors.bgSurface1,
-                  border: Border(top: BorderSide(color: colors.borderSecondary)),
-                ),
-                padding: const EdgeInsetsDirectional.only(
-                  start: PregoSpacing.lg,
-                  top: PregoSpacing.sm,
-                  bottom: PregoSpacing.sm,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      // semanticsLabel carries the full command so screen readers
-                      // read it even though the visible text clamps to one line.
-                      child: Text(
-                        _selected.command,
-                        semanticsLabel: _selected.command,
-                        style: mono,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: PregoSpacing.md),
-                    // Transparent Material so the InkResponse splash paints on
-                    // top of the bgSurface1 fill — without it the ripple renders
-                    // on the Scaffold's Material, hidden behind this Container.
-                    Semantics(
-                      button: true,
-                      label: loc.projectsOnboardingCopyCommand,
-                      child: Material(
-                        type: MaterialType.transparency,
-                        child: InkResponse(
-                          onTap: _copyCommand,
-                          radius: 22,
-                          child: SizedBox(
-                            width: 40,
-                            height: 40,
-                            child: Center(
-                              child: Icon(TablerRegular.copy, size: 18, color: colors.textSecondary),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // Hands the selected command to the native share sheet so it
-                    // can be sent to the machine that will run it (AirDrop, etc.).
-                    Semantics(
-                      button: true,
-                      label: loc.projectsOnboardingShareCommand,
-                      child: Material(
-                        type: MaterialType.transparency,
-                        child: InkResponse(
-                          onTap: _shareCommand,
-                          radius: 22,
-                          child: SizedBox(
-                            width: 40,
-                            height: 40,
-                            child: Center(
-                              child: Icon(TablerRegular.share_3, size: 18, color: colors.textSecondary),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+          _CommandActionRow(command: _selected.command, topDivider: true),
+        ],
+      ),
     );
   }
 
@@ -448,21 +358,200 @@ class _InstallCommandBoxState extends State<_InstallCommandBox> {
       selected: selected,
       label: method.label,
       // Transparent Material so the InkWell splash paints on top of the
-      // bgSurface2 tab strip instead of behind it on the Scaffold's Material.
+      // bgSurface3 tab strip instead of behind it on the Scaffold's Material.
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
           onTap: selected ? null : () => setState(() => _selectedIndex = index),
           borderRadius: BorderRadius.circular(PregoRadius.sm),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm, vertical: PregoSpacing.xs),
-            // The selected tab reads as the active method (brand color + bold);
-            // the rest stay quiet in the secondary text color.
+            padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.lg, vertical: PregoSpacing.md),
+            // The selected tab reads as the active method (brand color); the
+            // rest stay quiet in the tertiary text color. Both are bold to match
+            // the Figma tab strip.
             child: Text(
               method.label,
-              style: selected
-                  ? prego.textTheme.textSm.bold.copyWith(color: colors.textPrimaryOnBrand)
-                  : prego.textTheme.textSm.regular.copyWith(color: colors.textSecondary),
+              style: prego.textTheme.textSm.bold.copyWith(
+                color: selected ? colors.textPrimaryOnBrand : colors.textTertiary,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The rounded, bordered chrome shared by the install-command box and the
+/// bridge-offline "Run the bridge" box, so both command boxes read as the same
+/// component. Clips [child] to the radius and paints the border on top.
+class _CommandBoxFrame extends StatelessWidget {
+  const _CommandBoxFrame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.prego.colors;
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(PregoRadius.xl),
+      ),
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(PregoRadius.xl),
+        border: Border.all(color: colors.borderPrimary),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// The command display plus copy/share actions, shared by the install-command
+/// box and the bridge-offline "Run the bridge" box. Shows [command] on a single
+/// monospace line that fades out at the trailing edge — so an over-long command
+/// reads as continuing off-screen rather than hard-clipping — with copy and
+/// native-share buttons. [topDivider] draws the hairline separating this row
+/// from the method tabs above it in the install box.
+class _CommandActionRow extends StatefulWidget {
+  const _CommandActionRow({required this.command, this.topDivider = false});
+
+  final String command;
+  final bool topDivider;
+
+  @override
+  State<_CommandActionRow> createState() => _CommandActionRowState();
+}
+
+class _CommandActionRowState extends State<_CommandActionRow> {
+  Future<void> _copyCommand() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final loc = context.loc;
+    // Clipboard can throw on restricted platforms/states; fail soft and skip
+    // the success snackbar. Log so a broken copy button leaves a diagnostic
+    // trail instead of failing silently.
+    try {
+      await Clipboard.setData(ClipboardData(text: widget.command));
+    } on Object catch (error, stackTrace) {
+      logw("Failed to copy command", error, stackTrace);
+      return;
+    }
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(loc.projectsOnboardingCommandCopied),
+        duration: kSnackBarDuration,
+      ),
+    );
+  }
+
+  Future<void> _shareCommand() async {
+    // iPad presents the share sheet as a popover anchored to a source rect;
+    // derive it from this row so the popover points at the command instead of
+    // floating (an unanchored sheet throws on iPad).
+    final renderObject = context.findRenderObject();
+    final origin = renderObject is RenderBox && renderObject.hasSize
+        ? renderObject.localToGlobal(Offset.zero) & renderObject.size
+        : null;
+    try {
+      await SharePlus.instance.share(ShareParams(text: widget.command, sharePositionOrigin: origin));
+    } on Object catch (error, stackTrace) {
+      // Dismissing the sheet is reported via ShareResultStatus, not a throw, so
+      // reaching here is a real platform failure with nothing to recover — log
+      // it and move on.
+      logw("Failed to share command", error, stackTrace);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final colors = prego.colors;
+    final loc = context.loc;
+    final mono = prego.textTheme.textXs.regular.copyWith(color: colors.textSecondary).monospace;
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: colors.bgSurface2,
+        border: widget.topDivider ? Border(top: BorderSide(color: colors.borderSecondary)) : null,
+      ),
+      padding: const EdgeInsetsDirectional.only(
+        start: PregoSpacing.lg,
+        top: PregoSpacing.sm,
+        bottom: PregoSpacing.sm,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: ShaderMask(
+              // Fade the trailing edge to transparent so a long command reads as
+              // continuing off-screen instead of hard-clipping with an ellipsis.
+              // The gradient only bites the rightmost sliver, so short commands
+              // are unaffected.
+              shaderCallback: (bounds) => const LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [Colors.black, Colors.black, Color(0x00000000)],
+                stops: [0.0, 0.88, 1.0],
+              ).createShader(bounds),
+              blendMode: BlendMode.dstIn,
+              // semanticsLabel carries the full command so screen readers read
+              // it even though the visible text clamps to one line.
+              child: Text(
+                widget.command,
+                semanticsLabel: widget.command,
+                style: mono,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.clip,
+              ),
+            ),
+          ),
+          const SizedBox(width: PregoSpacing.md),
+          _CommandIconButton(
+            icon: TablerRegular.copy,
+            label: loc.projectsOnboardingCopyCommand,
+            onTap: _copyCommand,
+          ),
+          // Hands the command to the native share sheet so it can be sent to the
+          // machine that will run it (AirDrop, etc.).
+          _CommandIconButton(
+            icon: TablerRegular.share_3,
+            label: loc.projectsOnboardingShareCommand,
+            onTap: _shareCommand,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A 40×40 tap target rendering [icon] over the command surface, used for the
+/// copy and share actions. Transparent [Material] so the ripple paints on top
+/// of the surface fill rather than behind it on the Scaffold's Material.
+class _CommandIconButton extends StatelessWidget {
+  const _CommandIconButton({required this.icon, required this.label, required this.onTap});
+
+  final IconData icon;
+  final String label;
+  final Future<void> Function() onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.prego.colors;
+    return Semantics(
+      button: true,
+      label: label,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkResponse(
+          onTap: onTap,
+          radius: 22,
+          child: SizedBox(
+            width: 40,
+            height: 40,
+            child: Center(
+              child: Icon(icon, size: 18, color: colors.textSecondary),
             ),
           ),
         ),
