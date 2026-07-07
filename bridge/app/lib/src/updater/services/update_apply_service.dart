@@ -165,10 +165,13 @@ class UpdateApplyService {
   }
 
   /// Records the post-swap bookkeeping and returns whether it fully succeeded,
-  /// i.e. the managed-runtime manifest now names [release]. A false return means
-  /// the manifest is still stale and the next launch depends on this version's
-  /// `appliedPendingActivation` record to retry the bump — the caller must not
-  /// let a chained apply overwrite that record before a restart reconciles it.
+  /// i.e. BOTH the durable `appliedPendingActivation` record and the
+  /// managed-runtime manifest were written. A false return means at least one of
+  /// those writes failed — the manifest may be stale (the next launch would rely
+  /// on the pending-activation record to retry the bump), or the record itself
+  /// may have been cleared. Either way the post-swap state is not fully
+  /// persisted, so the caller must not let a chained in-session apply proceed
+  /// before a restart reconciles it.
   Future<bool> _recordPendingActivation({
     required UpdateAttempt attempt,
     required ReleaseInfo release,

@@ -11,11 +11,12 @@ sealed class UpdateApplyOutcome {
 
 /// The staged release was swapped in and is pending activation on next launch.
 ///
-/// [durablyRecorded] is true only when the post-swap bookkeeping fully
-/// succeeded: the managed-runtime manifest now names [version]. When it is
-/// false, the manifest is still stale and the next launch relies on this
-/// version's `appliedPendingActivation` record to retry that bump — so a
-/// chained in-session apply that would overwrite that record must not proceed.
+/// [durablyRecorded] is true only when ALL post-swap bookkeeping succeeded: the
+/// durable `appliedPendingActivation` record was written AND the managed-runtime
+/// manifest names [version]. A false value means at least one of those writes
+/// failed — the manifest may be stale, or the activation record may have been
+/// cleared — so the post-swap state is not fully persisted and a chained
+/// in-session apply must not proceed.
 final class UpdateApplied extends UpdateApplyOutcome {
   final String version;
   final bool durablyRecorded;

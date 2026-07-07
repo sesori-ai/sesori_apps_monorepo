@@ -212,11 +212,12 @@ class UpdateService {
   /// - the platform applier can chain applies in-session (POSIX can clear the
   ///   displaced backup of the still-running binary; Windows cannot until a
   ///   restart, so a second apply would collide with the locked backup); and
-  /// - this apply was durably recorded — its managed-runtime manifest bump
-  ///   landed. If it did not, the next launch relies on this version's
-  ///   `appliedPendingActivation` record to retry that bump, and a chained apply
-  ///   would overwrite that record, leaving the manifest stale (risking an npm
-  ///   reinstall/downgrade of the swapped runtime).
+  /// - this apply was durably recorded — both the `appliedPendingActivation`
+  ///   record and the managed-runtime manifest were written. If either write
+  ///   failed, chaining is unsafe: recovery may still be incomplete, or may
+  ///   depend on an activation record that a chained apply would overwrite,
+  ///   leaving the manifest stale (risking an npm reinstall/downgrade of the
+  ///   swapped runtime).
   ///
   /// When safe, advance the release baseline to what we just staged so the cycle
   /// keeps running and only acts on a strictly-newer release — picking up
