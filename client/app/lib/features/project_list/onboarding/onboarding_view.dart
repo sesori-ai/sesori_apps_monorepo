@@ -286,7 +286,7 @@ class _OsSegmentedControl extends StatelessWidget {
     final count = labels.length;
 
     return Container(
-      height: 32,
+      height: 36,
       padding: const EdgeInsets.all(2),
       decoration: ShapeDecoration(
         color: CupertinoColors.tertiarySystemFill.resolveFrom(context),
