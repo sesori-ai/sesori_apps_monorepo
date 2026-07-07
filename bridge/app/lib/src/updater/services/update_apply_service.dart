@@ -139,9 +139,9 @@ class UpdateApplyService {
       return outcome;
     }
 
-    await _recordPendingActivation(attempt: attempt, release: release);
+    final bool durablyRecorded = await _recordPendingActivation(attempt: attempt, release: release);
     await _cleanupStaging(stagingPath: stagingPath);
-    return UpdateApplied(version: release.version);
+    return UpdateApplied(version: release.version, durablyRecorded: durablyRecorded);
   }
 
   Future<UpdateApplyOutcome> _recordSwapFailure({
@@ -164,7 +164,12 @@ class UpdateApplyService {
     return UpdateApplyFailed(reason: error.toString(), logPath: _logRepository.logPath);
   }
 
-  Future<void> _recordPendingActivation({
+  /// Records the post-swap bookkeeping and returns whether it fully succeeded,
+  /// i.e. the managed-runtime manifest now names [release]. A false return means
+  /// the manifest is still stale and the next launch depends on this version's
+  /// `appliedPendingActivation` record to retry the bump — the caller must not
+  /// let a chained apply overwrite that record before a restart reconciles it.
+  Future<bool> _recordPendingActivation({
     required UpdateAttempt attempt,
     required ReleaseInfo release,
   }) async {
@@ -210,7 +215,14 @@ class UpdateApplyService {
       await _installationRepository.recordManagedVersion(installRoot: _installRoot, version: release.version);
     } on Object catch (manifestError) {
       logWarning('Failed to update the managed runtime manifest: $manifestError');
+      return false;
     }
+
+    // Fully persisted only when BOTH the durable activation status and the
+    // manifest bump landed. If the status write failed above we cleared the
+    // record, so the next launch cannot confirm-and-retry this version — it is
+    // not safe to chain over it either.
+    return pendingActivationRecorded;
   }
 
   Future<void> _cleanupStaging({required String stagingPath}) {

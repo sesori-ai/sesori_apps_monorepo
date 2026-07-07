@@ -57,7 +57,7 @@ class _FakeApplyService implements UpdateApplyService {
   @override
   Future<UpdateApplyOutcome> apply({required ReleaseInfo release, required String stagingPath}) async {
     appliedVersions.add(release.version);
-    return onApply?.call(release) ?? UpdateApplied(version: release.version);
+    return onApply?.call(release) ?? UpdateApplied(version: release.version, durablyRecorded: true);
   }
 }
 
@@ -185,6 +185,25 @@ void main() {
 
       service.dispose();
       async.flushMicrotasks();
+    });
+  });
+
+  test('a not-durably-recorded apply stops polling even when chaining is supported', () {
+    // The manifest bump failed, so the next launch depends on this version's
+    // pending-activation record. Chaining would overwrite it — so we stop and
+    // let the restart reconcile instead.
+    var version = 2;
+    release.onCheck = () async => _release(version: '$version.0.0');
+    apply.onApply = (release) => UpdateApplied(version: release.version, durablyRecorded: false);
+
+    runStarted(buildService(), (async) {
+      expect(apply.appliedVersions, equals(['2.0.0']));
+      expect(release.advancedBaselines, isEmpty);
+
+      version = 3;
+      async.elapse(const Duration(hours: 8));
+      async.flushMicrotasks();
+      expect(apply.appliedVersions, equals(['2.0.0']));
     });
   });
 

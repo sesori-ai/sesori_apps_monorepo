@@ -178,9 +178,9 @@ class UpdateService {
         stagingPath: stagingPath,
       );
       switch (outcome) {
-        case UpdateApplied(:final version):
+        case UpdateApplied(:final version, :final durablyRecorded):
           emitMessage(_messageFormatter.installedPendingActivation(toVersion: version));
-          _handleApplied(version: version);
+          _handleApplied(version: version, durablyRecorded: durablyRecorded);
         case UpdateApplyLockBusy():
           // Another update is in progress — benign; apply logged a diagnostic.
           // The next cycle retries.
@@ -206,15 +206,24 @@ class UpdateService {
   /// Decides what to do after a successful in-place swap.
   ///
   /// The release is now staged for activation on the next launch, but this
-  /// process still reports its old appVersion. When the platform applier can
-  /// chain applies in-session (POSIX), advance the release baseline to what we
-  /// just staged so the cycle keeps running and only acts on a strictly-newer
-  /// release — picking up further updates published this session without ever
-  /// re-applying this one. When it cannot (Windows, where the displaced backup
-  /// stays locked until a restart), stop the cycle so a second apply never
-  /// collides with the locked backup and fails on every retry.
-  void _handleApplied({required String version}) {
-    if (_updateApplyService.supportsInSessionChaining) {
+  /// process still reports its old appVersion. Chaining a further in-session
+  /// apply is only safe when BOTH hold:
+  ///
+  /// - the platform applier can chain applies in-session (POSIX can clear the
+  ///   displaced backup of the still-running binary; Windows cannot until a
+  ///   restart, so a second apply would collide with the locked backup); and
+  /// - this apply was durably recorded — its managed-runtime manifest bump
+  ///   landed. If it did not, the next launch relies on this version's
+  ///   `appliedPendingActivation` record to retry that bump, and a chained apply
+  ///   would overwrite that record, leaving the manifest stale (risking an npm
+  ///   reinstall/downgrade of the swapped runtime).
+  ///
+  /// When safe, advance the release baseline to what we just staged so the cycle
+  /// keeps running and only acts on a strictly-newer release — picking up
+  /// further updates published this session without ever re-applying this one.
+  /// Otherwise stop the cycle and let the next launch reconcile.
+  void _handleApplied({required String version, required bool durablyRecorded}) {
+    if (_updateApplyService.supportsInSessionChaining && durablyRecorded) {
       _releaseRepository.advanceBaselineTo(version: version);
     } else {
       _stopPolling();

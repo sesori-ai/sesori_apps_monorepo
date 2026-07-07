@@ -77,7 +77,7 @@ class _FakeApplyService implements UpdateApplyService {
   @override
   Future<UpdateApplyOutcome> apply({required ReleaseInfo release, required String stagingPath}) async {
     applyCount++;
-    return onApply?.call(release) ?? UpdateApplied(version: release.version);
+    return onApply?.call(release) ?? UpdateApplied(version: release.version, durablyRecorded: true);
   }
 }
 

@@ -10,10 +10,17 @@ sealed class UpdateApplyOutcome {
 }
 
 /// The staged release was swapped in and is pending activation on next launch.
+///
+/// [durablyRecorded] is true only when the post-swap bookkeeping fully
+/// succeeded: the managed-runtime manifest now names [version]. When it is
+/// false, the manifest is still stale and the next launch relies on this
+/// version's `appliedPendingActivation` record to retry that bump — so a
+/// chained in-session apply that would overwrite that record must not proceed.
 final class UpdateApplied extends UpdateApplyOutcome {
   final String version;
+  final bool durablyRecorded;
 
-  const UpdateApplied({required this.version});
+  const UpdateApplied({required this.version, required this.durablyRecorded});
 }
 
 /// Another process holds the update lock; the swap was skipped (benign).
