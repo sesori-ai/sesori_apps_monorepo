@@ -1,9 +1,12 @@
+import "dart:io" show FileSystemException;
+
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show BridgeDerivedProjectsPluginApi, BridgePluginApi, NativeProjectsPluginApi;
+    show BridgeDerivedProjectsPluginApi, BridgePluginApi, Log, NativeProjectsPluginApi;
 import "package:sesori_shared/sesori_shared.dart" show Project;
 
+import "../api/filesystem_api.dart";
 import "../persistence/daos/projects_dao.dart";
 import "../persistence/daos/session_dao.dart";
 import "derived_project_builder.dart";
@@ -31,16 +34,19 @@ class ProjectRepository {
   final ProjectsDao _projectsDao;
   final SessionDao _sessionDao;
   final SessionUnseenCalculator _unseenCalculator;
+  final FilesystemApi _filesystemApi;
 
   ProjectRepository({
     required BridgePluginApi plugin,
     required ProjectsDao projectsDao,
     required SessionDao sessionDao,
     required SessionUnseenCalculator unseenCalculator,
+    required FilesystemApi filesystemApi,
   }) : _plugin = plugin,
        _projectsDao = projectsDao,
        _sessionDao = sessionDao,
-       _unseenCalculator = unseenCalculator;
+       _unseenCalculator = unseenCalculator,
+       _filesystemApi = filesystemApi;
 
   Future<List<Project>> getProjects() async {
     switch (_plugin) {
@@ -64,7 +70,10 @@ class ProjectRepository {
         );
         final projects = [
           for (final project in visible)
-            project.copyWith(hasUnseenChanges: unseenById[project.id] ?? false),
+            project.copyWith(
+              hasUnseenChanges: unseenById[project.id] ?? false,
+              directoryMissing: _directoryMissing(project.id),
+            ),
         ];
         projects.sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0));
         return projects;
@@ -80,7 +89,12 @@ class ProjectRepository {
           projectIds: [for (final p in visible) p.id],
         );
         final projects = visible
-            .map((p) => p.toSharedProject(hasUnseenChanges: unseenById[p.id] ?? false))
+            .map(
+              (p) => p.toSharedProject(
+                hasUnseenChanges: unseenById[p.id] ?? false,
+                directoryMissing: _directoryMissing(p.id),
+              ),
+            )
             .toList();
         projects.sort(
           (a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0),
@@ -130,6 +144,7 @@ class ProjectRepository {
         final pluginProject = await plugin.getProject(projectId);
         return pluginProject.toSharedProject(
           hasUnseenChanges: await projectHasUnseenChanges(projectId: pluginProject.id),
+          directoryMissing: _directoryMissing(pluginProject.id),
         );
     }
   }
@@ -154,6 +169,7 @@ class ProjectRepository {
         await _projectsDao.unhideProject(projectId: pluginProject.id);
         return pluginProject.toSharedProject(
           hasUnseenChanges: await projectHasUnseenChanges(projectId: pluginProject.id),
+          directoryMissing: _directoryMissing(pluginProject.id),
         );
     }
   }
@@ -171,6 +187,7 @@ class ProjectRepository {
         final updated = await plugin.renameProject(projectId: projectId, name: name);
         return updated.toSharedProject(
           hasUnseenChanges: await projectHasUnseenChanges(projectId: updated.id),
+          directoryMissing: _directoryMissing(updated.id),
         );
     }
   }
@@ -213,9 +230,12 @@ class ProjectRepository {
   /// display-name override so a rename isn't lost to the directory basename.
   Future<Project> _findDerivedProject(BridgeDerivedProjectsPluginApi plugin, String canonicalId) async {
     final hasUnseenChanges = await projectHasUnseenChanges(projectId: canonicalId);
+    final directoryMissing = _directoryMissing(canonicalId);
     final derived = await _deriveProjects(plugin);
     for (final project in derived) {
-      if (project.id == canonicalId) return project.copyWith(hasUnseenChanges: hasUnseenChanges);
+      if (project.id == canonicalId) {
+        return project.copyWith(hasUnseenChanges: hasUnseenChanges, directoryMissing: directoryMissing);
+      }
     }
     final stored = await _projectsDao.getAllProjects();
     String? displayName;
@@ -231,6 +251,23 @@ class ProjectRepository {
       name: displayName != null && displayName.isNotEmpty ? displayName : (base.isEmpty ? canonicalId : base),
       time: null,
       hasUnseenChanges: hasUnseenChanges,
+      directoryMissing: directoryMissing,
     );
+  }
+
+  /// Whether the project directory at [path] no longer exists on disk (the
+  /// folder was moved or deleted). Only a definitive not-found counts as
+  /// missing: `directoryExists` returns false for a genuinely absent directory
+  /// but throws on a permission or other IO error, where existence can't be
+  /// determined — there we log and treat the project as present so a folder
+  /// isn't flagged missing merely because, e.g., the terminal running the
+  /// bridge lacks Full Disk Access.
+  bool _directoryMissing(String path) {
+    try {
+      return !_filesystemApi.directoryExists(path);
+    } on FileSystemException catch (error, stackTrace) {
+      Log.w("ProjectRepository: could not determine whether $path exists; treating as present", error, stackTrace);
+      return false;
+    }
   }
 }

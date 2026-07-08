@@ -611,6 +611,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hideProject => 'Hide Project';
 
   @override
+  String get projectFolderMissing => 'Folder not found';
+
+  @override
+  String get projectFolderMissingMessage =>
+      'This project\'s folder no longer exists — it may have been moved or deleted. Hide the project, or restore the folder to its original location.';
+
+  @override
   String get noProjects => 'No projects';
 
   @override

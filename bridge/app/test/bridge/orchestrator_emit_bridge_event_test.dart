@@ -53,6 +53,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 import "package:test/test.dart";
 
+import "../helpers/fake_filesystem_api.dart";
 import "../helpers/restart_test_support.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
@@ -80,6 +81,7 @@ void main() {
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       unseenCalculator: const SessionUnseenCalculator(),
+      filesystemApi: FakeFilesystemApi(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
@@ -142,6 +144,7 @@ void main() {
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           unseenCalculator: const SessionUnseenCalculator(),
+          filesystemApi: FakeFilesystemApi(),
         ),
         viewTracker: SessionViewTracker(),
       ),
@@ -269,6 +272,7 @@ void main() {
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       unseenCalculator: const SessionUnseenCalculator(),
+      filesystemApi: FakeFilesystemApi(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
@@ -322,6 +326,7 @@ void main() {
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           unseenCalculator: const SessionUnseenCalculator(),
+          filesystemApi: FakeFilesystemApi(),
         ),
         viewTracker: SessionViewTracker(),
       ),
@@ -429,6 +434,7 @@ void main() {
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       unseenCalculator: const SessionUnseenCalculator(),
+      filesystemApi: FakeFilesystemApi(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
@@ -606,6 +612,7 @@ void main() {
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       unseenCalculator: const SessionUnseenCalculator(),
+      filesystemApi: FakeFilesystemApi(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
@@ -700,6 +707,7 @@ void main() {
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           unseenCalculator: const SessionUnseenCalculator(),
+          filesystemApi: FakeFilesystemApi(),
         ),
         viewTracker: SessionViewTracker(),
       ),
@@ -814,6 +822,7 @@ void main() {
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       unseenCalculator: const SessionUnseenCalculator(),
+      filesystemApi: FakeFilesystemApi(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
@@ -876,6 +885,7 @@ void main() {
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           unseenCalculator: const SessionUnseenCalculator(),
+          filesystemApi: FakeFilesystemApi(),
         ),
         viewTracker: SessionViewTracker(),
       ),
@@ -961,6 +971,7 @@ void main() {
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       unseenCalculator: const SessionUnseenCalculator(),
+      filesystemApi: FakeFilesystemApi(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
@@ -1023,6 +1034,7 @@ void main() {
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           unseenCalculator: const SessionUnseenCalculator(),
+          filesystemApi: FakeFilesystemApi(),
         ),
         viewTracker: SessionViewTracker(),
       ),
@@ -1133,6 +1145,7 @@ void main() {
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       unseenCalculator: const SessionUnseenCalculator(),
+      filesystemApi: FakeFilesystemApi(),
     );
     final permissionRepository = PermissionRepository(plugin: plugin);
     final sessionPersistenceService = SessionPersistenceService(
@@ -1195,6 +1208,7 @@ void main() {
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           unseenCalculator: const SessionUnseenCalculator(),
+          filesystemApi: FakeFilesystemApi(),
         ),
         viewTracker: SessionViewTracker(),
       ),

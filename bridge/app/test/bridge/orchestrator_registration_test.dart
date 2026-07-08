@@ -42,6 +42,7 @@ import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
 import "package:test/test.dart";
 
+import "../helpers/fake_filesystem_api.dart";
 import "../helpers/restart_test_support.dart";
 import "../helpers/test_database.dart";
 import "../helpers/test_helpers.dart";
@@ -319,6 +320,7 @@ class _RegistrationHarness {
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
       ),
       sessionUnseenService: SessionUnseenService(
         unseenRepository: SessionUnseenRepository(
@@ -333,6 +335,7 @@ class _RegistrationHarness {
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           unseenCalculator: const SessionUnseenCalculator(),
+          filesystemApi: FakeFilesystemApi(),
         ),
         viewTracker: SessionViewTracker(),
       ),

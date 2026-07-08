@@ -23,6 +23,12 @@ sealed class Project with _$Project {
     // activity. Backend-derived from its sessions. Defaults to false so older
     // payloads (and the baseline) deserialize as "seen".
     @Default(false) bool hasUnseenChanges,
+    // Whether the project's directory no longer exists on disk at its recorded
+    // location (the folder was moved or deleted). The bridge stamps this from a
+    // filesystem check; the client renders such projects as "folder not found"
+    // instead of driving into a dead path. Defaults to false so older payloads
+    // deserialize as "present".
+    @Default(false) bool directoryMissing,
   }) = _Project;
 
   factory Project.fromJson(Map<String, dynamic> json) => _$ProjectFromJson(json);

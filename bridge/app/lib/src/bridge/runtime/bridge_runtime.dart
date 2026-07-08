@@ -118,6 +118,7 @@ class BridgeRuntime {
       projectsDao: database.projectsDao,
       sessionDao: database.sessionDao,
       unseenCalculator: unseenCalculator,
+      filesystemApi: const FilesystemApi(),
     );
     final sessionUnseenRepository = SessionUnseenRepository(
       sessionDao: database.sessionDao,
