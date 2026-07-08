@@ -33,7 +33,7 @@ on:
 
 # Xcode and CocoaPods versions — update these when upgrading
 env:
-  XCODE_VERSION: '26.3.0'
+  XCODE_VERSION: '26.6'
   COCOAPODS_VERSION: '1.16.2'
 
 jobs:
