@@ -78,6 +78,17 @@ void main() {
       expect(error.errorMessage, equals("Unknown error"));
     });
 
+    test("maps a non-map (string) error payload to PluginMessage.error via toString", () {
+      // OpenCode types `error` as `Object?`, so a bare string is possible. A
+      // present error must never fall through as a plain assistant message.
+      final result = mapper.map(_assistantMessage(error: "Internal Server Error"));
+
+      expect(result, isA<PluginMessageError>());
+      final error = result as PluginMessageError;
+      expect(error.errorName, equals("UnknownError"));
+      expect(error.errorMessage, equals("Internal Server Error"));
+    });
+
     test("serializes an errored message to the shared MessageError JSON shape", () {
       final result = mapper.map(
         _assistantMessage(

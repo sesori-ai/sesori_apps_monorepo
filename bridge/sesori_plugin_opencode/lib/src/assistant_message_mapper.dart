@@ -22,8 +22,7 @@ class AssistantMessageMapper {
       completed: message.time.completed,
     );
     final error = message.error;
-    final errorMap = error is Map<String, dynamic> ? error : null;
-    if (errorMap == null) {
+    if (error == null) {
       return PluginMessage.assistant(
         id: message.id,
         sessionID: message.sessionID,
@@ -33,7 +32,13 @@ class AssistantMessageMapper {
         time: time,
       );
     }
-    final data = errorMap["data"];
+    // OpenCode's structured errors are `{ "name": ..., "data": { "message": ... } }`,
+    // but `error` is typed `Object?`, so a non-map payload (e.g. a bare string)
+    // is possible. Never let a present error fall through as a plain assistant
+    // message — that is exactly the silent error loss this mapper exists to
+    // prevent — so fall back to `toString()` for a non-map error.
+    final errorMap = error is Map<String, dynamic> ? error : null;
+    final data = errorMap?["data"];
     final dataMap = data is Map<String, dynamic> ? data : const <String, dynamic>{};
     return PluginMessage.error(
       id: message.id,
@@ -41,8 +46,8 @@ class AssistantMessageMapper {
       agent: message.agent,
       modelID: message.modelID,
       providerID: message.providerID,
-      errorName: errorMap["name"]?.toString() ?? "UnknownError",
-      errorMessage: dataMap["message"]?.toString() ?? "Unknown error",
+      errorName: errorMap?["name"]?.toString() ?? "UnknownError",
+      errorMessage: dataMap["message"]?.toString() ?? (errorMap == null ? error.toString() : "Unknown error"),
       time: time,
     );
   }
