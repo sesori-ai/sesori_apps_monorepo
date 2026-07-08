@@ -128,6 +128,17 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
   static const _kUserAuthorId = "user";
   static const _kAgentAuthorId = "agent";
 
+  /// Metadata key carrying each entry's domain role. Assistant and error
+  /// messages share [_kAgentAuthorId], so without this discriminator a
+  /// message flipping from assistant to error mid-stream (same id, same
+  /// authorId) would be value-equal to its previous entry — the
+  /// controller diff would emit no update and the on-screen row would
+  /// stay the stale assistant card until the screen is remounted.
+  static const _kRoleMetadataKey = "role";
+  static const _kUserRole = "user";
+  static const _kAssistantRole = "assistant";
+  static const _kErrorRole = "error";
+
   late final ScrollFollowTracker _follow;
   late final chat_core.InMemoryChatController _chatController;
 
@@ -257,6 +268,10 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
     if (current.length != target.length) return false;
     for (var i = 0; i < target.length; i++) {
       if (current[i].id != target[i].id) return false;
+      // A same-id entry can still change role in place (assistant→error);
+      // that must not be filtered out as a streaming-only emit, or the
+      // controller never learns the row needs to swap to the error card.
+      if (current[i].metadata?[_kRoleMetadataKey] != target[i].metadata?[_kRoleMetadataKey]) return false;
     }
     return true;
   }
@@ -273,6 +288,17 @@ class _SessionDetailMessageListState extends State<SessionDetailMessageList> wit
             MessageUser() => _kUserAuthorId,
             MessageAssistant() => _kAgentAuthorId,
             MessageError() => _kAgentAuthorId,
+          },
+          // Role discriminates assistant from error under the shared
+          // agent authorId, so a live assistant→error transition on the
+          // same message id is no longer value-equal and forces the row
+          // to re-render as the error card.
+          metadata: <String, String>{
+            _kRoleMetadataKey: switch (message.info) {
+              MessageUser() => _kUserRole,
+              MessageAssistant() => _kAssistantRole,
+              MessageError() => _kErrorRole,
+            },
           },
         ),
       if (hasRetryError) const chat_core.Message.custom(id: _kRetryErrorRowId, authorId: _kAgentAuthorId),
