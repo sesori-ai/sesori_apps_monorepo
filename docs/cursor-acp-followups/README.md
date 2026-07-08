@@ -1,11 +1,12 @@
 # Cursor / ACP Backend — Deferred Follow-ups
 
 > Status: **not scoped, not started**. This document tracks improvements that
-> were consciously deferred during review of PR #332 (`feat(bridge): add Cursor
-> backend via ACP`). Each item is something a reviewer (human or bot) raised and
-> we agreed was real, but out of scope for that PR — either because it needs a
-> bridge-side change beyond aligning the plugin, or because it needs a real
-> protocol trace before it can be done safely.
+> were consciously deferred during (and at merge time of) the review of PR #332
+> (`feat(bridge): add Cursor backend via ACP`). Each item is something a reviewer
+> (human or bot) raised and we agreed was real, but out of scope for that PR —
+> either because it needs a bridge-side change beyond aligning the plugin,
+> because it needs a real protocol trace before it can be done safely, or because
+> the finding landed as the PR merged (Themes H and I, and C5, are these last).
 >
 > When you pick one up, **re-verify the claim against current code first** —
 > file/line references were accurate at review time and may have drifted. Every
@@ -43,10 +44,12 @@ than observed Cursor bugs. That is called out per item.
 
 | #  | Theme                                                | Why it matters                                                  | Rough cost |
 |----|------------------------------------------------------|----------------------------------------------------------------|------------|
+| H  | Resume-load & per-session turn robustness            | **User-facing:** stuck conversations, dropped queued prompts, replay leak | Medium     |
 | A  | Bridge↔plugin stored-directory / attribution seam    | Real worktree flows on restart; one hook resolves three threads | Medium     |
 | B  | Durable derive-plugin session state (bridge schema)  | Title loss + deleted sessions reappearing                       | Medium     |
-| C  | ACP protocol completeness in the mapper              | Correctness for the next ACP backend                            | Medium     |
+| C  | ACP protocol completeness in the mapper / parsers    | Correctness for the next ACP backend                            | Medium     |
 | G  | Concurrent multi-session turn attribution            | Wrong-conversation routing of `sessionId`-less requests         | Medium     |
+| I  | Lossy `session.updated` payload on title changes     | List row loses time/summary/defaults until refresh             | Small–Med  |
 | E  | Typed ACP/Cursor boundary DTOs                        | Enabler / safety net for C and F                                | Large      |
 | F  | `getSessionMessages` richer failure contract         | "Broken replay" vs "empty thread" on the phone                  | Small–Med  |
 | D  | Cursor decisions needing a trace / product call      | Small, but blocked on evidence                                  | Small      |
@@ -182,9 +185,19 @@ ground). Theme E (typed DTOs) is the safety net that makes these less error-pron
   `loadSession` path, so no shipping backend needs this yet.
   Source: [#332 r3545348046](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3545348046)
 
+- **C5 — flatten grouped `SessionConfigSelectOptions`.** ACP config select
+  options can be *grouped*, but `cursor_model_probe` only returns the top-level
+  maps. If Cursor (or another ACP agent) groups its model/mode choices, the
+  returned entries are group objects with no `value`, so `getProviders` drops
+  every nested model/variant and `applyTurnSelection` can no longer find a
+  selectable value. Flatten nested group `options` before caching the catalog.
+  (Landed at merge; Cursor's current shape is flat, so this is robustness for a
+  grouped agent rather than an observed Cursor bug.)
+  Source: [#332 r3545873657](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3545873657)
+
 **Affected surfaces.** `acp_event_mapper.dart`, `acp_session_loader.dart`,
-`acp_plugin.dart` (command cache + `getCommands` + `_ensureResident`), plugin
-models.
+`acp_plugin.dart` (command cache + `getCommands` + `_ensureResident`),
+`sesori_plugin_cursor/lib/src/cursor_model_probe.dart` (C5), plugin models.
 
 ---
 
@@ -206,6 +219,75 @@ Source: [#332 r3545348052](https://github.com/sesori-ai/sesori_apps_monorepo/pul
 **Affected surfaces.** `acp_plugin.dart` (`_activeTurnSessionId`,
 `_dispatchPrompt`, turn lifecycle), `acp_approval_registry.dart`
 (server-request → session attribution).
+
+---
+
+## Theme H — Resume-load & per-session turn robustness
+
+Robustness gaps in the ACP plugin's own turn lifecycle (`_ensureResident`,
+`_dispatchPrompt`, `_residentSessions`, `_activeSessions`, replay suppression).
+Unlike Theme G (cross-session `sessionId`-less attribution), these bite *within*
+a single session's resume/prompt flow. Two are user-facing bugs, so this theme
+outranks pure spec-completeness. All three landed as review comments at merge.
+
+- **H1 — do not cache failed resume loads as resident.** `_ensureResident`'s
+  `finally` adds the session to `_residentSessions` even when `session/load`
+  fails for a transient reason (timeout, RPC hiccup). The immediate
+  `session/prompt` then runs against a session the fresh ACP process may never
+  have loaded, and every retry skips `session/load` because the session is now
+  cached resident — so the conversation stays unrecoverable until the agent
+  respawns. Mark resident only after a successful load (or a specifically
+  memoized *unsupported* case), not after all failures. The current
+  mark-on-failure was deliberate (avoid a re-load loop), so the fix must keep
+  that guarantee for the genuinely-unsupported case while still retrying
+  transient ones. **User-facing (High).**
+  Source: [#332 r3545873646](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3545873646)
+
+- **H2 — serialize prompts per session.** `_dispatchPrompt` detaches the
+  `session/prompt` future, so `sendPrompt` returns as soon as the frame is
+  written. The mobile detail queue then drains the next queued message
+  immediately, producing overlapping `session/prompt` requests for one session;
+  agents that reject concurrent turns drop/error the second, and the Set-based
+  `_activeSessions` lets the first completion mark the session idle while another
+  turn is still running. Keep a per-session prompt chain (or reject-while-busy)
+  before dispatching another prompt for the same session. **User-facing (High).**
+  Source: [#332 r3545873662](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3545873662)
+
+- **H3 — ref-count replay suppression across concurrent loads.** When two
+  prompts for the same prior-run session enter `_ensureResident` before the first
+  `session/load` finishes, both share one `_suppressedSessions` entry. The first
+  load to finish removes suppression while the second replay can still be
+  streaming, so the remaining historical `session/update` chunks are delivered as
+  live transcript deltas. Coalesce per-session resume loads, or ref-count the
+  suppression before removing it.
+  Source: [#332 r3545873652](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3545873652)
+
+**Affected surfaces.** `acp_plugin.dart` (`_ensureResident`, `_dispatchPrompt`,
+`_residentSessions`, `_activeSessions`, `_suppressedSessions`).
+
+**Design note.** H2 and Theme G are both ACP-concurrency: a per-session turn
+chain (H2) also gives a natural home for tracking the active turn precisely
+(Theme G). Design them together.
+
+---
+
+## Theme I — Lossy `session.updated` payload on title changes
+
+`session_info_update` emits a full minimal `Session` (id + title, other fields
+null). When no stored bridge row exists yet — during ACP session creation before
+`insertStoredSession`, or for a historical Cursor session — enrichment cannot
+restore the omitted fields. Because the mobile list handler *replaces* the whole
+session on `session.updated`, `time`, `summary`, prompt defaults, etc. go null
+and the row can sort at updated-time `0` until a full refresh. Emit a title
+patch, or merge against the previous session, instead of a full minimal `Session`
+with null fields. This is the field-fidelity flip side of the title-clear work:
+clearing the title is correct, but the minimal payload should not null unrelated
+fields.
+Source: [#332 r3545873668](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3545873668)
+
+**Affected surfaces.** `acp_event_mapper.dart` (`_minimalSession` / the
+`session_info_update` emission), and the client `session.updated` merge semantics
+(`SessionListCubit._onSessionUpdated`).
 
 ---
 
