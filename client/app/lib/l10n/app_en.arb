@@ -331,6 +331,8 @@
   "gitRepoBadge": "git",
   "projectHidden": "Project hidden",
   "hideProject": "Hide Project",
+  "projectFolderMissing": "Folder not found",
+  "projectFolderMissingMessage": "This project's folder no longer exists — it may have been moved or deleted. Hide the project, or restore the folder to its original location.",
   "noProjects": "No projects",
   "addProjectPrompt": "Add a project to get started",
   "creatingProject": "Creating project...",

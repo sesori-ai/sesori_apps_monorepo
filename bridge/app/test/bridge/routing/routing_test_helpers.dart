@@ -26,6 +26,7 @@ import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_bridge/src/bridge/sse/sse_manager.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" hide PermissionReply;
+import "../../helpers/fake_filesystem_api.dart";
 
 /// Builds a real [SessionUnseenService] backed by [db] for handler/router tests.
 SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginApi plugin) {
@@ -43,6 +44,7 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
       projectsDao: db.projectsDao,
       sessionDao: db.sessionDao,
       unseenCalculator: calculator,
+      filesystemApi: FakeFilesystemApi(),
     ),
     viewTracker: SessionViewTracker(),
   );

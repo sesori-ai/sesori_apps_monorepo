@@ -32,6 +32,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fake_filesystem_api.dart";
 import "../../helpers/restart_test_support.dart";
 import "../../helpers/test_database.dart";
 import "get_session_diffs_handler_test_helpers.dart";
@@ -59,6 +60,7 @@ void main() {
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
       );
       final filesystemRepository = FilesystemRepository(
         filesystemApi: const FilesystemApi(),
@@ -423,6 +425,7 @@ void main() {
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
       );
       final filesystemRepository = FilesystemRepository(
         filesystemApi: const FilesystemApi(),

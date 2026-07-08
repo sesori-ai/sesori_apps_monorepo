@@ -241,7 +241,7 @@ abstract class AppLocalizations {
   /// **'DM on X'**
   String get projectsOnboardingNeedHelpX;
 
-  /// Segmented-control label that selects the macOS/Linux/WSL install commands in the onboarding.
+  /// Segmented-control label that selects the macOS/Linux/WSL install commands, shown both in the onboarding and in the bridge-offline install-commands disclosure.
   ///
   /// In en, this message translates to:
   /// **'macOS, Linux, WSL'**
@@ -253,7 +253,7 @@ abstract class AppLocalizations {
   /// **'curl'**
   String get projectsOnboardingInstallUnixMethod;
 
-  /// Segmented-control label that selects the Windows PowerShell install commands in the onboarding.
+  /// Segmented-control label that selects the Windows PowerShell install commands, shown both in the onboarding and in the bridge-offline install-commands disclosure.
   ///
   /// In en, this message translates to:
   /// **'Windows PowerShell'**
@@ -1194,6 +1194,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hide Project'**
   String get hideProject;
+
+  /// No description provided for @projectFolderMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder not found'**
+  String get projectFolderMissing;
+
+  /// No description provided for @projectFolderMissingMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This project\'s folder no longer exists — it may have been moved or deleted. Hide the project, or restore the folder to its original location.'**
+  String get projectFolderMissingMessage;
 
   /// No description provided for @noProjects.
   ///

@@ -7,6 +7,7 @@ import "package:sesori_bridge/src/bridge/services/session_view_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fake_filesystem_api.dart";
 import "../../helpers/test_database.dart";
 
 void main() {
@@ -29,6 +30,7 @@ void main() {
       projectsDao: db.projectsDao,
       sessionDao: db.sessionDao,
       unseenCalculator: const SessionUnseenCalculator(),
+      filesystemApi: FakeFilesystemApi(),
     );
 
     Future<bool> unseen(String sessionId) {
