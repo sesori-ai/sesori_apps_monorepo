@@ -6,7 +6,9 @@ import "package:flutter/material.dart";
 import "../../theme/prego_theme.dart";
 
 /// A flat Material bubble anchored to a trigger rect, kept on screen and sprung
-/// in with `cue`.
+/// in with `cue`. It caps its height to the room beside the trigger and scrolls
+/// its content past that cap, so callers can supply arbitrary content without
+/// each managing overflow.
 ///
 /// It is the shared flat rendering for the design system's anchored popups:
 /// `PregoAnchorMenu`'s flat menu panel and `PregoPopover`'s content bubble both
@@ -46,7 +48,9 @@ class AnchoredFlatPanel extends StatelessWidget {
   /// Minimum gap kept between the bubble and the screen edges.
   final EdgeInsets screenPadding;
 
-  /// Builds the bubble body. The `close` callback dismisses the popup.
+  /// Builds the bubble body. The `close` callback dismisses the popup. The panel
+  /// scrolls this content when it exceeds the available height, so it need not
+  /// provide its own scroll view.
   final Widget Function(BuildContext context, VoidCallback close) childBuilder;
 
   /// Gap between the trigger and the bubble it spawns.
@@ -88,7 +92,11 @@ class AnchoredFlatPanel extends StatelessWidget {
           borderRadius: BorderRadius.circular(borderRadius),
           side: BorderSide(color: prego.colors.borderSecondary, width: 0.5),
         ),
-        child: childBuilder(context, close),
+        // The panel owns overflow: content taller than the available height
+        // (the delegate's maxHeight cap) scrolls instead of overflowing, so
+        // callers can hand in arbitrary content without each wrapping its own
+        // scroll view. Shorter content shrink-wraps as before.
+        child: SingleChildScrollView(child: childBuilder(context, close)),
       ),
     );
 

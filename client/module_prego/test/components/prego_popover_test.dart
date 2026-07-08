@@ -53,6 +53,27 @@ void main() {
     expect(find.text("Popover body"), findsNothing);
   }, variant: _everyPlatform);
 
+  testWidgets("scrolls overflowing content instead of overflowing the bubble", (tester) async {
+    // A column taller than the room beside the trigger. Without the panel owning
+    // a scroll view this overflows (a RenderFlex error); the panel must cap the
+    // height and scroll the content instead.
+    await tester.pumpWidget(
+      _harness(
+        contentBuilder: (context, close) => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [for (var i = 0; i < 40; i++) const SizedBox(height: 60, child: Text("row"))],
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.more_horiz));
+    await tester.pumpAndSettle();
+
+    // No overflow was thrown, and the content rides the panel's scroll view.
+    expect(tester.takeException(), isNull);
+    expect(find.byType(SingleChildScrollView), findsOneWidget);
+  }, variant: _everyPlatform);
+
   testWidgets("dismisses on an outside tap", (tester) async {
     await tester.pumpWidget(
       _harness(

@@ -210,7 +210,10 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
         height: widget.menuHeight,
         borderRadius: widget.menuBorderRadius,
         screenPadding: widget.menuScreenPadding,
-        childBuilder: (context, close) => SingleChildScrollView(
+        // AnchoredFlatPanel owns the scroll, so this supplies just the padded
+        // column of entries; the panel scrolls it when the menu is taller than
+        // the room beside the trigger.
+        childBuilder: (context, close) => Padding(
           padding: const EdgeInsets.symmetric(vertical: 6),
           child: Column(
             mainAxisSize: MainAxisSize.min,
