@@ -249,6 +249,11 @@ class _OnboardingStepLabel extends StatelessWidget {
           triggerBuilder: (_, toggle) => Semantics(
             button: true,
             label: loc.projectsOnboardingStepInfoSemantics,
+            // Put the tap action on the same node as the button role + label so
+            // screen readers (VoiceOver/TalkBack) can activate the popover: a
+            // child GestureDetector's tap action lands on a separate semantics
+            // node the assistive-tech focus doesn't target.
+            onTap: toggle,
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: toggle,
