@@ -185,8 +185,14 @@ class AcpEventMapper {
       case "session_info_update":
         // The agent's auto-generated title for the thread. Surfaced as a
         // session update so the mobile session list / app bar live-update.
-        final title = update["title"] as String?;
-        if (title == null || title.isEmpty) return const [];
+        // Only emit when the update actually carries a `title` field: absent =
+        // some other metadata changed (no title change), while an explicit null
+        // or empty clears the title (ACP v1 documents `title` as nullable, null
+        // clears) — forward that clear rather than dropping it, else the phone
+        // keeps the stale title until a full refresh.
+        if (!update.containsKey("title")) return const [];
+        final rawTitle = update["title"];
+        final title = rawTitle is String && rawTitle.isNotEmpty ? rawTitle : null;
         return [
           BridgeSseSessionUpdated(info: _minimalSession(sessionId, title).toJson()),
         ];

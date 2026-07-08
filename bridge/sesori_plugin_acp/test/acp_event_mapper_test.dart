@@ -379,6 +379,25 @@ void main() {
       expect(session.projectID, "/repo");
     });
 
+    test("session_info_update with an explicit null title forwards a clear", () {
+      // ACP v1: title is nullable, null clears it. Dropping the update would
+      // leave the phone showing the stale title until a refresh.
+      final events = mapper.map(update({
+        "sessionUpdate": "session_info_update",
+        "title": null,
+      }));
+      final session = shared.Session.fromJson(events.whereType<BridgeSseSessionUpdated>().single.info);
+      expect(session.title, isNull);
+    });
+
+    test("session_info_update without a title key emits nothing", () {
+      final events = mapper.map(update({
+        "sessionUpdate": "session_info_update",
+        "_meta": {"tags": <String>[]},
+      }));
+      expect(events, isEmpty);
+    });
+
     test("a per-session model overrides the global stamp", () {
       mapper
         ..currentModelId = "composer-2.5"

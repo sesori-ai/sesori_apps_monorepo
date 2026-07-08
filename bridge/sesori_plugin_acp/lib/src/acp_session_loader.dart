@@ -67,10 +67,13 @@ class AcpReplayCollector {
           );
           return;
         }
-        // A `tool_call_update` is partial: only advance status when the field is
-        // present, else a later output-only update would reset a
-        // completed/failed replayed tool card back to pending.
+        // A `tool_call_update` is partial: only advance a field when the update
+        // carries it, else a later output-only update would reset a
+        // completed/failed replayed tool card back to pending (status) or drop a
+        // separately-sent display title. Mirrors the live mapper's merge so
+        // replayed history matches live rendering.
         if (update.containsKey("status")) draft.status = acpToolStatus(update["status"]);
+        if (update.containsKey("title")) draft.title = _toolTitle(update);
         final out = acpToolOutputText(update);
         if (out != null) draft.output = out;
     }
@@ -208,8 +211,8 @@ class _ToolDraft {
   });
 
   final String tool;
-  final String? title;
   // Reassigned as later tool_call_update notifications arrive during replay.
+  String? title;
   PluginToolStatus status;
   String? output;
 }

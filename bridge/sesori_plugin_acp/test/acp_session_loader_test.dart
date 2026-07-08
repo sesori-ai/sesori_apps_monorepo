@@ -79,6 +79,27 @@ void main() {
       expect(toolPart.state?.output, "done (final)");
     });
 
+    test("a title-only tool_call_update merges onto an existing draft (matches live)", () {
+      final collector = AcpReplayCollector(sessionId: "s1", agentId: "Cursor")
+        ..consume(upd({
+          "sessionUpdate": "tool_call",
+          "toolCallId": "t1",
+          "kind": "edit",
+          "status": "pending",
+        }))
+        // A separate title-only update after the tool_call: replay must apply it
+        // (the live mapper does), not silently drop it.
+        ..consume(upd({
+          "sessionUpdate": "tool_call_update",
+          "toolCallId": "t1",
+          "title": "Edit main.dart",
+          "status": "in_progress",
+        }));
+      final toolPart = collector.build().single.parts.firstWhere((p) => p.type == PluginMessagePartType.tool);
+      expect(toolPart.tool, "edit");
+      expect(toolPart.state?.title, "Edit main.dart");
+    });
+
     test("a non-string tool title does not throw mid-replay", () {
       final collector = AcpReplayCollector(sessionId: "s1", agentId: "Cursor")
         ..consume(upd({

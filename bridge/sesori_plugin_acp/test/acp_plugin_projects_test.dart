@@ -248,6 +248,60 @@ void main() {
       expect(bareAttempts, 2, reason: "a transient error must not be memoized; the unfiltered form is retried");
     });
 
+    test("a mid-pagination error does not memoize the unfiltered form as unsupported", () async {
+      await connect(sessionCapabilities: true);
+      var bareFirstPages = 0;
+      final answered = <Object?>{};
+      var running = true;
+      unawaited(() async {
+        while (running) {
+          for (final frame
+              in fake().written.where((f) => f["method"] == "session/list").toList(growable: false)) {
+            if (!answered.add(frame["id"])) continue;
+            final params = (frame["params"] as Map?)?.cast<String, dynamic>() ?? const {};
+            if (params["cwd"] == null) {
+              if (params["cursor"] == null) {
+                bareFirstPages++;
+                // First page succeeds (proving the unfiltered form works)...
+                fake().emit({
+                  "jsonrpc": "2.0",
+                  "id": frame["id"],
+                  "result": {
+                    "sessions": [
+                      {"sessionId": "s1", "cwd": "/x"},
+                    ],
+                    "nextCursor": "p2",
+                  },
+                });
+              } else {
+                // ...then page 2 fails with a pagination-specific -32602.
+                fake().emit({
+                  "jsonrpc": "2.0",
+                  "id": frame["id"],
+                  "error": {"code": -32602, "message": "bad cursor"},
+                });
+              }
+            } else {
+              fake().emit({
+                "jsonrpc": "2.0",
+                "id": frame["id"],
+                "result": {"sessions": <Object?>[]},
+              });
+            }
+          }
+          await pump();
+        }
+      }());
+
+      final first = await plugin.listAllSessions(knownDirectories: const {});
+      expect(first.map((s) => s.id), contains("s1"), reason: "the successful first page is still returned");
+      // A second enumeration must retry the unfiltered form — a page-2 error is
+      // not proof the form is unsupported.
+      await plugin.listAllSessions(knownDirectories: const {});
+      running = false;
+      expect(bareFirstPages, 2, reason: "a mid-pagination -32602 must not memoize the unfiltered form");
+    });
+
     test("follows nextCursor pagination and parses both timestamp shapes", () async {
       await connect(sessionCapabilities: true);
 

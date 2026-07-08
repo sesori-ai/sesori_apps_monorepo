@@ -437,6 +437,13 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
   /// Fetches the full `session/list` result for [cwd] (null = unfiltered),
   /// following `nextCursor` pagination. Bounded so an agent that never
   /// exhausts its cursor cannot spin the bridge forever.
+  ///
+  /// Only a **first-page** failure propagates: it is authoritative for whether
+  /// the form is supported (so the caller can memoize `-32601`/`-32602`). A
+  /// later-page failure means the form works but pagination hit a snag — the
+  /// pages gathered so far are returned rather than discarding a proven-good
+  /// first page (and the caller must not memoize a mid-pagination error as
+  /// "unsupported").
   Future<List<AcpSessionInfo>> _listSessionPages(
     AcpStdioClient client, {
     required String? cwd,
@@ -445,16 +452,28 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     final infos = <AcpSessionInfo>[];
     String? cursor;
     for (var page = 0; page < maxPages; page++) {
-      final raw = await client.request(
-        method: AcpMethods.sessionList,
-        params: {
-          "cwd": ?cwd,
-          "cursor": ?cursor,
-        },
-      );
-      final result = AcpSessionListResult.fromJson(
-        raw is Map ? raw.cast<String, dynamic>() : const {},
-      );
+      final AcpSessionListResult result;
+      try {
+        final raw = await client.request(
+          method: AcpMethods.sessionList,
+          params: {
+            "cwd": ?cwd,
+            "cursor": ?cursor,
+          },
+        );
+        result = AcpSessionListResult.fromJson(
+          raw is Map ? raw.cast<String, dynamic>() : const {},
+        );
+      } on Object catch (error, stack) {
+        if (page == 0) rethrow;
+        Log.w(
+          "[$id] session/list page $page for ${cwd ?? "(all)"} failed; "
+          "returning ${infos.length} gathered so far",
+          error,
+          stack,
+        );
+        break;
+      }
       infos.addAll(result.sessions);
       final next = result.nextCursor;
       if (next == null || next.isEmpty) break;
