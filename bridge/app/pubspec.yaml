@@ -29,7 +29,12 @@ dependencies:
   codex_plugin:
     path: ../sesori_plugin_codex
   meta: ^1.18.3
-  drift: ^2.34.0
+  # Pinned lock-step with drift_dev: 2.34.1+ requires analyzer ^13, but the
+  # workspace is held on analyzer 10 by injectable_generator. drift_dev is
+  # therefore capped at 2.34.0, and the runtime must match its codegen sibling —
+  # a 2.34.0/2.34.1 skew breaks the drift schema verifier. Bump both together
+  # once analyzer 13 is unblocked.
+  drift: 2.34.0
   collection: ^1.19.1
   win32: ^6.3.0
 
