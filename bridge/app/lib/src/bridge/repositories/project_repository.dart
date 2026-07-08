@@ -210,11 +210,19 @@ class ProjectRepository {
   /// Builds the full bridge-derived project set from the plugin's sessions, the
   /// bridge's stored project rows, and the stored session→project attribution.
   Future<List<Project>> _deriveProjects(BridgeDerivedProjectsPluginApi plugin) async {
-    final (sessions, storedProjects, sessionProjectPaths) = await (
-      plugin.listAllSessions(),
+    final (storedProjects, sessionProjectPaths) = await (
       _projectsDao.getAllProjects(),
       _sessionDao.getSessionProjectPaths(pluginId: plugin.id),
     ).wait;
+    // The bridge's rows tell a directory-scoped backend where to look: every
+    // stored project path plus every dedicated-worktree path it has a session
+    // in. A globally-indexed backend ignores the hints.
+    final sessions = await plugin.listAllSessions(
+      knownDirectories: {
+        for (final stored in storedProjects) stored.path,
+        for (final row in sessionProjectPaths) ?row.worktreePath,
+      },
+    );
     return _derivedProjectBuilder.build(
       sessions: sessions,
       storedProjects: storedProjects,

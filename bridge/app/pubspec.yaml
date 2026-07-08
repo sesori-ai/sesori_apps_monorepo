@@ -28,6 +28,10 @@ dependencies:
     path: ../sesori_plugin_opencode
   codex_plugin:
     path: ../sesori_plugin_codex
+  acp_plugin:
+    path: ../sesori_plugin_acp
+  cursor_plugin:
+    path: ../sesori_plugin_cursor
   meta: ^1.18.3
   # Pinned lock-step with drift_dev: 2.34.1+ requires analyzer ^13, but the
   # workspace is held on analyzer 10 by injectable_generator. drift_dev is

@@ -203,7 +203,15 @@ abstract class BridgeDerivedProjectsPluginApi extends BridgePluginApi {
   /// Every session this plugin knows about, across all projects. The bridge
   /// groups the result by [PluginSession.directory] to build the project list,
   /// so each returned session must carry its real working directory.
-  Future<List<PluginSession>> listAllSessions();
+  ///
+  /// [knownDirectories] is every directory the bridge itself attributes to
+  /// this plugin — its stored project paths (opened folders and the owning
+  /// projects of bridge-created sessions) plus the dedicated-worktree paths of
+  /// its stored sessions. A backend whose enumeration is directory-scoped
+  /// (ACP's `session/list` filters by cwd) must include these directories in
+  /// its scan, or sessions from prior runs would vanish after a restart; a
+  /// backend with a global index (codex's rollout files) may ignore them.
+  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories});
 
   /// The plugin's launch directory. The bridge seeds this as an opened folder so
   /// it always surfaces as a project — even with no sessions yet — matching the

@@ -121,7 +121,12 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   /// dedicated worktree maps to the project the user opened — not to its own
   /// worktree cwd. The join keeps call sites working if project ids ever stop
   /// being the project path.
-  Future<List<({String sessionId, String projectPath})>> getSessionProjectPaths({
+  ///
+  /// Each row also carries the session's dedicated [worktreePath] (null for
+  /// sessions running in the project directory itself): a directory-scoped
+  /// backend enumerates a worktree session under its own cwd, so callers feed
+  /// these paths into the plugin's enumeration hints.
+  Future<List<({String sessionId, String projectPath, String? worktreePath})>> getSessionProjectPaths({
     required String pluginId,
   }) async {
     final query = select(sessionTable).join([
@@ -133,6 +138,7 @@ class SessionDao extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
         (
           sessionId: row.readTable(sessionTable).sessionId,
           projectPath: row.readTable(projectsTable).path,
+          worktreePath: row.readTable(sessionTable).worktreePath,
         ),
     ];
   }

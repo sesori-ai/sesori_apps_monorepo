@@ -296,7 +296,7 @@ void main() {
 
       // Each session carries its own rollout cwd (never the launch CWD), so the
       // bridge groups it under the right project.
-      final byId = {for (final session in await plugin.listAllSessions()) session.id: session};
+      final byId = {for (final session in await plugin.listAllSessions(knownDirectories: const {})) session.id: session};
       expect(byId["019a0000-1111-2222-3333-aaaaaaaaaaaa"]?.directory, "/work/sample-app");
       expect(byId["019a0000-1111-2222-3333-bbbbbbbbbbbb"]?.directory, "/other/project");
       expect(byId["019a0000-1111-2222-3333-bbbbbbbbbbbb"]?.projectID, "/other/project");

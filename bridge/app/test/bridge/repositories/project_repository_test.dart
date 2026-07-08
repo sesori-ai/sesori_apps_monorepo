@@ -230,6 +230,10 @@ void main() {
       expect((await repo.getProjects()).map((p) => p.id), contains("/tmp/proj/empty"));
       final row = (await db.select(db.projectsTable).get()).firstWhere((r) => r.projectId == "/tmp/proj/empty");
       expect(row.openedAt, isNotNull);
+      // The stored rows are also the enumeration hints: a directory-scoped
+      // backend (ACP) is pointed at every recorded folder, so opening one makes
+      // its pre-existing sessions discoverable on the next enumeration.
+      expect(plugin.receivedKnownDirectories, containsAll(<String>["/tmp/proj/empty", plugin.launchDir]));
     });
 
     test("renameProject persists a display-name override applied on the next listing", () async {
@@ -482,11 +486,17 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
   /// doesn't introduce an extra project the assertions don't expect.
   String launchDir = "/tmp/proj/alpha";
 
+  /// The hint set received on the most recent [listAllSessions] call.
+  Set<String>? receivedKnownDirectories;
+
   @override
   String get id => "codex";
 
   @override
-  Future<List<PluginSession>> listAllSessions() async => sessions;
+  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
+    receivedKnownDirectories = knownDirectories;
+    return sessions;
+  }
 
   @override
   String get launchDirectory => launchDir;

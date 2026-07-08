@@ -344,8 +344,11 @@ class CodexPlugin implements CodexManagedApi {
   /// codex is a [BridgeDerivedProjectsPluginApi], so the bridge derives the
   /// project list from these sessions. Each carries its real rollout cwd as its
   /// directory so the bridge groups it under the right project.
+  ///
+  /// [knownDirectories] is unused: codex's rollout index already enumerates
+  /// every session globally, so the bridge's directory hints add nothing.
   @override
-  Future<List<PluginSession>> listAllSessions() async =>
+  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async =>
       _rolloutReader.listSessions().map(_toPluginSession).toList(growable: false);
 
   @override

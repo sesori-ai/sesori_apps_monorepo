@@ -750,6 +750,10 @@ void main() {
       final worktreeSession = sessions.singleWhere((s) => s.id == "w1");
       expect(worktreeSession.projectID, parent);
       expect(worktreeSession.directory, worktree);
+      // The bridge told the plugin where to look: the project being served and
+      // the stored session's project + worktree paths — a directory-scoped
+      // backend (ACP) can only enumerate directories it is pointed at.
+      expect(plugin.receivedKnownDirectories, containsAll(<String>[parent, worktree]));
     });
 
     test("findProjectIdForSession resolves a recorded worktree session to its parent via its stored row", () async {
@@ -805,6 +809,31 @@ void main() {
       final result = await repository.findProjectIdForSession(sessionId: "b1");
 
       expect(result, equals(directory));
+    });
+
+    test("findProjectIdForSession hints at opened-but-sessionless folders too", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+
+      // An opened folder with no stored sessions for this plugin: it never
+      // appears in the sessions⋈projects join, but a directory-scoped backend
+      // can only discover a rowless session there if the hint set includes it.
+      const opened = "/tmp/proj/opened-only";
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [opened]);
+      final plugin = _FakeDerivedPlugin(launchDirectory: "/tmp/proj/alpha", allSessions: const []);
+      final repository = SessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        pullRequestRepository: PullRequestRepository(
+          pullRequestDao: db.pullRequestDao,
+          projectsDao: db.projectsDao,
+        ),
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      await repository.findProjectIdForSession(sessionId: "missing");
+
+      expect(plugin.receivedKnownDirectories, contains(opened));
     });
 
     test("sessionListIsAuthoritative is false for a derived plugin and true for a native one", () async {
@@ -961,11 +990,17 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
 
   List<PluginSession> allSessions;
 
+  /// The hint set received on the most recent [listAllSessions] call.
+  Set<String>? receivedKnownDirectories;
+
   @override
   String get id => "codex";
 
   @override
-  Future<List<PluginSession>> listAllSessions() async => allSessions;
+  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
+    receivedKnownDirectories = knownDirectories;
+    return allSessions;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

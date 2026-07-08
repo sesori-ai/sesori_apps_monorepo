@@ -35,7 +35,7 @@ void main() {
           projectCwd: "/repo/example",
         );
         expect(plugin.launchDirectory, equals("/repo/example"));
-        expect(await plugin.listAllSessions(), isEmpty);
+        expect(await plugin.listAllSessions(knownDirectories: const {}), isEmpty);
         await plugin.dispose();
       } finally {
         try {
