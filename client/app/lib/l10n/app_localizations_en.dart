@@ -30,6 +30,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectListTitle => 'Projects';
 
   @override
+  String get projectListConnectTitle => 'Connect';
+
+  @override
   String get projectListLoadingSemantics => 'Loading projects';
 
   @override
@@ -119,6 +122,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get projectsOnboardingShareCommand => 'Share command';
+
+  @override
+  String get projectsOnboardingWaitingForBridge => 'Waiting for bridge';
+
+  @override
+  String get projectsOnboardingRunOnComputer => 'Next, run on your computer:';
+
+  @override
+  String get projectsOnboardingInstallStepTitle => 'Install the bridge';
+
+  @override
+  String get projectsOnboardingInstallStepInfo => 'This adds the Sesori bridge command to your machine.';
+
+  @override
+  String get projectsOnboardingStartStepTitle => 'Start the bridge';
+
+  @override
+  String get projectsOnboardingStartStepInfo => 'Leave it running while you use Sesori from your phone.';
+
+  @override
+  String get projectsOnboardingStepInfoSemantics => 'More information';
 
   @override
   String get projectsBridgeOfflineTitle => 'Bridge disconnected';

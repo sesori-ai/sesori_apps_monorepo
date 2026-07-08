@@ -3,14 +3,16 @@ part of "../project_list_screen.dart";
 // ===========================================================================
 // Bridge onboarding
 //
-// One shared onboarding body drives both empty Projects states:
+// The two empty Projects states have their own bodies now that they diverge:
 // * disconnected — the connect-your-computer onboarding (connection graphic in
-//   its "off" state). See [_BridgeOnboardingView].
-// * connected, no projects — the same body with the graphic in its "on" state.
+//   its "off" state): install + start the bridge. See [_ConnectBridgeChecklist]
+//   and [_BridgeOnboardingView].
+// * connected, no projects — the phone/PC status body with the graphic in its
+//   "on" state. See [_OnboardingChecklist].
 // ===========================================================================
 
-/// Not-yet-connected onboarding ("Set up Sesori Bridge"). Wraps the shared
-/// [_OnboardingChecklist] in a pull-to-refresh that re-attempts the bridge
+/// Not-yet-connected onboarding ("Connect your computer"). Wraps the
+/// [_ConnectBridgeChecklist] in a pull-to-refresh that re-attempts the bridge
 /// connection.
 class _BridgeOnboardingView extends StatelessWidget {
   const _BridgeOnboardingView();
@@ -27,7 +29,7 @@ class _BridgeOnboardingView extends StatelessWidget {
         child: const SingleChildScrollView(
           clipBehavior: Clip.none,
           physics: AlwaysScrollableScrollPhysics(),
-          child: _OnboardingChecklist(connected: false),
+          child: _ConnectBridgeChecklist(),
         ),
       ),
     );
@@ -38,18 +40,14 @@ class _BridgeOnboardingView extends StatelessWidget {
 /// shared [openExternalLink] helper.
 Future<void> _openSupportLink({required String url}) => openExternalLink(url: Uri.parse(url));
 
-/// The shared onboarding body: the phone/PC connection status lines, the
-/// connection graphic, and the per-platform install command boxes. The
+/// The "connected, no projects" empty state: the phone/PC status lines, the
+/// connection graphic in its "on" state, and the per-platform install command
+/// boxes. Shown once a bridge is connected but no projects exist yet. The
 /// "Need help?" support menu ([_NeedHelpMenu]) is not part of this scroll flow —
 /// it rides the scaffold's floating-action slot, pinned to the bottom-right
 /// corner above the home indicator.
-///
-/// [connected] switches the connection graphic between its "off" and "on"
-/// states; the rest of the body is shared by both empty Projects states.
 class _OnboardingChecklist extends StatelessWidget {
-  const _OnboardingChecklist({required this.connected});
-
-  final bool connected;
+  const _OnboardingChecklist();
 
   @override
   Widget build(BuildContext context) {
@@ -87,10 +85,8 @@ class _OnboardingChecklist extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: PregoSpacing.x4l),
-        Center(
-          child: ExcludeSemantics(
-            child: connected ? const ConnectionGraphic.connectionOn() : const ConnectionGraphic.connectionOff(),
-          ),
+        const Center(
+          child: ExcludeSemantics(child: ConnectionGraphic.connectionOn()),
         ),
         const SizedBox(height: PregoSpacing.lg),
         Text.rich(
@@ -108,22 +104,7 @@ class _OnboardingChecklist extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: PregoSpacing.lg),
-        // Wrapped so the parent Column's stretch alignment doesn't force the
-        // button full-width; fullWidth: false then sizes it to its content.
-        Center(
-          child: PregoButtonsSolid(
-            fullWidth: false,
-            leadingIcon: TablerRegular.info_circle,
-            label: loc.projectsOnboardingPcStatusWhy,
-            hierarchy: PregoButtonsSolidHierarchy.secondary,
-            size: PregoButtonsSolidSize.sm,
-            onPressed: () => showPregoBottomSheet<void>(
-              context: context,
-              title: loc.projectsOnboardingPcStatusWhy,
-              builder: (_) => const _WhyBridgeInfoSheet(),
-            ),
-          ),
-        ),
+        const _WhyBridgeButton(),
         // 40px gap from the header group to the install boxes (Figma gap-5xl).
         const SizedBox(height: PregoSpacing.x5l),
         const Padding(
@@ -133,6 +114,162 @@ class _OnboardingChecklist extends StatelessWidget {
         // Bottom breathing room so the last install box can be scrolled clear of
         // the "Need help?" button pinned in the bottom-right corner.
         const SizedBox(height: PregoSpacing.x6l),
+      ],
+    );
+  }
+}
+
+/// The not-yet-connected onboarding body ("Connect your computer"): the
+/// connection graphic in its "off" state with a "Waiting for bridge" caption,
+/// then two numbered command steps — install the bridge, then start it — each
+/// introduced by a label carrying an "ⓘ" info popover, and a "Why is this
+/// needed?" explainer button. Wrapped in the pull-to-refresh of
+/// [_BridgeOnboardingView]; the "Need help?" support menu ([_NeedHelpMenu])
+/// rides the scaffold's floating-action slot.
+class _ConnectBridgeChecklist extends StatelessWidget {
+  const _ConnectBridgeChecklist();
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    final prego = context.prego;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: PregoSpacing.x4l),
+        const Center(
+          child: ExcludeSemantics(child: ConnectionGraphic.connectionOff()),
+        ),
+        const SizedBox(height: PregoSpacing.lg),
+        Text(
+          loc.projectsOnboardingWaitingForBridge,
+          textAlign: TextAlign.center,
+          style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+        ),
+        const SizedBox(height: PregoSpacing.x4l),
+        Text(
+          loc.projectsOnboardingRunOnComputer,
+          textAlign: TextAlign.center,
+          style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
+        ),
+        const SizedBox(height: PregoSpacing.lg),
+        // Step 1 — install: the OS segmented control drives the install-command
+        // box; the numbered step label with its info popover sits between them.
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
+          child: _InstallCommandBoxes(
+            stepHeader: _OnboardingStepLabel(
+              number: 1,
+              title: loc.projectsOnboardingInstallStepTitle,
+              info: loc.projectsOnboardingInstallStepInfo,
+            ),
+          ),
+        ),
+        const SizedBox(height: PregoSpacing.x2l),
+        // Step 2 — start: a single, platform-independent command box.
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _OnboardingStepLabel(
+                number: 2,
+                title: loc.projectsOnboardingStartStepTitle,
+                info: loc.projectsOnboardingStartStepInfo,
+              ),
+              const SizedBox(height: PregoSpacing.md),
+              const _CommandBoxFrame(
+                child: _CommandActionRow(command: BridgeInstall.runCommand),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: PregoSpacing.x3l),
+        const _WhyBridgeButton(),
+        // Bottom breathing room so the last command box can be scrolled clear of
+        // the "Need help?" button pinned in the bottom-right corner.
+        const SizedBox(height: PregoSpacing.x6l),
+      ],
+    );
+  }
+}
+
+/// The "Why is this needed?" explainer button: a compact secondary pill that
+/// opens the [_WhyBridgeInfoSheet] bottom sheet. Centred so the stretch parent
+/// doesn't force it full-width. Shared by both empty Projects states.
+class _WhyBridgeButton extends StatelessWidget {
+  const _WhyBridgeButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    return Center(
+      child: PregoButtonsSolid(
+        fullWidth: false,
+        leadingIcon: TablerRegular.info_circle,
+        label: loc.projectsOnboardingPcStatusWhy,
+        hierarchy: PregoButtonsSolidHierarchy.secondary,
+        size: PregoButtonsSolidSize.sm,
+        onPressed: () => showPregoBottomSheet<void>(
+          context: context,
+          title: loc.projectsOnboardingPcStatusWhy,
+          builder: (_) => const _WhyBridgeInfoSheet(),
+        ),
+      ),
+    );
+  }
+}
+
+/// A numbered connect-onboarding step title with a trailing "ⓘ" info popover —
+/// e.g. "1. Install the bridge ⓘ". Tapping the icon opens a [PregoInfoPopover]
+/// (glass on iOS, flat/`cue` on Android) anchored to it, showing [info]. Used
+/// above the install- and start-command boxes.
+class _OnboardingStepLabel extends StatelessWidget {
+  const _OnboardingStepLabel({required this.number, required this.title, required this.info});
+
+  final int number;
+  final String title;
+  final String info;
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    final prego = context.prego;
+    return Row(
+      children: [
+        Flexible(
+          child: Text(
+            "$number. $title",
+            style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
+          ),
+        ),
+        PregoInfoPopover(
+          message: info,
+          triggerBuilder: (_, toggle) => Semantics(
+            button: true,
+            label: loc.projectsOnboardingStepInfoSemantics,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: toggle,
+              // 40×40 hit area (matching [_CommandIconButton]) keeps the tap
+              // target comfortably above the touch-target minimum while the
+              // 16px glyph stays visually snug against the step title via the
+              // small leading inset.
+              child: SizedBox(
+                width: 40,
+                height: 40,
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+                    child: Icon(TablerRegular.info_circle, size: 16, color: prego.colors.textSecondary),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -193,7 +330,13 @@ class _NeedHelpMenu extends StatelessWidget {
 /// ([_BridgeOfflineView]) so both stay in sync; callers supply their own
 /// surrounding padding.
 class _InstallCommandBoxes extends StatefulWidget {
-  const _InstallCommandBoxes();
+  const _InstallCommandBoxes({this.stepHeader});
+
+  /// Optional widget rendered between the OS segmented control and the install
+  /// command box. The connect onboarding slots its "1. Install the bridge" step
+  /// label here; the bridge-offline disclosure passes none and shows the switch
+  /// directly above the box.
+  final Widget? stepHeader;
 
   @override
   State<_InstallCommandBoxes> createState() => _InstallCommandBoxesState();
@@ -237,6 +380,10 @@ class _InstallCommandBoxesState extends State<_InstallCommandBoxes> {
           onChanged: (index) => setState(() => _selectedOs = index),
         ),
         const SizedBox(height: PregoSpacing.lg),
+        if (widget.stepHeader case final stepHeader?) ...[
+          stepHeader,
+          const SizedBox(height: PregoSpacing.lg),
+        ],
         // Keyed by platform so switching groups remounts the box and resets its
         // method tab to the group's first entry (curl / native).
         _InstallCommandBox(

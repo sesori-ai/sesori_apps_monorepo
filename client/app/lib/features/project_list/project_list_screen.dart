@@ -153,9 +153,13 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
     final loc = context.loc;
     final state = context.watch<ProjectListCubit>().state;
     final isRefreshing = state is ProjectListLoaded && state.isRefreshing;
+    // The connect-your-computer onboarding (no bridge ever registered, none
+    // connected) titles the screen "Connect"; every other state keeps
+    // "Projects".
+    final isConnectOnboarding = state is ProjectListBridgeDisconnected && !state.hasRegisteredBridges;
 
     return PregoGlassScaffold(
-      title: loc.projectListTitle,
+      title: isConnectOnboarding ? loc.projectListConnectTitle : loc.projectListTitle,
       actions: [
         PregoButtonsIconGlass(
           icon: VESPRSolid.gear,
@@ -206,7 +210,7 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
             hasScrollBody: false,
             child: SafeArea(
               top: false,
-              child: _OnboardingChecklist(connected: true),
+              child: _OnboardingChecklist(),
             ),
           )
         else ...[
