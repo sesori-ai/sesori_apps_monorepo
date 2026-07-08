@@ -247,6 +247,17 @@ class AcpPlugin extends BridgeDerivedProjectsPluginApi {
     final init = AcpInitializeResult.fromJson(
       raw is Map ? raw.cast<String, dynamic>() : const {},
     );
+    // We only speak ACP v1. The agent echoes the protocol version it will use;
+    // if that is not v1 it cannot understand our v1-shaped session/* calls, so
+    // fail the handshake (degrading the plugin) rather than driving it with a
+    // protocol it rejected. A missing version parses as v1, so agents that omit
+    // the field (some cursor-agent builds) still connect.
+    if (init.protocolVersion != acpProtocolVersion) {
+      throw StateError(
+        "ACP agent negotiated protocol version ${init.protocolVersion}, "
+        "but this client only speaks v$acpProtocolVersion",
+      );
+    }
     if (init.requiresAuth) {
       final methodId = authMethodId ??
           (init.authMethods.isNotEmpty ? init.authMethods.first.id : null);

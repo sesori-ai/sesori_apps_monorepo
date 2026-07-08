@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:test/test.dart";
@@ -127,6 +129,33 @@ void main() {
             .having((e) => e.code, "code", -32603)
             .having((e) => e.message, "message", "unknown error")),
       );
+    });
+  });
+
+  group("AcpStdioClient disposed mid-connect", () {
+    test("reaps the just-spawned process instead of wiring a disposed client", () async {
+      final fake = FakeAcpProcess();
+      final spawn = Completer<AcpProcessHandle>();
+      final client = AcpStdioClient(
+        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        processFactory: (_) => spawn.future,
+      );
+
+      // Start connecting; it parks on the spawn future.
+      final connecting = client.connect();
+      // Shut down while the spawn is still in flight — dispose() sees no
+      // process to kill.
+      await client.dispose();
+      // The process only finishes spawning after the client was disposed.
+      spawn.complete(fake);
+
+      await expectLater(connecting, throwsA(isA<StateError>()));
+      // The orphaned process was reaped (kill() completes exitCode with -15)…
+      expect(await fake.exitCode, -15);
+      // …and the disposed client never came up.
+      expect(client.isConnected, isFalse);
+
+      await fake.close();
     });
   });
 }

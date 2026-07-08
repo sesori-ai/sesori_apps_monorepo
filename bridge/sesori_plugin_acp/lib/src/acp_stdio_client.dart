@@ -113,6 +113,14 @@ class AcpStdioClient {
     }
 
     final process = await _processFactory(_launchSpec);
+    if (_disposed) {
+      // dispose() ran while the spawn was still in flight: it saw
+      // _process == null and had nothing to reap. Kill the just-spawned process
+      // here instead of wiring stdio onto an already-disposed client and
+      // leaking the agent subprocess past shutdown.
+      process.kill(io.ProcessSignal.sigkill);
+      throw StateError("AcpStdioClient disposed during connect");
+    }
     _process = process;
 
     // Writes to stdin surface broken-pipe errors asynchronously on `stdin.done`

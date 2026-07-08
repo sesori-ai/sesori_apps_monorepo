@@ -46,6 +46,7 @@ than observed Cursor bugs. That is called out per item.
 | A  | Bridge↔plugin stored-directory / attribution seam    | Real worktree flows on restart; one hook resolves three threads | Medium     |
 | B  | Durable derive-plugin session state (bridge schema)  | Title loss + deleted sessions reappearing                       | Medium     |
 | C  | ACP protocol completeness in the mapper              | Correctness for the next ACP backend                            | Medium     |
+| G  | Concurrent multi-session turn attribution            | Wrong-conversation routing of `sessionId`-less requests         | Medium     |
 | E  | Typed ACP/Cursor boundary DTOs                        | Enabler / safety net for C and F                                | Large      |
 | F  | `getSessionMessages` richer failure contract         | "Broken replay" vs "empty thread" on the phone                  | Small–Med  |
 | D  | Cursor decisions needing a trace / product call      | Small, but blocked on evidence                                  | Small      |
@@ -171,8 +172,40 @@ ground). Theme E (typed DTOs) is the safety net that makes these less error-pron
   payload from `available_commands_update` and map it in `getCommands`.
   Source: [#332 r3542170736](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3542170736)
 
+- **C4 — resume-only sessions (`session/resume`).** `_ensureResident` only
+  handles agents advertising `loadSession`; for one that advertises
+  `sessionCapabilities.resume` but not `loadSession`, it marks the session
+  resident without any resume RPC. After a bridge restart `_residentSessions` is
+  empty, so the next prompt hits `session/prompt` against a session the new agent
+  process never loaded, and resume-only agents reject it as unknown. Parse the
+  resume capability and issue `session/resume` before prompting. Cursor uses the
+  `loadSession` path, so no shipping backend needs this yet.
+  Source: [#332 r3545348046](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3545348046)
+
 **Affected surfaces.** `acp_event_mapper.dart`, `acp_session_loader.dart`,
-`acp_plugin.dart` (command cache + `getCommands`), plugin models.
+`acp_plugin.dart` (command cache + `getCommands` + `_ensureResident`), plugin
+models.
+
+---
+
+## Theme G — Concurrent multi-session turn attribution
+
+`_dispatchPrompt` records the in-flight turn in a single process-wide
+`_activeTurnSessionId`, and server-originated requests that arrive without their
+own `sessionId` (Cursor's `cursor/create_plan`, some question requests) are
+attributed to it. With two sessions prompting concurrently on one agent process,
+the last dispatch wins: a `sessionId`-less request raised for session A after
+session B's prompt was dispatched is attributed to B, so the phone shows and
+answers it in the *wrong* conversation while A stays blocked. A precise fix needs
+request→session correlation (or serialization of `sessionId`-less turns), not a
+single last-writer field — a design change, so it is tracked here rather than
+patched inline. Not observed with Cursor single-session use; it needs two
+concurrent in-flight prompts on one process to bite.
+Source: [#332 r3545348052](https://github.com/sesori-ai/sesori_apps_monorepo/pull/332#discussion_r3545348052)
+
+**Affected surfaces.** `acp_plugin.dart` (`_activeTurnSessionId`,
+`_dispatchPrompt`, turn lifecycle), `acp_approval_registry.dart`
+(server-request → session attribution).
 
 ---
 
