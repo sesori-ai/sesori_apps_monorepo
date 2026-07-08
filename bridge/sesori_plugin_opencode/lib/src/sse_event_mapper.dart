@@ -1,6 +1,10 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "assistant_message_mapper.dart";
 import "message_part_mapper.dart";
+import "models/openapi/assistant_message.g.dart";
+import "models/openapi/message.g.dart";
+import "models/openapi/user_message.g.dart";
 import "models/sse_event_data.g.dart";
 import "question_info_mapper.dart";
 
@@ -9,8 +13,12 @@ import "question_info_mapper.dart";
 /// Extracted from [OpenCodePlugin] to isolate the mapping concern.
 /// This class is stateless — all methods are pure transformations.
 class SseEventMapper {
+  SseEventMapper({AssistantMessageMapper assistantMessageMapper = const AssistantMessageMapper()})
+    : _assistantMessageMapper = assistantMessageMapper;
+
   final MessagePartMapper _messagePartMapper = const MessagePartMapper();
   final QuestionInfoMapper _questionInfoMapper = const QuestionInfoMapper();
+  final AssistantMessageMapper _assistantMessageMapper;
 
   /// Narrows a union's `Object? toJson()` result to the JSON map the bridge
   /// model carries — without a null-assertion (`!`). Known variants always
@@ -18,6 +26,30 @@ class SseEventMapper {
   /// payload is not a map.
   static Map<String, dynamic> _asMap(Object? json) =>
       json is Map<String, dynamic> ? json : const <String, dynamic>{};
+
+  /// Normalizes a `message.updated` payload into the shared-`Message` JSON
+  /// shape the phone parses, mirroring the REST load path
+  /// ([PluginModelMapper.mapMessageWithParts]). Crucially this collapses an
+  /// errored assistant message (`role: "assistant"` + `error`) into the
+  /// `role: "error"` shape via [AssistantMessageMapper]; forwarding the raw
+  /// OpenCode payload would keep `role: "assistant"` and the phone would drop
+  /// the error, leaving a blank turn until the session is re-opened.
+  Map<String, dynamic> _mapMessageInfo(Message info) {
+    final pluginMessage = switch (info) {
+      UserMessage(:final id, :final sessionID, :final agent, :final time) => PluginMessage.user(
+        id: id,
+        sessionID: sessionID,
+        agent: agent,
+        time: PluginMessageTime(created: time.created.toInt(), completed: null),
+      ),
+      AssistantMessage() => _assistantMessageMapper.map(info),
+      // Unknown roles from a newer OpenCode server: fall through to the raw
+      // payload below so the phone can still attempt to decode it.
+      _ => null,
+    };
+    if (pluginMessage == null) return _asMap(info.toJson());
+    return _asMap(pluginMessage.toJson());
+  }
 
   /// Maps an [SseEventData] to a [BridgeSseEvent], or null if the event
   /// type has no plugin representation.
@@ -52,7 +84,7 @@ class SseEventMapper {
         arguments: arguments,
         messageID: messageID,
       ),
-      SseMessageUpdated(:final info) => BridgeSseMessageUpdated(info: _asMap(info.toJson())),
+      SseMessageUpdated(:final info) => BridgeSseMessageUpdated(info: _mapMessageInfo(info)),
       SseMessageRemoved(:final sessionID, :final messageID) => BridgeSseMessageRemoved(
         sessionID: sessionID,
         messageID: messageID,
