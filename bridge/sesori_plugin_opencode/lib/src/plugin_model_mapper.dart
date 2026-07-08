@@ -47,10 +47,23 @@ class PluginModelMapper {
     );
   }
 
-  PluginProject mapProject(Project project) {
+  /// Maps an OpenCode [Project] to the plugin-interface [PluginProject], whose
+  /// id is the project directory the bridge keys everything off.
+  ///
+  /// [requestedDirectory] is the directory the plugin was asked to open, when
+  /// known (the native-open flow passes the folder the user just picked). It
+  /// resolves a moved-folder quirk: OpenCode identifies a git project by git
+  /// identity, not path, so opening a repo that was moved on disk from `/A` to
+  /// `/B` still resolves to the same project and returns the stale primary
+  /// `worktree` (`/A`, now gone) while listing the freshly-opened `/B` in
+  /// [Project.sandboxes]. Keying off `/A` would re-surface the vanished folder
+  /// and swallow the new location. When the requested directory is one of the
+  /// project's sandboxes but not its worktree, the requested directory is the
+  /// live location and wins as the project id.
+  PluginProject mapProject(Project project, {String? requestedDirectory}) {
     final time = project.time;
     return PluginProject(
-      id: project.worktree,
+      id: _effectiveWorktree(project, requestedDirectory: requestedDirectory),
       name: _effectiveProjectName(project),
       time: PluginProjectTime(
         created: time.created.toInt(),
@@ -58,6 +71,18 @@ class PluginModelMapper {
       ),
     );
   }
+
+  String _effectiveWorktree(Project project, {required String? requestedDirectory}) {
+    if (requestedDirectory == null) return project.worktree;
+    final requested = _normalizePath(requestedDirectory);
+    if (requested == _normalizePath(project.worktree)) return project.worktree;
+    for (final sandbox in project.sandboxes) {
+      if (_normalizePath(sandbox) == requested) return sandbox;
+    }
+    return project.worktree;
+  }
+
+  String _normalizePath(String path) => path.replaceAll(r"\", "/");
 
   PluginSessionStatus mapSessionStatus(SessionStatus status) {
     return switch (status) {

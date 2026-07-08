@@ -518,6 +518,29 @@ void main() {
         );
       });
     });
+
+    group("getProject", () {
+      test("returns the worktree as id when the requested directory is the worktree", () async {
+        final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+
+        final project = await plugin.getProject("/repo");
+
+        expect(project.id, equals("/repo"));
+      });
+
+      test("keys off the requested directory when the folder was moved on disk", () async {
+        // The repo was moved from /repo to /moved-repo. OpenCode resolves the
+        // moved directory to the same project by git identity, keeping the
+        // stale primary worktree /repo while listing /moved-repo as a sandbox.
+        server.registerMovedProject(worktree: "/repo", movedTo: "/moved-repo");
+        final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
+
+        final project = await plugin.getProject("/moved-repo");
+
+        // Must key off the live location the user opened, not the vanished one.
+        expect(project.id, equals("/moved-repo"));
+      });
+    });
   });
 }
 
@@ -706,6 +729,14 @@ class _FakeOpenCodeServer {
 
   String get baseUrl => "http://${_server!.address.address}:${_server!.port}";
 
+  /// Simulates a project whose folder was moved on disk: its primary
+  /// [worktree] stays at the old location while the new [movedTo] location is
+  /// recorded as a sandbox (matching OpenCode's git-identity resolution).
+  void registerMovedProject({required String worktree, required String movedTo}) {
+    final project = _projects.values.firstWhere((p) => p["worktree"] == worktree);
+    project["sandboxes"] = <String>[movedTo];
+  }
+
   Future<void> start() async {
     _server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     _server!.listen((request) async {
@@ -723,7 +754,15 @@ class _FakeOpenCodeServer {
 
       if (request.method == "GET" && path == "/project/current") {
         final dir = request.headers.value("x-opencode-directory");
-        final project = _projects.values.where((p) => p["worktree"] == dir).firstOrNull;
+        // Mirror OpenCode: a git project is resolved by git identity, so a
+        // directory that is a project's sandbox (e.g. after the folder was
+        // moved) still resolves to that project — with its stale primary
+        // worktree unchanged.
+        final project =
+            _projects.values.where((p) => p["worktree"] == dir).firstOrNull ??
+            _projects.values
+                .where((p) => (p["sandboxes"] as List<dynamic>?)?.contains(dir) ?? false)
+                .firstOrNull;
         if (project == null) {
           request.response.statusCode = HttpStatus.notFound;
           await request.response.close();

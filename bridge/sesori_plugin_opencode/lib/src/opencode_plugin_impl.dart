@@ -515,7 +515,10 @@ class OpenCodePlugin implements OpenCodeManagedApi {
         directory: projectId,
       ),
     );
-    return _pluginModelMapper.mapProject(project);
+    // projectId is the directory the caller asked to open. When a git repo was
+    // moved on disk, OpenCode still returns the stale primary worktree; pass the
+    // requested directory so the mapper can key off the live location instead.
+    return _pluginModelMapper.mapProject(project, requestedDirectory: projectId);
   }
 
   @override
@@ -559,7 +562,9 @@ class OpenCodePlugin implements OpenCodeManagedApi {
         body: {"name": name},
       ),
     );
-    return _pluginModelMapper.mapProject(updated);
+    // Keep the id stable with the directory the caller referenced, so a rename
+    // of a moved-folder project doesn't snap the id back to the stale worktree.
+    return _pluginModelMapper.mapProject(updated, requestedDirectory: projectId);
   }
 
   void _handleRawSseEvent(String rawData) {
