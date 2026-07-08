@@ -7,11 +7,9 @@ import "prego_popover.dart";
 /// platform-appropriately.
 ///
 /// It presents a single block of explanatory [message] text — not a list of
-/// actions — in a popup that morphs out of its trigger. It builds on
-/// [PregoPopover], so it renders the iOS-26 liquid-glass bubble on Apple
-/// platforms and a flat, `cue`-sprung Material bubble on Android, where the
-/// glass shader janks; the platform switch, anchoring, and screen-edge clamping
-/// are all inherited from [PregoPopover].
+/// actions — in a flat, `cue`-sprung Material bubble anchored to its trigger. It
+/// builds on [PregoPopover], inheriting its anchoring, spring, screen-edge
+/// clamping, and flat-on-every-platform rendering.
 ///
 /// Use it for the "ⓘ" info affordances next to a label, where tapping should
 /// reveal a one-line explanation and tapping outside dismisses it.

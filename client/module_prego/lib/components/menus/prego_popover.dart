@@ -2,14 +2,11 @@ import "dart:async";
 
 import "package:cue/cue.dart";
 import "package:flutter/material.dart";
-import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 
-import "../../theme/prego_glass.dart";
-import "../../theme/prego_theme.dart";
 import "anchored_flat_panel.dart";
 
-/// Builds the trigger that opens the popover. [toggle] opens (or, on the glass
-/// path, toggles) the popup — wire it to the trigger's tap handler.
+/// Builds the trigger that opens the popover. [toggle] opens the popup — wire it
+/// to the trigger's tap handler.
 typedef PregoPopoverTriggerBuilder = Widget Function(BuildContext context, VoidCallback toggle);
 
 /// Builds the popover body. [close] dismisses the popup — wire it to any
@@ -17,19 +14,17 @@ typedef PregoPopoverTriggerBuilder = Widget Function(BuildContext context, VoidC
 /// already closes the popover on an outside tap.
 typedef PregoPopoverContentBuilder = Widget Function(BuildContext context, VoidCallback close);
 
-/// A popover that anchors free-form content to its trigger, rendered
-/// platform-appropriately.
+/// A popover that anchors free-form content to its trigger.
 ///
-/// On Apple platforms it is the `liquid_glass_widgets` [GlassPopover] — the
-/// iOS-26 liquid-glass bubble that morphs out of the trigger. On Android, where
-/// the glass shader + backdrop blur jank, it falls back to a flat Material
-/// bubble anchored to the trigger and sprung in with the `cue` package (an
-/// [AnchoredFlatPanel]) — same anchored-popup behaviour, zero shader cost.
+/// It renders a flat Material bubble anchored to the trigger and sprung in with
+/// the `cue` package (an [AnchoredFlatPanel]) on every platform. We deliberately
+/// keep it flat rather than the iOS-26 liquid-glass bubble even on Apple: for the
+/// small, informational popups this backs, the glass shader reads as too heavy
+/// and distracting, and staying flat also sidesteps the Android glass jank.
 ///
 /// Unlike [PregoAnchorMenu] (a list of selectable rows), the popover presents
 /// arbitrary [contentBuilder] content — a tooltip, a short explanation, a mini
-/// form. The same [triggerBuilder] and [contentBuilder] drive both paths; only
-/// the rendering differs. See [glassEffectsEnabled] for the platform switch.
+/// form. It anchors to the trigger, springs in, and clamps to the screen edges.
 class PregoPopover extends StatelessWidget {
   const PregoPopover({
     super.key,
@@ -57,38 +52,18 @@ class PregoPopover extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return glassEffectsEnabled() ? _buildGlass(context) : _buildFlat(context);
-  }
-
-  // ── Glass path (Apple) ─────────────────────────────────────────────────────
-
-  Widget _buildGlass(BuildContext context) {
-    return GlassPopover(
-      popoverWidth: popoverWidth,
-      popoverBorderRadius: popoverBorderRadius,
-      screenPadding: screenPadding,
-      settings: LiquidGlassSettings(glassColor: context.prego.colors.buttonGlassPrimaryBackground),
-      triggerBuilder: triggerBuilder,
-      contentBuilder: contentBuilder,
-    );
-  }
-
-  // ── Flat path (Android) ────────────────────────────────────────────────────
-
-  Widget _buildFlat(BuildContext context) {
     return CueModalTransition(
       barrierColor: Colors.transparent,
       motion: const Spring.smooth(),
       reverseMotion: const Spring.snappy(),
       // No alignment: the panel positions itself from the trigger rect so it can
-      // clamp to the screen edges, mirroring GlassPopover.autoAdjustToScreen.
+      // clamp to the screen edges.
       triggerBuilder: (context, showModal) =>
           triggerBuilder(context, () => unawaited(showModal())),
       builder: (context, triggerRect) => AnchoredFlatPanel(
         triggerRect: triggerRect,
         width: popoverWidth,
-        // Content-sized (still bounded to stay on screen), matching the glass
-        // path's intrinsic-height popover.
+        // Content-sized (still bounded to stay on screen).
         height: null,
         borderRadius: popoverBorderRadius,
         screenPadding: screenPadding,

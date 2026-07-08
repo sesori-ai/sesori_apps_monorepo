@@ -1,6 +1,5 @@
 import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
-import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:theme_prego/module_prego.dart";
 
 Widget _harness({required PregoPopoverContentBuilder contentBuilder}) {
@@ -33,61 +32,44 @@ Widget _bodyWithClose(BuildContext context, VoidCallback close) => Padding(
   ),
 );
 
+// PregoPopover renders the same flat, `cue`-sprung Material bubble on every
+// platform, so the behaviour is asserted across both Android and Apple.
+const _everyPlatform = TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS});
+
 void main() {
-  group("Android (flat/cue) path", () {
-    testWidgets("opens flat content and closes via the content's close callback", (tester) async {
-      await tester.pumpWidget(_harness(contentBuilder: _bodyWithClose));
+  testWidgets("opens flat content and closes via the content's close callback", (tester) async {
+    await tester.pumpWidget(_harness(contentBuilder: _bodyWithClose));
 
-      // No glass popover is built on Android; content stays hidden until tapped.
-      expect(find.byType(GlassPopover), findsNothing);
-      expect(find.text("Popover body"), findsNothing);
+    // Content stays hidden until the trigger is tapped.
+    expect(find.text("Popover body"), findsNothing);
 
-      await tester.tap(find.byIcon(Icons.more_horiz));
-      await tester.pumpAndSettle();
-      expect(find.text("Popover body"), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.more_horiz));
+    await tester.pumpAndSettle();
+    expect(find.text("Popover body"), findsOneWidget);
 
-      // The content's own affordance dismisses the bubble via `close`.
-      await tester.tap(find.text("Done"));
-      await tester.pumpAndSettle();
-      expect(find.text("Popover body"), findsNothing);
-    }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+    // The content's own affordance dismisses the bubble via `close`.
+    await tester.tap(find.text("Done"));
+    await tester.pumpAndSettle();
+    expect(find.text("Popover body"), findsNothing);
+  }, variant: _everyPlatform);
 
-    testWidgets("dismisses on an outside tap", (tester) async {
-      await tester.pumpWidget(
-        _harness(
-          contentBuilder: (context, close) => const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text("Tap outside me"),
-          ),
+  testWidgets("dismisses on an outside tap", (tester) async {
+    await tester.pumpWidget(
+      _harness(
+        contentBuilder: (context, close) => const Padding(
+          padding: EdgeInsets.all(16),
+          child: Text("Tap outside me"),
         ),
-      );
+      ),
+    );
 
-      await tester.tap(find.byIcon(Icons.more_horiz));
-      await tester.pumpAndSettle();
-      expect(find.text("Tap outside me"), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.more_horiz));
+    await tester.pumpAndSettle();
+    expect(find.text("Tap outside me"), findsOneWidget);
 
-      // The transparent barrier closes the popover.
-      await tester.tapAt(const Offset(5, 5));
-      await tester.pumpAndSettle();
-      expect(find.text("Tap outside me"), findsNothing);
-    }, variant: TargetPlatformVariant.only(TargetPlatform.android));
-  });
-
-  group("Apple (glass) path", () {
-    testWidgets("presents content in a GlassPopover and closes via callback", (tester) async {
-      await tester.pumpWidget(_harness(contentBuilder: _bodyWithClose));
-
-      // On Apple platforms the content rides the liquid-glass GlassPopover.
-      expect(find.byType(GlassPopover), findsOneWidget);
-      expect(find.text("Popover body"), findsNothing);
-
-      await tester.tap(find.byIcon(Icons.more_horiz));
-      await tester.pumpAndSettle();
-      expect(find.text("Popover body"), findsOneWidget);
-
-      await tester.tap(find.text("Done"));
-      await tester.pumpAndSettle();
-      expect(find.text("Popover body"), findsNothing);
-    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
-  });
+    // The transparent barrier closes the popover.
+    await tester.tapAt(const Offset(5, 5));
+    await tester.pumpAndSettle();
+    expect(find.text("Tap outside me"), findsNothing);
+  }, variant: _everyPlatform);
 }

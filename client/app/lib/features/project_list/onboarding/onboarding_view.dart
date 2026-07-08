@@ -275,10 +275,11 @@ class _OnboardingStepLabel extends StatelessWidget {
   }
 }
 
-/// The onboarding support menu: a flat "Need help?" pill that opens a flat
-/// anchored menu of support channels (email, Discord, X), each launching an
-/// external link. Forced flat on every platform ([PregoAnchorMenu.flat]) so the
-/// popup matches its solid pill trigger instead of morphing in as glass.
+/// The onboarding support menu: a low-emphasis "Need help?" tertiary (ghost)
+/// button that opens a flat anchored menu of support channels (email, Discord,
+/// X), each launching an external link. Forced flat on every platform
+/// ([PregoAnchorMenu.flat]) so the popup matches its flat trigger instead of
+/// morphing in as glass.
 class _NeedHelpMenu extends StatelessWidget {
   const _NeedHelpMenu();
 
@@ -291,7 +292,7 @@ class _NeedHelpMenu extends StatelessWidget {
       triggerBuilder: (context, toggle) => PregoButtonsSolid(
         leadingIcon: TablerRegular.help,
         label: loc.projectsOnboardingNeedHelp,
-        hierarchy: PregoButtonsSolidHierarchy.secondary,
+        hierarchy: PregoButtonsSolidHierarchy.tertiary,
         size: PregoButtonsSolidSize.xl,
         onPressed: toggle,
       ),

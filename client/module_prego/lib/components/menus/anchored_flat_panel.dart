@@ -8,12 +8,11 @@ import "../../theme/prego_theme.dart";
 /// A flat Material bubble anchored to a trigger rect, kept on screen and sprung
 /// in with `cue`.
 ///
-/// It is the shared Android/flat rendering for the design system's anchored
-/// popups: `PregoAnchorMenu`'s menu panel and `PregoPopover`'s content bubble
-/// both build their flat path from it, so the two stay visually identical (same
-/// chrome, spring, and screen-edge clamping) while each supplies its own body
-/// via [childBuilder]. It is the flat-path counterpart of
-/// `GlassMenu`/`GlassPopover`'s `autoAdjustToScreen`.
+/// It is the shared flat rendering for the design system's anchored popups:
+/// `PregoAnchorMenu`'s flat menu panel and `PregoPopover`'s content bubble both
+/// build from it, so the two stay visually identical (same chrome, spring, and
+/// screen-edge clamping) while each supplies its own body via [childBuilder]. It
+/// is the flat counterpart of `GlassMenu`'s `autoAdjustToScreen`.
 ///
 /// [childBuilder] receives a `close` callback that pops the modal route the
 /// enclosing `CueModalTransition` pushed — wire it to any dismiss affordance
