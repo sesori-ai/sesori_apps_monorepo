@@ -5,6 +5,7 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/core/widgets/connection_banner.dart";
 import "package:sesori_mobile/core/widgets/sesori_background_widget.dart";
 import "package:sesori_mobile/core/widgets/session_split/empty_session_detail_panel.dart";
 import "package:sesori_mobile/core/widgets/session_split/session_split_breakpoints.dart";
@@ -251,22 +252,46 @@ void main() {
   });
 
   group("EmptySessionDetailPanel", () {
-    testWidgets("renders with stable key and localized text", (tester) async {
+    Future<void> pumpPanel(WidgetTester tester, {required ConnectionOverlayState overlayState}) async {
+      final cubit = StubConnectionOverlayCubit(initialState: overlayState);
+      addTearDown(cubit.close);
       await tester.pumpWidget(
-        MaterialApp(
-          theme: ThemeData(extensions: [PregoDesignSystem.light]),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: const EmptySessionDetailPanel(),
+        BlocProvider<ConnectionOverlayCubit>.value(
+          value: cubit,
+          child: MaterialApp(
+            theme: ThemeData(extensions: [PregoDesignSystem.light]),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const EmptySessionDetailPanel(),
+          ),
         ),
       );
       await tester.pumpAndSettle();
+    }
+
+    testWidgets("renders with stable key and localized text", (tester) async {
+      await pumpPanel(tester, overlayState: const ConnectionOverlayState.hidden());
 
       expect(find.byKey(const Key("empty-session-detail-panel")), findsOneWidget);
       expect(find.byType(Material), findsWidgets);
       expect(find.byType(SesoriBackgroundWidget), findsOneWidget);
       expect(find.text("Select a session"), findsOneWidget);
       expect(find.text("Choose a session from the list to view details"), findsOneWidget);
+    });
+
+    testWidgets("hides the connection banner while the bridge is reachable", (tester) async {
+      await pumpPanel(tester, overlayState: const ConnectionOverlayState.hidden());
+
+      expect(find.byType(ConnectionBanner), findsNothing);
+    });
+
+    testWidgets("surfaces the bridge-offline banner so the wide list route is not left silent", (tester) async {
+      // The wide split's list pane has no glass top-nav banner slot, so this
+      // placeholder is the only offline-messaging host when no session is
+      // selected. Without it the bridge-offline state would show nothing here.
+      await pumpPanel(tester, overlayState: const ConnectionOverlayState.bridgeOffline());
+
+      expect(find.byType(ConnectionBanner), findsOneWidget);
     });
   });
 }

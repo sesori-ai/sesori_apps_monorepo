@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:firebase_analytics/firebase_analytics.dart";
 import "package:firebase_crashlytics/firebase_crashlytics.dart";
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_secure_storage/flutter_secure_storage.dart";
 import "package:http/http.dart" as http;
 import "package:mocktail/mocktail.dart";
@@ -21,6 +22,8 @@ import "package:sesori_dart_core/src/capabilities/session/session_service.dart";
 import "package:sesori_dart_core/src/capabilities/sse/session_activity_info.dart";
 import "package:sesori_dart_core/src/capabilities/sse/sse_event_repository.dart";
 import "package:sesori_dart_core/src/capabilities/voice/voice_api.dart";
+import "package:sesori_dart_core/src/cubits/connection_overlay/connection_overlay_cubit.dart";
+import "package:sesori_dart_core/src/cubits/connection_overlay/connection_overlay_state.dart";
 import "package:sesori_dart_core/src/platform/deep_link_source.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/notification_canceller.dart";
@@ -39,6 +42,20 @@ import "package:sesori_shared/sesori_shared.dart";
 // ---------------------------------------------------------------------------
 // Mock classes
 // ---------------------------------------------------------------------------
+
+/// A fixed-state [ConnectionOverlayCubit] stand-in for widget tests.
+///
+/// Screens read the cubit through `ConnectionBanner.maybeFor` to decide
+/// whether the top-nav connection banner shows, so any harness that pumps a
+/// screen must provide one. Defaults to [ConnectionOverlayHidden] (no banner);
+/// pass e.g. `ConnectionOverlayState.bridgeOffline()` to exercise the banner.
+class StubConnectionOverlayCubit extends Cubit<ConnectionOverlayState> implements ConnectionOverlayCubit {
+  StubConnectionOverlayCubit({ConnectionOverlayState initialState = const ConnectionOverlayState.hidden()})
+    : super(initialState);
+
+  @override
+  void reconnect() {}
+}
 
 class MockProjectService extends Mock implements ProjectService {}
 

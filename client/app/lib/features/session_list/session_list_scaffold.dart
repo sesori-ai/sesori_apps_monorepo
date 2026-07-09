@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/extensions/build_context_x.dart";
+import "../../core/widgets/connection_banner.dart";
 import "../../l10n/app_localizations.dart";
 import "session_list_content.dart";
 
@@ -43,6 +44,7 @@ class SessionListScaffold extends StatelessWidget {
       onBack: onBack,
       title: _title(loc: loc),
       subtitle: baseBranch,
+      banner: ConnectionBanner.maybeFor(context),
       actions: [
         PregoButtonsIconGlass(
           icon: TablerRegular.archive,

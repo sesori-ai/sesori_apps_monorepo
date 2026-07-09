@@ -219,7 +219,7 @@ void main() {
       );
 
       blocTest<ProjectListCubit, ProjectListState>(
-        "bridge going offline replaces the loaded list with onboarding",
+        "bridge going offline keeps a non-empty loaded list (top-nav banner owns the messaging)",
         build: () {
           when(() => mockProjectService.listProjects()).thenAnswer(
             (_) async => ApiResponse.success(Projects(data: [testProject()])),
@@ -232,7 +232,48 @@ void main() {
           await Future<void>.delayed(Duration.zero);
         },
         skip: 1, // constructor's ProjectListLoaded
+        expect: () => <ProjectListState>[],
+      );
+
+      blocTest<ProjectListCubit, ProjectListState>(
+        "bridge going offline with an empty loaded list surfaces the onboarding",
+        build: () {
+          when(() => mockProjectService.listProjects()).thenAnswer(
+            (_) async => ApiResponse.success(const Projects(data: <Project>[])),
+          );
+          return buildCubit();
+        },
+        act: (cubit) async {
+          await Future<void>.delayed(Duration.zero);
+          statusController.add(_bridgeOfflineStatus);
+          await Future<void>.delayed(Duration.zero);
+        },
+        skip: 1, // constructor's ProjectListLoaded
         expect: () => [isA<ProjectListBridgeDisconnected>()],
+      );
+
+      blocTest<ProjectListCubit, ProjectListState>(
+        "bridge coming back after a kept loaded list refreshes silently (no loading flash)",
+        build: () {
+          when(() => mockProjectService.listProjects()).thenAnswer(
+            (_) async => ApiResponse.success(Projects(data: [projectA])),
+          );
+          return buildCubit();
+        },
+        act: (cubit) async {
+          await Future<void>.delayed(Duration.zero);
+          statusController.add(_bridgeOfflineStatus);
+          await Future<void>.delayed(Duration.zero);
+          when(() => mockProjectService.listProjects()).thenAnswer(
+            (_) async => ApiResponse.success(Projects(data: [projectA, projectB])),
+          );
+          statusController.add(_connectedStatus);
+          await Future<void>.delayed(Duration.zero);
+        },
+        skip: 1, // constructor's ProjectListLoaded
+        expect: () => [
+          isA<ProjectListLoaded>().having((s) => s.projects.length, "projects count after reconnect", 2),
+        ],
       );
 
       blocTest<ProjectListCubit, ProjectListState>(

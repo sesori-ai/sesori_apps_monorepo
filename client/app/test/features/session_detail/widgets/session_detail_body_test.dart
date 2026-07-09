@@ -45,12 +45,15 @@ Widget _buildApp({required SessionDetailCubit cubit}) {
     ],
   );
 
-  return MaterialApp.router(
-    routerConfig: router,
-    theme: ThemeData(extensions: [PregoDesignSystem.light]),
-    darkTheme: ThemeData(extensions: [PregoDesignSystem.dark]),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+  return BlocProvider<ConnectionOverlayCubit>(
+    create: (_) => StubConnectionOverlayCubit(),
+    child: MaterialApp.router(
+      routerConfig: router,
+      theme: ThemeData(extensions: [PregoDesignSystem.light]),
+      darkTheme: ThemeData(extensions: [PregoDesignSystem.dark]),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+    ),
   );
 }
 

@@ -5,6 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/extensions/build_context_x.dart";
+import "../../core/widgets/connection_banner.dart";
 import "models/diff_file_view_model.dart";
 import "models/diff_view_model_builder.dart";
 import "widgets/diff_error_view.dart";
@@ -51,6 +52,7 @@ class _SessionDiffsBodyState extends State<SessionDiffsBody> {
         return PregoGlassScaffold(
           title: context.loc.diffFileChangesTitle,
           subtitle: fileCount > 0 ? context.loc.diffFilesChangedCount(fileCount, additions, deletions) : null,
+          banner: ConnectionBanner.maybeFor(context),
           // The diff viewer's pinned per-file headers must pin directly below
           // the bar, so the body cannot scroll behind a transparent bar.
           extendBodyBehindBar: false,

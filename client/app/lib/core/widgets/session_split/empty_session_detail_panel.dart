@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
+import "../connection_banner.dart";
 import "../sesori_background_widget.dart";
 
 /// Placeholder panel shown in the right pane when no session is selected
@@ -14,6 +15,15 @@ class EmptySessionDetailPanel extends StatelessWidget {
     final prego = context.prego;
     final brightness = Theme.of(context).brightness;
     final scrimColor = brightness == Brightness.light ? Colors.white : Colors.black;
+
+    // In the wide split layout neither pane is a PregoGlassScaffold — the list
+    // pane is a bare Column and this placeholder fills the detail pane — so no
+    // top-nav banner slot exists to surface the bridge-offline state. Host it
+    // here at the top of the pane; otherwise the wide `/sessions` route with no
+    // session selected would show no offline messaging at all (the global
+    // offline overlay is gone). Once a session is opened, its own scaffold
+    // carries the banner, so this state never double-shows it.
+    final banner = ConnectionBanner.maybeFor(context);
 
     return Material(
       color: Theme.of(context).scaffoldBackgroundColor,
@@ -50,6 +60,13 @@ class EmptySessionDetailPanel extends StatelessWidget {
               ],
             ),
           ),
+          if (banner != null)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(child: banner),
+            ),
         ],
       ),
     );

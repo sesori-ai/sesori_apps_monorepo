@@ -24,8 +24,10 @@ sealed class ProjectListState with _$ProjectListState {
 
   /// The bridge (the user's computer) is not connected, so there are no
   /// projects to show yet. Emitted when the connection is
-  /// `ConnectionDisconnected` or `ConnectionBridgeOffline`; replaced once the
-  /// bridge comes online.
+  /// `ConnectionDisconnected`, or when it is `ConnectionBridgeOffline` while
+  /// nothing is loaded — a non-empty [ProjectListLoaded] list is kept on
+  /// screen instead, with the top-nav connection banner owning the offline
+  /// messaging. Replaced once the bridge comes online.
   ///
   /// [hasRegisteredBridges] tells which recovery flow applies (from the
   /// account's registered bridges on the auth server):

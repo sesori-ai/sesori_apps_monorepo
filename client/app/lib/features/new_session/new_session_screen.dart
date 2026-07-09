@@ -9,6 +9,7 @@ import "../../core/extensions/build_context_x.dart";
 import "../../core/extensions/remote_failure_x.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/agent_model_buttons.dart";
+import "../../core/widgets/connection_banner.dart";
 import "../session_detail/widgets/prompt_input.dart";
 import "new_session_loading_overlay.dart";
 
@@ -153,6 +154,7 @@ class _NewSessionBodyState extends State<_NewSessionBody> {
         },
         child: PregoGlassScaffold(
           title: loc.sessionListNewSession,
+          banner: ConnectionBanner.maybeFor(context),
           // The loading scrim must dim the body while the glass back button
           // stays tappable (the user can abort while creation is in flight),
           // so it goes through the scaffold's bar-aware overlay slot rather

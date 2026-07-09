@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:flutter/material.dart";
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
@@ -57,12 +58,15 @@ Widget _buildApp() {
     ],
   );
 
-  return MaterialApp.router(
-    routerConfig: router,
-    theme: ThemeData(extensions: [PregoDesignSystem.light]),
-    darkTheme: ThemeData(extensions: [PregoDesignSystem.dark]),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
+  return BlocProvider<ConnectionOverlayCubit>(
+    create: (_) => StubConnectionOverlayCubit(),
+    child: MaterialApp.router(
+      routerConfig: router,
+      theme: ThemeData(extensions: [PregoDesignSystem.light]),
+      darkTheme: ThemeData(extensions: [PregoDesignSystem.dark]),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+    ),
   );
 }
 

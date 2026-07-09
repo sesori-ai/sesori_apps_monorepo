@@ -163,15 +163,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connectionLostReconnect => 'Reconnect';
 
   @override
-  String get connectionLostDisconnect => 'Disconnect';
-
-  @override
-  String get relayConnectionLost => 'Bridge went offline';
-
-  @override
-  String get relayReconnecting => 'Reconnecting to bridge...';
-
-  @override
   String get bridgeDisconnectedTitle => 'Bridge disconnected';
 
   @override

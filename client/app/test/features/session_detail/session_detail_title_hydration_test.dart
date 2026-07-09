@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:flutter/material.dart";
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
 import "package:mocktail/mocktail.dart";
@@ -23,16 +24,19 @@ class MockPermissionRepository extends Mock implements PermissionRepository {}
 class MockVoiceTranscriptionService extends Mock implements VoiceTranscriptionService {}
 
 Widget _buildApp({required String? sessionTitle}) {
-  return MaterialApp(
-    theme: ThemeData(extensions: [PregoDesignSystem.light]),
-    darkTheme: ThemeData(extensions: [PregoDesignSystem.dark]),
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
-    home: SessionDetailScreen(
-      projectId: "project-1",
-      projectName: null,
-      sessionId: "session-1",
-      sessionTitle: sessionTitle,
+  return BlocProvider<ConnectionOverlayCubit>(
+    create: (_) => StubConnectionOverlayCubit(),
+    child: MaterialApp(
+      theme: ThemeData(extensions: [PregoDesignSystem.light]),
+      darkTheme: ThemeData(extensions: [PregoDesignSystem.dark]),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: SessionDetailScreen(
+        projectId: "project-1",
+        projectName: null,
+        sessionId: "session-1",
+        sessionTitle: sessionTitle,
+      ),
     ),
   );
 }

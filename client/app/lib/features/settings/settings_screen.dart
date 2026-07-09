@@ -7,6 +7,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../core/di/injection.dart";
 import "../../core/extensions/build_context_x.dart";
 import "../../core/routing/app_router.dart";
+import "../../core/widgets/connection_banner.dart";
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -57,6 +58,7 @@ class _SettingsBody extends StatelessWidget {
       },
       child: PregoGlassScaffold(
         title: loc.settingsTitle,
+        banner: ConnectionBanner.maybeFor(context),
         slivers: [
           SliverList.list(
             children: [
