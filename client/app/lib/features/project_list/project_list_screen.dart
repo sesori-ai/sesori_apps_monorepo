@@ -145,10 +145,15 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
         onPressed: () => showAddProjectDialog(context, context.read<ProjectListCubit>()),
       );
     }
-    final isOnboarding =
-        (state is ProjectListBridgeDisconnected && !state.hasRegisteredBridges) ||
-        (state is ProjectListLoaded && state.projects.isEmpty);
-    return isOnboarding ? const _NeedHelpMenu() : null;
+    // The two onboarding surfaces get the same pill but report distinct
+    // analytics surfaces, so help-seeking is attributable to the funnel step.
+    if (state is ProjectListBridgeDisconnected && !state.hasRegisteredBridges) {
+      return const _NeedHelpMenu(surface: OnboardingSurface.connectSetup);
+    }
+    if (state is ProjectListLoaded && state.projects.isEmpty) {
+      return const _NeedHelpMenu(surface: OnboardingSurface.connectedEmpty);
+    }
+    return null;
   }
 
   @override

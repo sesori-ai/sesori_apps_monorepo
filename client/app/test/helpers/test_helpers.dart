@@ -356,7 +356,9 @@ void registerAllFallbackValues() {
   registerFallbackValue(http.MultipartFile.fromString("audio", ""));
   registerFallbackValue(AuthProvider.github);
   registerFallbackValue(StackTrace.empty);
-  registerFallbackValue(const AnalyticsEvent.needHelpMenuOpened());
+  registerFallbackValue(
+    const AnalyticsEvent.needHelpMenuOpened(surface: OnboardingSurface.connectSetup),
+  );
 }
 
 // ---------------------------------------------------------------------------

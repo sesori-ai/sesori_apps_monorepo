@@ -14,16 +14,6 @@ part of "../project_list_screen.dart";
 // with it — rather than each nesting a scroll view of its own.
 // ===========================================================================
 
-/// Opens one of the "Need help?" contact links ([SupportLinks]) through the
-/// shared [openExternalLink] helper. Reports the tapped [channel] to analytics
-/// before launching, so the tap is counted even when the launch itself fails.
-Future<void> _openSupportLink({required String url, required SupportChannel channel}) {
-  unawaited(
-    getIt<AnalyticsReporter>().logEvent(event: AnalyticsEvent.supportLinkOpened(channel: channel)),
-  );
-  return openExternalLink(url: Uri.parse(url));
-}
-
 /// The "connected, no projects" empty state: the phone/PC status lines, the
 /// connection graphic in its "on" state, and the per-platform install command
 /// boxes. Shown once a bridge is connected but no projects exist yet. The
@@ -88,12 +78,12 @@ class _OnboardingChecklist extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: PregoSpacing.lg),
-        const _WhyBridgeButton(),
+        const _WhyBridgeButton(surface: OnboardingSurface.connectedEmpty),
         // 40px gap from the header group to the install boxes (Figma gap-5xl).
         const SizedBox(height: PregoSpacing.x5l),
         const Padding(
           padding: EdgeInsetsDirectional.fromSTEB(PregoSpacing.xl, 0, PregoSpacing.xl, PregoSpacing.x3l),
-          child: _InstallCommandBoxes(),
+          child: _InstallCommandBoxes(surface: OnboardingSurface.connectedEmpty),
         ),
         // Bottom breathing room so the last install box can be scrolled clear of
         // the "Need help?" button pinned in the bottom-right corner.
@@ -143,6 +133,7 @@ class _ConnectBridgeChecklist extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
           child: _InstallCommandBoxes(
+            surface: OnboardingSurface.connectSetup,
             stepHeader: _OnboardingStepLabel(
               number: 1,
               title: loc.projectsOnboardingInstallStepTitle,
@@ -164,13 +155,21 @@ class _ConnectBridgeChecklist extends StatelessWidget {
               ),
               const SizedBox(height: PregoSpacing.md),
               const _CommandBoxFrame(
-                child: _CommandActionRow(command: BridgeInstall.runCommand),
+                child: _CommandActionRow(
+                  command: BridgeInstall.runCommand,
+                  copiedEvent: AnalyticsEvent.runCommandCopied(
+                    surface: OnboardingSurface.connectSetup,
+                  ),
+                  sharedEvent: AnalyticsEvent.runCommandShared(
+                    surface: OnboardingSurface.connectSetup,
+                  ),
+                ),
               ),
             ],
           ),
         ),
         const SizedBox(height: PregoSpacing.x3l),
-        const _WhyBridgeButton(),
+        const _WhyBridgeButton(surface: OnboardingSurface.connectSetup),
         // Bottom breathing room so the last command box can be scrolled clear of
         // the "Need help?" button pinned in the bottom-right corner.
         const SizedBox(height: PregoSpacing.x6l),
@@ -183,7 +182,10 @@ class _ConnectBridgeChecklist extends StatelessWidget {
 /// opens the [_WhyBridgeInfoSheet] bottom sheet. Centred so the stretch parent
 /// doesn't force it full-width. Shared by both empty Projects states.
 class _WhyBridgeButton extends StatelessWidget {
-  const _WhyBridgeButton();
+  const _WhyBridgeButton({required this.surface});
+
+  /// The onboarding surface hosting the button, reported with the open event.
+  final OnboardingSurface surface;
 
   @override
   Widget build(BuildContext context) {
@@ -195,11 +197,18 @@ class _WhyBridgeButton extends StatelessWidget {
         label: loc.projectsOnboardingPcStatusWhy,
         hierarchy: PregoButtonsSolidHierarchy.secondary,
         size: PregoButtonsSolidSize.sm,
-        onPressed: () => showPregoBottomSheet<void>(
-          context: context,
-          title: loc.projectsOnboardingPcStatusWhy,
-          builder: (_) => const _WhyBridgeInfoSheet(),
-        ),
+        onPressed: () {
+          unawaited(
+            getIt<AnalyticsReporter>().logEvent(
+              event: AnalyticsEvent.whyBridgeOpened(surface: surface),
+            ),
+          );
+          showPregoBottomSheet<void>(
+            context: context,
+            title: loc.projectsOnboardingPcStatusWhy,
+            builder: (_) => const _WhyBridgeInfoSheet(),
+          );
+        },
       ),
     );
   }
@@ -270,7 +279,24 @@ class _OnboardingStepLabel extends StatelessWidget {
 /// ([PregoAnchorMenu.flat]) so the popup matches its flat trigger instead of
 /// morphing in as glass.
 class _NeedHelpMenu extends StatelessWidget {
-  const _NeedHelpMenu();
+  const _NeedHelpMenu({required this.surface});
+
+  /// The onboarding surface hosting the pill, reported with every event so
+  /// help-seeking is attributable to the funnel step the user was on.
+  final OnboardingSurface surface;
+
+  /// Opens one of the "Need help?" contact links ([SupportLinks]) through the
+  /// shared [openExternalLink] helper. Reports the tapped [channel] to
+  /// analytics before launching, so the tap is counted even when the launch
+  /// itself fails.
+  Future<void> _openSupportLink({required String url, required SupportChannel channel}) {
+    unawaited(
+      getIt<AnalyticsReporter>().logEvent(
+        event: AnalyticsEvent.supportLinkOpened(channel: channel, surface: surface),
+      ),
+    );
+    return openExternalLink(url: Uri.parse(url));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -287,7 +313,9 @@ class _NeedHelpMenu extends StatelessWidget {
           // While the popup is up its barrier covers the trigger, so a pill
           // tap can only ever open the menu — safe to count as an open.
           unawaited(
-            getIt<AnalyticsReporter>().logEvent(event: const AnalyticsEvent.needHelpMenuOpened()),
+            getIt<AnalyticsReporter>().logEvent(
+              event: AnalyticsEvent.needHelpMenuOpened(surface: surface),
+            ),
           );
           toggle();
         },
@@ -333,7 +361,11 @@ class _NeedHelpMenu extends StatelessWidget {
 /// ([_BridgeOfflineView]) so both stay in sync; callers supply their own
 /// surrounding padding.
 class _InstallCommandBoxes extends StatefulWidget {
-  const _InstallCommandBoxes({this.stepHeader});
+  const _InstallCommandBoxes({required this.surface, this.stepHeader});
+
+  /// The surface hosting the boxes, stamped on the copy/share analytics of
+  /// every install method built here.
+  final OnboardingSurface surface;
 
   /// Optional widget rendered between the OS segmented control and the install
   /// command box. The connect onboarding slots its "1. Install the bridge" step
@@ -349,6 +381,30 @@ class _InstallCommandBoxesState extends State<_InstallCommandBoxes> {
   /// Index of the selected platform group; 0 (Unix) initially.
   int _selectedOs = 0;
 
+  /// One install method entry with its copy/share analytics stamped from the
+  /// method identity, the OS group it sits under, and this widget's surface.
+  _InstallMethod _method({
+    required String label,
+    required String command,
+    required BridgeInstallMethod method,
+    required BridgeInstallOs os,
+  }) {
+    return _InstallMethod(
+      label: label,
+      command: command,
+      copiedEvent: AnalyticsEvent.installCommandCopied(
+        method: method,
+        os: os,
+        surface: widget.surface,
+      ),
+      sharedEvent: AnalyticsEvent.installCommandShared(
+        method: method,
+        os: os,
+        surface: widget.surface,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -359,17 +415,47 @@ class _InstallCommandBoxesState extends State<_InstallCommandBoxes> {
       (
         label: loc.projectsOnboardingInstallUnixLabel,
         methods: [
-          _InstallMethod(label: loc.projectsOnboardingInstallUnixMethod, command: BridgeInstall.macLinuxCommand),
-          _InstallMethod(label: loc.projectsOnboardingInstallMethodNpm, command: BridgeInstall.npmCommand),
-          _InstallMethod(label: loc.projectsOnboardingInstallMethodBun, command: BridgeInstall.bunCommand),
+          _method(
+            label: loc.projectsOnboardingInstallUnixMethod,
+            command: BridgeInstall.macLinuxCommand,
+            method: BridgeInstallMethod.curl,
+            os: BridgeInstallOs.unix,
+          ),
+          _method(
+            label: loc.projectsOnboardingInstallMethodNpm,
+            command: BridgeInstall.npmCommand,
+            method: BridgeInstallMethod.npm,
+            os: BridgeInstallOs.unix,
+          ),
+          _method(
+            label: loc.projectsOnboardingInstallMethodBun,
+            command: BridgeInstall.bunCommand,
+            method: BridgeInstallMethod.bun,
+            os: BridgeInstallOs.unix,
+          ),
         ],
       ),
       (
         label: loc.projectsOnboardingInstallWindowsLabel,
         methods: [
-          _InstallMethod(label: loc.projectsOnboardingInstallWindowsMethod, command: BridgeInstall.windowsCommand),
-          _InstallMethod(label: loc.projectsOnboardingInstallMethodNpm, command: BridgeInstall.npmCommand),
-          _InstallMethod(label: loc.projectsOnboardingInstallMethodBun, command: BridgeInstall.bunCommand),
+          _method(
+            label: loc.projectsOnboardingInstallWindowsMethod,
+            command: BridgeInstall.windowsCommand,
+            method: BridgeInstallMethod.powershell,
+            os: BridgeInstallOs.windows,
+          ),
+          _method(
+            label: loc.projectsOnboardingInstallMethodNpm,
+            command: BridgeInstall.npmCommand,
+            method: BridgeInstallMethod.npm,
+            os: BridgeInstallOs.windows,
+          ),
+          _method(
+            label: loc.projectsOnboardingInstallMethodBun,
+            command: BridgeInstall.bunCommand,
+            method: BridgeInstallMethod.bun,
+            os: BridgeInstallOs.windows,
+          ),
         ],
       ),
     ];
@@ -505,15 +591,28 @@ class _OsSegmentedControl extends StatelessWidget {
 }
 
 /// One selectable install method within an [_InstallCommandBox]: the tab
-/// [label] (e.g. "curl", "npm") and the one-line [command] it installs with.
+/// [label] (e.g. "curl", "npm"), the one-line [command] it installs with, and
+/// the pre-built analytics events its copy/share actions report.
 class _InstallMethod {
-  const _InstallMethod({required this.label, required this.command});
+  const _InstallMethod({
+    required this.label,
+    required this.command,
+    required this.copiedEvent,
+    required this.sharedEvent,
+  });
 
   /// Tab label (literal tool name — not translated).
   final String label;
 
   /// The one-line install command shown and copied when this tab is selected.
   final String command;
+
+  /// Logged when this method's command is copied, carrying the method/OS/
+  /// surface identity stamped by [_InstallCommandBoxesState].
+  final AnalyticsEvent copiedEvent;
+
+  /// Logged when this method's command is shared.
+  final AnalyticsEvent sharedEvent;
 }
 
 /// One platform's install instruction box: a row of method tabs (e.g.
@@ -556,7 +655,12 @@ class _InstallCommandBoxState extends State<_InstallCommandBox> {
               ],
             ),
           ),
-          _CommandActionRow(command: _selected.command, topDivider: true),
+          _CommandActionRow(
+            command: _selected.command,
+            copiedEvent: _selected.copiedEvent,
+            sharedEvent: _selected.sharedEvent,
+            topDivider: true,
+          ),
         ],
       ),
     );
@@ -628,9 +732,22 @@ class _CommandBoxFrame extends StatelessWidget {
 /// native-share buttons. [topDivider] draws the hairline separating this row
 /// from the method tabs above it in the install box.
 class _CommandActionRow extends StatefulWidget {
-  const _CommandActionRow({required this.command, this.topDivider = false});
+  const _CommandActionRow({
+    required this.command,
+    required this.copiedEvent,
+    required this.sharedEvent,
+    this.topDivider = false,
+  });
 
   final String command;
+
+  /// Logged when the copy action is tapped. Pre-built by the host, which knows
+  /// the command's identity (install method/OS or run) and surface.
+  final AnalyticsEvent copiedEvent;
+
+  /// Logged when the share action is tapped.
+  final AnalyticsEvent sharedEvent;
+
   final bool topDivider;
 
   @override
@@ -639,6 +756,9 @@ class _CommandActionRow extends StatefulWidget {
 
 class _CommandActionRowState extends State<_CommandActionRow> {
   Future<void> _copyCommand() async {
+    // Reported before attempting the write, so the tap is counted even when
+    // the clipboard fails.
+    unawaited(getIt<AnalyticsReporter>().logEvent(event: widget.copiedEvent));
     final messenger = ScaffoldMessenger.of(context);
     final loc = context.loc;
     // Clipboard can throw on restricted platforms/states; fail soft and skip
@@ -659,6 +779,9 @@ class _CommandActionRowState extends State<_CommandActionRow> {
   }
 
   Future<void> _shareCommand() async {
+    // Reported before raising the sheet, so the tap is counted even when the
+    // share itself fails.
+    unawaited(getIt<AnalyticsReporter>().logEvent(event: widget.sharedEvent));
     // iPad presents the share sheet as a popover anchored to a source rect;
     // derive it from this row so the popover points at the command instead of
     // floating (an unanchored sheet throws on iPad).
