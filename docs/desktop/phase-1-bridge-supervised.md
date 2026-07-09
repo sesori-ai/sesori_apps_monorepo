@@ -899,26 +899,34 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   harness kill.
 - **Aristotle:** plan ☑ · impl ☑ (PR raised on branch `next-step-desktop-plan`).
 - **Findings:** Shipped as a single dev-only file
-  (`bridge/app/tool/dev_control_host.dart`, ~400 lines with doc comments), no
+  (`bridge/app/tool/dev_control_host.dart`, ~490 lines with doc comments), no
   `lib/` change and no new dependency — it reuses the app package's existing
   `args`, `dart:io` (`HttpServer`/`WebSocketTransformer`), `sesori_shared`
   (`ControlMessage`, `jsonDecodeMap`) and `sesori_bridge_foundation`
   (`sesoriDataDirectory()`). `main()` parses `--bridge <path>` (required),
-  `--token <jwt>`, `--deny-token`, `--help`, and forwards everything after `--`
-  verbatim to the bridge; the access token defaults to the developer's own
-  `token.json` `accessToken` and degrades to token-less (answering
-  `token_request` with null) when it is missing. A private `_DevControlHost`
-  owns one harness session — the per-spawn secret (`Random.secure()` →
-  base64url), the loopback WS control server (`HttpServer.bind(loopbackIPv4, 0)`,
-  ephemeral port), the single helper socket, and the pending-prompt list. It
+  `--deny-token`, `--help`, and forwards everything after `--` verbatim to the
+  bridge; the access token defaults to the developer's own `token.json`
+  `accessToken`, is overridable via the `SESORI_DEV_CONTROL_TOKEN` env var
+  (kept off argv, which other local processes can read; the spawned bridge's
+  environment blanks that var so the override never reaches the child — or,
+  via the plugin host copying its environment, the backend), and degrades to
+  token-less (answering `token_request` with null) when both are absent. A
+  private `_DevControlHost` owns one harness session — the per-spawn secret
+  (`Random.secure()` → base64url), the loopback WS control server
+  (`HttpServer.bind(loopbackIPv4, 0)`, ephemeral port), the single helper
+  socket, and the pending-prompt list. It
   spawns the bridge with `--control-url ws://127.0.0.1:<port>`, delivers the
   secret **off-argv** as the child's first stdin line (ADR A8), and echoes the
   child's stdout/stderr inline. The WS upgrade is accepted only when the
   `Authorization: Bearer <secret>` header matches (else 401); one helper per
-  spawn (a second is 409'd). Inbound frames are decoded with the real
+  spawn (a concurrent second is 409'd, but a dropped socket is cleared so the
+  helper's reconnect is accepted, and a post-drop send logs-and-drops instead
+  of crashing the harness). Inbound frames are decoded with the real
   `ControlMessage.fromJson` (undecodable → stderr + skip, never swallowed),
-  printed, and reacted to via an exhaustive sealed switch: `token_request` →
-  auto-`token_response` (null when denied / token-less), `prompt_request` →
+  printed with `accessToken` redacted (a saved MT-1 terminal log never captures
+  the developer's bearer token), and reacted to via an exhaustive sealed
+  switch: `token_request` → auto-`token_response` (null when denied /
+  token-less), `prompt_request` →
   tracked + printed; all other variants are informational. Keyboard commands on
   the harness's own stdin: `t` push `token_update`, `u` `unregister_and_exit`,
   `y`/`n [id]` answer a prompt, `x` toggle token-denial, `q` simulate GUI-gone
@@ -931,7 +939,13 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   excluded from the bundle (same as `tool/bump_version.dart`); `avoid_print` is
   honoured (all output via `stdout`/`stderr`). `dart analyze --fatal-infos`
   clean; `make analyze` clean; `make test` all pass (1727, unchanged — the tool
-  is not in any import/test graph). Enables MT-1. **Deltas:** —
+  is not in any import/test graph). Enables MT-1.
+- **Deltas:** PR-review hardening dropped the goal's planned `--token` flag for
+  the `SESORI_DEV_CONTROL_TOKEN` env var (a bearer token must not sit in argv),
+  and added helper-reconnect acceptance, token redaction in printed frames,
+  guarded child-stdin/secret and socket writes (a child that crashes instantly
+  is still reported via its exit code), and upgrade-handler isolation (a
+  mid-handshake disconnect can't crash the control server).
 
 ---
 
