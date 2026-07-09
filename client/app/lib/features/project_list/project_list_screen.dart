@@ -158,17 +158,9 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
     // connected) titles the screen "Connect"; every other state keeps
     // "Projects".
     final isConnectOnboarding = state is ProjectListBridgeDisconnected && !state.hasRegisteredBridges;
-    // The disconnected states (connect onboarding + bridge-offline) own their
-    // own inner scroll view with pull-to-reconnect. Turn the scaffold's outer
-    // page scroll OFF for them so the two don't fight: with both scrollable, the
-    // large-title collapse and the inner scroll deadlock — the page strands
-    // scrolled-up and won't come back. With it off the large title stays fixed
-    // and only the body scrolls.
-    final bodyOwnsScroll = state is ProjectListBridgeDisconnected;
 
     return PregoGlassScaffold(
       title: isConnectOnboarding ? loc.projectListConnectTitle : loc.projectListTitle,
-      scrollable: !bodyOwnsScroll,
       // A loaded list hosts the top-nav connection banner; the loading and
       // bridge-disconnected states own their messaging full-screen (setup
       // onboarding or the "turn on your bridge" design), so they suppress it.
@@ -184,11 +176,23 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
       // once projects exist, the onboarding "Need help?" support menu in the two
       // empty states, and nothing while loading/offline/errored.
       floatingActionButton: _floatingAction(context: context, state: state),
-      // Pull-to-refresh re-fetches the project list once connected; the
-      // disconnected states keep their own inner reconnect-on-pull.
-      onRefresh: state is ProjectListLoaded ? () => _refreshProjects(context) : null,
+      onRefresh: _refreshFor(context: context, state: state),
       slivers: _buildContentSlivers(context: context, state: state, isRefreshing: isRefreshing),
     );
+  }
+
+  /// The scaffold's pull-to-refresh action for [state], or `null` when there is
+  /// nothing to pull for.
+  ///
+  /// A loaded list re-fetches its projects. The disconnected states re-attempt
+  /// the bridge connection: escaping them is otherwise passive (they wait for a
+  /// connection event), which can strand a bridge that never came up.
+  Future<void> Function()? _refreshFor({required BuildContext context, required ProjectListState state}) {
+    return switch (state) {
+      ProjectListLoaded() => () => _refreshProjects(context),
+      ProjectListBridgeDisconnected() => () => context.read<ProjectListCubit>().reconnectBridge(),
+      ProjectListLoading() || ProjectListFailed() => null,
+    };
   }
 
   /// The top-nav connection banner for [state], or `null` when it should be
@@ -222,22 +226,26 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
         ),
       ],
       // No bridge has ever been registered → setup onboarding; a bridge exists
-      // but isn't running → ask to turn it on. Both are full-screen views that
-      // own their scroll and reconnect-on-pull, so they fill the body below the
-      // bar rather than joining the outer scroll.
+      // but isn't running → ask to turn it on. Both join the page scroll rather
+      // than nesting one of their own, so the large title scrolls away and
+      // collapses into the bar with them. hasScrollBody: false lets a body
+      // shorter than the viewport sit still while a taller one — the offline
+      // view with its install commands expanded — scrolls the page.
+      // SafeArea(top: false) keeps the last box clear of the home indicator.
       ProjectListBridgeDisconnected(:final hasRegisteredBridges) => [
         SliverFillRemaining(
-          hasScrollBody: true,
-          child: hasRegisteredBridges ? const _BridgeOfflineView() : const _BridgeOnboardingView(),
+          hasScrollBody: false,
+          child: SafeArea(
+            top: false,
+            child: hasRegisteredBridges ? const _BridgeOfflineView() : const _ConnectBridgeChecklist(),
+          ),
         ),
       ],
       ProjectListLoaded(:final projects, :final activityById, :final unseenByProjectId) => [
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
         if (projects.isEmpty)
-          // Render the shared onboarding body directly (not its own scroll
-          // view) so the scaffold's pull-to-refresh drives it. SafeArea(top:
-          // false) keeps the bottom install box clear of the home indicator,
-          // matching the disconnected onboarding view.
+          // Same shape as the disconnected bodies above: the onboarding joins
+          // the page scroll rather than nesting one of its own.
           const SliverFillRemaining(
             hasScrollBody: false,
             child: SafeArea(
