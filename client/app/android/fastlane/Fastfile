@@ -41,6 +41,59 @@ def build_commit_changelog(max_length: nil)
   text
 end
 
+# Google Play finishes processing an uploaded App Bundle asynchronously: the
+# bundle bytes upload fine, but the edit *commit* that assigns the bundle to a
+# track is sometimes rejected with "Some of the Android App Bundle uploads are
+# not completed yet" while Google is still processing it server-side (more likely
+# for a large AAB over a slow CI link). A rejected commit discards the whole
+# edit, so the version code is NOT consumed and re-running the upload is safe and
+# idempotent. These bound a retry that absorbs that race instead of turning a
+# transient store hiccup into a red release.
+PLAY_UPLOAD_MAX_ATTEMPTS = 3
+PLAY_UPLOAD_RETRY_BASE_DELAY = 45 # seconds, multiplied by the attempt number
+
+# The ONLY failure we retry: Google rejects edits.commit with this message while
+# it is still processing the just-uploaded bundle. That rejection discards the
+# whole edit, so the version code is provably NOT consumed and a fresh
+# upload+commit is safe. We deliberately do NOT retry ambiguous failures (5xx /
+# "internal error" / network timeouts) where the commit may have half-applied,
+# nor do we treat a later "version code already used" as success: retrying an
+# ambiguous failure could collide with a code that already landed — from this job
+# OR a concurrent manual deploy (release-all-platforms.yml and
+# deploy-android-internal.yml use separate concurrency groups but both allocate
+# max+1) — and the lane must never report a build it did not publish. Every other
+# error, including any version-code collision, fails fast for a human to re-run.
+PLAY_UPLOAD_RETRYABLE_ERRORS = [
+  "are not completed yet",
+].freeze
+
+def play_upload_error_retryable?(message)
+  PLAY_UPLOAD_RETRYABLE_ERRORS.any? { |fragment| message.to_s.downcase.include?(fragment) }
+end
+
+# Retries a Google Play upload block ONLY on the bundle-still-processing race
+# above, with a linear backoff. Every other failure raises immediately — the lane
+# never treats a collision as success, so it can't claim a build it did not
+# publish. The final attempt re-raises so a race that never clears still fails the
+# release loudly rather than being swallowed.
+def with_play_upload_retry
+  attempt = 0
+  begin
+    attempt += 1
+    yield
+  rescue StandardError => e
+    raise if attempt >= PLAY_UPLOAD_MAX_ATTEMPTS || !play_upload_error_retryable?(e.message)
+
+    delay = PLAY_UPLOAD_RETRY_BASE_DELAY * attempt
+    UI.important(
+      "Google Play upload attempt #{attempt}/#{PLAY_UPLOAD_MAX_ATTEMPTS} failed while the " \
+      "bundle was still processing (#{e.message.to_s.strip}); retrying in #{delay}s."
+    )
+    sleep(delay)
+    retry
+  end
+end
+
 default_platform(:android)
 
 platform :android do
@@ -227,17 +280,19 @@ platform :android do
         "#{build_commit_changelog(max_length: 400)}\n"
       )
 
-      upload_to_play_store(
-        track: "internal",
-        aab: aab_path,
-        metadata_path: metadata_path,
-        skip_upload_metadata: true,
-        skip_upload_images: true,
-        skip_upload_screenshots: true,
-        skip_upload_changelogs: false,
-        release_status: "completed",
-        version_name: version_name
-      )
+      with_play_upload_retry do
+        upload_to_play_store(
+          track: "internal",
+          aab: aab_path,
+          metadata_path: metadata_path,
+          skip_upload_metadata: true,
+          skip_upload_images: true,
+          skip_upload_screenshots: true,
+          skip_upload_changelogs: false,
+          release_status: "completed",
+          version_name: version_name
+        )
+      end
 
       # Write build info for CI summary
       File.write("../build_info.env", "VERSION=#{version_name}\nVERSION_CODE=#{new_build_number}\n")

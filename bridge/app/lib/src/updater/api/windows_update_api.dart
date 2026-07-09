@@ -21,6 +21,9 @@ class WindowsUpdateApi implements PlatformUpdateApi {
   static const String _libBackupName = '.lib.old';
 
   @override
+  bool get supportsInSessionChaining => false;
+
+  @override
   Future<void> applyInPlace({required String installRoot, required String stagingPath}) async {
     final File newBinary = File(p.join(stagingPath, 'bin', _binaryName));
     final File targetBinary = File(p.join(installRoot, 'bin', _binaryName));

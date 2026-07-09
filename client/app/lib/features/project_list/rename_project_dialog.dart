@@ -6,7 +6,6 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../core/constants.dart";
 import "../../core/extensions/build_context_x.dart";
-import "../../core/widgets/app_modal_bottom_sheet.dart";
 
 /// Shows the Rename Project modal bottom sheet.
 ///
@@ -18,9 +17,9 @@ Future<void> showRenameProjectDialog({
   required Project project,
   required ProjectListCubit cubit,
 }) {
-  return showAppModalBottomSheet<void>(
+  return showPregoBottomSheet<void>(
     context: context,
-    isScrollControlled: true,
+    title: context.loc.renameProjectTitle,
     builder: (_) => RenameProjectDialog(project: project, cubit: cubit),
   );
 }
@@ -98,29 +97,12 @@ class _RenameProjectDialogState extends State<RenameProjectDialog> {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final prego = context.prego;
 
     return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 16),
+      padding: const EdgeInsetsDirectional.only(bottom: 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Center(
-            child: Container(
-              width: 32,
-              height: 4,
-              decoration: BoxDecoration(
-                color: prego.colors.textSecondary.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(loc.renameProjectTitle, style: prego.textTheme.textMd.bold),
-          ),
-          const SizedBox(height: 16),
           TextField(
             controller: _nameController,
             autofocus: true,

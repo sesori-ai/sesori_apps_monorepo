@@ -7,6 +7,11 @@
   "apiErrorServerRejected": "The server returned an error. Please try again.",
   "apiErrorNetworkDown": "Connection failed — check your network and try again.",
   "projectListTitle": "Projects",
+  "projectListConnectTitle": "Connect",
+  "@projectListConnectTitle": {
+    "description": "App-bar title shown in place of 'Projects' while the connect-your-computer onboarding is visible (no bridge has ever been registered and none is connected)."
+  },
+  "projectListLoadingSemantics": "Loading projects",
   "projectListEmpty": "No projects found",
   "projectListUpdated": "Updated {timestamp}",
   "@projectListUpdated": {
@@ -45,6 +50,10 @@
   "@projectsOnboardingPcStatusRun": {
     "description": "Secondary portion of the PC status line, rendered in the secondary text color."
   },
+  "projectsOnboardingPcStatusWhy": "Why is this needed?",
+  "@projectsOnboardingPcStatusWhy": {
+    "description": "Label for the button below the PC status line that opens the bridge explainer bottom sheet; also used as that sheet's title."
+  },
   "projectsOnboardingNeedHelp": "Need help?",
   "@projectsOnboardingNeedHelp": {
     "description": "Label for the glass pill button below the PC status line that opens a menu of support channels."
@@ -63,7 +72,7 @@
   },
   "projectsOnboardingInstallUnixLabel": "macOS, Linux, WSL",
   "@projectsOnboardingInstallUnixLabel": {
-    "description": "Group label above the macOS/Linux/WSL install command box in the onboarding."
+    "description": "Segmented-control label that selects the macOS/Linux/WSL install commands, shown both in the onboarding and in the bridge-offline install-commands disclosure."
   },
   "projectsOnboardingInstallUnixMethod": "curl",
   "@projectsOnboardingInstallUnixMethod": {
@@ -71,7 +80,7 @@
   },
   "projectsOnboardingInstallWindowsLabel": "Windows PowerShell",
   "@projectsOnboardingInstallWindowsLabel": {
-    "description": "Group label above the Windows PowerShell install command box in the onboarding."
+    "description": "Segmented-control label that selects the Windows PowerShell install commands, shown both in the onboarding and in the bridge-offline install-commands disclosure."
   },
   "projectsOnboardingInstallWindowsMethod": "native",
   "@projectsOnboardingInstallWindowsMethod": {
@@ -91,17 +100,46 @@
   "@projectsOnboardingShareCommand": {
     "description": "Accessibility label for the button that opens the native share sheet with the selected install command."
   },
+  "projectsOnboardingWaitingForBridge": "Waiting for the bridge...",
+  "@projectsOnboardingWaitingForBridge": {
+    "description": "Caption shown beneath the connection graphic on the disconnected onboarding while the app waits for the bridge to come online."
+  },
+  "projectsOnboardingRunOnComputer": "Next, run on your computer:",
+  "@projectsOnboardingRunOnComputer": {
+    "description": "Heading above the numbered install/start command steps on the disconnected onboarding, introducing the commands to run on the user's computer."
+  },
+  "projectsOnboardingInstallStepTitle": "Install the bridge",
+  "@projectsOnboardingInstallStepTitle": {
+    "description": "Title of the first numbered onboarding step, rendered as '1. Install the bridge' above the install-command box."
+  },
+  "projectsOnboardingInstallStepInfo": "This adds the Sesori bridge command to your machine.",
+  "@projectsOnboardingInstallStepInfo": {
+    "description": "Popover text explaining what the 'Install the bridge' step does, opened from the info icon next to that step."
+  },
+  "projectsOnboardingStartStepTitle": "Start the bridge",
+  "@projectsOnboardingStartStepTitle": {
+    "description": "Title of the second numbered onboarding step, rendered as '2. Start the bridge' above the start-command box."
+  },
+  "projectsOnboardingStartStepInfo": "Leave it running while you use Sesori from your phone.",
+  "@projectsOnboardingStartStepInfo": {
+    "description": "Popover text explaining the 'Start the bridge' step, opened from the info icon next to that step."
+  },
+  "projectsOnboardingStepInfoSemantics": "More information",
+  "@projectsOnboardingStepInfoSemantics": {
+    "description": "Accessibility label for the info icon button next to an onboarding step title, which opens a popover explaining that step."
+  },
   "projectsBridgeOfflineTitle": "Bridge disconnected",
   "projectsBridgeOfflineReconnect": "Reconnect",
   "projectsBridgeOfflineInstallCommands": "Install commands",
   "@projectsBridgeOfflineInstallCommands": {
     "description": "Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands."
   },
+  "projectsBridgeOfflineRunBridge": "Run the bridge",
+  "@projectsBridgeOfflineRunBridge": {
+    "description": "Label above the command box on the bridge-offline Projects screen that shows the command to start an already-installed bridge."
+  },
   "connectionLostTitle": "Connection Lost",
   "connectionLostReconnect": "Reconnect",
-  "connectionLostDisconnect": "Disconnect",
-  "relayConnectionLost": "Bridge went offline",
-  "relayReconnecting": "Reconnecting to bridge...",
   "bridgeDisconnectedTitle": "Bridge disconnected",
   "settingsTitle": "Settings",
   "settingsAccountSignedInWith": "Signed in with {provider}",
@@ -130,6 +168,7 @@
       }
     }
   },
+  "sessionListLoadingSemantics": "Loading sessions",
   "sessionListEmpty": "No sessions found",
   "sessionListUntitled": "Untitled session",
   "sessionListUpdated": "Updated {timestamp}",
@@ -321,6 +360,8 @@
   "gitRepoBadge": "git",
   "projectHidden": "Project hidden",
   "hideProject": "Hide Project",
+  "projectFolderMissing": "Folder not found",
+  "projectFolderMissingMessage": "This project's folder no longer exists — it may have been moved or deleted. Hide the project, or restore the folder to its original location.",
   "noProjects": "No projects",
   "addProjectPrompt": "Add a project to get started",
   "creatingProject": "Creating project...",
@@ -475,5 +516,65 @@
   "sessionDetailShowMore": "Show more",
   "sessionDetailShowLess": "Show less",
   "emptySessionDetailTitle": "Select a session",
-  "emptySessionDetailSubtitle": "Choose a session from the list to view details"
+  "emptySessionDetailSubtitle": "Choose a session from the list to view details",
+  "projectsOnboardingWhyLede": "Your LLM of choice runs on your computer.",
+  "@projectsOnboardingWhyLede": {
+    "description": "Headline line of the onboarding 'Why is this needed?' sheet, explaining that the AI model runs on the developer's own machine."
+  },
+  "projectsOnboardingWhyBody": "The Bridge securely connects it to Sesori on your phone.",
+  "@projectsOnboardingWhyBody": {
+    "description": "Supporting line under the 'Why is this needed?' headline, explaining the Bridge's role."
+  },
+  "projectsOnboardingWhySecureTitle": "Secure access",
+  "@projectsOnboardingWhySecureTitle": {
+    "description": "Title of the 'secure access' reassurance row in the 'Why is this needed?' sheet."
+  },
+  "projectsOnboardingWhySecureSubtitle": "Your sessions are end-to-end encrypted.",
+  "@projectsOnboardingWhySecureSubtitle": {
+    "description": "Subtitle of the 'secure access' reassurance row."
+  },
+  "projectsOnboardingWhyAnywhereTitle": "Connect from anywhere",
+  "@projectsOnboardingWhyAnywhereTitle": {
+    "description": "Title of the 'connect from anywhere' reassurance row in the 'Why is this needed?' sheet."
+  },
+  "projectsOnboardingWhyAnywhereSubtitle": "No shared Wi-Fi required.",
+  "@projectsOnboardingWhyAnywhereSubtitle": {
+    "description": "Subtitle of the 'connect from anywhere' reassurance row."
+  },
+  "projectsOnboardingWhyNotifiedTitle": "Get notified",
+  "@projectsOnboardingWhyNotifiedTitle": {
+    "description": "Title of the 'get notified' reassurance row in the 'Why is this needed?' sheet."
+  },
+  "projectsOnboardingWhyNotifiedSubtitle": "Know when a task needs you.",
+  "@projectsOnboardingWhyNotifiedSubtitle": {
+    "description": "Subtitle of the 'get notified' reassurance row."
+  },
+  "projectsOnboardingWhyFaqHeader": "FAQs",
+  "@projectsOnboardingWhyFaqHeader": {
+    "description": "Section header above the FAQ list in the 'Why is this needed?' sheet."
+  },
+  "projectsOnboardingWhyFaqDirectQuestion": "Why can't the app connect directly?",
+  "@projectsOnboardingWhyFaqDirectQuestion": {
+    "description": "FAQ question about why the phone cannot reach the computer without the Bridge."
+  },
+  "projectsOnboardingWhyFaqDirectAnswer": "Your AI assistant runs on your computer, not our servers. The Bridge is the secure link that lets your phone reach it from anywhere.",
+  "@projectsOnboardingWhyFaqDirectAnswer": {
+    "description": "DRAFT copy pending final wording. Answer to the 'connect directly' FAQ question."
+  },
+  "projectsOnboardingWhyFaqPcOnQuestion": "Does my PC stay on?",
+  "@projectsOnboardingWhyFaqPcOnQuestion": {
+    "description": "FAQ question about whether the developer's computer must stay powered on."
+  },
+  "projectsOnboardingWhyFaqPcOnAnswer": "Your computer needs to be on and running Sesori for live sessions. You can start or stop it whenever you like.",
+  "@projectsOnboardingWhyFaqPcOnAnswer": {
+    "description": "DRAFT copy pending final wording. Answer to the 'does my PC stay on' FAQ question."
+  },
+  "projectsOnboardingWhyFaqReadQuestion": "Can Sesori read my sessions?",
+  "@projectsOnboardingWhyFaqReadQuestion": {
+    "description": "FAQ question about whether Sesori can read the developer's session data."
+  },
+  "projectsOnboardingWhyFaqReadAnswer": "No. Everything between your phone and computer is end-to-end encrypted — the relay only passes along sealed data it can't read.",
+  "@projectsOnboardingWhyFaqReadAnswer": {
+    "description": "DRAFT copy pending final wording. Answer to the 'can Sesori read my sessions' FAQ question."
+  }
 }

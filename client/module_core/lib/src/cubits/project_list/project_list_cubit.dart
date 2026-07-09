@@ -153,10 +153,11 @@ class ProjectListCubit extends Cubit<ProjectListState> {
     }
   }
 
-  /// Whether the bridge (the user's computer) is currently unreachable, in
-  /// which case there are no projects to show and the bridge-disconnected
-  /// flow (setup onboarding or "turn on your bridge") is surfaced.
-  /// `ConnectionLost` is excluded — it has its own app-wide reconnect overlay.
+  /// Whether the bridge (the user's computer) is currently unreachable. With
+  /// nothing loaded, the bridge-disconnected flow (setup onboarding or "turn
+  /// on your bridge") is surfaced; a non-empty loaded list is kept instead.
+  /// `ConnectionLost` is excluded: the list stays loaded so the inline
+  /// connection banner (with its reconnect action) owns that state.
   bool get _isBridgeUnavailable => switch (_connectionService.currentStatus) {
     ConnectionDisconnected() || ConnectionBridgeOffline() => true,
     ConnectionConnected() || ConnectionReconnecting() || ConnectionLost() => false,
@@ -182,13 +183,21 @@ class ProjectListCubit extends Cubit<ProjectListState> {
           case ProjectListLoading():
             break; // Load already in progress.
         }
-      // The user's computer is offline / not yet connected — surface the
-      // bridge-disconnected flow instead of an error or stale list.
+      // The relay connection is fully torn down — nothing is reachable and no
+      // banner represents this state, so surface the bridge-disconnected flow.
       case ConnectionDisconnected():
-      case ConnectionBridgeOffline():
         unawaited(_emitBridgeDisconnected());
-      // Transient states: keep the current UI. ConnectionLost is handled by
-      // the app-wide reconnect overlay; ConnectionReconnecting is brief.
+      case ConnectionBridgeOffline():
+        // A non-empty loaded list stays browsable while the bridge is offline —
+        // the top-nav connection banner owns the messaging. The full-screen
+        // bridge-disconnected flow is reserved for when there is nothing to
+        // show (launch before the bridge starts, or an empty list whose
+        // onboarding checklist would contradict an offline banner).
+        if (state case ProjectListLoaded(:final projects) when projects.isNotEmpty) break;
+        unawaited(_emitBridgeDisconnected());
+      // Keep the current UI. A loaded list keeps hosting the inline connection
+      // banner, which owns the ConnectionLost reconnect action;
+      // ConnectionReconnecting is a brief transient.
       case ConnectionReconnecting():
       case ConnectionLost():
         break;
@@ -322,20 +331,32 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   /// reload to reconnectBridge during this window — see the guard there.
   bool _reconnectBridgeInFlight = false;
 
-  /// Re-attempts to reach the bridge from the onboarding state (driven by the
-  /// onboarding's pull-to-refresh). Recovery from [ProjectListBridgeDisconnected]
-  /// is otherwise passive — it waits for a [ConnectionConnected] transition that,
-  /// for a never-connected bridge ([ConnectionDisconnected]), may never arrive
-  /// on its own. This actively re-establishes the connection, then reloads.
+  /// In-flight bridge reconnect, used for coalescing.
+  Future<void>? _activeReconnect;
+
+  /// Re-attempts to reach the bridge from the disconnected state. Recovery from
+  /// [ProjectListBridgeDisconnected] is otherwise passive — it waits for a
+  /// [ConnectionConnected] transition that, for a never-connected bridge
+  /// ([ConnectionDisconnected]), may never arrive on its own. This actively
+  /// re-establishes the connection, then reloads.
   ///
   /// Does not emit a loading state: the caller (a [RefreshIndicator]) shows its
-  /// own progress, so the onboarding stays visible until a result is known.
+  /// own progress, so the disconnected body stays visible until a result is
+  /// known.
   ///
+  /// Concurrent calls are coalesced: the page's pull-to-refresh and the offline
+  /// body's Reconnect button both land here and neither blocks the other, so a
+  /// second attempt would fetch behind the first and release
+  /// [_reconnectBridgeInFlight] while the first is still connecting.
+  Future<void> reconnectBridge() {
+    return _activeReconnect ??= _reconnectBridge().whenComplete(() => _activeReconnect = null);
+  }
+
   /// [_reconnectBridgeInFlight] is held for the whole method so the
   /// ConnectionConnected transition emitted while connecting doesn't also drive
   /// [_onConnectionStatusChanged] into a duplicate (loading-flashing) reload —
   /// reconnectBridge owns the single, silent fetch below.
-  Future<void> reconnectBridge() async {
+  Future<void> _reconnectBridge() async {
     _reconnectBridgeInFlight = true;
     try {
       if (_connectionService.currentStatus is ConnectionDisconnected) {

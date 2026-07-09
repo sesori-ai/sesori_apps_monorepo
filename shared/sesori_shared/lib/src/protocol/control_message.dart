@@ -101,6 +101,12 @@ enum ControlRelayConnectionState {
   connecting,
   @JsonValue("disconnected")
   disconnected,
+
+  /// Another bridge for this account took the single relay slot; this bridge
+  /// is displaced and reconnecting only on a long backoff. The GUI surfaces a
+  /// "take over" affordance (a plain helper respawn).
+  @JsonValue("taken_over")
+  takenOver,
   @JsonValue("unknown")
   unknown,
 }

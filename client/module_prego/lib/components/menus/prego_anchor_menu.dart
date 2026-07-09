@@ -1,5 +1,4 @@
 import "dart:async";
-import "dart:math" as math;
 
 import "package:cue/cue.dart";
 import "package:flutter/material.dart";
@@ -7,6 +6,7 @@ import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 
 import "../../theme/prego_glass.dart";
 import "../../theme/prego_theme.dart";
+import "anchored_flat_panel.dart";
 
 /// A single entry in a [PregoAnchorMenu].
 ///
@@ -146,7 +146,7 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
         toggle();
         _alignGlassMenuToTrigger(context);
       }),
-      items: [for (final entry in widget.entries) _glassEntry(context, entry)],
+      items: [for (final entry in widget.entries) _glassEntry(context, entry: entry)],
     );
   }
 
@@ -169,7 +169,7 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
     _glassController.setFollowOffset(-overlayBox.localToGlobal(Offset.zero));
   }
 
-  Widget _glassEntry(BuildContext context, PregoMenuEntry entry) {
+  Widget _glassEntry(BuildContext context, {required PregoMenuEntry entry}) {
     final prego = context.prego;
     switch (entry) {
       case PregoMenuLabel(:final text):
@@ -200,110 +200,34 @@ class _PregoAnchorMenuState extends State<PregoAnchorMenu> {
       barrierColor: Colors.transparent,
       motion: const Spring.smooth(),
       reverseMotion: const Spring.snappy(),
-      // No alignment: the menu positions itself from the trigger rect so it can
+      // No alignment: the panel positions itself from the trigger rect so it can
       // clamp to the screen edges, mirroring GlassMenu.autoAdjustToScreen.
       triggerBuilder: (context, showModal) =>
           widget.triggerBuilder(context, () => unawaited(showModal())),
-      builder: (context, triggerRect) => _FlatAnchoredMenu(
+      builder: (context, triggerRect) => AnchoredFlatPanel(
         triggerRect: triggerRect,
-        entries: widget.entries,
-        menuWidth: widget.menuWidth,
-        menuHeight: widget.menuHeight,
-        menuBorderRadius: widget.menuBorderRadius,
+        width: widget.menuWidth,
+        height: widget.menuHeight,
+        borderRadius: widget.menuBorderRadius,
         screenPadding: widget.menuScreenPadding,
-      ),
-    );
-  }
-}
-
-/// The flat (Android) menu body: a Material panel anchored to [triggerRect],
-/// kept on screen by [_AnchoredMenuLayoutDelegate], and sprung in with `cue`.
-class _FlatAnchoredMenu extends StatelessWidget {
-  const _FlatAnchoredMenu({
-    required this.triggerRect,
-    required this.entries,
-    required this.menuWidth,
-    required this.menuHeight,
-    required this.menuBorderRadius,
-    required this.screenPadding,
-  });
-
-  final Rect triggerRect;
-  final List<PregoMenuEntry> entries;
-  final double menuWidth;
-  final double? menuHeight;
-  final double menuBorderRadius;
-  final EdgeInsets screenPadding;
-
-  /// Gap between the trigger and the menu it spawns.
-  static const double _gap = 8;
-
-  @override
-  Widget build(BuildContext context) {
-    final prego = context.prego;
-    // Granular getters so re-layout is driven only by the metrics this menu
-    // actually uses, not by any unrelated MediaQueryData change.
-    final screen = MediaQuery.sizeOf(context);
-    final safe = MediaQuery.paddingOf(context);
-    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
-
-    // Expand toward whichever side of the trigger has more room. For the session
-    // composer (triggers near the bottom) this resolves to "expand upward".
-    final spaceAbove = triggerRect.top - safe.top - screenPadding.top - _gap;
-    final spaceBelow =
-        screen.height - keyboard - safe.bottom - screenPadding.bottom - triggerRect.bottom - _gap;
-    final expandUp = spaceAbove >= spaceBelow;
-    final available = math.max(0.0, expandUp ? spaceAbove : spaceBelow);
-    final maxHeight = menuHeight != null ? math.min(menuHeight!, available) : available;
-
-    void close() => Navigator.of(context).pop();
-
-    final panel = DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(menuBorderRadius),
-        boxShadow: prego.shadows.xl,
-      ),
-      child: Material(
-        color: prego.colors.bgSecondary,
-        clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(menuBorderRadius),
-          side: BorderSide(color: prego.colors.borderSecondary, width: 0.5),
-        ),
-        child: SingleChildScrollView(
+        // AnchoredFlatPanel owns the scroll, so this supplies just the padded
+        // column of entries; the panel scrolls it when the menu is taller than
+        // the room beside the trigger.
+        childBuilder: (context, close) => Padding(
           padding: const EdgeInsets.symmetric(vertical: 6),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [for (final entry in entries) _flatEntry(context, entry, close)],
+            children: [
+              for (final entry in widget.entries) _flatEntry(context, entry: entry, close: close),
+            ],
           ),
         ),
       ),
     );
-
-    return CustomSingleChildLayout(
-      delegate: _AnchoredMenuLayoutDelegate(
-        triggerRect: triggerRect,
-        menuWidth: menuWidth,
-        maxHeight: maxHeight,
-        expandUp: expandUp,
-        screenPadding: screenPadding,
-        safe: safe,
-        keyboard: keyboard,
-        gap: _gap,
-      ),
-      child: Actor(
-        acts: [
-          const Act.fadeIn(),
-          Act.scale(from: 0.96, alignment: expandUp ? Alignment.bottomCenter : Alignment.topCenter),
-          Act.slideY(from: expandUp ? 0.06 : -0.06),
-        ],
-        child: panel,
-      ),
-    );
   }
 
-  Widget _flatEntry(BuildContext context, PregoMenuEntry entry, VoidCallback close) {
+  Widget _flatEntry(BuildContext context, {required PregoMenuEntry entry, required VoidCallback close}) {
     final prego = context.prego;
     switch (entry) {
       case PregoMenuLabel(:final text):
@@ -409,74 +333,3 @@ TextStyle _subtitleStyle(PregoDesignSystem prego) =>
 
 Widget _selectedCheck(PregoDesignSystem prego) =>
     Icon(Icons.check, size: 16, color: prego.colors.bgBrandSolid);
-
-/// Positions the flat menu within the screen: fixed [menuWidth], capped to
-/// [maxHeight], anchored above or below [triggerRect] per [expandUp], and
-/// clamped so it never crosses the screen-edge padding (incl. notches and the
-/// keyboard). The flat-path equivalent of `GlassMenu.autoAdjustToScreen`.
-class _AnchoredMenuLayoutDelegate extends SingleChildLayoutDelegate {
-  _AnchoredMenuLayoutDelegate({
-    required this.triggerRect,
-    required this.menuWidth,
-    required this.maxHeight,
-    required this.expandUp,
-    required this.screenPadding,
-    required this.safe,
-    required this.keyboard,
-    required this.gap,
-  });
-
-  final Rect triggerRect;
-  final double menuWidth;
-  final double maxHeight;
-  final bool expandUp;
-  final EdgeInsets screenPadding;
-  final EdgeInsets safe;
-  final double keyboard;
-  final double gap;
-
-  @override
-  BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
-    // Cap to the padded safe area, not the full route width: getPositionForChild
-    // can only reposition the child, not shrink it, so a menuWidth wider than the
-    // viewport (e.g. a 320px menu on a 320dp screen) would otherwise overflow the
-    // edge/safe-area despite the dx clamp.
-    final availableWidth =
-        constraints.maxWidth - screenPadding.left - screenPadding.right - safe.left - safe.right;
-    final width = math.min(menuWidth, math.max(0.0, availableWidth));
-    return BoxConstraints(
-      minWidth: width,
-      maxWidth: width,
-      maxHeight: math.max(0.0, math.min(maxHeight, constraints.maxHeight)),
-    );
-  }
-
-  @override
-  Offset getPositionForChild(Size size, Size childSize) {
-    final leftBound = screenPadding.left + safe.left;
-    final rightBound = size.width - screenPadding.right - safe.right - childSize.width;
-    final dx = (triggerRect.center.dx - childSize.width / 2)
-        .clamp(leftBound, math.max(leftBound, rightBound))
-        .toDouble();
-
-    final topBound = screenPadding.top + safe.top;
-    final bottomBound =
-        size.height - keyboard - screenPadding.bottom - safe.bottom - childSize.height;
-    final preferredDy =
-        expandUp ? triggerRect.top - gap - childSize.height : triggerRect.bottom + gap;
-    final dy = preferredDy.clamp(topBound, math.max(topBound, bottomBound)).toDouble();
-
-    return Offset(dx, dy);
-  }
-
-  @override
-  bool shouldRelayout(_AnchoredMenuLayoutDelegate oldDelegate) {
-    return triggerRect != oldDelegate.triggerRect ||
-        menuWidth != oldDelegate.menuWidth ||
-        maxHeight != oldDelegate.maxHeight ||
-        expandUp != oldDelegate.expandUp ||
-        keyboard != oldDelegate.keyboard ||
-        screenPadding != oldDelegate.screenPadding ||
-        safe != oldDelegate.safe;
-  }
-}

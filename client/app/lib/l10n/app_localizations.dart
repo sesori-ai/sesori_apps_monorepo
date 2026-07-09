@@ -133,6 +133,18 @@ abstract class AppLocalizations {
   /// **'Projects'**
   String get projectListTitle;
 
+  /// App-bar title shown in place of 'Projects' while the connect-your-computer onboarding is visible (no bridge has ever been registered and none is connected).
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get projectListConnectTitle;
+
+  /// No description provided for @projectListLoadingSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading projects'**
+  String get projectListLoadingSemantics;
+
   /// No description provided for @projectListEmpty.
   ///
   /// In en, this message translates to:
@@ -205,6 +217,12 @@ abstract class AppLocalizations {
   /// **'Run Sesori on your PC'**
   String get projectsOnboardingPcStatusRun;
 
+  /// Label for the button below the PC status line that opens the bridge explainer bottom sheet; also used as that sheet's title.
+  ///
+  /// In en, this message translates to:
+  /// **'Why is this needed?'**
+  String get projectsOnboardingPcStatusWhy;
+
   /// Label for the glass pill button below the PC status line that opens a menu of support channels.
   ///
   /// In en, this message translates to:
@@ -229,7 +247,7 @@ abstract class AppLocalizations {
   /// **'DM on X'**
   String get projectsOnboardingNeedHelpX;
 
-  /// Group label above the macOS/Linux/WSL install command box in the onboarding.
+  /// Segmented-control label that selects the macOS/Linux/WSL install commands, shown both in the onboarding and in the bridge-offline install-commands disclosure.
   ///
   /// In en, this message translates to:
   /// **'macOS, Linux, WSL'**
@@ -241,7 +259,7 @@ abstract class AppLocalizations {
   /// **'curl'**
   String get projectsOnboardingInstallUnixMethod;
 
-  /// Group label above the Windows PowerShell install command box in the onboarding.
+  /// Segmented-control label that selects the Windows PowerShell install commands, shown both in the onboarding and in the bridge-offline install-commands disclosure.
   ///
   /// In en, this message translates to:
   /// **'Windows PowerShell'**
@@ -283,6 +301,48 @@ abstract class AppLocalizations {
   /// **'Share command'**
   String get projectsOnboardingShareCommand;
 
+  /// Caption shown beneath the connection graphic on the disconnected onboarding while the app waits for the bridge to come online.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the bridge...'**
+  String get projectsOnboardingWaitingForBridge;
+
+  /// Heading above the numbered install/start command steps on the disconnected onboarding, introducing the commands to run on the user's computer.
+  ///
+  /// In en, this message translates to:
+  /// **'Next, run on your computer:'**
+  String get projectsOnboardingRunOnComputer;
+
+  /// Title of the first numbered onboarding step, rendered as '1. Install the bridge' above the install-command box.
+  ///
+  /// In en, this message translates to:
+  /// **'Install the bridge'**
+  String get projectsOnboardingInstallStepTitle;
+
+  /// Popover text explaining what the 'Install the bridge' step does, opened from the info icon next to that step.
+  ///
+  /// In en, this message translates to:
+  /// **'This adds the Sesori bridge command to your machine.'**
+  String get projectsOnboardingInstallStepInfo;
+
+  /// Title of the second numbered onboarding step, rendered as '2. Start the bridge' above the start-command box.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the bridge'**
+  String get projectsOnboardingStartStepTitle;
+
+  /// Popover text explaining the 'Start the bridge' step, opened from the info icon next to that step.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave it running while you use Sesori from your phone.'**
+  String get projectsOnboardingStartStepInfo;
+
+  /// Accessibility label for the info icon button next to an onboarding step title, which opens a popover explaining that step.
+  ///
+  /// In en, this message translates to:
+  /// **'More information'**
+  String get projectsOnboardingStepInfoSemantics;
+
   /// No description provided for @projectsBridgeOfflineTitle.
   ///
   /// In en, this message translates to:
@@ -301,6 +361,12 @@ abstract class AppLocalizations {
   /// **'Install commands'**
   String get projectsBridgeOfflineInstallCommands;
 
+  /// Label above the command box on the bridge-offline Projects screen that shows the command to start an already-installed bridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Run the bridge'**
+  String get projectsBridgeOfflineRunBridge;
+
   /// No description provided for @connectionLostTitle.
   ///
   /// In en, this message translates to:
@@ -312,24 +378,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reconnect'**
   String get connectionLostReconnect;
-
-  /// No description provided for @connectionLostDisconnect.
-  ///
-  /// In en, this message translates to:
-  /// **'Disconnect'**
-  String get connectionLostDisconnect;
-
-  /// No description provided for @relayConnectionLost.
-  ///
-  /// In en, this message translates to:
-  /// **'Bridge went offline'**
-  String get relayConnectionLost;
-
-  /// No description provided for @relayReconnecting.
-  ///
-  /// In en, this message translates to:
-  /// **'Reconnecting to bridge...'**
-  String get relayReconnecting;
 
   /// No description provided for @bridgeDisconnectedTitle.
   ///
@@ -414,6 +462,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{name} — Sessions'**
   String sessionListTitleWithName(String name);
+
+  /// No description provided for @sessionListLoadingSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading sessions'**
+  String get sessionListLoadingSemantics;
 
   /// No description provided for @sessionListEmpty.
   ///
@@ -1171,6 +1225,18 @@ abstract class AppLocalizations {
   /// **'Hide Project'**
   String get hideProject;
 
+  /// No description provided for @projectFolderMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder not found'**
+  String get projectFolderMissing;
+
+  /// No description provided for @projectFolderMissingMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This project\'s folder no longer exists — it may have been moved or deleted. Hide the project, or restore the folder to its original location.'**
+  String get projectFolderMissingMessage;
+
   /// No description provided for @noProjects.
   ///
   /// In en, this message translates to:
@@ -1710,6 +1776,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Choose a session from the list to view details'**
   String get emptySessionDetailSubtitle;
+
+  /// Headline line of the onboarding 'Why is this needed?' sheet, explaining that the AI model runs on the developer's own machine.
+  ///
+  /// In en, this message translates to:
+  /// **'Your LLM of choice runs on your computer.'**
+  String get projectsOnboardingWhyLede;
+
+  /// Supporting line under the 'Why is this needed?' headline, explaining the Bridge's role.
+  ///
+  /// In en, this message translates to:
+  /// **'The Bridge securely connects it to Sesori on your phone.'**
+  String get projectsOnboardingWhyBody;
+
+  /// Title of the 'secure access' reassurance row in the 'Why is this needed?' sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Secure access'**
+  String get projectsOnboardingWhySecureTitle;
+
+  /// Subtitle of the 'secure access' reassurance row.
+  ///
+  /// In en, this message translates to:
+  /// **'Your sessions are end-to-end encrypted.'**
+  String get projectsOnboardingWhySecureSubtitle;
+
+  /// Title of the 'connect from anywhere' reassurance row in the 'Why is this needed?' sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect from anywhere'**
+  String get projectsOnboardingWhyAnywhereTitle;
+
+  /// Subtitle of the 'connect from anywhere' reassurance row.
+  ///
+  /// In en, this message translates to:
+  /// **'No shared Wi-Fi required.'**
+  String get projectsOnboardingWhyAnywhereSubtitle;
+
+  /// Title of the 'get notified' reassurance row in the 'Why is this needed?' sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Get notified'**
+  String get projectsOnboardingWhyNotifiedTitle;
+
+  /// Subtitle of the 'get notified' reassurance row.
+  ///
+  /// In en, this message translates to:
+  /// **'Know when a task needs you.'**
+  String get projectsOnboardingWhyNotifiedSubtitle;
+
+  /// Section header above the FAQ list in the 'Why is this needed?' sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'FAQs'**
+  String get projectsOnboardingWhyFaqHeader;
+
+  /// FAQ question about why the phone cannot reach the computer without the Bridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Why can\'t the app connect directly?'**
+  String get projectsOnboardingWhyFaqDirectQuestion;
+
+  /// DRAFT copy pending final wording. Answer to the 'connect directly' FAQ question.
+  ///
+  /// In en, this message translates to:
+  /// **'Your AI assistant runs on your computer, not our servers. The Bridge is the secure link that lets your phone reach it from anywhere.'**
+  String get projectsOnboardingWhyFaqDirectAnswer;
+
+  /// FAQ question about whether the developer's computer must stay powered on.
+  ///
+  /// In en, this message translates to:
+  /// **'Does my PC stay on?'**
+  String get projectsOnboardingWhyFaqPcOnQuestion;
+
+  /// DRAFT copy pending final wording. Answer to the 'does my PC stay on' FAQ question.
+  ///
+  /// In en, this message translates to:
+  /// **'Your computer needs to be on and running Sesori for live sessions. You can start or stop it whenever you like.'**
+  String get projectsOnboardingWhyFaqPcOnAnswer;
+
+  /// FAQ question about whether Sesori can read the developer's session data.
+  ///
+  /// In en, this message translates to:
+  /// **'Can Sesori read my sessions?'**
+  String get projectsOnboardingWhyFaqReadQuestion;
+
+  /// DRAFT copy pending final wording. Answer to the 'can Sesori read my sessions' FAQ question.
+  ///
+  /// In en, this message translates to:
+  /// **'No. Everything between your phone and computer is end-to-end encrypted — the relay only passes along sealed data it can\'t read.'**
+  String get projectsOnboardingWhyFaqReadAnswer;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

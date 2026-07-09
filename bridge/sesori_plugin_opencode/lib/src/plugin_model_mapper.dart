@@ -1,5 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "assistant_message_mapper.dart";
 import "message_part_mapper.dart";
 import "models/openapi/agent.g.dart";
 import "models/openapi/assistant_message.g.dart";
@@ -17,11 +18,14 @@ class PluginModelMapper {
   const PluginModelMapper({
     required MessagePartMapper messagePartMapper,
     QuestionInfoMapper questionInfoMapper = const QuestionInfoMapper(),
+    AssistantMessageMapper assistantMessageMapper = const AssistantMessageMapper(),
   }) : _messagePartMapper = messagePartMapper,
-       _questionInfoMapper = questionInfoMapper;
+       _questionInfoMapper = questionInfoMapper,
+       _assistantMessageMapper = assistantMessageMapper;
 
   final MessagePartMapper _messagePartMapper;
   final QuestionInfoMapper _questionInfoMapper;
+  final AssistantMessageMapper _assistantMessageMapper;
 
   PluginSession mapSession(Session session, {required String projectID}) {
     final summary = session.summary;
@@ -127,16 +131,7 @@ class PluginModelMapper {
         agent: agent,
         time: _mapUserMessageTime(time),
       ),
-      AssistantMessage(:final id, :final sessionID, :final agent, :final modelID, :final providerID, :final error, :final time) =>
-        _mapAssistantMessage(
-          id: id,
-          sessionID: sessionID,
-          agent: agent,
-          modelID: modelID,
-          providerID: providerID,
-          error: error,
-          time: time,
-        ),
+      AssistantMessage() => _assistantMessageMapper.map(info),
       MessageUnknown(:final raw) => throw FormatException("Unknown message role: $raw"),
       _ => throw FormatException("Unknown message role: $info"),
     };
@@ -146,47 +141,8 @@ class PluginModelMapper {
     );
   }
 
-  PluginMessage _mapAssistantMessage({
-    required String id,
-    required String sessionID,
-    required String agent,
-    required String modelID,
-    required String providerID,
-    required Object? error,
-    required AssistantMessageTime time,
-  }) {
-    final pluginTime = _mapAssistantMessageTime(time);
-    final errorMap = error is Map<String, dynamic> ? error : null;
-    if (errorMap == null) {
-      return PluginMessage.assistant(
-        id: id,
-        sessionID: sessionID,
-        agent: agent,
-        modelID: modelID,
-        providerID: providerID,
-        time: pluginTime,
-      );
-    }
-    final data = errorMap["data"];
-    final dataMap = data is Map<String, dynamic> ? data : const <String, dynamic>{};
-    return PluginMessage.error(
-      id: id,
-      sessionID: sessionID,
-      agent: agent,
-      modelID: modelID,
-      providerID: providerID,
-      errorName: errorMap["name"]?.toString() ?? "UnknownError",
-      errorMessage: dataMap["message"]?.toString() ?? "Unknown error",
-      time: pluginTime,
-    );
-  }
-
   PluginMessageTime _mapUserMessageTime(UserMessageTime time) {
     return PluginMessageTime(created: time.created.toInt(), completed: null);
-  }
-
-  PluginMessageTime _mapAssistantMessageTime(AssistantMessageTime time) {
-    return PluginMessageTime(created: time.created, completed: time.completed);
   }
 
   String? _effectiveProjectName(Project project) {

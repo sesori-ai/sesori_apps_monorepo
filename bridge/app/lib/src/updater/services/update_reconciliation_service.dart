@@ -2,10 +2,11 @@ import 'dart:io';
 
 import 'package:meta/meta.dart';
 import 'package:path/path.dart' as p;
-import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Console, Log;
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 
+import '../formatters/update_message_formatter.dart';
+import '../formatters/update_output_formatter.dart';
 import '../foundation/update_lock.dart';
-import '../foundation/update_message_formatter.dart';
 import '../models/update_attempt.dart';
 import '../repositories/update_attempt_repository.dart';
 import '../repositories/update_installation_repository.dart';
@@ -41,11 +42,11 @@ class UpdateReconciliationService {
   final String _currentVersion;
   final String _installRoot;
 
+  /// Sink for a fully-rendered output line. Defaults to writing to the process
+  /// streams directly (stdout for status, stderr for failures) — never gated by
+  /// `--log-level`, matching the branded `sesori-bridge update` path.
   @visibleForTesting
-  void Function(String message) emitMessage = Console.message;
-
-  @visibleForTesting
-  void Function(String message) emitError = Console.error;
+  void Function(RenderedLine line) emitLine = writeRenderedLine;
 
   @visibleForTesting
   void Function(String message) logWarning = Log.w;
@@ -127,12 +128,12 @@ class UpdateReconciliationService {
         await _recoverInterrupted(attempt: attempt);
       case UpdateAttemptStatus.failed:
         // Surface the prior failure even if the process died before the in-run
-        // `Console.error` was emitted, so the recovery guidance is never lost.
+        // failure line was emitted, so the recovery guidance is never lost.
         await _logBestEffort(
           'Surfacing prior failed update attempt for ${attempt.toVersion}: '
           '${attempt.reason ?? 'unknown reason'}',
         );
-        emitError(
+        _emitLines(
           _messageFormatter.failureGuidance(
             toVersion: attempt.toVersion,
             reason: attempt.reason ?? 'a previous update failed',
@@ -161,12 +162,12 @@ class UpdateReconciliationService {
         logWarning('Failed to bump the managed runtime manifest on activation confirm: $error');
       }
       await _logBestEffort('Activation confirmed: now running ${attempt.toVersion}.');
-      emitMessage(_messageFormatter.activated(toVersion: attempt.toVersion));
+      _emitLines(_messageFormatter.activated(toVersion: attempt.toVersion));
       return;
     }
 
     await _logBestEffort('Activation mismatch: expected ${attempt.toVersion} but running $_currentVersion.');
-    emitError(
+    _emitLines(
       _messageFormatter.failureGuidance(
         toVersion: attempt.toVersion,
         reason: 'the updated binary did not take effect (still running $_currentVersion)',
@@ -183,7 +184,7 @@ class UpdateReconciliationService {
     await _logBestEffort(
       'Apply of ${attempt.toVersion} was interrupted mid-swap; running $_currentVersion.',
     );
-    emitError(
+    _emitLines(
       _messageFormatter.failureGuidance(
         toVersion: attempt.toVersion,
         reason: 'a previous update was interrupted and may be incomplete',
@@ -201,4 +202,6 @@ class UpdateReconciliationService {
       logWarning('Failed to write the update log: $error');
     }
   }
+
+  void _emitLines(List<RenderedLine> lines) => lines.forEach(emitLine);
 }

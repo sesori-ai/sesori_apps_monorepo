@@ -3,7 +3,7 @@ publish_to: none
 
 environment:
   sdk: ^3.12.2
-  flutter: ">=3.44.4 <3.45.0"
+  flutter: ">=3.44.5 <3.45.0"
 
 workspace:
   - app

@@ -221,7 +221,7 @@ class _FakeDerivedQuestionPlugin implements BridgeDerivedProjectsPluginApi {
   String get id => "codex";
 
   @override
-  Future<List<PluginSession>> listAllSessions() async => allSessions;
+  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async => allSessions;
 
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async {

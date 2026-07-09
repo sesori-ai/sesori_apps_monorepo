@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:flutter/material.dart";
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
 import "package:mocktail/mocktail.dart";
@@ -191,20 +192,23 @@ class AdaptiveSessionRouterTestHarness {
   }
 
   Widget buildApp() {
-    return MaterialApp.router(
-      routerConfig: router,
-      theme: ThemeData(
-        colorScheme: PregoColors.light.toFlutterColorScheme(),
-        textTheme: PregoTextTheme.light.asFlutterTextTheme(),
-        extensions: [PregoDesignSystem.light],
+    return BlocProvider<ConnectionOverlayCubit>(
+      create: (_) => StubConnectionOverlayCubit(),
+      child: MaterialApp.router(
+        routerConfig: router,
+        theme: ThemeData(
+          colorScheme: PregoColors.light.toFlutterColorScheme(),
+          textTheme: PregoTextTheme.light.asFlutterTextTheme(),
+          extensions: [PregoDesignSystem.light],
+        ),
+        darkTheme: ThemeData(
+          colorScheme: PregoColors.dark.toFlutterColorScheme(),
+          textTheme: PregoTextTheme.dark.asFlutterTextTheme(),
+          extensions: [PregoDesignSystem.dark],
+        ),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
       ),
-      darkTheme: ThemeData(
-        colorScheme: PregoColors.dark.toFlutterColorScheme(),
-        textTheme: PregoTextTheme.dark.asFlutterTextTheme(),
-        extensions: [PregoDesignSystem.dark],
-      ),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
     );
   }
 

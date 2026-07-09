@@ -5,6 +5,7 @@ import "package:http/io_client.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../opencode_plugin.dart";
+import "assistant_message_mapper.dart";
 import "sse/sse_connection.dart";
 import "sse_event_mapper.dart";
 
@@ -31,8 +32,15 @@ class OpenCodePlugin implements OpenCodeManagedApi {
   final SseEventParser _parser;
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
   final io.HttpClient _httpClient;
-  final SseEventMapper _mapper = SseEventMapper();
-  final PluginModelMapper _pluginModelMapper = const PluginModelMapper(messagePartMapper: MessagePartMapper());
+  // One shared error-normalization mapper drives both the live SSE path
+  // ([_mapper]) and the REST load path ([_pluginModelMapper]) so an errored
+  // assistant message is collapsed to a `MessageError` identically on both.
+  static const AssistantMessageMapper _assistantMessageMapper = AssistantMessageMapper();
+  final SseEventMapper _mapper = SseEventMapper(assistantMessageMapper: _assistantMessageMapper);
+  final PluginModelMapper _pluginModelMapper = const PluginModelMapper(
+    messagePartMapper: MessagePartMapper(),
+    assistantMessageMapper: _assistantMessageMapper,
+  );
   late final SseConnection _sseConnection;
   late final StreamSubscription<void> _summarySubscription;
   Future<void>? _initializeFuture;

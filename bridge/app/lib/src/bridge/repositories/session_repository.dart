@@ -67,10 +67,13 @@ class SessionRepository {
         return plugin.getSessions(projectId, start: start, limit: limit);
 
       case final BridgeDerivedProjectsPluginApi plugin:
-        final (allSessions, sessionProjectPaths) = await (
-          plugin.listAllSessions(),
-          _sessionDao.getSessionProjectPaths(pluginId: plugin.id),
-        ).wait;
+        final sessionProjectPaths = await _sessionDao.getSessionProjectPaths(pluginId: plugin.id);
+        final allSessions = await plugin.listAllSessions(
+          knownDirectories: _knownDirectories(
+            sessionProjectPaths: sessionProjectPaths,
+            projectId: projectId,
+          ),
+        );
         final scoped = _derivedSessionBuilder.build(
           projectId: projectId,
           sessions: allSessions,
@@ -84,6 +87,22 @@ class SessionRepository {
         final until = limit == null ? scoped.length : (from + limit).clamp(0, scoped.length);
         return scoped.sublist(from, until);
     }
+  }
+
+  /// The enumeration hints for a derive-style plugin: every stored project
+  /// path and dedicated-worktree path the bridge attributes to it, plus the
+  /// [projectId] being served (which may not have a stored session yet).
+  static Set<String> _knownDirectories({
+    required List<({String sessionId, String projectPath, String? worktreePath})> sessionProjectPaths,
+    required String? projectId,
+  }) {
+    return {
+      ?projectId,
+      for (final row in sessionProjectPaths) ...[
+        row.projectPath,
+        ?row.worktreePath,
+      ],
+    };
   }
 
   /// Whether an unpaginated [getSessionsForProject] result is the complete
@@ -217,8 +236,21 @@ class SessionRepository {
         // No stored row means the bridge did not create this session (every
         // bridge-created session — worktree ones included — is persisted with
         // its owning project and was handled above), so its own cwd IS its
-        // project: resolve via the session enumeration.
-        for (final session in await plugin.listAllSessions()) {
+        // project: resolve via the session enumeration. The hint set includes
+        // every stored project row (not just the owning projects of this
+        // plugin's sessions) so a rowless session in an opened-but-sessionless
+        // folder is still discoverable by a directory-scoped backend.
+        final (sessionProjectPaths, storedProjects) = await (
+          _sessionDao.getSessionProjectPaths(pluginId: plugin.id),
+          _sessionDao.attachedDatabase.projectsDao.getAllProjects(),
+        ).wait;
+        final sessions = await plugin.listAllSessions(
+          knownDirectories: {
+            ..._knownDirectories(sessionProjectPaths: sessionProjectPaths, projectId: null),
+            for (final stored in storedProjects) stored.path,
+          },
+        );
+        for (final session in sessions) {
           if (session.id == sessionId) {
             return normalizeProjectDirectory(directory: session.directory);
           }

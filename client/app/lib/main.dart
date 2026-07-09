@@ -8,6 +8,7 @@ import "package:firebase_messaging/firebase_messaging.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
@@ -17,7 +18,6 @@ import "core/di/injection.dart";
 import "core/extensions/build_context_x.dart";
 import "core/routing/app_router.dart";
 import "core/routing/deep_link_service.dart";
-import "core/widgets/connection_overlay.dart";
 import "firebase_options.dart";
 import "l10n/app_localizations.dart";
 
@@ -238,8 +238,15 @@ class SesoriApp extends StatelessWidget {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: appRouter,
-      builder: (context, child) => ConnectionOverlay(
-        router: appRouter,
+      builder: (context, child) => BlocProvider(
+        // Provides the connection cubit app-wide (above the router) so every
+        // screen's `ConnectionBanner.maybeFor` can watch it. There is no visual
+        // overlay any more — the bridge-offline and connection-lost states
+        // surface as an inline banner in each screen's top navigation.
+        create: (_) => ConnectionOverlayCubit(
+          getIt<ConnectionService>(),
+          getIt<RegisteredBridgesService>(),
+        ),
         child: child ?? const SizedBox.shrink(),
       ),
     );

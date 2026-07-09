@@ -23,6 +23,7 @@ _Project _$ProjectFromJson(Map json) => _Project(
       ? null
       : ProjectTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
   hasUnseenChanges: json['hasUnseenChanges'] as bool? ?? false,
+  directoryMissing: json['directoryMissing'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$ProjectToJson(_Project instance) => <String, dynamic>{
@@ -30,6 +31,7 @@ Map<String, dynamic> _$ProjectToJson(_Project instance) => <String, dynamic>{
   'name': ?instance.name,
   'time': ?instance.time?.toJson(),
   'hasUnseenChanges': instance.hasUnseenChanges,
+  'directoryMissing': instance.directoryMissing,
 };
 
 _ProjectTime _$ProjectTimeFromJson(Map json) => _ProjectTime(

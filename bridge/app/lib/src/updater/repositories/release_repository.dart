@@ -14,7 +14,7 @@ import '../models/update_resolution.dart';
 class ReleaseRepository {
   final GitHubReleasesApi _api;
   final UpdateCacheApi _cache;
-  final SemanticVersion _currentVersion;
+  SemanticVersion _currentVersion;
   final DistributionTarget _target;
   final ReleaseTrack _track;
 
@@ -29,6 +29,27 @@ class ReleaseRepository {
        _currentVersion = SemanticVersion.parse(value: currentVersion),
        _target = target,
        _track = track;
+
+  /// Advances the "is newer" comparison baseline to [version] after the
+  /// background updater applies an in-place swap.
+  ///
+  /// The running process keeps reporting its launch-time app version even after
+  /// a swap lands (the new binary only takes effect on the next launch), so
+  /// [checkForNewerRelease] would otherwise re-detect and re-apply the same
+  /// staged release every cycle. Advancing the baseline lets the updater chain
+  /// further releases published during this session while never re-applying one
+  /// it already staged. Only advances on a strictly-newer, parseable version, so
+  /// an unexpected value can never regress the baseline.
+  void advanceBaselineTo({required String version}) {
+    final SemanticVersion? applied = SemanticVersion.tryParse(value: version);
+    if (applied == null) {
+      Log.w('Ignoring update baseline advance — unparseable version "$version"');
+      return;
+    }
+    if (applied.compareTo(_currentVersion) > 0) {
+      _currentVersion = applied;
+    }
+  }
 
   /// Whether [version] is eligible for the active [ReleaseTrack]:
   /// - stable: only stable releases.

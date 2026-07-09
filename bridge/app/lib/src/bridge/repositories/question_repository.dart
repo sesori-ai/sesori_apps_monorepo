@@ -50,11 +50,19 @@ class QuestionRepository {
         return pluginQuestions.map((q) => q.toSharedPendingQuestion()).toList();
 
       case final BridgeDerivedProjectsPluginApi plugin:
-        final (allSessions, sessionProjectPaths, ownScopedQuestions) = await (
-          plugin.listAllSessions(),
+        final (sessionProjectPaths, ownScopedQuestions) = await (
           _sessionDao.getSessionProjectPaths(pluginId: plugin.id),
           plugin.getProjectQuestions(projectId: projectId),
         ).wait;
+        final allSessions = await plugin.listAllSessions(
+          knownDirectories: {
+            projectId,
+            for (final row in sessionProjectPaths) ...[
+              row.projectPath,
+              ?row.worktreePath,
+            ],
+          },
+        );
         // Id-level scoping: includes stored-row attributions missing from the
         // plugin enumeration, so a question raised in a fresh worktree session
         // (attributed to this project by its row, but not yet in the backend's

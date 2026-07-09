@@ -909,6 +909,47 @@ void main() {
         expect(cache.writtenReleases.first.latestVersion, equals('0.4.0'));
       });
     });
+
+    // -----------------------------------------------------------------------
+    group('advanceBaselineTo', () {
+      test('a just-applied version is no longer "newer" but a strictly-newer one still is', () async {
+        final repository = _makeRepository(
+          httpClient: _mockOk(body: [_releaseJson(version: '0.3.0')]),
+          currentVersion: '0.2.0',
+        );
+
+        // Before advancing, 0.3.0 is newer than the running 0.2.0.
+        final before = await repository.checkForNewerRelease();
+        expect(before?.version, equals('0.3.0'));
+
+        // After the background updater stages 0.3.0, it is no longer newer.
+        repository.advanceBaselineTo(version: '0.3.0');
+        expect(await repository.checkForNewerRelease(), isNull);
+
+        // A strictly-newer release published in-session is still picked up.
+        final chained = _makeRepository(
+          httpClient: _mockOk(body: [_releaseJson(version: '0.4.0')]),
+          currentVersion: '0.2.0',
+        )..advanceBaselineTo(version: '0.3.0');
+        final result = await chained.checkForNewerRelease();
+        expect(result?.version, equals('0.4.0'));
+      });
+
+      test('never regresses the baseline on an older or unparseable version', () async {
+        final repository = _makeRepository(
+          httpClient: _mockOk(body: [_releaseJson(version: '0.3.0')]),
+          currentVersion: '0.4.0',
+        );
+
+        // Running 0.4.0 already outranks 0.3.0 — nothing to update.
+        expect(await repository.checkForNewerRelease(), isNull);
+
+        // An older or garbage value must not lower the baseline and re-open 0.3.0.
+        repository.advanceBaselineTo(version: '0.1.0');
+        repository.advanceBaselineTo(version: 'not-a-version');
+        expect(await repository.checkForNewerRelease(), isNull);
+      });
+    });
   });
 
   // -------------------------------------------------------------------------

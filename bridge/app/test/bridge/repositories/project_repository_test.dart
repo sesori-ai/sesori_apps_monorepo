@@ -4,6 +4,7 @@ import "package:sesori_bridge/src/bridge/repositories/session_unseen_calculator.
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+import "../../helpers/fake_filesystem_api.dart";
 import "../../helpers/test_database.dart";
 
 void main() {
@@ -20,6 +21,7 @@ void main() {
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
       );
     });
 
@@ -124,6 +126,55 @@ void main() {
       final stored = await db.projectsDao.getBaseBranch(projectId: "p-set");
       expect(stored, equals("main"));
     });
+
+    test("getProjects flags a project whose directory no longer exists on disk", () async {
+      plugin.projectsResult = const [
+        PluginProject(id: "/present", name: "Present", time: PluginProjectTime(created: 0, updated: 2)),
+        PluginProject(id: "/moved", name: "Moved", time: PluginProjectTime(created: 0, updated: 1)),
+      ];
+      final repoWithMissing = ProjectRepository(
+        plugin: plugin,
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(missingPaths: {"/moved"}),
+      );
+
+      final result = await repoWithMissing.getProjects();
+
+      expect(result.firstWhere((p) => p.id == "/present").directoryMissing, isFalse);
+      expect(result.firstWhere((p) => p.id == "/moved").directoryMissing, isTrue);
+    });
+
+    test("getProject flags a since-deleted directory as missing", () async {
+      plugin.projectResult = const PluginProject(id: "/gone", name: "Gone");
+      final repoWithMissing = ProjectRepository(
+        plugin: plugin,
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(missingPaths: {"/gone"}),
+      );
+
+      final result = await repoWithMissing.getProject(projectId: "/gone");
+
+      expect(result.directoryMissing, isTrue);
+    });
+
+    test("a directory whose existence probe throws is treated as present, not missing", () async {
+      plugin.projectsResult = const [PluginProject(id: "/denied", name: "Denied")];
+      final repoWithThrow = ProjectRepository(
+        plugin: plugin,
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(throwingPaths: {"/denied"}),
+      );
+
+      final result = await repoWithThrow.getProjects();
+
+      expect(result.single.directoryMissing, isFalse);
+    });
   });
 
   group("ProjectRepository (bridge-derived)", () {
@@ -139,6 +190,7 @@ void main() {
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(),
       );
     });
 
@@ -178,6 +230,10 @@ void main() {
       expect((await repo.getProjects()).map((p) => p.id), contains("/tmp/proj/empty"));
       final row = (await db.select(db.projectsTable).get()).firstWhere((r) => r.projectId == "/tmp/proj/empty");
       expect(row.openedAt, isNotNull);
+      // The stored rows are also the enumeration hints: a directory-scoped
+      // backend (ACP) is pointed at every recorded folder, so opening one makes
+      // its pre-existing sessions discoverable on the next enumeration.
+      expect(plugin.receivedKnownDirectories, containsAll(<String>["/tmp/proj/empty", plugin.launchDir]));
     });
 
     test("renameProject persists a display-name override applied on the next listing", () async {
@@ -243,6 +299,25 @@ void main() {
       expect(result.map((p) => p.id).toSet(), {parent});
       // The worktree session's later timestamp folded into the parent.
       expect(result.single.time?.updated, 200);
+    });
+
+    test("getProjects flags a derived project whose directory no longer exists on disk", () async {
+      plugin.sessions = [
+        _session("/tmp/proj/alpha", id: "a1", created: 1, updated: 2),
+        _session("/tmp/proj/beta", id: "b1", created: 1, updated: 1),
+      ];
+      final repoWithMissing = ProjectRepository(
+        plugin: plugin,
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: FakeFilesystemApi(missingPaths: {"/tmp/proj/beta"}),
+      );
+
+      final result = await repoWithMissing.getProjects();
+
+      expect(result.firstWhere((p) => p.id == "/tmp/proj/alpha").directoryMissing, isFalse);
+      expect(result.firstWhere((p) => p.id == "/tmp/proj/beta").directoryMissing, isTrue);
     });
   });
 }
@@ -411,11 +486,17 @@ class _FakeDerivedPlugin implements BridgeDerivedProjectsPluginApi {
   /// doesn't introduce an extra project the assertions don't expect.
   String launchDir = "/tmp/proj/alpha";
 
+  /// The hint set received on the most recent [listAllSessions] call.
+  Set<String>? receivedKnownDirectories;
+
   @override
   String get id => "codex";
 
   @override
-  Future<List<PluginSession>> listAllSessions() async => sessions;
+  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
+    receivedKnownDirectories = knownDirectories;
+    return sessions;
+  }
 
   @override
   String get launchDirectory => launchDir;

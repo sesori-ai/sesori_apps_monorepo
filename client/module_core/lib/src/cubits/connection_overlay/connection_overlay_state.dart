@@ -2,7 +2,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 
 part "connection_overlay_state.freezed.dart";
 
-/// What the app-wide `ConnectionOverlay` should display, derived from the
+/// What the app-wide connection banner should display, derived from the
 /// connection status and whether the account has a registered bridge.
 ///
 /// The bridge-offline distinction is the reason this is a view-state rather than

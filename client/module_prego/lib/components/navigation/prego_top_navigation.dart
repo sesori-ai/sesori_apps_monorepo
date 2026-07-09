@@ -94,9 +94,11 @@ class PregoTopNavigation extends StatelessWidget implements PreferredSizeWidget 
   /// [leading] nor [onBack] is supplied.
   final bool automaticallyImplyLeading;
 
-  /// [GlassAppBar]'s content height — matches the Figma design. Public so bodies
-  /// that own their own scroll behind the bar (see [PregoGlassScaffold] with
-  /// `reserveBarSpace: false`) can compute the top inset their content must clear.
+  /// [GlassAppBar]'s content height — matches the Figma design. Bodies that own
+  /// their own scroll behind the bar (see [PregoGlassScaffold] with
+  /// `reserveBarSpace: false`) should take their top inset from
+  /// [PregoTopBarInsetBuilder] — which adds the status bar and any inline
+  /// banner — rather than from this constant alone.
   static const double barHeight = 54;
 
   /// Scroll distance over which the large title collapses into the bar — the

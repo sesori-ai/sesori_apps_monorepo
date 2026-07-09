@@ -4,10 +4,11 @@ import 'dart:io' show HttpException, SocketException;
 import 'package:http/http.dart' show ClientException;
 import 'package:meta/meta.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Console, Log;
+import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Log;
 
+import '../formatters/update_message_formatter.dart';
+import '../formatters/update_output_formatter.dart';
 import '../foundation/github_rate_limit_exception.dart';
-import '../foundation/update_message_formatter.dart';
 import '../foundation/update_policy.dart';
 import '../models/release_info.dart';
 import '../models/update_apply_outcome.dart';
@@ -24,7 +25,8 @@ import 'update_install_service.dart';
 /// It never relaunches — the swapped binary takes effect on the next launch
 /// (or an explicit phone-triggered restart). Benign conditions (no newer
 /// release, offline, rate-limited, disabled) stay quiet; genuine failures are
-/// surfaced via `Console.error` and the durable update log.
+/// surfaced on stderr (branded, not gated by `--log-level`) and the durable
+/// update log.
 class UpdateService {
   UpdateService({
     required ReleaseRepository releaseRepository,
@@ -62,11 +64,11 @@ class UpdateService {
   StreamSubscription<void>? _subscription;
   bool _disposed = false;
 
+  /// Sink for a fully-rendered output line. Defaults to writing to the
+  /// process streams directly (stdout for status, stderr for failures) — never
+  /// gated by `--log-level`, matching the branded `sesori-bridge update` path.
   @visibleForTesting
-  void Function(String message) emitMessage = Console.message;
-
-  @visibleForTesting
-  void Function(String message) emitError = Console.error;
+  void Function(RenderedLine line) emitLine = writeRenderedLine;
 
   @visibleForTesting
   void Function(String message) logWarning = Log.w;
@@ -178,19 +180,15 @@ class UpdateService {
         stagingPath: stagingPath,
       );
       switch (outcome) {
-        case UpdateApplied(:final version):
-          emitMessage(_messageFormatter.installedPendingActivation(toVersion: version));
-          // The release is now staged for activation on the next launch. This
-          // process still reports the old appVersion, so left running it would
-          // keep "finding" and re-applying the same release every interval —
-          // stop the cycle until a restart.
-          _stopPolling();
+        case UpdateApplied(:final version, :final durablyRecorded):
+          _emitLines(_messageFormatter.installedPendingActivation(toVersion: version));
+          _handleApplied(version: version, durablyRecorded: durablyRecorded);
         case UpdateApplyLockBusy():
           // Another update is in progress — benign; apply logged a diagnostic.
           // The next cycle retries.
           break;
         case UpdateApplyFailed(:final reason, :final logPath):
-          emitError(
+          _emitLines(
             _messageFormatter.failureGuidance(
               toVersion: release.version,
               reason: reason,
@@ -204,6 +202,34 @@ class UpdateService {
         reason: error.toString(),
         logDetail: 'Applying update to ${release.version} failed: $error\n$stackTrace',
       );
+    }
+  }
+
+  /// Decides what to do after a successful in-place swap.
+  ///
+  /// The release is now staged for activation on the next launch, but this
+  /// process still reports its old appVersion. Chaining a further in-session
+  /// apply is only safe when BOTH hold:
+  ///
+  /// - the platform applier can chain applies in-session (POSIX can clear the
+  ///   displaced backup of the still-running binary; Windows cannot until a
+  ///   restart, so a second apply would collide with the locked backup); and
+  /// - this apply was durably recorded — both the `appliedPendingActivation`
+  ///   record and the managed-runtime manifest were written. If either write
+  ///   failed, chaining is unsafe: recovery may still be incomplete, or may
+  ///   depend on an activation record that a chained apply would overwrite,
+  ///   leaving the manifest stale (risking an npm reinstall/downgrade of the
+  ///   swapped runtime).
+  ///
+  /// When safe, advance the release baseline to what we just staged so the cycle
+  /// keeps running and only acts on a strictly-newer release — picking up
+  /// further updates published this session without ever re-applying this one.
+  /// Otherwise stop the cycle and let the next launch reconcile.
+  void _handleApplied({required String version, required bool durablyRecorded}) {
+    if (_updateApplyService.supportsInSessionChaining && durablyRecorded) {
+      _releaseRepository.advanceBaselineTo(version: version);
+    } else {
+      _stopPolling();
     }
   }
 
@@ -245,7 +271,7 @@ class UpdateService {
     } on Object catch (error, stackTrace) {
       logError('Failed to persist update failure log', error, stackTrace);
     }
-    emitError(
+    _emitLines(
       _messageFormatter.failureGuidance(
         toVersion: toVersion,
         reason: reason,
@@ -253,6 +279,8 @@ class UpdateService {
       ),
     );
   }
+
+  void _emitLines(List<RenderedLine> lines) => lines.forEach(emitLine);
 
   String _stageFailureReason(UpdateResult result) {
     switch (result) {

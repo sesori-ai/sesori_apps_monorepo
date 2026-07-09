@@ -74,6 +74,7 @@ const _$ControlRelayConnectionStateEnumMap = {
   ControlRelayConnectionState.connected: 'connected',
   ControlRelayConnectionState.connecting: 'connecting',
   ControlRelayConnectionState.disconnected: 'disconnected',
+  ControlRelayConnectionState.takenOver: 'taken_over',
   ControlRelayConnectionState.unknown: 'unknown',
 };
 

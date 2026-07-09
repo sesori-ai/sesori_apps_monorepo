@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:sesori_bridge/src/updater/formatters/update_command_formatter.dart';
+import 'package:sesori_bridge/src/updater/formatters/update_output_formatter.dart';
 import 'package:sesori_bridge/src/updater/foundation/release_track.dart';
 import 'package:sesori_bridge/src/updater/models/explicit_update_outcome.dart';
 import 'package:test/test.dart';
@@ -15,11 +16,16 @@ class _FakeStdout implements Stdout {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-UpdateCommandFormatter _formatter({bool color = false, bool unicode = false}) => UpdateCommandFormatter(
-  outStream: _FakeStdout(supportsAnsiEscapes: color),
-  errorStream: _FakeStdout(supportsAnsiEscapes: color),
-  environment: unicode ? const {'LANG': 'en_US.UTF-8'} : const {},
-);
+UpdateOutputFormatter _outputFormatter({required bool color, required bool unicode}) =>
+    UpdateOutputFormatter.forStream(
+      out: _FakeStdout(supportsAnsiEscapes: color),
+      environment: unicode ? const {'LANG': 'en_US.UTF-8'} : const <String, String>{},
+    );
+
+UpdateCommandFormatter _formatter({bool color = false, bool unicode = false}) {
+  final output = _outputFormatter(color: color, unicode: unicode);
+  return UpdateCommandFormatter(outFormatter: output, errFormatter: output);
+}
 
 void main() {
   group('UpdateCommandFormatter', () {
@@ -126,11 +132,11 @@ void main() {
     });
 
     test('NO_COLOR strips ANSI even on a capable terminal', () {
-      final formatter = UpdateCommandFormatter(
-        outStream: _FakeStdout(supportsAnsiEscapes: true),
-        errorStream: _FakeStdout(supportsAnsiEscapes: true),
+      final output = UpdateOutputFormatter.forStream(
+        out: _FakeStdout(supportsAnsiEscapes: true),
         environment: const {'NO_COLOR': '1', 'LANG': 'en_US.UTF-8'},
       );
+      final formatter = UpdateCommandFormatter(outFormatter: output, errFormatter: output);
 
       final lines = formatter.format(
         outcome: const ExplicitUpdateAlreadyLatest(version: '2.0.0', track: ReleaseTrack.stable),

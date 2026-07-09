@@ -6,7 +6,6 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../core/constants.dart";
 import "../../core/extensions/build_context_x.dart";
-import "../../core/widgets/app_modal_bottom_sheet.dart";
 
 /// Shows the Rename Session modal bottom sheet.
 ///
@@ -18,9 +17,9 @@ Future<void> showRenameSessionDialog({
   required Session session,
   required SessionListCubit cubit,
 }) {
-  return showAppModalBottomSheet<void>(
+  return showPregoBottomSheet<void>(
     context: context,
-    isScrollControlled: true,
+    title: context.loc.renameSessionTitle,
     builder: (_) => _RenameSessionDialog(session: session, cubit: cubit),
   );
 }
@@ -95,16 +94,11 @@ class _RenameSessionDialogState extends State<_RenameSessionDialog> {
     final loc = context.loc;
 
     return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 16),
+      padding: const EdgeInsetsDirectional.only(bottom: 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(loc.renameSessionTitle, style: context.prego.textTheme.textMd.bold),
-          ),
-          const SizedBox(height: 16),
           TextField(
             controller: _controller,
             autofocus: true,
