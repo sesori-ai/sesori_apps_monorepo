@@ -426,6 +426,49 @@ void main() {
         },
       );
 
+      // Regression: the bridge-offline view's Reconnect button and the page's
+      // pull-to-refresh both drive reconnectBridge, and neither blocks the
+      // other. Overlapping triggers must share one attempt: a second pass would
+      // fetch again behind the first and clear _reconnectBridgeInFlight while
+      // the first is still connecting, re-opening the duplicate-reload window
+      // that flag exists to close.
+      blocTest<ProjectListCubit, ProjectListState>(
+        "reconnectBridge: overlapping triggers coalesce into a single attempt",
+        build: () {
+          statusController.add(const ConnectionStatus.disconnected());
+          when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => false);
+          return buildCubit();
+        },
+        act: (cubit) async {
+          await Future<void>.delayed(Duration.zero); // initial -> bridgeDisconnected
+          when(
+            () => mockProjectService.listProjects(),
+          ).thenAnswer((_) async => ApiResponse.success(Projects(data: [testProject()])));
+          // Hold the connect open so the second trigger lands mid-attempt.
+          final connect = Completer<bool>();
+          when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) {
+            when(() => mockConnectionService.currentStatus).thenReturn(_connectedStatus);
+            return connect.future;
+          });
+
+          final fromButton = cubit.reconnectBridge();
+          final fromPullToRefresh = cubit.reconnectBridge();
+          connect.complete(true);
+          await Future.wait([fromButton, fromPullToRefresh]);
+        },
+        skip: 1, // initial ProjectListBridgeDisconnected
+        expect: () => [
+          // One terminal Loaded: the second trigger awaited the first's future
+          // rather than running a fetch of its own.
+          isA<ProjectListLoaded>().having((s) => s.projects.length, "projects after reconnect", 1),
+        ],
+        verify: (_) {
+          // The constructor's attempt plus one coalesced reconnect — not two.
+          verify(() => mockConnectionService.connectWithFreshAuthToken()).called(2);
+          verify(() => mockProjectService.listProjects()).called(1);
+        },
+      );
+
       blocTest<ProjectListCubit, ProjectListState>(
         "reconnectBridge: stays on onboarding (no fetch) when the bridge is still unreachable",
         build: () {

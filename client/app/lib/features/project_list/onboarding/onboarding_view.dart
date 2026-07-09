@@ -5,36 +5,14 @@ part of "../project_list_screen.dart";
 //
 // The two empty Projects states have their own bodies now that they diverge:
 // * disconnected — the connect-your-computer onboarding (connection graphic in
-//   its "off" state): install + start the bridge. See [_ConnectBridgeChecklist]
-//   and [_BridgeOnboardingView].
+//   its "off" state): install + start the bridge. See [_ConnectBridgeChecklist].
 // * connected, no projects — the phone/PC status body with the graphic in its
 //   "on" state. See [_OnboardingChecklist].
+//
+// Both are bodies, not pages: [ProjectListScreen] hosts them in its own page
+// scroll — with the pull-to-refresh and the collapsing large title that come
+// with it — rather than each nesting a scroll view of its own.
 // ===========================================================================
-
-/// Not-yet-connected onboarding ("Connect your computer"). Wraps the
-/// [_ConnectBridgeChecklist] in a pull-to-refresh that re-attempts the bridge
-/// connection.
-class _BridgeOnboardingView extends StatelessWidget {
-  const _BridgeOnboardingView();
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: RefreshIndicator(
-        // Recovery affordance: pull down to re-attempt the bridge connection.
-        // Escaping this state is otherwise passive (it waits for a connection
-        // event), which can strand a never-connected bridge.
-        onRefresh: () => context.read<ProjectListCubit>().reconnectBridge(),
-        child: const SingleChildScrollView(
-          clipBehavior: Clip.none,
-          physics: AlwaysScrollableScrollPhysics(),
-          child: _ConnectBridgeChecklist(),
-        ),
-      ),
-    );
-  }
-}
 
 /// Opens one of the "Need help?" contact links ([SupportLinks]) through the
 /// shared [openExternalLink] helper.
@@ -123,9 +101,9 @@ class _OnboardingChecklist extends StatelessWidget {
 /// connection graphic in its "off" state with a "Waiting for bridge" caption,
 /// then two numbered command steps — install the bridge, then start it — each
 /// introduced by a label carrying an "ⓘ" info popover, and a "Why is this
-/// needed?" explainer button. Wrapped in the pull-to-refresh of
-/// [_BridgeOnboardingView]; the "Need help?" support menu ([_NeedHelpMenu])
-/// rides the scaffold's floating-action slot.
+/// needed?" explainer button. The "Need help?" support menu ([_NeedHelpMenu])
+/// is not part of this scroll flow — it rides the scaffold's floating-action
+/// slot.
 class _ConnectBridgeChecklist extends StatelessWidget {
   const _ConnectBridgeChecklist();
 

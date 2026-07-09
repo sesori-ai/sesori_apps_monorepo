@@ -26,6 +26,18 @@ class ConnectionGraphic extends StatelessWidget {
 
   final _ConnectionGraphicState _state;
 
+  /// The Figma frame the artwork is drawn at, pinned explicitly rather than
+  /// taken from the decoded asset.
+  ///
+  /// An unsized [Image] reports a *max intrinsic* height of
+  /// `crossAxisExtent / aspectRatio` — the height it would need if stretched to
+  /// the full available width — not the height it paints at. The onboarding
+  /// bodies hang under `SliverFillRemaining(hasScrollBody: false)`, which sizes
+  /// itself from that intrinsic, so an unsized graphic would inflate the page's
+  /// scroll extent by ~180pt of empty space below the content.
+  static const double _width = 141;
+  static const double _height = 101;
+
   static const String _dir = "assets/images/projects_onboarding/connection_graphic";
   static const String _offLight = "$_dir/connection_off-light.png";
   static const String _offDark = "$_dir/connection_off-dark.png";
@@ -41,6 +53,8 @@ class ConnectionGraphic extends StatelessWidget {
     };
     return Image.asset(
       asset,
+      width: _width,
+      height: _height,
       fit: BoxFit.contain,
       filterQuality: FilterQuality.medium,
     );

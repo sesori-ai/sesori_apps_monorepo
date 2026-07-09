@@ -5,6 +5,11 @@ part of "../project_list_screen.dart";
 /// asked to reconnect. Mirrors the Figma "bridge disconnected" state: the
 /// connection graphic, a "Reconnect" CTA, and an expandable "Install commands"
 /// disclosure for when the bridge needs to be (re)installed or restarted.
+///
+/// A body, not a page: it is hosted in the project list's own page scroll (see
+/// [ProjectListScreen]) so the large title collapses into the bar as the
+/// expanded install commands scroll. Centred while it fits the viewport; the
+/// enclosing sliver grows past it once it doesn't.
 class _BridgeOfflineView extends StatefulWidget {
   const _BridgeOfflineView();
 
@@ -36,82 +41,69 @@ class _BridgeOfflineViewState extends State<_BridgeOfflineView> {
     final loc = context.loc;
     final prego = context.prego;
 
-    // Centred in the viewport, but scrollable so the content still fits small
-    // screens and the expanded install commands never overflow.
-    return SafeArea(
-      top: false,
-      child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const ExcludeSemantics(child: Center(child: ConnectionGraphic.connectionOff())),
+          const SizedBox(height: 18),
+          Text(
+            loc.projectsBridgeOfflineTitle,
+            textAlign: TextAlign.center,
+            style: prego.textTheme.textLg.medium.copyWith(color: prego.colors.textPrimary),
+          ),
+          const SizedBox(height: 28),
+          PregoButtonsSolid(
+            label: loc.projectsBridgeOfflineReconnect,
+            hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+            size: PregoButtonsSolidSize.xl,
+            leadingIcon: TablerRegular.refresh,
+            fullWidth: true,
+            isLoading: _reconnecting,
+            onPressed: _reconnect,
+          ),
+          const SizedBox(height: 18),
+          // expanded semantics so screen readers announce the open/closed state
+          // of the install-commands disclosure; MergeSemantics folds it onto the
+          // button's own node.
+          MergeSemantics(
+            child: Semantics(
+              expanded: _showInstallCommands,
+              child: PregoButtonsSolid(
+                label: loc.projectsBridgeOfflineInstallCommands,
+                hierarchy: PregoButtonsSolidHierarchy.tertiary,
+                size: PregoButtonsSolidSize.xl,
+                trailingIcon: _showInstallCommands ? TablerRegular.chevron_up : TablerRegular.chevron_down,
+                fullWidth: true,
+                onPressed: () => setState(() => _showInstallCommands = !_showInstallCommands),
+              ),
+            ),
+          ),
+          AnimatedSize(
+            duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220),
+            curve: Curves.easeInOut,
+            alignment: Alignment.topCenter,
+            // maintainState keeps the install boxes mounted while collapsed so
+            // the selected install method survives closing and reopening the
+            // disclosure.
+            child: Visibility(
+              visible: _showInstallCommands,
+              maintainState: true,
+              child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const ExcludeSemantics(child: Center(child: ConnectionGraphic.connectionOff())),
-                  const SizedBox(height: 18),
-                  Text(
-                    loc.projectsBridgeOfflineTitle,
-                    textAlign: TextAlign.center,
-                    style: prego.textTheme.textLg.medium.copyWith(color: prego.colors.textPrimary),
-                  ),
-                  const SizedBox(height: 28),
-                  PregoButtonsSolid(
-                    label: loc.projectsBridgeOfflineReconnect,
-                    hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-                    size: PregoButtonsSolidSize.xl,
-                    leadingIcon: TablerRegular.refresh,
-                    fullWidth: true,
-                    isLoading: _reconnecting,
-                    onPressed: _reconnect,
-                  ),
-                  const SizedBox(height: 18),
-                  // expanded semantics so screen readers announce the
-                  // open/closed state of the install-commands disclosure;
-                  // MergeSemantics folds it onto the button's own node.
-                  MergeSemantics(
-                    child: Semantics(
-                      expanded: _showInstallCommands,
-                      child: PregoButtonsSolid(
-                        label: loc.projectsBridgeOfflineInstallCommands,
-                        hierarchy: PregoButtonsSolidHierarchy.tertiary,
-                        size: PregoButtonsSolidSize.xl,
-                        trailingIcon: _showInstallCommands ? TablerRegular.chevron_up : TablerRegular.chevron_down,
-                        fullWidth: true,
-                        onPressed: () => setState(() => _showInstallCommands = !_showInstallCommands),
-                      ),
-                    ),
-                  ),
-                  AnimatedSize(
-                    duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220),
-                    curve: Curves.easeInOut,
-                    alignment: Alignment.topCenter,
-                    // maintainState keeps the install boxes mounted while
-                    // collapsed so the selected install method survives closing
-                    // and reopening the disclosure.
-                    child: Visibility(
-                      visible: _showInstallCommands,
-                      maintainState: true,
-                      child: const Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          SizedBox(height: PregoSpacing.lg),
-                          _InstallCommandBoxes(),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Always visible: the bridge is already installed here, so the
-                  // common recovery is to (re)start it rather than reinstall.
-                  const SizedBox(height: PregoSpacing.xl),
-                  const _RunBridgeCommand(),
+                  SizedBox(height: PregoSpacing.lg),
+                  _InstallCommandBoxes(),
                 ],
               ),
             ),
           ),
+          // Always visible: the bridge is already installed here, so the common
+          // recovery is to (re)start it rather than reinstall.
+          const SizedBox(height: PregoSpacing.xl),
+          const _RunBridgeCommand(),
         ],
       ),
     );
