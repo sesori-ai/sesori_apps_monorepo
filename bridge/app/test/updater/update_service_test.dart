@@ -1,6 +1,7 @@
 import 'package:fake_async/fake_async.dart';
+import 'package:sesori_bridge/src/updater/formatters/update_message_formatter.dart';
+import 'package:sesori_bridge/src/updater/formatters/update_output_formatter.dart';
 import 'package:sesori_bridge/src/updater/foundation/github_rate_limit_exception.dart';
-import 'package:sesori_bridge/src/updater/foundation/update_message_formatter.dart';
 import 'package:sesori_bridge/src/updater/models/release_info.dart';
 import 'package:sesori_bridge/src/updater/models/update_apply_outcome.dart';
 import 'package:sesori_bridge/src/updater/models/update_install_result.dart';
@@ -95,20 +96,20 @@ void main() {
     Map<String, String> environment = const {},
     bool isSupervised = false,
   }) {
+    const plainFormatter = UpdateOutputFormatter(color: false, unicode: false);
     final service = UpdateService(
       releaseRepository: release,
       updateInstallService: install,
       updateApplyService: apply,
       logRepository: logs,
-      messageFormatter: const UpdateMessageFormatter(),
+      messageFormatter: UpdateMessageFormatter(outFormatter: plainFormatter, errFormatter: plainFormatter),
       installRoot: '/tmp/install',
       executablePath: executablePath,
       managedExecutablePath: _managedPath,
       environment: environment,
       isSupervised: isSupervised,
     );
-    service.emitMessage = infoMessages.add;
-    service.emitError = errors.add;
+    service.emitLine = (line) => (line.isError ? errors : infoMessages).add(line.text);
     service.logWarning = warnings.add;
     return service;
   }
@@ -140,7 +141,8 @@ void main() {
       expect(release.checkCount, 1);
       expect(install.stageCount, 1);
       expect(apply.appliedVersions, equals(['2.0.0']));
-      expect(infoMessages.single, contains('2.0.0'));
+      expect(infoMessages, isNotEmpty);
+      expect(infoMessages.first, contains('2.0.0'));
       expect(errors, isEmpty);
     });
   });
@@ -232,9 +234,9 @@ void main() {
 
     runStarted(buildService(), (async) {
       expect(apply.appliedVersions, equals(['2.0.0']));
-      expect(errors, hasLength(1));
-      expect(errors.single, contains('disk full'));
-      expect(errors.single, contains('https://sesori.com/'));
+      expect(errors, isNotEmpty);
+      expect(errors.join('\n'), contains('disk full'));
+      expect(errors.join('\n'), contains('https://sesori.com/'));
       expect(infoMessages, isEmpty);
     });
   });
@@ -264,8 +266,8 @@ void main() {
 
     runStarted(buildService(), (async) {
       expect(apply.appliedVersions, isEmpty);
-      expect(errors, hasLength(1));
-      expect(errors.single, contains('https://sesori.com/'));
+      expect(errors, isNotEmpty);
+      expect(errors.join('\n'), contains('https://sesori.com/'));
       expect(logs.messages, isNotEmpty);
     });
   });

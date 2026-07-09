@@ -1,7 +1,8 @@
 import 'dart:io';
 
+import 'package:sesori_bridge/src/updater/formatters/update_message_formatter.dart';
+import 'package:sesori_bridge/src/updater/formatters/update_output_formatter.dart';
 import 'package:sesori_bridge/src/updater/foundation/update_lock.dart';
-import 'package:sesori_bridge/src/updater/foundation/update_message_formatter.dart';
 import 'package:sesori_bridge/src/updater/models/update_attempt.dart';
 import 'package:sesori_bridge/src/updater/repositories/update_attempt_repository.dart';
 import 'package:sesori_bridge/src/updater/repositories/update_installation_repository.dart';
@@ -103,17 +104,17 @@ void main() {
   late List<String> warnings;
 
   UpdateReconciliationService buildService({required String currentVersion}) {
+    const plainFormatter = UpdateOutputFormatter(color: false, unicode: false);
     final service = UpdateReconciliationService(
       attemptRepository: attempts,
       logRepository: logs,
       installationRepository: installation,
-      messageFormatter: const UpdateMessageFormatter(),
+      messageFormatter: UpdateMessageFormatter(outFormatter: plainFormatter, errFormatter: plainFormatter),
       updateLock: lock,
       currentVersion: currentVersion,
       installRoot: '/tmp/install',
     );
-    service.emitMessage = infoMessages.add;
-    service.emitError = errorMessages.add;
+    service.emitLine = (line) => (line.isError ? errorMessages : infoMessages).add(line.text);
     service.logWarning = warnings.add;
     return service;
   }
@@ -171,7 +172,7 @@ void main() {
 
     await buildService(currentVersion: '2.0.0').reconcile();
 
-    expect(infoMessages.single, contains('Updated to 2.0.0'));
+    expect(infoMessages.single, contains('Updated to v2.0.0'));
     expect(errorMessages, isEmpty);
     expect(attempts.cleared, isTrue);
     expect(installation.sweepCount, 1);
@@ -186,7 +187,7 @@ void main() {
     await buildService(currentVersion: '1.0.0').reconcile();
 
     expect(infoMessages, isEmpty);
-    expect(errorMessages.single, contains('https://sesori.com/'));
+    expect(errorMessages.join('\n'), contains('https://sesori.com/'));
     expect(attempts.cleared, isTrue);
   });
 
@@ -198,7 +199,7 @@ void main() {
     // We never claim a clean success from the version alone for an interrupted
     // swap — the lib swap may not have finished before the crash.
     expect(infoMessages, isEmpty);
-    expect(errorMessages.single, contains('interrupted'));
+    expect(errorMessages.join('\n'), contains('interrupted'));
     expect(attempts.cleared, isTrue);
   });
 
@@ -207,7 +208,7 @@ void main() {
 
     await buildService(currentVersion: '1.0.0').reconcile();
 
-    expect(errorMessages.single, contains('interrupted'));
+    expect(errorMessages.join('\n'), contains('interrupted'));
     expect(attempts.cleared, isTrue);
   });
 
@@ -217,7 +218,7 @@ void main() {
     await buildService(currentVersion: '1.0.0').reconcile();
 
     expect(infoMessages, isEmpty);
-    expect(errorMessages.single, contains('permission denied'));
+    expect(errorMessages.join('\n'), contains('permission denied'));
     expect(attempts.cleared, isTrue);
     expect(installation.sweepCount, 1);
   });
