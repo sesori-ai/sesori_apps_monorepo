@@ -13,9 +13,10 @@ import 'update_output_formatter.dart';
 /// [dispose] or when the stream ends. It draws only on an interactive terminal
 /// with color enabled and a known total size; otherwise it silently drains the
 /// stream, so callers need no capability branching. The bar animates on a single
-/// carriage-returned line and is closed with a newline exactly once — when the
-/// download reaches 100%, or the stream ends/errors after any draw — so later
-/// output starts on a fresh line.
+/// carriage-returned line, redrawing only when the rendered percent advances,
+/// and is closed with a newline exactly once — when the download reaches 100%,
+/// or the stream ends/errors after any draw — so later output starts on a
+/// fresh line.
 class TerminalDownloadProgressListener {
   TerminalDownloadProgressListener({
     required Stream<DownloadProgress> progress,
@@ -39,6 +40,7 @@ class TerminalDownloadProgressListener {
 
   bool _drew = false;
   bool _terminated = false;
+  int _lastDrawnPercent = -1;
 
   /// Closes any in-progress bar line and cancels the subscription.
   Future<void> dispose() async {
@@ -55,6 +57,12 @@ class TerminalDownloadProgressListener {
       return;
     }
     final int percent = ((progress.receivedBytes * 100) ~/ total).clamp(0, 100);
+    // Chunk events arrive far more often than the bar visibly changes, and the
+    // rendered line depends only on the integer percent — skip byte-identical
+    // redraws so a download issues at most ~100 terminal writes.
+    if (percent == _lastDrawnPercent) {
+      return;
+    }
     final int filled = (percent * _barCells) ~/ 100;
     final String bar = _formatter.progressBar(filledCells: filled, totalCells: _barCells);
     final String pct = percent.toString().padLeft(3);
@@ -62,6 +70,7 @@ class TerminalDownloadProgressListener {
       return;
     }
     _drew = true;
+    _lastDrawnPercent = percent;
     if (progress.receivedBytes >= total) {
       _terminateLine();
     }

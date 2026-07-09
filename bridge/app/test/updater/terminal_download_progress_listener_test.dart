@@ -130,6 +130,23 @@ void main() {
       expect(written, contains(' 50%'));
     });
 
+    test('redraws only when the rendered percent changes', () async {
+      final out = _CapturingStdout(hasTerminal: true);
+      final written = await _render(
+        formatter: colorFormatter,
+        out: out,
+        events: const [
+          DownloadProgress(receivedBytes: 500, totalBytes: 1000),
+          DownloadProgress(receivedBytes: 505, totalBytes: 1000), // still 50% — no redraw
+          DownloadProgress(receivedBytes: 1000, totalBytes: 1000),
+        ],
+      );
+
+      expect('\r'.allMatches(written).length, 2);
+      expect(written, contains(' 50%'));
+      expect(written, contains('100%'));
+    });
+
     test('tolerates a broken pipe: swallows write errors and stops drawing', () async {
       final out = _ThrowingStdout();
       final controller = StreamController<DownloadProgress>();

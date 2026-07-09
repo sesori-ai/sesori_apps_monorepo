@@ -198,9 +198,9 @@ void main() {
 
     // We never claim a clean success from the version alone for an interrupted
     // swap — the lib swap may not have finished before the crash.
-      expect(infoMessages, isEmpty);
-      expect(errorMessages.join('\n'), contains('interrupted'));
-      expect(attempts.cleared, isTrue);
+    expect(infoMessages, isEmpty);
+    expect(errorMessages.join('\n'), contains('interrupted'));
+    expect(attempts.cleared, isTrue);
   });
 
   test('interrupted apply that did not land is reported as a failure', () async {
