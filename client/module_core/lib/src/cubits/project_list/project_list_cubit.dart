@@ -331,20 +331,32 @@ class ProjectListCubit extends Cubit<ProjectListState> {
   /// reload to reconnectBridge during this window — see the guard there.
   bool _reconnectBridgeInFlight = false;
 
-  /// Re-attempts to reach the bridge from the onboarding state (driven by the
-  /// onboarding's pull-to-refresh). Recovery from [ProjectListBridgeDisconnected]
-  /// is otherwise passive — it waits for a [ConnectionConnected] transition that,
-  /// for a never-connected bridge ([ConnectionDisconnected]), may never arrive
-  /// on its own. This actively re-establishes the connection, then reloads.
+  /// In-flight bridge reconnect, used for coalescing.
+  Future<void>? _activeReconnect;
+
+  /// Re-attempts to reach the bridge from the disconnected state. Recovery from
+  /// [ProjectListBridgeDisconnected] is otherwise passive — it waits for a
+  /// [ConnectionConnected] transition that, for a never-connected bridge
+  /// ([ConnectionDisconnected]), may never arrive on its own. This actively
+  /// re-establishes the connection, then reloads.
   ///
   /// Does not emit a loading state: the caller (a [RefreshIndicator]) shows its
-  /// own progress, so the onboarding stays visible until a result is known.
+  /// own progress, so the disconnected body stays visible until a result is
+  /// known.
   ///
+  /// Concurrent calls are coalesced: the page's pull-to-refresh and the offline
+  /// body's Reconnect button both land here and neither blocks the other, so a
+  /// second attempt would fetch behind the first and release
+  /// [_reconnectBridgeInFlight] while the first is still connecting.
+  Future<void> reconnectBridge() {
+    return _activeReconnect ??= _reconnectBridge().whenComplete(() => _activeReconnect = null);
+  }
+
   /// [_reconnectBridgeInFlight] is held for the whole method so the
   /// ConnectionConnected transition emitted while connecting doesn't also drive
   /// [_onConnectionStatusChanged] into a duplicate (loading-flashing) reload —
   /// reconnectBridge owns the single, silent fetch below.
-  Future<void> reconnectBridge() async {
+  Future<void> _reconnectBridge() async {
     _reconnectBridgeInFlight = true;
     try {
       if (_connectionService.currentStatus is ConnectionDisconnected) {

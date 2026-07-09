@@ -275,7 +275,7 @@ class _NeedHelpMenu extends StatelessWidget {
       triggerBuilder: (context, toggle) => PregoButtonsSolid(
         leadingIcon: TablerRegular.help,
         label: loc.projectsOnboardingNeedHelp,
-        hierarchy: PregoButtonsSolidHierarchy.secondary,
+        hierarchy: PregoButtonsSolidHierarchy.tertiary,
         size: PregoButtonsSolidSize.xl,
         onPressed: toggle,
       ),
