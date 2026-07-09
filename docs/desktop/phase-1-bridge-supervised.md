@@ -829,8 +829,8 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   supervised); detection works on close code `4007` alone (no reason string)
   AND on the `1000/"replaced"` rollout fallback; normal drop reconnection
   unchanged; covered by connection-level tests.
-- **Aristotle:** plan ☑ · impl ☑ (bridge PR raised on branch `start-next-step-desktop-plan`;
-  relay prerequisite raised as `sesori-ai/sesori_relay_server#7`).
+- **Aristotle:** plan ☑ · impl ☑ (merged #385; relay prerequisite
+  `sesori-ai/sesori_relay_server#7`).
 - **Findings:** Shipped as an additive shared constant + predicate, a Layer-0
   transport accessor, an orchestrator backoff-policy change, and a notifier map
   extension — no new classes. (1) **Shared** (`close_codes.dart`):
@@ -897,7 +897,55 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   observe: secret handshake, token pull/push, status/registered/provision
   events, prompt round-trip, unregister-and-exit, and grace-period exit on
   harness kill.
-- **Aristotle:** plan ☐ · impl ☐. **Findings:** — **Deltas:** —
+- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch `next-step-desktop-plan`).
+- **Findings:** Shipped as a single dev-only file
+  (`bridge/app/tool/dev_control_host.dart`, ~490 lines with doc comments), no
+  `lib/` change and no new dependency — it reuses the app package's existing
+  `args`, `dart:io` (`HttpServer`/`WebSocketTransformer`), `sesori_shared`
+  (`ControlMessage`, `jsonDecodeMap`) and `sesori_bridge_foundation`
+  (`sesoriDataDirectory()`). `main()` parses `--bridge <path>` (required),
+  `--deny-token`, `--help`, and forwards everything after `--` verbatim to the
+  bridge; the access token defaults to the developer's own `token.json`
+  `accessToken`, is overridable via the `SESORI_DEV_CONTROL_TOKEN` env var
+  (kept off argv, which other local processes can read; the spawned bridge's
+  environment blanks that var so the override never reaches the child — or,
+  via the plugin host copying its environment, the backend), and degrades to
+  token-less (answering `token_request` with null) when both are absent. A
+  private `_DevControlHost` owns one harness session — the per-spawn secret
+  (`Random.secure()` → base64url), the loopback WS control server
+  (`HttpServer.bind(loopbackIPv4, 0)`, ephemeral port), the single helper
+  socket, and the pending-prompt list. It
+  spawns the bridge with `--control-url ws://127.0.0.1:<port>`, delivers the
+  secret **off-argv** as the child's first stdin line (ADR A8), and echoes the
+  child's stdout/stderr inline. The WS upgrade is accepted only when the
+  `Authorization: Bearer <secret>` header matches (else 401); one helper per
+  spawn (a concurrent second is 409'd, but a dropped socket is cleared so the
+  helper's reconnect is accepted, and a post-drop send logs-and-drops instead
+  of crashing the harness). Inbound frames are decoded with the real
+  `ControlMessage.fromJson` (undecodable → stderr + skip, never swallowed),
+  printed with `accessToken` redacted (a saved MT-1 terminal log never captures
+  the developer's bearer token), and reacted to via an exhaustive sealed
+  switch: `token_request` → auto-`token_response` (null when denied /
+  token-less), `prompt_request` →
+  tracked + printed; all other variants are informational. Keyboard commands on
+  the harness's own stdin: `t` push `token_update`, `u` `unregister_and_exit`,
+  `y`/`n [id]` answer a prompt, `x` toggle token-denial, `q` simulate GUI-gone
+  (close socket+server so the helper's reconnects fail → observe the ADR-A9
+  grace exit while the harness stays attached to print the exit code), `?` help.
+  On child exit the harness prints and interprets the code against the
+  documented supervised sentinels (86 restart / 87 login-needed / 88 contention
+  / 1 control-loss / 0 clean). Never shipped: `dart build cli` compiles the
+  `bin/bridge.dart` entrypoint only and nothing imports the tool, so it is
+  excluded from the bundle (same as `tool/bump_version.dart`); `avoid_print` is
+  honoured (all output via `stdout`/`stderr`). `dart analyze --fatal-infos`
+  clean; `make analyze` clean; `make test` all pass (1727, unchanged — the tool
+  is not in any import/test graph). Enables MT-1.
+- **Deltas:** PR-review hardening dropped the goal's planned `--token` flag for
+  the `SESORI_DEV_CONTROL_TOKEN` env var (a bearer token must not sit in argv),
+  and added helper-reconnect acceptance, token redaction in printed frames,
+  guarded child-stdin/secret and socket writes (a child that crashes instantly
+  is still reported via its exit code), and upgrade-handler isolation (a
+  mid-handshake disconnect can't crash the control server).
 
 ---
 
