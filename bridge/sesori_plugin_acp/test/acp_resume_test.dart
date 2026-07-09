@@ -85,7 +85,11 @@ void main() {
       await pump();
       fake.emit({"jsonrpc": "2.0", "id": loadFrame["id"], "result": const <String, dynamic>{}});
 
+      // sendPrompt resolves once the turn is accepted (queued); the dispatch
+      // itself runs on the session's serialization chain, so wait for the
+      // prompt frame before asserting on the frame order.
       await sending;
+      await waitForFrame("session/prompt");
 
       // session/load was sent before session/prompt.
       final methods = fake.written.map((f) => f["method"]).toList();
@@ -94,10 +98,13 @@ void main() {
         isTrue,
         reason: "resume-load must precede the prompt",
       );
-      await waitForFrame("session/prompt");
 
       // The suppressed replay produced no message events on the live stream.
       expect(emitted.whereType<BridgeSseMessagePartDelta>(), isEmpty);
+
+      // Complete the first turn so the follow-up prompt dispatches (turns on
+      // one session are serialized).
+      await respond("session/prompt", {"stopReason": "end_turn"});
 
       // A second prompt on the now-resident session does NOT re-load.
       final loadsBefore = fake.written.where((f) => f["method"] == "session/load").length;
