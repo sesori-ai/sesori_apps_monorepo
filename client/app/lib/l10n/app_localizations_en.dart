@@ -124,7 +124,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsOnboardingShareCommand => 'Share command';
 
   @override
-  String get projectsOnboardingWaitingForBridge => 'Waiting for bridge';
+  String get projectsOnboardingWaitingForBridge => 'Waiting for the bridge...';
 
   @override
   String get projectsOnboardingRunOnComputer => 'Next, run on your computer:';

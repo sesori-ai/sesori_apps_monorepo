@@ -304,7 +304,7 @@ abstract class AppLocalizations {
   /// Caption shown beneath the connection graphic on the disconnected onboarding while the app waits for the bridge to come online.
   ///
   /// In en, this message translates to:
-  /// **'Waiting for bridge'**
+  /// **'Waiting for the bridge...'**
   String get projectsOnboardingWaitingForBridge;
 
   /// Heading above the numbered install/start command steps on the disconnected onboarding, introducing the commands to run on the user's computer.

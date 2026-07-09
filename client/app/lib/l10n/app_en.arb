@@ -100,7 +100,7 @@
   "@projectsOnboardingShareCommand": {
     "description": "Accessibility label for the button that opens the native share sheet with the selected install command."
   },
-  "projectsOnboardingWaitingForBridge": "Waiting for bridge",
+  "projectsOnboardingWaitingForBridge": "Waiting for the bridge...",
   "@projectsOnboardingWaitingForBridge": {
     "description": "Caption shown beneath the connection graphic on the disconnected onboarding while the app waits for the bridge to come online."
   },
