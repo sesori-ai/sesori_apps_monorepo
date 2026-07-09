@@ -185,4 +185,5 @@ or single-instance business logic in `client/desktop`.
 - [`app/AGENTS.md`](app/AGENTS.md) — Flutter shell conventions, routing, widget patterns
 - [`module_core/AGENTS.md`](module_core/AGENTS.md) — pure Dart conventions, cubit/service patterns
 - [`module_auth/AGENTS.md`](module_auth/AGENTS.md) — auth package public API, token lifecycle
-- `desktop/AGENTS.md` and `module_desktop_core/AGENTS.md` should be added when those packages are created.
+- [`desktop/AGENTS.md`](desktop/AGENTS.md) — desktop Flutter shell conventions, 4-phase DI
+- [`module_desktop_core/AGENTS.md`](module_desktop_core/AGENTS.md) — pure Dart desktop business module, target layer structure

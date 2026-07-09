@@ -10,3 +10,5 @@ workspace:
   - module_core
   - module_auth
   - module_prego
+  - module_desktop_core
+  - desktop
