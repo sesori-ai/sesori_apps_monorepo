@@ -7,6 +7,8 @@ export 'components/buttons/prego_buttons_glass.dart';
 export 'components/buttons/prego_buttons_icon_glass.dart';
 export 'components/loaders/prego_skeleton.dart';
 export 'components/menus/prego_anchor_menu.dart';
+export 'components/menus/prego_info_popover.dart';
+export 'components/menus/prego_popover.dart';
 export 'components/navigation/prego_glass_scaffold.dart';
 export 'components/navigation/prego_nav_title.dart';
 export 'components/navigation/prego_top_navigation.dart';

@@ -133,6 +133,12 @@ abstract class AppLocalizations {
   /// **'Projects'**
   String get projectListTitle;
 
+  /// App-bar title shown in place of 'Projects' while the connect-your-computer onboarding is visible (no bridge has ever been registered and none is connected).
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get projectListConnectTitle;
+
   /// No description provided for @projectListLoadingSemantics.
   ///
   /// In en, this message translates to:
@@ -294,6 +300,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Share command'**
   String get projectsOnboardingShareCommand;
+
+  /// Caption shown beneath the connection graphic on the disconnected onboarding while the app waits for the bridge to come online.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the bridge...'**
+  String get projectsOnboardingWaitingForBridge;
+
+  /// Heading above the numbered install/start command steps on the disconnected onboarding, introducing the commands to run on the user's computer.
+  ///
+  /// In en, this message translates to:
+  /// **'Next, run on your computer:'**
+  String get projectsOnboardingRunOnComputer;
+
+  /// Title of the first numbered onboarding step, rendered as '1. Install the bridge' above the install-command box.
+  ///
+  /// In en, this message translates to:
+  /// **'Install the bridge'**
+  String get projectsOnboardingInstallStepTitle;
+
+  /// Popover text explaining what the 'Install the bridge' step does, opened from the info icon next to that step.
+  ///
+  /// In en, this message translates to:
+  /// **'This adds the Sesori bridge command to your machine.'**
+  String get projectsOnboardingInstallStepInfo;
+
+  /// Title of the second numbered onboarding step, rendered as '2. Start the bridge' above the start-command box.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the bridge'**
+  String get projectsOnboardingStartStepTitle;
+
+  /// Popover text explaining the 'Start the bridge' step, opened from the info icon next to that step.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave it running while you use Sesori from your phone.'**
+  String get projectsOnboardingStartStepInfo;
+
+  /// Accessibility label for the info icon button next to an onboarding step title, which opens a popover explaining that step.
+  ///
+  /// In en, this message translates to:
+  /// **'More information'**
+  String get projectsOnboardingStepInfoSemantics;
 
   /// No description provided for @projectsBridgeOfflineTitle.
   ///

@@ -153,9 +153,21 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
     final loc = context.loc;
     final state = context.watch<ProjectListCubit>().state;
     final isRefreshing = state is ProjectListLoaded && state.isRefreshing;
+    // The connect-your-computer onboarding (no bridge ever registered, none
+    // connected) titles the screen "Connect"; every other state keeps
+    // "Projects".
+    final isConnectOnboarding = state is ProjectListBridgeDisconnected && !state.hasRegisteredBridges;
+    // The disconnected states (connect onboarding + bridge-offline) own their
+    // own inner scroll view with pull-to-reconnect. Turn the scaffold's outer
+    // page scroll OFF for them so the two don't fight: with both scrollable, the
+    // large-title collapse and the inner scroll deadlock — the page strands
+    // scrolled-up and won't come back. With it off the large title stays fixed
+    // and only the body scrolls.
+    final bodyOwnsScroll = state is ProjectListBridgeDisconnected;
 
     return PregoGlassScaffold(
-      title: loc.projectListTitle,
+      title: isConnectOnboarding ? loc.projectListConnectTitle : loc.projectListTitle,
+      scrollable: !bodyOwnsScroll,
       actions: [
         PregoButtonsIconGlass(
           icon: VESPRSolid.gear,
@@ -206,7 +218,7 @@ class _ProjectListBodyState extends State<_ProjectListBody> {
             hasScrollBody: false,
             child: SafeArea(
               top: false,
-              child: _OnboardingChecklist(connected: true),
+              child: _OnboardingChecklist(),
             ),
           )
         else ...[

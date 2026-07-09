@@ -7,6 +7,10 @@
   "apiErrorServerRejected": "The server returned an error. Please try again.",
   "apiErrorNetworkDown": "Connection failed — check your network and try again.",
   "projectListTitle": "Projects",
+  "projectListConnectTitle": "Connect",
+  "@projectListConnectTitle": {
+    "description": "App-bar title shown in place of 'Projects' while the connect-your-computer onboarding is visible (no bridge has ever been registered and none is connected)."
+  },
   "projectListLoadingSemantics": "Loading projects",
   "projectListEmpty": "No projects found",
   "projectListUpdated": "Updated {timestamp}",
@@ -95,6 +99,34 @@
   "projectsOnboardingShareCommand": "Share command",
   "@projectsOnboardingShareCommand": {
     "description": "Accessibility label for the button that opens the native share sheet with the selected install command."
+  },
+  "projectsOnboardingWaitingForBridge": "Waiting for the bridge...",
+  "@projectsOnboardingWaitingForBridge": {
+    "description": "Caption shown beneath the connection graphic on the disconnected onboarding while the app waits for the bridge to come online."
+  },
+  "projectsOnboardingRunOnComputer": "Next, run on your computer:",
+  "@projectsOnboardingRunOnComputer": {
+    "description": "Heading above the numbered install/start command steps on the disconnected onboarding, introducing the commands to run on the user's computer."
+  },
+  "projectsOnboardingInstallStepTitle": "Install the bridge",
+  "@projectsOnboardingInstallStepTitle": {
+    "description": "Title of the first numbered onboarding step, rendered as '1. Install the bridge' above the install-command box."
+  },
+  "projectsOnboardingInstallStepInfo": "This adds the Sesori bridge command to your machine.",
+  "@projectsOnboardingInstallStepInfo": {
+    "description": "Popover text explaining what the 'Install the bridge' step does, opened from the info icon next to that step."
+  },
+  "projectsOnboardingStartStepTitle": "Start the bridge",
+  "@projectsOnboardingStartStepTitle": {
+    "description": "Title of the second numbered onboarding step, rendered as '2. Start the bridge' above the start-command box."
+  },
+  "projectsOnboardingStartStepInfo": "Leave it running while you use Sesori from your phone.",
+  "@projectsOnboardingStartStepInfo": {
+    "description": "Popover text explaining the 'Start the bridge' step, opened from the info icon next to that step."
+  },
+  "projectsOnboardingStepInfoSemantics": "More information",
+  "@projectsOnboardingStepInfoSemantics": {
+    "description": "Accessibility label for the info icon button next to an onboarding step title, which opens a popover explaining that step."
   },
   "projectsBridgeOfflineTitle": "Bridge disconnected",
   "projectsBridgeOfflineReconnect": "Reconnect",
