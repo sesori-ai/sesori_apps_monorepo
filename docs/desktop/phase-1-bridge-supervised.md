@@ -470,7 +470,7 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   structured prompt/login events; the dispatcher is the only `inbound` subscriber
   (asserted by test); bootstrap token-unavailable exits `87` after a best-effort
   `loginNeeded` prompt; PR 2.7's mapping consumes `87`.
-- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch `next-desktop-implementation`).
+- **Aristotle:** plan ☑ · impl ☑ (merged #371).
 - **Findings:** Shipped as four units. (1) `BridgeControlMessageDispatcher`
   (Layer 4 `control/`): the single `inbound` subscriber; decodes each frame once
   (warn+skip on undecodable, preserved from the token service's old decode
@@ -538,7 +538,7 @@ runs **under the startup mutex**, which reinforces PR 1.12.
 - **Acceptance:** status events received by a fake server; the `registered`
   event carries `bridgeId` and is emitted right after registration; reflects
   live changes (reactive, no polling).
-- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch `desktop-implementation-stage`).
+- **Aristotle:** plan ☑ · impl ☑ (merged #374).
 - **Findings:** Shipped as four units, no shared-package changes (the PR-1.2
   DTOs already carried the status/registered shapes). (1) `RelayClient`
   (Layer 0) gained a broadcast `Stream<RelayConnectionState>` — a new sealed
@@ -599,7 +599,7 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   GUI's logout; (4) standalone logout (`bridge logout` CLI path) untouched.
 - **Acceptance:** command unregisters then exits 0; routed via
   `BridgeControlMessageDispatcher`.
-- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch `next-desktop-plan-step`).
+- **Aristotle:** plan ☑ · impl ☑ (merged #375).
 - **Findings:** Shipped as a new Layer-3 `ControlUnregisterService`
   (`services/control_unregister_service.dart`), the supervised counterpart of the
   token/prompt services the dispatcher already routes to. It takes the
@@ -669,7 +669,7 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   precedence without either silently exiting; (4) replace-prompt timeout
   behaviour doesn't hang GUI boot.
 - **Acceptance:** documented + tested precedence; no silent abort.
-- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch `next-step-desktop-plan`).
+- **Aristotle:** plan ☑ · impl ☑ (merged #377).
 - **Findings:** The precedence is documented as **ADR A25** and needed no new
   components — PR 1.9 already routes the replace ask through `BridgeReplacePrompt`
   (`ControlPromptService` supervised / `TerminalPromptRepository` standalone), so
@@ -732,7 +732,7 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   provisioning (send is fire-and-forget/buffered).
 - **Acceptance:** provision events reach a fake server; `ProvisionReady`/`Failed`
   terminal events conveyed; standalone formatter output unchanged.
-- **Aristotle:** plan ☑ · impl ☑ (PR raised on branch `next-step-desktop-plan`).
+- **Aristotle:** plan ☑ · impl ☑ (merged #383).
 - **Findings:** Shipped as two new units + the runner tee, no shared-package
   change (the PR-1.2 `ControlProvisionProgress`/`ControlMessage.provisionProgress`
   DTOs already carried the wire shape). (1) `RuntimeProvisionProgressMapping`
@@ -878,6 +878,9 @@ runs **under the startup mutex**, which reinforces PR 1.12.
   prerequisite is a **deploy gate**, tracked in §8 and this entry: `#7` must be
   merged AND deployed to production before this bridge PR merges; the bridge's
   `1000/"replaced"` fallback keeps an older relay safe during rollout.
+  **Outcome:** relay `#7` merged 2026-07-07, one day AFTER the bridge half
+  (#385, 2026-07-06) — the rollout window ran on the `1000/"replaced"` fallback
+  as designed; live cross-machine takeover is re-verified in MT-1 item 13.
 
 ## PR 1.15 — Dev control-host harness for manual supervised testing
 - **Goal:** A small dev-only tool (`bridge/app/tool/dev_control_host.dart`,
