@@ -137,7 +137,7 @@ class PregoGlassScaffold extends StatefulWidget {
   /// When set, the scroll view is wrapped in a [RefreshIndicator].
   final Future<void> Function()? onRefresh;
 
-  /// Page background painted behind the glass. Defaults to `bg-primary`.
+  /// Page background painted behind the glass. Defaults to `bg-surface 1`.
   final Color? backgroundColor;
 
   /// Whether the body scrolls behind the bar. Defaults to `true`. Set `false`

@@ -504,7 +504,7 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
       // (no overlay). isPressed takes priority over isHovered.
       if (isPressed) return colors.bgDestructivePressedAlt;
       if (isHovered) return colors.bgDestructiveHoverAlt;
-      // Default and loading: bg-primary (white).
+      // Default and loading: bg-surface 1 (white).
       return colors.bgSurface1;
     }
 
@@ -521,7 +521,7 @@ class _PregoButtonsSolidState extends State<PregoButtonsSolid> {
     required bool isHovered,
     required bool isPressed,
   }) {
-    // Focused tertiary uses bg-primary (white) as a base.
+    // Focused tertiary uses bg-surface 1 (white) as a base.
     if (_isFocused) return colors.bgSurface1;
 
     if (_isDestructive) {
